@@ -143,6 +143,7 @@ import "routing/update_session_archive_status_handler.dart";
 import "runtime/plugin_runtime.dart";
 import "server/services/bridge_restart_service.dart";
 import "services/archived_session_validator.dart";
+import "services/bridge_startup_retry_service.dart";
 import "services/catalog_import_service.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
@@ -223,6 +224,7 @@ class Orchestrator({
   // Standalone has no control channel, so this is null there.
   required final ControlStatusNotifier? _statusNotifier,
   required final ReconnectBackoffPolicy _reconnectBackoff,
+  required final BridgeStartupRetryService _startupRetryService,
 }) {
   /// Creates a new session with a fresh room key and SSE manager.
   OrchestratorComposition create() {
@@ -736,6 +738,7 @@ class Orchestrator({
       restartDispatcher: restartDispatcher,
       statusNotifier: _statusNotifier,
       reconnectBackoff: _reconnectBackoff,
+      startupRetryService: _startupRetryService,
     );
     return (
       session: session,
@@ -845,6 +848,7 @@ class OrchestratorSession._({
   required final BridgeRestartDispatcher _restartDispatcher,
   required final ControlStatusNotifier? _statusNotifier,
   required final ReconnectBackoffPolicy _reconnectBackoff,
+  required final BridgeStartupRetryService _startupRetryService,
 }) {
   // ignore: cancel_subscriptions - cancelled by the failure-isolated session drain.
   final CompositeSubscription _subscriptions = CompositeSubscription();
@@ -1060,12 +1064,12 @@ class OrchestratorSession._({
     final activePhoneIncarnations = <int, Object>{};
 
     Log.d("registering bridge with auth server...");
-    await _bridgeRegistrationService.ensureRegistered();
+    await _startupRetryService.run(operation: _bridgeRegistrationService.ensureRegistered);
     Log.d("bridge registered");
     if (_cancelled) return;
 
     Log.d("connecting to relay...");
-    final relayConnection = await _client.connect();
+    final relayConnection = await _startupRetryService.run(operation: _client.connect);
     _relayConnection = relayConnection;
     Log.d("relay connected");
     if (_cancelled) {
@@ -1264,6 +1268,7 @@ class OrchestratorSession._({
       );
       final firstRead = iterator.moveNext();
       if (!readiness.isCompleted) {
+        _startupRetryService.markReady();
         readiness.complete(OrchestratorSessionStartResult.ready);
       }
 
@@ -1379,6 +1384,7 @@ class OrchestratorSession._({
   }
 
   void beginShutdown() {
+    _startupRetryService.cancel();
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
     _prSyncService.beginShutdown();

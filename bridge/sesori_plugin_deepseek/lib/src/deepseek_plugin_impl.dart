@@ -37,6 +37,16 @@ class DeepSeekPlugin({
   );
 
   @override
+  bool get supportsScopedStop => true;
+
+  @override
+  Future<AcpChildCancelResult> cancelChild({
+    required AcpStdioClient client,
+    required String sessionId,
+    required String childSessionId,
+  }) => deepSeekSessionService.cancelChild(client: client, sessionId: sessionId, childSessionId: childSessionId);
+
+  @override
   void captureLiveInitializeResult(AcpInitializeResult result) => mapper.resetLiveState();
 
   @override

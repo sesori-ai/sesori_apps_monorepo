@@ -5,8 +5,10 @@ void main() {
   group("ControlMessage", () {
     final variants = <String, ControlMessage>{
       "token_request": const ControlMessage.tokenRequest(id: "req-1", forceRefresh: true),
+      "token_retry_later": const ControlMessage.tokenRetryLater(id: "req-1"),
       "token_response": const ControlMessage.tokenResponse(id: "req-1", accessToken: "jwt"),
       "status": const ControlMessage.status(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.degraded,
         activeSessionCount: 3,
@@ -64,6 +66,7 @@ void main() {
       test("relay enum falls back to unknown for an unrecognized value", () {
         final parsed = ControlMessage.fromJson({
           "type": "status",
+          "startup": "ready",
           "relay": "rebooting",
           "plugin": "healthy",
         });
@@ -77,6 +80,7 @@ void main() {
       test("plugin-health enum falls back to unknown for an unrecognized value", () {
         final parsed = ControlMessage.fromJson({
           "type": "status",
+          "startup": "ready",
           "relay": "connected",
           "plugin": "future_health",
         });
@@ -96,8 +100,20 @@ void main() {
       });
     });
 
+    for (final startup in ControlStartupState.values) {
+      test("status round-trips startup state $startup", () {
+        final original = ControlMessage.status(
+          startup: startup,
+          relay: ControlRelayConnectionState.disconnected,
+          plugin: ControlPluginHealthState.unknown,
+        );
+        expect(ControlMessage.fromJson(original.toJson()), original);
+      });
+    }
+
     test("status round-trips the takenOver relay state", () {
       const original = ControlMessage.status(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.takenOver,
         plugin: ControlPluginHealthState.healthy,
       );

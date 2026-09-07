@@ -19,6 +19,7 @@ class AuthRepository({required final AuthApi _api}) {
     try {
       return AuthUserFound(response: await _api.getCurrentUser(accessToken: accessToken));
     } on AuthApiException catch (error) {
+      if (error.statusCode == 408 || error.statusCode == 429 || error.statusCode >= 500) rethrow;
       return AuthUserRejected(statusCode: error.statusCode);
     }
   }
@@ -35,6 +36,7 @@ class AuthRepository({required final AuthApi _api}) {
     try {
       return AuthTokenRefreshed(response: await _api.refreshToken(refreshToken: refreshToken));
     } on AuthApiException catch (error) {
+      if (error.statusCode == 408 || error.statusCode == 429 || error.statusCode >= 500) rethrow;
       return AuthTokenRefreshRejected(statusCode: error.statusCode);
     }
   }

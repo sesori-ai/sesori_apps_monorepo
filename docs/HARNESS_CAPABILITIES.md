@@ -45,6 +45,19 @@ release first, which is the best signal its catalog offers. Other plugins
 still declare variants default-first (the client falls back to the first
 listed variant when no default is declared) and models in plugin-defined order.
 
+## Codex question input
+
+**Implemented:** Codex synchronous user-input requests and asynchronous
+assistant-message questions use the existing Sesori question UI and reply API.
+Both preserve multiple questions and ordered choices. Async answers steer a
+running conversation or resume it while idle; the immediate tool acknowledgement
+does not answer the question. Async message metadata was verified against Codex
+0.153.4. Older runtimes continue to use their synchronous request path.
+
+**Not implemented:** Masked secret-question entry. Codex requests containing an
+`isSecret` question receive an explicit unsupported-input error before any
+question card is shown; secret prompts are never downgraded to plain text.
+
 ## Setup detection
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
@@ -82,9 +95,9 @@ prompt, and skill commands remain available.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | ⬜¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ⬜⁹ | 🚫¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
 Plugins that report a scoped-stop rejection declare whether "main agent only"
 is honored through `mainAgentOnlySupported`; the app offers the action only
@@ -139,11 +152,14 @@ turn.
 and minimum accepted runtime. The consumer requires extension protocol v2 and
 implements live/replayed correlated tiles and child transcripts/catalogs.
 Replay retains direct-parent tile identities and ordered ordinary-content runs
-without changing live child state. Scoped stop remains an unimplemented consumer
-follow-up, although the adapter supplies its contract. Foreground children die
-with the parent; background children survive, making main-agent-only stop
-supportable when all running children are background. Final feature E2E coverage
-remains pending.
+without changing live child state. Scoped stop is implemented: main-only stop
+requires all running children to be background. Foreground children stop through
+parent cancellation; background children use direct-parent-authorized interrupt.
+Directly stopping a non-cancellable child leaves it running rather than widening
+to its parent/siblings. Busy state follows lifecycle, not interrupt acceptance.
+Stop currently uses the request-time child snapshot; late-announced children can
+remain running. Closing that window is a required successor to #1346, before
+final DeepSeek feature E2E coverage.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as

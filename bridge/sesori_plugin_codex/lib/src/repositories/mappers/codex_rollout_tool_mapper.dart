@@ -265,7 +265,12 @@ class const CodexRolloutToolMapper({
     required CodexRolloutResponseItemDto payload,
   }) {
     return switch (payload) {
-      CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "wait",
+      // Async input is an assistant question. Its immediate `accepted` tool
+      // output acknowledges delivery and must not look like a user's answer.
+      CodexRolloutFunctionCallDto(:final name) => switch (name.toLowerCase()) {
+        "wait" || "request_user_input_async" => true,
+        _ => false,
+      },
       CodexRolloutCustomToolCallDto(:final name, :final input) =>
         name.toLowerCase() == "exec" && _isGeneratedImageInvocation(input),
       CodexRolloutMessageDto() ||

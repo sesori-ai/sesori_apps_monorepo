@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:fake_async/fake_async.dart";
 import 'package:http/http.dart' as http;
 import 'package:http/testing.dart';
 import 'package:sesori_bridge/src/auth/auth_api.dart';
@@ -9,11 +12,103 @@ import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
 import 'package:sesori_bridge/src/runtime/bridge_runtime_auth.dart';
+import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
   group('BridgeRuntimeAuthService', () {
+    for (final refreshFails in [false, true]) {
+      for (final serverUnavailable in [false, true]) {
+        test(
+          'stored token ${refreshFails ? "refresh" : "lookup"} recovers after ${serverUnavailable ? "503" : "DNS failure"}',
+          () {
+            fakeAsync((time) {
+              final retry = BridgeStartupRetryService();
+              var attempts = 0;
+              var loads = 0;
+              var clears = 0;
+              TokenData? saved;
+              TokenData? result;
+              final client = MockClient((request) async {
+                if (refreshFails && request.url.path == '/auth/me') return http.Response('', 401);
+                attempts++;
+                if (attempts == 1) {
+                  if (serverUnavailable) return http.Response('', 503);
+                  throw http.ClientException('Failed host lookup', request.url);
+                }
+                return http.Response(
+                  refreshFails
+                      ? '{"accessToken":"refreshed","refreshToken":"new-refresh","user":{"id":"1","provider":"github","providerUserId":"1"}}'
+                      : '{"user":{"id":"1","provider":"github","providerUserId":"1"}}',
+                  200,
+                );
+              });
+              final service = BridgeRuntimeAuthService(
+                startupRetryService: retry,
+                loginEmailRepository: _FakeLoginEmailRepository(),
+                loginOAuthService: _FakeLoginOAuthService(),
+                authRepository: AuthRepository(
+                  api: AuthApi(
+                    authBackendUrl: 'https://auth.example.test',
+                    client: client,
+                    requestDeadline: AuthApi.defaultRequestDeadline,
+                    sendRequest: sendRequestWithDeadline,
+                  ),
+                ),
+                loadTokens: () async {
+                  loads++;
+                  return TokenData(accessToken: 'stored', refreshToken: 'refresh', lastProvider: AuthProvider.github);
+                },
+                saveTokens: (tokens) async {
+                  saved = tokens;
+                },
+                clearTokens: () async {
+                  clears++;
+                },
+              );
+              service
+                  .ensureAuthenticated(options: _options(authBackendUrl: 'https://auth.example.test'))
+                  .then((tokens) => result = tokens);
+              time.flushMicrotasks();
+              expect(retry.states.value, ControlStartupState.waitingForServer);
+              expect(saved, isNull);
+              expect(clears, 0);
+              time.elapse(const Duration(minutes: 1));
+              expect(result?.accessToken, refreshFails ? 'refreshed' : 'stored');
+              expect(saved, result);
+              expect(loads, 1);
+              expect(attempts, 2);
+              client.close();
+              unawaited(retry.dispose());
+              time.flushMicrotasks();
+            });
+          },
+        );
+      }
+    }
+
+    test('interactive OAuth timeout is not retried', () async {
+      final retry = BridgeStartupRetryService();
+      addTearDown(retry.dispose);
+      final timeout = TimeoutException('timed out waiting for authorization');
+      final service = BridgeRuntimeAuthService(
+        startupRetryService: retry,
+        loginEmailRepository: _FakeLoginEmailRepository(),
+        loginOAuthService: _FakeLoginOAuthService(error: timeout),
+        authRepository: _expiredTokensAuthRepository(),
+        loadTokens: () async =>
+            TokenData(accessToken: 'expired', refreshToken: 'expired', lastProvider: AuthProvider.github),
+        saveTokens: (_) async {},
+        clearTokens: () async {},
+      );
+      await expectLater(
+        service.ensureAuthenticated(options: _options(authBackendUrl: 'https://auth.example.test')),
+        throwsA(same(timeout)),
+      );
+      expect(retry.states.value, ControlStartupState.starting);
+    });
+
     test('OAuth login ACK is sent only after tokens are persisted', () async {
       final storedTokens = TokenData(
         accessToken: 'expired-access-token',
@@ -36,6 +131,7 @@ void main() {
         },
       );
       final service = BridgeRuntimeAuthService(
+        startupRetryService: BridgeStartupRetryService(),
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
         authRepository: _expiredTokensAuthRepository(),
@@ -82,6 +178,7 @@ void main() {
         ),
       );
       final service = BridgeRuntimeAuthService(
+        startupRetryService: BridgeStartupRetryService(),
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: _FakeLoginOAuthService(),
         authRepository: repository,
@@ -112,6 +209,7 @@ void main() {
       );
       final oauthService = _FakeLoginOAuthService(error: Exception('authorization denied'));
       final service = BridgeRuntimeAuthService(
+        startupRetryService: BridgeStartupRetryService(),
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
         authRepository: _expiredTokensAuthRepository(),
@@ -145,6 +243,7 @@ void main() {
         ackError: Exception('ack failed'),
       );
       final service = BridgeRuntimeAuthService(
+        startupRetryService: BridgeStartupRetryService(),
         loginEmailRepository: _FakeLoginEmailRepository(),
         loginOAuthService: oauthService,
         authRepository: _expiredTokensAuthRepository(),
