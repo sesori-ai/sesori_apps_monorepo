@@ -161,12 +161,16 @@ state.
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.
 - A listed session's `session.updated` reports the newest instant the bridge
-  knows: the backend's own updated time, or the live user-message marker when
-  that is newer. A plugin that reports an updated time only at import or rename
-  — Claude and Pi, unlike Codex, ACP, and OpenCode — therefore still shows a
-  recently prompted session as recent, instead of the transcript time read at
-  the last import. Marking a session unread never moves that time, and
-  assistant-only work does not advance it past the prompt that started it.
+  knows: backend activity, bridge-owned metadata changes, live turn completion,
+  or the live user-message marker when that is newer. When a plugin reports a
+  settled turn, including after Stop, the bridge persists and publishes its
+  completion time before idle. A long-running session therefore shows when it
+  stopped instead of reverting to the old prompt time when its status icon
+  disappears. This works across plugins without a backend `session.updated`
+  event, survives list refreshes, and cannot be undone by an older backend
+  timestamp. Marking a session unread never moves that time; recording turn
+  completion changes neither unseen state nor the user-message marker. An idle
+  status snapshot alone does not count as a completed turn.
 - A newly committed session can list before generated metadata. Later generated
   title and eligible dedicated-branch refinement reuse `session.updated`; lists
   and detail adopt the durable session facts without marking unseen or moving the
@@ -328,6 +332,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - A session prompted minutes ago reports a days-old updated time, sorts to the
   top of its list while still displaying that stale time, or an older row uses
   generic US month/day order despite a different device locale.
+- Stop or normal completion reveals the timestamp of an old prompt; a refresh
+  or later backend update moves the completed session's timestamp backward; or
+  completion changes its read/unread state or last user-message marker.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 - Desktop wide navigation recreates the session inventory on each selected
