@@ -836,4 +836,13 @@ the final recording commit is excluded. Shared 397, ACP 325, DeepSeek 122,
 OpenCode 432, selected bridge 75, and selected client 106 tests pass; fatal-info
 analysis is clean across shared, interface, ACP, DeepSeek, Claude, Codex, OpenCode,
 Pi, bridge app, and client core. LSP reports zero diagnostics across 14 changed
-production files. Incremental architecture review remains required.
+production files. The pinned implementation head
+`afd3695acdedc99a6d1790c5377bcb8c2be0f123`, against merge base
+`b43758e1b304d7f119787163875b78b38b1b25f1`, measures +2,990/-273 =
+3,263 lines: 629 generated, 1,507 tests/fixtures, 535 docs/plans, and 592
+production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...afd3695acdedc99a6d1790c5377bcb8c2be0f123`
+reproduces it. This range includes every earlier measurement record in its docs/
+plan subtotal and excludes only the later evidence commit recording the 3,263
+figure. The 556-line increase from `2dd4fb076e` is 18 generated, 371 tests/
+fixtures, 41 docs/plans, and 126 production lines. Incremental architecture review
+of `52761ce4de..afd3695acd` approved with no findings.

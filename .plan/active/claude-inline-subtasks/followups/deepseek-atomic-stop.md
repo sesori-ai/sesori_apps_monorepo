@@ -169,9 +169,18 @@ against merge base `b43758e1b304d7f119787163875b78b38b1b25f1`, measures
 and 466 production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`
 reproduces it. The range includes prior tracker/design measurement records in its
 docs/plan subtotal and excludes only the later `52761ce4de` evidence commit that
-records the 2,707 figure here and in the tracker. Its 123-line increase
-is 73 tests/fixtures, 38 docs/plans, and 12 production lines. Splitting the response
-or partial-handling mapping from atomic STOP
+records the 2,707 figure here and in the tracker. Its 123-line increase is 73
+tests/fixtures, 38 docs/plans, and 12 production lines. The next review required a
+bridge catalog snapshot plus exact unhandled ids to preserve both delayed native
+coverage and nested independent fanout; it also proved OpenCode's handled-id claim
+was not authoritative and restored legacy fanout. The pinned implementation head
+`afd3695acdedc99a6d1790c5377bcb8c2be0f123`, against the same merge base,
+measures +2,990/-273 = 3,263 lines: 629 generated, 1,507 tests/fixtures, 535
+docs/plans, and 592 production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...afd3695acdedc99a6d1790c5377bcb8c2be0f123`
+reproduces it. This range includes all earlier measurement records in its docs/plan
+subtotal and excludes only the later evidence commit recording the 3,263 figure.
+Its 556-line increase is 18 generated, 371 tests/fixtures, 41 docs/plans, and 126
+production lines. Splitting the response or partial-handling mapping from atomic STOP
 would leave the first PR vulnerable to re-stopping later work or missing independent
 work, while splitting the generated parser or admission-race fixes from their
 consumer would retain a duplicate schema or known escape path. The overrun is
@@ -186,9 +195,9 @@ boundaries: response cleanup ownership and execution-kind authority. The concret
 choices above address those findings. Native implementation review approved adapter
 #17 with no findings. Consumer architecture reviews approved the atomic policy,
 layering, additive response path, retained authority, and generated transport union.
-The conservative-coverage incremental review also approved with no findings. The
-final catalog-snapshot and exact-unhandled-response extension requires one
-incremental review.
+The conservative-coverage incremental review approved with no findings. The final
+catalog-snapshot and exact-unhandled-response incremental review also approved with
+no findings.
 
 Native tests: delayed root/nested announcements; pending continuable admission;
 foreground handoff; pending/published background fork jobs; exact named scope;
