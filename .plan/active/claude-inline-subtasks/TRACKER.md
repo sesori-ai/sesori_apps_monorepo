@@ -9,9 +9,11 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the series is retired
-- **Next action:** review DeepSeek scoped stop, then finish DeepSeek coverage
-  before Codex. All five replacement consumer slices merged. Preserve remaining
-  harness follow-ups and their E2E/retirement gates.
+- **Next action:** finish review of DeepSeek scoped-stop step 1/2 (#1346), then
+  after human merge deliver required step 2/2 for in-flight child launches.
+  Complete DeepSeek E2E only after both steps, then continue Codex. All five
+  replacement consumer slices merged; remaining harness and retirement gates stay
+  required.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -175,7 +177,8 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
 | [x] | DeepSeek | Consumer replacement steps 1–5 | #1298, #1301, #1304, #1306, #1317 merged; oversized #1293 replaced |
 | [x] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | [Adapter #16](https://github.com/sesori-ai/sesori-deepseek-acp/pull/16) merged at `3976bcd`; v0.1.3 published and six assets verified |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] deepseek: scoped stop for sub-agents` | Implemented on `claude-inline-subtasks-deepseek-stop`; review pending |
+| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346): review pending; request-time snapshot limitation documented |
+| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 2/2]` | Required after #1346 merges and before DeepSeek E2E; concrete lifecycle design/review and implementation pending |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
