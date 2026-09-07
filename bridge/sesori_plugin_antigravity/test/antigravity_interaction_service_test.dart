@@ -80,10 +80,10 @@ void main() {
     final AcpPendingRegistry<AntigravityInteraction> registry = harness.registry;
     registry.rejectAmbiguousServerRequest(request: request(id: "ambiguous"));
     expect(harness.process.written.single["id"], "ambiguous");
-    expect(harness.process.written.single["error"], {
-      "code": -32602,
-      "message": "Ambiguous Antigravity tool-call session attribution",
+    expect(harness.process.written.single["result"], {
+      "outcome": {"outcome": "cancelled"},
     });
+    expect(harness.process.written.single.containsKey("error"), isFalse);
     expect(harness.events, isEmpty);
     expect(registry.hasAnyPendingInput, isFalse);
   });

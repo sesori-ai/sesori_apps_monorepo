@@ -2,14 +2,15 @@
 
 ## Status and scope
 
-Step 8.a foundations only. Antigravity remains unregistered; Step 8.b composes its concrete plugin/descriptor and
-calls recovery at import/cold activation. No ordinary-read scan, database migration, history deletion, OAuth, token
+Step 8.a foundations only. Antigravity remains unregistered; follow-up Step 8 composition adds its concrete
+plugin/descriptor and calls recovery at import/cold activation. No ordinary-read scan, database migration, history deletion, OAuth, token
 inspection, ambient credential access, managed installation or user-visible capability is introduced here.
 
 ## Supported behavior
 
 - Metadata storage only lists the prepared profile's `antigravity-acp/conversations` directory, without recursion or
-  following listed links. Only regular `.meta` files are read; SQLite, brain files, and token files are not opened.
+  following listed links. Only listed regular `.meta` candidates are opened; SQLite, brain files, and token files
+  are not selected.
 - A service scan processes at most 10,000 directory entries (one lookahead detects truncation); each metadata read
   is bounded to 64 KiB before decoding.
   The generated DTO consumes only string `cwd`. The repository canonicalizes UUID filename case and path syntax
@@ -19,11 +20,12 @@ inspection, ambient credential access, managed installation or user-visible capa
   per-file failures and listing failures remain observable locally. Decode errors retain original cause/stack but
   never render ignored JSON values; diagnostics identify the path and JSON location or cwd/type.
 - Missing history creates no directories. Recovery never writes metadata or replaces existing bridge attribution.
-  The shared bulk hook reuses `primeSessionDirectory`: DB/live attribution wins over recovered hints; later live
-  attribution can replace a recovered hint. No second directory cache or lifecycle owner is added.
+  The existing ACP owner keeps recovered fallbacks separate from authoritative DB/live bindings. Persisted primes
+  win regardless of arrival order, live bindings stay authoritative, and deletion forgets both sources.
 - `AcpPendingRegistry` supplies only neutral pending lifecycle and attribution routing. Stock/Cursor/DeepSeek keep
   their existing policy; Antigravity continues through its service/repository. Ambiguous requests cannot use an
-  active-turn guess, create pending UI or approve a tool. Existing reply, session-cancel and disposal behavior remains.
+  active-turn guess, create pending UI or approve a tool. Antigravity declines ambiguous permission requests with a
+  cancelled outcome, not a protocol error. Existing reply, session-cancel and disposal behavior remains.
 - Residency defaults to load-first. A resume-first override chooses resume only when advertised; load is its fallback
   when resume is unavailable. Neither preference retries arbitrary errors using the other RPC. Existing transient
   retry-on-next-turn and permanent-unsupported memoization remain unchanged. History replay always uses load.
@@ -43,6 +45,7 @@ inspection, ambient credential access, managed installation or user-visible capa
 - `antigravity_interaction_service_test.dart`: neutral ambiguous-attribution rejection through actual ACP response
   encoding, plus existing permission/question/cancellation coverage.
 - `acp_recovery_seams_test.dart`: all preference/capability combinations, no alternate retry after an error, directory
-  authority without spawning, non-stock routing/pending lifecycle, and fresh live/replay stdout/stderr policies.
+  authority in both arrival orders without spawning, actual load/resume cwd after a persisted prime, deletion of
+  recovery fallbacks, non-stock routing/pending lifecycle, and fresh live/replay stdout/stderr policies.
 - Existing ACP approval/project/resume/reconnect/replay/output tests and Cursor/DeepSeek registry tests retain their
   owning behavior. Concrete Antigravity lifecycle integration and final L5 Full are later gates, not claimed here.

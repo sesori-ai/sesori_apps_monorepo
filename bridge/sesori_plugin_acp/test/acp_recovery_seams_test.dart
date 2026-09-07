@@ -137,6 +137,9 @@ void main() {
           await plugin.dispose();
           await fake.close();
         });
+        plugin.registerRecoveredSessionDirectories(
+          batch: AcpSessionDirectoryBatch(directories: {"old": "/stale"}),
+        );
         plugin.primeSessionDirectory(sessionId: "old", directory: "/repo");
         final connecting = plugin.ensureConnected();
         await _handshake(fake: fake, load: capabilities.$1, resume: capabilities.$2);
@@ -156,6 +159,7 @@ void main() {
             : null;
         if (method != null) {
           final activation = await _frame(fake: fake, method: method);
+          expect((activation["params"] as Map<String, dynamic>)["cwd"], "/repo");
           fake.emit({
             "jsonrpc": "2.0",
             "id": activation["id"],
@@ -230,13 +234,19 @@ void main() {
     plugin.primeSessionDirectory(sessionId: "db", directory: "/db");
     plugin.attributeSessionDirectory(sessionId: "live", directory: "/live");
     plugin.registerRecoveredSessionDirectories(
-      batch: AcpSessionDirectoryBatch(directories: {"db": "/stale", "live": "/stale", "cold": "/cold/child/.."}),
+      batch: AcpSessionDirectoryBatch(
+        directories: {"db": "/stale", "live": "/stale", "cold": "/cold/child/..", "late-db": "/stale"},
+      ),
     );
     expect(plugin.directoryForSession(sessionId: "db"), "/db");
     expect(plugin.directoryForSession(sessionId: "live"), "/live");
     expect(plugin.directoryForSession(sessionId: "cold"), "/cold");
+    plugin.primeSessionDirectory(sessionId: "late-db", directory: "/persisted");
+    expect(plugin.directoryForSession(sessionId: "late-db"), "/persisted");
     plugin.attributeSessionDirectory(sessionId: "cold", directory: "/fresh");
     expect(plugin.directoryForSession(sessionId: "cold"), "/fresh");
+    await plugin.deleteSession("cold");
+    expect(plugin.directoryForSession(sessionId: "cold"), "/repo", reason: "Deletion also forgets recovery fallback");
     expect(spawns, 0);
   });
 
