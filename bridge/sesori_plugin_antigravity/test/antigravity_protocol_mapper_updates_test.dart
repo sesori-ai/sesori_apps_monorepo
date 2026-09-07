@@ -298,6 +298,26 @@ void main() {
     }
   });
 
+  test("long stdout and stderr both contribute a tail inside the final display budget", () {
+    for (final source in ["stdout", "formatted_output"]) {
+      final state = _parity(
+        params: _envelope(
+          update: {
+            "status": "completed",
+            "rawOutput": {source: "${'o' * 9000}stdout-tail", "stderr": "${'e' * 9000}stderr-tail", "exit_code": 3},
+            "content": [
+              {"type": "image", "mimeType": "image/png", "data": "AA=="},
+            ],
+          },
+        ),
+      );
+      expect(state.output, contains("stdout-tail"));
+      expect(state.output, contains("stderr-tail"));
+      expect(state.output, endsWith("[Process exit code: 3]"));
+      expect(state.output!.length, lessThanOrEqualTo(maxToolOutputLength));
+    }
+  });
+
   test("exit-only terminal updates retain earlier output in live and replay state", () {
     for (final key in ["exit_code", "exitCode"]) {
       for (final code in [0, 7]) {

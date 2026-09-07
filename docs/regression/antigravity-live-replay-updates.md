@@ -18,7 +18,8 @@ activation Step 9. No client/wire tool-state expansion, database changes, OAuth,
   `apps/server/src/provider/acp/AntigravityProtocol.ts`; this is corroborating pinned evidence, not an alternate runtime.
 - Command/CWD labels are trimmed and bounded to 8,000 characters. Command becomes the display title; execute kind is
   inferred only when no kind is advertised. Combined output or stdout/`formatted_output` plus stderr become canonical
-  display text, preserving diagnostics alongside images. Copied stderr/formatted aliases are removed to avoid fallback
+  display text, combining stdout/stderr within the final display budget so long streams retain both tails alongside
+  images. Copied stderr/formatted aliases are removed to avoid fallback
   duplication; numeric exit information accompanies supplied output.
 - Nonzero process exit appends a clearly labelled `[Process exit code: N]` note, including when command output exists.
   Reserve note space inside the existing 500-character shared tool-display limit, retaining the output tail with a
@@ -49,7 +50,7 @@ activation Step 9. No client/wire tool-state expansion, database changes, OAuth,
   repeated/legacy text remains best-effort within the display cap; do not mistake cosmetic repetition for lost output.
 - Lost supported standard images, retained redundant raw image bytes, original fields reappearing after sanitation,
   caller-envelope mutation, or unbounded raw metadata indicates normalization regression.
-- `antigravity_protocol_mapper_updates_test.dart`: 23 tests cover exact aliases, identity, live/replay equality,
+- `antigravity_protocol_mapper_updates_test.dart`: 24 tests cover exact aliases, identity, live/replay equality,
   nonzero/empty/success/failure output with and without standard content, update-only replay, tail/note bounds, valid
   inline images and retained metadata, raw-copy removal, aggregate budgets and observable malformed-native fallback;
   formatted-only output, distinct/duplicate standard text, malformed blocks/envelopes, direct-map images, stderr
