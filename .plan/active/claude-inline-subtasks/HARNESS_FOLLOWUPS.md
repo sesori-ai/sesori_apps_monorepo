@@ -102,7 +102,7 @@ confirmation, no child session or partial stop) and gets that subset.
      by description or arrival order, so concurrent spawns stay deterministic.
   3. The scoped-stop policy, once, in `AcpPlugin.abortSession`: `confirm` with
      running children is side-effect free and rejects with their count,
-     `mainAgentRunning = pending > 0`, and `mainAgentOnlySupported` true only
+     `mainAgentRunning` from pending prompts or an active named child, and `mainAgentOnlySupported` true only
      when every running child is background. For `keep`, when only children are
      running the plugin sends no cancellation and returns
      `PluginAbortAccepted(workKept: true)` for the retained children. When the
@@ -110,13 +110,18 @@ confirmation, no child session or partial stop) and gets that subset.
      `mainAgentOnlySupported` is false, it returns the typed rejection before
      any side effect, so a stale or direct caller cannot silently cancel
      children; otherwise `keep` sends `session/cancel` only. `stop` sends
-     `session/cancel` plus `cancelChild` per cancellable child. Each running
-     child also carries `canCancel`; when a non-cancellable child survives a
-     `stop`, the result is `PluginAbortAccepted(workKept: true)` and the root
-     stays busy until that child finishes, so the partial stop is never
-     reported as complete. `interruptActiveWork` uses `stop`.
-  4. One abstract backend seam `cancelChild({sessionId, childSessionId})` on
-     the per-harness ACP API; Grok and DeepSeek supply only the request shape.
+     `session/cancel` plus `cancelChild` with each child's direct parent.
+     Outcomes are typed; no `canCancel` field is invented. Foreground children
+     are covered by cancellation of their parent; directly targeting a child
+     with no effective interrupt retains that child without cancelling siblings.
+     `workKept` means retained work, not pending lifecycle delivery. Unknown-child
+     responses do not fabricate either retained work or terminal state.
+     `interruptActiveWork` uses `stop` and waits for authoritative lifecycle.
+  4. Capability opt-in `supportsScopedStop` plus a typed `AcpPlugin.cancelChild`
+     hook matches current composition (the per-harness APIs are standalone).
+     DeepSeek supplies its typed request/response API; other ACP harnesses keep
+     their existing behavior until their transport seam lands. A child with a
+     bridge-owned standard prompt uses `session/cancel`, not its former ancestry.
   5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into
      `PluginMessageWithParts` without running the live mapper. A harness
@@ -542,8 +547,32 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
 | monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; slice 4 also pins runtime 0.1.3 |
 | adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
-| monorepo | ⚙️ | `deepseek: scoped stop for sub-agents` | Pending: consume interrupt and test mixed modes; runtime pinning moves to slice 4 |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | PR #1346: typed interrupt and shared opt-in policy; request-time child snapshot with documented late-launch limitation |
+| monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 2/2]` | Required successor after #1346 merges; close the late-launch stop window before final DeepSeek E2E |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
+
+### Scoped-stop successor (user-approved split)
+
+The user chose a separate successor to #1346 for the late-launch stop race.
+This two-PR scoped-stop subseries does not replace the existing final regression
+reconciliation, E2E matrix, or retirement gates. Finish it before DeepSeek E2E,
+then continue Codex.
+
+Evidence is a reachable I/O interleaving, not yet a live reproduction: native
+`#notifySubagent` queues lifecycle output, while `#interruptSubagent` acknowledges
+before cancellation settles. A child launched between the bridge snapshot and
+backend cancellation can survive, remain visibly busy, and continue work. A second
+snapshot alone cannot cover announcements still queued behind the response.
+
+Step 2 must first establish a concrete, architecture-reviewed lifecycle design.
+Reuse existing prompt settlement and child-tracker facts; justify each new mutable
+piece, with no new persistence or speculative protocol fields. Target a few hundred
+changed lines including tests, remaining under the ~1,500-line soft cap. Cover late
+root and nested launches, named-child scope, non-cancellable work, failure/teardown,
+and new user turns not inheriting old stop intent. Do not broaden cancellation to
+parents or siblings or fabricate terminal state. Remove the temporary limitation
+from `docs/regression/session-turns.md` once that behavior is verified; keep final
+phone/desktop E2E outstanding until its existing matrix passes.
 
 ### Consumer replacement series
 

@@ -9,6 +9,7 @@ class const DeepSeekAcpApi({required final String pluginId}) {
   static const String askUserQuestionMethod = "deepseek/ask_user_question";
   static const String sessionStatusMethod = "deepseek/session/status";
   static const String subagentMethod = "deepseek/subagent";
+  static const String subagentInterruptMethod = "deepseek/subagent/interrupt";
   static const String initializeMetadataKey = deepSeekExtensionMetadataKey;
   static const int extensionProtocolVersion = 2;
 
@@ -170,6 +171,40 @@ class const DeepSeekAcpApi({required final String pluginId}) {
         }
     }
     return notification;
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSubagentInterruptRequestDto parseSubagentInterruptRequest(Map<String, dynamic> json) {
+    final request = DeepSeekSubagentInterruptRequestDto.fromJson(json);
+    _validateSubagentInterruptRequest(request: request);
+    return request;
+  }
+
+  void _validateSubagentInterruptRequest({required DeepSeekSubagentInterruptRequestDto request}) {
+    if (!_validSubagentText(request.sessionId, maxScalars: 256) ||
+        !_validSubagentText(request.childSessionId, maxScalars: 256)) {
+      throw const FormatException("Invalid DeepSeek sub-agent interrupt request");
+    }
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSubagentInterruptResponseDto parseSubagentInterruptResponse(Map<String, dynamic> json) {
+    final response = DeepSeekSubagentInterruptResponseDto.fromJson(json);
+    if (response.result == DeepSeekSubagentInterruptResult.unknown) {
+      throw const FormatException("Invalid DeepSeek sub-agent interrupt response");
+    }
+    return response;
+  }
+
+  Future<DeepSeekSubagentInterruptResult> interruptSubagent({
+    required AcpStdioClient client,
+    required String sessionId,
+    required String childSessionId,
+  }) async {
+    final request = DeepSeekSubagentInterruptRequestDto(sessionId: sessionId, childSessionId: childSessionId);
+    _validateSubagentInterruptRequest(request: request);
+    final raw = await client.request(method: subagentInterruptMethod, params: request.toJson());
+    return parseSubagentInterruptResponse(_json(raw, method: subagentInterruptMethod)).result;
   }
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous

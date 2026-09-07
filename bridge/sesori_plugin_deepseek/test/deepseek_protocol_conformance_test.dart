@@ -97,6 +97,19 @@ void main() {
     expect(() => api.parseQuestionRequest(questions), throwsFormatException);
   });
 
+  test("interrupt responses allow additive fields but require a known result", () {
+    final response = api.parseSubagentInterruptResponse({"result": "interrupted", "futureField": true});
+    expect(response.result, DeepSeekSubagentInterruptResult.interrupted);
+    for (final invalid in <Map<String, dynamic>>[
+      {"futureField": true},
+      {"result": null},
+      {"result": 1},
+      {"result": "unknown"},
+    ]) {
+      expect(() => api.parseSubagentInterruptResponse(invalid), throwsA(anything));
+    }
+  });
+
   test("initialization requires protocol v2", () {
     Map<String, dynamic> metadata({required int version}) => {
       "extensionProtocolVersion": version,
@@ -282,7 +295,7 @@ Set<String> _definitionsFor({required int protocolVersion}) => {
   "askUserQuestionRequest",
   "askUserQuestionResponse",
   "sessionStatusNotification",
-  if (protocolVersion == 2) "subagentNotification",
+  if (protocolVersion == 2) ...["subagentNotification", "subagentInterruptRequest", "subagentInterruptResponse"],
 };
 
 Map<String, dynamic> _decode({
@@ -302,6 +315,8 @@ Map<String, dynamic> _decode({
   "askUserQuestionResponse" => api.parseQuestionResponse(value).toJson(),
   "sessionStatusNotification" => api.parseSessionStatus(value).toJson(),
   "subagentNotification" => api.parseSubagentNotification(value).toJson(),
+  "subagentInterruptRequest" => api.parseSubagentInterruptRequest(value).toJson(),
+  "subagentInterruptResponse" => api.parseSubagentInterruptResponse(value).toJson(),
   _ => throw StateError("Unknown fixture definition $definition"),
 };
 

@@ -99,14 +99,14 @@ defaults and queued client sends coherent.
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
   render in the sub-agent's child session, never as a root turn.
-- Stop is scoped for every harness that runs sub-agents (Claude tasks, OpenCode
-  child sessions). The client first asks with `confirm`; while sub-agents
+- Claude tasks and OpenCode child sessions expose scoped stop. The client
+  first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is
   mid-turn, and the app shows a confirmation: with the main agent idle, "Stop N
   sub-agents"; with the main agent running, "Stop main agent and N sub-agents".
   Dismissing leaves everything running. "Stop main agent only" (`keep`) is
   offered only when the rejection declares `mainAgentOnlySupported`; neither
-  current harness can interrupt a running main agent without its sub-agents,
+  of these harnesses can interrupt a running main agent without its sub-agents,
   so both report false and refuse `keep` during a live main turn with the
   running count. With the main agent idle `keep` is honored: the Claude process
   stays resident, the sub-agents continue, their later wake-up turn renders,
@@ -114,6 +114,20 @@ defaults and queued client sends coherent.
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
+- DeepSeek 0.1.3 supports side-effect-free `confirm` rejection and child-only
+  `keep`. A running main turn can be kept separate only when all running children
+  are background; unsupported `keep` rejects before cancelling prompts or input.
+  `stop` cancels standard prompts and interrupts delegated children using each
+  child's direct parent. Foreground children stop through their parent; stopping
+  a non-cancellable child directly does not widen to its parent or siblings and
+  reports retained work. An opened child's new user prompt uses standard cancel.
+  Neither accepted nor unknown-child interrupt responses fabricate terminal
+  tiles/idle state. Whole-plugin interruption waits for authoritative lifecycle;
+  transport failure preserves its original error and logs parent/child context.
+  Stop currently targets children known at request time: a child announced while
+  cancellation is in flight can continue running, remains visible as busy, and
+  can be stopped again. Closing that late-launch window is a required follow-up.
+  Other ACP harnesses retain their existing policy until they opt in.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the
   turn's requested model and thinking level on Pi's command line so

@@ -6,6 +6,45 @@ part of 'deepseek_protocol_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+DeepSeekSubagentInterruptRequestDto
+_$DeepSeekSubagentInterruptRequestDtoFromJson(Map json) {
+  $checkKeys(json, allowedKeys: const ['sessionId', 'childSessionId']);
+  return DeepSeekSubagentInterruptRequestDto(
+    sessionId: json['sessionId'] as String,
+    childSessionId: json['childSessionId'] as String,
+  );
+}
+
+Map<String, dynamic> _$DeepSeekSubagentInterruptRequestDtoToJson(
+  DeepSeekSubagentInterruptRequestDto instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'childSessionId': instance.childSessionId,
+};
+
+DeepSeekSubagentInterruptResponseDto
+_$DeepSeekSubagentInterruptResponseDtoFromJson(Map json) =>
+    DeepSeekSubagentInterruptResponseDto(
+      result: $enumDecode(
+        _$DeepSeekSubagentInterruptResultEnumMap,
+        json['result'],
+        unknownValue: DeepSeekSubagentInterruptResult.unknown,
+      ),
+    );
+
+Map<String, dynamic> _$DeepSeekSubagentInterruptResponseDtoToJson(
+  DeepSeekSubagentInterruptResponseDto instance,
+) => <String, dynamic>{
+  'result': _$DeepSeekSubagentInterruptResultEnumMap[instance.result]!,
+};
+
+const _$DeepSeekSubagentInterruptResultEnumMap = {
+  DeepSeekSubagentInterruptResult.interrupted: 'interrupted',
+  DeepSeekSubagentInterruptResult.notCancellable: 'not_cancellable',
+  DeepSeekSubagentInterruptResult.unknownChild: 'unknown_child',
+  DeepSeekSubagentInterruptResult.unknown: 'unknown',
+};
+
 DeepSeekInitializeMetadataDto _$DeepSeekInitializeMetadataDtoFromJson(
   Map json,
 ) => DeepSeekInitializeMetadataDto(
