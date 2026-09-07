@@ -52,7 +52,7 @@ class AntigravityProfileService({
       arguments: [..._browserPrefixArguments, BrowserNoop.argument, browserPreflightUrl],
       environment: environment,
     );
-    await _repository.preparePersonalOauth();
+    await _repository.preparePersonalOauth(environment: environment);
     return AntigravityPreparedProfile(geminiHome: _repository.geminiHome, environment: environment);
   }
 
