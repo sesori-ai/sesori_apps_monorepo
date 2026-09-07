@@ -14,8 +14,12 @@ class AntigravityLoopbackClient({required final HttpClient _client}) {
 
   Future<int> forward({required Uri callbackUri, required AntigravityAuthenticationBudget budget}) async {
     budget.remaining;
+    AsyncError? interruption;
     Future<int> send() async {
       final request = await _client.getUrl(callbackUri);
+      if (interruption case final failure?) {
+        Error.throwWithStackTrace(failure.error, failure.stackTrace);
+      }
       budget.remaining;
       request.followRedirects = false;
       final response = await request.close();
@@ -34,6 +38,11 @@ class AntigravityLoopbackClient({required final HttpClient _client}) {
         work,
         budget.abortSignal.whenAborted.then<int>((_) => throw const PluginStartAbortedException()),
       ]).timeout(budget.remaining);
+    } catch (error, stackTrace) {
+      // Timer precision can select timeout before the monotonic budget reaches
+      // zero. That controlling failure must fence late connection completion.
+      interruption = AsyncError(error, stackTrace);
+      rethrow;
     } finally {
       _client.close(force: true);
       // Forced close settles the actual request. Its secondary failure must not

@@ -60,6 +60,14 @@ class _Http() implements HttpClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+/// Models a timer firing while the higher-precision deadline is still positive.
+class _EarlyTimeoutBudget() extends AntigravityAuthenticationBudget {
+  this : super(timeout: const Duration(seconds: 1), abortSignal: StartAbortSignal.never);
+
+  @override
+  Duration get remaining => const Duration(milliseconds: 1);
+}
+
 void main() {
   final callback = Uri.parse("http://127.0.0.1:8765/?state=synthetic-state&code=synthetic-code");
   test("sends exact GET directly without proxy, redirects, or response logging", () async {
@@ -96,6 +104,21 @@ void main() {
       client.dispose();
       await server.close(force: true);
     }
+  });
+
+  test("selected timeout fences a late connection even while the budget remains positive", () async {
+    final http = _Http()..gate = Completer<void>();
+    final client = AntigravityLoopbackClient(client: http);
+    final budget = _EarlyTimeoutBudget();
+    final forwarding = client.forward(callbackUri: callback, budget: budget);
+    var settled = false;
+    final assertion = expectLater(forwarding, throwsA(isA<TimeoutException>())).then((_) => settled = true);
+    await http.closeStarted.future;
+    expect(budget.remaining, greaterThan(Duration.zero));
+    expect(settled, isFalse);
+    http.gate!.complete();
+    await assertion;
+    expect(http.request.sent, isFalse);
   });
 
   test("timeout or abort closes stalled connection and rejects late request before send", () async {

@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-6 merged; Step 7.a open for review
-- **Base:** synced with main `2f2f376836` after Step 6.d merge
-- **Current branch:** `antigravity-harness-step-7a-model-options`
+- **Status:** Steps 1-6 and 7.a merged; Step 7.b open for review
+- **Base:** synced with main `daa782057c` after Step 7.a merge
+- **Current branch:** `antigravity-harness-step-7b-questions-and-permissions`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -14,9 +14,10 @@
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
-  [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
-- **Open PR:** [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
-- **Next action:** monitor Step 7.a through merge; begin Step 7.b locally
+  [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d),
+  [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
+- **Open PR:** [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b)
+- **Next action:** monitor Step 7.b; begin only Step 7.c locally
 
 ## Fixed PR Series
 
@@ -29,7 +30,7 @@
 - [x] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
 - [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
 - [x] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
-- [ ] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
+- [x] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
 - [ ] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
 - [ ] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
@@ -173,7 +174,34 @@
 - [x] Step 6.d merged; synchronize before Step 7.a publication.
 - Post-sync validation: 10 options tests and 11 ACP tests pass; both owning-package analyses remain clean.
 - Post-sync code-head cap: `git diff --numstat 2f2f376836 778535c8f4` totals 848 + 19 = 867 changed lines.
+- Final predecessor fix `54f0dbf51d` received independent architecture approval. Its pinned cap against `2f2f376836`
+  is 1,008 additions + 21 deletions = 1,029 lines, including corrected catalog capture/reset and selection verification.
 - Permissions/questions and update normalization remain 7.b/7.c; no descriptor, registration or capability claim.
+
+## Step 7.b Checklist
+
+- [x] Normalize permission requests/options with generated DTOs before service policy; serialize typed wire outcomes.
+- [x] Keep all resolution dispatch in a connection-scoped interaction repository, reached only through its service.
+- [x] Classify single-choice interaction requests, preserve advertised labels/IDs, and reject duplicates without repair.
+- [x] Filter always/unknown/warning-bearing choices; never invent an absent choice or silently grant approval.
+- [x] Reuse neutral pending lifecycle for one-shot replies, wrong-kind handling, session cancellation and disposal.
+- [x] Initial code checkpoint `ef2c890284`: all 10 interaction tests and owning-package analysis passed.
+- [x] Merge the reviewed predecessor fixes; update regression documentation/index and the explicit Step 8 registry seam.
+- Final owning-package analysis is clean. Interaction production logic/tests are unchanged from their passing checkpoint;
+  only the mapper definition comment changed. The unchanged 10-test command was not redundantly rerun.
+- [x] First actual independent implementation review approved all 17 changed files at `97eda29b57`, with no findings.
+- Reviewed immutable scope: `54f0dbf51d` → `97eda29b57`; 1,146 additions + 9 deletions = 1,155 changed lines.
+- Publication checkpoint: `git diff --numstat daa782057c 164a7112ab` totals 1,154 + 12 = 1,166 lines, including
+  the tracker's own diff. The +11 net scope difference is tracker synchronization/review-status documentation;
+  `git diff 97eda29b57 164a7112ab -- bridge/sesori_plugin_antigravity` is empty.
+- Later CI fix `cbc72324a7` fences late callback connection completion after an early timer; all four loopback tests
+  and owning analysis pass. Review fixes add useful decoder evidence and honest permission tool-kind display.
+- [x] Predecessor #1353 merged; synchronized with main `daa782057c`. Conflict resolution retained the reviewed 7.b
+  additions. Antigravity/ACP/interface production and tests plus the lockfile are unchanged from the reviewed inputs;
+  no unchanged passing suite was rerun. Parent owns publication.
+- The neutral registry is intentionally not yet wired into `AcpPlugin`; Step 8 replaces its hard-coded stock registry
+  return-type seam without dummy responders or inherited raw permission policy. No 7.c, registration, database,
+  credential/OAuth/history access or active capability claim is included here.
 
 ## Architecture Reviews
 
