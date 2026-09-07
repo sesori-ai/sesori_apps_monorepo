@@ -285,6 +285,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       deepSeekSessionService: DeepSeekSessionService(
         repository: const DeepSeekSessionRepository(api: api),
         childSessions: childSessionTracker,
+        minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
       ),
       deepSeekSessionOptionsService: deepSeekOptions,
       commandTracker: commandTracker,
