@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5/12 merged; Step 6.a open for review; Step 6.b implemented locally, awaiting review
-- **Base:** Step 6.b exact base `7527f6d5aef18bb30c52642a7bad426e3015fb0d` (includes Step 6.a)
+- **Status:** Steps 1-5/12 merged; Step 6.a open for review; Step 6.b architecture-approved locally
+- **Base:** Step 6.a reviewed-fix head `99f7bc4823` (merged locally into Step 6.b)
 - **Current branch:** `antigravity-harness-step-6b-isolated-profile`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -12,7 +12,7 @@
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4),
   [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
 - **Open PR:** [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a)
-- **Next action:** monitor Step 6.a through merge; review Step 6.b before parent-owned publication
+- **Next action:** monitor Step 6.a through merge; keep Step 6.b local until publication is unblocked
 
 ## Fixed PR Series
 
@@ -109,7 +109,8 @@
 - [x] Add selective plugin-owned OAuth stderr interception while retaining other diagnostics.
 - [x] Build the actual native bridge; verify native/source helpers and pinned Python browser semantics synthetically.
 - [x] Run focused tests and owning-package analyzers; update regression contracts.
-- [ ] Independent implementation review and publication after Step 6.a merges (parent-owned).
+- [x] Independent architecture review approved immutable Step 6.b code head `8fe1ee51be25`.
+- [ ] Publication after Step 6.a merges (parent-owned).
 - Validation: 45 Antigravity tests and 15 focused app/no-op/scoped-store tests pass; final selective stderr
   refinement passes its 4 tests. Antigravity, foundation, and app analyzers pass with fatal infos. Native bridge
   bundle builds and the helper exits 0 with no output; extracted pinned Python confirms no browser fallback.
