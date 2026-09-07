@@ -279,6 +279,8 @@
   connection rather than ordinary enumeration. Message model/provider stamping moved to 8.c to preserve the full
   1,500-line cap; it remains required before activation. Corrected publication scope is 1,442 lines before final
   checkpoint metadata.
+- [x] Second/final architecture review approved all 23 files at `ad011a4f2d` against `6959375add` (1,442 lines),
+  reviewer `58f4d8a5`, no findings. All seven delivered GitHub threads have prefixed disposition replies.
 - Descriptor exit supervision, inert setup/profile inspection and complete host/auth composition are 8.c.
   Real OAuth, native/cross-target operation, bridge import/tombstone end-to-end and L5 Full remain later gates.
   No Google history mutation, ambient credentials or active harness inventory were introduced.
