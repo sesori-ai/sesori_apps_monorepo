@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review; Step 7.a implemented locally
+- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review; Step 7.a architecture-approved locally
 - **Base:** Step 6.d documentation-fix head `213b4664a6`, merged locally into Step 7.a
 - **Current branch:** `antigravity-harness-step-7a-model-options`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -15,7 +15,7 @@
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
 - **Open PR:** [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
-- **Next action:** monitor Step 6.d; review and retain Step 7.a locally until predecessor merge
+- **Next action:** monitor Step 6.d; retain approved Step 7.a locally until predecessor merge
 
 ## Fixed PR Series
 
@@ -168,7 +168,8 @@
 - [x] Expose honest partial/no-model options before a real session catalog; never create scratch persistent sessions.
 - [x] Add standard typed ACP set_mode through API/repository; select exact validated model then default mode.
 - [x] Focused validation: 10 catalog/options tests and 11 ACP config/API tests pass; both owning analyses are clean.
-- [ ] Independent implementation review before parent-owned publication.
+- [x] Independent architecture review approved all 19 files at immutable checkpoint `0e002cdebe`.
+- [ ] Parent-owned publication after Step 6.d merges.
 - Permissions/questions and update normalization remain 7.b/7.c; no descriptor, registration or capability claim.
 
 ## Architecture Reviews
