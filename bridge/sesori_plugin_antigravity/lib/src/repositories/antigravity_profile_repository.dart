@@ -12,9 +12,12 @@ class AntigravityProfileRepository({required final AntigravityProfileStorage _st
 
   bool hasToken() => _storage.tokenExists();
 
-  Future<void> preparePersonalOauth({required AntigravityAuthenticationBudget budget}) async {
+  Future<void> preparePersonalOauth({
+    required AntigravityAuthenticationBudget budget,
+    required Map<String, String> environment,
+  }) async {
     try {
-      await _storage.prepareDirectories(budget: budget);
+      await _storage.prepareDirectories(budget: budget, environment: environment);
       budget.remaining;
       await _storage.writeSettings(
         settings: const AntigravityProfileSettingsDto(

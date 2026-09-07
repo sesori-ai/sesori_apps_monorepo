@@ -44,13 +44,18 @@ class _Commands({required final List<String> events}) implements CommandExecutor
     Duration? timeout,
   }) async {
     calls.add((executable: executable, arguments: arguments, environment: environment));
-    if (executable == "/bin/chmod") {
+    if (executable == "chmod") {
       events.add("chmod");
       expect(arguments.first, "700");
       expect(Directory(arguments.last).existsSync(), isTrue);
       if (failPermissions) return const CommandResult(exitCode: 1, stdout: "", stderr: "synthetic permission failure");
       if (!Platform.isWindows) {
-        final result = await Process.run(executable, arguments);
+        final result = await Process.run(
+          executable,
+          arguments,
+          environment: environment,
+          includeParentEnvironment: false,
+        );
         expect(result.exitCode, 0);
       }
       return const CommandResult(exitCode: 0, stdout: "", stderr: "");
@@ -259,7 +264,25 @@ void main() {
     expect(prepared.environment["HOME"], ambient["HOME"]);
     expect(prepared.environment["HTTPS_PROXY"], ambient["HTTPS_PROXY"]);
     expect(prepared.environment["PYTHONUNBUFFERED"], "1");
-    expect(commands.calls.first.environment, prepared.environment);
+    expect(commands.calls.map((call) => call.environment), everyElement(prepared.environment));
+    expect(commands.calls.skip(1).map((call) => call.executable), ["chmod", "chmod"]);
+  });
+
+  test("chmod resolves through the supplied PATH instead of a fixed filesystem location", () async {
+    if (Platform.isWindows) return;
+    final bin = Directory(p.join(temp.path, "coreutils"))..createSync();
+    final marker = File(p.join(temp.path, "chmod-invoked"));
+    final shim = File(p.join(bin.path, "chmod"));
+    shim.writeAsStringSync('#!/bin/sh\nprintf invoked >> "${marker.path}"\n/bin/chmod "\$@"\n');
+    final permission = await Process.run("/bin/chmod", ["700", shim.path]);
+    expect(permission.exitCode, 0);
+    await service(
+      target: mac,
+      executable: "/bridge",
+      prefix: [],
+    ).prepare(budget: budget(), hostEnvironment: {"PATH": bin.path});
+    expect(marker.readAsStringSync(), "invokedinvoked");
+    expect(FileStat.statSync(home).mode & 0x1ff, 0x1c0);
   });
 
   test("profile host executor disables inheritance for preflight and directory commands", () async {

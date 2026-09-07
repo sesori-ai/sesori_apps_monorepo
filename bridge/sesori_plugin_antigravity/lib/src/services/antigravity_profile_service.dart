@@ -59,7 +59,7 @@ class AntigravityProfileService({
       environment: environment,
     );
     budget.remaining;
-    await _repository.preparePersonalOauth(budget: budget);
+    await _repository.preparePersonalOauth(budget: budget, environment: environment);
     budget.remaining;
     return AntigravityPreparedProfile(geminiHome: _repository.geminiHome, environment: environment);
   }

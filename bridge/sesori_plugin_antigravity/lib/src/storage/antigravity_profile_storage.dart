@@ -23,13 +23,21 @@ class AntigravityProfileStorage({
   // Do not read the file: even malformed/expired tokens are only a setup hint.
   bool tokenExists() => File(p.join(acpDirectory, "acp_token.json")).existsSync();
 
-  Future<void> prepareDirectories({required AntigravityAuthenticationBudget budget}) async {
+  Future<void> prepareDirectories({
+    required AntigravityAuthenticationBudget budget,
+    required Map<String, String> environment,
+  }) async {
     for (final directory in [geminiHome, acpDirectory]) {
       budget.remaining;
       await Directory(directory).create(recursive: true);
       budget.remaining;
       if (_target.os != PlatformOs.windows) {
-        final result = await _commands.run("/bin/chmod", ["700", directory], timeout: budget.remaining);
+        final result = await _commands.run(
+          "chmod",
+          ["700", directory],
+          environment: environment,
+          timeout: budget.remaining,
+        );
         budget.remaining;
         if (result.exitCode != 0) {
           throw FileSystemException("Cannot make Antigravity profile private: ${result.stderr}", directory);

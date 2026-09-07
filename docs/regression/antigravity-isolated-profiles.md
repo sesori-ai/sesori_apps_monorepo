@@ -13,7 +13,8 @@ preparation/authentication budget; they do not yet supply a composed operation.
   readiness hint, never proof of valid authentication. No token contents, ambient credentials, or Google history
   are read, copied, parsed, or deleted.
 - Preparation preflights browser suppression before creating files. POSIX profile and `antigravity-acp` directories
-  are hardened to `700` before settings writes; permission failure blocks launch. Windows uses user-profile ACLs.
+  are hardened to `700` before settings writes; permission failure blocks launch. POSIX `chmod` resolves through
+  the sanitized environment's PATH rather than assuming `/bin/chmod`. Windows uses user-profile ACLs.
 - Typed generated settings serialize exactly `{"auth":{"type":"oauth-personal"}}`. Storage receives the child
   `HostJsonStore` derived from the live host root via `profile` then `antigravity-acp`; atomic writes and shared
   per-file update ownership remain in the host store. A failed write surfaces with its original cause.
