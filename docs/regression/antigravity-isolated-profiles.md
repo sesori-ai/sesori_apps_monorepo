@@ -20,6 +20,8 @@ Personal OAuth operations, HTTP continuation, registration, and managed activati
   HOME, proxy and other diagnostic/runtime environment remain. The service adds GEMINI_HOME, forced file storage,
   Python unbuffered output and its verified BROWSER command. Launch builder adds only the validated sibling harness
   path and sets `includeParentEnvironment: false`; no OS or host-factory inheritance restores filtered variables.
+  The profile's injected `HostProcessCommandExecutor` must also use `includeParentEnvironment: false`, so preflight
+  and directory commands cannot restore ambient credentials. Existing other-plugin executors retain inheritance.
 - The backend-neutral `--internal-browser-noop` mode returns before CLI/config/DI/logging. It does not inspect,
   open, fetch, or print its URL argument. It exits successfully with empty stdout/stderr, including after cancellation.
   The plugin requires an exact injected native or source invocation, quotes it for Python shlex (not a shell),
@@ -41,6 +43,7 @@ Personal OAuth operations, HTTP continuation, registration, and managed activati
 
 - `antigravity_profile_service_test.dart`: inert token-presence inspection, mode/order, generated serialization,
   exact native/source/Windows invocation shapes, environment aliases, immutable outputs and surfaced failures.
+  Its real host-executor composition test verifies preflight and directory calls disable parent inheritance.
 - `antigravity_stderr_mapper_test.dart`: selective OAuth consumption, retained diagnostics, byte-split CRLF/EOF,
   sanitized bounds. `antigravity_acp_api_test.dart` exercises the injected scratch-process interceptor composition.
 - `browser_noop_test.dart`: actual source entrypoint subprocess, synthetic HOME, empty output and no created files.

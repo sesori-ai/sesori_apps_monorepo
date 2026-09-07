@@ -147,6 +147,7 @@ failed, or unexecuted required coverage keeps the plan active.
 
 - [Account and onboarding](account-and-onboarding.md)
 - [Analytics](analytics.md)
+- [Antigravity isolated profiles](antigravity-isolated-profiles.md)
 - [Attachments and images](attachments-and-images.md)
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)

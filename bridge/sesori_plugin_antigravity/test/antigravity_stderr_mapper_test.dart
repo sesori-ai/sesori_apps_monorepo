@@ -18,6 +18,9 @@ void main() {
       '  "refresh_token": "synthetic",',
       "{'access_token': 'synthetic'}",
       "id_token=synthetic",
+      '  "token": "synthetic",',
+      "Token=synthetic",
+      "token: synthetic",
       "code_verifier=synthetic",
       "client_secret=synthetic",
       "Authorization: Bearer synthetic",
@@ -51,7 +54,7 @@ void main() {
 
   test("chunk splitting, CRLF and final partial lines cannot leak OAuth fields", () async {
     final interceptor = AcpOutputInterceptor(maxLineBytes: 4096, consumeLine: mapper.consumeLine);
-    final bytes = utf8.encode("useful\r\nstate=synthetic\r\nTraceback\nrefresh_token=synthetic");
+    final bytes = utf8.encode("useful\r\nstate=synthetic\r\nTraceback\ntoken=synthetic\nrefresh_token=synthetic");
     final output = await interceptor
         .intercept(bytes: Stream.fromIterable(bytes.map((byte) => [byte])))
         .transform(utf8.decoder)

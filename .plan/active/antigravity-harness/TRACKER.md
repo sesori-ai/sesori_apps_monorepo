@@ -112,6 +112,8 @@
 - [x] Run focused tests and owning-package analyzers; update regression contracts.
 - [x] Independent architecture review approved immutable Step 6.b code head `8fe1ee51be25`.
 - [x] Step 6.a merged; synchronize before Step 6.b publication.
+- Publication cap: `git diff --numstat 0723491330 4a8e14a1d5` totals 845 + 12 = 857 changed lines.
+  The estimated range was a scoping guide, not a minimum; implementation and meaningful coverage fit below it.
 - Validation: 45 Antigravity tests and 15 focused app/no-op/scoped-store tests pass; final selective stderr
   refinement passes its 4 tests. Antigravity, foundation, and app analyzers pass with fatal infos. Native bridge
   bundle builds and the helper exits 0 with no output; extracted pinned Python confirms no browser fallback.

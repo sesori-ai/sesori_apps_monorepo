@@ -165,6 +165,7 @@ final class const PiPluginDescriptor({
   }) async* {
     const manifest = PiRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,
@@ -266,6 +267,7 @@ final class const PiPluginDescriptor({
     final CommandResult result;
     try {
       result = await HostProcessCommandExecutor(
+        includeParentEnvironment: true,
         processes: processes,
         runInShell: io.Platform.isWindows,
         maxCapturedOutputCharactersPerStream: 64 * 1024,
@@ -302,6 +304,7 @@ final class const PiPluginDescriptor({
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => RuntimeVersionValidator(
     commandExecutor: HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,
@@ -317,6 +320,7 @@ final class const PiPluginDescriptor({
     final binaryPath = _explicitBin(host.config) ?? host.provisionedRuntimePath ?? manifest.pathExecutableName;
     final processFactory = HostPiProcessFactory(processes: host.processes);
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: host.processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: 64 * 1024,

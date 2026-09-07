@@ -56,6 +56,37 @@ class _Commands({required final List<String> events}) implements CommandExecutor
   }
 }
 
+class _ProfileProcesses() implements HostProcessService {
+  final List<({bool inherits, Map<String, String>? environment})> calls = [];
+
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) async {
+    calls.add((inherits: includeParentEnvironment, environment: environment));
+    return _ProfileProcess();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ProfileProcess() implements SpawnedProcess {
+  @override
+  Future<int> get exitCode async => 0;
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 void main() {
   late Directory temp;
   late List<String> events;
@@ -156,6 +187,33 @@ void main() {
     expect(prepared.environment["HTTPS_PROXY"], ambient["HTTPS_PROXY"]);
     expect(prepared.environment["PYTHONUNBUFFERED"], "1");
     expect(commands.calls.first.environment, prepared.environment);
+  });
+
+  test("profile host executor disables inheritance for preflight and directory commands", () async {
+    final processes = _ProfileProcesses();
+    final profile = AntigravityProfileService(
+      repository: AntigravityProfileRepository(
+        storage: AntigravityProfileStorage(
+          geminiHome: home,
+          settingsStore: store,
+          commands: HostProcessCommandExecutor(
+            processes: processes,
+            runInShell: false,
+            includeParentEnvironment: false,
+            maxCapturedOutputCharactersPerStream: 4096,
+          ),
+          target: mac,
+        ),
+      ),
+      target: mac,
+      browserExecutable: "/bridge",
+      browserPrefixArguments: [],
+    );
+    final prepared = await profile.prepare(hostEnvironment: {"GOOGLE_API_KEY": "synthetic", "PATH": "/usr/bin:/bin"});
+    expect(processes.calls, hasLength(3));
+    expect(processes.calls.every((call) => !call.inherits), isTrue);
+    expect(processes.calls.first.environment, prepared.environment);
+    expect(processes.calls.first.environment, isNot(contains("GOOGLE_API_KEY")));
   });
 
   test("source invocation and apostrophes are shlex quoted, with exact preflight arguments", () async {

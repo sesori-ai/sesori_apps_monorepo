@@ -287,6 +287,7 @@ class const OpenCodePluginDescriptor({
   }) async* {
     const manifest = OpenCodeRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
@@ -329,6 +330,7 @@ class const OpenCodePluginDescriptor({
     final explicitBin = _explicitBin(config);
     const manifest = OpenCodeRuntimeManifest();
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -422,6 +424,7 @@ class const OpenCodePluginDescriptor({
   }) {
     const manifest = OpenCodeRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: host.processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,

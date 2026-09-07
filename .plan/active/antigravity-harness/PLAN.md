@@ -752,6 +752,8 @@ documented invariant, they update that document immediately. Step 11 is final re
 - Service -> ProfileRepository -> ProfileStorage runs the harmless no-op preflight via injected `CommandExecutor`
   before preparing profile directories/settings. Storage also owns directory permissions and token existence only;
   repository maps preflight output and token presence; service owns readiness and sanitized launch environment.
+  Compose its `HostProcessCommandExecutor` with required `includeParentEnvironment: false`; other existing plugin
+  composers explicitly retain `true`. This is executor-instance policy, not a change to `CommandExecutor.run`.
   The injected settings store is `host.store.scope(directoryName: "profile").scope(directoryName: "antigravity-acp")`.
 - Plugin Layer-2 `AntigravityStderrMapper` classifies bounded OAuth-bearing lines for the injected shared ACP
   interceptor; it retains non-sensitive diagnostics. The scratch ACP API receives the composed interceptor. Future

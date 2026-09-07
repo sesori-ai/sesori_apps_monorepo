@@ -9,6 +9,8 @@ import "models/antigravity_profile_settings_dto.dart";
 
 /// File/process boundary. The injected store must be the live host root's
 /// profile/antigravity-acp scope, not an independently constructed store.
+/// Composition must configure the injected host command executor with
+/// includeParentEnvironment: false for preflight and directory preparation.
 class AntigravityProfileStorage({
   required final String geminiHome,
   required final HostJsonStore _settingsStore,
