@@ -114,8 +114,8 @@ void main() {
       );
       final normalized = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
       expect(normalized["kind"], "execute");
-      expect(normalized["rawInput"]["command"], "echo synthetic");
-      expect(normalized["rawInput"]["cwd"], "/synthetic");
+      expect((normalized["rawInput"] as Map<String, Object?>)["command"], "echo synthetic");
+      expect((normalized["rawInput"] as Map<String, Object?>)["cwd"], "/synthetic");
       expect(_parity(params: params).title, "echo synthetic");
     }
     final params = _envelope(
@@ -125,7 +125,7 @@ void main() {
     );
     final normalized = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
     expect(normalized["title"], "fallback");
-    expect(normalized["rawInput"]["cwd"], "/fallback");
+    expect((normalized["rawInput"] as Map<String, Object?>)["cwd"], "/fallback");
   });
 
   for (final fixture in [
@@ -162,7 +162,7 @@ void main() {
         expect(state.status, fixture.expected);
         expect(state.error, fixture.expected == PluginToolStatus.error ? expected : isNull);
         final normalized = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
-        expect(normalized["rawOutput"]["exitCode"], fixture.exit);
+        expect((normalized["rawOutput"] as Map<String, Object?>)["exitCode"], fixture.exit);
       });
     }
   }
@@ -229,10 +229,10 @@ void main() {
     final normalized = protocol.normalizeSessionUpdate(params: params);
     expect(jsonEncode(normalized), isNot(contains("SECRET_BYTES")));
     final update = normalized["update"] as Map;
-    expect(update["content"].last, same(image));
-    expect(update["rawOutput"]["imagePath"], "/synthetic/image.png");
-    expect(update["rawOutput"].containsKey("formatted_output"), isFalse);
-    expect(update["_meta"]["preview"]["filename"], "image.png");
+    expect((update["content"] as List).last, same(image));
+    expect((update["rawOutput"] as Map<String, Object?>)["imagePath"], "/synthetic/image.png");
+    expect((update["rawOutput"] as Map).containsKey("formatted_output"), isFalse);
+    expect(((update["_meta"] as Map<String, Object?>)["preview"]! as Map)["filename"], "image.png");
     final state = _parity(params: params);
     expect(state.output, "image output\n[Process exit code: 3]");
     expect(state.attachments.single.filename, "image.png");
@@ -256,7 +256,7 @@ void main() {
     );
     final update = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
     expect(jsonEncode(update["_meta"]), isNot(contains(':"deep"')));
-    expect((update["_meta"]["entries"] as List).length, lessThan(512));
+    expect(((update["_meta"] as Map<String, Object?>)["entries"]! as List).length, lessThan(512));
     final retainedText = (update["rawInput"] as Map).values.cast<String>().fold<int>(0, (n, s) => n + s.length);
     expect(retainedText, lessThanOrEqualTo(64000));
   });

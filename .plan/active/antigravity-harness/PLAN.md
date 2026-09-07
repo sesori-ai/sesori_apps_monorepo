@@ -855,7 +855,11 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
 - Add a narrow shared ACP session-update normalizer hook used identically by live events and `AcpReplayCollector`; every
   existing plugin gets identity behavior. The Layer-2 mapper converts Antigravity command/output/image keys into bounded
   normalized fields, strips duplicate inline image bytes after retaining supported metadata, and preserves nonzero exit
-  separately from protocol/tool failure.
+  separately from protocol/tool failure. `AcpEventMapper.normalizeSessionUpdate` is the identity-by-default hook;
+  standard and direct-history collectors receive the same live mapper function. Step 8 supplies Antigravity's override.
+  Retain valid standard image content for the existing bounded attachment mapper; strip only redundant provider raw
+  bytes. Reserve a labelled nonzero-exit note inside the existing 500-character display limit so it survives live/replay,
+  while native fields retain their 8,000-character bound. Neither status nor shared tool-state contracts change.
 - Across the slices, cover catalog validation/last-good retention, grouped/empty/stale models, failed selection/mode,
   duplicate labels/IDs, safe reject-kind choices, prompt-injection warning filtering, malformed requests, bounded
   payloads, and live/replay equality. Plugin/descriptor integration remains Step 8.
