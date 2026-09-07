@@ -1,7 +1,6 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../foundation/antigravity_release.dart";
 import "../models/antigravity_profile.dart";
 import "../models/antigravity_runtime_resolution.dart";
 import "antigravity_profile_inspection_service.dart";
@@ -28,13 +27,10 @@ class AntigravitySetupService({
     switch (runtime) {
       case AntigravityRuntimeCandidateFound():
         return switch (_profile.inspect(geminiHome: geminiHome)) {
-          AntigravityAuthenticationHint.tokenPresent => const PluginSetupReady.versioned(
-            runtimeVersion: AntigravityRelease.agentVersion,
-          ),
-          AntigravityAuthenticationHint.authenticationRequired => const PluginSetupAuthenticationRequired.versioned(
+          AntigravityAuthenticationHint.tokenPresent => const PluginSetupReady(),
+          AntigravityAuthenticationHint.authenticationRequired => const PluginSetupAuthenticationRequired(
             actionHint:
                 "Authenticate Antigravity from a current Sesori mobile or desktop app. Older clients must update.",
-            runtimeVersion: AntigravityRelease.agentVersion,
           ),
         };
       case AntigravityRuntimeCandidateMissing(:final source):

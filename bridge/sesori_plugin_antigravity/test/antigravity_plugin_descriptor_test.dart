@@ -11,19 +11,16 @@ import "package:test/test.dart";
 
 const _target = PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64);
 
-class _Store({required final _Store? root}) implements HostJsonStore {
-  _Store.root() : this(root: null);
-
-  final _Store? root;
+class _Store({required final _Store? parent}) implements HostJsonStore {
   final scopes = <String>[];
   final writes = <String, String>{};
 
-  _Store get _root => root ?? this;
+  _Store get _root => parent ?? this;
 
   @override
   HostJsonStore scope({required String directoryName}) {
     _root.scopes.add(directoryName);
-    return _ScopedStore(root: _root);
+    return _Store(parent: _root);
   }
 
   @override
@@ -33,10 +30,6 @@ class _Store({required final _Store? root}) implements HostJsonStore {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ScopedStore extends _Store {
-  _ScopedStore({required _Store root}) : super(root: root);
 }
 
 class _HelperProcess() implements SpawnedProcess {
@@ -58,18 +51,21 @@ class _AgentInput({required final FakeAcpProcess process, required final Map<Str
   void add(List<int> data) {
     super.add(data);
     final frame = frames.last;
-    if (frame["method"] == "initialize") {
-      process.emit({"jsonrpc": "2.0", "id": frame["id"], "result": initialize});
-    } else {
-      fail("Descriptor startup must not authenticate or create a session: ${frame["method"]}");
+    switch (frame["method"]) {
+      case "initialize":
+        process.emit({"jsonrpc": "2.0", "id": frame["id"], "result": initialize});
+      case "authenticate":
+        expect((frame["params"] as Map<String, dynamic>)["methodId"], AntigravityRelease.personalOauthMethodId);
+        process.emit({"jsonrpc": "2.0", "id": frame["id"], "result": <String, dynamic>{}});
+      default:
+        fail("Descriptor startup must not create a session: ${frame["method"]}");
     }
   }
 }
 
-class _AgentProcess({required Map<String, dynamic> initialize, required this.pid}) implements SpawnedProcess {
+class _AgentProcess({required final Map<String, dynamic> initialize, @override required final int pid})
+    implements SpawnedProcess {
   final FakeAcpProcess process = FakeAcpProcess();
-  @override
-  final int pid;
   @override
   late final stdin = _AgentInput(process: process, initialize: initialize);
   @override
@@ -83,16 +79,15 @@ class _AgentProcess({required Map<String, dynamic> initialize, required this.pid
 }
 
 class _Launch({
-  required this.executable,
-  required this.arguments,
-  required this.environment,
-  required this.workingDirectory,
-  required this.includeParentEnvironment,
+  required final String executable,
+  required final List<String> arguments,
+  required final Map<String, String> environment,
+  required final String? workingDirectory,
+  required final bool includeParentEnvironment,
 });
 
-class _Processes({required this.serverPath, required this.initialize}) implements HostProcessService {
-  final String serverPath;
-  final Map<String, dynamic> initialize;
+class _Processes({required final String serverPath, required final Map<String, dynamic> initialize})
+    implements HostProcessService {
   final launches = <_Launch>[];
   final agents = <_AgentProcess>[];
 
@@ -108,13 +103,13 @@ class _Processes({required this.serverPath, required this.initialize}) implement
     launches.add(
       _Launch(
         executable: executable,
-        arguments: List.unmodifiable(arguments),
-        environment: Map.unmodifiable(environment ?? const {}),
+        arguments: List<String>.unmodifiable(arguments),
+        environment: Map<String, String>.unmodifiable(environment ?? const {}),
         workingDirectory: workingDirectory,
         includeParentEnvironment: includeParentEnvironment,
       ),
     );
-    if (executable != serverPath) return _HelperProcess();
+    if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess();
     final agent = _AgentProcess(initialize: initialize, pid: agents.length + 10);
     agents.add(agent);
     return agent;
@@ -145,27 +140,15 @@ class _Processes({required this.serverPath, required this.initialize}) implement
 }
 
 class _Host({
-  required this.config,
-  required this.stateDirectory,
-  required this.environment,
-  required this.processes,
-  required this.store,
-  required this.startAborted,
+  @override required final PluginConfig config,
+  @override required final String stateDirectory,
+  @override required final Map<String, String> environment,
+  @override required final HostProcessService processes,
+  @override required final HostJsonStore store,
+  @override required final StartAbortSignal startAborted,
 }) implements PluginHost {
   @override
-  final PluginConfig config;
-  @override
-  final String stateDirectory;
-  @override
   String? provisionedRuntimePath;
-  @override
-  final Map<String, String> environment;
-  @override
-  final HostProcessService processes;
-  @override
-  final HostJsonStore store;
-  @override
-  final StartAbortSignal startAborted;
   @override
   ServerClock get clock => const ServerClock();
   @override
@@ -194,7 +177,9 @@ Map<String, dynamic> _initialize() =>
 }
 
 Future<void> _settle() async {
-  for (var i = 0; i < 8; i++) await Future<void>.delayed(Duration.zero);
+  for (var i = 0; i < 8; i++) {
+    await Future<void>.delayed(Duration.zero);
+  }
 }
 
 void main() {
@@ -205,11 +190,13 @@ void main() {
   late _Store store;
 
   setUp(() {
-    state = Directory.systemTemp.createTempSync("antigravity-descriptor-state-");
-    runtime = Directory.systemTemp.createTempSync("antigravity-descriptor-runtime-");
+    state = Directory(Directory.systemTemp.createTempSync("antigravity-descriptor-state-").resolveSymbolicLinksSync());
+    runtime = Directory(
+      Directory.systemTemp.createTempSync("antigravity-descriptor-runtime-").resolveSymbolicLinksSync(),
+    );
     pair = _writePair(directory: runtime);
     processes = _Processes(serverPath: pair.server, initialize: _initialize());
-    store = _Store.root();
+    store = _Store(parent: null);
   });
 
   tearDown(() async {
@@ -230,7 +217,8 @@ void main() {
     connectBudget: const Duration(seconds: 2),
   );
 
-  PluginConfig config({required String? server}) => PluginConfig(values: {AntigravityPluginDescriptor.binOption: server});
+  PluginConfig config({required String? server}) =>
+      PluginConfig(values: {AntigravityPluginDescriptor.binOption: server});
 
   test("inspection is inert, explicit is authoritative, and token contents are not read", () async {
     final candidate = descriptor(http: null);
@@ -261,7 +249,7 @@ void main() {
         environment: const {},
         stateDirectory: state.path,
       ),
-      const PluginSetupReady.versioned(runtimeVersion: AntigravityRelease.agentVersion),
+      const PluginSetupReady(),
     );
     expect(token.readAsStringSync(), "synthetic-not-json-token-content");
     expect(processes.launches, isEmpty);
@@ -284,6 +272,23 @@ void main() {
     } finally {
       Directory.current = oldCurrent;
     }
+    expect(processes.launches, isEmpty);
+  });
+
+  test("managed pair is the inert fallback after PATH", () async {
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.agentVersion),
+    )..createSync(recursive: true);
+    _writePair(directory: managedDirectory);
+    expect(
+      await descriptor(http: null).inspectSetup(
+        config: config(server: null),
+        processes: processes,
+        environment: const {"PATH": "/definitely/missing"},
+        stateDirectory: state.path,
+      ),
+      isA<PluginSetupAuthenticationRequired>(),
+    );
     expect(processes.launches, isEmpty);
   });
 
@@ -323,14 +328,65 @@ void main() {
 
     processes.agents.last.process.exit(17);
     await _settle();
-    expect(bridge.currentStatus, isA<PluginDegraded>());
-    expect(await (bridge.api as AntigravityPlugin).ensureConnected(), isTrue);
+    final api = bridge.api as AntigravityPlugin;
+    expect(api.client, isNull, reason: "The existing lifecycle exit watch resets the dead connection");
+    expect(await api.ensureConnected(), isTrue);
     await _settle();
     expect(bridge.currentStatus, isA<PluginReady>());
     expect(processes.agents, hasLength(4));
     await bridge.shutdown(budget: null);
     expect(bridge.currentStatus, isA<PluginStopped>());
-    expect(processes.agents.every((agent) => agent.process.exited), isTrue);
+    expect(await Future.wait(processes.agents.map((agent) => agent.exitCode)), everyElement(anyOf(-15, 17)));
+  });
+
+  test("source browser invocation uses the running entrypoint without opening a browser", () async {
+    final http = _Http();
+    final candidate = AntigravityPluginDescriptor(
+      target: _target,
+      launchDirectory: "/synthetic/worktree",
+      callbackHttpClientFactory: () => http,
+      operationTimeout: const Duration(seconds: 2),
+      connectBudget: const Duration(seconds: 2),
+    );
+    final operation = candidate.authenticate(
+      config: config(server: pair.server),
+      processes: processes,
+      environment: const {"GOOGLE_API_KEY": "ambient"},
+      stateDirectory: state.path,
+      store: store,
+      aborted: StartAbortSignal.never,
+    );
+    expect(await operation.events.toList(), [isA<PluginAuthenticationCompleted>()]);
+    final expectedPrefix = Platform.packageConfig == null
+        ? const <String>[]
+        : ["--packages=${Uri.parse(Platform.packageConfig!).toFilePath()}", Platform.script.toFilePath()];
+    expect(processes.launches.first.executable, Platform.resolvedExecutable);
+    expect(processes.launches.first.arguments, [
+      ...expectedPrefix,
+      BrowserNoop.argument,
+      AntigravityProfileService.browserPreflightUrl,
+    ]);
+    expect(http.closed, isTrue);
+    expect(processes.launches.every((launch) => !launch.includeParentEnvironment), isTrue);
+    expect(processes.launches.every((launch) => !launch.environment.containsKey("GOOGLE_API_KEY")), isTrue);
+  });
+
+  test("initial abort prevents preparation and runtime launch", () async {
+    final abort = StartAbortController()..abort();
+    final host = _Host(
+      config: config(server: pair.server),
+      stateDirectory: state.path,
+      environment: const {},
+      processes: processes,
+      store: store,
+      startAborted: abort.signal,
+    );
+    await expectLater(
+      descriptor(http: null).ensureRuntime(host: host).toList(),
+      throwsA(isA<PluginStartAbortedException>()),
+    );
+    expect(processes.launches, isEmpty);
+    expect(store.scopes, isEmpty);
   });
 
   test("authentication is browser-only, uses the supplied root store, and aborted attempts clean up", () async {
@@ -339,7 +395,10 @@ void main() {
     final candidate = descriptor(http: http);
     expect(
       candidate.managementCapabilities(config: config(server: pair.server)),
-      contains(PluginControlCapability.authentication),
+      allOf(
+        contains(PluginControlCapability.authentication),
+        isNot(contains(PluginControlCapability.install)),
+      ),
     );
     final operation = candidate.authenticate(
       config: config(server: pair.server),

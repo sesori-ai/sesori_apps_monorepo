@@ -300,6 +300,21 @@ void main() {
         .toList();
     expect((writes.last["params"] as Map)["modeId"], "default");
     expect((writes[writes.length - 2]["params"] as Map)["value"], "other");
+    process.emit(
+      frame: {
+        "method": "session/update",
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "selected output"},
+          },
+        },
+      },
+    );
+    await _settle();
+    final assistant = h.events.whereType<BridgeSseMessageUpdated>().last.info as PluginMessageAssistant;
+    expect((assistant.modelID, assistant.providerID), ("other", AntigravityIdentity.pluginId));
     expect(h.specs.single.includeParentEnvironment, isFalse);
     expect(h.specs.single.environment["GEMINI_CLI_HOME"], h.directory.path);
     expect(process.created, 1, reason: "No scratch discovery session");
@@ -382,6 +397,9 @@ void main() {
     final before = h.events.whereType<BridgeSseMessagePartUpdated>().length;
     final history = await h.plugin.getSessionMessages(second.id);
     expect(history.length, 121);
+    final replayAssistant =
+        history.where((message) => message.info is PluginMessageAssistant).first.info as PluginMessageAssistant;
+    expect((replayAssistant.modelID, replayAssistant.providerID), ("other", AntigravityIdentity.pluginId));
     expect(history.last.parts.last.state, liveTool.state);
     expect(h.events.whereType<BridgeSseMessagePartUpdated>().length, before);
     expect((await h.plugin.getProviders(projectId: "/launch")).providers.single.defaultModelID, "default");

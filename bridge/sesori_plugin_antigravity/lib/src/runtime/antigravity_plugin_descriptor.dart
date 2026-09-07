@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
@@ -88,11 +89,12 @@ class const AntigravityPluginDescriptor({
       return (executable: injectedExecutable, arguments: List.unmodifiable(browserPrefixArguments ?? const []));
     }
     final packageConfig = Platform.packageConfig;
+    final packageConfigPath = packageConfig == null ? null : Uri.parse(packageConfig).toFilePath();
     return (
       executable: Platform.resolvedExecutable,
-      arguments: packageConfig == null
+      arguments: packageConfigPath == null
           ? const []
-          : List.unmodifiable(["--packages=$packageConfig", Platform.script.toFilePath()]),
+          : List.unmodifiable(["--packages=$packageConfigPath", Platform.script.toFilePath()]),
     );
   }
 
@@ -171,6 +173,7 @@ class const AntigravityPluginDescriptor({
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal aborted,
+    required String? selectedServerPath,
   }) async {
     final selectedTarget = _target();
     final budget = AntigravityAuthenticationBudget(timeout: operationTimeout, abortSignal: aborted);
@@ -181,8 +184,10 @@ class const AntigravityPluginDescriptor({
       target: selectedTarget,
     ).prepare(hostEnvironment: environment, budget: budget);
     final resolution = await _runtime(processes: processes, environment: profile.environment).resolve(
-      explicitServerPath: _explicitServerPath(config: config),
-      managedServerPath: _managedServerPath(stateDirectory: stateDirectory, target: selectedTarget),
+      explicitServerPath: selectedServerPath ?? _explicitServerPath(config: config),
+      managedServerPath: selectedServerPath == null
+          ? _managedServerPath(stateDirectory: stateDirectory, target: selectedTarget)
+          : null,
       pathEnvironment: profile.environment,
       probeEnvironment: profile.environment,
       target: selectedTarget,
@@ -196,11 +201,9 @@ class const AntigravityPluginDescriptor({
   Never _throwRuntimeFailure({required AntigravityRuntimeResolution resolution}) {
     final error = PluginStartException("No validated Antigravity runtime pair is available.", cause: resolution);
     switch (resolution) {
-      case AntigravityRuntimeStorageFailed(:final cause, :final stackTrace):
-        Log.w("[antigravity] runtime inspection failed", cause, stackTrace);
+      case AntigravityRuntimeStorageFailed(:final stackTrace):
         Error.throwWithStackTrace(error, stackTrace);
-      case AntigravityRuntimeProbeFailed(:final cause, :final stackTrace):
-        Log.w("[antigravity] runtime validation failed", cause, stackTrace);
+      case AntigravityRuntimeProbeFailed(:final stackTrace):
         Error.throwWithStackTrace(error, stackTrace);
       case AntigravityRuntimeSelected() ||
           AntigravityRuntimeMissing() ||
@@ -222,15 +225,31 @@ class const AntigravityPluginDescriptor({
         environment: host.environment,
         stateDirectory: host.stateDirectory,
         aborted: host.startAborted,
+        selectedServerPath: null,
       );
       yield ProvisionReady(binaryPath: prepared.runtime.pair.serverPath);
     } on PluginStartAbortedException {
       rethrow;
+    } on TimeoutException {
+      rethrow;
     } on Object catch (error, stackTrace) {
-      Log.w("[antigravity] runtime preparation failed", error, stackTrace);
+      _logPreparationFailure(error: error, stackTrace: stackTrace);
       yield const ProvisionFailed(
         message: "Antigravity runtime validation failed. Check the official runtime pair and retry.",
       );
+    }
+  }
+
+  void _logPreparationFailure({required Object error, required StackTrace stackTrace}) {
+    switch (error) {
+      case PluginStartException(cause: AntigravityRuntimeStorageFailed(:final cause, :final stackTrace)):
+        Log.w("[antigravity] runtime inspection failed", cause, stackTrace);
+      case PluginStartException(cause: AntigravityRuntimeProbeFailed(:final cause, :final stackTrace)):
+        Log.w("[antigravity] runtime validation failed", cause, stackTrace);
+      case AntigravityProfileException(:final cause?):
+        Log.w("[antigravity] isolated profile preparation failed", cause, stackTrace);
+      default:
+        Log.w("[antigravity] runtime preparation failed", error, stackTrace);
     }
   }
 
@@ -271,6 +290,7 @@ class const AntigravityPluginDescriptor({
       environment: host.environment,
       stateDirectory: host.stateDirectory,
       aborted: host.startAborted,
+      selectedServerPath: host.provisionedRuntimePath,
     );
     final plugin = const AntigravityPluginComposer().compose(
       pair: prepared.runtime.pair,

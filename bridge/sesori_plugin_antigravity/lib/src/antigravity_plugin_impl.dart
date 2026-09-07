@@ -47,11 +47,15 @@ class AntigravityPlugin({
   @override
   void onConnectionReset() => _catalog.clear();
   @override
-  void captureSessionConfig(AcpNewSessionResult result, {required String? sessionId, required bool fromNewSession}) =>
-      _options.capture(
-        result: result,
-        source: fromNewSession ? AntigravityCatalogSource.newSession : AntigravityCatalogSource.existingSession,
-      );
+  void captureSessionConfig(AcpNewSessionResult result, {required String? sessionId, required bool fromNewSession}) {
+    final capturedSessionId = sessionId ?? result.sessionId;
+    if (capturedSessionId.isEmpty) throw StateError("Antigravity session configuration has no session ID");
+    _options.capture(
+      result: result,
+      sessionId: capturedSessionId,
+      source: fromNewSession ? AntigravityCatalogSource.newSession : AntigravityCatalogSource.existingSession,
+    );
+  }
 
   @override
   Future<void> validateTurnSelection({
