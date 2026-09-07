@@ -39,6 +39,7 @@ _AntigravityNativeToolFieldsDto _$AntigravityNativeToolFieldsDtoFromJson(
   snakeWorkingDir: json['working_dir'] as String?,
   workingDir: json['workingDir'] as String?,
   stdout: json['stdout'] as String?,
+  stderr: json['stderr'] as String?,
   combinedOutput: json['combinedOutput'] as String?,
   snakeCombinedOutput: json['combined_output'] as String?,
   formattedOutput: json['formatted_output'] as String?,
