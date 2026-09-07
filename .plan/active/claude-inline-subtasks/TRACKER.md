@@ -809,5 +809,14 @@ ancestry is cleared. Client-less abort counts independent accepted work as retai
 fully handled bridge results skip the unnecessary post-stop id lookup; OpenCode
 reports the exact children it already aborted. ACP 325, DeepSeek 120, OpenCode 432,
 and selected bridge 75 tests pass with affected fatal-info analysis clean; LSP
-reports zero diagnostics across the three changed production files. Final DeepSeek
-E2E follows, then Codex.
+reports zero diagnostics across the three changed production files. Incremental
+architecture review of `775aa393a2..2dd4fb076e` approved with no findings. The pinned
+implementation head is `2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`; with merge
+base `b43758e1b304d7f119787163875b78b38b1b25f1`, `git diff --numstat
+b43758e1b304d7f119787163875b78b38b1b25f1...2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`
+measures +2,468/-239 = 2,707 lines: 611 generated, 1,136 tests/fixtures,
+494 docs/plans, and 466 production. This pinned measurement is not self-inclusive:
+it excludes only the later evidence-only commit that records it here and in the
+durable design. The 123-line increase from the prior reviewed head is 73 tests/
+fixtures, 38 docs/plans, and 12 production lines. Final DeepSeek E2E follows, then
+Codex.

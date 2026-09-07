@@ -160,9 +160,16 @@ production. With merge base `b43758e1b304d7f119787163875b78b38b1b25f1`,
 `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...775aa393a217c8dbadf6e612216555320ca620fc`
 reproduces this self-inclusive committed measurement. Its 325-line increase is 23
 generated, 178 tests/fixtures, 34 docs/plans, and 90 production lines. The
-following review required conservative coverage
-after tracker reset, client-less retained-work accuracy, post-stop lookup avoidance,
-and OpenCode handled ids. Splitting the response or partial-handling mapping from atomic STOP
+following review required conservative coverage after tracker reset, client-less
+retained-work accuracy, post-stop lookup avoidance, and OpenCode handled ids. The
+pinned implementation head `2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`,
+against merge base `b43758e1b304d7f119787163875b78b38b1b25f1`, measures
++2,468/-239 = 2,707 lines: 611 generated, 1,136 tests/fixtures, 494 docs/plans,
+and 466 production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`
+reproduces it. The measurement is not self-inclusive: it excludes only the later
+evidence-only commit recording it here and in the tracker. Its 123-line increase
+is 73 tests/fixtures, 38 docs/plans, and 12 production lines. Splitting the response
+or partial-handling mapping from atomic STOP
 would leave the first PR vulnerable to re-stopping later work or missing independent
 work, while splitting the generated parser or admission-race fixes from their
 consumer would retain a duplicate schema or known escape path. The overrun is
@@ -177,7 +184,7 @@ boundaries: response cleanup ownership and execution-kind authority. The concret
 choices above address those findings. Native implementation review approved adapter
 #17 with no findings. Consumer architecture reviews approved the atomic policy,
 layering, additive response path, retained authority, and generated transport union.
-The final conservative-coverage follow-up requires one incremental review.
+The final conservative-coverage incremental review also approved with no findings.
 
 Native tests: delayed root/nested announcements; pending continuable admission;
 foreground handoff; pending/published background fork jobs; exact named scope;
