@@ -420,7 +420,8 @@ void main() {
 
     expect(find.text("Harnesses"), findsOneWidget);
     expect(find.text("OpenCode"), findsOneWidget);
-    expect(find.text("Running"), findsOneWidget);
+    expect(find.text("Running"), findsNothing);
+    expect(find.text("Idle"), findsNothing);
   });
 }
 

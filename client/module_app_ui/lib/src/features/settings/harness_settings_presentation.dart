@@ -31,6 +31,13 @@ bool _canInstall({required PluginManagementMetadata plugin}) =>
     plugin.managementCapabilities.contains(PluginManagementCapability.install) &&
     (plugin.setup.state == PluginSetupState.runtimeMissing || plugin.setup.state == PluginSetupState.unavailable);
 
+bool _showOverviewStatus({required PluginManagementMetadata plugin, required PluginInstallState? install}) {
+  if (_group(plugin: plugin, install: install) == _HarnessGroup.disabled) return false;
+  if (install != null || plugin.setup.state != PluginSetupState.ready) return true;
+  return plugin.runtimeState != PluginRuntimeState.dormant &&
+      (plugin.runtimeState != PluginRuntimeState.active || plugin.workState != PluginManagementWorkState.idle);
+}
+
 String _status({
   required BuildContext context,
   required PluginManagementMetadata plugin,
@@ -42,7 +49,11 @@ String _status({
   if (plugin.runtimeState == PluginRuntimeState.disabled) return context.loc.harnessesStatusDisabled;
   return switch (plugin.runtimeState) {
     PluginRuntimeState.dormant => context.loc.harnessesStatusIdle,
-    PluginRuntimeState.active => context.loc.harnessesStatusRunning,
+    PluginRuntimeState.active => switch (plugin.workState) {
+      PluginManagementWorkState.busy => context.loc.harnessesStatusRunning,
+      PluginManagementWorkState.idle => context.loc.harnessesStatusIdle,
+      PluginManagementWorkState.unknown => context.loc.harnessesStatusUnknown,
+    },
     final runtime => _runtimeStatus(context: context, state: runtime),
   };
 }
@@ -59,7 +70,7 @@ class const _HarnessStatus({
         ? context.prego.colors.fgBrandPrimary
         : plugin.setup.state == PluginSetupState.runtimeMissing || install is PluginInstallFailed
         ? context.prego.colors.fgErrorPrimary
-        : group == _HarnessGroup.enabled
+        : group == _HarnessGroup.enabled && plugin.workState == PluginManagementWorkState.busy
         ? context.prego.colors.fgSuccessPrimary
         : context.prego.colors.textTertiary;
     return Row(
@@ -93,6 +104,27 @@ class const _HarnessSwitch({
     if (plugin.runtimeState == PluginRuntimeState.unknown ||
         !plugin.managementCapabilities.contains(PluginManagementCapability.lifecycle)) {
       return const SizedBox.shrink();
+    }
+    if (action
+        case PluginManagementActionInProgress(
+          target: PluginManagementActionTargetHarness(:final pluginId),
+        )
+        when pluginId == plugin.setup.id && install is! PluginInstallInProgress) {
+      return Semantics(
+        label: context.loc.harnessesUpdatingLabel(plugin.setup.displayName),
+        liveRegion: true,
+        child: SizedBox(
+          key: Key("harness_management_enabled_target_${plugin.setup.id}"),
+          width: 64,
+          height: 44,
+          child: Center(
+            child: PregoActivityIndicator(
+              key: Key("harness_management_enabled_progress_${plugin.setup.id}"),
+              color: null,
+            ),
+          ),
+        ),
+      );
     }
     final blocked = _controlsBlocked(action) || install is PluginInstallInProgress;
     Future<void> setEnabled({required bool enabled}) => enabled

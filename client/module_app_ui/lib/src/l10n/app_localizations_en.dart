@@ -2068,6 +2068,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String harnessesUpdatingLabel(String name) {
+    return 'Updating $name';
+  }
+
+  @override
   String harnessesForceRestartTitle(String name) {
     return 'Restart $name?';
   }

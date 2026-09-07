@@ -1309,6 +1309,8 @@
   "harnessesInstallationFailedDescription": "Start the installation again when you’re ready.",
   "harnessesEnabledLabel": "{name} enabled",
   "@harnessesEnabledLabel": {"placeholders": {"name": {"type": "String"}}},
+  "harnessesUpdatingLabel": "Updating {name}",
+  "@harnessesUpdatingLabel": {"placeholders": {"name": {"type": "String"}}},
   "harnessesForceRestartTitle": "Restart {name}?",
   "@harnessesForceRestartTitle": {"placeholders": {"name": {"type": "String"}}},
   "harnessesForceRestartDescription": "{name} may be active in a session. Force restarting can interrupt active work.",

@@ -202,6 +202,120 @@ void main() {
     expect(opened, ["missing"]);
   });
 
+  testWidgets("overview shows Running for busy work and omits idle or stopped subtitles", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _plugin(
+          id: "busy",
+          runtime: PluginRuntimeState.active,
+          setup: PluginSetupState.ready,
+        ).copyWith(workState: PluginManagementWorkState.busy),
+        _plugin(id: "idle", runtime: PluginRuntimeState.active, setup: PluginSetupState.ready),
+        _plugin(
+          id: "stopped",
+          runtime: PluginRuntimeState.dormant,
+          setup: PluginSetupState.ready,
+        ).copyWith(workState: PluginManagementWorkState.unknown),
+        _plugin(id: "disabled", runtime: PluginRuntimeState.disabled, setup: PluginSetupState.ready),
+        _plugin(
+          id: "unknown-work",
+          runtime: PluginRuntimeState.active,
+          setup: PluginSetupState.ready,
+        ).copyWith(workState: PluginManagementWorkState.unknown),
+      ],
+    );
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.text("Running"), findsOneWidget);
+    expect(find.text("Unknown"), findsOneWidget);
+    expect(find.text("Idle"), findsNothing);
+    for (final id in ["idle", "stopped", "disabled"]) {
+      final row = tester.widget<PregoGroupedRow>(find.byKey(Key("harnesses_card_$id")));
+      expect(row.subtitle, isNull, reason: "$id must not reserve a subtitle section.");
+    }
+  });
+
+  testWidgets("detail does not equate a started runtime with active session work", (tester) async {
+    phone(tester: tester);
+    publish(plugins: [_ready]);
+    await tester.pumpWidget(app(detailId: "ready"));
+    await tester.pumpAndSettle();
+    for (final (workState, label) in [
+      (PluginManagementWorkState.busy, "Running"),
+      (PluginManagementWorkState.idle, "Idle"),
+      (PluginManagementWorkState.unknown, "Unknown"),
+    ]) {
+      publish(plugins: [_ready.copyWith(workState: workState)]);
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pumpAndSettle();
+      final statusRow = find.widgetWithText(PregoGroupedRow, "Status");
+      expect(find.descendant(of: statusRow, matching: find.text(label)), findsOneWidget);
+      if (workState != PluginManagementWorkState.busy) expect(find.text("Running"), findsNothing);
+    }
+  });
+
+  for (final detail in [false, true]) {
+    testWidgets("${detail ? 'detail enable' : 'overview disable'} keeps loading inside the affected switch slot", (
+      tester,
+    ) async {
+      phone(tester: tester);
+      final target = _ready.copyWith(
+        runtimeState: detail ? PluginRuntimeState.disabled : PluginRuntimeState.active,
+      );
+      final peer = _plugin(id: "peer", runtime: PluginRuntimeState.active, setup: PluginSetupState.ready);
+      publish(plugins: [target, peer]);
+      final request = detail
+          ? const PluginLifecycleCommandRequest.enable()
+          : const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe);
+      final result = Completer<PluginManagementMutationResult>();
+      when(() => service.command(pluginId: "ready", request: request)).thenAnswer((_) => result.future);
+      await tester.pumpWidget(app(detailId: detail ? "ready" : null));
+      await tester.pumpAndSettle();
+      final flow = tester.element(find.byType(HarnessSettingsFlowView));
+      final slot = find.byKey(const Key("harness_management_enabled_target_ready"));
+      final slotRect = tester.getRect(slot);
+
+      await tester.tap(find.byKey(const Key("harness_management_enabled_ready")));
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      expect(find.bySemanticsLabel("Loading harnesses"), findsNothing);
+      expect(tester.element(find.byType(HarnessSettingsFlowView)), same(flow));
+      expect(find.byKey(const Key("harness_management_enabled_ready")), findsNothing);
+      expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsOneWidget);
+      expect(find.bySemanticsLabel(RegExp("Updating Ready harness")), findsOneWidget);
+      expect(tester.getRect(slot), slotRect);
+      expect(find.byType(PregoActivityIndicator), findsOneWidget);
+      if (!detail) {
+        final peerSwitch = tester.widget<PregoSwitch>(find.byKey(const Key("harness_management_enabled_peer")));
+        expect(peerSwitch.value, isTrue);
+        expect(peerSwitch.onChanged, isNull);
+        expect(find.text("peer"), findsOneWidget);
+      }
+
+      publish(
+        plugins: [
+          target.copyWith(runtimeState: detail ? PluginRuntimeState.active : PluginRuntimeState.disabled),
+          peer,
+        ],
+      );
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      expect(find.bySemanticsLabel("Loading harnesses"), findsNothing);
+      expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsOneWidget);
+      result.complete(
+        PluginManagementMutationResult.success(
+          response: (snapshots.value as PluginManagementLoadResultSupported).response,
+        ),
+      );
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsNothing);
+      expect(tester.widget<PregoSwitch>(find.byKey(const Key("harness_management_enabled_ready"))).value, detail);
+      verify(() => service.command(pluginId: "ready", request: request)).called(1);
+    });
+  }
+
   testWidgets("global timeout shows progress only for its own all-harness update", (tester) async {
     phone(tester: tester);
     publish(plugins: [_ready]);

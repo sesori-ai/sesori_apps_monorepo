@@ -970,8 +970,8 @@ void main() {
     await _showDetail(tester, "future-harness");
     expect(find.text("Version"), findsOneWidget);
     expect(find.text("9.8.7"), findsOneWidget);
-    expect(find.text("Running"), findsOneWidget);
-    expect(find.text("Idle"), findsOneWidget);
+    expect(find.text("Running"), findsNothing);
+    expect(find.text("Idle"), findsNWidgets(2));
     expect(find.byKey(const Key("harness_management_restart_future-harness")), findsOneWidget);
     expect(find.byKey(const Key("harness_management_timeout_future-harness")), findsOneWidget);
     expect(find.text("20 min"), findsOneWidget);
@@ -997,8 +997,8 @@ void main() {
     expect(find.byKey(const Key("harness_management_restart_opencode")), findsNothing);
     expect(find.byKey(const Key("harness_management_timeout_opencode")), findsNothing);
     expect(find.byKey(const Key("harness_management_default_timeout")), findsNothing);
-    expect(find.text("Running"), findsOneWidget);
-    expect(find.text("Idle"), findsOneWidget);
+    expect(find.text("Running"), findsNothing);
+    expect(find.text("Idle"), findsNWidgets(2));
     expect(find.text("Version"), findsNothing);
 
     snapshots.add(
@@ -1022,7 +1022,7 @@ void main() {
     expect(find.byKey(const Key("harness_management_default_timeout")), findsNothing);
   });
 
-  testWidgets("unknown runtime and work facts are omitted rather than presented as disabled", (tester) async {
+  testWidgets("unknown runtime or work never implies disabled or Running", (tester) async {
     _useTallSurface(tester);
     snapshots.add(
       PluginManagementLoadResult.supported(
@@ -1063,9 +1063,9 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(find.text("Running"), findsOneWidget);
+    expect(find.text("Running"), findsNothing);
     expect(find.text("Work"), findsNothing);
-    expect(find.text("Unknown"), findsNothing);
+    expect(find.text("Unknown"), findsOneWidget);
   });
 
   testWidgets("supported response with no harnesses shows the empty state", (tester) async {

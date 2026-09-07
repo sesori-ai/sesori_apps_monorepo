@@ -3733,6 +3733,12 @@ abstract class AppLocalizations {
   /// **'{name} enabled'**
   String harnessesEnabledLabel(String name);
 
+  /// No description provided for @harnessesUpdatingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating {name}'**
+  String harnessesUpdatingLabel(String name);
+
   /// No description provided for @harnessesForceRestartTitle.
   ///
   /// In en, this message translates to:

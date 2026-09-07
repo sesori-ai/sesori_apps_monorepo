@@ -199,9 +199,9 @@ class const _HarnessOverviewRow({
       minHeight: 68,
       leading: PregoBrandLogo(pluginId: plugin.setup.id, color: context.prego.colors.textTertiary),
       title: Text(plugin.setup.displayName),
-      subtitle: _group(plugin: plugin, install: install) == _HarnessGroup.disabled
-          ? null
-          : _HarnessStatus(plugin: plugin, install: install, overview: true),
+      subtitle: _showOverviewStatus(plugin: plugin, install: install)
+          ? _HarnessStatus(plugin: plugin, install: install, overview: true)
+          : null,
       onTap: onOpen,
       trailing: Row(
         mainAxisSize: MainAxisSize.min,

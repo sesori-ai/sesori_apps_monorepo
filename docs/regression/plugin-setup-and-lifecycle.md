@@ -232,9 +232,15 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Harness names open details, switches send actual enable/disable intent, and the separate
   download target immediately starts an advertised install. Switches retain the bridge's
   known enabled preference while blocked by setup or another operation; unknown runtime
-  has no inferred switch. Other overview rows always show their status, including Idle;
-  disabled overview rows have no subtitle. Global timeout is last; its value remains visible
-  but not editable during per-harness commands, and only its own all-harness update shows progress.
+  has no inferred switch. A pending toggle replaces only that harness's switch with an
+  in-place indicator in the same 64×44 slot; the list stays visible and other mutations
+  remain temporarily gated. Independent per-harness toggles are follow-up #1358.
+- Running means reported busy session work, not merely an active runtime. Idle or stopped
+  overview entries have no subtitle section, even when the process is alive; disabled
+  entries also omit it. Installation/setup problems remain visible on eligible entries,
+  and unknown activity is not labelled Running. Global timeout is last; its value remains
+  visible but not editable during per-harness commands, and only its own all-harness update
+  shows progress.
 - Detail reports only known version and idle/busy activity, never a fabricated session count.
   Missing runtime has setup/install content rather than operational actions. Unknown and
   externally managed capabilities remain honest. Individual timeout inheritance, custom
