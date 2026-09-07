@@ -25,9 +25,11 @@ class AntigravityAcpApi({
       logTag: "antigravity-probe",
       stderrInterceptor: _stderrInterceptor,
     );
+    final connecting = client.connect();
+    final connected = connecting.then<AsyncError?>((_) => null, onError: AsyncError.new);
     try {
       await _awaitPhase(
-        operation: client.connect(),
+        operation: connecting,
         timeout: timeout,
         deadline: deadline,
         abortSignal: abortSignal,
@@ -47,6 +49,8 @@ class AntigravityAcpApi({
       return result;
     } finally {
       await client.dispose();
+      // A cancelled runtime probe must also reap an already-started late spawn.
+      await connected;
     }
   }
 
@@ -76,13 +80,22 @@ class AntigravityAcpApi({
       );
     }
 
+    // Retain settlement even when abort wins during process spawn. Disposal
+    // makes a late connect reap its child, and completion must wait for that.
+    final settled = run().then<AsyncError?>(
+      (_) => null,
+      onError: AsyncError.new,
+    );
     try {
-      await Future.any<void>([
-        run(),
-        budget.abortSignal.whenAborted.then<void>((_) => throw const PluginStartAbortedException()),
+      final failure = await Future.any<AsyncError?>([
+        settled,
+        budget.abortSignal.whenAborted.then<AsyncError?>((_) => throw const PluginStartAbortedException()),
       ]).timeout(budget.remaining);
+      if (failure != null) Error.throwWithStackTrace(failure.error, failure.stackTrace);
     } finally {
       await client.dispose();
+      // A closure-induced failure is secondary to the controlling abort/timeout.
+      await settled;
     }
     budget.remaining;
   }

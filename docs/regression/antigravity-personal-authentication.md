@@ -1,10 +1,11 @@
-# Antigravity Personal Authentication Boundaries
+# Antigravity Personal Authentication
 
 ## Status and scope
 
-Internal, unregistered boundaries and provider policy. This does not supply an executable composed login operation.
-Operation-scoped challenge lifetime, one-shot dispatch, terminal setup reinspection and product activation are separate
-steps. Never execute real Google OAuth or inspect ambient credentials/token contents to validate these foundations.
+Internal, unregistered personal-login operation, boundaries and provider policy. The injected composition seam is
+executable with synthetic peers; real Antigravity descriptor wiring and product activation remain Step 9. Browser
+login requires the current mobile/desktop client, not a bridge-host CLI fallback. Never execute real Google OAuth or
+inspect ambient credentials/token contents to validate these foundations.
 
 ## Required behavior
 
@@ -17,10 +18,13 @@ steps. Never execute real Google OAuth or inspect ambient credentials/token cont
   It uses the prepared environment with no
   parent inheritance, the official sibling harness, and the existing ACP process owner. It disposes on success,
   timeout, cancellation, malformed authorization output and process exit; late results cannot report success.
+  Both initialize-only probing and authentication await an already-started spawn after disposal so a late child is
+  reaped before reporting completion. Callback transport force-closes and awaits its started request too.
 - The exact stdout prefix `Open the following link to authenticate the ACP server: ` is intercepted before logging
   or NDJSON parsing, including fragmented lines. Other bytes pass through. OAuth-bearing stderr is selectively
   consumed; useful diagnostics remain. Errors retain typed causes but their presentation never includes OAuth URLs,
-  states or codes. No request or response body is logged by callback transport.
+  states or codes. Runtime rejection diagnostics retain source, missing/rejected component, pair issue, contract
+  violations and runtime paths, or unsupported target rather than only a type name. No callback body is logged.
 - Authorization must use `https://accounts.google.com/o/oauth2/v2/auth` with exactly one `response_type=code`, state
   (nonempty, at most 512 characters, no whitespace), and redirect URI. The redirect is exactly an explicit
   `http://127.0.0.1:<port>/` root with port 1024–65535. Reject user-info, fragments, other origins/paths and duplicate
@@ -31,8 +35,16 @@ steps. Never execute real Google OAuth or inspect ambient credentials/token cont
 - A dedicated injected HTTP client sends only the already-authorized callback GET, uses DIRECT rather than ambient
   proxy settings, never follows redirects, and closes on completion/timeout/abort. The repository normalizes 2xx
   versus rejected statuses before service policy. HTTP delivery alone is not evidence of authenticated ACP completion.
-- Subscribe to repository/service authorization events before starting authentication. These peers are scoped to one
-  attempt; the future composed operation must own cancellation, await authentication cleanup, then dispose them.
+- The operation prepares the isolated profile, resolves/probes the runtime with that same environment and remaining
+  budget, subscribes to authorization events, then authenticates. One challenge is exposed; a second fails closed.
+  Same-host/already-authenticated completion requires no remote dispatch. A remote callback is claimed once before
+  service validation/HTTP; failed dispatch does not permit replay. Callback HTTP success is not ACP login success.
+- Event-stream cancellation aborts the attempt and waits for ACP, callback, and peer cleanup. Normal completion also
+  waits for a callback already in flight, rather than aborting it when ACP finishes first. Closed attempts reject
+  callbacks; their closures cannot dispatch through another attempt's services.
+- The existing bridge `PluginLifecycleService` reinspects setup only after operation stream closure/error, including
+  cancellation/failure. The plugin operation does not duplicate setup inspection or infer readiness from token
+  presence. Real descriptor integration remains unregistered until Step 9.
 
 ## Failure signals and coverage
 
@@ -43,9 +55,17 @@ steps. Never execute real Google OAuth or inspect ambient credentials/token cont
   and normalized HTTP status outcomes. No real process or network is used by these tests.
 - `antigravity_authentication_service_test.dart`: authorization and continuation attack tables, rejection before HTTP,
   valid Google issuer, response-status context, and expired-budget rejection.
-- `antigravity_loopback_client_test.dart`: injected fake HTTP client verifies exact GET, DIRECT, disabled redirects,
-  closure on timeout/abort and suppression of late request sends.
+- `antigravity_loopback_client_test.dart`: fake HTTP verifies exact GET, DIRECT, disabled redirects, awaited closure
+  on timeout/abort and suppression of late sends; a local synthetic HTTP server proves dispatched requests settle
+  through real forced client closure. No Google endpoint is contacted.
 - `antigravity_profile_service_test.dart`: executor timeout identity, no mutation after aborted preflight, and awaited
   atomic write before rejecting late success, in addition to the isolated-profile coverage.
-- Evidence: owning Antigravity analyzer and package tests pass locally. Real Google OAuth, full composed operations,
-  cross-target runtime execution and final L5 Full remain unverified; this document does not claim those capabilities.
+- `antigravity_authentication_operation_test.dart`: shared environment/budget, one-shot continuation, same-host
+  completion, runtime rejection, callback/authorization failure, timeout/process exit, cancellation while cleanup or
+  callback work is in flight, and isolation from subsequent attempts.
+- `antigravity_authentication_composer_test.dart`: full unregistered composition with real temporary runtime files,
+  shared store scopes, fake host-spawned helper/probe/auth processes, exact personal handshake and complete disposal.
+- `antigravity_acp_api_test.dart`: delayed probe/auth spawn cancellation waits for release and reaping without initialize.
+- Bridge `plugin_lifecycle_service_test.dart`: representative browser terminal event cannot trigger setup reinspection
+  until stream closure; cancelled attempts also refresh setup after settling.
+- Real Google OAuth, cross-target native runtime execution and final L5 Full remain unverified.

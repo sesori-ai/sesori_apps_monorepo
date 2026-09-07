@@ -37,6 +37,44 @@ void main() {
   });
   tearDown(() => process.close());
 
+  for (final authenticating in [false, true]) {
+    test("${authenticating ? 'authentication' : 'probe'} abort awaits and reaps a late spawn", () async {
+      final spawn = Completer<AcpProcessHandle>();
+      final spawning = Completer<void>();
+      final abort = StartAbortController();
+      api = AntigravityAcpApi(
+        processFactory: (_) {
+          spawning.complete();
+          return spawn.future;
+        },
+        stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+      );
+      var settled = false;
+      final assertion = expectLater(
+        authenticating
+            ? api.authenticate(
+                launchSpec: const AcpLaunchSpec(command: "/synthetic/agent", args: [], includeParentEnvironment: false),
+                stdoutInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+                budget: AntigravityAuthenticationBudget(timeout: const Duration(seconds: 2), abortSignal: abort.signal),
+              )
+            : api.initializeOnly(
+                launchSpec: const AcpLaunchSpec(command: "/synthetic/agent", args: [], includeParentEnvironment: false),
+                timeout: const Duration(seconds: 2),
+                abortSignal: abort.signal,
+              ),
+        throwsA(isA<PluginStartAbortedException>()),
+      ).then((_) => settled = true);
+      await spawning.future;
+      abort.abort();
+      await Future<void>(() {});
+      expect(settled, isFalse);
+      spawn.complete(process);
+      await assertion;
+      expect(await process.exitCode, -15);
+      expect(process.written, isEmpty);
+    });
+  }
+
   Future<Map<String, dynamic>> waitForInitialize() async {
     for (var attempt = 0; attempt < 400; attempt++) {
       final frames = process.written.where((frame) => frame["method"] == "initialize");

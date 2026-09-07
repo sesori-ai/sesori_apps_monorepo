@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–5 and 6.a–6.b merged, Step 6.c in review
+- **Status:** active; Steps 1–5 and 6.a–6.c merged, Step 6.d in review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; Step 6 uses ordered 6.a/6.b/6.c/6.d PRs as approved by the user
@@ -289,6 +289,7 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityRuntimeVersionValidator` | `runtime/antigravity_runtime_version_validator.dart` | L3 adapter |
 | `AntigravityCatalogTracker` | `trackers/antigravity_catalog_tracker.dart` | tracker |
 | `AntigravityAuthenticationOperation` | `authentication/antigravity_authentication_operation.dart` | consumer |
+| `AntigravityAuthenticationComposer` | `runtime/antigravity_authentication_composer.dart` | composition |
 | `AntigravityApprovalRegistry` | `antigravity_approval_registry.dart` | consumer |
 | `AntigravityPlugin` | `antigravity_plugin.dart` | consumer |
 | `AntigravityPluginDescriptor` | `runtime/antigravity_plugin_descriptor.dart` | composition |
@@ -319,10 +320,14 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravitySessionMetadataService` | metadata repository | descriptor | none |
 | `AntigravityRuntimeVersionValidator` | runtime service | descriptor | none |
 | `AntigravityCatalogTracker` | none | descriptor | last-good immutable catalog |
-| `AntigravityAuthenticationOperation` | profile/runtime/auth services | descriptor | one auth attempt |
+| `AntigravityAuthenticationComposer` | none; `compose` requires host process/store, dedicated HTTP client, and launch/attempt inputs | descriptor in Step 9 | stateless; constructs per-attempt peers |
+| `AntigravityAuthenticationOperation` | profile/runtime/auth services | authentication composer | one auth attempt |
 | `AntigravityApprovalRegistry` | pending stores, interaction service | interaction composer | pending lifecycle |
 | `AntigravityPlugin` | launch/ACP/mapping/recovery peers, options composer | descriptor | live ACP processes |
 | `AntigravityPluginDescriptor` | none | bridge registry | lifecycle composition root |
+
+For authentication attempts, the descriptor delegates construction of the listed profile/runtime/ACP/auth peers to
+`AntigravityAuthenticationComposer`; the operation owns their attempt lifecycle, not the stateless composer.
 
 `AntigravityProfileStorage` persists typed settings through its injected plugin-scoped `HostJsonStore`, shared with the
 live `PluginHost`, so writes retain the host's atomic locked state contract. It creates the profile and uses an injected
@@ -731,15 +736,20 @@ documented invariant, they update that document immediately. Step 11 is final re
   privacy, security policy, and preparation deadlines. This slice has no executable composed authentication operation.
 - **6.d — composed authentication (estimate 500–750 lines):** compose the existing profile/runtime/authentication
   services with one challenge/completer, cancellation and one-shot continuation, terminal cleanup and setup
-  reinspection. Cover same-host completion, remote continuation, late results, deadline and operation cancellation.
+  reinspection. Reuse the existing bridge lifecycle service's terminal setup-reinspection owner after operation
+  closure/error, rather than duplicating it in the plugin. The unregistered authentication composer constructs
+  per-attempt peers; Step 9 delegates to it from the descriptor. Cover same-host completion, remote continuation,
+  late results, deadline and operation cancellation. Probe/auth boundaries await late spawn reaping; callback
+  transport awaits its started request after forced closure, retaining the controlling abort/timeout failure.
   All slices remain unregistered until Step 9. This approved delivery split retains twelve top-level steps and the
   1,500-line cap; the pre-split combined estimate was 1,650–1,850 lines without cutting security/lifecycle coverage.
 - **Evidence and privacy:** pinned `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`,
   `antigravityAuthSupport.ts`, corroborates nested settings/token paths (249–253, 318), browser suppression (217–294),
   authorization grammar (354–388), and sensitive stderr (458). These safeguards address ordinary login: otherwise
   ambient credentials/browser handling or logged OAuth secrets defeat the isolated remote flow. Never log either URL.
-- **Complexity budget:** new mutable state is limited to bounded process-line buffers and the existing store-lock
-  ownership extended to child scopes; no global registry, new persistent coordination, or additional lifecycle manager.
+- **Complexity budget:** mutable state is limited to bounded process-line buffers, one-attempt operation progress/
+  continuation settlement, and the existing store-lock ownership extended to child scopes; no global registry, new
+  persistent coordination, or additional lifecycle manager.
   Profile settings are the only planned new persisted configuration; Google owns its tokens. Reuse ACP/operation
   cancellation and deadline owners. Keep provider decisions out of shared transport. No unrelated cleanup or wire shim.
 - Architecture plan review must cover these new shared boundaries before 6.a implementation. Keep only one series PR
@@ -799,7 +809,8 @@ documented invariant, they update that document immediately. Step 11 is final re
   auth through its service. It owns one challenge/completer, transitions, cancellation, and terminal cleanup; it never
   performs filesystem, ACP, or HTTP work directly or constructs lower-layer peers.
 - Implement initialize/authenticate, browser challenge, direct same-host completion, remote callback,
-  abort/timeout/process-exit cleanup, and terminal setup reinspection. Never log either URL.
+  abort/timeout/process-exit cleanup, and terminal setup reinspection by the existing bridge lifecycle service
+  after operation settlement. Never log either URL.
 - Treat repository-reported token-file presence only as setup evidence; live authenticate is authoritative. Do not parse
   token content or auto-start login.
 

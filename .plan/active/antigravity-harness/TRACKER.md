@@ -3,18 +3,19 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.b merged; Step 6.c open for review
-- **Base:** synced with main `ce423c8ea7` after Step 6.b merge
-- **Current branch:** `antigravity-harness-step-6c-personal-authentication`
+- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review
+- **Base:** synced with main `f1403fbb35` after Step 6.c merge
+- **Current branch:** `antigravity-harness-step-6d-authentication-operation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4),
   [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
-  [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b)
-- **Open PR:** [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
-- **Next action:** monitor Step 6.c through merge; begin Step 6.d locally
+  [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
+  [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
+- **Open PR:** [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
+- **Next action:** monitor Step 6.d through merge; begin Step 7 locally
 
 ## Fixed PR Series
 
@@ -25,7 +26,7 @@
 - [x] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
 - [x] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
 - [x] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
-- [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
+- [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
 - [ ] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
 - [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
@@ -138,8 +139,25 @@
 - Publication cap: `git diff --numstat ce423c8ea7 2055e399c8` totals 1,106 + 41 = 1,147 changed lines.
 - Post-sync validation: all 63 Antigravity tests and owning-package analysis pass.
 - No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
-  access in this slice. Step 6.d composition is a separate local successor while Step 6.c is in review.
+  access in the 6.c slice; composition belongs to Step 6.d.
 
+
+## Step 6.d Checklist
+
+- [x] Compose isolated profile preparation, runtime selection/exact probing, and personal authentication through
+  existing services with one environment and monotonic budget. Keep provider URL policy inside the service.
+- [x] Add per-attempt single challenge/one-shot continuation, same-host completion, and awaited cancellation/cleanup.
+- [x] Add the unregistered composer with shared root scopes, isolated host commands/ACP and dedicated HTTP client.
+- [x] Preserve the existing bridge lifecycle service as terminal setup-reinspection owner; test closure ordering.
+- [x] Approved narrow boundary fixes await pending probe/auth spawn reaping and callback transport settlement after
+  forced closure, preserving the controlling failure. No new shared transport machinery or descriptor registration.
+- [x] Initial checkpoint: 77 Antigravity tests, 8 relevant bridge lifecycle tests, owning Antigravity analysis and
+  changed bridge-test analysis passed. Canonical-path fixture correction was verified before the complete run.
+- [x] Independent architecture review approved all 14 files at immutable checkpoint `5f33ba6390`.
+- [x] Step 6.c merged; synchronize before Step 6.d publication.
+- Post-sync verification: 78 Antigravity tests, 8 focused lifecycle tests, and both relevant analyses pass.
+- Post-sync code-head cap: `git diff --numstat f1403fbb35 d5812b3550` totals 997 + 35 = 1,032 changed lines.
+- No real OAuth, ambient credential/token access, database/history changes, Step 7 work, or active harness registration.
 
 ## Architecture Reviews
 
