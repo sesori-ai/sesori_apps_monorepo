@@ -909,8 +909,11 @@ class const _IssuePill({required final String label, required final bool selecte
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final selectionTint = prego.colors.bgBrandHover;
     final selectedFill = Color.alphaBlend(
-      Theme.of(context).brightness == Brightness.dark ? prego.colors.bgBrandHover : prego.colors.bgGrayPressed,
+      Theme.of(context).brightness == Brightness.dark
+          ? selectionTint
+          : selectionTint.withValues(alpha: selectionTint.a / 2),
       prego.colors.bgSurface2,
     );
     return Semantics(
