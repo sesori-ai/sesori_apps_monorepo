@@ -265,7 +265,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["stale"],
@@ -278,7 +278,7 @@ void main() {
     expect(fake.written.first["error"], {"code": -32603, "message": "aborted"});
     expect(fake.written.last["result"], isEmpty);
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-2",
         answers: const [
           ["current"],

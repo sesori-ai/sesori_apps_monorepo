@@ -742,9 +742,13 @@ bytes remain frozen beside a separate source-manifested scoped-stop v1 corpus.
 Consumer coverage proves exact-child and unknown-child targeting, no extra standard
 cancel, pre-dispatch queue cleanup, later prompt/input survival, reused input IDs,
 prompt-write ordering, cause-preserving failure, lifecycle-owned busy state, and
-whole-plugin stop. ACP analysis and 323 tests, DeepSeek analysis and 114 tests,
-and unchanged Grok analysis and 85 tests pass. Architecture implementation review
-remains pending. Final DeepSeek E2E follows, then Codex.
+whole-plugin stop. Initial architecture review required approval-response transport
+to reuse its inherited seam and initialize version mapping/policy to move through
+the existing repository/service. `859b99071` applies both; the final architecture
+pass approved with no findings. Merged actual `origin/main` in `4eaf8ede58` and
+updated the affected async reply assertion. Post-merge ACP analysis + 325 tests,
+DeepSeek analysis + 114 tests, and Grok analysis + 85 tests pass. Final DeepSeek
+E2E follows, then Codex.
 Merged actual `origin/main` in `a341dd144`, preserving upstream's required launch
 setting in the extracted DeepSeek test builder. ACP analysis + 323 tests and
 DeepSeek analysis + 106 tests pass after the merge.
