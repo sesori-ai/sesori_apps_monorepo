@@ -10,6 +10,9 @@ import "repositories/trackers/acp_child_session_tracker.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
+/// Pure envelope normalization shared by live mapping and history replay.
+typedef AcpSessionUpdateNormalizer = Map<String, dynamic> Function({required Map<String, dynamic> params});
+
 sealed class const AcpToolCallSessionLookup();
 
 final class const AcpToolCallSessionNotFound() extends AcpToolCallSessionLookup;
@@ -81,6 +84,10 @@ class AcpEventMapper({
       _configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
   String? providerForSession({required String sessionId}) =>
       _configurationTracker.snapshotForSession(sessionId: sessionId).providerId;
+
+  /// Identity for standard ACP. Harness overrides delegate to their Layer-2 mapper.
+  /// Replay invokes the same hook before retaining any tool content.
+  Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) => params;
 
   /// Backend extension time for a message-bearing ACP notification.
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) => null;
@@ -445,7 +452,7 @@ class AcpEventMapper({
     if (notification.method != AcpMethods.sessionUpdate) {
       return mapExtension(notification);
     }
-    final params = notification.params;
+    final params = normalizeSessionUpdate(params: notification.params);
     final sessionId = params["sessionId"] as String?;
     final update = _asMap(params["update"]);
     if (sessionId == null || sessionId.isEmpty || update == null) {
