@@ -22,7 +22,13 @@ class const AntigravityProtocolMapper() {
   Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) {
     final raw = params["update"];
     if (raw is! Map<String, dynamic>) return params;
-    final update = AntigravityToolUpdateDto.fromJson(raw);
+    final AntigravityToolUpdateDto update;
+    try {
+      update = AntigravityToolUpdateDto.fromJson(raw);
+    } on Object catch (error, stackTrace) {
+      Log.w("[antigravity] malformed tool update; retaining standard ACP handling", error, stackTrace);
+      return params;
+    }
     if (update.sessionUpdate == AntigravityUpdateKind.unknown) return params;
     final input = _nativeFields(raw: update.rawInput);
     final output = _nativeFields(raw: update.rawOutput);
@@ -46,7 +52,8 @@ class const AntigravityProtocolMapper() {
           output?.snakeWorkingDir,
     );
     final exitCode = output?.exitCode ?? output?.snakeExitCode;
-    final nativeOutput = output?.combinedOutput ?? output?.snakeCombinedOutput ?? output?.stdout;
+    final nativeOutput =
+        output?.combinedOutput ?? output?.snakeCombinedOutput ?? output?.stdout ?? output?.formattedOutput;
     final display = _displayOutput(nativeOutput: nativeOutput, exitCode: exitCode, content: raw["content"]);
     final normalized = AntigravityNormalizedUpdateDto(
       title: command ?? _label(text: update.title),
@@ -109,31 +116,38 @@ class const AntigravityProtocolMapper() {
     if (nativeOutput == null && (exitCode == null || exitCode == 0)) return (text: null, content: null);
     final retained = <Object?>[];
     var text = "";
-    // ACP tool content is a list. Decode only text; preserve the original
-    // non-text entries so valid image bytes and metadata are not reserialized.
-    if (content is List) {
-      for (final entry in content) {
-        final block = entry is Map<String, dynamic> ? AntigravityToolContentDto.fromJson(entry) : null;
-        switch (block) {
-          case AntigravityWrappedToolContentDto(content: AntigravityTextToolContentDto(text: final value)) ||
-              AntigravityTextToolContentDto(text: final value):
-            if (nativeOutput == null) {
-              text = _bound(
-                text: "$text${_bound(text: value, limit: maxToolOutputLength)}",
-                limit: maxToolOutputLength,
-              );
-            }
-          case null || AntigravityToolContentDto():
-            retained.add(entry);
-        }
+    var matchesNative = nativeOutput != null;
+    var matchedLength = 0;
+    // Shared ACP also accepts a direct map/string. Preserve original non-text
+    // entries, including malformed blocks, for its bounded degradation path.
+    final entries = content is List ? content : [?content];
+    for (final entry in entries) {
+      final value = _standardText(entry: entry);
+      if (value == null) {
+        retained.add(entry);
+        continue;
       }
-    } else if (content is String) {
-      text = content;
+      if (nativeOutput case final native?) {
+        matchesNative = matchesNative && native.startsWith(value, matchedLength);
+        matchedLength += value.length;
+      }
+      if (value != nativeOutput) {
+        text = _bound(
+          text: "$text${_bound(text: value, limit: maxToolOutputLength)}",
+          limit: maxToolOutputLength,
+        );
+      }
     }
     final note = exitCode != null && exitCode != 0 ? "\n[Process exit code: $exitCode]" : "";
     // Respect the existing shared display cap so its later prefix truncation
     // cannot discard the process exit note. Raw fields retain their own budget.
-    final display = "${_bound(text: nativeOutput ?? text, limit: maxToolOutputLength - note.length)}$note";
+    final body = _combinedOutput(
+      native: nativeOutput,
+      standard: text,
+      duplicates: matchesNative && matchedLength == nativeOutput?.length,
+      limit: maxToolOutputLength - note.length,
+    );
+    final display = "$body$note";
     return (
       text: display,
       content: content == null
@@ -143,6 +157,40 @@ class const AntigravityProtocolMapper() {
               ...retained,
             ],
     );
+  }
+
+  String? _standardText({required Object? entry}) {
+    if (entry is String) return entry;
+    if (entry is! Map<String, dynamic>) return null;
+    try {
+      return switch (AntigravityToolContentDto.fromJson(entry)) {
+        AntigravityWrappedToolContentDto(content: AntigravityTextToolContentDto(:final text)) ||
+        AntigravityTextToolContentDto(:final text) => text,
+        AntigravityToolContentDto() => null,
+      };
+    } on Object catch (error, stackTrace) {
+      Log.w("[antigravity] malformed tool content; retaining standard ACP degradation", error, stackTrace);
+      return null;
+    }
+  }
+
+  String _combinedOutput({
+    required String? native,
+    required String standard,
+    required bool duplicates,
+    required int limit,
+  }) {
+    if (native == null || native.isEmpty) return _bound(text: standard, limit: limit);
+    if (standard.isEmpty || duplicates) return _bound(text: native, limit: limit);
+    // Reserve space for both differing sources, donating unused space when one
+    // is short. Neither source nor the exit note disappears under prefix truncation.
+    final half = (limit - 1) ~/ 2;
+    final nativeLimit = native.length < half
+        ? native.length
+        : standard.length < half
+        ? limit - 1 - standard.length
+        : half;
+    return "${_bound(text: native, limit: nativeLimit)}\n${_bound(text: standard, limit: limit - 1 - nativeLimit)}";
   }
 
   String? _label({required String? text}) {

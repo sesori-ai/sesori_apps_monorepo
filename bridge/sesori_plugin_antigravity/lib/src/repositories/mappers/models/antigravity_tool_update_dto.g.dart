@@ -41,6 +41,7 @@ _AntigravityNativeToolFieldsDto _$AntigravityNativeToolFieldsDtoFromJson(
   stdout: json['stdout'] as String?,
   combinedOutput: json['combinedOutput'] as String?,
   snakeCombinedOutput: json['combined_output'] as String?,
+  formattedOutput: json['formatted_output'] as String?,
   exitCode: (json['exitCode'] as num?)?.toInt(),
   snakeExitCode: (json['exit_code'] as num?)?.toInt(),
   imagePath: json['imagePath'] as String?,

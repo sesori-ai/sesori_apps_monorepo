@@ -277,6 +277,121 @@ void main() {
     expect(retainedText, lessThanOrEqualTo(64000));
   });
 
+  test("formatted-only native output reaches canonical stdout and live/replay display", () {
+    final params = _envelope(
+      update: {
+        "status": "completed",
+        "rawOutput": {"formatted_output": "formatted"},
+      },
+    );
+    final normalized = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
+    expect((normalized["rawOutput"] as Map)["stdout"], "formatted");
+    expect(_parity(params: params).output, "formatted");
+  });
+
+  test("only exact standard text duplicates are removed, including split text", () {
+    for (final texts in [
+      <String>["native"],
+      ["na", "tive"],
+      ["detail"],
+      ["native", "detail"],
+    ]) {
+      final params = _envelope(
+        update: {
+          "status": "completed",
+          "rawOutput": {"combinedOutput": "native", "exit_code": 3},
+          "content": [
+            for (final text in texts)
+              {
+                "type": "content",
+                "content": {"type": "text", "text": text},
+              },
+          ],
+        },
+      );
+      final expected = texts.contains("detail") ? "native\ndetail" : "native";
+      expect(_parity(params: params).output, "$expected\n[Process exit code: 3]");
+    }
+    final direct = _envelope(
+      update: {
+        "rawOutput": {"combinedOutput": "native"},
+        "content": {"type": "text", "text": "direct detail"},
+      },
+    );
+    expect(_parity(params: direct).output, "native\ndirect detail");
+  });
+
+  test("differing long sources each retain a tail within the display and exit-note bound", () {
+    final params = _envelope(
+      update: {
+        "rawOutput": {"combinedOutput": "${"n" * 2000}NATIVE", "exit_code": 8},
+        "content": {"type": "text", "text": "${"s" * 2000}STANDARD"},
+      },
+    );
+    final output = _parity(params: params).output!;
+    expect(output.length, maxToolOutputLength);
+    expect(output, contains("NATIVE\n"));
+    expect(output, endsWith("STANDARD\n[Process exit code: 8]"));
+  });
+
+  test("malformed known blocks retain original entries for bounded ACP degradation", () {
+    for (final bad in <Map<String, dynamic>>[
+      {"type": "content"},
+      {"type": "text", "text": 7},
+      {"type": "content", "content": "not a map"},
+    ]) {
+      final params = _envelope(
+        update: {
+          "status": "completed",
+          "rawOutput": {"combinedOutput": "kept"},
+          "content": [bad],
+        },
+      );
+      final normalized = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
+      expect((normalized["content"] as List).last, same(bad));
+      // ACP's legacy fallback recovers a plain string nested under content.
+      expect(_parity(params: params).output, bad["content"] == "not a map" ? "keptnot a map" : "kept");
+    }
+  });
+
+  test("direct image maps survive native output and nonzero-exit normalization", () {
+    const image = {"type": "image", "mimeType": "image/png", "data": "AA==", "uri": "file:///synthetic/direct.png"};
+    for (final content in [
+      image,
+      {"type": "content", "content": image},
+    ]) {
+      final params = _envelope(
+        update: {
+          "status": "completed",
+          "rawOutput": {"combinedOutput": "image", "exit_code": 4},
+          "content": content,
+        },
+      );
+      final normalized = protocol.normalizeSessionUpdate(params: params)["update"] as Map;
+      expect((normalized["content"] as List).last, same(content));
+      final state = _parity(params: params);
+      expect(state.output, "image\n[Process exit code: 4]");
+      expect(state.attachments.single, isA<PluginMessageAttachmentInlineImage>());
+      expect(state.attachments.single.filename, "direct.png");
+    }
+  });
+
+  test("malformed generated update envelopes fall back to existing ACP handling", () {
+    final params = _envelope(
+      update: {
+        "kind": 7,
+        "title": "Fallback",
+        "status": "completed",
+        "rawOutput": {"stdout": "standard output"},
+      },
+    );
+    expect(protocol.normalizeSessionUpdate(params: params), same(params));
+    final state = _parity(params: params);
+    expect(state.title, "Fallback");
+    expect(state.output, "standard output");
+    expect(state.status, PluginToolStatus.completed);
+  });
+
   test("malformed native aliases degrade observably without fabricating command policy", () {
     final params = _envelope(
       update: {

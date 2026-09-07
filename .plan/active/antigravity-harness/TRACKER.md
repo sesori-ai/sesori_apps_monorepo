@@ -214,13 +214,18 @@
 - [x] Generated DTOs normalize pinned native aliases, canonical command/output fields and typed text content.
 - [x] Preserve ACP status independently from process exit; reserve an explicit exit note inside the shared display cap.
 - [x] Bound raw JSON and remove redundant image bytes without damaging supported standard image content/metadata.
-- [x] All 15 Antigravity normalization tests, 54 ACP replay/tool/history tests and 13 DeepSeek history/time tests pass.
+- [x] All 21 Antigravity normalization tests, 54 ACP replay/tool/history tests and 13 DeepSeek history/time tests pass.
 - [x] Owning Antigravity/ACP and changed DeepSeek analyses are clean with fatal infos; DTO generation and formatting run.
 - [x] Add indexed live/replay regression document; no credential, database, history mutation or active capability claim.
 - [x] First actual independent review approved all 16 changed files at `19e24a4e36` against `80b7402f64`: 1,156
   additions + 12 deletions = 1,168 lines, including generated/tests/docs. Earlier incomplete checkpoints were uncounted.
 - [x] Synced with main `b43758e1b3`, preserving the reviewed inputs and removing a duplicate method introduced by
-  automatic merge. Relevant package source/tests and lockfile match the passing reviewed checkpoint exactly.
+  automatic merge. At publication, relevant package source/tests and lockfile matched the reviewed checkpoint exactly.
+- Publication cap `b43758e1b3` → `586e787da6` is 1,158 + 12 = 1,170 lines. The +2 versus the earlier review scope
+  is tracker status/synchronization documentation only; the removed duplicate method was a merge artifact, not a
+  deletion from the reviewed implementation.
+- Localized PR review fixes preserve formatted-only output, differing text, direct images and malformed-entry
+  degradation. All 21 normalization tests and owning analysis pass; shared ownership/contracts are unchanged.
 - Exact review base is `80b7402f6443b810b49b429410667138cd099b09`, not either pre-fix predecessor head. The plugin
   remains unregistered; Step 8 composes the provider normalizer override. No registry/residency/metadata seam lands here.
 

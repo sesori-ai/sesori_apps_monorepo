@@ -60,7 +60,7 @@ class _AntigravityToolUpdateDto implements AntigravityToolUpdateDto {
 /// @nodoc
 mixin _$AntigravityNativeToolFieldsDto {
 
- String? get command;@JsonKey(name: "CommandLine") String? get upperCommandLine;@JsonKey(name: "command_line") String? get snakeCommandLine; String? get commandLine; String? get cwd;@JsonKey(name: "Cwd") String? get upperCwd;@JsonKey(name: "WorkingDirectory") String? get workingDirectory;@JsonKey(name: "working_dir") String? get snakeWorkingDir; String? get workingDir; String? get stdout; String? get combinedOutput;@JsonKey(name: "combined_output") String? get snakeCombinedOutput; int? get exitCode;@JsonKey(name: "exit_code") int? get snakeExitCode; String? get imagePath;
+ String? get command;@JsonKey(name: "CommandLine") String? get upperCommandLine;@JsonKey(name: "command_line") String? get snakeCommandLine; String? get commandLine; String? get cwd;@JsonKey(name: "Cwd") String? get upperCwd;@JsonKey(name: "WorkingDirectory") String? get workingDirectory;@JsonKey(name: "working_dir") String? get snakeWorkingDir; String? get workingDir; String? get stdout; String? get combinedOutput;@JsonKey(name: "combined_output") String? get snakeCombinedOutput;@JsonKey(name: "formatted_output") String? get formattedOutput; int? get exitCode;@JsonKey(name: "exit_code") int? get snakeExitCode; String? get imagePath;
 
 
 
@@ -78,7 +78,7 @@ mixin _$AntigravityNativeToolFieldsDto {
 @JsonSerializable(createToJson: false)
 
 class _AntigravityNativeToolFieldsDto implements AntigravityNativeToolFieldsDto {
-  const _AntigravityNativeToolFieldsDto({required this.command, @JsonKey(name: "CommandLine") required this.upperCommandLine, @JsonKey(name: "command_line") required this.snakeCommandLine, required this.commandLine, required this.cwd, @JsonKey(name: "Cwd") required this.upperCwd, @JsonKey(name: "WorkingDirectory") required this.workingDirectory, @JsonKey(name: "working_dir") required this.snakeWorkingDir, required this.workingDir, required this.stdout, required this.combinedOutput, @JsonKey(name: "combined_output") required this.snakeCombinedOutput, required this.exitCode, @JsonKey(name: "exit_code") required this.snakeExitCode, required this.imagePath});
+  const _AntigravityNativeToolFieldsDto({required this.command, @JsonKey(name: "CommandLine") required this.upperCommandLine, @JsonKey(name: "command_line") required this.snakeCommandLine, required this.commandLine, required this.cwd, @JsonKey(name: "Cwd") required this.upperCwd, @JsonKey(name: "WorkingDirectory") required this.workingDirectory, @JsonKey(name: "working_dir") required this.snakeWorkingDir, required this.workingDir, required this.stdout, required this.combinedOutput, @JsonKey(name: "combined_output") required this.snakeCombinedOutput, @JsonKey(name: "formatted_output") required this.formattedOutput, required this.exitCode, @JsonKey(name: "exit_code") required this.snakeExitCode, required this.imagePath});
   factory _AntigravityNativeToolFieldsDto.fromJson(Map<String, dynamic> json) => _$AntigravityNativeToolFieldsDtoFromJson(json);
 
 @override final  String? command;
@@ -93,6 +93,7 @@ class _AntigravityNativeToolFieldsDto implements AntigravityNativeToolFieldsDto 
 @override final  String? stdout;
 @override final  String? combinedOutput;
 @override@JsonKey(name: "combined_output") final  String? snakeCombinedOutput;
+@override@JsonKey(name: "formatted_output") final  String? formattedOutput;
 @override final  int? exitCode;
 @override@JsonKey(name: "exit_code") final  int? snakeExitCode;
 @override final  String? imagePath;

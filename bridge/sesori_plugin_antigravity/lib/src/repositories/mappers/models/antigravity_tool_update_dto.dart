@@ -50,6 +50,7 @@ sealed class AntigravityNativeToolFieldsDto with _$AntigravityNativeToolFieldsDt
     required String? stdout,
     required String? combinedOutput,
     @JsonKey(name: "combined_output") required String? snakeCombinedOutput,
+    @JsonKey(name: "formatted_output") required String? formattedOutput,
     required int? exitCode,
     @JsonKey(name: "exit_code") required int? snakeExitCode,
     required String? imagePath,
