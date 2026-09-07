@@ -15,6 +15,13 @@ class AntigravityInteractionRepository({required final AcpStdioClient _client}) 
       _reply(requestId: requestId, outcome: const AntigravityPermissionOutcomeDto.cancelled());
 
   // ignore: no_slop_linter/prefer_specific_type, preserve opaque ACP string/integer request identity
+  void rejectAmbiguous({required Object requestId}) => _client.respondToServerRequestWithError(
+    id: requestId,
+    code: -32602,
+    message: "Ambiguous Antigravity tool-call session attribution",
+  );
+
+  // ignore: no_slop_linter/prefer_specific_type, preserve opaque ACP string/integer request identity
   void unsupported({required Object requestId}) => _client.respondToServerRequestWithError(
     id: requestId,
     code: -32601,

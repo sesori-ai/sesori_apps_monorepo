@@ -1,6 +1,10 @@
 import "dart:async";
 import "dart:typed_data";
 
+/// Composition supplies a fresh pair for each live/replay process when callbacks
+/// carry state. Null leaves that stream's existing transport behavior unchanged.
+typedef AcpOutputInterceptors = ({AcpOutputInterceptor? stdout, AcpOutputInterceptor? stderr});
+
 /// Consumes complete raw lines before UTF-8/NDJSON decoding or diagnostic logs.
 /// Lines retain their LF/CRLF terminator; the final unterminated line is offered
 /// at EOF. Returning false preserves every byte. Callbacks must never log input

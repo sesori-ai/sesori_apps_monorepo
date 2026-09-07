@@ -1,15 +1,14 @@
 import "package:acp_plugin/acp_plugin.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "models/antigravity_interaction.dart";
 import "services/antigravity_interaction_service.dart";
 
-/// Pending lifecycle only. Shared ACP registry integration is composed in Step 8.
+/// Pending lifecycle and attribution delegation; no raw permission policy.
 class AntigravityApprovalRegistry({
   required final AntigravityInteractionService _interactionService,
   required super.emit,
   required super.idGenerator,
-}) extends PendingPermissionRegistry<AcpServerRequest, AntigravityInteraction> {
+}) extends AcpPendingRegistry<AntigravityInteraction> {
   this
     : super(
         logContext: "[antigravity]",
@@ -19,7 +18,9 @@ class AntigravityApprovalRegistry({
         cancelPending: _interactionService.cancel,
       );
 
-  void handleServerRequest({required AcpServerRequest request}) => handleRequest(request);
+  @override
+  void rejectAmbiguousServerRequest({required AcpServerRequest request}) =>
+      _interactionService.rejectAmbiguousServerRequest(request: request);
 
   @override
   void handleRequest(AcpServerRequest request) {

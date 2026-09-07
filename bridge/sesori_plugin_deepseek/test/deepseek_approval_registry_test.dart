@@ -88,7 +88,7 @@ void main() {
         agentDisplayName: "DeepSeek",
       ),
     );
-    final built = plugin.buildApprovalRegistry(client);
+    final built = plugin.buildApprovalRegistry(client: client);
     expect(built, isA<DeepSeekApprovalRegistry>());
     await built.dispose();
     await plugin.dispose();

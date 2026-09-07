@@ -149,6 +149,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Analytics](analytics.md)
 - [Antigravity isolated profiles](antigravity-isolated-profiles.md)
 - [Antigravity live and replay updates](antigravity-live-replay-updates.md)
+- [Antigravity recovery foundations and ACP seams](antigravity-recovery-and-acp-seams.md)
 - [Antigravity model catalogs and session options](antigravity-session-options.md)
 - [Antigravity personal authentication](antigravity-personal-authentication.md)
 - [Antigravity questions and permission replies](antigravity-questions-and-permissions.md)

@@ -29,7 +29,7 @@ class DeepSeekPlugin({
       );
 
   @override
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) => DeepSeekApprovalRegistry(
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => DeepSeekApprovalRegistry(
     client: client,
     emit: emitActivityEvent,
     activeSessionResolver: () => activeTurnSessionId,

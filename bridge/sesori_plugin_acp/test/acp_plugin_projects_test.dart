@@ -873,7 +873,11 @@ class _RegistryCapturingAcpPlugin({
   AcpApprovalRegistry? registry;
 
   @override
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
-    return registry = super.buildApprovalRegistry(client);
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) {
+    return registry = AcpApprovalRegistry.forClient(
+      client: client,
+      emit: emitActivityEvent,
+      activeSessionResolver: () => activeTurnSessionId,
+    );
   }
 }

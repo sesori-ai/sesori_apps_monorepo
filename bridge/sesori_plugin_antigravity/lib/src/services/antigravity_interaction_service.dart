@@ -11,6 +11,11 @@ class AntigravityInteractionService({
   required final AntigravityProtocolMapper _protocolMapper,
   required final AntigravityInteractionRepository _repository,
 }) {
+  void rejectAmbiguousServerRequest({required AcpServerRequest request}) {
+    Log.w("[antigravity] ambiguous tool-call attribution for request ${request.id.toString()}; refusing");
+    _repository.rejectAmbiguous(requestId: request.id);
+  }
+
   AntigravityInteraction? classify({required AcpServerRequest request}) {
     final AntigravityPermissionRequestDto? input;
     try {

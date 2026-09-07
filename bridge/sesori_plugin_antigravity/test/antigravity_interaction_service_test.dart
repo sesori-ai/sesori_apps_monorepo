@@ -76,6 +76,18 @@ void main() {
   });
   tearDown(() => harness.close());
 
+  test("neutral ambiguous attribution rejects through the connection-owned service/repository without pending UI", () {
+    final AcpPendingRegistry<AntigravityInteraction> registry = harness.registry;
+    registry.rejectAmbiguousServerRequest(request: request(id: "ambiguous"));
+    expect(harness.process.written.single["id"], "ambiguous");
+    expect(harness.process.written.single["error"], {
+      "code": -32602,
+      "message": "Ambiguous Antigravity tool-call session attribution",
+    });
+    expect(harness.events, isEmpty);
+    expect(registry.hasAnyPendingInput, isFalse);
+  });
+
   test("normal permission never silently approves and dispatches exact once-only choice once", () {
     harness.receive(incoming: request(id: "rpc-text"));
     final pending = harness.registry.pendingPermissionsForSession(sessionId: "session").single;

@@ -9,14 +9,23 @@ import "acp_approval_registry.dart";
 import "acp_command_listener.dart";
 import "acp_command_tracker.dart";
 import "acp_event_mapper.dart";
+import "acp_output_interceptor.dart";
+import "acp_pending_registry.dart";
 import "acp_process_factory.dart";
 import "acp_protocol.dart";
+import "acp_session_directory_batch.dart";
 import "acp_session_loader.dart";
 import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
 import "api/acp_agent_api.dart";
 import "repositories/acp_session_config_repository.dart";
 import "repositories/trackers/acp_child_session_tracker.dart";
+
+/// Preferred live activation method when both capabilities are advertised.
+enum AcpResidencyPreference() {
+  loadFirst,
+  resumeFirst,
+}
 
 /// An interrupt request's outcome, not a synthetic child lifecycle transition.
 enum AcpChildCancelResult() {
@@ -106,7 +115,7 @@ abstract class AcpPlugin({
   PluginAuthenticationRequiredException? _authenticationFailure;
   StreamSubscription<AcpNotification>? _notificationSubscription;
   StreamSubscription<AcpServerRequest>? _serverRequestSubscription;
-  AcpApprovalRegistry? _approvalRegistry;
+  AcpPendingRegistry<Object>? _approvalRegistry;
   AcpInitializeResult? _initResult;
 
   /// Emits after each successful (re)connect — including a lazy reconnect that
@@ -244,6 +253,14 @@ abstract class AcpPlugin({
   /// Maximum time deletion waits for a cancelled target turn before close.
   Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
 
+  /// Chooses only among advertised capabilities. Never retries arbitrary errors
+  /// using a second method. History replay remains session/load.
+  AcpResidencyPreference get residencyPreference => AcpResidencyPreference.loadFirst;
+
+  /// A concrete plugin delegates to its injected composition factory. The client
+  /// remains the pre-log interception and failure-cleanup owner.
+  AcpOutputInterceptors createOutputInterceptors() => (stdout: null, stderr: null);
+
   // --- Behavior hooks ---
 
   /// Maps the user-selected slash command to the command name sent to the ACP
@@ -260,7 +277,7 @@ abstract class AcpPlugin({
   /// subclass (e.g. one that also handles `cursor/ask_question`). The base
   /// registry resolves sessionId-less server requests to the active turn's
   /// session (see [activeTurnSessionId]), same as the Cursor subclass.
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
+  AcpPendingRegistry<Object> buildApprovalRegistry({required AcpStdioClient client}) {
     return AcpApprovalRegistry.forClient(
       client: client,
       emit: emitActivityEvent,
@@ -370,6 +387,14 @@ abstract class AcpPlugin({
     _hintedDirectories.add(canonical);
     _sessionDirectories[sessionId] = canonical;
     eventMapper.setSessionProject(sessionId, canonical);
+  }
+
+  /// Explicit import/cold recovery only; this performs no filesystem scan and
+  /// cannot replace a directory already known by live operations or DB hints.
+  void registerRecoveredSessionDirectories({required AcpSessionDirectoryBatch batch}) {
+    for (final entry in batch.directories.entries) {
+      primeSessionDirectory(sessionId: entry.key, directory: entry.value);
+    }
   }
 
   /// The single handler for agent-originated notifications: replay suppression,
@@ -516,16 +541,23 @@ abstract class AcpPlugin({
   @override
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
+  AcpStdioClient _createClient({required String logTag}) {
+    final interceptors = createOutputInterceptors();
+    return AcpStdioClient(
+      launchSpec: launchSpec,
+      processFactory: _processFactory,
+      logTag: logTag,
+      stdoutInterceptor: interceptors.stdout,
+      stderrInterceptor: interceptors.stderr,
+    );
+  }
+
   Future<bool> ensureConnected() {
     final existing = _connectFuture;
     if (existing != null) return existing;
     final future = () async {
       _authenticationFailure = null;
-      final client = AcpStdioClient(
-        launchSpec: launchSpec,
-        processFactory: _processFactory,
-        logTag: id,
-      );
+      final client = _createClient(logTag: id);
       _client = client;
       try {
         await client.connect();
@@ -534,7 +566,7 @@ abstract class AcpPlugin({
           tracker: _commandTracker,
         );
         _notificationSubscription = client.notifications.listen(handleAgentNotification);
-        final registry = buildApprovalRegistry(client);
+        final registry = buildApprovalRegistry(client: client);
         _approvalRegistry = registry;
         _serverRequestSubscription = client.serverRequests.listen(
           (request) => _handleAgentServerRequest(request: request),
@@ -1247,8 +1279,8 @@ abstract class AcpPlugin({
     if (!_sessionDirectories.containsKey(sessionId)) {
       await listAllSessions(knownDirectories: const {});
     }
-    if (!loadSupported) {
-      // Resume-only agent: `session/resume` re-activates the session with NO
+    if (resumeSupported && (!loadSupported || residencyPreference == AcpResidencyPreference.resumeFirst)) {
+      // Preferred/only available resume re-activates the session with NO
       // history replay, so no suppression window is needed.
       await _resumeResident(client, sessionId);
       return;
@@ -1957,11 +1989,7 @@ abstract class AcpPlugin({
     }
     // History via `session/load` replay on a dedicated short-lived client so
     // replayed updates don't interleave with the live session's stream.
-    final replayClient = AcpStdioClient(
-      launchSpec: launchSpec,
-      processFactory: _processFactory,
-      logTag: "$id-replay",
-    );
+    final replayClient = _createClient(logTag: "$id-replay");
     final collector = AcpReplayCollector(
       sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
       sessionId: sessionId,
