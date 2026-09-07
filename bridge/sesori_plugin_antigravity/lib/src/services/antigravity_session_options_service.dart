@@ -58,6 +58,11 @@ class AntigravitySessionOptionsService({
     );
   }
 
+  void resetConnection() {
+    _catalogTracker.clear();
+    _configurationTracker.clear();
+  }
+
   PluginSessionOptions getSessionOptions() {
     final catalog = _catalogTracker.snapshot;
     return PluginSessionOptions(

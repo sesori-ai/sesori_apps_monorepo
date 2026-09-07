@@ -59,7 +59,6 @@ class const AntigravityPluginComposer() {
         catalogTracker: catalog,
         configurationTracker: configuration,
       ),
-      catalog: catalog,
       metadata: AntigravitySessionMetadataService(
         repository: AntigravitySessionMetadataRepository(storage: const AntigravitySessionMetadataStorage()),
       ),

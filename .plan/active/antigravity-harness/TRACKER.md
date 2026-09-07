@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.a merged; Step 8.b open for review
-- **Base:** synced with main `6959375addc700c00b0206204bbfc00ea6b3ca88` after Step 8.a merge
-- **Current branch:** `antigravity-harness-step-8b-persistent-composition`
+- **Status:** Steps 1–8.a merged; Step 8.b open; Step 8.c complete locally pending architecture review
+- **Base:** Step 8.c exact comparison base `c13843000d1532debef0efca5192aaf50fc761c3`
+- **Current branch:** `antigravity-harness-step-8c-descriptor-and-setup`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -20,7 +20,7 @@
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a)
 - **Open PR:** [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b).
-- **Next action:** monitor Step 8.b; begin only Step 8.c locally.
+- **Next action:** monitor Step 8.b; review Step 8.c locally, but publish it only after Step 8.b merges.
 
 ## Fixed PR Series
 
@@ -291,6 +291,29 @@
 - Descriptor exit supervision, inert setup/profile inspection and complete host/auth composition are 8.c.
   Real OAuth, native/cross-target operation, bridge import/tombstone end-to-end and L5 Full remain later gates.
   No Google history mutation, ambient credentials or active harness inventory were introduced.
+
+## Step 8.c Checklist
+
+- [x] Added the unregistered descriptor and complete host/runtime/auth roots over the existing composers and lifecycle.
+- [x] Setup inspection is static and unversioned: exact explicit/PATH/future-managed sibling presence plus isolated token
+  presence only, without writes, token reads, browser preparation, process spawning, probing or authentication.
+- [x] Preparation, exact probe and live startup share the sanitized isolated environment, disable parent inheritance,
+  reuse the plugin-root `HostJsonStore`, permit personal OAuth only and invoke the backend-neutral browser no-op.
+- [x] Shared ACP configuration state stamps Antigravity model/provider metadata in live and replay messages. New sessions
+  establish defaults; load/resume do not. Reset clears catalog/configuration together before real residency restores it.
+- [x] Known-catalog pre-queue validation and strict post-residency dispatch validation preserve the Step 8.b cold-reset
+  correction; successful acknowledged selections update only the named session.
+- [x] Existing lifecycle exit supervision resets/reconnects and re-arms without another manager; abort and shutdown await
+  cleanup. Install, bridge registry/CLI activation and real OAuth remain later gates.
+- [x] Fresh JSON-reporter evidence: 7 descriptor + 14 options + 11 composed plugin = 32 primary Step 8.c tests; the
+  separately included profile suite has 17 tests, for 49 non-loading tests total. All pass on integrated inputs.
+  Counts use suite/test IDs and successful `testDone` entries with source lines, not compact reporter filenames.
+- [x] Owning Antigravity analysis and the complete package test command pass. Test totals are not inferred from compact
+  reporter filenames. Indexed regression documentation records behavior, failure signals and remaining L5 gates.
+- Pre-review cap against exact base `c13843000d1532debef0efca5192aaf50fc761c3`: 997 additions + 38 deletions =
+  1,035 changed lines across 21 files.
+- First complete architecture review remains pending. Prior incomplete-input blocked results `de058330` and `1c53fd03`
+  are not review attempts; the Step 8.c attempt count remains zero until complete immutable artifacts are reviewed.
 
 ## Architecture Reviews
 

@@ -196,10 +196,14 @@ void main() {
       source: AntigravityCatalogSource.newSession,
       result: _catalog(id: "old"),
     );
-    tracker.clear();
+    expect(configuration.processDefaults.modelId, "old");
+    expect(configuration.snapshotForSession(sessionId: "session").providerId, AntigravityIdentity.pluginId);
+    service.resetConnection();
     expect(service.getSessionOptions().providers.providers, isEmpty);
     expect(service.getSessionOptions().completeness, PluginSessionOptionsCompleteness.partial);
     expect(tracker.newSessionDefaultModelId, isNull);
+    expect(configuration.processDefaults.modelId, isNull);
+    expect(configuration.snapshotForSession(sessionId: "session").providerId, isNull);
     await expectLater(
       service.applyForPrompt(configRepository: repository, sessionId: "s", modelId: "old"),
       throwsA(isA<PluginStaleOptionsException>()),
