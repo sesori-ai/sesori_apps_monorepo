@@ -12,6 +12,12 @@ Captured from the preview on an iPhone 17 Pro simulator running iOS 26.5:
 | --- | --- | --- |
 | ![Rating sheet](feedback_preview/rating-dark.png) | ![Private feedback with the iOS keyboard](feedback_preview/keyboard-dark.png) | ![Apple StoreKit rating prompt](feedback_preview/native-ios.png) |
 
+Updated star component, including captured frames during the selected-star bounce:
+
+| Rating · light | Selected · dark | Selected · light |
+| --- | --- | --- |
+| ![Light rating sheet](feedback_preview/rating-light.png) | ![Three selected stars](feedback_preview/rating-selected-dark.png) | ![Two selected stars](feedback_preview/rating-selected-light.png) |
+
 ## Run locally
 
 Use the Flutter version pinned in the repository's `.tool-versions` (currently
@@ -75,6 +81,12 @@ The private-feedback success toast remains simulated.
 - Prego supplies the themes, icons, solid/glass buttons, composer decoration,
   waveform, scaffold, and success toast. The grabber-only sheet, issue pills,
   and stars are private prototype widgets.
+- The 44 × 44 star artwork comes from Figma component `5488:1669` (default
+  `5488:1668`, selected `5488:1670`). Its exported SVG paths use Prego's
+  `bgSurface1`, `borderSecondary`, and `fgWarningSecondary` tokens so the
+  neutral default and gold selection follow both themes. The selected border
+  retains Figma's 30% black stroke. `flutter_svg` does not render the default
+  variant's subtle 4% inner-shadow filter; its shape, fill, and border render.
 - The exact artwork was exported from Figma node `4954:13069` at 3× resolution
   (1110 × 570). `assets/images/feedback_preview_hero.png` is included by the
   app's existing image-asset declaration; this adds approximately 376 KiB to

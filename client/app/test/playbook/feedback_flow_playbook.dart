@@ -4,6 +4,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/services.dart";
+import "package:flutter_svg/flutter_svg.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -582,12 +583,21 @@ class const _Stars({
                   scale: prefersReducedMotion(context) ? 1 : _tapScale.transform(progress),
                   child: child,
                 ),
-                child: Icon(
-                  selected != null && rating <= selected! ? TablerSolid.star : TablerRegular.star,
-                  size: 40,
-                  color: selected != null && rating <= selected!
-                      ? context.prego.colors.textPrimary
-                      : context.prego.colors.textTertiary,
+                child: SvgPicture.asset(
+                  selected != null && rating <= selected!
+                      ? "assets/images/feedback_star_selected.svg"
+                      : "assets/images/feedback_star_default.svg",
+                  width: 44,
+                  height: 44,
+                  excludeFromSemantics: true,
+                  colorMapper: _StarColorMapper(
+                    fill: selected != null && rating <= selected!
+                        ? context.prego.colors.fgWarningSecondary
+                        : context.prego.colors.bgSurface1,
+                    stroke: selected != null && rating <= selected!
+                        ? Colors.black
+                        : context.prego.colors.borderSecondary,
+                  ),
                 ),
               ),
             ),
@@ -596,6 +606,22 @@ class const _Stars({
       ],
     ],
   );
+}
+
+// Preserve the exported Figma paths while resolving their semantic theme colors.
+class const _StarColorMapper({required final Color fill, required final Color stroke}) extends ColorMapper {
+  @override
+  Color substitute(String? id, String elementName, String attributeName, Color color) => switch (attributeName) {
+    "fill" => fill,
+    "stroke" => stroke,
+    _ => color,
+  };
+
+  @override
+  bool operator ==(Object other) => other is _StarColorMapper && fill == other.fill && stroke == other.stroke;
+
+  @override
+  int get hashCode => Object.hash(fill, stroke);
 }
 
 class const _PrivateFeedbackStep({super.key, required final FeedbackPreviewScenario scenario}) extends StatefulWidget {

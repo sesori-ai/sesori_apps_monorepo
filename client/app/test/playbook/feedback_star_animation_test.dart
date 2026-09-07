@@ -1,3 +1,4 @@
+import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 
@@ -11,11 +12,20 @@ void main() {
     expect(tester.getSize(star), const Size(44, 44));
     expect(button.style?.splashFactory, NoSplash.splashFactory);
     expect(button.style?.overlayColor?.resolve({WidgetState.pressed}), Colors.transparent);
+    for (var rating = 1; rating <= 5; rating++) {
+      expect(_starAsset(tester: tester, rating: rating), "assets/images/feedback_star_default.svg");
+    }
 
     await tester.tap(star);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 40));
     expect(_scale(tester: tester, rating: 3), lessThan(0.95));
+    for (var rating = 1; rating <= 5; rating++) {
+      expect(
+        _starAsset(tester: tester, rating: rating),
+        rating <= 3 ? "assets/images/feedback_star_selected.svg" : "assets/images/feedback_star_default.svg",
+      );
+    }
     for (final rating in [1, 2, 4, 5]) {
       expect(_scale(tester: tester, rating: rating), 1);
     }
@@ -46,13 +56,13 @@ void main() {
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       await _openRating(tester: tester);
       final star = find.byKey(const ValueKey("rating-2"));
-      final initialIcon = tester.widget<Icon>(find.descendant(of: star, matching: find.byType(Icon))).icon;
+      expect(_starAsset(tester: tester, rating: 2), "assets/images/feedback_star_default.svg");
 
       await tester.tap(star);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 40));
       expect(_scale(tester: tester, rating: 2), 1);
-      expect(tester.widget<Icon>(find.descendant(of: star, matching: find.byType(Icon))).icon, isNot(initialIcon));
+      expect(_starAsset(tester: tester, rating: 2), "assets/images/feedback_star_selected.svg");
 
       await tester.pump(const Duration(milliseconds: 80));
       await tester.pumpAndSettle();
@@ -77,3 +87,10 @@ double _scale({required WidgetTester tester, required int rating}) => tester
     )
     .transform
     .entry(0, 0);
+
+String _starAsset({required WidgetTester tester, required int rating}) {
+  final star = tester.widget<SvgPicture>(
+    find.descendant(of: find.byKey(ValueKey("rating-$rating")), matching: find.byType(SvgPicture)),
+  );
+  return (star.bytesLoader as SvgAssetLoader).assetName;
+}
