@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.b merged; Step 6.c architecture-approved, preparing publication
+- **Status:** Steps 1-5 and 6.a–6.b merged; Step 6.c open for review
 - **Base:** synced with main `ce423c8ea7` after Step 6.b merge
 - **Current branch:** `antigravity-harness-step-6c-personal-authentication`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -13,8 +13,8 @@
   [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b)
-- **Open PR:** none; preparing Step 6.c
-- **Next action:** publish Step 6.c and start its monitor; begin Step 6.d locally
+- **Open PR:** [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
+- **Next action:** monitor Step 6.c through merge; begin Step 6.d locally
 
 ## Fixed PR Series
 
@@ -135,6 +135,8 @@
 - [x] Verify 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis; update regression contracts.
 - [x] Independent architecture review approved all 19 files at immutable checkpoint `afda6be61c48`.
 - [x] Step 6.b merged; synchronize before Step 6.c publication.
+- Publication cap: `git diff --numstat ce423c8ea7 2055e399c8` totals 1,106 + 41 = 1,147 changed lines.
+- Post-sync validation: all 63 Antigravity tests and owning-package analysis pass.
 - No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
   access in this slice. Step 6.d is not started while Step 6.b remains open.
 
