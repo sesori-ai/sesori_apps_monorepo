@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.a merged; Step 8.b local implementation complete, review/publication pending
-- **Base:** Step 8.b exact review base `14169bd6e3ed9307d9e49e2c04a4ff3f1ece427e`; parent syncs main before publication
+- **Status:** Steps 1–8.a merged; Step 8.b architecture-approved and synchronized for publication
+- **Base:** synced with main `6959375addc700c00b0206204bbfc00ea6b3ca88` after Step 8.a merge
 - **Current branch:** `antigravity-harness-step-8b-persistent-composition`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -20,7 +20,7 @@
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a)
 - **Open PR:** none; #1359 merged with 16/16 CI.
-- **Next action:** finalize independent Step 8.b review, sync main and publish; only then begin Step 8.c.
+- **Next action:** publish and monitor Step 8.b; only then begin Step 8.c locally.
 
 ## Fixed PR Series
 
@@ -271,8 +271,11 @@
   32 Antigravity cases). Codex: `/tmp/step8b-codex-analysis.log`. No generation/dependency changes were needed.
 - Full local net cap against `14169bd6e3`: 1,284 additions + 81 deletions = 1,365 lines across 23 files,
   including tests/docs/planning. Parent must remeasure after main synchronization/publication edits.
-- [ ] Independent architecture review of the complete immutable 8.b scope; no approval claimed yet.
-- [ ] Parent sync with merged main and publish 8.b; do not start 8.c before publication.
+- [x] First actual architecture review approved all 23 files at `4394b735a6` against `14169bd6e3` (1,365 lines),
+  reviewer `b65aeff7`, no findings. Earlier incomplete-input reviews are not counted.
+- [x] Synced with main `6959375add`; only documentation conflicted. Source/tests are unchanged from the reviewed
+  checkpoint, so unchanged passing suites were not rerun.
+- [ ] Parent publication of 8.b; do not start 8.c before publication.
 - Descriptor exit supervision, inert setup/profile inspection and complete host/auth composition are 8.c.
   Real OAuth, native/cross-target operation, bridge import/tombstone end-to-end and L5 Full remain later gates.
   No Google history mutation, ambient credentials or active harness inventory were introduced.
