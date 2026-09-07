@@ -290,6 +290,9 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityCatalogTracker` | `trackers/antigravity_catalog_tracker.dart` | tracker |
 | `AntigravityAuthenticationOperation` | `authentication/antigravity_authentication_operation.dart` | consumer |
 | `AntigravityAuthenticationComposer` | `runtime/antigravity_authentication_composer.dart` | composition |
+| `AntigravityPluginComposer` | `runtime/antigravity_plugin_composer.dart` | composition |
+| `AntigravityOutputComposer` | `runtime/antigravity_output_composer.dart` | composition |
+| `AntigravityEventMapper` | `antigravity_event_mapper.dart` | mapper |
 | `AntigravityApprovalRegistry` | `antigravity_approval_registry.dart` | consumer |
 | `AntigravityPlugin` | `antigravity_plugin.dart` | consumer |
 | `AntigravityPluginDescriptor` | `runtime/antigravity_plugin_descriptor.dart` | composition |
@@ -872,9 +875,9 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
 
 ### Step 8/12: Persistent ACP plugin composition
 
-The user approved 8.a/8.b after a full estimate of 1,850–2,700 lines. All further necessary dependency-ordered PR
-splits are pre-approved; do not ask again. Retain twelve top-level steps, the 1,500-line full net cap per PR, and only
-one open PR plus its immediate local successor. This partitions the reviewed architecture, not its requirements.
+The original 8.a/8.b estimate was 1,850–2,700 lines. Integration discovery required 8.c; the reconciled total is
+3,130–3,390 (8.a actual 988, 8.b integration-corrected estimate 1,440–1,500, 8.c estimated 700–900). Further dependency-ordered splits are pre-approved. Retain twelve top-level steps, the 1,500-line cap per
+PR, and one open PR plus its immediate local successor. This partitions requirements; it does not remove them.
 
 #### Step 8.a: Recovery foundations and neutral ACP seams (estimated 900–1,350 lines)
 
@@ -899,18 +902,17 @@ one open PR plus its immediate local successor. This partitions the reviewed arc
   cancellation, load-first/resume-first capability combinations, and live/replay interceptor wiring. No concrete
   Antigravity plugin or descriptor is introduced here; scans are not added to ordinary reads.
 
-#### Step 8.b: Persistent plugin composition (estimated 950–1,350 lines before integration headroom)
+#### Step 8.b: Persistent plugin composition (integration-corrected estimate 1,440–1,500 lines)
 
-The original combined 8.b estimate grew to 1,650–2,050 lines (plugin/tests 950–1,150; descriptor/setup/tests
-700–900). The approved dependency-ordered split moves descriptor/setup into 8.c; integration corrections and
-full verification remain subject to the 1,500-line net cap, not test reductions.
+The original combined 8.b estimate grew to 1,650–2,050 lines. The approved split moves descriptor/setup into 8.c;
+integration corrections remain within the 1,500-line cap without reducing meaningful tests.
 
 - Create the unregistered `AntigravityPlugin` through `AntigravityPluginComposer`, consuming an already-validated
   pair, prepared isolated profile, supplied process factory and cwd. The root constructs trackers, mappers,
   metadata peers and options service. The plugin constructs no peers or parallel lifecycle owner.
 - ACP creates clients lazily: inject mapper/tracker into the process-lifetime options service, then require the
   actual live `AcpSessionConfigRepository` on each `applyForPrompt` call. No options composer or dummy repository.
-  Preserve new-versus-existing capture origin, atomic catalog/default reset, exact model writes and default mode.
+  Validate model IDs before queue admission and again at dispatch; preserve exact writes and default mode.
 - The interaction composer builds connection-scoped Repository → Service → neutral registry over the actual
   client. Wire metadata import/cold recovery, resume-first availability, and identical live/replay normalization.
 - Output composition supplies fresh policies to existing ACP cleanup owners. An optional backend-neutral prefix
@@ -928,6 +930,8 @@ full verification remain subject to the 1,500-line net cap, not test reductions.
 
 - Add the unregistered descriptor and full host/runtime/auth composition; reuse the per-attempt authentication
   composer and the same plugin-root `HostJsonStore` for authentication and live preparation.
+- Inject the shared ACP configuration tracker into Antigravity options capture so new-session defaults and loaded
+  session overrides stamp live/replayed messages; existing-session capture must not redefine the default.
 - Add narrow read-only selected-profile-path inspection: Storage/Repository own I/O and normalization, Service
   owns readiness hints. Remove superseded unused token-presence helpers rather than retaining dummy writers,
   nullable stores or parallel inspection paths. Preparation keeps its existing typed atomic writer.

@@ -80,6 +80,7 @@ void main() {
         () => service.validateSelection(
           operation: "session/prompt",
           providerId: selection.provider,
+          modelId: null,
           agent: selection.agent,
           variant: selection.variant,
         ),

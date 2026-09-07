@@ -86,6 +86,7 @@ class AntigravitySessionOptionsService({
   void validateSelection({
     required String operation,
     required String? providerId,
+    required String? modelId,
     required PluginSessionVariant? variant,
     required String? agent,
   }) {
@@ -97,6 +98,7 @@ class AntigravitySessionOptionsService({
         message: "Antigravity supports its primary agent and advertised models only",
       );
     }
+    if (modelId != null) _validateModel(operation: operation, modelId: modelId);
   }
 
   /// Await before dispatching a prompt. A null model preserves the account/session default.
@@ -106,14 +108,7 @@ class AntigravitySessionOptionsService({
     required String? modelId,
   }) async {
     if (modelId != null) {
-      final catalog = _catalogTracker.snapshot;
-      if (catalog == null || !catalog.models.any((model) => model.id == modelId)) {
-        final diagnosticId = modelId.length <= 120 ? modelId : "${modelId.substring(0, 120)}…";
-        throw PluginStaleOptionsException(
-          "session/prompt",
-          message: "Antigravity model '$diagnosticId' is not in the current account catalog",
-        );
-      }
+      final catalog = _validateModel(operation: "session/prompt", modelId: modelId);
       final result = await configRepository.setConfigOption(
         sessionId: sessionId,
         configId: catalog.configId,
@@ -130,5 +125,17 @@ class AntigravitySessionOptionsService({
       }
     }
     await configRepository.setMode(sessionId: sessionId, modeId: AntigravitySessionMode.defaultMode.id);
+  }
+
+  AntigravityModelCatalog _validateModel({required String operation, required String modelId}) {
+    final catalog = _catalogTracker.snapshot;
+    if (catalog == null || !catalog.models.any((model) => model.id == modelId)) {
+      final diagnosticId = modelId.length <= 120 ? modelId : "${modelId.substring(0, 120)}…";
+      throw PluginStaleOptionsException(
+        operation,
+        message: "Antigravity model '$diagnosticId' is not in the current account catalog",
+      );
+    }
+    return catalog;
   }
 }

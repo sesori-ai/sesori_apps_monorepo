@@ -59,8 +59,13 @@ class AntigravityPlugin({
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
     required String? agent,
-  }) async =>
-      _options.validateSelection(operation: operation, providerId: model?.providerID, variant: variant, agent: agent);
+  }) async => _options.validateSelection(
+    operation: operation,
+    providerId: model?.providerID,
+    modelId: model?.modelID,
+    variant: variant,
+    agent: agent,
+  );
 
   @override
   Future<void> applyTurnSelection({
@@ -85,8 +90,6 @@ class AntigravityPlugin({
       _options.getSessionOptions().providers;
 
   @override
-  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
-    registerRecoveredSessionDirectories(batch: await _metadata.recover(geminiHome: _geminiHome));
-    return await super.listAllSessions(knownDirectories: knownDirectories);
-  }
+  Future<void> recoverSessionDirectories() async =>
+      registerRecoveredSessionDirectories(batch: await _metadata.recover(geminiHome: _geminiHome));
 }

@@ -2,7 +2,7 @@
 
 ## Status and scope
 
-Step 8.a foundations, consumed by the unregistered Step 8.b plugin at import/cold activation. Descriptor/setup
+Step 8.a foundations, consumed once per cold live connection by the unregistered Step 8.b plugin. Descriptor/setup
 composition remains Step 8.c. No ordinary-read scan, database migration, history deletion, OAuth, token
 inspection, ambient credential access, managed installation or user-visible capability is introduced here.
 

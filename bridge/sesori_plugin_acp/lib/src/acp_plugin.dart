@@ -358,6 +358,9 @@ abstract class AcpPlugin({
   /// a separate process and must not replace live process defaults.
   void captureLiveInitializeResult(AcpInitializeResult result) {}
 
+  /// Bounded cold-connection recovery before the live process is advertised.
+  Future<void> recoverSessionDirectories() => Future<void>.value();
+
   /// Additional privacy-safe events for a prompt failure. The generic session
   /// error is always emitted separately.
   Iterable<BridgeSseEvent> mapPromptFailure({
@@ -588,6 +591,7 @@ abstract class AcpPlugin({
         );
         final initResult = await _initialize(client);
         captureLiveInitializeResult(initResult);
+        await recoverSessionDirectories();
         _initResult = initResult;
         _syncWorkState();
         if (!_connected.isClosed) _connected.add(null);

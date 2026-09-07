@@ -274,6 +274,25 @@ void main() {
     final session = await h.create();
     expect(session.id, "new-1");
     expect((await h.plugin.getProviders(projectId: "/launch")).providers.single.defaultModelID, "default");
+    final beforeStale = process.stdin.frames.length;
+    await expectLater(
+      h.send(session: session.id, model: (providerID: "antigravity", modelID: "stale")),
+      throwsA(isA<PluginStaleOptionsException>().having((error) => error.operation, "operation", "sendPrompt")),
+    );
+    await expectLater(
+      h.plugin.sendCommand(
+        promptId: "stale-command",
+        sessionId: session.id,
+        command: "synthetic",
+        arguments: "",
+        userVisibleArguments: null,
+        model: (providerID: "antigravity", modelID: "stale"),
+        variant: null,
+        agent: null,
+      ),
+      throwsA(isA<PluginStaleOptionsException>().having((error) => error.operation, "operation", "sendCommand")),
+    );
+    expect(process.stdin.frames, hasLength(beforeStale), reason: "Stale selections never enter the ACP turn queue");
     await h.send(session: session.id, model: (providerID: "antigravity", modelID: "other"));
     await process.frame(method: "session/prompt");
     final writes = process.stdin.frames
@@ -297,6 +316,16 @@ void main() {
         await metadata.create(recursive: true);
         await metadata.writeAsString(jsonEncode({"cwd": "/recovered-cwd"}));
         await h.start();
+        const later = "00000000-0000-4000-8000-000000000002";
+        await File("${h.directory.path}/antigravity-acp/conversations/$later.meta").writeAsString(
+          jsonEncode({"cwd": "/late-metadata"}),
+        );
+        await h.plugin.listAllSessions(knownDirectories: const {});
+        expect(
+          h.plugin.directoryForSession(sessionId: later),
+          "/launch",
+          reason: "Ordinary enumeration does not rescan",
+        );
         await h.send(session: _old);
         final activation = await live.frame(method: resume ? "session/resume" : "session/load");
         expect((activation["params"] as Map)["cwd"], "/recovered-cwd");
