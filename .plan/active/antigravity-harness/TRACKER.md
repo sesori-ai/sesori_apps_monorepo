@@ -3,16 +3,20 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5/12 merged; Step 6.a open for review
-- **Base:** Step 5 merge `0e8f9e6fb9`; synced with current `origin/main`
-- **Current branch:** `antigravity-harness-step-6-isolated-authentication`
+- **Status:** Steps 1-6 merged; Step 7.a open for review
+- **Base:** synced with main `2f2f376836` after Step 6.d merge
+- **Current branch:** `antigravity-harness-step-7a-model-options`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4),
-  [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5)
-- **Open PR:** [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a)
-- **Next action:** monitor Step 6.a through merge; begin Step 6.b locally
+  [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
+  [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
+  [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
+  [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
+  [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
+- **Open PR:** [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
+- **Next action:** monitor Step 7.a through merge; begin Step 7.b locally
 
 ## Fixed PR Series
 
@@ -21,10 +25,13 @@
 - [x] Step 3/12 — `⚙️ [antigravity-harness] feat(antigravity): resolve local runtime pairs [step 3/12]`
 - [x] Step 4/12 — `🚧 [antigravity-harness] feat(auth): accept browser authentication continuations [step 4/12]`
 - [x] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
-- [ ] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
-- [ ] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
-- [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): implement personal browser authentication [step 6.c/12]`
-- [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
+- [x] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
+- [x] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
+- [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
+- [x] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
+- [ ] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
+- [ ] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
+- [ ] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
 - [ ] Step 10/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10/12]`
@@ -99,9 +106,80 @@
 - [x] Run focused validation and update regression invariants without claiming active Antigravity support.
 - [x] Independent architecture implementation review approved; no issues found.
 - [x] Step 5 merged; sync Step 6.a with main before publication.
-- Step 6.b/c profile/browser suppression/personal OAuth remain unimplemented; package remains unregistered.
+- Package remains unregistered; composed personal OAuth remains in Step 6.d.
+
+## Step 6.b Checklist
+
+- [x] Obtain approval for the backend-neutral early browser-noop CLI mode; update and review its architecture plan.
+- [x] Add layered profile preparation, generated personal-auth settings, injected scoped store, and token presence only.
+- [x] Verify private directory ordering/mode, environment filtering, and preparation failures.
+- [x] Add selective plugin-owned OAuth stderr interception while retaining other diagnostics.
+- [x] Build the actual native bridge; verify native/source helpers and pinned Python browser semantics synthetically.
+- [x] Run focused tests and owning-package analyzers; update regression contracts.
+- [x] Independent architecture review approved immutable Step 6.b code head `8fe1ee51be25`.
+- Second/final review approved `7351ed64f1`; user authorized the later service-owned preflight-policy correction
+  with focused tests and no third architecture review.
+- [x] Step 6.a merged; synchronize before Step 6.b publication.
+- Publication cap: `git diff --numstat 0723491330 4a8e14a1d5` totals 845 + 12 = 857 changed lines.
+  The estimated range was a scoping guide, not a minimum; implementation and meaningful coverage fit below it.
+- Validation: 45 Antigravity tests and 15 focused app/no-op/scoped-store tests pass; final selective stderr
+  refinement passes its 4 tests. Antigravity, foundation, and app analyzers pass with fatal infos. Native bridge
+  bundle builds and the helper exits 0 with no output; extracted pinned Python confirms no browser fallback.
+  See `docs/regression/antigravity-isolated-profiles.md` for reproducible evidence and platform limits.
+- No OAuth execution, token-content access, registration, managed activation, or authentication boundary work in 6.b.
+
+## Step 6.c Checklist
+
+- [x] Approve 6.c boundaries/policy and 6.d composition split after full-slice estimate exceeded the line cap.
+- [x] Reuse existing scratch ACP ownership for personal authentication with cleanup and sanitized interception.
+- [x] Add Layer-2 authorization mapping, dedicated no-proxy/no-redirect loopback transport, repository normalization,
+  and service-owned exact Google/callback/state/code policy.
+- [x] Thread one monotonic budget/abort signal through profile layers, preserving executor timeouts and waiting for
+  non-cancellable filesystem/store work before rejecting late success. Browser preflight retains its five-second cap.
+- [x] Initial checkpoint: 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis passed.
+- [x] Independent architecture review approved all 19 files at immutable checkpoint `afda6be61c48`.
+- [x] Step 6.b merged; synchronize before Step 6.c publication.
+- Publication cap: `git diff --numstat ce423c8ea7 2055e399c8` totals 1,106 + 41 = 1,147 changed lines.
+- Post-sync validation: all 63 Antigravity tests and owning-package analysis pass.
+- No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
+  access in the 6.c slice; composition belongs to Step 6.d.
+
+
+## Step 6.d Checklist
+
+- [x] Compose isolated profile preparation, runtime selection/exact probing, and personal authentication through
+  existing services with one environment and monotonic budget. Keep provider URL policy inside the service.
+- [x] Add per-attempt single challenge/one-shot continuation, same-host completion, and awaited cancellation/cleanup.
+- [x] Add the unregistered composer with shared root scopes, isolated host commands/ACP and dedicated HTTP client.
+- [x] Preserve the existing bridge lifecycle service as terminal setup-reinspection owner; test closure ordering.
+- [x] Approved narrow boundary fixes await pending probe/auth spawn reaping and callback transport settlement after
+  forced closure, preserving the controlling failure. No new shared transport machinery or descriptor registration.
+- [x] Initial checkpoint: 77 Antigravity tests, 8 relevant bridge lifecycle tests, owning Antigravity analysis and
+  changed bridge-test analysis passed. Canonical-path fixture correction was verified before the complete run.
+- [x] Independent architecture review approved all 14 files at immutable checkpoint `5f33ba6390`.
+- [x] Step 6.c merged; synchronize before Step 6.d publication.
+- Post-sync verification: 78 Antigravity tests, 8 focused lifecycle tests, and both relevant analyses pass.
+- Post-sync code-head cap: `git diff --numstat f1403fbb35 d5812b3550` totals 997 + 35 = 1,032 changed lines.
+- No real OAuth, ambient credential/token access, database/history changes, Step 7 work, or active harness registration.
+
+## Step 7.a Checklist
+
+- [x] Obtain explicit user approval for 7.a/7.b/7.c partition, retaining twelve top-level steps and per-PR line caps.
+- [x] Map grouped model config through generated DTOs to immutable catalog values; validate before tracker mutation.
+- [x] Expose honest partial/no-model options before a real session catalog; never create scratch persistent sessions.
+- [x] Add standard typed ACP set_mode through API/repository; select exact validated model then default mode.
+- [x] Focused validation: 10 catalog/options tests and 11 ACP config/API tests pass; both owning analyses are clean.
+- [x] Independent architecture review approved all 19 files at immutable checkpoint `0e002cdebe`.
+- [x] Step 6.d merged; synchronize before Step 7.a publication.
+- Post-sync validation: 10 options tests and 11 ACP tests pass; both owning-package analyses remain clean.
+- Post-sync code-head cap: `git diff --numstat 2f2f376836 778535c8f4` totals 848 + 19 = 867 changed lines.
+- Permissions/questions and update normalization remain 7.b/7.c; no descriptor, registration or capability claim.
 
 ## Architecture Reviews
+
+- **Step 6.b plan review (2026-09-05): APPROVED.** Applied `.agents/skills/architecture-plan-review/SKILL.md`
+  to the profile layers and approved native browser-noop addendum before implementation. Bridge-only dependency
+  direction, neutral entrypoint contract, injected invocation ownership, class cohesion, and bounded state passed.
 
 - **Plan review:** completed 2026-09-03. The reviewer rejected the first draft with six concrete findings across
   separation of concerns, composition, suffix naming, bridge layers, client DTO mapping, and presentation ownership.

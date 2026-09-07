@@ -2208,7 +2208,7 @@ abstract class AcpPlugin({
     required String sessionId,
     required List<List<String>> answers,
   }) async {
-    _approvalRegistry?.replyQuestion(requestId: questionId, answers: answers);
+    await _approvalRegistry?.replyQuestion(requestId: questionId, answers: answers);
   }
 
   @override
@@ -2216,7 +2216,7 @@ abstract class AcpPlugin({
     // The registry is keyed by the bridge question id; it already knows the
     // session (and clears the pending entry, so awaiting-input drops), so the
     // sessionId argument is not needed here.
-    _approvalRegistry?.rejectQuestion(requestId: questionId);
+    await _approvalRegistry?.rejectQuestion(requestId: questionId);
   }
 
   @override

@@ -56,7 +56,14 @@ Future<AcpProcessHandle> _unimplementedFactory(AcpLaunchSpec spec) => throw Unim
 
 class _FakeAcpApi({required final List<Future<AntigravityInitializeDto> Function()> outcomes})
     extends AntigravityAcpApi {
-  this : super(processFactory: _unimplementedFactory);
+  this
+    : super(
+        processFactory: _unimplementedFactory,
+        stderrInterceptor: AcpOutputInterceptor(
+          maxLineBytes: 65536,
+          consumeLine: const AntigravityStderrMapper().consumeLine,
+        ),
+      );
 
   final List<AcpLaunchSpec> launches = [];
 

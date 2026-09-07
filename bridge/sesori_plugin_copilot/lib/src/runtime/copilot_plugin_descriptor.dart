@@ -133,6 +133,7 @@ final class const CopilotPluginDescriptor({
   }) async* {
     const manifest = CopilotRuntimeManifest();
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -235,6 +236,7 @@ final class const CopilotPluginDescriptor({
 
   RuntimeVersionValidator _versionValidator({required HostProcessService processes}) => CopilotRuntimeVersionValidator(
     commandExecutor: HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,

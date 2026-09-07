@@ -187,6 +187,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -221,6 +222,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -354,6 +356,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       environment: host.environment,
     );
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: host.processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,

@@ -2119,6 +2119,57 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(idleActiveCall.parts.single.state.status, PluginToolStatus.error);
     });
 
+    test("async question acknowledgements do not become completed tool cards", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/09/07/rollout-async-question.jsonl",
+        sessionId: "async-question-thread",
+        cwd: "/repo/app",
+        cliVersion: "0.153.4",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call",
+              "name": "request_user_input_async",
+              "call_id": "call-question",
+              "arguments": jsonEncode({
+                "questions": [
+                  {
+                    "title": "Which interface?",
+                    "options": ["Sesori", "CLI"],
+                  },
+                ],
+              }),
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {"type": "function_call_output", "call_id": "call-question", "output": '{"accepted":true}'},
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "assistant",
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "I will keep investigating."},
+              ],
+            },
+          }),
+        ],
+      );
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "async-question-thread",
+        children: const [],
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+      expect(messages.single.parts.single.text, "I will keep investigating.");
+    });
+
     test("readMessages restores current calls around malformed content items", () {
       final path = _writeRollout(
         codexHome,

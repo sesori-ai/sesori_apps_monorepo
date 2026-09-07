@@ -82,6 +82,142 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.busy);
     }
 
+    for (final running in [true, false]) {
+      test("async question answers reach the owning ${running ? 'running' : 'completed'} conversation", () async {
+        fake.respondInOrder([const _Response(result: _initOk)]);
+        await plugin.healthCheck();
+        fake.pushNotification("thread/started", {
+          "thread": {"id": "t-question", "cwd": "/work/sample"},
+        });
+        fake.pushNotification("turn/started", {
+          "threadId": "t-question",
+          "turn": {"id": "u-question"},
+        });
+        final asked = plugin.events.where((e) => e is BridgeSseQuestionAsked).cast<BridgeSseQuestionAsked>().first;
+        fake.pushNotification("item/completed", {
+          "threadId": "t-question",
+          "turnId": "u-question",
+          "item": {
+            "type": "agentMessage",
+            "id": "call-question",
+            "delivery": "async",
+            "text": "Which Hermes interface?",
+            "questions": [
+              {
+                "title": "Which Hermes interface?",
+                "options": ["Sesori", "CLI"],
+              },
+            ],
+          },
+        });
+        final question = await asked.timeout(const Duration(seconds: 2));
+        expect(question.questions.single.options.map((o) => o.label), ["Sesori", "CLI"]);
+        expect(plugin.getActiveSessionsSummary().single.activeSessions.single.awaitingInput, isTrue);
+        if (!running) {
+          final idle = plugin.events.where((e) => e is BridgeSseSessionIdle).first;
+          fake.pushNotification("turn/completed", {
+            "threadId": "t-question",
+            "turn": {"id": "u-question"},
+          });
+          await idle.timeout(const Duration(seconds: 3));
+        }
+        expect((await plugin.getPendingQuestions(sessionId: "t-question")).single.id, question.id);
+        expect(await plugin.getPendingPermissions(sessionId: "t-question"), isEmpty);
+
+        fake.respondInOrder([
+          const _Response(
+            result: {
+              "thread": {"id": "t-question", "cwd": "/work/sample"},
+            },
+          ),
+          _Response(
+            result: {
+              "turn": {"id": running ? "u-question" : "u-answer"},
+            },
+          ),
+        ]);
+        await plugin.replyToQuestion(
+          questionId: question.id,
+          sessionId: "t-question",
+          answers: const [
+            ["CLI"],
+          ],
+        );
+        final params = fake.sentParamsFor("turn/start");
+        expect(params["threadId"], "t-question");
+        expect((params["input"] as List).single, {
+          "type": "text",
+          "text": "User answers to your questions:\n\nQuestion: Which Hermes interface?\nAnswer: CLI",
+          "text_elements": <Object?>[],
+        });
+        expect(params.containsKey("model"), isFalse);
+        expect(params.containsKey("collaborationMode"), isFalse);
+        expect(await plugin.getPendingQuestions(sessionId: "t-question"), isEmpty);
+        // A second client answering the retired card cannot submit again.
+        await plugin.replyToQuestion(
+          questionId: question.id,
+          sessionId: "t-question",
+          answers: const [
+            ["Sesori"],
+          ],
+        );
+        expect(fake.sentParamsForAll(method: "turn/start"), hasLength(1));
+      });
+    }
+
+    test("async question submission failure leaves the card available for retry", () async {
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.healthCheck();
+      final asked = plugin.events.where((e) => e is BridgeSseQuestionAsked).cast<BridgeSseQuestionAsked>().first;
+      fake.pushNotification("item/completed", {
+        "threadId": "t-question",
+        "item": {
+          "type": "agentMessage",
+          "id": "call-question",
+          "delivery": "async",
+          "text": "Which interface?",
+          "questions": [
+            {"title": "Which interface?"},
+          ],
+        },
+      });
+      final question = await asked.timeout(const Duration(seconds: 2));
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "t-question", "cwd": "/work/sample"},
+          },
+        ),
+        const _Response(error: {"code": -32603, "message": "submission failed"}),
+      ]);
+      await expectLater(
+        plugin.replyToQuestion(
+          questionId: question.id,
+          sessionId: "t-question",
+          answers: const [
+            ["CLI"],
+          ],
+        ),
+        throwsA(isA<CodexThreadRequestException>()),
+      );
+      expect((await plugin.getPendingQuestions(sessionId: "t-question")).single.id, question.id);
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "turn": {"id": "u-answer"},
+          },
+        ),
+      ]);
+      await plugin.replyToQuestion(
+        questionId: question.id,
+        sessionId: "t-question",
+        answers: const [
+          ["CLI"],
+        ],
+      );
+      expect(await plugin.getPendingQuestions(sessionId: "t-question"), isEmpty);
+    });
+
     test("createSession preserves a Default turn when no model resolves", () async {
       // Respond to: initialize, thread/start, turn/start.
       fake.respondInOrder([
@@ -2834,6 +2970,48 @@ void main() {
         ],
       );
       expect(await plugin.getPendingPermissions(sessionId: "root-1"), isEmpty);
+      expect(await plugin.getPendingQuestions(sessionId: "root-1"), isEmpty);
+
+      final asyncQuestionAsked = next<BridgeSseQuestionAsked>((event) => event.sessionID == "child-1");
+      fake.pushNotification("item/completed", {
+        "threadId": "child-1",
+        "turnId": "u-child",
+        "item": {
+          "type": "agentMessage",
+          "id": "child-question",
+          "delivery": "async",
+          "text": "Which interface?",
+          "questions": [
+            {
+              "title": "Which interface?",
+              "options": ["CLI", "Desktop"],
+            },
+          ],
+        },
+      });
+      final asyncQuestion = await asyncQuestionAsked;
+      expect(asyncQuestion.displaySessionId, "root-1");
+      expect((await plugin.getPendingQuestions(sessionId: "root-1")).single.sessionID, "child-1");
+      fake.respondInOrder([
+        const _Response(
+          result: {
+            "thread": {"id": "child-1", "cwd": "/work/other"},
+          },
+        ),
+        const _Response(
+          result: {
+            "turn": {"id": "u-child"},
+          },
+        ),
+      ]);
+      await plugin.replyToQuestion(
+        questionId: asyncQuestion.id,
+        sessionId: "child-1",
+        answers: const [
+          ["CLI"],
+        ],
+      );
+      expect(fake.sentParamsForAll(method: "turn/start").last["threadId"], "child-1");
       expect(await plugin.getPendingQuestions(sessionId: "root-1"), isEmpty);
 
       // A no-active-turn interrupt reconciles the child to idle and releases

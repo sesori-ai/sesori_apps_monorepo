@@ -3,10 +3,15 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../foundation/antigravity_authentication_budget.dart";
+import "../foundation/antigravity_release.dart";
 import "models/antigravity_initialize_dto.dart";
 
 /// Layer-1 ACP process boundary used by unauthenticated runtime probes.
-class AntigravityAcpApi({required final AcpProcessFactory _processFactory}) {
+class AntigravityAcpApi({
+  required final AcpProcessFactory _processFactory,
+  required final AcpOutputInterceptor _stderrInterceptor,
+}) {
   Future<AntigravityInitializeDto> initializeOnly({
     required AcpLaunchSpec launchSpec,
     required Duration timeout,
@@ -18,10 +23,13 @@ class AntigravityAcpApi({required final AcpProcessFactory _processFactory}) {
       launchSpec: launchSpec,
       processFactory: _processFactory,
       logTag: "antigravity-probe",
+      stderrInterceptor: _stderrInterceptor,
     );
+    final connecting = client.connect();
+    final connected = connecting.then<AsyncError?>((_) => null, onError: AsyncError.new);
     try {
       await _awaitPhase(
-        operation: client.connect(),
+        operation: connecting,
         timeout: timeout,
         deadline: deadline,
         abortSignal: abortSignal,
@@ -41,7 +49,55 @@ class AntigravityAcpApi({required final AcpProcessFactory _processFactory}) {
       return result;
     } finally {
       await client.dispose();
+      // A cancelled runtime probe must also reap an already-started late spawn.
+      await connected;
     }
+  }
+
+  /// Owns one interactive scratch process until authenticate settles or aborts.
+  Future<void> authenticate({
+    required AcpLaunchSpec launchSpec,
+    required AcpOutputInterceptor stdoutInterceptor,
+    required AntigravityAuthenticationBudget budget,
+  }) async {
+    budget.remaining;
+    final client = AcpStdioClient(
+      launchSpec: launchSpec,
+      processFactory: _processFactory,
+      stdoutInterceptor: stdoutInterceptor,
+      stderrInterceptor: _stderrInterceptor,
+      logTag: "antigravity-auth",
+    );
+    Future<void> run() async {
+      await client.connect();
+      final agent = AcpAgentApi(client: client);
+      await agent.initialize(
+        formElicitation: false,
+        capabilityMeta: null,
+        authMethodId: null,
+        authMethodAllowlist: const {AntigravityRelease.personalOauthMethodId},
+        timeout: budget.remaining,
+      );
+    }
+
+    // Retain settlement even when abort wins during process spawn. Disposal
+    // makes a late connect reap its child, and completion must wait for that.
+    final settled = run().then<AsyncError?>(
+      (_) => null,
+      onError: AsyncError.new,
+    );
+    try {
+      final failure = await Future.any<AsyncError?>([
+        settled,
+        budget.abortSignal.whenAborted.then<AsyncError?>((_) => throw const PluginStartAbortedException()),
+      ]).timeout(budget.remaining);
+      if (failure != null) Error.throwWithStackTrace(failure.error, failure.stackTrace);
+    } finally {
+      await client.dispose();
+      // A closure-induced failure is secondary to the controlling abort/timeout.
+      await settled;
+    }
+    budget.remaining;
   }
 
   Future<T> _awaitPhase<T>({
