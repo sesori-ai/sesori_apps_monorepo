@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.b merged; Step 6.c open for review; Step 6.d architecture-approved locally
-- **Base:** Step 6.c review-fix head `f750eaa47b`, merged locally into Step 6.d
+- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d architecture-approved, preparing publication
+- **Base:** synced with main `f1403fbb35` after Step 6.c merge
 - **Current branch:** `antigravity-harness-step-6d-authentication-operation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -12,9 +12,10 @@
   [#1288](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1288) (Step 4),
   [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
-  [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b)
-- **Open PR:** [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
-- **Next action:** monitor Step 6.c through merge; retain approved Step 6.d locally until publication is unblocked
+  [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
+  [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
+- **Open PR:** none; preparing Step 6.d
+- **Next action:** publish Step 6.d and start its monitor; begin Step 7 locally
 
 ## Fixed PR Series
 
@@ -25,7 +26,7 @@
 - [x] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
 - [x] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
 - [x] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
-- [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
+- [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
 - [ ] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
 - [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
@@ -138,7 +139,7 @@
 - Publication cap: `git diff --numstat ce423c8ea7 2055e399c8` totals 1,106 + 41 = 1,147 changed lines.
 - Post-sync validation: all 63 Antigravity tests and owning-package analysis pass.
 - No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
-  access in the 6.c slice. Step 6.d is a separate local successor while Step 6.c is in review.
+  access in the 6.c slice; composition belongs to Step 6.d.
 
 
 ## Step 6.d Checklist
@@ -153,7 +154,7 @@
 - [x] Verify all 77 Antigravity tests, 8 relevant bridge lifecycle tests, owning Antigravity analysis and the changed
   bridge test's analysis. Canonical-path fixture correction was verified before the final complete package run.
 - [x] Independent architecture review approved all 14 files at immutable checkpoint `5f33ba6390`.
-- [ ] Parent-owned publication after Step 6.c merges.
+- [x] Step 6.c merged; synchronize before Step 6.d publication.
 - No real OAuth, ambient credential/token access, database/history changes, Step 7 work, or active harness registration.
 
 ## Architecture Reviews
