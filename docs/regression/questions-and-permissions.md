@@ -12,6 +12,24 @@ reaches the backend so the turn continues.
   root session, and whether an "always" answer is offered. A pending question
   carries its header, prompt, options, and whether multiple or custom answers
   are allowed.
+- Codex synchronous `request_user_input` requests preserve every question,
+  header, ordered option and description. Replies preserve the original
+  question IDs and answer ordering, including custom answers and declined rows.
+- Codex `request_user_input_async` assistant messages create the same pending
+  questions on mobile and desktop. Their options remain selectable and custom
+  answers remain available. The tool's immediate `accepted` acknowledgement
+  is not shown as a completed question/answer tool card and never counts as
+  user input or permission approval.
+- An async Codex question remains pending after its originating turn completes.
+  Reply and reject send contextual user input to the owning conversation through
+  normal turn submission, steering a running turn or starting a turn while idle
+  without overriding its model or collaboration mode. A child question appears
+  under its display root but the answer goes to that child.
+- A question settles only after its backend submission succeeds; a failed async
+  submission remains pending for retry. Explicit rejection tells Codex which
+  questions were declined. Abort, thread close, disconnect and disposal retire
+  connection-local async cards without starting new work to report cleanup.
+  Historical transcript reads do not recreate already-finished question cards.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
@@ -101,6 +119,11 @@ reaches the backend so the turn continues.
   that ownership.
 
 ## Regression Levels
+
+Codex focused coverage includes live async-message routing, synchronous
+multi-question choices, answers during an active turn and after completion,
+failed-submission retry, child routing, cleanup, and omission of the async tool
+acknowledgement from replayed tool history.
 
 | Level | Additional coverage |
 |---|---|

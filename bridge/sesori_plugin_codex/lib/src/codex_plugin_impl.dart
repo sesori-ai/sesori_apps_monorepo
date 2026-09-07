@@ -7,12 +7,14 @@ import "package:sesori_shared/sesori_shared.dart" show Harness;
 import "api/codex_app_server_api.dart";
 import "api/models/codex_correlatable_item_event_dto.dart";
 import "api/models/codex_image_bearing_item_dto.dart";
+import "api/models/codex_pending_input.dart";
 import "api/models/codex_rollout_dto.dart";
 import "api/models/codex_sub_agent_item_dto.dart";
 import "api/models/codex_sub_agent_item_event_dto.dart";
 import "api/parsers/codex_command_execution_parser.dart";
 import "api/parsers/codex_file_change_parser.dart";
 import "api/parsers/codex_image_bearing_item_parser.dart";
+import "api/parsers/codex_question_parser.dart";
 import "api/parsers/codex_sub_agent_item_parser.dart";
 import "approval_registry.dart";
 import "codex_app_server_client.dart";
@@ -23,6 +25,7 @@ import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
 import "repositories/codex_tool_lifecycle_tracker.dart";
 import "repositories/codex_tool_outcome_repository.dart";
+import "repositories/mappers/codex_question_mapper.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
 import "services/codex_rollout_tailer.dart";
@@ -86,6 +89,7 @@ class CodexPlugin._({
   CodexAppServerClient? _client;
   Future<bool>? _connectFuture;
   StreamSubscription<CodexServerNotification>? _notificationSubscription;
+  StreamSubscription<CodexServerRequest>? _serverRequestSubscription;
   Future<void> _notificationWork = Future<void>.value();
   StreamSubscription<CodexRolloutAppend>? _rolloutSubscription;
   ApprovalRegistry? _approvalRegistry;
@@ -322,6 +326,7 @@ class CodexPlugin._({
       return;
     }
     if (_isSupersededTurnLifecycleNotification(notification)) return;
+    _approvalRegistry?.handleRequest(CodexPendingNotification(notification: notification));
     final subAgentItem = _subAgentItemParser.parse(notification: notification);
     if (subAgentItem case CodexSubAgentActivity(
       lifecycle: CodexCorrelatableItemLifecycle.started,
@@ -540,9 +545,22 @@ class CodexPlugin._({
         message: message,
       ),
       resolvePendingInputScope: _sessionService.pendingInputScope,
+      questionParser: const CodexQuestionParser(),
+      questionMapper: const CodexQuestionMapper(),
+      sendAsyncAnswer: ({required sessionId, required text}) => _startTurn(
+        threadId: sessionId,
+        promptId: null,
+        parts: [PluginPromptPart.text(text: text)],
+        collaborationMode: null,
+      ),
     );
     _approvalRegistry = registry;
-    registry.attach(stream: client.serverRequests);
+    // This plugin owns both app-server streams. Both pending-input sources
+    // enter the same registry, with notifications retaining their serialized
+    // lifecycle/child-scope processing above.
+    _serverRequestSubscription = client.serverRequests.listen(
+      (request) => registry.handleRequest(CodexPendingRequest(request: request)),
+    );
   }
 
   void _emitApprovalEvent({required ApprovalRegistry registry, required BridgeSseEvent event}) {
@@ -1474,7 +1492,7 @@ class CodexPlugin._({
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return;
-    registry.replyQuestion(requestId: questionId, answers: answers);
+    await registry.replyQuestion(requestId: questionId, answers: answers);
   }
 
   @override
@@ -1484,7 +1502,7 @@ class CodexPlugin._({
   }) async {
     // sessionId is unused: the approval registry keys pending requests by their
     // bridge request id alone (codex requests are globally unique per session).
-    _approvalRegistry?.rejectQuestion(requestId: questionId);
+    await _approvalRegistry?.rejectQuestion(requestId: questionId);
   }
 
   @override
@@ -1529,6 +1547,8 @@ class CodexPlugin._({
 
     await capture(() => _notificationSubscription?.cancel() ?? Future<void>.value());
     _notificationSubscription = null;
+    await capture(() => _serverRequestSubscription?.cancel() ?? Future<void>.value());
+    _serverRequestSubscription = null;
     await capture(() => _notificationWork);
     await capture(() => _rolloutSubscription?.cancel() ?? Future<void>.value());
     _rolloutSubscription = null;

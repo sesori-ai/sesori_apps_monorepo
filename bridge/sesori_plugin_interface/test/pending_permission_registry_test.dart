@@ -55,7 +55,7 @@ void main() {
     cancelPending: cancelPending ?? ({required payload, required reason}) {},
   );
 
-  test("registers exact snapshots and settles replies with clearing events", () {
+  test("registers exact snapshots and settles replies with clearing events", () async {
     final events = <BridgeSseEvent>[];
     final permissions = <(String, PluginPermissionReply)>[];
     final questions = <String>[];
@@ -81,7 +81,7 @@ void main() {
       isTrue,
     );
     expect(
-      subject.replyQuestion(
+      await subject.replyQuestion(
         requestId: questionId,
         answers: const [
           ["yes"],
@@ -97,20 +97,20 @@ void main() {
     expect(subject.hasAnyPendingInput, isFalse);
   });
 
-  test("a kind-mismatched reply leaves the entry pending and answerable", () {
+  test("a kind-mismatched reply leaves the entry pending and answerable", () async {
     final events = <BridgeSseEvent>[];
     final subject = registry(events: events);
     final permissionId = subject.addPermission(payload: "permission", sessionId: "s1");
     final questionId = subject.addQuestion(payload: "question", sessionId: "s1");
     events.clear();
 
-    expect(subject.replyQuestion(requestId: permissionId, answers: const []), isFalse);
-    expect(subject.rejectQuestion(requestId: permissionId), isFalse);
+    expect(await subject.replyQuestion(requestId: permissionId, answers: const []), isFalse);
+    expect(await subject.rejectQuestion(requestId: permissionId), isFalse);
     expect(subject.replyPermission(requestId: questionId, reply: PluginPermissionReply.once), isFalse);
     expect(events, isEmpty);
 
     expect(subject.replyPermission(requestId: permissionId, reply: PluginPermissionReply.once), isTrue);
-    expect(subject.rejectQuestion(requestId: questionId), isTrue);
+    expect(await subject.rejectQuestion(requestId: questionId), isTrue);
     expect(subject.hasAnyPendingInput, isFalse);
   });
 
@@ -139,6 +139,61 @@ void main() {
     expect(events, [isA<BridgeSsePermissionReplied>(), isA<BridgeSseQuestionRejected>()]);
     expect(subject.pendingForSession(sessionId: "s2"), hasLength(1));
     expect(stderrLines.join("\n"), contains("[test] failed to resolve cancelled pending input"));
+  });
+
+  test("an async answer stays pending until accepted and remains retryable on failure", () async {
+    final events = <BridgeSseEvent>[];
+    var completion = Completer<PendingQuestionReplyOutcome>();
+    final subject = registry(
+      events: events,
+      resolveQuestion: ({required payload, required answers}) => completion.future,
+    );
+    final id = subject.addQuestion(payload: "async", sessionId: "s1");
+    final reply = subject.replyQuestion(
+      requestId: id,
+      answers: const [
+        ["Choice"],
+      ],
+    );
+    final failure = expectLater(reply, throwsStateError);
+    expect(subject.pendingForSession(sessionId: "s1").single.id, id);
+    expect(events.whereType<BridgeSseQuestionReplied>(), isEmpty);
+    completion.completeError(StateError("send failed"));
+    await failure;
+    expect(subject.pendingForSession(sessionId: "s1").single.id, id);
+    completion = Completer<PendingQuestionReplyOutcome>();
+    final retry = subject.replyQuestion(
+      requestId: id,
+      answers: const [
+        ["Choice"],
+      ],
+    );
+    completion.complete(PendingQuestionReplyOutcome.replied);
+    expect(await retry, isTrue);
+    expect(subject.hasAnyPendingInput, isFalse);
+    expect(events.whereType<BridgeSseQuestionReplied>(), hasLength(1));
+  });
+
+  test("async rejection failure keeps the question and teardown prevents late settlement", () async {
+    final events = <BridgeSseEvent>[];
+    var completion = Completer<void>();
+    final subject = registry(
+      events: events,
+      rejectQuestion: ({required payload}) => completion.future,
+    );
+    final id = subject.addQuestion(payload: "async", sessionId: "s1");
+    final rejection = subject.rejectQuestion(requestId: id);
+    final failure = expectLater(rejection, throwsStateError);
+    completion.completeError(StateError("send failed"));
+    await failure;
+    expect(subject.pendingForSession(sessionId: "s1").single.id, id);
+    completion = Completer<void>();
+    final retry = subject.rejectQuestion(requestId: id);
+    await subject.dispose();
+    completion.complete();
+    expect(await retry, isFalse);
+    expect(subject.hasAnyPendingInput, isFalse);
+    expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
   });
 
   test("dispose settles pending input after subscription cancellation fails", () async {
