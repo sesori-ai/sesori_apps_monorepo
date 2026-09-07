@@ -405,6 +405,29 @@ void main() {
       });
     });
 
+    test("secret input fails explicitly without presenting a plain-text question", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 191,
+          method: "item/tool/requestUserInput",
+          params: {
+            "threadId": "t-3",
+            "questions": [
+              {"id": "details", "header": "Details", "question": "Any constraints?"},
+              {"id": "token", "header": "Token", "question": "Enter token", "isSecret": true},
+            ],
+          },
+        ),
+      );
+      await pump();
+      expect(emitted, isEmpty);
+      expect(registry.pendingForSession(sessionId: "t-3"), isEmpty);
+      expect(respondCalls, isEmpty);
+      expect(errorCalls.single.id, 191);
+      expect(errorCalls.single.code, -32602);
+      expect(errorCalls.single.message, "Secret question input is not supported by Sesori.");
+    });
+
     test("async assistant questions use the same pending surface and submit contextual answers", () async {
       registry.handleRequest(
         const CodexPendingNotification(

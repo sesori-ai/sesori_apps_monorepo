@@ -151,7 +151,7 @@ as List<CodexUserInputQuestionDto>,
 /// @nodoc
 mixin _$CodexUserInputQuestionDto {
 
- String get id; String get header; String get question; List<CodexUserInputOptionDto>? get options; bool get isOther;
+ String get id; String get header; String get question; List<CodexUserInputOptionDto>? get options; bool get isOther; bool get isSecret;
 /// Create a copy of CodexUserInputQuestionDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -162,16 +162,16 @@ $CodexUserInputQuestionDtoCopyWith<CodexUserInputQuestionDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputQuestionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.header, header) || other.header == header)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other.options, options)&&(identical(other.isOther, isOther) || other.isOther == isOther));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexUserInputQuestionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.header, header) || other.header == header)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other.options, options)&&(identical(other.isOther, isOther) || other.isOther == isOther)&&(identical(other.isSecret, isSecret) || other.isSecret == isSecret));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,header,question,const DeepCollectionEquality().hash(options),isOther);
+int get hashCode => Object.hash(runtimeType,id,header,question,const DeepCollectionEquality().hash(options),isOther,isSecret);
 
 @override
 String toString() {
-  return 'CodexUserInputQuestionDto(id: $id, header: $header, question: $question, options: $options, isOther: $isOther)';
+  return 'CodexUserInputQuestionDto(id: $id, header: $header, question: $question, options: $options, isOther: $isOther, isSecret: $isSecret)';
 }
 
 
@@ -182,7 +182,7 @@ abstract mixin class $CodexUserInputQuestionDtoCopyWith<$Res>  {
   factory $CodexUserInputQuestionDtoCopyWith(CodexUserInputQuestionDto value, $Res Function(CodexUserInputQuestionDto) _then) = _$CodexUserInputQuestionDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, String header, String question, List<CodexUserInputOptionDto>? options, bool isOther
+ String id, String header, String question, List<CodexUserInputOptionDto>? options, bool isOther, bool isSecret
 });
 
 
@@ -199,13 +199,14 @@ class _$CodexUserInputQuestionDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexUserInputQuestionDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? header = null,Object? question = null,Object? options = freezed,Object? isOther = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? header = null,Object? question = null,Object? options = freezed,Object? isOther = null,Object? isSecret = null,}) {
   return _then(CodexUserInputQuestionDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,header: null == header ? _self.header : header // ignore: cast_nullable_to_non_nullable
 as String,question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as String,options: freezed == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as List<CodexUserInputOptionDto>?,isOther: null == isOther ? _self.isOther : isOther // ignore: cast_nullable_to_non_nullable
+as bool,isSecret: null == isSecret ? _self.isSecret : isSecret // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }
@@ -218,7 +219,7 @@ as bool,
 @JsonSerializable(createToJson: false)
 
 class _CodexUserInputQuestionDto implements CodexUserInputQuestionDto {
-  const _CodexUserInputQuestionDto({required this.id, required this.header, required this.question, required  List<CodexUserInputOptionDto>? options, this.isOther = false}): _options = options;
+  const _CodexUserInputQuestionDto({required this.id, required this.header, required this.question, required  List<CodexUserInputOptionDto>? options, this.isOther = false, this.isSecret = false}): _options = options;
   factory _CodexUserInputQuestionDto.fromJson(Map<String, dynamic> json) => _$CodexUserInputQuestionDtoFromJson(json);
 
 @override final  String id;
@@ -234,6 +235,7 @@ class _CodexUserInputQuestionDto implements CodexUserInputQuestionDto {
 }
 
 @override@JsonKey() final  bool isOther;
+@override@JsonKey() final  bool isSecret;
 
 /// Create a copy of CodexUserInputQuestionDto
 /// with the given fields replaced by the non-null parameter values.
@@ -245,16 +247,16 @@ _$CodexUserInputQuestionDtoCopyWith<_CodexUserInputQuestionDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputQuestionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.header, header) || other.header == header)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other._options, _options)&&(identical(other.isOther, isOther) || other.isOther == isOther));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexUserInputQuestionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.header, header) || other.header == header)&&(identical(other.question, question) || other.question == question)&&const DeepCollectionEquality().equals(other._options, _options)&&(identical(other.isOther, isOther) || other.isOther == isOther)&&(identical(other.isSecret, isSecret) || other.isSecret == isSecret));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,header,question,const DeepCollectionEquality().hash(_options),isOther);
+int get hashCode => Object.hash(runtimeType,id,header,question,const DeepCollectionEquality().hash(_options),isOther,isSecret);
 
 @override
 String toString() {
-  return 'CodexUserInputQuestionDto(id: $id, header: $header, question: $question, options: $options, isOther: $isOther)';
+  return 'CodexUserInputQuestionDto(id: $id, header: $header, question: $question, options: $options, isOther: $isOther, isSecret: $isSecret)';
 }
 
 
@@ -265,7 +267,7 @@ abstract mixin class _$CodexUserInputQuestionDtoCopyWith<$Res> implements $Codex
   factory _$CodexUserInputQuestionDtoCopyWith(_CodexUserInputQuestionDto value, $Res Function(_CodexUserInputQuestionDto) _then) = __$CodexUserInputQuestionDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String header, String question, List<CodexUserInputOptionDto>? options, bool isOther
+ String id, String header, String question, List<CodexUserInputOptionDto>? options, bool isOther, bool isSecret
 });
 
 
@@ -282,13 +284,14 @@ class __$CodexUserInputQuestionDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexUserInputQuestionDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? header = null,Object? question = null,Object? options = freezed,Object? isOther = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? header = null,Object? question = null,Object? options = freezed,Object? isOther = null,Object? isSecret = null,}) {
   return _then(_CodexUserInputQuestionDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,header: null == header ? _self.header : header // ignore: cast_nullable_to_non_nullable
 as String,question: null == question ? _self.question : question // ignore: cast_nullable_to_non_nullable
 as String,options: freezed == options ? _self._options : options // ignore: cast_nullable_to_non_nullable
 as List<CodexUserInputOptionDto>?,isOther: null == isOther ? _self.isOther : isOther // ignore: cast_nullable_to_non_nullable
+as bool,isSecret: null == isSecret ? _self.isSecret : isSecret // ignore: cast_nullable_to_non_nullable
 as bool,
   ));
 }

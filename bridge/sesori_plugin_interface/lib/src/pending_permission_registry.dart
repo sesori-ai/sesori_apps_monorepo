@@ -56,6 +56,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
 
   StreamSubscription<TRequest>? _subscription;
   final Map<String, _PendingEntry<TPayload>> _pending = {};
+  final Set<_PendingQuestionEntry<TPayload>> _questionSubmissions = {};
   int _sequence = 0;
 
   @protected
@@ -194,46 +195,57 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   Future<bool> replyQuestion({required String requestId, required List<List<String>> answers}) async {
     final entry = _pending[requestId];
     if (entry is! _PendingQuestionEntry<TPayload>) return false;
-    // An asynchronous backend must accept the answer before the card retires.
-    // A failed submission leaves it pending so the user can retry.
-    final resolution = _resolveQuestion(payload: entry.payload, answers: answers);
-    final outcome = resolution is Future<PendingQuestionReplyOutcome> ? await resolution : resolution;
-    if (!identical(_pending[requestId], entry)) return false;
-    _pending.remove(requestId);
-    final snapshot = entry.snapshot;
-    _emit(
-      switch (outcome) {
-        PendingQuestionReplyOutcome.replied => BridgeSseQuestionReplied(
-          requestID: requestId,
-          sessionID: snapshot.sessionID,
-          displaySessionId: snapshot.displaySessionId,
-        ),
-        PendingQuestionReplyOutcome.rejected => BridgeSseQuestionRejected(
-          requestID: requestId,
-          sessionID: snapshot.sessionID,
-          displaySessionId: snapshot.displaySessionId,
-        ),
-      },
-    );
-    return true;
+    // Phone and desktop can submit the same card before backend acceptance.
+    if (!_questionSubmissions.add(entry)) return false;
+    try {
+      // An asynchronous backend must accept the answer before the card retires.
+      // A failed submission leaves it pending so the user can retry.
+      final resolution = _resolveQuestion(payload: entry.payload, answers: answers);
+      final outcome = resolution is Future<PendingQuestionReplyOutcome> ? await resolution : resolution;
+      if (!identical(_pending[requestId], entry)) return false;
+      _pending.remove(requestId);
+      final snapshot = entry.snapshot;
+      _emit(
+        switch (outcome) {
+          PendingQuestionReplyOutcome.replied => BridgeSseQuestionReplied(
+            requestID: requestId,
+            sessionID: snapshot.sessionID,
+            displaySessionId: snapshot.displaySessionId,
+          ),
+          PendingQuestionReplyOutcome.rejected => BridgeSseQuestionRejected(
+            requestID: requestId,
+            sessionID: snapshot.sessionID,
+            displaySessionId: snapshot.displaySessionId,
+          ),
+        },
+      );
+      return true;
+    } finally {
+      _questionSubmissions.remove(entry);
+    }
   }
 
   Future<bool> rejectQuestion({required String requestId}) async {
     final entry = _pending[requestId];
     if (entry is! _PendingQuestionEntry<TPayload>) return false;
-    final resolution = _rejectQuestion(payload: entry.payload);
-    if (resolution is Future<void>) await resolution;
-    if (!identical(_pending[requestId], entry)) return false;
-    _pending.remove(requestId);
-    final snapshot = entry.snapshot;
-    _emit(
-      BridgeSseQuestionRejected(
-        requestID: requestId,
-        sessionID: snapshot.sessionID,
-        displaySessionId: snapshot.displaySessionId,
-      ),
-    );
-    return true;
+    if (!_questionSubmissions.add(entry)) return false;
+    try {
+      final resolution = _rejectQuestion(payload: entry.payload);
+      if (resolution is Future<void>) await resolution;
+      if (!identical(_pending[requestId], entry)) return false;
+      _pending.remove(requestId);
+      final snapshot = entry.snapshot;
+      _emit(
+        BridgeSseQuestionRejected(
+          requestID: requestId,
+          sessionID: snapshot.sessionID,
+          displaySessionId: snapshot.displaySessionId,
+        ),
+      );
+      return true;
+    } finally {
+      _questionSubmissions.remove(entry);
+    }
   }
 
   String _generateId() {

@@ -232,6 +232,10 @@ class ApprovalRegistry({
       );
     } else if (method == _userInputMethod) {
       final input = _questionParser.parseUserInput(params: request.params);
+      if (input.questions.any((question) => question.isSecret)) {
+        _respondError(request.id, -32602, "Secret question input is not supported by Sesori.");
+        return;
+      }
       registerPendingQuestion(
         payload: _PendingUserInput(codexId: request.id, input: input, respond: _respond, respondError: _respondError),
         sessionId: resolvedSessionId,

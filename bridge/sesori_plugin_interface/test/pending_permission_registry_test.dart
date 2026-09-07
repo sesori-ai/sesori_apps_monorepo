@@ -196,6 +196,43 @@ void main() {
     expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
   });
 
+  for (final rejectFirst in [false, true]) {
+    for (final rejectSecond in [false, true]) {
+      test("competing questions settle once (reject first: $rejectFirst, second: $rejectSecond)", () async {
+        final events = <BridgeSseEvent>[];
+        final completion = Completer<PendingQuestionReplyOutcome>();
+        var submissions = 0;
+        final subject = registry(
+          events: events,
+          resolveQuestion: ({required payload, required answers}) {
+            submissions++;
+            return completion.future;
+          },
+          rejectQuestion: ({required payload}) {
+            submissions++;
+            return completion.future.then((_) {});
+          },
+        );
+        final id = subject.addQuestion(payload: "async", sessionId: "s1");
+        final first = rejectFirst
+            ? subject.rejectQuestion(requestId: id)
+            : subject.replyQuestion(requestId: id, answers: const []);
+        final second = rejectSecond
+            ? subject.rejectQuestion(requestId: id)
+            : subject.replyQuestion(requestId: id, answers: const []);
+        completion.complete(PendingQuestionReplyOutcome.replied);
+        expect(await first, isTrue);
+        expect(await second, isFalse);
+        expect(submissions, 1);
+        expect(subject.hasAnyPendingInput, isFalse);
+        expect(
+          events.where((event) => event is BridgeSseQuestionReplied || event is BridgeSseQuestionRejected),
+          hasLength(1),
+        );
+      });
+    }
+  }
+
   test("dispose settles pending input after subscription cancellation fails", () async {
     final events = <BridgeSseEvent>[];
     final cancelled = <String>[];

@@ -54,6 +54,10 @@ running conversation or resume it while idle; the immediate tool acknowledgement
 does not answer the question. Async message metadata was verified against Codex
 0.153.4. Older runtimes continue to use their synchronous request path.
 
+**Not implemented:** Masked secret-question entry. Codex requests containing an
+`isSecret` question receive an explicit unsupported-input error before any
+question card is shown; secret prompts are never downgraded to plain text.
+
 ## Setup detection
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

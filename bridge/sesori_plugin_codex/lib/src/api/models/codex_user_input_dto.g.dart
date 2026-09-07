@@ -30,6 +30,7 @@ _CodexUserInputQuestionDto _$CodexUserInputQuestionDtoFromJson(Map json) =>
           )
           .toList(),
       isOther: json['isOther'] as bool? ?? false,
+      isSecret: json['isSecret'] as bool? ?? false,
     );
 
 _CodexUserInputOptionDto _$CodexUserInputOptionDtoFromJson(Map json) =>

@@ -25,6 +25,7 @@ sealed class CodexUserInputQuestionDto with _$CodexUserInputQuestionDto {
     required String question,
     required List<CodexUserInputOptionDto>? options,
     @Default(false) bool isOther,
+    @Default(false) bool isSecret,
   }) = _CodexUserInputQuestionDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexUserInputQuestionDtoFromJson(json);
