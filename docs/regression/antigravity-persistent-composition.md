@@ -9,8 +9,9 @@ No database/wire migration, analytics event, managed installation, OAuth attempt
 - One existing ACP lifecycle owns live processes, turn lanes, pending input and replay clients. Composition injects
   required peers; options use the actual connection's configuration repository per call. No scratch session is used.
 - Fresh options expose one primary agent and no models. Real new sessions establish the picker default; load/resume
-  do not redefine it. Explicit models are validated before queue admission and at dispatch; every turn uses mode
-  `default`. Reset clears picker state. Message model/provider stamping follows in 8.c before activation.
+  do not redefine it. Explicit models are checked before admission when the catalog is known. After reset, real
+  residency restores the catalog; strict dispatch validation still precedes model/mode/prompt writes. Every turn uses
+  mode `default`. Reset clears picker state. Message model/provider stamping follows in 8.c before activation.
 - Metadata recovery runs once per new live connection before it is advertised, not during ordinary enumeration or DB
   catalog reads. Imports consume those warmed hints. DB/live bindings override recovery regardless of arrival order. Live residency prefers advertised resume, otherwise load; replay always uses load.
 - Cancellation/deletion settle the target's pending input without altering other sessions. Local deletion never removes
@@ -29,7 +30,7 @@ No database/wire migration, analytics event, managed installation, OAuth attempt
 
 ## Failure signals and coverage
 
-Wrong cwd, repeated metadata scans during enumeration, replay leaking into live state, stale model admission,
+Wrong cwd, repeated metadata scans during enumeration, replay leaking into live state, stale model dispatch,
 invented approvals, lost original failure stacks,
 secret log output, auth gates accumulating image lines, or deletion touching Google files are regressions.
 

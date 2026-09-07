@@ -912,7 +912,8 @@ integration corrections remain within the 1,500-line cap without reducing meanin
   metadata peers and options service. The plugin constructs no peers or parallel lifecycle owner.
 - ACP creates clients lazily: inject mapper/tracker into the process-lifetime options service, then require the
   actual live `AcpSessionConfigRepository` on each `applyForPrompt` call. No options composer or dummy repository.
-  Validate model IDs before queue admission and again at dispatch; preserve exact writes and default mode.
+  Validate known-catalog model IDs before queue admission. After reset, residency restores an unknown catalog;
+  strict dispatch validation still precedes model/mode/prompt writes. Preserve exact writes and default mode.
 - The interaction composer builds connection-scoped Repository → Service → neutral registry over the actual
   client. Wire metadata import/cold recovery, resume-first availability, and identical live/replay normalization.
 - Output composition supplies fresh policies to existing ACP cleanup owners. An optional backend-neutral prefix
