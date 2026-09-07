@@ -70,7 +70,7 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
     if (_status.isClosed) {
       return;
     }
-    _status.add(status.copyWith(helperOnline: true));
+    _status.add(status.copyWith(helperOnline: true, startup: ControlStartupState.starting));
   }
 
   /// The helper's control socket dropped: its last-known status is stale, so
@@ -96,6 +96,7 @@ class BridgeStatusTracker({required BridgeIdStorage bridgeIdStorage}) {
     }
     _status.add(
       this.status.copyWith(
+        startup: status.startup,
         relay: status.relay,
         plugin: status.plugin,
         activeSessionCount: status.activeSessionCount,

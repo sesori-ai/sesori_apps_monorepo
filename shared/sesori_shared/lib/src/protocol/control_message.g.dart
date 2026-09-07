@@ -36,7 +36,18 @@ Map<String, dynamic> _$ControlTokenResponseToJson(
   'type': instance.$type,
 };
 
+ControlTokenRetryLater _$ControlTokenRetryLaterFromJson(Map json) =>
+    ControlTokenRetryLater(
+      id: json['id'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$ControlTokenRetryLaterToJson(
+  ControlTokenRetryLater instance,
+) => <String, dynamic>{'id': instance.id, 'type': instance.$type};
+
 ControlStatus _$ControlStatusFromJson(Map json) => ControlStatus(
+  startup: $enumDecode(_$ControlStartupStateEnumMap, json['startup']),
   relay: $enumDecode(
     _$ControlRelayConnectionStateEnumMap,
     json['relay'],
@@ -53,11 +64,20 @@ ControlStatus _$ControlStatusFromJson(Map json) => ControlStatus(
 
 Map<String, dynamic> _$ControlStatusToJson(ControlStatus instance) =>
     <String, dynamic>{
+      'startup': _$ControlStartupStateEnumMap[instance.startup]!,
       'relay': _$ControlRelayConnectionStateEnumMap[instance.relay]!,
       'plugin': _$ControlPluginHealthStateEnumMap[instance.plugin]!,
       'activeSessionCount': instance.activeSessionCount,
       'type': instance.$type,
     };
+
+const _$ControlStartupStateEnumMap = {
+  ControlStartupState.unknown: 'unknown',
+  ControlStartupState.starting: 'starting',
+  ControlStartupState.waitingForServer: 'waiting_for_server',
+  ControlStartupState.waitingForAuthentication: 'waiting_for_authentication',
+  ControlStartupState.ready: 'ready',
+};
 
 const _$ControlRelayConnectionStateEnumMap = {
   ControlRelayConnectionState.connected: 'connected',

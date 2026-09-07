@@ -9,8 +9,13 @@ explicit restart, and the connection states the app presents.
 ## Required Behavior
 
 - A start is ready only after registration, socket open, auth frame sent, listeners and
-  initial summary set up, and the first inbound read armed; earlier failure tears down
-  what was acquired and surfaces the error.
+  initial summary set up, and the first inbound read armed. During startup, temporary
+  authentication, registration and relay connection failures keep the process alive
+  and retry after one minute, without an attempt limit. Every failed attempt prints
+  a Console warning that the server could not be reached and the internet connection
+  may be unavailable; local diagnostics retain the original error and stack trace.
+  Shutdown interrupts the retry wait. Rejected credentials still use the normal login
+  flow, and non-network startup failures surface normally.
 - Relay traffic is end-to-end encrypted and a joining client completes key exchange
   before it is served; one room-key encryptor is shared across that bridge
   session while every encrypted frame receives a fresh nonce.
@@ -119,7 +124,7 @@ explicit restart, and the connection states the app presents.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
-| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
+| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
 | L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
@@ -131,6 +136,11 @@ backgrounding, token expiry, competing bridge. Vary whether a client is connecte
 the bridge starts, how many clients are present, and whether restart is explicit.
 
 ## Failure Signals
+
+- A temporary startup outage exits the process or exhausts the supervisor crash
+  budget; retries stop, run faster than one minute, or fail to recover when the
+  server returns. Rejected credentials or a permanent WebSocket upgrade error
+  retry forever. Shutdown during a retry wait fails to stop promptly.
 
 - Readiness claimed before registration, auth send, listener setup, or read arming.
 - Plaintext session content crossing the relay, or a client served without key exchange.

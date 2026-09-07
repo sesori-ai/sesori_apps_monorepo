@@ -17,6 +17,7 @@ void main() {
   test("defaults to the offline baseline before any helper connects", () {
     expect(tracker.status, BridgeControlStatus.offline);
     expect(tracker.status.helperOnline, isFalse);
+    expect(tracker.status.startup, ControlStartupState.unknown);
     expect(tracker.statusStream.value, BridgeControlStatus.offline);
   });
 
@@ -24,6 +25,7 @@ void main() {
     tracker.markHelperConnected();
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.healthy,
         activeSessionCount: 3,
@@ -42,6 +44,7 @@ void main() {
     await pumpEventQueue();
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.healthy,
         activeSessionCount: 2,
@@ -51,6 +54,7 @@ void main() {
     tracker.markHelperDisconnected();
 
     expect(tracker.status.helperOnline, isFalse);
+    expect(tracker.status.startup, ControlStartupState.unknown);
     expect(tracker.status.relay, ControlRelayConnectionState.disconnected);
     expect(tracker.status.plugin, ControlPluginHealthState.unknown);
     expect(tracker.status.activeSessionCount, 0);
@@ -61,6 +65,7 @@ void main() {
     tracker.markHelperConnected();
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.unknown,
         plugin: ControlPluginHealthState.unknown,
         activeSessionCount: 0,
@@ -77,6 +82,7 @@ void main() {
 
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.healthy,
         activeSessionCount: 5,
@@ -84,6 +90,7 @@ void main() {
     );
 
     expect(tracker.status.helperOnline, isFalse);
+    expect(tracker.status.startup, ControlStartupState.unknown);
     expect(tracker.status.relay, ControlRelayConnectionState.disconnected);
     expect(tracker.status.activeSessionCount, 0);
   });
@@ -164,6 +171,7 @@ void main() {
     expect(
       () => disposed.applyStatus(
         status: const ControlStatus(
+          startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
           plugin: ControlPluginHealthState.healthy,
           activeSessionCount: 1,

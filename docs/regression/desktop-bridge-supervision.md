@@ -8,6 +8,17 @@ and keep native close/quit behavior safe.
 
 ## Required Behavior
 
+- A connected helper process is distinct from a ready bridge. The control channel
+  reports starting, waiting for the server or desktop authentication, and ready; desktop shows
+  "Starting — waiting for server (retrying every minute)" during an outage.
+  Waiting does not exit the helper or spend the supervisor's crash-retry budget.
+  Startup status is available before authentication and is replayed after a
+  control-channel reconnect. Stop and Quit remain available during the wait.
+- If desktop cannot obtain a fresh token while its account remains authenticated,
+  it asks the helper to retry later and desktop shows waiting for authentication. Only a missing/signed-out session takes the
+  existing login-required path; an offline token refresh must not be treated as
+  a logout.
+
 - The desktop boots a visible Prego-themed window and eagerly initializes tray
   supervision even while signed out. Exactly one process owns the desktop
   instance lock and activation listener. The macOS tray uses the transparent
@@ -128,7 +139,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -145,6 +156,11 @@ last-On restoration. Kill the helper at different handshake phases and inspect
 the status and bounded recent output.
 
 ## Failure Signals
+
+- An outage leaves the helper claiming ready, hides the startup wait, consumes
+  the crash budget, or loses the waiting status after control-channel reconnect.
+  A disconnected helper claims ready, or a temporary desktop token refresh is
+  treated as logout/login-required instead of waiting for authentication.
 
 - No tray or command subscriptions until a signed-in screen reads the cubit.
 - A second process creates another tray/helper, fails to focus the owner, or a

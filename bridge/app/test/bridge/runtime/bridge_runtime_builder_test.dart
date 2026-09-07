@@ -17,6 +17,7 @@ import "package:sesori_bridge/src/push/push_rate_limiter.dart";
 import "package:sesori_bridge/src/push/push_session_state_tracker.dart";
 import "package:sesori_bridge/src/routing/routed_request_dispatcher.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
+import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show ServerClock;
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -83,6 +84,7 @@ void main() {
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+      startupRetryService: BridgeStartupRetryService(),
       reconnectBackoff: ReconnectBackoffPolicy.standard,
     ).create();
     final runtime = BridgeRuntime(

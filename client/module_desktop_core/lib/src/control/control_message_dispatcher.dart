@@ -85,7 +85,11 @@ class ControlMessageDispatcher({
         }
       case ControlPromptRequest():
         _promptTracker.addPrompt(prompt: message);
-      case ControlTokenResponse() || ControlPromptResponse() || ControlShutdown() || ControlUnregisterAndExit():
+      case ControlTokenRetryLater() ||
+          ControlTokenResponse() ||
+          ControlPromptResponse() ||
+          ControlShutdown() ||
+          ControlUnregisterAndExit():
         // GUI→helper-direction variants are never inbound commands.
         logd("Ignoring a GUI-direction control message arriving inbound");
     }
@@ -97,9 +101,7 @@ class ControlMessageDispatcher({
     try {
       accessToken = await _tokenProvider.getFreshAccessToken(forceRefresh: request.forceRefresh);
     } on Object catch (error, stackTrace) {
-      // Answer signed-out rather than leaving the helper's pull hanging on
-      // its timeout; the helper surfaces its typed token-unavailable path.
-      logw("Token refresh for the helper failed; answering signed-out", error, stackTrace);
+      logw("Token refresh for the helper failed", error, stackTrace);
       accessToken = null;
     }
     if (_eventSubscription == null || epoch != _connectionEpoch) {
@@ -111,7 +113,9 @@ class ControlMessageDispatcher({
       return;
     }
     _send(
-      message: ControlMessage.tokenResponse(id: request.id, accessToken: accessToken),
+      message: accessToken == null && _authSession.currentState is AuthAuthenticated
+          ? ControlMessage.tokenRetryLater(id: request.id)
+          : ControlMessage.tokenResponse(id: request.id, accessToken: accessToken),
     );
   }
 

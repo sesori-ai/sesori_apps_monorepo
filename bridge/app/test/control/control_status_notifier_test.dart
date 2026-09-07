@@ -14,14 +14,19 @@ void main() {
   late StreamController<RelayConnectionState> relayState;
   late StreamController<String> registrations;
   late ControlStatusNotifier notifier;
+  late StreamController<ControlStartupState> startupState;
 
   setUp(() {
     client = FakeControlChannelClient();
     pluginMetadata = StreamController<List<PluginMetadata>>.broadcast();
     relayState = StreamController<RelayConnectionState>.broadcast();
     registrations = StreamController<String>.broadcast();
+    startupState = StreamController<ControlStartupState>.broadcast();
     notifier = ControlStatusNotifier(
       client: client,
+      startupState: startupState.stream,
+    );
+    notifier.observeRuntime(
       pluginMetadata: pluginMetadata.stream,
       relayConnectionState: relayState.stream,
       registrations: registrations.stream,
@@ -31,6 +36,7 @@ void main() {
 
   tearDown(() async {
     await notifier.dispose();
+    await startupState.close();
     await pluginMetadata.close();
     await relayState.close();
     await registrations.close();
@@ -44,6 +50,26 @@ void main() {
       PluginMetadata(id: "plugin", displayName: "Plugin", isDefault: true, state: state, actionHint: null),
     ]);
   }
+
+  test("reports waiting before runtime attachment and resends it on reconnect", () async {
+    await notifier.dispose();
+    notifier = ControlStatusNotifier(client: client, startupState: startupState.stream)..start();
+    startupState.add(ControlStartupState.waitingForServer);
+    await pump();
+    expect((client.sentMessages.last as ControlStatus).startup, ControlStartupState.waitingForServer);
+    client.sentFrames.clear();
+    client.emitConnectionState(ControlChannelConnectionState.connected);
+    await pump();
+    expect((client.sentMessages.single as ControlStatus).startup, ControlStartupState.waitingForServer);
+    notifier.observeRuntime(
+      pluginMetadata: pluginMetadata.stream,
+      relayConnectionState: relayState.stream,
+      registrations: registrations.stream,
+    );
+    startupState.add(ControlStartupState.ready);
+    await pump();
+    expect((client.sentMessages.last as ControlStatus).startup, ControlStartupState.ready);
+  });
 
   group("status pushes", () {
     test("a plugin status change pushes a status with the mapped health", () async {
@@ -299,6 +325,7 @@ void main() {
 
     test("dispose cancels the subscriptions — later events push nothing", () async {
       await notifier.dispose();
+      await startupState.close();
 
       emitPluginState(PluginLifecycleState.ready);
       relayState.add(const RelayConnected());
