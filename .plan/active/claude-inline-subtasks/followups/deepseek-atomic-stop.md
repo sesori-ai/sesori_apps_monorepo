@@ -185,7 +185,19 @@ reproduces it. This range includes all earlier measurement records in its docs/p
 subtotal and excludes subsequent non-implementation evidence/wrapping commits
 beginning with `d298a41507`, which records the 3,263 figure.
 Its 556-line increase is 18 generated, 371 tests/fixtures, 41 docs/plans, and 126
-production lines. Splitting the response or partial-handling mapping from atomic STOP
+production lines. Moving fanout policy into a client service and sealing internal
+coverage produced reviewed head `af533ee7df19f39314964cdbd8ea4e7fc4203551`:
++3,185/-284 = 3,469 lines (629 generated, 1,622 tests/fixtures, 574 docs/plans,
+644 production), reproduced against the same base. The final invariant tightening
+stores only unhandled ids in partial coverage and derives handled ids in the bridge.
+Head `96c6b265730c5fb421422763fb037384bd482502` measures +3,193/-284 =
+3,477 lines: 629 generated, 1,626 tests/fixtures, 581 docs/plans, and 641
+production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...96c6b265730c5fb421422763fb037384bd482502`
+reproduces it. The range includes every earlier measurement record and excludes
+subsequent non-implementation evidence commits beginning with the commit recording
+this figure. Its eight-line increase is four tests/fixtures and seven docs/plans
+offset by three fewer production lines. Splitting the response or partial-handling
+mapping from atomic STOP
 would leave the first PR vulnerable to re-stopping later work or missing independent
 work, while splitting the generated parser or admission-race fixes from their
 consumer would retain a duplicate schema or known escape path. The overrun is

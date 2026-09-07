@@ -861,4 +861,12 @@ clean and LSP reports zero diagnostics across ten changed production files.
 Incremental architecture review of `1a0b6a9e7a..af533ee7df` approved with no
 findings. The follow-up narrows partial coverage to exact unhandled ids only; the
 repository derives the disjoint handled set from its request snapshot, enforcing
-the review-requested invariant without changing the approved layer boundaries.
+the review-requested invariant without changing the approved layer boundaries. The
+pinned implementation head is `96c6b265730c5fb421422763fb037384bd482502`;
+against merge base `b43758e1b304d7f119787163875b78b38b1b25f1`, `git diff
+--numstat b43758e1b304d7f119787163875b78b38b1b25f1...96c6b265730c5fb421422763fb037384bd482502`
+measures +3,193/-284 = 3,477 lines: 629 generated, 1,626 tests/fixtures, 581
+docs/plans, and 641 production. The range includes every earlier measurement
+record and excludes subsequent non-implementation evidence commits beginning with
+the commit that records this figure. Its eight-line increase from `af533ee7df` is
+four tests/fixtures and seven docs/plans offset by three fewer production lines.
