@@ -108,7 +108,7 @@ class const AntigravityProtocolMapper() {
   }) {
     if (nativeOutput == null && (exitCode == null || exitCode == 0)) return (text: null, content: null);
     final retained = <Object?>[];
-    final text = StringBuffer();
+    var text = "";
     // ACP tool content is a list. Decode only text; preserve the original
     // non-text entries so valid image bytes and metadata are not reserialized.
     if (content is List) {
@@ -117,18 +117,23 @@ class const AntigravityProtocolMapper() {
         switch (block) {
           case AntigravityWrappedToolContentDto(content: AntigravityTextToolContentDto(text: final value)) ||
               AntigravityTextToolContentDto(text: final value):
-            text.write(value);
+            if (nativeOutput == null) {
+              text = _bound(
+                text: "$text${_bound(text: value, limit: maxToolOutputLength)}",
+                limit: maxToolOutputLength,
+              );
+            }
           case null || AntigravityToolContentDto():
             retained.add(entry);
         }
       }
     } else if (content is String) {
-      text.write(content);
+      text = content;
     }
     final note = exitCode != null && exitCode != 0 ? "\n[Process exit code: $exitCode]" : "";
     // Respect the existing shared display cap so its later prefix truncation
     // cannot discard the process exit note. Raw fields retain their own budget.
-    final display = "${_bound(text: nativeOutput ?? text.toString(), limit: maxToolOutputLength - note.length)}$note";
+    final display = "${_bound(text: nativeOutput ?? text, limit: maxToolOutputLength - note.length)}$note";
     return (
       text: display,
       content: content == null

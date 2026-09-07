@@ -197,6 +197,22 @@ void main() {
     expect(state.output, startsWith("[Earlier output truncated]"));
     expect(state.output, endsWith("TAIL\n[Process exit code: 17]"));
     expect(state.title!.length, AntigravityProtocolMapper.toolTextLimit);
+    final contentOnly = _parity(
+      params: _envelope(
+        update: {
+          "rawOutput": {"exitCode": 17},
+          "content": [
+            for (var i = 0; i < 3; i++)
+              {
+                "type": "content",
+                "content": {"type": "text", "text": "${"x" * 20000}TAIL"},
+              },
+          ],
+        },
+      ),
+    );
+    expect(contentOnly.output!.length, maxToolOutputLength);
+    expect(contentOnly.output, endsWith("TAIL\n[Process exit code: 17]"));
   });
 
   test("standard images survive while redundant raw image bytes and formatted output are removed", () {
