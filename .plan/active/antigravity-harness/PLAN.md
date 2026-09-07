@@ -320,10 +320,14 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravitySessionMetadataService` | metadata repository | descriptor | none |
 | `AntigravityRuntimeVersionValidator` | runtime service | descriptor | none |
 | `AntigravityCatalogTracker` | none | descriptor | last-good immutable catalog |
-| `AntigravityAuthenticationOperation` | profile/runtime/auth services | descriptor | one auth attempt |
+| `AntigravityAuthenticationComposer` | none; `compose` requires host process/store, dedicated HTTP client, and launch/attempt inputs | descriptor in Step 9 | stateless; constructs per-attempt peers |
+| `AntigravityAuthenticationOperation` | profile/runtime/auth services | authentication composer | one auth attempt |
 | `AntigravityApprovalRegistry` | pending stores, interaction service | interaction composer | pending lifecycle |
 | `AntigravityPlugin` | launch/ACP/mapping/recovery peers, options composer | descriptor | live ACP processes |
 | `AntigravityPluginDescriptor` | none | bridge registry | lifecycle composition root |
+
+For authentication attempts, the descriptor delegates construction of the listed profile/runtime/ACP/auth peers to
+`AntigravityAuthenticationComposer`; the operation owns their attempt lifecycle, not the stateless composer.
 
 `AntigravityProfileStorage` persists typed settings through its injected plugin-scoped `HostJsonStore`, shared with the
 live `PluginHost`, so writes retain the host's atomic locked state contract. It creates the profile and uses an injected
