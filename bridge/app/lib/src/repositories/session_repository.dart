@@ -936,7 +936,10 @@ class SessionRepository({
           directory: session.directory,
           catalogTitle: session.title,
           createdAt: session.time?.created ?? existingBinding?.createdAt ?? projectionUpdatedAt,
-          updatedAt: session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
+          updatedAt: max(
+            session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
+            existingBinding?.updatedAt ?? 0,
+          ),
           archivedAt: session.time?.archived,
           projectionUpdatedAt: projectionUpdatedAt,
         ));
@@ -1271,6 +1274,23 @@ class SessionRepository({
     return _sessionDao.getSessionIdsByBackendIds(pluginId: pluginId, backendSessionIds: backendSessionIds);
   }
 
+  /// Records the end of live work without changing backend projection metadata
+  /// or the independent unseen/user-message markers.
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) => _runtime.commitCurrentGeneration(
+    pluginId: pluginId,
+    generation: generation,
+    operation: SessionOperation.recordSessionCompletion,
+    commit: () async {
+      await _sessionDao.advanceUpdatedAt(sessionId: sessionId, updatedAt: completedAt);
+      return await getCatalogSession(sessionId: sessionId);
+    },
+  );
+
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
     required int generation,
@@ -1304,7 +1324,7 @@ class SessionRepository({
           directory: observed.directory,
           catalogTitle: observed.title,
           updateCatalogTitle: updateCatalogTitle,
-          updatedAt: observed.time?.updated ?? binding.updatedAt,
+          updatedAt: max(observed.time?.updated ?? binding.updatedAt, binding.updatedAt),
           projectionUpdatedAt: projectionUpdatedAt,
         );
         _runtime.requireCurrentGeneration(
@@ -1361,7 +1381,7 @@ class SessionRepository({
             directory: observed.directory,
             catalogTitle: observed.title,
             updateCatalogTitle: observed.title != null,
-            updatedAt: observed.time?.updated ?? existing.updatedAt,
+            updatedAt: max(observed.time?.updated ?? existing.updatedAt, existing.updatedAt),
             projectionUpdatedAt: projectionUpdatedAt,
           );
           _runtime.requireCurrentGeneration(
