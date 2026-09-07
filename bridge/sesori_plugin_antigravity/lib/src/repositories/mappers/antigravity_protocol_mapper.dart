@@ -173,6 +173,23 @@ class const AntigravityProtocolMapper() {
     }
   }
 
+  AntigravityPermissionRequestDto? mapPermissionRequest({required AcpServerRequest request}) {
+    if (request.method != AcpMethods.sessionRequestPermission) return null;
+    try {
+      return AntigravityPermissionRequestDto.fromJson(request.params);
+    } on CheckedFromJsonException catch (error, stackTrace) {
+      // Generated field/class names diagnose shape changes without rendering the
+      // offending value or the decoder's potentially payload-bearing message.
+      Error.throwWithStackTrace(
+        AntigravityInteractionException(
+          message: "Invalid ${error.className}.${error.key}: ${error.innerError.runtimeType.toString()}",
+          cause: error,
+        ),
+        error.innerStack ?? stackTrace,
+      );
+    }
+  }
+
   AntigravityModelCatalog? mapModelCatalog({required AcpNewSessionResult result}) {
     final selectors = result.configOptions.where((option) => option["id"] == modelConfigId).toList();
     if (selectors.isEmpty) return null;
