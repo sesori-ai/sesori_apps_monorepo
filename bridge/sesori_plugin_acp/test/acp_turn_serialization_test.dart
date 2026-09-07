@@ -507,7 +507,7 @@ void main() {
       final orderedPlugin = TestAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"], includeParentEnvironment: true),
         launchDirectory: cwd,
         childSessionTracker: childSessionTracker,
         eventMapper: mapper,
