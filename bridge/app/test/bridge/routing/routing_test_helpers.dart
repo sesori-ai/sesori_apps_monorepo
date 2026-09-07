@@ -512,6 +512,14 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async => const {};
 
   @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
+
+  @override
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
     required int generation,
@@ -978,6 +986,14 @@ class FakeSessionRepository({
     required String pluginId,
     required List<String> backendSessionIds,
   }) async => const {};
+
+  @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
 
   @override
   Future<StoredSession?> updateObservedSessionProjection({

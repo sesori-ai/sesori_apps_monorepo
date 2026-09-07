@@ -377,6 +377,13 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
+  Future<void> advanceUpdatedAt({required String sessionId, required int updatedAt}) async {
+    await (update(sessionTable)..where(
+          (table) => table.sessionId.equals(sessionId) & table.updatedAt.isSmallerThanValue(updatedAt),
+        ))
+        .write(SessionTableCompanion(updatedAt: Value(updatedAt)));
+  }
+
   Future<bool> updateObservedSessionProjection({
     required String sessionId,
     required String directory,
