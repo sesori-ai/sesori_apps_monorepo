@@ -65,8 +65,21 @@ class AntigravityAuthenticationOperation({
       );
       _budget.remaining;
       if (resolution is! AntigravityRuntimeSelected) {
+        final details = switch (resolution) {
+          AntigravityRuntimeSelected(:final source, :final pair) => "${source.name}: selected ${pair.serverPath}",
+          AntigravityRuntimeMissing(:final source, :final component) => "${source.name}: missing ${component.name}",
+          AntigravityRuntimePairRejected(:final source, :final component, :final issue) =>
+            "${source.name}: ${component.name} rejected (${issue.name})",
+          AntigravityRuntimeContractRejected(:final source, :final pair, :final violations) =>
+            "${source.name}: ${pair.serverPath} with ${pair.harnessPath}; "
+                "contract violations: ${violations.map((violation) => violation.name).join(', ')}",
+          AntigravityRuntimeUnsupported(:final target) => "unsupported target ${target.os.name}/${target.arch.name}",
+          AntigravityRuntimeStorageFailed(:final source) => "${source.name}: runtime inspection failed",
+          AntigravityRuntimeProbeFailed(:final source, :final pair) =>
+            "${source.name}: probe failed for ${pair.serverPath}",
+        };
         final failure = AntigravityAuthenticationException(
-          message: "No usable Antigravity runtime for login (${resolution.runtimeType.toString()})",
+          message: "No usable Antigravity runtime for login ($details)",
           cause: resolution,
         );
         if (resolution case AntigravityRuntimeStorageFailed(:final cause, :final stackTrace)) {

@@ -274,16 +274,50 @@ void main() {
   });
 
   test("runtime rejection prevents authentication and preserves typed resolution evidence", () async {
-    final attempt = _Attempt();
-    const rejected = AntigravityRuntimeMissing(
-      source: AntigravityRuntimeSource.explicit,
-      component: AntigravityRuntimeComponent.harness,
-    );
-    attempt.runtime.resolution = rejected;
-    attempt.start();
-    await attempt.done.future;
-    expect(attempt.authentication.started.isCompleted, isFalse);
-    expect((attempt.errors.single.error as AntigravityAuthenticationException).cause, same(rejected));
+    final cases = [
+      (
+        resolution: const AntigravityRuntimeMissing(
+          source: AntigravityRuntimeSource.explicit,
+          component: AntigravityRuntimeComponent.harness,
+        ),
+        details: ["explicit", "missing harness"],
+      ),
+      (
+        resolution: const AntigravityRuntimePairRejected(
+          source: AntigravityRuntimeSource.path,
+          component: AntigravityRuntimeComponent.server,
+          issue: AntigravityRuntimePairIssue.wrongName,
+        ),
+        details: ["path", "server", "wrongName"],
+      ),
+      (
+        resolution: AntigravityRuntimeContractRejected(
+          source: AntigravityRuntimeSource.managed,
+          pair: _pair,
+          violations: [
+            AntigravityRuntimeContractViolation.agentVersion,
+            AntigravityRuntimeContractViolation.personalOauth,
+          ],
+        ),
+        details: ["managed", _pair.serverPath, _pair.harnessPath, "agentVersion", "personalOauth"],
+      ),
+      (
+        resolution: const AntigravityRuntimeUnsupported(target: _target),
+        details: ["unsupported target", "macos/arm64"],
+      ),
+    ];
+    for (final entry in cases) {
+      final attempt = _Attempt();
+      attempt.runtime.resolution = entry.resolution;
+      attempt.start();
+      await attempt.done.future;
+      expect(attempt.authentication.started.isCompleted, isFalse);
+      final failure = attempt.errors.single.error as AntigravityAuthenticationException;
+      expect(failure.cause, same(entry.resolution));
+      for (final detail in entry.details) {
+        expect(failure.toString(), contains(detail));
+      }
+    }
   });
 
   test("deadline and process-exit failures settle after cleanup without terminal success", () async {

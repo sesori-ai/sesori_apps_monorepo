@@ -23,7 +23,8 @@ inspect ambient credentials/token contents to validate these foundations.
 - The exact stdout prefix `Open the following link to authenticate the ACP server: ` is intercepted before logging
   or NDJSON parsing, including fragmented lines. Other bytes pass through. OAuth-bearing stderr is selectively
   consumed; useful diagnostics remain. Errors retain typed causes but their presentation never includes OAuth URLs,
-  states or codes. No request or response body is logged by callback transport.
+  states or codes. Runtime rejection diagnostics retain source, missing/rejected component, pair issue, contract
+  violations and runtime paths, or unsupported target rather than only a type name. No callback body is logged.
 - Authorization must use `https://accounts.google.com/o/oauth2/v2/auth` with exactly one `response_type=code`, state
   (nonempty, at most 512 characters, no whitespace), and redirect URI. The redirect is exactly an explicit
   `http://127.0.0.1:<port>/` root with port 1024–65535. Reject user-info, fragments, other origins/paths and duplicate
