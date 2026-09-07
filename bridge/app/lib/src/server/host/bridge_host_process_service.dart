@@ -14,6 +14,7 @@ typedef HostProcessStarter = Future<io.Process> Function(
   Map<String, String>? environment,
   String? workingDirectory,
   bool runInShell,
+  required bool includeParentEnvironment,
 });
 
 class BridgeHostProcessService({
@@ -31,6 +32,7 @@ class BridgeHostProcessService({
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     final process = await _processStarter(
       executable,
@@ -38,6 +40,7 @@ class BridgeHostProcessService({
       environment: environment,
       workingDirectory: workingDirectory,
       runInShell: runInShell,
+      includeParentEnvironment: includeParentEnvironment,
     );
 
     final spawnIdentity = ProcessIdentity(

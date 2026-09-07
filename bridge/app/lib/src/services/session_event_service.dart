@@ -122,9 +122,27 @@ class SessionEventService({
 
     final observed = _eventMapper.sessionInfo(event: source.event);
     if (observed == null) {
-      return [
-        ?await _translate(source: source, allowDuringStop: allowDuringStop),
-      ];
+      final translated = await _translate(source: source, allowDuringStop: allowDuringStop);
+      if (translated case BridgeSseSessionIdle(:final sessionID)) {
+        Session? session;
+        try {
+          session = await _sessionRepository.recordSessionCompletion(
+            sessionId: sessionID,
+            pluginId: source.pluginId,
+            generation: source.generation,
+            completedAt: source.projectionUpdatedAt,
+          );
+        } on Object catch (error, stackTrace) {
+          // Recency persistence must not hide the terminal status from clients.
+          Log.w("Failed to persist turn completion for session $sessionID", error, stackTrace);
+        }
+        if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return const [];
+        return [
+          if (session != null) BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
+          translated,
+        ];
+      }
+      return [?translated];
     }
     if (!isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
       return const [];

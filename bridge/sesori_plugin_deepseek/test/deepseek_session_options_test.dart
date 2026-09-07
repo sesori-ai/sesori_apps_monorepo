@@ -85,7 +85,7 @@ void main() {
       discoveryTimeout: const Duration(seconds: 1),
     );
     final client = AcpStdioClient(
-      launchSpec: const AcpLaunchSpec(command: "unused", args: []),
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "unused", args: []),
       processFactory: (_) async => FakeAcpProcess(),
     );
 

@@ -197,6 +197,7 @@ Future<SpawnedProcess> spawnOpenCodeProcess({
     environment["OPENCODE_SERVER_PASSWORD"] = password;
   }
   final process = await host.processes.spawn(
+    includeParentEnvironment: true,
     executable: executablePath,
     arguments: <String>["serve", "--port", "$port", "--hostname", bindHost],
     environment: environment,

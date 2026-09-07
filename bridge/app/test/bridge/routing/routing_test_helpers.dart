@@ -512,6 +512,14 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async => const {};
 
   @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
+
+  @override
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
     required int generation,
@@ -528,6 +536,17 @@ class _NoopSessionRepository() implements SessionRepository {
     required StoredSession parent,
     required int projectionUpdatedAt,
   }) async => null;
+
+  @override
+  Future<StoredSession> requireStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
+  }
 
   @override
   Future<StoredSession> requireRoutableStoredSession({
@@ -969,6 +988,14 @@ class FakeSessionRepository({
   }) async => const {};
 
   @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
+
+  @override
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
     required int generation,
@@ -987,7 +1014,7 @@ class FakeSessionRepository({
   }) async => null;
 
   @override
-  Future<StoredSession> requireRoutableStoredSession({
+  Future<StoredSession> requireStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -998,6 +1025,15 @@ class FakeSessionRepository({
         message: "session $sessionId was not found",
       );
     }
+    return stored;
+  }
+
+  @override
+  Future<StoredSession> requireRoutableStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final stored = await requireStoredSession(sessionId: sessionId, operation: operation);
     await ensurePluginRoutable(pluginId: stored.pluginId, operation: operation);
     return stored;
   }

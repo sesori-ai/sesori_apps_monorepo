@@ -91,7 +91,7 @@ void main() {
   test("setModel sends exact model and optional reasoning metadata", () async {
     final fake = FakeAcpProcess();
     final client = AcpStdioClient(
-      launchSpec: const AcpLaunchSpec(command: "grok", args: []),
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "grok", args: []),
       processFactory: (_) async => fake,
     );
     addTearDown(() async {

@@ -24,6 +24,14 @@ class RuntimeFileApi({required final String runtimeDirectory}) {
   static const String updateLockSuffix = '.update-lock';
 
   final KeyedParallelLock<String> _updateLock = KeyedParallelLock<String>();
+  final Map<String, RuntimeFileApi> _scopes = {};
+
+  /// Keeps one update-lock owner for each child selected from this root.
+  /// The host boundary validates the single directory segment. No I/O occurs.
+  RuntimeFileApi scope({required String directoryName}) => _scopes.putIfAbsent(
+    directoryName,
+    () => RuntimeFileApi(runtimeDirectory: p.join(runtimeDirectory, directoryName)),
+  );
 
   String get startupLockFilePath => p.join(runtimeDirectory, 'bridge-startup.lock');
 

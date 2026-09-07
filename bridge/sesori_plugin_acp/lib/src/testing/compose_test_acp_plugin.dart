@@ -10,7 +10,7 @@ TestAcpPlugin composeTestAcpPlugin({
   required AcpProcessFactory processFactory,
   String id = "acp",
   String agentDisplayName = "ACP",
-  AcpLaunchSpec launchSpec = const AcpLaunchSpec(command: "agent", args: ["acp"]),
+  AcpLaunchSpec launchSpec = const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
   String launchDirectory = "/repo",
 }) {
   final configurationTracker = AcpSessionConfigurationTracker();

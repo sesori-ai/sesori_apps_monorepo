@@ -584,17 +584,35 @@ class SessionRepository({
       rows: [binding],
       verifiedGithubLogin: null,
     )).single;
-    await _useBoundSessionPlugin(
-      binding: binding,
-      operation: SessionOperation.deleteSession,
-      body: (plugin) async {
-        try {
-          await plugin.deleteSession(binding.backendSessionId);
-        } on PluginOperationException catch (error) {
-          if (!error.isNotFound) rethrow;
-        }
-      },
-    );
+    // An unreachable backend must not strand the session in the catalog: an
+    // uninstalled or unstartable plugin would otherwise leave the user with a
+    // row they can never remove. The tombstone below keeps a surviving backend
+    // session from being re-imported.
+    var backendDeleteAttempted = false;
+    try {
+      await _useBoundSessionPlugin(
+        binding: binding,
+        operation: SessionOperation.deleteSession,
+        body: (plugin) async {
+          backendDeleteAttempted = true;
+          try {
+            await plugin.deleteSession(binding.backendSessionId);
+          } on PluginOperationException catch (error) {
+            if (!error.isNotFound) rethrow;
+          }
+        },
+      );
+    } on PluginOperationException catch (error, stackTrace) {
+      // A backend that answered keeps its existing retry semantics; only never
+      // reaching it clears the way for a local-only delete.
+      if (backendDeleteAttempted || !error.isUnavailable) rethrow;
+      Log.w(
+        "Backend ${binding.pluginId} was unreachable while deleting session $sessionId; "
+        "removing the bridge record anyway",
+        error,
+        stackTrace,
+      );
+    }
     await _sessionDao.transaction(() async {
       final deletedAt = DateTime.now().millisecondsSinceEpoch;
       for (final binding in subtree) {
@@ -918,7 +936,10 @@ class SessionRepository({
           directory: session.directory,
           catalogTitle: session.title,
           createdAt: session.time?.created ?? existingBinding?.createdAt ?? projectionUpdatedAt,
-          updatedAt: session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
+          updatedAt: max(
+            session.time?.updated ?? existingBinding?.updatedAt ?? projectionUpdatedAt,
+            existingBinding?.updatedAt ?? 0,
+          ),
           archivedAt: session.time?.archived,
           projectionUpdatedAt: projectionUpdatedAt,
         ));
@@ -1253,6 +1274,23 @@ class SessionRepository({
     return _sessionDao.getSessionIdsByBackendIds(pluginId: pluginId, backendSessionIds: backendSessionIds);
   }
 
+  /// Records the end of live work without changing backend projection metadata
+  /// or the independent unseen/user-message markers.
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) => _runtime.commitCurrentGeneration(
+    pluginId: pluginId,
+    generation: generation,
+    operation: SessionOperation.recordSessionCompletion,
+    commit: () async {
+      await _sessionDao.advanceUpdatedAt(sessionId: sessionId, updatedAt: completedAt);
+      return await getCatalogSession(sessionId: sessionId);
+    },
+  );
+
   Future<StoredSession?> updateObservedSessionProjection({
     required String pluginId,
     required int generation,
@@ -1286,7 +1324,7 @@ class SessionRepository({
           directory: observed.directory,
           catalogTitle: observed.title,
           updateCatalogTitle: updateCatalogTitle,
-          updatedAt: observed.time?.updated ?? binding.updatedAt,
+          updatedAt: max(observed.time?.updated ?? binding.updatedAt, binding.updatedAt),
           projectionUpdatedAt: projectionUpdatedAt,
         );
         _runtime.requireCurrentGeneration(
@@ -1343,7 +1381,7 @@ class SessionRepository({
             directory: observed.directory,
             catalogTitle: observed.title,
             updateCatalogTitle: observed.title != null,
-            updatedAt: observed.time?.updated ?? existing.updatedAt,
+            updatedAt: max(observed.time?.updated ?? existing.updatedAt, existing.updatedAt),
             projectionUpdatedAt: projectionUpdatedAt,
           );
           _runtime.requireCurrentGeneration(
@@ -1394,6 +1432,15 @@ class SessionRepository({
         return stored;
       }),
     );
+  }
+
+  /// Session identity for bridge-owned work that does not need the backend, so
+  /// it stays available when the plugin cannot start.
+  Future<StoredSession> requireStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    return (await _requireBinding(sessionId: sessionId, operation: operation)).toStoredSession();
   }
 
   Future<StoredSession> requireRoutableStoredSession({

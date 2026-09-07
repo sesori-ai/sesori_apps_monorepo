@@ -11,6 +11,7 @@ class const AntigravityLaunchSpecBuilder() {
     required Map<String, String> environment,
   }) {
     return AcpLaunchSpec(
+      includeParentEnvironment: false,
       command: pair.serverPath,
       args: AntigravityRelease.launchArguments(target: pair.target),
       cwd: cwd,

@@ -360,7 +360,13 @@ DeepSeekHistoryRepository _repository({
 }
 
 AcpStdioClient _unusedClient() => AcpStdioClient(
-  launchSpec: const AcpLaunchSpec(command: "unused", args: [], cwd: "/", environment: {}),
+  launchSpec: const AcpLaunchSpec(
+    includeParentEnvironment: true,
+    command: "unused",
+    args: [],
+    cwd: "/",
+    environment: {},
+  ),
   processFactory: (_) => throw UnimplementedError(),
 );
 

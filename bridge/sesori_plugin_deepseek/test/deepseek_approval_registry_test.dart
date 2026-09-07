@@ -22,7 +22,7 @@ void main() {
   setUp(() async {
     fake = FakeAcpProcess();
     client = AcpStdioClient(
-      launchSpec: const AcpLaunchSpec(command: "deepseek", args: ["serve"]),
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "deepseek", args: ["serve"]),
       processFactory: (_) async => fake,
     );
     await client.connect();
@@ -57,7 +57,7 @@ void main() {
       delegationTracker: DeepSeekDelegationTracker(),
     );
     final plugin = DeepSeekPlugin(
-      launchSpec: const AcpLaunchSpec(command: "deepseek", args: []),
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "deepseek", args: []),
       launchDirectory: "/project",
       processFactory: (_) async => fake,
       childSessionTracker: childSessionTracker,

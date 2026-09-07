@@ -22,6 +22,11 @@ entirely along with its transcript and, optionally, its worktree.
   reconciliation. Worktree cleanup happens only when requested; unsafe cleanup
   (unstaged changes or a shared worktree) is refused with its issues and proceeds
   only on a forced retry. Session retirement never deletes a Git branch.
+- Deletion never depends on a reachable backend. A session whose plugin is
+  uninstalled, disabled, or unstartable still deletes: worktree cleanup is Git
+  only, the unreachable backend delete is logged and skipped, and the plugin
+  tombstone keeps a surviving backend session from being re-imported. A backend
+  that is reachable but fails the delete still preserves the session for retry.
 - Per-session prompt defaults are live composer cache, not audit data. Archiving
   clears them from the session row and omits them from the archive snapshot;
   deletion removes them with the row. The separate last-successful New Session

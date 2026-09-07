@@ -9,6 +9,7 @@ abstract final class DeepSeekBinary() {
     required String stateDirectory,
     required Map<String, String> environment,
   }) => AcpLaunchSpec(
+    includeParentEnvironment: true,
     command: binary,
     args: ["serve", "--state-dir", stateDirectory],
     cwd: cwd,
