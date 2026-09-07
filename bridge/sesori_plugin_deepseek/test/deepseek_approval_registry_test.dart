@@ -228,6 +228,79 @@ void main() {
     expect(registry.pendingForSession(sessionId: "session-2"), hasLength(1));
     expect(fake.written.single["error"], {"code": -32603, "message": "aborted"});
   });
+  test("ordered input cancellation removes old input but preserves a later reused question ID", () async {
+    registry.attach(stream: client.serverRequests);
+    <Map<String, dynamic>>[
+      {
+        "jsonrpc": "2.0",
+        "id": 31,
+        "method": DeepSeekAcpApi.askUserQuestionMethod,
+        "params": {
+          "sessionId": "session-1",
+          "questions": [
+            {"id": "reused", "text": "Old question"},
+          ],
+        },
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": 32,
+        "method": DeepSeekAcpApi.inputCancelMethod,
+        "params": {"sessionId": "session-1"},
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": 33,
+        "method": DeepSeekAcpApi.askUserQuestionMethod,
+        "params": {
+          "sessionId": "session-1",
+          "questions": [
+            {"id": "reused", "text": "New question"},
+          ],
+        },
+      },
+    ].forEach(fake.emit);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      registry.replyQuestion(
+        requestId: "request-1",
+        answers: const [
+          ["stale"],
+        ],
+      ),
+      isFalse,
+    );
+    expect(registry.pendingForSession(sessionId: "session-1"), hasLength(1));
+    expect(fake.written.map((frame) => frame["id"]), [31, 32]);
+    expect(fake.written.first["error"], {"code": -32603, "message": "aborted"});
+    expect(fake.written.last["result"], isEmpty);
+    expect(
+      registry.replyQuestion(
+        requestId: "request-2",
+        answers: const [
+          ["current"],
+        ],
+      ),
+      isTrue,
+    );
+    expect(fake.written.last["id"], 33);
+  });
+  test("malformed input cancellation is rejected without clearing pending input", () {
+    registry.handleExtensionRequest(
+      const AcpServerRequest(
+        id: 34,
+        method: DeepSeekAcpApi.inputCancelMethod,
+        params: {"sessionId": "  "},
+      ),
+    );
+
+    expect(fake.written.single["error"], {
+      "code": -32602,
+      "message": "Invalid DeepSeek input cancellation request",
+    });
+    expect(registry.hasAnyPendingInput, isFalse);
+  });
   test("plan review exposes fixed options and rejects custom input", () async {
     registry.handleExtensionRequest(
       questionRequest(13, const {

@@ -135,18 +135,18 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.3 over dsh 0.1.1-rc.2 is the managed target
+⁹ DeepSeek's published adapter 0.1.4 over dsh 0.1.1-rc.2 is the managed target
 and minimum accepted runtime. The consumer requires extension protocol v2 and
 implements live/replayed correlated tiles and child transcripts/catalogs.
 Replay retains direct-parent tile identities and ordered ordinary-content runs
 without changing live child state. Scoped stop is implemented: main-only stop
-requires all running children to be background. Foreground children stop through
-parent cancellation; background children use direct-parent-authorized interrupt.
-Directly stopping a non-cancellable child leaves it running rather than widening
-to its parent/siblings. Busy state follows lifecycle, not interrupt acceptance.
-Stop currently uses the request-time child snapshot; late-announced children can
-remain running. Closing that window is a required successor to #1346, before
-final DeepSeek feature E2E coverage.
+requires all running children to be background. Full stop dispatches one native
+atomic subtree request, which covers children admitted before or during the stop
+without relying on the bridge's request-time lifecycle snapshot. Direct child
+targeting retains exact-parent authority and never widens to a parent or sibling.
+Accepted cancellation does not fabricate lifecycle settlement; busy state remains
+authoritative until child end frames arrive. Native ordered input cancellation
+removes only requests pending at that stream position, so later input survives.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as

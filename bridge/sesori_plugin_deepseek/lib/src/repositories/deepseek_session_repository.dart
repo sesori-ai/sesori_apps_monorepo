@@ -5,6 +5,37 @@ import "../api/deepseek_acp_api.dart";
 import "../api/models/deepseek_protocol_dto.dart";
 
 class const DeepSeekSessionRepository({required final DeepSeekAcpApi api}) {
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) async {
+    final request = switch (target) {
+      AcpScopedStopSessionTarget(:final sessionId) => DeepSeekSessionStopSessionRequestDto(sessionId: sessionId),
+      AcpScopedStopChildTarget(:final parentSessionId, :final childSessionId) => DeepSeekSessionStopChildRequestDto(
+        sessionId: parentSessionId,
+        childSessionId: childSessionId,
+      ),
+    };
+    try {
+      final response = await api.stopSession(client: client, request: request);
+      return AcpScopedStopResult(workKept: response.workKept);
+    } on Object catch (error, stackTrace) {
+      final targetContext = switch (target) {
+        AcpScopedStopSessionTarget(:final sessionId) => "session $sessionId",
+        AcpScopedStopChildTarget(:final parentSessionId, :final childSessionId) =>
+          "child $childSessionId under parent $parentSessionId",
+      };
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          DeepSeekAcpApi.sessionStopMethod,
+          message: "DeepSeek scoped stop failed for $targetContext",
+          cause: error,
+        ),
+        stackTrace,
+      );
+    }
+  }
+
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
     required String sessionId,

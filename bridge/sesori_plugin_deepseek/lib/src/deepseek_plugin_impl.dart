@@ -1,10 +1,12 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/deepseek_acp_api.dart";
 import "deepseek_approval_registry.dart";
 import "deepseek_event_mapper.dart";
 import "repositories/deepseek_history_repository.dart";
+import "runtime/deepseek_runtime_manifest.dart";
 import "services/deepseek_session_options_service.dart";
 import "services/deepseek_session_service.dart";
 
@@ -40,6 +42,15 @@ class DeepSeekPlugin({
   bool get supportsScopedStop => true;
 
   @override
+  bool get supportsAtomicScopedStop => true;
+
+  @override
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => deepSeekSessionService.stopScopedTree(client: client, target: target);
+
+  @override
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
     required String sessionId,
@@ -56,7 +67,12 @@ class DeepSeekPlugin({
     // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
     if (deepSeekMetadata is! Map) throw const FormatException("DeepSeek initialize metadata is missing");
     // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
-    api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>());
+    final parsed = api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>());
+    final adapterVersion = SemanticVersion.tryParse(value: parsed.adapterVersion);
+    final minimumVersion = SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion);
+    if (adapterVersion == null || adapterVersion.compareTo(minimumVersion) < 0) {
+      throw const FormatException("DeepSeek adapter does not support atomic scoped stop");
+    }
   }
 
   @override

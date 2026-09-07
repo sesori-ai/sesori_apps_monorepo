@@ -22,6 +22,11 @@
   User-directed release change (2026-09-05): publish adapter 0.1.3 before
   slice 4 merges, then pin it and require v2 in that same PR instead of retaining
   temporary v1 compatibility. Replay remains slice 5; final coverage gates stand.
+- **DeepSeek atomic-stop successor (2026-09-07):** scoped-stop #1346 and native
+  adapter #17 are merged; adapter #18 published verified 0.1.4 artifacts. The
+  bridge consumer now requires 0.1.4, dispatches one native subtree stop, and
+  preserves later prompts/input through request-time-only cleanup. Final
+  phone/desktop DeepSeek E2E remains a separate gate before Codex.
 
 ## Goal
 

@@ -56,6 +56,60 @@ class const DeepSeekSubagentInterruptResponseDto({
   Map<String, dynamic> toJson() => _$DeepSeekSubagentInterruptResponseDtoToJson(this);
 }
 
+sealed class const DeepSeekSessionStopRequestDto() {
+  factory fromJson(Map<String, dynamic> json) {
+    // ignore: no_slop_linter/prefer_specific_type, the copied ACP JSON object has heterogeneous values
+    final fields = Map<String, dynamic>.of(json)..remove("kind");
+    return switch (json["kind"]) {
+      "session" => DeepSeekSessionStopSessionRequestDto.fromJson(fields),
+      "child" => DeepSeekSessionStopChildRequestDto.fromJson(fields),
+      _ => throw const FormatException("Invalid DeepSeek session stop request"),
+    };
+  }
+
+  Map<String, dynamic> toJson();
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+final class const DeepSeekSessionStopSessionRequestDto({required final String sessionId})
+    extends DeepSeekSessionStopRequestDto {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopSessionRequestDtoFromJson(json);
+  @JsonKey(includeFromJson: false, includeToJson: true)
+  String get kind => "session";
+  @override
+  Map<String, dynamic> toJson() => _$DeepSeekSessionStopSessionRequestDtoToJson(this);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+final class const DeepSeekSessionStopChildRequestDto({
+  required final String sessionId,
+  required final String childSessionId,
+}) extends DeepSeekSessionStopRequestDto {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopChildRequestDtoFromJson(json);
+  @JsonKey(includeFromJson: false, includeToJson: true)
+  String get kind => "child";
+  @override
+  Map<String, dynamic> toJson() => _$DeepSeekSessionStopChildRequestDtoToJson(this);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekSessionStopResponseDto({required final bool workKept}) {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopResponseDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekSessionStopResponseDtoToJson(this);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekInputCancelRequestDto({required final String sessionId}) {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekInputCancelRequestDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekInputCancelRequestDtoToJson(this);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekInputCancelResponseDto() {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekInputCancelResponseDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekInputCancelResponseDtoToJson(this);
+}
+
 @JsonSerializable()
 class const DeepSeekInitializeMetadataDto({
   @JsonKey(fromJson: _integer) required final int extensionProtocolVersion,

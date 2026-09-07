@@ -48,8 +48,10 @@ reaches the backend so the turn continues.
   v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
   custom answer variants, plan-review fixed choices, and supplemental free-form
-  detail. Abort, process exit, and disposal cancel pending requests and reject
-  late replies.
+  detail. Adapter 0.1.4 sends input cancellation on the same ordered server-request
+  stream: only permission/question requests already pending at that point are
+  cancelled, and a later request survives even when it reuses a question ID.
+  Process exit and disposal still cancel pending requests and reject late replies.
 - Grok runs in its normal ask mode without `--always-approve` or `--yolo`.
   Standard ACP permissions preserve the exact session, tool call, and offered
   option IDs; Once, Reject, and every scope the request actually advertises stay

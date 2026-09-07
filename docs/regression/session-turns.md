@@ -114,20 +114,22 @@ defaults and queued client sends coherent.
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
-- DeepSeek 0.1.3 supports side-effect-free `confirm` rejection and child-only
+- DeepSeek 0.1.4 supports side-effect-free `confirm` rejection and child-only
   `keep`. A running main turn can be kept separate only when all running children
   are background; unsupported `keep` rejects before cancelling prompts or input.
-  `stop` cancels standard prompts and interrupts delegated children using each
-  child's direct parent. Foreground children stop through their parent; stopping
-  a non-cancellable child directly does not widen to its parent or siblings and
-  reports retained work. An opened child's new user prompt uses standard cancel.
-  Neither accepted nor unknown-child interrupt responses fabricate terminal
-  tiles/idle state. Whole-plugin interruption waits for authoritative lifecycle;
-  transport failure preserves its original error and logs parent/child context.
-  Stop currently targets children known at request time: a child announced while
-  cancellation is in flight can continue running, remains visible as busy, and
-  can be stopped again. Closing that late-launch window is a required follow-up.
-  Other ACP harnesses retain their existing policy until they opt in.
+  Full `stop` clears only prompts already queued at request time, then dispatches
+  exactly one native atomic subtree request without a preceding standard cancel.
+  Native authority covers children admitted before or during stop even when the
+  bridge has not received their lifecycle frames. A named child request carries
+  its exact direct parent and never widens to a parent or sibling; genuinely
+  non-cancellable work is reported as retained. Stop responses never perform a
+  later queue sweep, so prompts accepted after dispatch survive. Input cleanup is
+  a separate ordered adapter request: permissions/questions pending at that stream
+  position are cancelled, while later input survives even when an ID is reused.
+  Accepted stop does not fabricate terminal tiles or idle state; whole-plugin
+  interruption still waits for authoritative lifecycle. Transport failures retain
+  the original cause and operation context. Other ACP harnesses retain their
+  existing policy until they opt in.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the
   turn's requested model and thinking level on Pi's command line so

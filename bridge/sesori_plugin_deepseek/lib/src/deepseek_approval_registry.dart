@@ -5,7 +5,7 @@ import "api/deepseek_acp_api.dart";
 import "api/models/deepseek_protocol_dto.dart";
 
 class DeepSeekApprovalRegistry({
-  required AcpStdioClient client,
+  required final AcpStdioClient client,
   required super.emit,
   required final DeepSeekAcpApi api,
   super.idGenerator,
@@ -20,6 +20,10 @@ class DeepSeekApprovalRegistry({
 
   @override
   bool handleExtensionRequest(AcpServerRequest request) {
+    if (request.method == DeepSeekAcpApi.inputCancelMethod) {
+      _handleInputCancellation(request);
+      return true;
+    }
     if (request.method != DeepSeekAcpApi.askUserQuestionMethod) return false;
     try {
       final parsed = api.parseQuestionRequest(request.params);
@@ -46,6 +50,21 @@ class DeepSeekApprovalRegistry({
       respondError(request.id, -32602, "Invalid DeepSeek question request");
     }
     return true;
+  }
+
+  void _handleInputCancellation(AcpServerRequest request) {
+    try {
+      final parsed = api.parseInputCancelRequest(request.params);
+      cancelForSession(sessionId: parsed.sessionId);
+      client.respondToServerRequest(id: request.id, result: const DeepSeekInputCancelResponseDto().toJson());
+    } on Object catch (error, stack) {
+      Log.w("[deepseek] invalid input cancellation request", error, stack);
+      client.respondToServerRequestWithError(
+        id: request.id,
+        code: -32602,
+        message: "Invalid DeepSeek input cancellation request",
+      );
+    }
   }
 
   static DeepSeekQuestionAnswerDto _answer(DeepSeekQuestionDto question, {required List<String> answers}) {

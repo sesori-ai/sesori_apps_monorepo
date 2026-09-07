@@ -25,6 +25,19 @@ enum AcpChildCancelResult() {
   unknownChild,
 }
 
+/// One backend-owned subtree target for an atomic scoped stop.
+sealed class const AcpScopedStopTarget();
+
+final class const AcpScopedStopSessionTarget({required final String sessionId}) extends AcpScopedStopTarget;
+
+final class const AcpScopedStopChildTarget({
+  required final String parentSessionId,
+  required final String childSessionId,
+}) extends AcpScopedStopTarget;
+
+/// The native stop result; pending lifecycle settlement is not retained work.
+final class const AcpScopedStopResult({required final bool workKept});
+
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
 ///
@@ -1692,6 +1705,14 @@ abstract class AcpPlugin({
     required String childSessionId,
   }) => throw UnsupportedError("$id does not support scoped child cancellation");
 
+  /// Whether [stopScopedTree] replaces the request-time child snapshot fanout.
+  bool get supportsAtomicScopedStop => false;
+
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => throw UnsupportedError("$id does not support atomic scoped cancellation");
+
   @override
   Future<PluginAbortResult> abortSession({
     required String sessionId,
@@ -1719,6 +1740,21 @@ abstract class AcpPlugin({
     }
     if (subAgents == PluginAbortSubAgentPolicy.keep && children.isNotEmpty && !mainRunning) {
       return const PluginAbortAccepted(workKept: true);
+    }
+    if (subAgents == PluginAbortSubAgentPolicy.stop && supportsAtomicScopedStop) {
+      for (final targetSessionId in {sessionId, ...children.map((child) => child.childSessionId)}) {
+        _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
+      }
+      final client = _client;
+      if (client == null) return const PluginAbortAccepted(workKept: false);
+      final target = hasOwnPrompt || namedChild == null
+          ? AcpScopedStopSessionTarget(sessionId: sessionId)
+          : AcpScopedStopChildTarget(
+              parentSessionId: namedChild.parentSessionId,
+              childSessionId: sessionId,
+            );
+      final result = await stopScopedTree(client: client, target: target);
+      return PluginAbortAccepted(workKept: result.workKept);
     }
     final mainResult = await _cancelScopedSession(
       sessionId: sessionId,
@@ -1778,11 +1814,9 @@ abstract class AcpPlugin({
     }
   }
 
-  Future<void> _abortSession({required String sessionId, required bool sendSessionCancel}) async {
-    // Aborting means "stop this conversation now": drop the queued-but-
-    // undispatched turns first so they don't dispatch after the cancel. The
-    // in-flight turn (if any) ends via the agent's cancellation, which
-    // resolves its `session/prompt` future and settles the accounting.
+  void _prepareSessionAbort({required String sessionId, required bool cancelBufferedInputs}) {
+    // Discard only work accepted before this stop. A later prompt captures the
+    // incremented generation and is never cleaned up from the stop response.
     final state = _turnStates[sessionId];
     if (state != null) {
       state.generation++;
@@ -1799,7 +1833,17 @@ abstract class AcpPlugin({
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
     }
-    if (_isPromptFrameWriting(sessionId: sessionId)) _cancelledPromptWriteSessions.add(sessionId);
+    if (cancelBufferedInputs && _isPromptFrameWriting(sessionId: sessionId)) {
+      _cancelledPromptWriteSessions.add(sessionId);
+    }
+  }
+
+  Future<void> _abortSession({required String sessionId, required bool sendSessionCancel}) async {
+    // Aborting means "stop this conversation now": drop the queued-but-
+    // undispatched turns first so they don't dispatch after the cancel. The
+    // in-flight turn (if any) ends via the agent's cancellation, which
+    // resolves its `session/prompt` future and settles the accounting.
+    _prepareSessionAbort(sessionId: sessionId, cancelBufferedInputs: true);
     final client = _client;
     if (client == null) return;
     if (sendSessionCancel) {

@@ -7,6 +7,30 @@ import "package:test/test.dart";
 import "support/deepseek_test_plugin.dart";
 
 void main() {
+  test("live initialization requires adapter 0.1.4 or newer", () async {
+    final fake = FakeAcpProcess();
+    final plugin = buildDeepSeekTestPlugin(fake: fake);
+    AcpInitializeResult result(String version) => AcpInitializeResult.fromJson({
+      "protocolVersion": 1,
+      "agentCapabilities": <String, dynamic>{},
+      "authMethods": <Object?>[],
+      "_meta": {
+        DeepSeekAcpApi.initializeMetadataKey: {
+          "extensionProtocolVersion": 2,
+          "adapterVersion": version,
+          "harnessVersion": "0.1.1-rc.2",
+          "persistenceOwner": "sesori",
+        },
+      },
+    });
+
+    expect(() => plugin.validateInitializeResult(result("0.1.3")), throwsFormatException);
+    expect(() => plugin.validateInitializeResult(result("0.1.4")), returnsNormally);
+    expect(() => plugin.validateInitializeResult(result("0.1.5")), returnsNormally);
+    await plugin.dispose();
+    await fake.close();
+  });
+
   test("a busy follow-up cancels before replacement prompt dispatch", () async {
     final fake = FakeAcpProcess();
     final plugin = buildDeepSeekTestPlugin(fake: fake);

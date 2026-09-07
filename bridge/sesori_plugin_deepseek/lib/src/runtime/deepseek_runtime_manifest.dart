@@ -7,58 +7,59 @@ import "../deepseek_identity.dart";
 
 /// Pinned Sesori DeepSeek ACP package archives used by managed installation.
 class const DeepSeekRuntimeManifest() extends RuntimeManifest {
-  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.1.3");
+  static const String minimumVersion = "0.1.4";
+  static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: minimumVersion);
 
   /// The latest stable adapter release targeted by this plugin.
-  static const String targetVersion = "0.1.3";
+  static const String targetVersion = "0.1.4";
 
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
 
   static const Map<PlatformOs, Map<PlatformArch, RuntimeAsset>> _assets = {
     PlatformOs.macos: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "sesori-deepseek-acp-v0.1.3-darwin-arm64.tar.gz",
+        assetName: "sesori-deepseek-acp-v0.1.4-darwin-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "049fbefba7df7ef49a2903aa49f323f923d087417a313708d489c8cefee2f970",
+        sha256: "fe565d18efc228b5d5a93835f5f4d900c00ae113649a1480266c305fc5623082",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "sesori-deepseek-acp-v0.1.3-darwin-x64.tar.gz",
+        assetName: "sesori-deepseek-acp-v0.1.4-darwin-x64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "87fb9745676a974b20259218100880fdd2d73c862632fcf8e1742b1f08aef55b",
+        sha256: "f3d5d4df05069daab221f5bdda8480bbb6448ea4d8139b3d75ccd0f2722fd151",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
     },
     PlatformOs.linux: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "sesori-deepseek-acp-v0.1.3-linux-arm64.tar.gz",
+        assetName: "sesori-deepseek-acp-v0.1.4-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "58f1e99af263f472560ef174540c72c25300261912088a7aee63dafcdf110531",
+        sha256: "8fa13b6e5dea36eb33c38bc9e1b7960c690b5646d4010809f743e11555e0d979",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "sesori-deepseek-acp-v0.1.3-linux-x64.tar.gz",
+        assetName: "sesori-deepseek-acp-v0.1.4-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
-        sha256: "415a20b0d3905d5463de341b1cdc2077eabed03a0fccce5065b48858b5fdf0f8",
+        sha256: "0f1b187e54acb008b56fa99fa1c1d0e2ad33913f7c986d801758adf3c642a74d",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
     },
     PlatformOs.windows: {
       PlatformArch.arm64: ArchiveRuntimeAsset(
-        assetName: "sesori-deepseek-acp-v0.1.3-windows-arm64.zip",
+        assetName: "sesori-deepseek-acp-v0.1.4-windows-arm64.zip",
         format: ArchiveFormat.zip,
-        sha256: "360f343ba567884414b678d5cda8ca5b65bcddd828ca199b43aa3eb16efbcba3",
+        sha256: "f32f26bb5540cb899b5704d67be8a1ff7521d567382fe2f1a4561026e32678d4",
         archiveBinaryName: "sesori-deepseek-acp.cmd",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
       PlatformArch.x64: ArchiveRuntimeAsset(
-        assetName: "sesori-deepseek-acp-v0.1.3-windows-x64.zip",
+        assetName: "sesori-deepseek-acp-v0.1.4-windows-x64.zip",
         format: ArchiveFormat.zip,
-        sha256: "8ed39e6ca18b78ab12477fc94514b80a13dcd8970ccb1f1dea26bf3854d1c993",
+        sha256: "218cd61ad11c89a9f5d538e47ff0f27c4e23ce3748af235663917f58c3f8e252",
         archiveBinaryName: "sesori-deepseek-acp.cmd",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),

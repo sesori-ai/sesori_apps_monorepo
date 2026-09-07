@@ -4,14 +4,16 @@
 
 The user approved an owned adapter change and release before bridge completion.
 Use native atomic cancellation, not a bridge stop fence. Original #1346 merged at
-`2cc1485d7cc3c180cfd949cbed85d579a708f191`; its snapshot limitation remains until
-this native boundary and its consumer land.
+`2cc1485d7cc3c180cfd949cbed85d579a708f191`; adapter 0.1.4 and this consumer close
+its request-time snapshot limitation.
 
 Fixed scoped-stop subseries (existing final regression/E2E/retirement gates stay):
 1. `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/4]` — #1346, merged.
 2. `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/4]` — adapter #17, merged.
-3. `🌱 [claude-inline-subtasks] Prepare DeepSeek atomic-stop 0.1.4 release [step 3/4]` — release config and publication.
-4. `⚙️ [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 4/4]` — bridge consumer and verified pin.
+3. `🌱 [claude-inline-subtasks] Prepare DeepSeek atomic-stop 0.1.4 release [step 3/4]`
+   — adapter #18 merged; v0.1.4 published and independently verified.
+4. `⚙️ [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 4/4]`
+   — bridge consumer and verified pin implemented here; final E2E stays separate.
 
 Human merges each PR. Use the existing native checkout; never create a worktree.
 Finish DeepSeek E2E after these steps, then Codex. Automatic runtime upgrades are
@@ -139,8 +141,8 @@ fixtures/tests/codegen/docs, each below the ~1,500 soft cap unless justified.
 Architecture review supported native authority, layering, atomic admission proof,
 job filtering, and additive/native-first delivery. It rejected two unspecified
 boundaries: response cleanup ownership and execution-kind authority. The concrete
-choices above address those findings; this revision has not been re-reviewed.
-Implementation architecture review remains required.
+choices above address those findings. Native implementation review approved adapter
+#17 with no findings. Consumer implementation architecture review remains required.
 
 Native tests: delayed root/nested announcements; pending continuable admission;
 foreground handoff; pending/published background fork jobs; exact named scope;
@@ -156,7 +158,8 @@ stream drainage; confirm/keep unchanged; foreground retention; RPC failure; busy
 state after acceptance; whole-plugin stop. Verify new minimum/digests and frozen
 corpora. Run owning analyzers/tests; CI owns the full matrix.
 
-Remove the temporary late-launch limitation in capability/regression docs only
-when authoritative native and consumer coverage passes. No storage cleanup or
-migration is needed. Do not expand into catalog scans, cold ancestry repair,
-unrelated job teardown, or general transport refactoring.
+Authoritative native and consumer package coverage passes, so the temporary
+late-launch limitation is removed from capability/regression docs. Final
+phone/desktop E2E remains a separate gate. No storage cleanup or migration is
+needed. Do not expand into catalog scans, cold ancestry repair, unrelated job
+teardown, or general transport refactoring.

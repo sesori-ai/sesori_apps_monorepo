@@ -109,19 +109,21 @@ confirmation, no child session or partial stop) and gets that subset.
      main turn is running but
      `mainAgentOnlySupported` is false, it returns the typed rejection before
      any side effect, so a stale or direct caller cannot silently cancel
-     children; otherwise `keep` sends `session/cancel` only. `stop` sends
-     `session/cancel` plus `cancelChild` with each child's direct parent.
+     children; otherwise `keep` sends `session/cancel` only. The default `stop`
+     sends `session/cancel` plus `cancelChild` with each child's direct parent.
      Outcomes are typed; no `canCancel` field is invented. Foreground children
      are covered by cancellation of their parent; directly targeting a child
      with no effective interrupt retains that child without cancelling siblings.
      `workKept` means retained work, not pending lifecycle delivery. Unknown-child
      responses do not fabricate either retained work or terminal state.
      `interruptActiveWork` uses `stop` and waits for authoritative lifecycle.
-  4. Capability opt-in `supportsScopedStop` plus a typed `AcpPlugin.cancelChild`
-     hook matches current composition (the per-harness APIs are standalone).
-     DeepSeek supplies its typed request/response API; other ACP harnesses keep
-     their existing behavior until their transport seam lands. A child with a
-     bridge-owned standard prompt uses `session/cancel`, not its former ancestry.
+  4. Capability opt-in `supportsScopedStop` plus typed `cancelChild` and atomic
+     `stopScopedTree` hooks match current composition (the per-harness APIs are
+     standalone). DeepSeek alone opts into the atomic hook: ACP performs
+     request-time queue/write cleanup, then passes an immutable session or exact
+     child target through one native request. No response-time cleanup is allowed.
+     Other ACP harnesses retain the default snapshot fanout until their transport
+     seam lands.
   5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into
      `PluginMessageWithParts` without running the live mapper. A harness
@@ -479,7 +481,7 @@ confirmation, no child session or partial stop) and gets that subset.
 5. Is `spawn_subagent` also surfaced as a standard `tool_call`; does a
    background finish trigger a wake-up turn?
 
-## DeepSeek (`sesori-deepseek-acp` 0.1.3 over dsh 0.1.1-rc.2)
+## DeepSeek (`sesori-deepseek-acp` 0.1.4 over dsh 0.1.1-rc.2)
 
 ### Verified facts
 
@@ -537,6 +539,12 @@ confirmation, no child session or partial stop) and gets that subset.
   Slice 4 removes v1 compatibility and must pin the managed target and minimum
   accepted version to 0.1.3 using verified published checksums before it is ready.
   Replay remains slice 5; scoped interrupt consumption remains a later PR.
+- Adapter 0.1.4 moves full-stop authority into the native session owner. The
+  bridge now clears only request-time queued writes, sends one
+  `deepseek/session/stop`, and handles `deepseek/input/cancel` on the ordered
+  server-request stream. Late child admissions are covered natively without a
+  persistent stop fence; later prompts and input remain outside the completed
+  request's scope.
 
 ### PRs
 
@@ -549,8 +557,8 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
 | monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/4]` | #1346 merged at `2cc1485d7c`; request-time snapshot limitation documented |
 | adapter | 🚧 | `[claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/4]` | Adapter #17 merged at `5eecdf68a3`; native atomic stop and ordered input cancellation |
-| adapter | 🌱 | `[claude-inline-subtasks] Prepare DeepSeek atomic-stop 0.1.4 release [step 3/4]` | Release-config bookkeeping and human-reviewed publication prerequisite |
-| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 4/4]` | Consume native authority and verified runtime; required before final DeepSeek E2E |
+| adapter | 🌱 | `[claude-inline-subtasks] Prepare DeepSeek atomic-stop 0.1.4 release [step 3/4]` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and all six archives independently verified |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 4/4]` | This consumer change pins verified 0.1.4, consumes native authority, and adds ordered race coverage; final DeepSeek E2E remains separate |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 
 ### Scoped-stop successor (user-approved split)
@@ -562,21 +570,21 @@ bookkeeping PR, so the scoped-stop subseries has four steps. It does not replace
 final regression reconciliation, E2E, or retirement gates.
 Finish it before DeepSeek E2E, then continue Codex.
 
-Evidence is a reachable I/O interleaving, not yet a live reproduction: native
-`#notifySubagent` queues lifecycle output, while `#interruptSubagent` acknowledges
-before cancellation settles. A child launched between the bridge snapshot and
-backend cancellation can survive, remain visibly busy, and continue work. A second
-snapshot alone cannot cover announcements still queued behind the response.
+The reachable I/O interleaving is now closed at its native owner. Adapter tests
+cover lifecycle announcements delayed behind the response, prompt-admission races,
+and nested/foreground/background execution. Consumer tests prove that the bridge
+still sends one tree request when it knows no children, preserves later queued
+prompts, and processes old input → cancellation → later input in stream order.
 
 The concrete design and review corrections are in
 [`followups/deepseek-atomic-stop.md`](followups/deepseek-atomic-stop.md).
 Use synchronous native subtree cancellation and existing admission AbortSignals,
 not a bridge stop fence. Preserve zero long-lived coordination state, exact native
 execution-kind provenance, and ordered per-interaction cancellation. Native tests
-must prove atomicity before release; the bridge then consumes that authority and
-verified artifacts. Each PR targets the ~1,500-line soft cap. Remove the temporary
-limitation from feature docs only after authoritative native and consumer coverage;
-final phone/desktop E2E remains separate.
+proved atomicity before the 0.1.4 release; the bridge consumes that authority and
+verified artifacts. Each PR targets the ~1,500-line soft cap. The
+temporary late-launch limitation is removed after native and consumer package
+coverage; final phone/desktop E2E remains separate.
 
 ### Consumer replacement series
 
