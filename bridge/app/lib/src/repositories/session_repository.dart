@@ -993,27 +993,39 @@ class SessionRepository({
     sessionId: sessionId,
     operation: SessionOperation.abortSession,
     body: (plugin, binding) async {
+      final knownSubAgentSessionIds = {
+        for (final descendant in (await _getSessionSubtree(root: binding)).skip(1))
+          if (descendant.pluginId == binding.pluginId) descendant.backendSessionId,
+      };
       final result = await plugin.abortSession(
         sessionId: binding.backendSessionId,
         subAgents: subAgents.toPlugin(),
+        knownSubAgentSessionIds: knownSubAgentSessionIds,
       );
       switch (result) {
         case PluginAbortAccepted(
           :final workKept,
           :final subAgentsHandled,
           :final handledSubAgentSessionIds,
+          :final unhandledSubAgentSessionIds,
         ):
           final sessionIdsByBackendId = subAgentsHandled
               ? const <String, String>{}
               : await getSessionIdsByBackendIds(
                   pluginId: binding.pluginId,
-                  backendSessionIds: handledSubAgentSessionIds,
+                  backendSessionIds: {
+                    ...handledSubAgentSessionIds,
+                    ...unhandledSubAgentSessionIds,
+                  }.toList(growable: false),
                 );
           return SessionAborted(
             workKept: workKept,
             subAgentsHandled: subAgentsHandled,
             handledSubAgentSessionIds: [
               for (final backendSessionId in handledSubAgentSessionIds) ?sessionIdsByBackendId[backendSessionId],
+            ],
+            unhandledSubAgentSessionIds: [
+              for (final backendSessionId in unhandledSubAgentSessionIds) ?sessionIdsByBackendId[backendSessionId],
             ],
           );
         case final PluginAbortRejectedSubAgentsRunning rejected:

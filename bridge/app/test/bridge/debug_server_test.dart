@@ -1181,7 +1181,13 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
-  }) async => const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
+    required Set<String> knownSubAgentSessionIds,
+  }) async => const PluginAbortAccepted(
+    workKept: false,
+    subAgentsHandled: false,
+    handledSubAgentSessionIds: [],
+    unhandledSubAgentSessionIds: [],
+  );
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
@@ -1315,10 +1321,16 @@ class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     _abortStarted.complete();
     await _abortRelease.future;
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
+    return const PluginAbortAccepted(
+      workKept: false,
+      subAgentsHandled: false,
+      handledSubAgentSessionIds: [],
+      unhandledSubAgentSessionIds: [],
+    );
   }
 }
 
@@ -1437,7 +1449,13 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
-  }) async => const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
+    required Set<String> knownSubAgentSessionIds,
+  }) async => const PluginAbortAccepted(
+    workKept: false,
+    subAgentsHandled: false,
+    handledSubAgentSessionIds: [],
+    unhandledSubAgentSessionIds: [],
+  );
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];

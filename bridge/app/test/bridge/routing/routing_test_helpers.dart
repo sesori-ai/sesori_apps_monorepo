@@ -588,7 +588,12 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
-  }) async => const SessionAborted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
+  }) async => const SessionAborted(
+    workKept: false,
+    subAgentsHandled: false,
+    handledSubAgentSessionIds: [],
+    unhandledSubAgentSessionIds: [],
+  );
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
@@ -1091,12 +1096,23 @@ class FakeSessionRepository({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
   }) async {
-    return switch (await _plugin.abortSession(sessionId: sessionId, subAgents: subAgents.toPlugin())) {
-      PluginAbortAccepted(:final workKept, :final subAgentsHandled, :final handledSubAgentSessionIds) => SessionAborted(
-        workKept: workKept,
-        subAgentsHandled: subAgentsHandled,
-        handledSubAgentSessionIds: handledSubAgentSessionIds,
-      ),
+    return switch (await _plugin.abortSession(
+      sessionId: sessionId,
+      subAgents: subAgents.toPlugin(),
+      knownSubAgentSessionIds: const {},
+    )) {
+      PluginAbortAccepted(
+        :final workKept,
+        :final subAgentsHandled,
+        :final handledSubAgentSessionIds,
+        :final unhandledSubAgentSessionIds,
+      ) =>
+        SessionAborted(
+          workKept: workKept,
+          subAgentsHandled: subAgentsHandled,
+          handledSubAgentSessionIds: handledSubAgentSessionIds,
+          unhandledSubAgentSessionIds: unhandledSubAgentSessionIds,
+        ),
       final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
     };
   }

@@ -38,6 +38,11 @@ _SessionAbortResponse _$SessionAbortResponseFromJson(Map json) =>
               ?.map((e) => e as String)
               .toList() ??
           const <String>[],
+      unhandledSubAgentSessionIds:
+          (json['unhandledSubAgentSessionIds'] as List<dynamic>?)
+              ?.map((e) => e as String)
+              .toList() ??
+          const <String>[],
     );
 
 Map<String, dynamic> _$SessionAbortResponseToJson(
@@ -45,6 +50,7 @@ Map<String, dynamic> _$SessionAbortResponseToJson(
 ) => <String, dynamic>{
   'subAgentsHandled': instance.subAgentsHandled,
   'handledSubAgentSessionIds': instance.handledSubAgentSessionIds,
+  'unhandledSubAgentSessionIds': instance.unhandledSubAgentSessionIds,
 };
 
 _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>

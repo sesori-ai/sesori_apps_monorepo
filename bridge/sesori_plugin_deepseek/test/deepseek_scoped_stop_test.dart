@@ -25,7 +25,11 @@ void main() {
         directory: "/repo",
       );
 
-      final result = await plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final result = await plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
 
       expect(result, isA<PluginAbortAccepted>().having((accepted) => accepted.workKept, "work kept", true));
       expect(fake.written, isEmpty);
@@ -47,7 +51,11 @@ void main() {
       await harness.prompt(sessionId: "root");
       await harness.spawn(child: "child", parent: "root", background: true);
       final before = harness.fake.written.length;
-      final result = await harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.confirm);
+      final result = await harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        knownSubAgentSessionIds: const {},
+      );
       expect(
         result,
         isA<PluginAbortRejectedSubAgentsRunning>()
@@ -63,6 +71,7 @@ void main() {
       final stopping = harness.plugin.abortSession(
         sessionId: "root",
         subAgents: PluginAbortSubAgentPolicy.confirm,
+        knownSubAgentSessionIds: const {},
       );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
 
@@ -73,9 +82,30 @@ void main() {
         await stopping,
         isA<PluginAbortAccepted>()
             .having((accepted) => accepted.workKept, "work kept", false)
-            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
-            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty),
+            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", true)
+            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
+            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", isEmpty),
       );
+    });
+
+    test("native authority covers children announced while atomic stop is pending", () async {
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
+      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
+      await harness.spawn(child: "delayed", parent: "root", background: true);
+
+      harness.reply(frame: stop, result: const {"workKept": false});
+      expect(
+        await stopping,
+        isA<PluginAbortAccepted>()
+            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", true)
+            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
+            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", isEmpty),
+      );
+      await harness.end(child: "delayed", parent: "root");
     });
 
     test("keep rejects mixed foreground work without side effects", () async {
@@ -83,7 +113,11 @@ void main() {
       await harness.spawn(child: "foreground", parent: "root", background: false);
       await harness.spawn(child: "background", parent: "root", background: true);
       final before = harness.fake.written.length;
-      final result = await harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.keep);
+      final result = await harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        knownSubAgentSessionIds: const {},
+      );
       expect(
         result,
         isA<PluginAbortRejectedSubAgentsRunning>().having((r) => r.mainAgentOnlySupported, "keep supported", false),
@@ -96,7 +130,11 @@ void main() {
       await harness.spawn(child: "background", parent: "foreground", background: true);
       final before = harness.fake.written.length;
       for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
-        final result = await harness.plugin.abortSession(sessionId: "foreground", subAgents: policy);
+        final result = await harness.plugin.abortSession(
+          sessionId: "foreground",
+          subAgents: policy,
+          knownSubAgentSessionIds: const {"background"},
+        );
         expect(
           result,
           isA<PluginAbortRejectedSubAgentsRunning>()
@@ -111,7 +149,11 @@ void main() {
     test("background named child can be interrupted while retaining its background descendant", () async {
       await harness.spawn(child: "parent", parent: "root", background: true);
       await harness.spawn(child: "child", parent: "parent", background: true);
-      final stopping = harness.plugin.abortSession(sessionId: "parent", subAgents: PluginAbortSubAgentPolicy.keep);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "parent",
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        knownSubAgentSessionIds: const {},
+      );
       await harness.replyInterrupts(results: const {"parent": "interrupted"});
       expect(await stopping, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", true));
       expect(harness.cancels, isEmpty);
@@ -122,7 +164,11 @@ void main() {
     test("keep cancels only main when every child is background", () async {
       await harness.prompt(sessionId: "root");
       await harness.spawn(child: "child", parent: "root", background: true);
-      final result = await harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.keep);
+      final result = await harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        knownSubAgentSessionIds: const {},
+      );
       expect(result, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", true));
       expect(harness.cancels.single["params"], {"sessionId": "root"});
       expect(harness.interrupts, isEmpty);
@@ -132,7 +178,11 @@ void main() {
     test("child-only keep sends no cancellation", () async {
       await harness.spawn(child: "child", parent: "root", background: true);
       final before = harness.fake.written.length;
-      final result = await harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.keep);
+      final result = await harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        knownSubAgentSessionIds: const {},
+      );
       expect(result, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", true));
       expect(harness.fake.written, hasLength(before));
     });
@@ -141,7 +191,11 @@ void main() {
       await harness.prompt(sessionId: "root");
       await harness.spawn(child: "background", parent: "root", background: true);
       await harness.spawn(child: "foreground", parent: "background", background: false);
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
       expect(stop["params"], {"kind": "session", "sessionId": "root"});
       expect(harness.cancels, isEmpty);
@@ -156,7 +210,11 @@ void main() {
 
     test("native retained-work result does not synthesize child settlement", () async {
       await harness.spawn(child: "child", parent: "root", background: true);
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
       harness.reply(frame: stop, result: const {"workKept": true});
       expect(await stopping, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", true));
@@ -168,7 +226,11 @@ void main() {
     test("named child stop uses exact parent target without cancelling its parent or sibling", () async {
       await harness.spawn(child: "child", parent: "root", background: false);
       await harness.spawn(child: "sibling", parent: "root", background: true);
-      final stopping = harness.plugin.abortSession(sessionId: "child", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "child",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
       expect(stop["params"], {"kind": "child", "sessionId": "root", "childSessionId": "child"});
       harness.reply(frame: stop, result: const {"workKept": true});
@@ -183,7 +245,11 @@ void main() {
       await harness.spawn(child: "descendant", parent: "parent", background: true);
       await harness.end(child: "parent", parent: "root");
 
-      final stopping = harness.plugin.abortSession(sessionId: "parent", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "parent",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
 
       expect(stop["params"], {"kind": "child", "sessionId": "root", "childSessionId": "parent"});
@@ -200,7 +266,11 @@ void main() {
       final independentPrompt = await harness.waitFor(method: AcpMethods.sessionPrompt, count: 1);
       await harness.spawn(child: "delegated", parent: "root", background: true);
 
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {"independent", "delegated"},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
 
       expect(stop["params"], {"kind": "session", "sessionId": "root"});
@@ -214,6 +284,11 @@ void main() {
               (accepted) => accepted.handledSubAgentSessionIds,
               "handled ids",
               ["delegated"],
+            )
+            .having(
+              (accepted) => accepted.unhandledSubAgentSessionIds,
+              "unhandled ids",
+              ["independent"],
             ),
       );
       await harness.end(child: "delegated", parent: "root");
@@ -226,8 +301,24 @@ void main() {
       harness.plugin.childSessionTracker.clear();
       await harness.prompt(sessionId: "persisted-child");
       final childPrompt = await harness.waitFor(method: AcpMethods.sessionPrompt, count: 1);
+      expect(
+        await harness.plugin.abortSession(
+          sessionId: "root",
+          subAgents: PluginAbortSubAgentPolicy.confirm,
+          knownSubAgentSessionIds: const {"persisted-child"},
+        ),
+        isA<PluginAbortRejectedSubAgentsRunning>().having(
+          (rejected) => rejected.runningSubAgentCount,
+          "running children",
+          1,
+        ),
+      );
 
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {"persisted-child"},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
 
       harness.reply(frame: stop, result: const {"workKept": false});
@@ -235,9 +326,40 @@ void main() {
         await stopping,
         isA<PluginAbortAccepted>()
             .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
-            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty),
+            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
+            .having(
+              (accepted) => accepted.unhandledSubAgentSessionIds,
+              "unhandled ids",
+              ["persisted-child"],
+            ),
       );
       harness.reply(frame: childPrompt, result: const {"stopReason": "end_turn"});
+    });
+
+    test("root stop returns nested independent descendants for exact fanout", () async {
+      await harness.spawn(child: "parent", parent: "root", background: true);
+      await harness.spawn(child: "nested", parent: "parent", background: true);
+      await harness.end(child: "nested", parent: "parent");
+      await harness.prompt(sessionId: "nested");
+      final nestedPrompt = await harness.waitFor(method: AcpMethods.sessionPrompt, count: 1);
+
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {"parent", "nested"},
+      );
+      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
+
+      harness.reply(frame: stop, result: const {"workKept": false});
+      expect(
+        await stopping,
+        isA<PluginAbortAccepted>()
+            .having((accepted) => accepted.subAgentsHandled, "sub-agents handled", false)
+            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", ["parent"])
+            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", ["nested"]),
+      );
+      await harness.end(child: "parent", parent: "root");
+      harness.reply(frame: nestedPrompt, result: const {"stopReason": "end_turn"});
     });
 
     test("a queued prompt does not replace an ended child's retained parent authority", () async {
@@ -254,7 +376,11 @@ void main() {
       );
       final loading = await harness.waitFor(method: AcpMethods.sessionLoad, count: 1);
 
-      final stopping = harness.plugin.abortSession(sessionId: "parent", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "parent",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
 
       expect(stop["params"], {"kind": "child", "sessionId": "root", "childSessionId": "parent"});
@@ -277,7 +403,11 @@ void main() {
       await harness.spawn(child: "child", parent: "root", background: true);
       await harness.end(child: "child", parent: "root");
       await harness.prompt(sessionId: "child");
-      final stopping = harness.plugin.abortSession(sessionId: "child", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "child",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
       expect(stop["params"], {"kind": "session", "sessionId": "child"});
       harness.reply(frame: stop, result: const {"workKept": false});
@@ -311,7 +441,11 @@ void main() {
       harness.reply(frame: prompt, result: const {"stopReason": "end_turn"});
       await Future<void>.delayed(Duration.zero);
 
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
       expect(stop["params"], {"kind": "session", "sessionId": "root"});
       harness.reply(frame: stop, result: const {"workKept": false});
@@ -332,7 +466,11 @@ void main() {
       expect(await harness.plugin.getQueuedPrompts(sessionId: "root"), hasLength(1));
       final cancelsBeforeStop = harness.cancels.length;
 
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
       expect(harness.cancels, hasLength(cancelsBeforeStop));
       await harness.plugin.sendPrompt(
@@ -359,7 +497,11 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(await harness.plugin.getPendingQuestions(sessionId: "root"), hasLength(1));
 
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
       harness.reply(frame: stop, result: const {"workKept": false});
       harness.fake.emit({
@@ -430,7 +572,11 @@ void main() {
 
     test("tree-stop failure retains the original RPC error and busy state", () async {
       await harness.spawn(child: "child", parent: "root", background: true);
-      final stopping = harness.plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stopping = harness.plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final failure = expectLater(
         stopping,
         throwsA(

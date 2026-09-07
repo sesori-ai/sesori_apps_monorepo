@@ -119,12 +119,13 @@ authority to cover admissions ahead of delayed lifecycle frames; `keep` retains 
 existing transport. A queued, undispatched prompt is cleared before dispatch and
 does not replace an ended child's retained exact-parent authority. A terminal
 child with its own accepted bridge prompt is independently resident: an ancestor
-stop excludes that child branch from request-time cleanup, reports it as retained,
-and returns handled backend child ids. The bridge maps those ids to public session
-ids so the client fanouts only to independent work. Atomic responses conservatively
-leave full coverage false so persisted descendants whose process-local ancestry was
-cleared by an adapter restart also retain exact client fanout. Whole-plugin stop
-uses the same tree path and existing authoritative-idle budget.
+stop excludes that child branch from request-time cleanup and reports it as
+retained. The bridge passes every persisted descendant backend id into the plugin,
+including nested descendants and ids absent after tracker reset. The atomic result
+returns exact handled and unhandled ids for public-id mapping: current clients
+fanout directly to known independent work, while full native coverage suppresses
+second stops for children whose lifecycle announcement lands during STOP.
+Whole-plugin stop uses the same tree path and existing authoritative-idle budget.
 Replace only the opted-in stop snapshot fanout/coverage reconstruction. Keep
 snapshots required by confirm/keep; no compatibility shims for internal callers.
 
@@ -166,8 +167,9 @@ pinned implementation head `2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`,
 against merge base `b43758e1b304d7f119787163875b78b38b1b25f1`, measures
 +2,468/-239 = 2,707 lines: 611 generated, 1,136 tests/fixtures, 494 docs/plans,
 and 466 production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`
-reproduces it. The measurement is not self-inclusive: it excludes only the later
-evidence-only commit recording it here and in the tracker. Its 123-line increase
+reproduces it. The range includes prior tracker/design measurement records in its
+docs/plan subtotal and excludes only the later `52761ce4de` evidence commit that
+records the 2,707 figure here and in the tracker. Its 123-line increase
 is 73 tests/fixtures, 38 docs/plans, and 12 production lines. Splitting the response
 or partial-handling mapping from atomic STOP
 would leave the first PR vulnerable to re-stopping later work or missing independent
@@ -184,7 +186,9 @@ boundaries: response cleanup ownership and execution-kind authority. The concret
 choices above address those findings. Native implementation review approved adapter
 #17 with no findings. Consumer architecture reviews approved the atomic policy,
 layering, additive response path, retained authority, and generated transport union.
-The final conservative-coverage incremental review also approved with no findings.
+The conservative-coverage incremental review also approved with no findings. The
+final catalog-snapshot and exact-unhandled-response extension requires one
+incremental review.
 
 Native tests: delayed root/nested announcements; pending continuable admission;
 foreground handoff; pending/published background fork jobs; exact named scope;
@@ -199,8 +203,9 @@ notification backlog and prompt-write buffering; response delivered before reque
 stream drainage; visible-child confirm rejection and hidden-child accepted confirm;
 queued prompt versus resident child authority; independently resumed child plus a
 covered delegated sibling and partial client fanout; cleared process-local ancestry;
-client-less retained work; fully handled bridge lookup avoidance; OpenCode exact
-handled ids; keep behavior; foreground retention; RPC failure; busy state after
+client-less retained work; fully handled bridge lookup avoidance; nested exact
+unhandled fanout; lifecycle announcement during STOP; OpenCode legacy fanout when
+child-stop outcomes are not authoritative; keep behavior; foreground retention; RPC failure; busy state after
 acceptance; whole-plugin stop. Verify new minimum/digests and frozen corpora. Run owning analyzers/tests; CI owns the full matrix.
 
 Authoritative native and consumer package coverage passes, so the temporary

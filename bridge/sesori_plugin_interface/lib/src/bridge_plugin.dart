@@ -187,9 +187,15 @@ sealed class BridgePluginApi() {
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
 
   /// Stops the session's in-progress work. [subAgents] scopes the stop for
-  /// plugins whose sessions run sub-agents; every other plugin ignores it and
-  /// answers [PluginAbortAccepted].
-  Future<PluginAbortResult> abortSession({required String sessionId, required PluginAbortSubAgentPolicy subAgents});
+  /// plugins whose sessions run sub-agents; [knownSubAgentSessionIds] is the
+  /// bridge catalog's backend-id snapshot of every known descendant, including
+  /// descendants absent from process-local plugin tracking. Other plugins may
+  /// ignore it and answer [PluginAbortAccepted].
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required Set<String> knownSubAgentSessionIds,
+  });
 
   /// Returns the agents available for the given project.
   ///

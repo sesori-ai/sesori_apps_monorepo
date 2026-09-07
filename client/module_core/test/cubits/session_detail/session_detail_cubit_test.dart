@@ -809,6 +809,7 @@ void main() {
           const SessionAbortResponse(
             subAgentsHandled: false,
             handledSubAgentSessionIds: [delegatedChildId],
+            unhandledSubAgentSessionIds: [independentChildId],
           ),
         ),
       );
@@ -830,6 +831,60 @@ void main() {
           subAgents: SessionAbortSubAgentPolicy.stop,
         ),
       ).called(1);
+      await cubit.close();
+    });
+
+    test("abort exact-fanouts a nested descendant absent from direct child state", () async {
+      const directChildId = "direct-child";
+      const nestedChildId = "nested-child";
+      when(
+        () => mockSessionService.getChildren(sessionId: sessionId),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [testSession(id: directChildId, parentID: sessionId)],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.getSessionStatuses(),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SessionStatusResponse(statuses: {directChildId: SessionStatus.idle()}),
+        ),
+      );
+      when(
+        () => mockSessionService.abortSession(
+          sessionId: sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SessionAbortResponse(
+            subAgentsHandled: false,
+            handledSubAgentSessionIds: [directChildId],
+            unhandledSubAgentSessionIds: [nestedChildId],
+          ),
+        ),
+      );
+      final cubit = buildCubit();
+      await _awaitLoaded(cubit);
+
+      final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+
+      expect(outcome, isA<SessionAbortAccepted>());
+      verify(
+        () => mockSessionService.abortSession(
+          sessionId: nestedChildId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockSessionService.abortSession(
+          sessionId: directChildId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      );
       await cubit.close();
     });
 

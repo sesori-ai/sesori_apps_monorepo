@@ -7,12 +7,14 @@ void main() {
 
     expect(response.subAgentsHandled, isFalse);
     expect(response.handledSubAgentSessionIds, isEmpty);
+    expect(response.unhandledSubAgentSessionIds, isEmpty);
   });
 
   test("round-trips plugin-owned descendant handling", () {
     const response = SessionAbortResponse(
       subAgentsHandled: false,
       handledSubAgentSessionIds: ["handled-child"],
+      unhandledSubAgentSessionIds: ["remaining-grandchild"],
     );
 
     expect(SessionAbortResponse.fromJson(response.toJson()), response);

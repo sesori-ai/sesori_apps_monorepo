@@ -155,7 +155,8 @@ mixin _$SessionAbortResponse {
 
  bool get subAgentsHandled;/// Public session ids already covered when only part of the requested
 /// descendant policy was handled.
- List<String> get handledSubAgentSessionIds;
+ List<String> get handledSubAgentSessionIds;/// Public session ids with request-time work that still needs exact fanout.
+ List<String> get unhandledSubAgentSessionIds;
 /// Create a copy of SessionAbortResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -168,16 +169,16 @@ $SessionAbortResponseCopyWith<SessionAbortResponse> get copyWith => _$SessionAbo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled)&&const DeepCollectionEquality().equals(other.handledSubAgentSessionIds, handledSubAgentSessionIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled)&&const DeepCollectionEquality().equals(other.handledSubAgentSessionIds, handledSubAgentSessionIds)&&const DeepCollectionEquality().equals(other.unhandledSubAgentSessionIds, unhandledSubAgentSessionIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subAgentsHandled,const DeepCollectionEquality().hash(handledSubAgentSessionIds));
+int get hashCode => Object.hash(runtimeType,subAgentsHandled,const DeepCollectionEquality().hash(handledSubAgentSessionIds),const DeepCollectionEquality().hash(unhandledSubAgentSessionIds));
 
 @override
 String toString() {
-  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled, handledSubAgentSessionIds: $handledSubAgentSessionIds)';
+  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled, handledSubAgentSessionIds: $handledSubAgentSessionIds, unhandledSubAgentSessionIds: $unhandledSubAgentSessionIds)';
 }
 
 
@@ -188,7 +189,7 @@ abstract mixin class $SessionAbortResponseCopyWith<$Res>  {
   factory $SessionAbortResponseCopyWith(SessionAbortResponse value, $Res Function(SessionAbortResponse) _then) = _$SessionAbortResponseCopyWithImpl;
 @useResult
 $Res call({
- bool subAgentsHandled, List<String> handledSubAgentSessionIds
+ bool subAgentsHandled, List<String> handledSubAgentSessionIds, List<String> unhandledSubAgentSessionIds
 });
 
 
@@ -205,10 +206,11 @@ class _$SessionAbortResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionAbortResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? subAgentsHandled = null,Object? handledSubAgentSessionIds = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? subAgentsHandled = null,Object? handledSubAgentSessionIds = null,Object? unhandledSubAgentSessionIds = null,}) {
   return _then(SessionAbortResponse(
 subAgentsHandled: null == subAgentsHandled ? _self.subAgentsHandled : subAgentsHandled // ignore: cast_nullable_to_non_nullable
 as bool,handledSubAgentSessionIds: null == handledSubAgentSessionIds ? _self.handledSubAgentSessionIds : handledSubAgentSessionIds // ignore: cast_nullable_to_non_nullable
+as List<String>,unhandledSubAgentSessionIds: null == unhandledSubAgentSessionIds ? _self.unhandledSubAgentSessionIds : unhandledSubAgentSessionIds // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }
@@ -221,7 +223,7 @@ as List<String>,
 @JsonSerializable()
 
 class _SessionAbortResponse implements SessionAbortResponse {
-  const _SessionAbortResponse({this.subAgentsHandled = false,  List<String> handledSubAgentSessionIds = const <String>[]}): _handledSubAgentSessionIds = handledSubAgentSessionIds;
+  const _SessionAbortResponse({this.subAgentsHandled = false,  List<String> handledSubAgentSessionIds = const <String>[],  List<String> unhandledSubAgentSessionIds = const <String>[]}): _handledSubAgentSessionIds = handledSubAgentSessionIds,_unhandledSubAgentSessionIds = unhandledSubAgentSessionIds;
   factory _SessionAbortResponse.fromJson(Map<String, dynamic> json) => _$SessionAbortResponseFromJson(json);
 
 @override@JsonKey() final  bool subAgentsHandled;
@@ -234,6 +236,15 @@ class _SessionAbortResponse implements SessionAbortResponse {
   if (_handledSubAgentSessionIds is EqualUnmodifiableListView) return _handledSubAgentSessionIds;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_handledSubAgentSessionIds);
+}
+
+/// Public session ids with request-time work that still needs exact fanout.
+ final  List<String> _unhandledSubAgentSessionIds;
+/// Public session ids with request-time work that still needs exact fanout.
+@override@JsonKey() List<String> get unhandledSubAgentSessionIds {
+  if (_unhandledSubAgentSessionIds is EqualUnmodifiableListView) return _unhandledSubAgentSessionIds;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_unhandledSubAgentSessionIds);
 }
 
 
@@ -250,16 +261,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled)&&const DeepCollectionEquality().equals(other._handledSubAgentSessionIds, _handledSubAgentSessionIds));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled)&&const DeepCollectionEquality().equals(other._handledSubAgentSessionIds, _handledSubAgentSessionIds)&&const DeepCollectionEquality().equals(other._unhandledSubAgentSessionIds, _unhandledSubAgentSessionIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subAgentsHandled,const DeepCollectionEquality().hash(_handledSubAgentSessionIds));
+int get hashCode => Object.hash(runtimeType,subAgentsHandled,const DeepCollectionEquality().hash(_handledSubAgentSessionIds),const DeepCollectionEquality().hash(_unhandledSubAgentSessionIds));
 
 @override
 String toString() {
-  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled, handledSubAgentSessionIds: $handledSubAgentSessionIds)';
+  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled, handledSubAgentSessionIds: $handledSubAgentSessionIds, unhandledSubAgentSessionIds: $unhandledSubAgentSessionIds)';
 }
 
 
@@ -270,7 +281,7 @@ abstract mixin class _$SessionAbortResponseCopyWith<$Res> implements $SessionAbo
   factory _$SessionAbortResponseCopyWith(_SessionAbortResponse value, $Res Function(_SessionAbortResponse) _then) = __$SessionAbortResponseCopyWithImpl;
 @override @useResult
 $Res call({
- bool subAgentsHandled, List<String> handledSubAgentSessionIds
+ bool subAgentsHandled, List<String> handledSubAgentSessionIds, List<String> unhandledSubAgentSessionIds
 });
 
 
@@ -287,10 +298,11 @@ class __$SessionAbortResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionAbortResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? subAgentsHandled = null,Object? handledSubAgentSessionIds = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? subAgentsHandled = null,Object? handledSubAgentSessionIds = null,Object? unhandledSubAgentSessionIds = null,}) {
   return _then(_SessionAbortResponse(
 subAgentsHandled: null == subAgentsHandled ? _self.subAgentsHandled : subAgentsHandled // ignore: cast_nullable_to_non_nullable
 as bool,handledSubAgentSessionIds: null == handledSubAgentSessionIds ? _self._handledSubAgentSessionIds : handledSubAgentSessionIds // ignore: cast_nullable_to_non_nullable
+as List<String>,unhandledSubAgentSessionIds: null == unhandledSubAgentSessionIds ? _self._unhandledSubAgentSessionIds : unhandledSubAgentSessionIds // ignore: cast_nullable_to_non_nullable
 as List<String>,
   ));
 }

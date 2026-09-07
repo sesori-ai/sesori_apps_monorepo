@@ -51,6 +51,12 @@ sealed class SessionAbortResponse with _$SessionAbortResponse {
     // require fanout for every visible child. Remove the default when those
     // bridges are no longer supported.
     @Default(<String>[]) List<String> handledSubAgentSessionIds,
+
+    /// Public session ids with request-time work that still needs exact fanout.
+    // COMPATIBILITY 2026-09-07 (v1.8.4): Older bridges omit this field and the
+    // app falls back to visible direct-child fanout. Remove the default when
+    // those bridges are no longer supported.
+    @Default(<String>[]) List<String> unhandledSubAgentSessionIds,
   }) = _SessionAbortResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionAbortResponseFromJson(json);

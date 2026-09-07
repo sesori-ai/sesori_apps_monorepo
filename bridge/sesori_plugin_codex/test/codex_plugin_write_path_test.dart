@@ -1412,7 +1412,11 @@ void main() {
       // Give the event subscription a microtask to process.
       await Future<void>.delayed(Duration.zero);
 
-      await plugin.abortSession(sessionId: "t-1", subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: "t-1",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
 
       expect(fake.sentMethods, contains("turn/interrupt"));
       final params = fake.sentParamsFor("turn/interrupt");
@@ -1592,7 +1596,11 @@ void main() {
 
       expect((await plugin.getSessionStatuses())["t-steered"], isA<PluginSessionStatusIdle>());
       expect(plugin.getActiveSessionsSummary(), isEmpty);
-      await plugin.abortSession(sessionId: "t-steered", subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: "t-steered",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
     });
 
@@ -1784,7 +1792,11 @@ void main() {
         mode: FileMode.append,
       );
 
-      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
 
       expect((await terminalTool.timeout(const Duration(seconds: 1))).part.state.status, PluginToolStatus.error);
       expect((await idleEvent).sessionID, sessionId);
@@ -1860,7 +1872,11 @@ void main() {
         mode: FileMode.append,
       );
 
-      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       await idle;
 
       final errorIndex = emittedEvents.indexWhere(
@@ -1921,7 +1937,11 @@ void main() {
       final emittedEvents = <BridgeSseEvent>[];
       final eventSubscription = plugin.events.listen(emittedEvents.add);
 
-      final abort = plugin.abortSession(sessionId: "t-abort-race", subAgents: PluginAbortSubAgentPolicy.stop);
+      final abort = plugin.abortSession(
+        sessionId: "t-abort-race",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       await interruptRequested.future;
       await Future<void>.delayed(const Duration(milliseconds: 20));
       fake.pushNotification("turn/started", {
@@ -3022,7 +3042,11 @@ void main() {
           error: {"code": -32600, "message": "no active turn to interrupt"},
         ),
       ]);
-      await plugin.abortSession(sessionId: "child-1", subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: "child-1",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       await rootIdle;
       await Future<void>.delayed(const Duration(milliseconds: 20));
       expect(events.whereType<BridgeSseSessionIdle>().where((event) => event.sessionID == "root-1"), hasLength(1));
@@ -3078,6 +3102,7 @@ void main() {
         await plugin.abortSession(
           sessionId: "child-pending-start",
           subAgents: PluginAbortSubAgentPolicy.stop,
+          knownSubAgentSessionIds: const {},
         ),
         isA<PluginAbortAccepted>(),
       );

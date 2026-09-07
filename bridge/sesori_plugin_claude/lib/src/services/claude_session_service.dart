@@ -493,6 +493,7 @@ final class ClaudeSessionService({
         workKept: false,
         subAgentsHandled: false,
         handledSubAgentSessionIds: [],
+        unhandledSubAgentSessionIds: [],
       );
     }
     final activeAbort = state.aborting;
@@ -512,7 +513,12 @@ final class ClaudeSessionService({
     }
     if (!state.hasWork) {
       _approvals.cancelForSession(sessionId: sessionId);
-      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
+      return const PluginAbortAccepted(
+        workKept: false,
+        subAgentsHandled: false,
+        handledSubAgentSessionIds: [],
+        unhandledSubAgentSessionIds: [],
+      );
     }
     // The CLI's only stop primitive, `interrupt`, also stops background agents
     // (observed on 2.1.257), so sub-agents can be kept only when no main turn
@@ -540,7 +546,12 @@ final class ClaudeSessionService({
         // run. The process stays resident for them, pending approvals are left
         // alone (a kept sub-agent may be waiting on one), and the running set
         // keeps the session busy until the tasks report and wake the main agent.
-        return const PluginAbortAccepted(workKept: true, subAgentsHandled: false, handledSubAgentSessionIds: []);
+        return const PluginAbortAccepted(
+          workKept: true,
+          subAgentsHandled: false,
+          handledSubAgentSessionIds: [],
+          unhandledSubAgentSessionIds: [],
+        );
       }
       _approvals.cancelForSession(sessionId: sessionId);
       // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
@@ -562,7 +573,12 @@ final class ClaudeSessionService({
         _completeSelfStartedTurn(state: state);
         _settleIdle(sessionId: sessionId, state: state);
       }
-      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
+      return const PluginAbortAccepted(
+        workKept: false,
+        subAgentsHandled: false,
+        handledSubAgentSessionIds: [],
+        unhandledSubAgentSessionIds: [],
+      );
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;
       if (!aborting.isCompleted) aborting.complete();

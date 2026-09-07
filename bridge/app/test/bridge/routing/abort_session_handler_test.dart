@@ -48,6 +48,7 @@ void main() {
         workKept: true,
         subAgentsHandled: false,
         handledSubAgentSessionIds: ["handled-child"],
+        unhandledSubAgentSessionIds: ["remaining-grandchild"],
       );
 
       final response = await handler.handle(
@@ -61,6 +62,7 @@ void main() {
           const SessionAbortResponse(
             subAgentsHandled: false,
             handledSubAgentSessionIds: ["handled-child"],
+            unhandledSubAgentSessionIds: ["remaining-grandchild"],
           ),
         ),
       );

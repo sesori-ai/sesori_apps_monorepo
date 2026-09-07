@@ -122,13 +122,14 @@ defaults and queued client sends coherent.
   cancelling prompts or input. Full `stop` clears only prompts already queued at
   request time, then dispatches
   exactly one native atomic subtree request without a preceding standard cancel.
-  Its successful response lists handled public child ids. DeepSeek conservatively
-  leaves full-coverage false because process-local ancestry can be lost on an
-  adapter restart; the client therefore avoids re-stopping known delegated
-  children after the atomic request but still fanouts to independently resumed or
-  persisted-untracked children outside the known native subtree. An older bridge's
-  empty response defaults to full legacy fanout. Native authority covers children admitted before
-  or during stop even when the bridge has not received their lifecycle frames.
+  The bridge supplies its persisted descendant backend-id snapshot before STOP.
+  DeepSeek combines it with process-local ancestry to return exact handled and
+  unhandled ids: current clients exact-fanout independently resumed descendants,
+  including nested descendants absent from direct-child screen state, while full
+  native coverage suppresses duplicate fanout for children announced during STOP.
+  An older bridge's empty response defaults to full legacy fanout. Native authority
+  covers children admitted before or during stop even when the bridge has not
+  received their lifecycle frames.
   A named child request carries its exact direct parent and never widens to a
   parent or sibling; a queued, undispatched prompt is cleared locally and does
   not replace that retained child authority. A terminal child later prompted as
@@ -581,9 +582,11 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   always stops its sub-agents.
 - OpenCode aborts a foreground task child together with its root (the task
   tool cancels it), while background children outlive a root abort; `stop`
-  therefore aborts each running child explicitly, reports those exact children
-  as handled for client fanout filtering, and the tracker cannot tell the two
-  kinds apart, so main-agent-only is not offered while the root runs.
+  therefore aborts each running child explicitly. Its endpoint does not provide
+  authoritative per-child outcomes, so it retains legacy client fanout rather
+  than claiming snapshot coverage that could suppress later independent work.
+  The tracker cannot tell the two kinds apart, so main-agent-only is not offered
+  while the root runs.
 - Untested Hermes gap (remove this entry once verified): reasoning streaming
   was never observed from Hermes. An explicit chain-of-thought prompt produced
   no `agent_thought_chunk` against the tested model, so thought-part

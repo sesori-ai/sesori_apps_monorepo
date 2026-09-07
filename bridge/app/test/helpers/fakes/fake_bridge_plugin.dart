@@ -32,6 +32,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     workKept: false,
     subAgentsHandled: false,
     handledSubAgentSessionIds: [],
+    unhandledSubAgentSessionIds: [],
   );
   PluginSession? renameSessionResult;
   PluginProject? renameProjectResult;
@@ -292,6 +293,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     lastAbortSessionId = sessionId;
     return abortResult;

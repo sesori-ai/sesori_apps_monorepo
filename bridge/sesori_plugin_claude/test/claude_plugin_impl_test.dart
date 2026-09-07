@@ -521,7 +521,11 @@ void main() {
       final subscription = harness.plugin.events.listen(events.add);
       final written = first.written.lastWhere((frame) => frame["type"] == "user");
       first.emit(_replayOf(written, uuid: "late-echo"));
-      final abort = harness.plugin.abortSession(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      final abort = harness.plugin.abortSession(
+        sessionId: testSessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final interrupt = await _waitForControl(first, "interrupt");
       first.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;
@@ -806,7 +810,11 @@ void main() {
       final process = harness.processes.single;
       await waitForFrame(process, "user");
 
-      await harness.plugin.abortSession(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      await harness.plugin.abortSession(
+        sessionId: testSessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       process.emit({
         "type": "result",
         "subtype": "error_during_execution",
@@ -864,7 +872,11 @@ void main() {
       await pump();
       // An explicit stop tears the process down without a natural exit; the
       // sub-agent must still surface as cancelled.
-      final abort = harness.plugin.abortSession(sessionId: testSessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      final abort = harness.plugin.abortSession(
+        sessionId: testSessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        knownSubAgentSessionIds: const {},
+      );
       final interrupt = await _waitForControl(process, "interrupt");
       process.emitControlResponse(requestId: interrupt["request_id"]! as String, payload: const {});
       await abort;

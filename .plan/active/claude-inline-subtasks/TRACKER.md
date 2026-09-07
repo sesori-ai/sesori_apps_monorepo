@@ -815,8 +815,25 @@ implementation head is `2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`; with merge
 base `b43758e1b304d7f119787163875b78b38b1b25f1`, `git diff --numstat
 b43758e1b304d7f119787163875b78b38b1b25f1...2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`
 measures +2,468/-239 = 2,707 lines: 611 generated, 1,136 tests/fixtures,
-494 docs/plans, and 466 production. This pinned measurement is not self-inclusive:
-it excludes only the later evidence-only commit that records it here and in the
-durable design. The 123-line increase from the prior reviewed head is 73 tests/
+494 docs/plans, and 466 production. The range includes prior tracker/design
+measurement records in its docs/plan subtotal and excludes only the later
+`52761ce4de` evidence commit that records the 2,707 figure here and in the durable
+design. The 123-line increase from the prior reviewed head is 73 tests/
 fixtures, 38 docs/plans, and 12 production lines. Final DeepSeek E2E follows, then
 Codex.
+
+The following current-head review exposed the tension between unknown persisted
+ancestry and native coverage for lifecycle announcements delivered during STOP,
+and a nested independent descendant absent from direct-child screen state. The
+bridge now passes its recursive persisted descendant backend-id snapshot into the
+plugin. DeepSeek combines it with process-local resident-turn evidence and returns
+exact handled/unhandled ids: full native coverage suppresses delayed duplicate
+fanout, while current clients exact-stop independently resident descendants at any
+depth. OpenCode reverted its handled-id claim because its endpoint has no
+authoritative per-child result and safely retains legacy fanout. The 2,707 range
+wording now states precisely that prior measurement records are included and only
+the final recording commit is excluded. Shared 397, ACP 325, DeepSeek 122,
+OpenCode 432, selected bridge 75, and selected client 106 tests pass; fatal-info
+analysis is clean across shared, interface, ACP, DeepSeek, Claude, Codex, OpenCode,
+Pi, bridge app, and client core. LSP reports zero diagnostics across 14 changed
+production files. Incremental architecture review remains required.

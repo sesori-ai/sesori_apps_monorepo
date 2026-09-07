@@ -1717,6 +1717,7 @@ abstract class AcpPlugin({
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     if (!supportsScopedStop) {
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
@@ -1724,38 +1725,47 @@ abstract class AcpPlugin({
         workKept: false,
         subAgentsHandled: false,
         handledSubAgentSessionIds: [],
+        unhandledSubAgentSessionIds: [],
       );
     }
     final children = childSessionTracker.runningChildren(sessionId: sessionId);
     final namedChild = childSessionTracker.runningChild(sessionId: sessionId);
     final hasResidentPrompt = _inFlightTurnSessions.contains(sessionId);
+    final independentDescendantSessionIds = {
+      for (final descendantSessionId in {
+        ...knownSubAgentSessionIds,
+        ...childSessionTracker.childSessionIds(sessionId: sessionId),
+      })
+        if (childSessionTracker.runningChild(sessionId: descendantSessionId) == null &&
+            (_turnStates[descendantSessionId]?.pending ?? 0) > 0)
+          descendantSessionId,
+    };
+    final activeSubAgentSessionIds = {
+      ...children.map((child) => child.childSessionId),
+      ...independentDescendantSessionIds,
+    };
     final mainRunning = hasResidentPrompt || namedChild != null;
     final mainOnlySupported =
         (hasResidentPrompt || namedChild == null || namedChild.isBackground) &&
         children.every((child) => child.isBackground);
-    if (children.isNotEmpty &&
+    if (activeSubAgentSessionIds.isNotEmpty &&
         (subAgents == PluginAbortSubAgentPolicy.confirm ||
             subAgents == PluginAbortSubAgentPolicy.keep && mainRunning && !mainOnlySupported)) {
       return PluginAbortRejectedSubAgentsRunning(
-        runningSubAgentCount: children.length,
+        runningSubAgentCount: activeSubAgentSessionIds.length,
         mainAgentRunning: mainRunning,
         mainAgentOnlySupported: mainOnlySupported,
       );
     }
-    if (subAgents == PluginAbortSubAgentPolicy.keep && children.isNotEmpty && !mainRunning) {
+    if (subAgents == PluginAbortSubAgentPolicy.keep && activeSubAgentSessionIds.isNotEmpty && !mainRunning) {
       return const PluginAbortAccepted(
         workKept: true,
         subAgentsHandled: false,
         handledSubAgentSessionIds: [],
+        unhandledSubAgentSessionIds: [],
       );
     }
     if (subAgents != PluginAbortSubAgentPolicy.keep && supportsAtomicScopedStop) {
-      final independentDescendantSessionIds = {
-        for (final descendantSessionId in childSessionTracker.childSessionIds(sessionId: sessionId))
-          if (childSessionTracker.runningChild(sessionId: descendantSessionId) == null &&
-              (_turnStates[descendantSessionId]?.pending ?? 0) > 0)
-            descendantSessionId,
-      };
       bool belongsToIndependentScope({required String childSessionId}) {
         String? currentSessionId = childSessionId;
         while (currentSessionId != null && currentSessionId != sessionId) {
@@ -1781,6 +1791,7 @@ abstract class AcpPlugin({
               namedChild != null && !hasResidentPrompt,
           subAgentsHandled: false,
           handledSubAgentSessionIds: const [],
+          unhandledSubAgentSessionIds: List.unmodifiable(activeSubAgentSessionIds),
         );
       }
       final parentSessionId = namedChild?.parentSessionId ?? childSessionTracker.parentOf(sessionId: sessionId);
@@ -1793,13 +1804,15 @@ abstract class AcpPlugin({
       final result = await stopScopedTree(client: client, target: target);
       return PluginAbortAccepted(
         workKept: result.workKept || independentDescendantSessionIds.isNotEmpty,
-        // The process-local tracker cannot prove coverage for persisted
-        // descendants after a process restart. Return exact known coverage and
-        // let the client fanout to any visible descendant absent from this list.
-        subAgentsHandled: false,
-        handledSubAgentSessionIds: List.unmodifiable(
-          atomicChildren.map((child) => child.childSessionId),
-        ),
+        // The bridge's catalog snapshot makes process-restart gaps explicit,
+        // while native authority covers children admitted before or during STOP
+        // even when their lifecycle frame has not reached the bridge yet.
+        subAgentsHandled: independentDescendantSessionIds.isEmpty,
+        handledSubAgentSessionIds: List.unmodifiable({
+          ...knownSubAgentSessionIds.difference(independentDescendantSessionIds),
+          ...atomicChildren.map((child) => child.childSessionId),
+        }),
+        unhandledSubAgentSessionIds: List.unmodifiable(independentDescendantSessionIds),
       );
     }
     final mainResult = await _cancelScopedSession(
@@ -1808,9 +1821,10 @@ abstract class AcpPlugin({
     );
     if (subAgents != PluginAbortSubAgentPolicy.stop) {
       return PluginAbortAccepted(
-        workKept: children.isNotEmpty || mainResult == AcpChildCancelResult.notCancellable,
+        workKept: activeSubAgentSessionIds.isNotEmpty || mainResult == AcpChildCancelResult.notCancellable,
         subAgentsHandled: false,
         handledSubAgentSessionIds: const [],
+        unhandledSubAgentSessionIds: const [],
       );
     }
     final results = await Future.wait([
@@ -1842,6 +1856,7 @@ abstract class AcpPlugin({
           children.any((child) => !cancelled.contains(child.childSessionId) && !coveredByParent(child: child)),
       subAgentsHandled: true,
       handledSubAgentSessionIds: List.unmodifiable(children.map((child) => child.childSessionId)),
+      unhandledSubAgentSessionIds: const [],
     );
   }
 
@@ -1930,7 +1945,12 @@ abstract class AcpPlugin({
             if (entry.value.pending > 0 && childSessionTracker.runningChild(sessionId: entry.key) == null) entry.key,
         };
         await Future.wait([
-          for (final sessionId in roots) abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop),
+          for (final sessionId in roots)
+            abortSession(
+              sessionId: sessionId,
+              subAgents: PluginAbortSubAgentPolicy.stop,
+              knownSubAgentSessionIds: childSessionTracker.childSessionIds(sessionId: sessionId).toSet(),
+            ),
         ]);
       } else {
         await Future.wait([

@@ -253,7 +253,12 @@ class OpenCodeService(
             mainAgentOnlySupported: false,
           );
         case PluginAbortSubAgentPolicy.keep:
-          return const PluginAbortAccepted(workKept: true, subAgentsHandled: false, handledSubAgentSessionIds: []);
+          return const PluginAbortAccepted(
+            workKept: true,
+            subAgentsHandled: false,
+            handledSubAgentSessionIds: [],
+            unhandledSubAgentSessionIds: [],
+          );
         case PluginAbortSubAgentPolicy.stop:
           break;
       }
@@ -263,10 +268,14 @@ class OpenCodeService(
       abortRoot(sessionId: sessionId),
       for (final child in children) abortRoot(sessionId: child),
     ]);
-    return PluginAbortAccepted(
+    // OpenCode's abort endpoint has no authoritative stopped-child result.
+    // Preserve legacy client fanout rather than claiming snapshot coverage that
+    // could suppress an exact stop after a child independently resumes.
+    return const PluginAbortAccepted(
       workKept: false,
       subAgentsHandled: false,
-      handledSubAgentSessionIds: List.unmodifiable(children),
+      handledSubAgentSessionIds: [],
+      unhandledSubAgentSessionIds: [],
     );
   }
 

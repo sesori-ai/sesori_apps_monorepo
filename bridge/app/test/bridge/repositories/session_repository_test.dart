@@ -65,10 +65,24 @@ void main() {
         projectionUpdatedAt: 1,
         pluginId: plugin.id,
       );
+      await db.sessionDao.insertObservedChild(
+        sessionId: "grandchild",
+        backendSessionId: "backend-grandchild",
+        projectId: projectId,
+        parentSessionId: "child",
+        directory: projectId,
+        catalogTitle: null,
+        archivedAt: null,
+        createdAt: 2,
+        updatedAt: 2,
+        projectionUpdatedAt: 2,
+        pluginId: plugin.id,
+      );
       plugin.abortResult = const PluginAbortAccepted(
         workKept: true,
         subAgentsHandled: false,
-        handledSubAgentSessionIds: ["backend-child", "unbound-child"],
+        handledSubAgentSessionIds: ["backend-child"],
+        unhandledSubAgentSessionIds: ["backend-grandchild", "unbound-child"],
       );
       final repository = singlePluginSessionRepository(
         plugin: plugin,
@@ -88,14 +102,17 @@ void main() {
         isA<SessionAborted>()
             .having((aborted) => aborted.workKept, "work kept", true)
             .having((aborted) => aborted.subAgentsHandled, "sub-agents handled", false)
-            .having((aborted) => aborted.handledSubAgentSessionIds, "handled ids", ["child"]),
+            .having((aborted) => aborted.handledSubAgentSessionIds, "handled ids", ["child"])
+            .having((aborted) => aborted.unhandledSubAgentSessionIds, "unhandled ids", ["grandchild"]),
       );
       expect(plugin.lastAbortSessionId, "backend-root");
+      expect(plugin.lastKnownSubAgentSessionIds, {"backend-child", "backend-grandchild"});
 
       plugin.abortResult = const PluginAbortAccepted(
         workKept: false,
         subAgentsHandled: true,
         handledSubAgentSessionIds: ["backend-child"],
+        unhandledSubAgentSessionIds: ["backend-grandchild"],
       );
       final fullyHandled = await repository.abortSession(
         sessionId: "root",
@@ -103,11 +120,17 @@ void main() {
       );
       expect(
         fullyHandled,
-        isA<SessionAborted>().having(
-          (aborted) => aborted.handledSubAgentSessionIds,
-          "redundant handled ids",
-          isEmpty,
-        ),
+        isA<SessionAborted>()
+            .having(
+              (aborted) => aborted.handledSubAgentSessionIds,
+              "redundant handled ids",
+              isEmpty,
+            )
+            .having(
+              (aborted) => aborted.unhandledSubAgentSessionIds,
+              "redundant unhandled ids",
+              isEmpty,
+            ),
       );
     });
 
@@ -2681,6 +2704,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     workKept: false,
     subAgentsHandled: false,
     handledSubAgentSessionIds: [],
+    unhandledSubAgentSessionIds: [],
   );
   PluginSession createSessionResult = const PluginSession(
     id: "created-session",
@@ -2707,6 +2731,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   int getSessionsFailuresRemaining = 0;
   int sendPromptCalls = 0;
   String? lastAbortSessionId;
+  Set<String>? lastKnownSubAgentSessionIds;
   List<PluginProjectActivitySummary> activitySummaries = const [];
   Set<String> failingProjectIds = const {};
   Map<String, PluginProject> projectsByDirectory = const {};
@@ -2824,8 +2849,10 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     lastAbortSessionId = sessionId;
+    lastKnownSubAgentSessionIds = knownSubAgentSessionIds;
     return abortResult;
   }
 

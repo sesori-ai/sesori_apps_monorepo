@@ -953,9 +953,15 @@ class CodexPlugin._({
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     await _abortSession(sessionId: sessionId);
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false, handledSubAgentSessionIds: []);
+    return const PluginAbortAccepted(
+      workKept: false,
+      subAgentsHandled: false,
+      handledSubAgentSessionIds: [],
+      unhandledSubAgentSessionIds: [],
+    );
   }
 
   Future<void> _abortSession({required String sessionId}) async {

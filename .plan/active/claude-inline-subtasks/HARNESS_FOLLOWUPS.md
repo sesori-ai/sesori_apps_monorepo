@@ -128,12 +128,12 @@ confirmation, no child session or partial stop) and gets that subset.
      reject before any side effect. A queued but undispatched prompt is cleared
      before dispatch and does not replace retained exact-parent child authority.
      An independently resumed terminal child is outside its former ancestor's
-     native subtree. Atomic results report retained work and the handled backend
-     child ids; the bridge maps those to public ids so the client fanouts only to
-     independently resident or persisted-untracked children instead of repeating
-     covered stops. Full coverage remains conservatively false because a native
-     process restart clears the tracker ancestry. No response-time cleanup is
-     allowed. Other ACP harnesses retain the default
+     native subtree. The bridge passes its persisted descendant backend-id
+     snapshot into the plugin. Atomic results report retained work plus exact
+     handled and unhandled ids, which the bridge maps back to public sessions:
+     nested independently resident work receives exact client fanout even after
+     tracker reset, while full native coverage suppresses duplicate stops for
+     child announcements arriving during STOP. No response-time cleanup is allowed. Other ACP harnesses retain the default
      snapshot fanout until their transport
      seam lands.
   5. A narrow backend-neutral replay replacement hook on

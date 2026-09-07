@@ -14,7 +14,7 @@ import "support/open_code_fixtures.dart";
 
 void main() {
   group("OpenCodeService.abortSession", () {
-    test("reports exact child coverage for client fanout filtering", () async {
+    test("preserves client fanout when child stop coverage is not authoritative", () async {
       final repository = FakeOpenCodeRepository();
       final tracker = FakeActiveSessionTracker(
         sessionDirectories: const {"root": "/repo", "child": "/repo"},
@@ -30,11 +30,10 @@ void main() {
 
       expect(
         result,
-        isA<PluginAbortAccepted>().having((accepted) => accepted.subAgentsHandled, "all handled", false).having(
-          (accepted) => accepted.handledSubAgentSessionIds,
-          "handled ids",
-          ["child"],
-        ),
+        isA<PluginAbortAccepted>()
+            .having((accepted) => accepted.subAgentsHandled, "all handled", false)
+            .having((accepted) => accepted.handledSubAgentSessionIds, "handled ids", isEmpty)
+            .having((accepted) => accepted.unhandledSubAgentSessionIds, "unhandled ids", isEmpty),
       );
     });
   });
