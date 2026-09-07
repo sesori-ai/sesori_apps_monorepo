@@ -103,6 +103,9 @@ abstract class AcpPlugin({
   /// only: the bridge's stored rows are the durable attribution.
   final Map<String, String> _sessionDirectories = {};
 
+  // Cold-recovery fallbacks must never block a later repository-backed prime.
+  final Map<String, String> _recoveredSessionDirectories = {};
+
   /// Every canonical directory the bridge has hinted at this run (see
   /// [listAllSessions]). Internal enumerations that have no hints of their own
   /// scan these too, so a never-enumerated prior-run session in a bridge-known
@@ -381,7 +384,11 @@ abstract class AcpPlugin({
 
   /// Returns the normalized directory already attributed to [sessionId].
   /// Unknown sessions use the plugin's launch directory.
-  String directoryForSession({required String sessionId}) => _sessionDirectories[sessionId] ?? launchDirectory;
+  String directoryForSession({required String sessionId}) =>
+      _knownSessionDirectory(sessionId: sessionId) ?? launchDirectory;
+
+  String? _knownSessionDirectory({required String sessionId}) =>
+      _sessionDirectories[sessionId] ?? _recoveredSessionDirectories[sessionId];
 
   /// Records an authoritative directory discovered by a harness-specific
   /// catalog and updates both operation routing and event attribution.
@@ -397,7 +404,11 @@ abstract class AcpPlugin({
   /// cannot replace a directory already known by live operations or DB hints.
   void registerRecoveredSessionDirectories({required AcpSessionDirectoryBatch batch}) {
     for (final entry in batch.directories.entries) {
-      primeSessionDirectory(sessionId: entry.key, directory: entry.value);
+      if (_sessionDirectories.containsKey(entry.key)) continue;
+      final canonical = normalizeProjectDirectory(directory: entry.value);
+      _recoveredSessionDirectories[entry.key] = canonical;
+      _hintedDirectories.add(canonical);
+      eventMapper.setSessionProject(entry.key, canonical);
     }
   }
 
@@ -935,7 +946,7 @@ abstract class AcpPlugin({
     // to repair.
     if (id.isNotEmpty) {
       if (directoryIsAuthoritative) _sessionDirectories[id] = directory;
-      eventMapper.setSessionProject(id, _sessionDirectories[id] ?? directory);
+      eventMapper.setSessionProject(id, _knownSessionDirectory(sessionId: id) ?? directory);
       eventMapper.setSessionSnapshot(
         sessionId: id,
         title: info.title,
@@ -943,7 +954,7 @@ abstract class AcpPlugin({
         updatedMs: info.updatedAtMs,
       );
     }
-    final effectiveDirectory = id.isEmpty ? directory : _sessionDirectories[id] ?? directory;
+    final effectiveDirectory = id.isEmpty ? directory : _knownSessionDirectory(sessionId: id) ?? directory;
     final ts = info.updatedAtMs;
     return PluginSession(
       id: id,
@@ -1284,7 +1295,7 @@ abstract class AcpPlugin({
     // effect — the scan covers the unfiltered list plus every bridge-hinted
     // directory seen this run ([_hintedDirectories]); fail-soft, so at worst
     // the prior fallback behaviour remains.
-    if (!_sessionDirectories.containsKey(sessionId)) {
+    if (_knownSessionDirectory(sessionId: sessionId) == null) {
       await listAllSessions(knownDirectories: const {});
     }
     if (resumeSupported && (!loadSupported || residencyPreference == AcpResidencyPreference.resumeFirst)) {
@@ -1945,6 +1956,7 @@ abstract class AcpPlugin({
     _syntheticInitialPromptSessions.remove(sessionId);
     _residentSessions.remove(sessionId);
     _sessionDirectories.remove(sessionId);
+    _recoveredSessionDirectories.remove(sessionId);
     _sessionOptionsService.forgetSession(sessionId: sessionId);
     // Drops the session's project attribution plus all other per-session mapper
     // caches (turn counters, started parts, live tools) so nothing accumulates
@@ -1992,7 +2004,7 @@ abstract class AcpPlugin({
     // and the messages handler hits the plugin directly), so its directory may
     // be unknown and the load below would run in the launch directory. Warm
     // attribution first — same fail-soft enumeration the resume path uses.
-    if (!_sessionDirectories.containsKey(sessionId)) {
+    if (_knownSessionDirectory(sessionId: sessionId) == null) {
       await listAllSessions(knownDirectories: const {});
     }
     // History via `session/load` replay on a dedicated short-lived client so

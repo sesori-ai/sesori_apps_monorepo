@@ -75,15 +75,24 @@ void main() {
 
   test("decoder diagnostics retain type/location but never render ignored payload values", () async {
     const secret = "synthetic-content-do-not-log";
-    final file = await write(name: "$_id.meta", content: '{"ignored":"$secret","cwd":[]}');
-    await expectLater(
-      storage.read(path: file.path, maxBytes: 1024),
-      throwsA(
-        isA<Exception>()
-            .having((error) => error.toString(), "field", contains("cwd"))
-            .having((error) => error.toString(), "privacy", isNot(contains(secret))),
-      ),
-    );
+    for (final cwd in <Object?>[
+      123,
+      [],
+      {secret: secret},
+      null,
+    ]) {
+      final file = await write(name: "$_id.meta", content: jsonEncode({"ignored": secret, "cwd": cwd}));
+      await expectLater(
+        storage.read(path: file.path, maxBytes: 1024),
+        throwsA(
+          isA<Exception>()
+              .having((error) => error.toString(), "field", contains("cwd"))
+              .having((error) => error.toString(), "expected type", contains("String"))
+              .having((error) => error.toString(), "cast diagnostic", contains("not a subtype"))
+              .having((error) => error.toString(), "privacy", isNot(contains(secret))),
+        ),
+      );
+    }
   });
 
   test("listing counts all directory entries and reading bounds bytes before decoding", () async {

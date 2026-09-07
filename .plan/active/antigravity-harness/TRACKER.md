@@ -247,6 +247,10 @@
 - [x] PR #1357 merged with 16/16 CI. Synced with main `dfe7913e67`; only documentation conflicted and relevant
   package source/tests plus lockfile remain unchanged by this synchronization. No unchanged passing suites rerun.
 - [x] Parent published Step 8.a as PR #1359 and started its monitor.
+- [x] Review fixes: keep recovered fallbacks below DB/live attribution in either arrival order and forget them on
+  deletion; decline ambiguous Antigravity permissions with cancelled outcomes; retain safe generated-cast diagnostics.
+  All 32 ACP recovery/project and 20 Antigravity metadata/interaction tests pass; both owning analyzers are clean.
+- [ ] Second/final architecture review of the corrected immutable Step 8.a scope.
 - Concrete plugin/descriptor composition and lifecycle integration remain 8.b; activation remains Step 9.
 
 ## Architecture Reviews

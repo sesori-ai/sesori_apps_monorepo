@@ -13,7 +13,7 @@ class AntigravityInteractionService({
 }) {
   void rejectAmbiguousServerRequest({required AcpServerRequest request}) {
     Log.w("[antigravity] ambiguous tool-call attribution for request ${request.id.toString()}; refusing");
-    _repository.rejectAmbiguous(requestId: request.id);
+    _repository.cancel(requestId: request.id);
   }
 
   AntigravityInteraction? classify({required AcpServerRequest request}) {

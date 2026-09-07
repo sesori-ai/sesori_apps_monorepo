@@ -52,6 +52,8 @@ class const _MetadataDecodeException({required final Object cause}) implements E
   @override
   String toString() => switch (cause) {
     FormatException(:final offset) => "Invalid Antigravity metadata JSON at offset $offset",
+    // Generated JSON casts report expected/actual types, not the field value.
+    TypeError() => "Invalid Antigravity metadata cwd: ${cause.toString()}",
     _ => "Invalid Antigravity metadata cwd (${cause.runtimeType.toString()})",
   };
 }
