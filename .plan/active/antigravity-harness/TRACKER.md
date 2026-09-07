@@ -188,7 +188,9 @@
 - [x] Merge the reviewed predecessor fixes; update regression documentation/index and the explicit Step 8 registry seam.
 - Final owning-package analysis is clean. Interaction production logic/tests are unchanged from their passing checkpoint;
   only the mapper definition comment changed. The unchanged 10-test command was not redundantly rerun.
-- [ ] Independent implementation review before parent-owned publication.
+- [x] First actual independent implementation review approved all 17 changed files at `97eda29b57`, with no findings.
+- Reviewed immutable scope: `54f0dbf51d` → `97eda29b57`; 1,146 additions + 9 deletions = 1,155 changed lines.
+- Publication remains local until predecessor PR #1353 merges; parent owns synchronization and publication.
 - The neutral registry is intentionally not yet wired into `AcpPlugin`; Step 8 replaces its hard-coded stock registry
   return-type seam without dummy responders or inherited raw permission policy. No 7.c, registration, database,
   credential/OAuth/history access or active capability claim is included here.
