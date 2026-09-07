@@ -2,10 +2,16 @@ import "package:acp_plugin/acp_plugin.dart";
 
 import "../../models/antigravity_model_catalog.dart";
 import "models/antigravity_model_config_dto.dart";
+import "models/antigravity_permission_dto.dart";
 
 /// Layer-2 boundary for Antigravity's account-scoped ACP config catalog.
 class const AntigravityProtocolMapper() {
   static const modelConfigId = "model";
+
+  AntigravityPermissionRequestDto? mapPermissionRequest({required AcpServerRequest request}) =>
+      request.method == AcpMethods.sessionRequestPermission
+      ? AntigravityPermissionRequestDto.fromJson(request.params)
+      : null;
 
   AntigravityModelCatalog? mapModelCatalog({required AcpNewSessionResult result}) {
     final selectors = result.configOptions.where((option) => option["id"] == modelConfigId).toList();
