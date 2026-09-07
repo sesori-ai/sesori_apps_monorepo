@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-6 merged; Step 7.a open for review
-- **Base:** synced with main `2f2f376836` after Step 6.d merge
-- **Current branch:** `antigravity-harness-step-7a-model-options`
+- **Status:** Steps 1-6 merged; Step 7.a open for review; Step 7.b implemented locally
+- **Base:** Step 7.a reviewed-fix head `54f0dbf51d7a0c3c76d74ae7b700fcab9ea76198`
+- **Current branch:** `antigravity-harness-step-7b-questions-and-permissions`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -16,7 +16,7 @@
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
   [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
 - **Open PR:** [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
-- **Next action:** monitor Step 7.a through merge; begin Step 7.b locally
+- **Next action:** parent monitors Step 7.a; independently review Step 7.b and keep it local until predecessor merge
 
 ## Fixed PR Series
 
@@ -173,7 +173,25 @@
 - [x] Step 6.d merged; synchronize before Step 7.a publication.
 - Post-sync validation: 10 options tests and 11 ACP tests pass; both owning-package analyses remain clean.
 - Post-sync code-head cap: `git diff --numstat 2f2f376836 778535c8f4` totals 848 + 19 = 867 changed lines.
+- Final predecessor fix `54f0dbf51d` received independent architecture approval. Its pinned cap against `2f2f376836`
+  is 1,008 additions + 21 deletions = 1,029 lines, including corrected catalog capture/reset and selection verification.
 - Permissions/questions and update normalization remain 7.b/7.c; no descriptor, registration or capability claim.
+
+## Step 7.b Checklist
+
+- [x] Normalize permission requests/options with generated DTOs before service policy; serialize typed wire outcomes.
+- [x] Keep all resolution dispatch in a connection-scoped interaction repository, reached only through its service.
+- [x] Classify single-choice interaction requests, preserve advertised labels/IDs, and reject duplicates without repair.
+- [x] Filter always/unknown/warning-bearing choices; never invent an absent choice or silently grant approval.
+- [x] Reuse neutral pending lifecycle for one-shot replies, wrong-kind handling, session cancellation and disposal.
+- [x] Initial code checkpoint `ef2c890284`: all 10 interaction tests and owning-package analysis passed.
+- [x] Merge the reviewed predecessor fixes; update regression documentation/index and the explicit Step 8 registry seam.
+- Final owning-package analysis is clean. Interaction production logic/tests are unchanged from their passing checkpoint;
+  only the mapper definition comment changed. The unchanged 10-test command was not redundantly rerun.
+- [ ] Independent implementation review before parent-owned publication.
+- The neutral registry is intentionally not yet wired into `AcpPlugin`; Step 8 replaces its hard-coded stock registry
+  return-type seam without dummy responders or inherited raw permission policy. No 7.c, registration, database,
+  credential/OAuth/history access or active capability claim is included here.
 
 ## Architecture Reviews
 

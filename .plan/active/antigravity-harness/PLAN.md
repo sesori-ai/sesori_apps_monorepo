@@ -133,8 +133,8 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   cannot carry the agent's prompt-injection warning, so exposing persistent approval would discard material safety
   context. Record this limitation in `docs/HARNESS_CAPABILITIES.md`.
 - Convert valid `interaction_` permission requests into one single-choice Sesori question. Preserve opaque option IDs
-  through an internal label-to-ID map, disambiguate duplicate labels, reject malformed/ambiguous answers, and never
-  leave an invisible pending request.
+  through an internal label-to-ID map; preserve advertised labels and reject duplicate/ambiguous choices rather than
+  renumbering them. Reject malformed/ambiguous answers and never leave an invisible pending request.
 - Keep ACP client filesystem and terminal capabilities disabled. The official local harness owns its tools and emits
   permission/tool updates; no new bridge filesystem server is introduced.
 - Use the agent's isolated `.meta` records read-only for session enumeration and cold-start `sessionId -> cwd`
@@ -322,7 +322,7 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityCatalogTracker` | none | descriptor | last-good immutable catalog |
 | `AntigravityAuthenticationComposer` | none; `compose` requires host process/store, dedicated HTTP client, and launch/attempt inputs | descriptor in Step 9 | stateless; constructs per-attempt peers |
 | `AntigravityAuthenticationOperation` | profile/runtime/auth services | authentication composer | one auth attempt |
-| `AntigravityApprovalRegistry` | pending stores, interaction service | interaction composer | pending lifecycle |
+| `AntigravityApprovalRegistry` | interaction service, event sink, ID generator | interaction composer | neutral pending lifecycle |
 | `AntigravityPlugin` | launch/ACP/mapping/recovery peers, options composer | descriptor | live ACP processes |
 | `AntigravityPluginDescriptor` | none | bridge registry | lifecycle composition root |
 
@@ -846,7 +846,10 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
   `interaction_` questions, owns unique label-to-ID mapping, malformed-answer rejection, safe option filtering, and
   typed reply dispatch through that repository without inventing absent choices.
 - Keep `AntigravityApprovalRegistry` focused on pending lifecycle and delegation to the interaction service; it neither
-  parses provider maps, decides permission policy, nor sends directly through the ACP client.
+  parses provider maps, decides permission policy, nor sends directly through the ACP client. Reuse the neutral
+  `PendingPermissionRegistry` directly; do not inherit stock ACP raw-policy/direct-responder ownership. Duplicate safe
+  question labels fail observably without renumbering. Step 7.b tests this independent connection-scoped composition;
+  the shared ACP integration seam remains in Step 8.
 #### Step 7.c: Live and replay updates
 
 - Add a narrow shared ACP session-update normalizer hook used identically by live events and `AcpReplayCollector`; every
@@ -874,6 +877,11 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
   A separate interaction composer wraps the live ACP client in `AntigravityInteractionRepository`, passes it plus the
   mapper to `AntigravityInteractionService`, and builds the approval registry from that service. The plugin invokes
   composers but constructs no peers.
+- Add the narrow backend-neutral registry contract/return-type seam needed by `AcpPlugin`: its current
+  `buildApprovalRegistry` and retained registry are typed as `AcpApprovalRegistry`, whereas Antigravity's registry
+  reuses `PendingPermissionRegistry` directly. Preserve existing ACP request attribution and pending lifecycle while
+  admitting the plugin-owned service/repository reply path. Do not use dummy raw responders or unused stock policy
+  as an adapter. Update shared consumers in lockstep and test integration here, not in the unregistered 7.b slice.
 - Add a backend-neutral protected ACP residency-preference hook whose default preserves today's load-first behavior.
   Antigravity selects resume-first for live residency, with availability fallback owned by shared ACP; history replay
   continues to use load. Cover unchanged existing plugins plus Antigravity load/resume fallback.
