@@ -13,7 +13,9 @@ inspect ambient credentials/token contents to validate these foundations.
   preflight retains a five-second sub-limit; chmod uses the remaining budget. Check between mutations, await an
   in-flight filesystem/atomic-store write, then reject cancellation or expired-budget success. No instant cancellation
   of uninterruptible filesystem work is promised.
-- Scratch authentication initializes then requests only `oauth-personal`. It uses the prepared environment with no
+- Scratch authentication validates the negotiated ACP version and selects only an advertised `oauth-personal`
+  method before sending authentication. Incompatible protocols or other-only methods fail without auth dispatch.
+  It uses the prepared environment with no
   parent inheritance, the official sibling harness, and the existing ACP process owner. It disposes on success,
   timeout, cancellation, malformed authorization output and process exit; late results cannot report success.
   Both initialize-only probing and authentication await an already-started spawn after disposal so a late child is

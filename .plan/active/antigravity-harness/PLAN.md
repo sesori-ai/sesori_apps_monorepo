@@ -738,7 +738,7 @@ documented invariant, they update that document immediately. Step 11 is final re
   late results, deadline and operation cancellation. Probe/auth boundaries await late spawn reaping; callback
   transport awaits its started request after forced closure, retaining the controlling abort/timeout failure.
   All slices remain unregistered until Step 9. This approved delivery split retains twelve top-level steps and the
-  1,500-line cap; the complete 6.c/6.d work was estimated at 1,650–1,850 lines without cutting security/lifecycle coverage.
+  1,500-line cap; the pre-split combined estimate was 1,650–1,850 lines without cutting security/lifecycle coverage.
 - **Evidence and privacy:** pinned `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`,
   `antigravityAuthSupport.ts`, corroborates nested settings/token paths (249–253, 318), browser suppression (217–294),
   authorization grammar (354–388), and sensitive stderr (458). These safeguards address ordinary login: otherwise

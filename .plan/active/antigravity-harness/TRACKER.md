@@ -4,7 +4,7 @@
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
 - **Status:** Steps 1-5 and 6.a–6.b merged; Step 6.c open for review; Step 6.d implemented locally
-- **Base:** Step 6.c head `5f6443f4cb3134c59bc79507ccc9b87caa054b45`
+- **Base:** Step 6.c review-fix head `f750eaa47b`, merged locally into Step 6.d
 - **Current branch:** `antigravity-harness-step-6d-authentication-operation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -132,13 +132,13 @@
   and service-owned exact Google/callback/state/code policy.
 - [x] Thread one monotonic budget/abort signal through profile layers, preserving executor timeouts and waiting for
   non-cancellable filesystem/store work before rejecting late success. Browser preflight retains its five-second cap.
-- [x] Verify 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis; update regression contracts.
+- [x] Initial checkpoint: 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis passed.
 - [x] Independent architecture review approved all 19 files at immutable checkpoint `afda6be61c48`.
 - [x] Step 6.b merged; synchronize before Step 6.c publication.
 - Publication cap: `git diff --numstat ce423c8ea7 2055e399c8` totals 1,106 + 41 = 1,147 changed lines.
 - Post-sync validation: all 63 Antigravity tests and owning-package analysis pass.
 - No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
-  access in the 6.c slice.
+  access in the 6.c slice. Step 6.d is a separate local successor while Step 6.c is in review.
 
 
 ## Step 6.d Checklist

@@ -30,6 +30,8 @@ class _Process() implements AcpProcessHandle {
   final exited = Completer<int>();
   final authenticating = Completer<void>();
   _Outcome outcome = _Outcome.complete;
+  int protocolVersion = 1;
+  bool advertisesPersonal = true;
   String? challenge;
   StartAbortController? abortOnKill;
   @override
@@ -39,10 +41,10 @@ class _Process() implements AcpProcessHandle {
         final encoded = jsonEncode({
           "id": frame["id"],
           "result": {
-            "protocolVersion": 1,
+            "protocolVersion": protocolVersion,
             "authMethods": [
               {"id": "enterprise", "name": "Enterprise"},
-              {"id": "oauth-personal", "name": "Personal"},
+              if (advertisesPersonal) {"id": "oauth-personal", "name": "Personal"},
             ],
           },
         });
@@ -174,6 +176,27 @@ void main() {
     expect(await process.exitCode, -15);
     await subscription.cancel();
     await process.close();
+  });
+
+  test("unsupported protocol or unavailable personal auth fails before authenticate dispatch", () async {
+    for (final configuration in [(protocol: 2, personal: true), (protocol: 1, personal: false)]) {
+      process = _Process()
+        ..protocolVersion = configuration.protocol
+        ..advertisesPersonal = configuration.personal;
+      await expectLater(
+        authenticate(budget: budget()),
+        throwsA(
+          isA<AntigravityAuthenticationException>().having(
+            (error) => error.cause,
+            "handshake rejection",
+            configuration.personal ? isA<StateError>() : isA<PluginAuthenticationRequiredException>(),
+          ),
+        ),
+      );
+      expect(process.authenticating.isCompleted, isFalse);
+      expect(await process.exitCode, -15);
+      await process.close();
+    }
   });
 
   test("already authenticated or same-host completion needs no challenge", () async {
