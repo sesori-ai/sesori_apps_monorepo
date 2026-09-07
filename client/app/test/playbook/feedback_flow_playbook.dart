@@ -909,6 +909,10 @@ class const _IssuePill({required final String label, required final bool selecte
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final selectedFill = Color.alphaBlend(
+      Theme.of(context).brightness == Brightness.dark ? prego.colors.bgBrandHover : prego.colors.bgGrayPressed,
+      prego.colors.bgSurface2,
+    );
     return Semantics(
       label: label,
       checked: selected,
@@ -932,11 +936,9 @@ class const _IssuePill({required final String label, required final bool selecte
                 builder: (context, progress, _) => Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
                   decoration: BoxDecoration(
-                    color: prego.colors.bgSurface5,
+                    color: Color.lerp(prego.colors.bgSurface5, selectedFill, progress),
                     borderRadius: BorderRadius.circular(PregoRadius.full),
-                    border: Border.all(
-                      color: Color.lerp(prego.colors.borderSecondary, prego.colors.borderBrand, progress)!,
-                    ),
+                    border: Border.all(color: prego.colors.borderSecondary),
                   ),
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
@@ -961,7 +963,7 @@ class const _IssuePill({required final String label, required final bool selecte
                         child: Text(
                           label,
                           style: prego.textTheme.textMd.medium.copyWith(
-                            color: Color.lerp(prego.colors.textSecondary, prego.colors.textPrimary, progress),
+                            color: prego.colors.textSecondary,
                           ),
                         ),
                       ),
