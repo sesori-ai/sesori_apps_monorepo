@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-6 and 7.a merged; Step 7.b reviewed and synchronized for publication
+- **Status:** Steps 1-6 and 7.a merged; Step 7.b open for review
 - **Base:** synced with main `daa782057c` after Step 7.a merge
 - **Current branch:** `antigravity-harness-step-7b-questions-and-permissions`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -16,8 +16,8 @@
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
   [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d),
   [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
-- **Open PR:** Step 7.b publication prepared
-- **Next action:** publish and monitor Step 7.b; begin only Step 7.c locally
+- **Open PR:** [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b)
+- **Next action:** monitor Step 7.b; begin only Step 7.c locally
 
 ## Fixed PR Series
 
