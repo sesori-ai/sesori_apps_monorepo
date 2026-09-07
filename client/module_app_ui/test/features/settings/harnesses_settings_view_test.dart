@@ -202,6 +202,47 @@ void main() {
     expect(opened, ["missing"]);
   });
 
+  testWidgets("global timeout shows progress only for its own all-harness update", (tester) async {
+    phone(tester: tester);
+    publish(plugins: [_ready]);
+    final response = (snapshots.value as PluginManagementLoadResultSupported).response;
+    final harnessResult = Completer<PluginManagementMutationResult>();
+    when(
+      () => service.command(
+        pluginId: "ready",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      ),
+    ).thenAnswer((_) => harnessResult.future);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final harnessAction = cubit.disable(pluginId: "ready");
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    final timeoutRow = find.byKey(const Key("harness_management_default_timeout"));
+    final busyPeerRow = tester.widget<PregoGroupedRow>(timeoutRow);
+    expect(busyPeerRow.onTap, isNull);
+    expect(busyPeerRow.trailing, isA<Text>().having((text) => text.data, "value", "10 min"));
+    harnessResult.complete(PluginManagementMutationResult.success(response: response));
+    await harnessAction;
+    await tester.pumpAndSettle();
+
+    const input = PluginManagementIdleTimeoutInput.noTimeout();
+    const request = PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0);
+    final timeoutResult = Completer<PluginManagementMutationResult>();
+    when(() => service.planApplyAllIdleTimeout(input: input)).thenReturn(
+      const PluginManagementCommandPlan.request(request: request),
+    );
+    when(() => service.updateIdleTimeout(request: request)).thenAnswer((_) => timeoutResult.future);
+    final timeoutAction = cubit.applyIdleTimeoutToAll(input: input);
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    expect(tester.widget<PregoGroupedRow>(timeoutRow).trailing, isA<PregoActivityIndicator>());
+    timeoutResult.complete(PluginManagementMutationResult.success(response: response));
+    await timeoutAction;
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("detail identity keeps its 52px row and a labeled 44px switch target", (tester) async {
     phone(tester: tester);
     publish(plugins: [_ready]);

@@ -26,7 +26,7 @@ final class const PluginInstallFailed() extends PluginInstallState {
 
 /// The last reported phase, not a percentage of the entire installation.
 @immutable
-class const PluginInstallProgress({
+final class const PluginInstallProgress({
   required final PluginInstallPhase phase,
 
   /// Download completion, only present while downloading with a known total.

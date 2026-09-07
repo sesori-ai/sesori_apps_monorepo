@@ -716,7 +716,9 @@ class PluginManagementService({
             installs.remove(plugin.setup.id);
           }
         }
-        _publishInstallStates(installs);
+        if (installs.length != _installStates.value.length) {
+          _publishInstallStates(installs);
+        }
       case PluginManagementLoadResultUnsupported():
         _forgetActiveBridgeIdentity();
       case PluginManagementLoadResultFailure(:final error):

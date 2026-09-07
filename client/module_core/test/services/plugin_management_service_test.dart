@@ -962,10 +962,20 @@ void main() {
       connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
       await _pump();
       expect((await service.installStates.first)["one"], const PluginInstallState.failed());
+      final emittedStates = <Map<String, PluginInstallState>>[];
+      final subscription = service.installStates.listen(emittedStates.add);
+      addTearDown(subscription.cancel);
+      await _pump();
+      emittedStates.clear();
+
       await service.refresh();
+      await _pump();
       expect(service.installStates.value["one"], const PluginInstallState.failed());
+      expect(emittedStates, isEmpty, reason: "An unchanged snapshot is not an install-state update.");
       await service.refresh();
+      await _pump();
       expect(service.installStates.value, isEmpty);
+      expect(emittedStates, [<String, PluginInstallState>{}], reason: "Ready recovery publishes the cleared failure.");
       connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
       await _pump();
       connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.downloading, percent: 10);

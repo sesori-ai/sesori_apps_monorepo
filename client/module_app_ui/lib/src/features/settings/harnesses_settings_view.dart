@@ -116,7 +116,13 @@ class const _ReadyView({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final response = state.response;
-    final timeoutBusy = state.action is PluginManagementActionInProgress;
+    final timeoutBusy = switch (state.action) {
+      PluginManagementActionInProgress(target: PluginManagementActionTargetAllHarnesses()) => true,
+      PluginManagementActionIdle() ||
+      PluginManagementActionInProgress() ||
+      PluginManagementActionFailed() ||
+      PluginManagementActionForceConfirmationRequired() => false,
+    };
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
