@@ -347,6 +347,10 @@ abstract class AcpPlugin({
   /// connections without mutating live process state.
   void validateInitializeResult(AcpInitializeResult result) {}
 
+  /// Translate only initialization failures; ordinary turn failures never use this hook.
+  // ignore: no_slop_linter/prefer_specific_type, initialization errors retain their original typed identity
+  Object mapInitializationFailure({required Object error}) => error;
+
   /// Captures initialize-owned state only for the live connection. Replay uses
   /// a separate process and must not replace live process defaults.
   void captureLiveInitializeResult(AcpInitializeResult result) {}
@@ -605,15 +609,19 @@ abstract class AcpPlugin({
   /// capabilities). A non-v1 negotiation fails the handshake (degrading the
   /// plugin) rather than driving the agent with a protocol it rejected.
   Future<AcpInitializeResult> _initialize(AcpStdioClient client) async {
-    final result = await AcpAgentApi(client: client).initialize(
-      formElicitation: supportsFormElicitation,
-      capabilityMeta: initializeCapabilityMeta,
-      authMethodId: authMethodId,
-      authMethodAllowlist: authMethodAllowlist,
-      timeout: AcpAgentApi.defaultRequestTimeout,
-    );
-    validateInitializeResult(result);
-    return result;
+    try {
+      final result = await AcpAgentApi(client: client).initialize(
+        formElicitation: supportsFormElicitation,
+        capabilityMeta: initializeCapabilityMeta,
+        authMethodId: authMethodId,
+        authMethodAllowlist: authMethodAllowlist,
+        timeout: AcpAgentApi.defaultRequestTimeout,
+      );
+      validateInitializeResult(result);
+      return result;
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(mapInitializationFailure(error: error), stackTrace);
+    }
   }
 
   Future<AcpStdioClient> _connectedClient() async {

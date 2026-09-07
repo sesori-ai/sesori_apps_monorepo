@@ -9,7 +9,6 @@ import "../trackers/antigravity_catalog_tracker.dart";
 class AntigravitySessionOptionsService({
   required final AntigravityProtocolMapper _protocolMapper,
   required final AntigravityCatalogTracker _catalogTracker,
-  required final AcpSessionConfigRepository _configRepository,
 }) {
   /// Called only with real new/load/resume or configuration responses, never a scratch session.
   void capture({required AcpNewSessionResult result, required AntigravityCatalogSource source}) {
@@ -84,8 +83,28 @@ class AntigravitySessionOptionsService({
     );
   }
 
+  void validateSelection({
+    required String operation,
+    required String? providerId,
+    required PluginSessionVariant? variant,
+    required String? agent,
+  }) {
+    if ((providerId != null && providerId != AntigravityIdentity.pluginId) ||
+        (agent != null && agent != AntigravityIdentity.pluginId) ||
+        variant != null) {
+      throw PluginStaleOptionsException(
+        operation,
+        message: "Antigravity supports its primary agent and advertised models only",
+      );
+    }
+  }
+
   /// Await before dispatching a prompt. A null model preserves the account/session default.
-  Future<void> applyForPrompt({required String sessionId, required String? modelId}) async {
+  Future<void> applyForPrompt({
+    required AcpSessionConfigRepository configRepository,
+    required String sessionId,
+    required String? modelId,
+  }) async {
     if (modelId != null) {
       final catalog = _catalogTracker.snapshot;
       if (catalog == null || !catalog.models.any((model) => model.id == modelId)) {
@@ -95,7 +114,7 @@ class AntigravitySessionOptionsService({
           message: "Antigravity model '$diagnosticId' is not in the current account catalog",
         );
       }
-      final result = await _configRepository.setConfigOption(
+      final result = await configRepository.setConfigOption(
         sessionId: sessionId,
         configId: catalog.configId,
         value: modelId,
@@ -110,6 +129,6 @@ class AntigravitySessionOptionsService({
         }
       }
     }
-    await _configRepository.setMode(sessionId: sessionId, modeId: AntigravitySessionMode.defaultMode.id);
+    await configRepository.setMode(sessionId: sessionId, modeId: AntigravitySessionMode.defaultMode.id);
   }
 }

@@ -2,6 +2,8 @@
 library;
 
 export "src/antigravity_approval_registry.dart";
+export "src/antigravity_event_mapper.dart";
+export "src/antigravity_plugin_impl.dart";
 export "src/api/antigravity_acp_api.dart";
 export "src/api/models/antigravity_initialize_dto.dart";
 export "src/authentication/antigravity_authentication_operation.dart";
@@ -26,6 +28,9 @@ export "src/repositories/mappers/antigravity_authorization_mapper.dart";
 export "src/repositories/mappers/antigravity_protocol_mapper.dart";
 export "src/repositories/mappers/antigravity_stderr_mapper.dart";
 export "src/runtime/antigravity_authentication_composer.dart";
+export "src/runtime/antigravity_interaction_composer.dart";
+export "src/runtime/antigravity_output_composer.dart";
+export "src/runtime/antigravity_plugin_composer.dart";
 export "src/services/antigravity_authentication_service.dart";
 export "src/services/antigravity_interaction_service.dart";
 export "src/services/antigravity_profile_service.dart";

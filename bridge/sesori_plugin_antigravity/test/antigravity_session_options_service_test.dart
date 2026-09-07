@@ -67,7 +67,6 @@ void main() {
     service = AntigravitySessionOptionsService(
       protocolMapper: const AntigravityProtocolMapper(),
       catalogTracker: tracker,
-      configRepository: repository,
     );
   });
 
@@ -141,7 +140,7 @@ void main() {
     );
     expect(service.getSessionOptions().providers.providers.single.defaultModelID, "account-default");
     repository.response = models(current: "session-model");
-    await service.applyForPrompt(sessionId: "existing", modelId: "session-model");
+    await service.applyForPrompt(configRepository: repository, sessionId: "existing", modelId: "session-model");
     expect(service.getSessionOptions().providers.providers.single.defaultModelID, "account-default");
     expect(tracker.snapshot!.currentModelId, "session-model");
     service.capture(
@@ -161,7 +160,7 @@ void main() {
     expect(service.getSessionOptions().completeness, PluginSessionOptionsCompleteness.partial);
     expect(tracker.newSessionDefaultModelId, isNull);
     await expectLater(
-      service.applyForPrompt(sessionId: "s", modelId: "old"),
+      service.applyForPrompt(configRepository: repository, sessionId: "s", modelId: "old"),
       throwsA(isA<PluginStaleOptionsException>()),
     );
     expect(repository.writes, isEmpty);
@@ -260,14 +259,14 @@ void main() {
   });
 
   test("no explicit selection preserves first-session account default and still sends default mode", () async {
-    await service.applyForPrompt(sessionId: "first", modelId: null);
+    await service.applyForPrompt(configRepository: repository, sessionId: "first", modelId: null);
     expect(repository.writes, [(session: "first", config: "mode", value: "default")]);
     expect(tracker.snapshot, isNull);
   });
 
   test("unknown, stale, blank and pre-catalog model choices fail before any writes", () async {
     await expectLater(
-      service.applyForPrompt(sessionId: "s", modelId: "old"),
+      service.applyForPrompt(configRepository: repository, sessionId: "s", modelId: "old"),
       throwsA(isA<PluginStaleOptionsException>()),
     );
     service.capture(
@@ -280,14 +279,14 @@ void main() {
     );
     for (final id in ["old", "unknown", "", "new "]) {
       await expectLater(
-        service.applyForPrompt(sessionId: "s", modelId: id),
+        service.applyForPrompt(configRepository: repository, sessionId: "s", modelId: id),
         throwsA(isA<PluginStaleOptionsException>()),
       );
     }
     expect(repository.writes, isEmpty);
     final longId = "x" * 1000;
     await expectLater(
-      service.applyForPrompt(sessionId: "s", modelId: longId),
+      service.applyForPrompt(configRepository: repository, sessionId: "s", modelId: longId),
       throwsA(
         isA<PluginStaleOptionsException>().having(
           (error) => error.toString(),
@@ -305,7 +304,7 @@ void main() {
     );
     repository.modelGate = Completer<void>();
     repository.response = _catalog(id: " chosen ");
-    final apply = service.applyForPrompt(sessionId: "session-2", modelId: " chosen ");
+    final apply = service.applyForPrompt(configRepository: repository, sessionId: "session-2", modelId: " chosen ");
     expect(repository.writes, [(session: "session-2", config: "model", value: " chosen ")]);
     repository.modelGate!.complete();
     await apply;
@@ -321,7 +320,9 @@ void main() {
     final previous = tracker.snapshot;
     repository.response = _catalog(id: "different");
     var prompted = false;
-    final dispatch = service.applyForPrompt(sessionId: "s", modelId: "requested").then((_) => prompted = true);
+    final dispatch = service
+        .applyForPrompt(configRepository: repository, sessionId: "s", modelId: "requested")
+        .then((_) => prompted = true);
     await expectLater(dispatch, throwsStateError);
     expect(prompted, isFalse);
     expect(repository.writes.single.config, "model");
@@ -336,12 +337,17 @@ void main() {
     );
     final failure = StateError("synthetic config failure");
     repository.modelFailure = failure;
-    await expectLater(service.applyForPrompt(sessionId: "s", modelId: "good"), throwsA(same(failure)));
+    await expectLater(
+      service.applyForPrompt(configRepository: repository, sessionId: "s", modelId: "good"),
+      throwsA(same(failure)),
+    );
     expect(repository.writes, hasLength(1));
     repository.modelFailure = null;
     repository.modeFailure = failure;
     var prompted = false;
-    final dispatch = service.applyForPrompt(sessionId: "s", modelId: "good").then((_) => prompted = true);
+    final dispatch = service
+        .applyForPrompt(configRepository: repository, sessionId: "s", modelId: "good")
+        .then((_) => prompted = true);
     await expectLater(dispatch, throwsA(same(failure)));
     expect(prompted, isFalse);
     expect(repository.writes.map((write) => write.value), ["good", "good", "default"]);
@@ -356,7 +362,10 @@ void main() {
     repository.response = _result(
       configs: [_selector(current: "good", options: [])],
     );
-    await expectLater(service.applyForPrompt(sessionId: "s", modelId: "good"), throwsFormatException);
+    await expectLater(
+      service.applyForPrompt(configRepository: repository, sessionId: "s", modelId: "good"),
+      throwsFormatException,
+    );
     expect(tracker.snapshot, same(previous));
     expect(repository.writes.single.config, "model");
   });
