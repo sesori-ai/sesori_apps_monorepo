@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:antigravity_plugin/antigravity_plugin.dart";
@@ -9,11 +10,15 @@ import "package:test/test.dart";
 class _SettingsStore({required final List<String> events}) implements HostJsonStore {
   String? contents;
   bool failWrite = false;
+  Completer<void>? writeStarted;
+  Future<void>? writeGate;
 
   @override
   Future<void> write({required String name, required String contents}) async {
     expect(name, "settings.json");
     events.add("settings");
+    writeStarted?.complete();
+    await writeGate;
     if (failWrite) throw const FileSystemException("synthetic write interruption");
     this.contents = contents;
   }
@@ -26,6 +31,8 @@ class _Commands({required final List<String> events}) implements CommandExecutor
   CommandResult preflight = const CommandResult(exitCode: 0, stdout: "", stderr: "");
   bool failPermissions = false;
   bool timeoutPreflight = false;
+  TimeoutException? timeoutFailure;
+  StartAbortController? abortAfterPreflight;
   final List<({String executable, List<String> arguments, Map<String, String>? environment})> calls = [];
 
   @override
@@ -49,12 +56,20 @@ class _Commands({required final List<String> events}) implements CommandExecutor
       return const CommandResult(exitCode: 0, stdout: "", stderr: "");
     }
     events.add("preflight");
-    expect(timeout, const Duration(seconds: 5));
+    expect(timeout, isNotNull);
+    expect(timeout! <= const Duration(seconds: 5), isTrue);
     expect(arguments.last, AntigravityProfileService.browserPreflightUrl);
     if (timeoutPreflight) throw const ProcessException("synthetic", [], "timed out");
+    if (timeoutFailure case final failure?) throw failure;
+    abortAfterPreflight?.abort();
     return preflight;
   }
 }
+
+AntigravityAuthenticationBudget budget() => AntigravityAuthenticationBudget(
+  timeout: const Duration(seconds: 5),
+  abortSignal: StartAbortSignal.never,
+);
 
 void main() {
   late Directory temp;
@@ -87,6 +102,56 @@ void main() {
   });
   tearDown(() => temp.deleteSync(recursive: true));
 
+  test("expired preparation does not dispatch and executor timeouts preserve identity", () async {
+    final expired = AntigravityAuthenticationBudget(timeout: Duration.zero, abortSignal: StartAbortSignal.never);
+    await expectLater(
+      service(target: mac, executable: "/bridge", prefix: []).prepare(budget: expired, hostEnvironment: {}),
+      throwsA(isA<TimeoutException>()),
+    );
+    expect(events, isEmpty);
+    final failure = TimeoutException("synthetic command deadline");
+    commands.timeoutFailure = failure;
+    await expectLater(
+      service(target: mac, executable: "/bridge", prefix: []).prepare(budget: budget(), hostEnvironment: {}),
+      throwsA(same(failure)),
+    );
+    expect(temp.listSync(), isEmpty);
+  });
+
+  test("abort after preflight prevents profile mutation", () async {
+    final abort = StartAbortController();
+    commands.abortAfterPreflight = abort;
+    await expectLater(
+      service(target: mac, executable: "/bridge", prefix: []).prepare(
+        budget: AntigravityAuthenticationBudget(timeout: const Duration(seconds: 5), abortSignal: abort.signal),
+        hostEnvironment: {},
+      ),
+      throwsA(isA<PluginStartAbortedException>()),
+    );
+    expect(events, ["preflight"]);
+    expect(temp.listSync(), isEmpty);
+  });
+
+  test("cancellation awaits an in-flight atomic write then rejects its late success", () async {
+    final abort = StartAbortController();
+    final release = Completer<void>();
+    store.writeStarted = Completer<void>();
+    store.writeGate = release.future;
+    var settled = false;
+    final preparation = service(target: windows, executable: "/bridge", prefix: []).prepare(
+      budget: AntigravityAuthenticationBudget(timeout: const Duration(seconds: 5), abortSignal: abort.signal),
+      hostEnvironment: {},
+    );
+    final assertion = expectLater(preparation, throwsA(isA<PluginStartAbortedException>())).then((_) => settled = true);
+    await store.writeStarted!.future;
+    abort.abort();
+    await Future<void>(() {});
+    expect(settled, isFalse);
+    release.complete();
+    await assertion;
+    expect(store.contents, contains("oauth-personal"));
+  });
+
   test("inspection is inert and only token presence is an auth hint", () {
     final profile = service(target: mac, executable: "/bridge", prefix: []);
     expect(profile.inspectAuthentication(), AntigravityAuthenticationHint.authenticationRequired);
@@ -100,7 +165,11 @@ void main() {
   });
 
   test("preflight then 700 directories then typed atomic-store settings", () async {
-    final prepared = await service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {});
+    final prepared = await service(
+      target: mac,
+      executable: "/bridge",
+      prefix: [],
+    ).prepare(budget: budget(), hostEnvironment: {});
     expect(events, ["preflight", "chmod", "chmod", "settings"]);
     expect(store.contents, '{"auth":{"type":"oauth-personal"}}\n');
     expect(prepared.geminiHome, home);
@@ -118,7 +187,7 @@ void main() {
   test("hardens existing directories and rewrites non-personal settings", () async {
     Directory(p.join(home, "antigravity-acp")).createSync(recursive: true);
     store.contents = "synthetic stale settings";
-    await service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {});
+    await service(target: mac, executable: "/bridge", prefix: []).prepare(budget: budget(), hostEnvironment: {});
     expect(events, ["preflight", "chmod", "chmod", "settings"]);
     expect(store.contents, contains("oauth-personal"));
   });
@@ -148,7 +217,11 @@ void main() {
       "HTTPS_PROXY": "https://proxy.invalid",
     };
     final original = Map<String, String>.of(ambient);
-    final prepared = await service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: ambient);
+    final prepared = await service(
+      target: mac,
+      executable: "/bridge",
+      prefix: [],
+    ).prepare(budget: budget(), hostEnvironment: ambient);
     expect(ambient, original);
     expect(prepared.environment.values, isNot(contains("ambient-secret")));
     expect(prepared.environment["PATH"], ambient["PATH"]);
@@ -163,7 +236,7 @@ void main() {
       target: mac,
       executable: "/a b/dart",
       prefix: ["--packages=/a b/package_config.json", "/a'b/bridge.dart"],
-    ).prepare(hostEnvironment: {});
+    ).prepare(budget: budget(), hostEnvironment: {});
     expect(
       prepared.environment["BROWSER"],
       "'/a b/dart' '--packages=/a b/package_config.json' '/a'\"'\"'b/bridge.dart' '--internal-browser-noop' '%s'",
@@ -181,7 +254,7 @@ void main() {
       target: windows,
       executable: r"C:\Program Files\bridge.exe",
       prefix: [],
-    ).prepare(hostEnvironment: {});
+    ).prepare(budget: budget(), hostEnvironment: {});
     expect(events, ["preflight", "settings"]);
     expect(prepared.environment["BROWSER"], r"'C:\Program Files\bridge.exe' '--internal-browser-noop' '%s'");
   });
@@ -189,12 +262,16 @@ void main() {
   test("unsupported invocation blocks before processes or profile writes", () async {
     for (final executable in ["", "/a:b/bridge", "/a\n/bridge", "/a\u0000/bridge", "/a%s/bridge"]) {
       await expectLater(
-        service(target: mac, executable: executable, prefix: []).prepare(hostEnvironment: {}),
+        service(target: mac, executable: executable, prefix: []).prepare(budget: budget(), hostEnvironment: {}),
         throwsA(isA<AntigravityProfileException>()),
       );
     }
     await expectLater(
-      service(target: windows, executable: "C:/a;b/bridge.exe", prefix: []).prepare(hostEnvironment: {}),
+      service(
+        target: windows,
+        executable: "C:/a;b/bridge.exe",
+        prefix: [],
+      ).prepare(budget: budget(), hostEnvironment: {}),
       throwsA(isA<AntigravityProfileException>()),
     );
     expect(temp.listSync(), isEmpty);
@@ -209,7 +286,7 @@ void main() {
     ]) {
       commands.preflight = result;
       await expectLater(
-        service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+        service(target: mac, executable: "/bridge", prefix: []).prepare(budget: budget(), hostEnvironment: {}),
         throwsA(isA<AntigravityProfileException>()),
       );
     }
@@ -220,7 +297,7 @@ void main() {
   test("process failures retain original cause and never prepare", () async {
     commands.timeoutPreflight = true;
     await expectLater(
-      service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+      service(target: mac, executable: "/bridge", prefix: []).prepare(budget: budget(), hostEnvironment: {}),
       throwsA(isA<AntigravityProfileException>().having((error) => error.cause, "cause", isA<ProcessException>())),
     );
     expect(temp.listSync(), isEmpty);
@@ -229,7 +306,7 @@ void main() {
   test("permission failure blocks settings and retains local operation context", () async {
     commands.failPermissions = true;
     await expectLater(
-      service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+      service(target: mac, executable: "/bridge", prefix: []).prepare(budget: budget(), hostEnvironment: {}),
       throwsA(isA<AntigravityProfileException>().having((error) => error.cause.toString(), "cause", contains(home))),
     );
     expect(events, ["preflight", "chmod"]);
@@ -240,7 +317,7 @@ void main() {
     store.contents = "previous";
     store.failWrite = true;
     await expectLater(
-      service(target: mac, executable: "/bridge", prefix: []).prepare(hostEnvironment: {}),
+      service(target: mac, executable: "/bridge", prefix: []).prepare(budget: budget(), hostEnvironment: {}),
       throwsA(isA<AntigravityProfileException>().having((error) => error.cause, "cause", isA<FileSystemException>())),
     );
     expect(store.contents, "previous");

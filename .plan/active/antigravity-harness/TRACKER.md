@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a merged; Step 6.b open for review
-- **Base:** synced with main `0723491330` after Step 6.a merge
-- **Current branch:** `antigravity-harness-step-6b-isolated-profile`
+- **Status:** Steps 1-5 and 6.a merged; Step 6.b open for review; Step 6.c implemented locally
+- **Base:** Step 6.b head `4a8e14a1d5e71ea24cc5cc27726d284008c3e041`
+- **Current branch:** `antigravity-harness-step-6c-personal-authentication`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -13,7 +13,7 @@
   [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a)
 - **Open PR:** [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b)
-- **Next action:** monitor Step 6.b through merge; begin Step 6.c locally
+- **Next action:** parent monitors Step 6.b; independently review Step 6.c, retaining it locally until 6.b merges
 
 ## Fixed PR Series
 
@@ -24,7 +24,8 @@
 - [x] Step 5/12 — `🚧 [antigravity-harness] feat(client): add remote browser authentication handoff [step 5/12]`
 - [x] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
 - [ ] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
-- [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): implement personal browser authentication [step 6.c/12]`
+- [ ] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
+- [ ] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
 - [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
@@ -100,7 +101,7 @@
 - [x] Run focused validation and update regression invariants without claiming active Antigravity support.
 - [x] Independent architecture implementation review approved; no issues found.
 - [x] Step 5 merged; sync Step 6.a with main before publication.
-- Package remains unregistered; Step 6.c personal OAuth is not implemented.
+- Package remains unregistered; composed personal OAuth remains in Step 6.d.
 
 ## Step 6.b Checklist
 
@@ -116,7 +117,20 @@
   refinement passes its 4 tests. Antigravity, foundation, and app analyzers pass with fatal infos. Native bridge
   bundle builds and the helper exits 0 with no output; extracted pinned Python confirms no browser fallback.
   See `docs/regression/antigravity-isolated-profiles.md` for reproducible evidence and platform limits.
-- No OAuth execution, token-content access, registration, managed activation, or Step 6.c operation/HTTP work.
+- No OAuth execution, token-content access, registration, managed activation, or authentication boundary work in 6.b.
+
+## Step 6.c Checklist
+
+- [x] Approve 6.c boundaries/policy and 6.d composition split after full-slice estimate exceeded the line cap.
+- [x] Reuse existing scratch ACP ownership for personal authentication with cleanup and sanitized interception.
+- [x] Add Layer-2 authorization mapping, dedicated no-proxy/no-redirect loopback transport, repository normalization,
+  and service-owned exact Google/callback/state/code policy.
+- [x] Thread one monotonic budget/abort signal through profile layers, preserving executor timeouts and waiting for
+  non-cancellable filesystem/store work before rejecting late success. Browser preflight retains its five-second cap.
+- [x] Verify 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis; update regression contracts.
+- [ ] Independent architecture implementation review; parent-owned publication waits for Step 6.b merge.
+- No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
+  access in this slice. Step 6.d is not started while Step 6.b remains open.
 
 
 ## Architecture Reviews

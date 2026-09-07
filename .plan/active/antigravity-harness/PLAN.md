@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–5 and 6.a merged, Step 6.b preparing publication
+- **Status:** active; Steps 1–5 and 6.a merged, Step 6.b in review, Step 6.c implemented locally
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
-- **Delivery:** twelve ordered top-level steps; Step 6 uses ordered 6.a/6.b/6.c PRs as approved by the user
+- **Delivery:** twelve ordered top-level steps; Step 6 uses ordered 6.a/6.b/6.c/6.d PRs as approved by the user
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
@@ -591,7 +591,8 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
 6. Isolated personal authentication, split without renumbering later steps (user-approved):
    - `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
    - `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
-   - `🚧 [antigravity-harness] feat(antigravity): implement personal browser authentication [step 6.c/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
    - The slices below preserve layered ownership, personal OAuth, callback safety, cancellation, and deterministic tests.
 7. `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
    - Add partial pre-catalog options, later exact model selection, fixed default mode, question conversion,
@@ -724,10 +725,15 @@ documented invariant, they update that document immediately. Step 11 is final re
   native/Dart runtime; do not assume Node `-e` exists. Implement plugin-owned selective stderr handling for OAuth
   payloads before logging, preserving useful non-sensitive diagnostics. Prove native helper behavior before accepting
   the suppression design; do not execute OAuth to discover it. Include mode, atomicity, environment, and failure tests.
-- **6.c — authentication (estimate 1,100–1,500 lines):** implement the ACP authentication lifecycle, Layer-2 URL mapper,
-  injected no-redirect HTTP client, repository normalization, service-owned exact Google/callback/state/code policy,
-  and composed operation with shared deadline, cancellation, exit cleanup, same-host completion, remote continuation,
-  and terminal setup reinspection. All remain unregistered until Step 9.
+- **6.c — authentication boundaries and policy (estimate 1,100–1,350 lines):** implement the ACP authentication
+  boundary, Layer-2 URL mapper, injected no-redirect HTTP client, repository normalization, service-owned exact
+  Google/callback/state/code policy, and shared budget through profile preparation. Test protocol/HTTP cleanup,
+  privacy, security policy, and preparation deadlines. This slice has no executable composed authentication operation.
+- **6.d — composed authentication (estimate 500–750 lines):** compose the existing profile/runtime/authentication
+  services with one challenge/completer, cancellation and one-shot continuation, terminal cleanup and setup
+  reinspection. Cover same-host completion, remote continuation, late results, deadline and operation cancellation.
+  All slices remain unregistered until Step 9. This approved delivery split retains twelve top-level steps and the
+  1,500-line cap; the complete 6.c/6.d work was estimated at 1,650–1,850 lines without cutting security/lifecycle coverage.
 - **Evidence and privacy:** pinned `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`,
   `antigravityAuthSupport.ts`, corroborates nested settings/token paths (249–253, 318), browser suppression (217–294),
   authorization grammar (354–388), and sensitive stderr (458). These safeguards address ordinary login: otherwise
@@ -737,7 +743,7 @@ documented invariant, they update that document immediately. Step 11 is final re
   Profile settings are the only planned new persisted configuration; Google owns its tokens. Reuse ACP/operation
   cancellation and deadline owners. Keep provider decisions out of shared transport. No unrelated cleanup or wire shim.
 - Architecture plan review must cover these new shared boundaries before 6.a implementation. Keep only one series PR
-  open and at most its immediate successor local: 6.a waits for Step 5 merge, 6.b for 6.a, and 6.c for 6.b.
+  open and at most its immediate successor local: 6.a waits for Step 5 merge, 6.b for 6.a, 6.c for 6.b, and 6.d for 6.c.
 
 #### Step 6.b native browser suppression (approved 2026-09-05)
 
@@ -763,7 +769,7 @@ documented invariant, they update that document immediately. Step 11 is final re
 - No new mutable production state, background work, process owner, persisted coordination, or dependency defaults.
   Only the existing bounded interceptor buffers and scoped host-store locks retain mutable state.
 
-#### Authentication contracts across 6.a–6.c
+#### Authentication contracts across 6.a–6.d
 
 - Add typed `{auth: {type: oauth-personal}}` settings. `AntigravityProfileStorage` uses the injected scoped
   `HostJsonStore` for atomic settings reads/writes and a `CommandExecutor` backed by the provided host process service

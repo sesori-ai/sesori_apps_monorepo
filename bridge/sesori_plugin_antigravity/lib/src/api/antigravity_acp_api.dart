@@ -3,6 +3,8 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../foundation/antigravity_authentication_budget.dart";
+import "../foundation/antigravity_release.dart";
 import "models/antigravity_initialize_dto.dart";
 
 /// Layer-1 ACP process boundary used by unauthenticated runtime probes.
@@ -46,6 +48,47 @@ class AntigravityAcpApi({
     } finally {
       await client.dispose();
     }
+  }
+
+  /// Owns one interactive scratch process until authenticate settles or aborts.
+  Future<void> authenticate({
+    required AcpLaunchSpec launchSpec,
+    required AcpOutputInterceptor stdoutInterceptor,
+    required AntigravityAuthenticationBudget budget,
+  }) async {
+    budget.remaining;
+    final client = AcpStdioClient(
+      launchSpec: launchSpec,
+      processFactory: _processFactory,
+      stdoutInterceptor: stdoutInterceptor,
+      stderrInterceptor: _stderrInterceptor,
+      logTag: "antigravity-auth",
+    );
+    Future<void> run() async {
+      await client.connect();
+      final agent = AcpAgentApi(client: client);
+      final initialized = await agent.initializeOnly(
+        formElicitation: false,
+        capabilityMeta: null,
+        timeout: budget.remaining,
+      );
+      await agent.authenticate(
+        initializeResult: initialized,
+        authMethodId: AntigravityRelease.personalOauthMethodId,
+        authMethodAllowlist: const {AntigravityRelease.personalOauthMethodId},
+        timeout: budget.remaining,
+      );
+    }
+
+    try {
+      await Future.any<void>([
+        run(),
+        budget.abortSignal.whenAborted.then<void>((_) => throw const PluginStartAbortedException()),
+      ]).timeout(budget.remaining);
+    } finally {
+      await client.dispose();
+    }
+    budget.remaining;
   }
 
   Future<T> _awaitPhase<T>({
