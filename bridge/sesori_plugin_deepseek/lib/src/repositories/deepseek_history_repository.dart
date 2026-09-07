@@ -23,6 +23,7 @@ class DeepSeekHistoryRepository({
   }) async {
     final subagentsByToolCallId = <String, DeepSeekSubagentReplayDto>{};
     final collector = AcpReplayCollector(
+      sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
       sessionId: sessionId,
       agentId: pluginId,
       initialUserMessageId: null,

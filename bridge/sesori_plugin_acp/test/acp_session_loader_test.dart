@@ -83,6 +83,7 @@ void main() {
           childSessions: AcpChildSessionTracker(),
         )..beginTurn(sessionId: "s1", messageId: null);
         final collector = AcpReplayCollector(
+          sessionUpdateNormalizer: null,
           sessionId: "s1",
           agentId: "ACP",
           initialUserMessageId: null,
@@ -129,6 +130,7 @@ void main() {
         () {
           final collector =
               AcpReplayCollector(
+                  sessionUpdateNormalizer: null,
                   sessionId: "s1",
                   agentId: "Cursor",
                   initialUserMessageId: "s1-initial-user",
@@ -173,6 +175,7 @@ void main() {
     test("reconstructs a user/tool/assistant exchange in order", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -233,6 +236,7 @@ void main() {
     test("replays standard tool content text without materializing other variants", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -270,6 +274,7 @@ void main() {
     test("id-less text after a tool stays chronologically after the tool", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -309,6 +314,7 @@ void main() {
     test("a partial (output-only) update does not reset a completed tool to pending", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -354,6 +360,7 @@ void main() {
     test("a title-only tool_call_update merges onto an existing draft (matches live)", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -388,6 +395,7 @@ void main() {
     test("a non-string tool title does not throw mid-replay", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -413,6 +421,7 @@ void main() {
     test("stamps replayed assistant messages with the loaded session selection", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -446,6 +455,7 @@ void main() {
       // message. Without honouring it, distinct same-role messages collapse.
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -486,6 +496,7 @@ void main() {
     test("chunks without a messageId keep the role-grouping behaviour", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -512,6 +523,7 @@ void main() {
     test("unrenderable assistant chunks do not create empty replay messages", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -538,6 +550,7 @@ void main() {
 
     test("a non-string session update discriminator is ignored", () {
       final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
@@ -556,6 +569,7 @@ void main() {
 
     test("malformed replay chunks share warning state without creating a message", () {
       final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
@@ -584,6 +598,7 @@ void main() {
     test("replay materializes mixed assistant images in order", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -696,6 +711,7 @@ void main() {
       test("preserves ${testCase.name} chronology in one stamped assistant draft", () {
         final collector =
             AcpReplayCollector(
+                sessionUpdateNormalizer: null,
                 sessionId: "s1",
                 agentId: "Cursor",
                 initialUserMessageId: null,
@@ -750,6 +766,7 @@ void main() {
     test("an id-less image closes its replay draft before a following tool", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -791,6 +808,7 @@ void main() {
     test("an explicit messageId after id-less text starts a new message", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -822,6 +840,7 @@ void main() {
     test("id-less text after an explicit messageId starts a new message", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -853,6 +872,7 @@ void main() {
     test("a same-message thought and text share the message; tools attach without an id", () {
       final collector =
           AcpReplayCollector(
+              sessionUpdateNormalizer: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -898,6 +918,7 @@ void main() {
     test("a halt notice replays as an error message with no text part", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -928,6 +949,7 @@ void main() {
     test("an identified halt-like message remains assistant content", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -949,6 +971,7 @@ void main() {
     test("an image-bearing halt-like message remains an assistant message", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -983,6 +1006,7 @@ void main() {
     test("unsupported content keeps halt-like replay text as an assistant message", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -1008,6 +1032,7 @@ void main() {
     test("without a halt classifier the same chunk stays assistant text", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -1029,6 +1054,7 @@ void main() {
     test("a replay-local callback can replace one generic tool part", () {
       final collector =
           AcpReplayCollector(
+            sessionUpdateNormalizer: null,
             sessionId: "s1",
             agentId: "ACP",
             initialUserMessageId: null,

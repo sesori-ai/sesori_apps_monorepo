@@ -1963,6 +1963,7 @@ abstract class AcpPlugin({
       logTag: "$id-replay",
     );
     final collector = AcpReplayCollector(
+      sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
       sessionId: sessionId,
       // Replayed messages must carry the same `agent` the live mapper stamps,
       // or a reloaded session reports a different agent than the live one did.

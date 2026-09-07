@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-6 and 7.a merged; Step 7.b open for review
-- **Base:** synced with main `daa782057c` after Step 7.a merge
-- **Current branch:** `antigravity-harness-step-7b-questions-and-permissions`
+- **Status:** Steps 1-6 and 7.a/7.b merged; Step 7.c open for review
+- **Base:** synced with main `b43758e1b3` after Step 7.b merge
+- **Current branch:** `antigravity-harness-step-7c-live-replay-updates`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -15,9 +15,10 @@
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
   [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d),
-  [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a)
-- **Open PR:** [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b)
-- **Next action:** monitor Step 7.b; begin only Step 7.c locally
+  [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a),
+  [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b)
+- **Open PR:** [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c)
+- **Next action:** monitor Step 7.c; begin only Step 8 locally
 
 ## Fixed PR Series
 
@@ -31,7 +32,7 @@
 - [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
 - [x] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
 - [x] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
-- [ ] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
+- [x] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
 - [ ] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
@@ -196,12 +197,37 @@
   `git diff 97eda29b57 164a7112ab -- bridge/sesori_plugin_antigravity` is empty.
 - Later CI fix `cbc72324a7` fences late callback connection completion after an early timer; all four loopback tests
   and owning analysis pass. Review fixes add useful decoder evidence and honest permission tool-kind display.
+- Final review checkpoint `80b7402f64`: all 12 interaction tests and owning analysis pass; second/final independent
+  architecture review approved. Net diff against `daa782057c` is 1,340 lines. Step 7.c retains these reviewed fixes.
+- [x] PR #1354 merged with 16/16 CI checks passing. Step 7.c stays on its assigned reviewed-fix base until the parent
+  synchronizes after sole-writer completion; no concurrent branch switch or merge is performed by the worker.
 - [x] Predecessor #1353 merged; synchronized with main `daa782057c`. Conflict resolution retained the reviewed 7.b
   additions. Antigravity/ACP/interface production and tests plus the lockfile are unchanged from the reviewed inputs;
   no unchanged passing suite was rerun. Parent owns publication.
 - The neutral registry is intentionally not yet wired into `AcpPlugin`; Step 8 replaces its hard-coded stock registry
   return-type seam without dummy responders or inherited raw permission policy. No 7.c, registration, database,
   credential/OAuth/history access or active capability claim is included here.
+
+## Step 7.c Checklist
+
+- [x] Shared live/replay session-update hook defaults to identity; all collector consumers updated explicitly.
+- [x] Generated DTOs normalize pinned native aliases, canonical command/output fields and typed text content.
+- [x] Preserve ACP status independently from process exit; reserve an explicit exit note inside the shared display cap.
+- [x] Bound raw JSON and remove redundant image bytes without damaging supported standard image content/metadata.
+- [x] All 21 Antigravity normalization tests, 54 ACP replay/tool/history tests and 13 DeepSeek history/time tests pass.
+- [x] Owning Antigravity/ACP and changed DeepSeek analyses are clean with fatal infos; DTO generation and formatting run.
+- [x] Add indexed live/replay regression document; no credential, database, history mutation or active capability claim.
+- [x] First actual independent review approved all 16 changed files at `19e24a4e36` against `80b7402f64`: 1,156
+  additions + 12 deletions = 1,168 lines, including generated/tests/docs. Earlier incomplete checkpoints were uncounted.
+- [x] Synced with main `b43758e1b3`, preserving the reviewed inputs and removing a duplicate method introduced by
+  automatic merge. At publication, relevant package source/tests and lockfile matched the reviewed checkpoint exactly.
+- Publication cap `b43758e1b3` → `586e787da6` is 1,158 + 12 = 1,170 lines. The +2 versus the earlier review scope
+  is tracker status/synchronization documentation only; the removed duplicate method was a merge artifact, not a
+  deletion from the reviewed implementation.
+- Localized PR review fixes preserve formatted-only output, differing text, direct images and malformed-entry
+  degradation. All 21 normalization tests and owning analysis pass; shared ownership/contracts are unchanged.
+- Exact review base is `80b7402f6443b810b49b429410667138cd099b09`, not either pre-fix predecessor head. The plugin
+  remains unregistered; Step 8 composes the provider normalizer override. No registry/residency/metadata seam lands here.
 
 ## Architecture Reviews
 

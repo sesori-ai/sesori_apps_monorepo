@@ -611,6 +611,7 @@ PluginToolState _liveState({required List<BridgeSseEvent> events}) =>
     events.whereType<BridgeSseMessagePartUpdated>().single.part.state;
 
 AcpReplayCollector _collector() => AcpReplayCollector(
+  sessionUpdateNormalizer: null,
   sessionId: "s1",
   agentId: "ACP",
   initialUserMessageId: null,

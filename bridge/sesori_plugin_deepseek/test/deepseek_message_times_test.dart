@@ -89,6 +89,7 @@ void main() {
 
   test("replay retains earliest user, assistant, and tool creation times", () {
     final collector = AcpReplayCollector(
+      sessionUpdateNormalizer: null,
       sessionId: "s1",
       agentId: "deepseek",
       initialUserMessageId: null,
@@ -139,6 +140,7 @@ void main() {
 
   test("replay halt retains draft time and omitted metadata remains null", () {
     AcpReplayCollector collector(AcpHaltNotice? Function({required String text})? classifier) => AcpReplayCollector(
+      sessionUpdateNormalizer: null,
       sessionId: "s1",
       agentId: "deepseek",
       initialUserMessageId: null,
