@@ -5,6 +5,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../foundation/antigravity_authentication_budget.dart";
 import "models/antigravity_profile_settings_dto.dart";
 
 /// File/process boundary. The injected store must be the live host root's
@@ -22,11 +23,22 @@ class AntigravityProfileStorage({
   // Do not read the file: even malformed/expired tokens are only a setup hint.
   bool tokenExists() => File(p.join(acpDirectory, "acp_token.json")).existsSync();
 
-  Future<void> prepareDirectories({required Map<String, String> environment}) async {
+  Future<void> prepareDirectories({
+    required AntigravityAuthenticationBudget budget,
+    required Map<String, String> environment,
+  }) async {
     for (final directory in [geminiHome, acpDirectory]) {
+      budget.remaining;
       await Directory(directory).create(recursive: true);
+      budget.remaining;
       if (_target.os != PlatformOs.windows) {
-        final result = await _commands.run("chmod", ["700", directory], environment: environment);
+        final result = await _commands.run(
+          "chmod",
+          ["700", directory],
+          environment: environment,
+          timeout: budget.remaining,
+        );
+        budget.remaining;
         if (result.exitCode != 0) {
           throw FileSystemException("Cannot make Antigravity profile private: ${result.stderr}", directory);
         }
@@ -38,8 +50,18 @@ class AntigravityProfileStorage({
       _settingsStore.write(name: "settings.json", contents: "${jsonEncode(settings.toJson())}\n");
 
   Future<CommandResult> runBrowserPreflight({
+    required AntigravityAuthenticationBudget budget,
     required String executable,
     required List<String> arguments,
     required Map<String, String> environment,
-  }) => _commands.run(executable, arguments, environment: environment, timeout: const Duration(seconds: 5));
+  }) {
+    final remaining = budget.remaining;
+    const preflightLimit = Duration(seconds: 5);
+    return _commands.run(
+      executable,
+      arguments,
+      environment: environment,
+      timeout: remaining < preflightLimit ? remaining : preflightLimit,
+    );
+  }
 }

@@ -1,5 +1,6 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
+import "../foundation/antigravity_authentication_budget.dart";
 import "../models/antigravity_profile.dart";
 import "../repositories/antigravity_profile_repository.dart";
 
@@ -19,7 +20,11 @@ class AntigravityProfileService({
       ? AntigravityAuthenticationHint.tokenPresent
       : AntigravityAuthenticationHint.authenticationRequired;
 
-  Future<AntigravityPreparedProfile> prepare({required Map<String, String> hostEnvironment}) async {
+  Future<AntigravityPreparedProfile> prepare({
+    required Map<String, String> hostEnvironment,
+    required AntigravityAuthenticationBudget budget,
+  }) async {
+    budget.remaining;
     final invocation = [_browserExecutable, ..._browserPrefixArguments, BrowserNoop.argument];
     final separator = _target.os == PlatformOs.windows ? ";" : ":";
     // Python splits BROWSER before shlex parsing, even inside quotes. A failed
@@ -48,17 +53,20 @@ class AntigravityProfileService({
       "PYTHONUNBUFFERED": "1",
     };
     final preflight = await _repository.inspectBrowserCommand(
+      budget: budget,
       executable: _browserExecutable,
       arguments: [..._browserPrefixArguments, BrowserNoop.argument, browserPreflightUrl],
       environment: environment,
     );
+    budget.remaining;
     if (preflight.exitCode != 0 || preflight.hasOutput) {
       throw AntigravityProfileException(
         message: "Browser suppression preflight failed for $_browserExecutable (exit code ${preflight.exitCode})",
         cause: preflight.diagnostics,
       );
     }
-    await _repository.preparePersonalOauth(environment: environment);
+    await _repository.preparePersonalOauth(budget: budget, environment: environment);
+    budget.remaining;
     return AntigravityPreparedProfile(geminiHome: _repository.geminiHome, environment: environment);
   }
 
