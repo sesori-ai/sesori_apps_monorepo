@@ -76,6 +76,18 @@ void main() {
   });
   tearDown(() => harness.close());
 
+  test("neutral ambiguous attribution rejects through the connection-owned service/repository without pending UI", () {
+    final AcpPendingRegistry<AntigravityInteraction> registry = harness.registry;
+    registry.rejectAmbiguousServerRequest(request: request(id: "ambiguous"));
+    expect(harness.process.written.single["id"], "ambiguous");
+    expect(harness.process.written.single["result"], {
+      "outcome": {"outcome": "cancelled"},
+    });
+    expect(harness.process.written.single.containsKey("error"), isFalse);
+    expect(harness.events, isEmpty);
+    expect(registry.hasAnyPendingInput, isFalse);
+  });
+
   test("normal permission never silently approves and dispatches exact once-only choice once", () {
     harness.receive(incoming: request(id: "rpc-text"));
     final pending = harness.registry.pendingPermissionsForSession(sessionId: "session").single;

@@ -605,7 +605,9 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
    - `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
    - Add partial pre-catalog options, later exact model selection, fixed default mode, question conversion,
      persistent-approval filtering, bounded tool normalization, and live/replay hooks with direct collaborator tests.
-8. `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
+8. Ordered slices (full estimate 1,850–2,700 lines):
+   - `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
    - Create the unregistered `AntigravityPlugin` and descriptor, compose typed metadata Storage/Repository/Service
      recovery, load/resume/history, turn lanes, options wiring, commands, crash/reconnect,
      tombstone-compatible deletion, and conformance tests.
@@ -866,7 +868,12 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
 
 ### Step 8/12: Persistent ACP plugin composition
 
-- Create the unregistered `AntigravityPlugin` and `AntigravityPluginDescriptor`; registration waits for Step 9.
+The user approved 8.a/8.b after a full estimate of 1,850–2,700 lines. All further necessary dependency-ordered PR
+splits are pre-approved; do not ask again. Retain twelve top-level steps, the 1,500-line full net cap per PR, and only
+one open PR plus its immediate local successor. This partitions the reviewed architecture, not its requirements.
+
+#### Step 8.a: Recovery foundations and neutral ACP seams (estimated 900–1,350 lines)
+
 - Add the smallest shared protected directory-registration seam. `AntigravitySessionMetadataStorage` alone lists
   bounded `.meta` files in the isolated conversations directory and decodes each through a typed generated DTO. It
   never reads SQLite or brain content.
@@ -874,6 +881,23 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
   `AntigravitySessionMetadataService` owns bounded scan, validation, deduplication, and privacy-safe malformed-entry
   skips, then returns one typed registration batch. The plugin consumes only that service and hands its batch to the
   shared protected bulk-registration seam; ordinary reads remain DB-only and scans run only for import/cold recovery.
+- Generalize `buildApprovalRegistry` and the retained registry to `AcpPendingRegistry`, a neutral
+  `PendingPermissionRegistry` subclass with attribution routing and no responder/policy. Stock ACP and Antigravity
+  extend this seam; preserve existing request attribution and pending lifecycle while admitting the plugin-owned
+  service/repository reply path. Do not use dummy raw responders or unused stock policy as an adapter. Update
+  shared consumers in lockstep and test integration here, not in the unregistered 7.b slice.
+- Add a backend-neutral protected ACP residency-preference hook whose default preserves today's load-first behavior.
+  Antigravity selects resume-first for live residency, with availability fallback owned by shared ACP; history replay
+  continues to use load. Cover unchanged existing plugins plus Antigravity load/resume fallback.
+- Thread a fresh per-process output-interceptor policy through live and replay client creation, retaining
+  `AcpStdioClient` as the existing pre-log interception/cleanup owner. Other harnesses keep default behavior.
+- Test metadata bounds/malformed records/UUID-cwd mapping, registration authority, neutral registry attribution and
+  cancellation, load-first/resume-first capability combinations, and live/replay interceptor wiring. No concrete
+  Antigravity plugin or descriptor is introduced here; scans are not added to ordinary reads.
+
+#### Step 8.b: Persistent plugin composition (estimated 950–1,350 lines)
+
+- Create the unregistered `AntigravityPlugin` and `AntigravityPluginDescriptor`; registration waits for Step 9.
 - In the descriptor composition root, build process-lifetime trackers, mappers, metadata repository/service, process
   factory, and other peers. The options composer combines a live `AcpSessionConfigRepository`, mapper, and tracker.
   Activation supplies the correct capture origin, and `onConnectionReset` clears the catalog/default together before
@@ -881,14 +905,8 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
   A separate interaction composer wraps the live ACP client in `AntigravityInteractionRepository`, passes it plus the
   mapper to `AntigravityInteractionService`, and builds the approval registry from that service. The plugin invokes
   composers but constructs no peers.
-- Add the narrow backend-neutral registry contract/return-type seam needed by `AcpPlugin`: its current
-  `buildApprovalRegistry` and retained registry are typed as `AcpApprovalRegistry`, whereas Antigravity's registry
-  reuses `PendingPermissionRegistry` directly. Preserve existing ACP request attribution and pending lifecycle while
-  admitting the plugin-owned service/repository reply path. Do not use dummy raw responders or unused stock policy
-  as an adapter. Update shared consumers in lockstep and test integration here, not in the unregistered 7.b slice.
-- Add a backend-neutral protected ACP residency-preference hook whose default preserves today's load-first behavior.
-  Antigravity selects resume-first for live residency, with availability fallback owned by shared ACP; history replay
-  continues to use load. Cover unchanged existing plugins plus Antigravity load/resume fallback.
+- Wire metadata import/cold recovery, the neutral registry and resume-first preference, the live/replay normalizer,
+  and isolated output handling into real plugin lifecycle hooks. Preserve stale-auth failure and existing ownership.
 - Cover new/load/resume, bridge restart directory recovery, long replay, two sessions, active cancel/delete, question
   cleanup, process crash/reconnect, stale auth, tombstone-compatible re-import, and idempotent dispose with ACP fakes.
 

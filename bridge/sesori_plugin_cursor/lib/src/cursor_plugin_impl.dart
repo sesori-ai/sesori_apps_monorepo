@@ -141,7 +141,7 @@ class CursorPlugin._({
   Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;
 
   @override
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) {
     return CursorApprovalRegistry(
       client: client,
       emit: emitActivityEvent,

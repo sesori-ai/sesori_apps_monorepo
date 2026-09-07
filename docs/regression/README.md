@@ -152,6 +152,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Antigravity model catalogs and session options](antigravity-session-options.md)
 - [Antigravity personal authentication](antigravity-personal-authentication.md)
 - [Antigravity questions and permission replies](antigravity-questions-and-permissions.md)
+- [Antigravity recovery foundations and ACP seams](antigravity-recovery-and-acp-seams.md)
 - [Attachments and images](attachments-and-images.md)
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)
