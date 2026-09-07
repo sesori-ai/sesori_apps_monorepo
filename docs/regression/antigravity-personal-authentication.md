@@ -12,7 +12,9 @@ steps. Never execute real Google OAuth or inspect ambient credentials/token cont
   preflight retains a five-second sub-limit; chmod uses the remaining budget. Check between mutations, await an
   in-flight filesystem/atomic-store write, then reject cancellation or expired-budget success. No instant cancellation
   of uninterruptible filesystem work is promised.
-- Scratch authentication initializes then requests only `oauth-personal`. It uses the prepared environment with no
+- Scratch authentication validates the negotiated ACP version and selects only an advertised `oauth-personal`
+  method before sending authentication. Incompatible protocols or other-only methods fail without auth dispatch.
+  It uses the prepared environment with no
   parent inheritance, the official sibling harness, and the existing ACP process owner. It disposes on success,
   timeout, cancellation, malformed authorization output and process exit; late results cannot report success.
 - The exact stdout prefix `Open the following link to authenticate the ACP server: ` is intercepted before logging
@@ -45,5 +47,5 @@ steps. Never execute real Google OAuth or inspect ambient credentials/token cont
   closure on timeout/abort and suppression of late request sends.
 - `antigravity_profile_service_test.dart`: executor timeout identity, no mutation after aborted preflight, and awaited
   atomic write before rejecting late success, in addition to the isolated-profile coverage.
-- Evidence: owning Antigravity analyzer and 60 package tests pass locally. Real Google OAuth, full composed operations,
+- Evidence: owning Antigravity analyzer and package tests pass locally. Real Google OAuth, full composed operations,
   cross-target runtime execution and final L5 Full remain unverified; this document does not claim those capabilities.

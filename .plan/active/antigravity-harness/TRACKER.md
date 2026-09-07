@@ -132,13 +132,13 @@
   and service-owned exact Google/callback/state/code policy.
 - [x] Thread one monotonic budget/abort signal through profile layers, preserving executor timeouts and waiting for
   non-cancellable filesystem/store work before rejecting late success. Browser preflight retains its five-second cap.
-- [x] Verify 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis; update regression contracts.
+- [x] Initial checkpoint: 60 Antigravity tests (45 inherited, 15 added) and owning-package analysis passed.
 - [x] Independent architecture review approved all 19 files at immutable checkpoint `afda6be61c48`.
 - [x] Step 6.b merged; synchronize before Step 6.c publication.
 - Publication cap: `git diff --numstat ce423c8ea7 2055e399c8` totals 1,106 + 41 = 1,147 changed lines.
 - Post-sync validation: all 63 Antigravity tests and owning-package analysis pass.
 - No composed operation, one-shot operation coordination, terminal reinspection, registration, real OAuth, or credential
-  access in this slice. Step 6.d is not started while Step 6.b remains open.
+  access in this slice. Step 6.d composition is a separate local successor while Step 6.c is in review.
 
 
 ## Architecture Reviews

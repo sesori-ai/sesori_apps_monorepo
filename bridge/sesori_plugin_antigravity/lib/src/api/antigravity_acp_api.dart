@@ -67,14 +67,10 @@ class AntigravityAcpApi({
     Future<void> run() async {
       await client.connect();
       final agent = AcpAgentApi(client: client);
-      final initialized = await agent.initializeOnly(
+      await agent.initialize(
         formElicitation: false,
         capabilityMeta: null,
-        timeout: budget.remaining,
-      );
-      await agent.authenticate(
-        initializeResult: initialized,
-        authMethodId: AntigravityRelease.personalOauthMethodId,
+        authMethodId: null,
         authMethodAllowlist: const {AntigravityRelease.personalOauthMethodId},
         timeout: budget.remaining,
       );
