@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-6 and 7.a/7.b merged; Step 7.c open for review; Step 8.a reviewed locally
-- **Base:** Step 7.c fix head `2b6342653ee015361b0c65f8b7d83e2f997880b8`
+- **Status:** Steps 1-7 merged; Step 8.a reviewed and synchronized for publication
+- **Base:** synced with main `dfe7913e67` after Step 7.c merge
 - **Current branch:** `antigravity-harness-step-8a-recovery-and-acp-seams`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -16,9 +16,10 @@
   [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
   [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d),
   [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a),
-  [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b)
-- **Open PR:** [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c)
-- **Next action:** monitor Step 7.c; synchronize and publish reviewed Step 8.a after predecessor merge
+  [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b),
+  [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c)
+- **Open PR:** Step 8.a publication prepared
+- **Next action:** publish and monitor Step 8.a; begin only Step 8.b locally
 
 ## Fixed PR Series
 
@@ -33,7 +34,7 @@
 - [x] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
 - [x] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
 - [x] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
-- [ ] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
+- [x] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [ ] Step 8.a/12 — `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
 - [ ] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
@@ -243,7 +244,9 @@
 - [x] First independent architecture review approved all 30 files at `c39ce10bd3` against `635ec52ee1`: 886 additions
   + 47 deletions = 933 lines, including generated/tests/docs. No findings.
 - [x] Integrated predecessor output fixes through `2b6342653e`; owning Antigravity analysis remains clean.
-- [ ] Parent-owned publication after predecessor merge.
+- [x] PR #1357 merged with 16/16 CI. Synced with main `dfe7913e67`; only documentation conflicted and relevant
+  package source/tests plus lockfile remain unchanged by this synchronization. No unchanged passing suites rerun.
+- [ ] Parent-owned Step 8.a publication.
 - Concrete plugin/descriptor composition and lifecycle integration remain 8.b; activation remains Step 9.
 
 ## Architecture Reviews
