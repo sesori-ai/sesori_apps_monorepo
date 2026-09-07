@@ -240,6 +240,10 @@ class _FakeConfigRepository() implements AcpSessionConfigRepository {
   final List<({String configId, String value})> writes = [];
 
   @override
+  Future<void> setMode({required String sessionId, required String modeId}) =>
+      throw UnsupportedError("OMP options must not write ACP session modes");
+
+  @override
   Future<AcpNewSessionResult?> setConfigOption({
     required String sessionId,
     required String configId,
