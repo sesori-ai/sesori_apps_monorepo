@@ -190,7 +190,7 @@ sealed class BridgePluginApi() {
   /// plugins whose sessions run sub-agents; [knownSubAgentSessionIds] is the
   /// bridge catalog's backend-id snapshot of every known descendant, including
   /// descendants absent from process-local plugin tracking. Other plugins may
-  /// ignore it and answer [PluginAbortAccepted].
+  /// disregard it and answer [PluginAbortAccepted].
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,

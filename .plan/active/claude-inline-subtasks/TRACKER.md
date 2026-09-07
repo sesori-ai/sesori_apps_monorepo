@@ -816,9 +816,9 @@ base `b43758e1b304d7f119787163875b78b38b1b25f1`, `git diff --numstat
 b43758e1b304d7f119787163875b78b38b1b25f1...2dd4fb076e16378b3fccdb2bda3ffd2b906f24f9`
 measures +2,468/-239 = 2,707 lines: 611 generated, 1,136 tests/fixtures,
 494 docs/plans, and 466 production. The range includes prior tracker/design
-measurement records in its docs/plan subtotal and excludes only the later
-`52761ce4de` evidence commit that records the 2,707 figure here and in the durable
-design. The 123-line increase from the prior reviewed head is 73 tests/
+measurement records in its docs/plan subtotal and excludes subsequent non-
+implementation evidence/wrapping commits beginning with `52761ce4de`, which
+records the 2,707 figure here and in the durable design. The 123-line increase from the prior reviewed head is 73 tests/
 fixtures, 38 docs/plans, and 12 production lines. Final DeepSeek E2E follows, then
 Codex.
 
@@ -842,7 +842,7 @@ production files. The pinned implementation head
 3,263 lines: 629 generated, 1,507 tests/fixtures, 535 docs/plans, and 592
 production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...afd3695acdedc99a6d1790c5377bcb8c2be0f123`
 reproduces it. This range includes every earlier measurement record in its docs/
-plan subtotal and excludes only the later evidence commit recording the 3,263
-figure. The 556-line increase from `2dd4fb076e` is 18 generated, 371 tests/
+plan subtotal and excludes subsequent non-implementation evidence/wrapping commits
+beginning with `d298a41507`, which records the 3,263 figure. The 556-line increase from `2dd4fb076e` is 18 generated, 371 tests/
 fixtures, 41 docs/plans, and 126 production lines. Incremental architecture review
 of `52761ce4de..afd3695acd` approved with no findings.
