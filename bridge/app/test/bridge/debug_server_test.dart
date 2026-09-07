@@ -25,6 +25,7 @@ import "package:sesori_bridge/src/server/foundation/bridge_restart_command_build
 import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
+import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -79,6 +80,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     restartService: effectiveRestartService,
     filesystemAccessOk: true,
     statusNotifier: null,
+    startupRetryService: BridgeStartupRetryService(),
     reconnectBackoff: ReconnectBackoffPolicy.standard,
   ).create();
   final runtime = BridgeRuntime(

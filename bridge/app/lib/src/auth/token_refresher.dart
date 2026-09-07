@@ -3,15 +3,16 @@ abstract interface class TokenRefresher() {
 }
 
 /// The typed failure a [TokenRefresher] throws when it cannot supply any usable
-/// access token and a relay reconnect must therefore be deferred rather than
-/// proceeding from a stale/cached token. In supervised mode the GUI replied with
-/// a null token (signed out / mid-login) or the control channel was unavailable;
-/// the supervised refresher also invalidates its cache before throwing, so there
-/// is no safe token to fall back on. Distinct from a transient refresh failure
-/// (e.g. the standalone auth-refresh endpoint being momentarily down while a
-/// valid cached token is still on hand), which callers may recover from by
-/// reconnecting with the cached token.
+/// access token and a relay reconnect must therefore be deferred. A null GUI
+/// response invalidates the cached token. The retryable subtype covers temporary
+/// control-channel or token-refresh failures without treating them as sign-out.
 class const ControlTokenUnavailableException(final String reason) implements Exception {
   @override
   String toString() => "ControlTokenUnavailableException: $reason";
+}
+
+/// The GUI retains its auth session but cannot currently refresh its token.
+class const ControlTokenRetryLaterException({required final Object? innerError})
+    extends ControlTokenUnavailableException {
+  this : super("The desktop app cannot currently supply an access token; retry later.");
 }

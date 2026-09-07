@@ -24,6 +24,7 @@ void main() {
     tracker.markHelperConnected();
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.healthy,
         activeSessionCount: 3,
@@ -42,6 +43,7 @@ void main() {
     await pumpEventQueue();
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.healthy,
         activeSessionCount: 2,
@@ -61,6 +63,7 @@ void main() {
     tracker.markHelperConnected();
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.unknown,
         plugin: ControlPluginHealthState.unknown,
         activeSessionCount: 0,
@@ -77,6 +80,7 @@ void main() {
 
     tracker.applyStatus(
       status: const ControlStatus(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.healthy,
         activeSessionCount: 5,
@@ -164,6 +168,7 @@ void main() {
     expect(
       () => disposed.applyStatus(
         status: const ControlStatus(
+          startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
           plugin: ControlPluginHealthState.healthy,
           activeSessionCount: 1,

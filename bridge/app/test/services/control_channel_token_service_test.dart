@@ -34,6 +34,23 @@ void main() {
   }
 
   group("ControlChannelTokenService", () {
+    test("a temporary GUI token failure remains retryable and the next request succeeds", () async {
+      final client = FakeControlChannelClient();
+      final service = buildService(client);
+      addTearDown(service.dispose);
+      final failed = service.getAccessToken();
+      final expectation = expectLater(failed, throwsA(isA<ControlTokenRetryLaterException>()));
+      await pumpEventQueue();
+      final first = client.sentMessages.last as ControlTokenRequest;
+      service.handleTokenRetryLater(id: first.id);
+      await expectation;
+      final recovered = service.getAccessToken();
+      await pumpEventQueue();
+      final second = client.sentMessages.last as ControlTokenRequest;
+      service.handleTokenResponse(id: second.id, accessToken: "recovered");
+      expect(await recovered, "recovered");
+    });
+
     test("sends a token_request and resolves with the matching token_response", () async {
       final client = FakeControlChannelClient();
       final service = buildService(client);
@@ -226,14 +243,20 @@ void main() {
       expect(service.accessToken, equals("newer"));
     });
 
-    test("times out with a typed failure when no response arrives", () async {
+    test("an offline desktop refresh that outlasts the deadline remains retryable", () async {
       final client = FakeControlChannelClient();
       final service = buildService(client, requestTimeout: const Duration(milliseconds: 20));
       addTearDown(service.dispose);
 
       await expectLater(
         service.getAccessToken(),
-        throwsA(isA<ControlTokenUnavailableException>()),
+        throwsA(
+          isA<ControlTokenRetryLaterException>().having(
+            (error) => error.innerError,
+            "original timeout",
+            isA<TimeoutException>(),
+          ),
+        ),
       );
     });
 
@@ -265,6 +288,7 @@ void main() {
       client.emit(
         _encode(
           const ControlMessage.status(
+            startup: ControlStartupState.ready,
             relay: ControlRelayConnectionState.connected,
             plugin: ControlPluginHealthState.healthy,
           ),

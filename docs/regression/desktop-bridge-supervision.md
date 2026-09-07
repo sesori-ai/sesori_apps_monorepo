@@ -8,6 +8,17 @@ and keep native close/quit behavior safe.
 
 ## Required Behavior
 
+- A connected helper process is distinct from a ready bridge. The control channel
+  reports starting, waiting for the server, and ready; desktop shows
+  "Starting — waiting for server (retrying every minute)" during an outage.
+  Waiting does not exit the helper or spend the supervisor's crash-retry budget.
+  Startup status is available before authentication and is replayed after a
+  control-channel reconnect. Stop and Quit remain available during the wait.
+- If desktop cannot obtain a fresh token while its account remains authenticated,
+  it asks the helper to retry later. Only a missing/signed-out session takes the
+  existing login-required path; an offline token refresh must not be treated as
+  a logout.
+
 - The desktop boots a visible Prego-themed window and eagerly initializes tray
   supervision even while signed out. Exactly one process owns the desktop
   instance lock and activation listener. The macOS tray uses the transparent

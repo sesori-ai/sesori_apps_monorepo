@@ -67,6 +67,30 @@ void main() {
       await logoutTracker.dispose();
     });
 
+    test("a live helper waiting for the server stays starting until readiness", () async {
+      await cubit.initialize();
+      statusTracker.markHelperConnected();
+      processService.emit(state: const BridgeProcessRunning(pid: 123), desiredState: BridgeProcessDesiredState.on);
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.waitingForServer,
+          relay: ControlRelayConnectionState.disconnected,
+          plugin: ControlPluginHealthState.unknown,
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for server (retrying every minute)");
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.connected,
+          plugin: ControlPluginHealthState.healthy,
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Bridge: Connected");
+    });
+
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
       await cubit.initialize();
 
@@ -83,6 +107,7 @@ void main() {
       statusTracker.markHelperConnected();
       statusTracker.applyStatus(
         status: const ControlStatus(
+          startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
           plugin: ControlPluginHealthState.degraded,
           activeSessionCount: 3,
@@ -120,6 +145,7 @@ void main() {
       statusTracker.markHelperConnected();
       statusTracker.applyStatus(
         status: const ControlStatus(
+          startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.takenOver,
           plugin: ControlPluginHealthState.healthy,
           activeSessionCount: 0,

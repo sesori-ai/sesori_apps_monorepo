@@ -183,6 +183,7 @@ BridgeControlState _state({
   toggleTarget: BridgeProcessDesiredState.off,
   launchAtLoginEnabled: false,
   controlStatus: BridgeControlStatus(
+    startup: ControlStartupState.ready,
     helperOnline: false,
     bridgeId: null,
     relay: relay,

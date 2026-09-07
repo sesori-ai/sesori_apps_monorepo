@@ -9,8 +9,13 @@ explicit restart, and the connection states the app presents.
 ## Required Behavior
 
 - A start is ready only after registration, socket open, auth frame sent, listeners and
-  initial summary set up, and the first inbound read armed; earlier failure tears down
-  what was acquired and surfaces the error.
+  initial summary set up, and the first inbound read armed. During startup, temporary
+  authentication, registration and relay connection failures keep the process alive
+  and retry after one minute, without an attempt limit. Every failed attempt prints
+  a Console warning that the server could not be reached and the internet connection
+  may be unavailable; local diagnostics retain the original error and stack trace.
+  Shutdown interrupts the retry wait. Rejected credentials still use the normal login
+  flow, and non-network startup failures surface normally.
 - Relay traffic is end-to-end encrypted and a joining client completes key exchange
   before it is served; one room-key encryptor is shared across that bridge
   session while every encrypted frame receives a fresh nonce.

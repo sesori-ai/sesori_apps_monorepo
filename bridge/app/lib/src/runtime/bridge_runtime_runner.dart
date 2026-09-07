@@ -88,6 +88,7 @@ import "../server/repositories/terminal_prompt_repository.dart";
 import "../server/services/bridge_instance_service.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/app_client_onboarding_service.dart";
+import "../services/bridge_startup_retry_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
@@ -236,7 +237,18 @@ class const BridgeRuntimeRunner._() {
         phase: BridgeShutdownPhase.shared,
         action: () => runtime?.close(),
       );
+    final startupRetryService = BridgeStartupRetryService();
+    shutdownCoordinator.addPhase(phase: BridgeShutdownPhase.signal, action: startupRetryService.cancel);
+    shutdownCoordinator.add(disposable: startupRetryService.dispose);
     final subscriptions = CompositeSubscription();
+    registerSignalHandlers(
+      requestShutdown: () async {
+        startAbortController.abort();
+        startupRetryService.cancel();
+        await runtime?.session.cancel();
+      },
+      subscriptions: subscriptions,
+    );
     shutdownCoordinator.add(disposable: subscriptions.cancel);
     final httpClient = http.Client();
     final processRunner = ProcessRunner();
@@ -298,6 +310,7 @@ class const BridgeRuntimeRunner._() {
     );
     final authRepository = AuthRepository(api: authApi);
     final runtimeAuthService = BridgeRuntimeAuthService(
+      startupRetryService: startupRetryService,
       authRepository: authRepository,
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
@@ -337,6 +350,7 @@ class const BridgeRuntimeRunner._() {
       // Kept in scope past this block: the ControlStatusNotifier (built later,
       // once the plugin exists) shares this client.
       ControlChannelClient? controlChannelClient;
+      ControlStatusNotifier? controlStatusNotifier;
       // Built early in supervised mode so the dispatcher can route the logout
       // `unregister_and_exit` command; reused as THE registration service later.
       // Standalone builds it after the interactive auth flow yields its token
@@ -350,6 +364,11 @@ class const BridgeRuntimeRunner._() {
           // exit (restart/auth/logout/contention) to the abnormal code.
           requestAbnormalExit: () => requestedSupervisedExit ??= BridgeSupervisedExitCode.controlChannelLost,
         );
+        controlStatusNotifier = ControlStatusNotifier(
+          client: controlChannelClient,
+          startupState: startupRetryService.states,
+        )..start();
+        shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
         // The GUI is the token authority in supervised mode: the bridge pulls
         // its access token from the control channel instead of the interactive
         // terminal login. Shares the same client the loss listener observes.
@@ -495,7 +514,7 @@ class const BridgeRuntimeRunner._() {
       final supervisedTokenService = controlChannelTokenService;
       if (supervisedTokenService != null) {
         try {
-          authAccessToken = await supervisedTokenService.getAccessToken();
+          authAccessToken = await startupRetryService.run(operation: supervisedTokenService.getAccessToken);
         } on ControlTokenUnavailableException catch (error, stackTrace) {
           final bool exitAlreadyRequested = requestedSupervisedExit != null;
           final BridgeSupervisedExitCode tokenUnavailableExit = resolveSupervisedTokenUnavailableExit(
@@ -537,6 +556,7 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider = tokenService;
         tokenRefresher = tokenService;
       }
+      if (startAbortController.isAborted) throw const PluginStartAbortedException();
       await runtimeAuthService.logAuthenticatedUser(
         accessToken: authAccessToken,
       );
@@ -706,7 +726,7 @@ class const BridgeRuntimeRunner._() {
           .addTo(subscriptions);
       await generationFactory.enforceBridgeOwnership();
       if (startAbortController.isAborted) {
-        Log.i("Plugin start aborted as requested.");
+        Log.i("Bridge startup aborted as requested.");
         return 0;
       }
       // After ownership is settled, so no other live bridge is using this
@@ -731,17 +751,11 @@ class const BridgeRuntimeRunner._() {
       // observing the plugin's lifecycle stream, the relay's connection-state
       // stream, and registration successes. Started before the session runs so
       // the initial registration and relay connect are never missed.
-      ControlStatusNotifier? controlStatusNotifier;
-      if (controlChannelClient != null) {
-        controlStatusNotifier = ControlStatusNotifier(
-          client: controlChannelClient,
-          pluginMetadata: activePluginLifecycleService.metadataSnapshots,
-          relayConnectionState: relayClient.connectionState,
-          registrations: bridgeRegistrationService.registrations,
-        );
-        controlStatusNotifier.start();
-        shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
-      }
+      controlStatusNotifier?.observeRuntime(
+        pluginMetadata: activePluginLifecycleService.metadataSnapshots,
+        relayConnectionState: relayClient.connectionState,
+        registrations: bridgeRegistrationService.registrations,
+      );
 
       final restartService = BridgeRestartService(
         processRepository: processRepository,
@@ -815,6 +829,7 @@ class const BridgeRuntimeRunner._() {
         filesystemAccessOk: filesystemAccessOk,
         statusNotifier: controlStatusNotifier,
         reconnectBackoff: ReconnectBackoffPolicy.standard,
+        startupRetryService: startupRetryService,
       ).create();
       runtime = BridgeRuntime(
         database: database,
@@ -839,7 +854,6 @@ class const BridgeRuntimeRunner._() {
       }
       activeRuntime.catalogHydrationListener.start();
 
-      registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
       // start() synchronously subscribes local route-trigger listeners before
       // the debug server can expose mutation routes.
       final sessionStart = activeRuntime.session.start();
@@ -914,7 +928,7 @@ class const BridgeRuntimeRunner._() {
       return requestedSupervisedExit?.code ?? 0;
     } on PluginStartAbortedException {
       if (startAbortController.isAborted) {
-        Log.i("Plugin start aborted as requested.");
+        Log.i("Bridge startup aborted as requested.");
         return 0;
       }
       rethrow;
@@ -939,7 +953,7 @@ class const BridgeRuntimeRunner._() {
         Log.w("Session teardown failed after a supervised restart handoff", error, stackTrace);
         return BridgeSupervisedExitCode.restart.code;
       }
-      Log.e("$error");
+      Log.e("Bridge startup or session failed", error, stackTrace);
       return 1;
     } finally {
       try {
