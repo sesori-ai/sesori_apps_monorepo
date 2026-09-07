@@ -170,6 +170,10 @@ variant, and worktree mode, and creating the session with its first input.
   directory when the repository is absent, commitless, or creation fails, and
   records worktree, branch, base branch, and base commit; in-place mode records
   the HEAD commit as baseline.
+- Base-branch refresh skips fetching when the repository has no `origin`, so
+  local-only Git projects can create dedicated worktrees without a fetch warning.
+  A configured origin that cannot be fetched still logs the failure and uses
+  existing refs.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.

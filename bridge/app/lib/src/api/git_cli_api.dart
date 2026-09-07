@@ -343,6 +343,7 @@ class GitCliApi({
     );
   }
 
+  /// Refreshes the selected origin branch, skipping repositories without origin.
   Future<void> fetchOriginBranch({
     required String projectPath,
     required String branchName,
@@ -350,6 +351,14 @@ class GitCliApi({
     if (branchName.contains("*")) {
       throw ArgumentError.value(branchName, "branchName", "must name one exact branch");
     }
+    const remoteArguments = ["remote"];
+    final remotesResult = await runGit(projectPath: projectPath, arguments: remoteArguments);
+    if (remotesResult.exitCode != 0) {
+      throw ProcessException("git", remoteArguments, remotesResult.stderr.toString(), remotesResult.exitCode);
+    }
+    final hasOrigin = remotesResult.stdout.toString().split("\n").any((remote) => remote.trim() == "origin");
+    if (!hasOrigin) return;
+
     final arguments = [
       "fetch",
       "--no-write-fetch-head",
