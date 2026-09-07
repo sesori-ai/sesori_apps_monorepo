@@ -881,4 +881,14 @@ known-set/remaining-set variant, and serializes compatibility fields only in
 `AbortSessionHandler`. Bridge app and client core fatal-info analysis pass; selected
 bridge coverage has 76 tests, selected client repository/service/session-detail
 coverage has 214 tests, and LSP reports zero diagnostics across eight changed
-production files. Incremental architecture review remains required.
+production files. Incremental architecture review of
+`2b06a1d6df..afae50a307` approved with no findings. The pinned implementation
+head is `afae50a30705218535b087910cc6ef9624bb3766`; against merge base
+`b43758e1b304d7f119787163875b78b38b1b25f1`, `git diff --numstat
+b43758e1b304d7f119787163875b78b38b1b25f1...afae50a30705218535b087910cc6ef9624bb3766`
+measures +3,406/-286 = 3,692 lines across 78 files: 634 generated, 1,718
+tests/fixtures, 621 docs/plans, and 719 production. The range includes every
+earlier measurement record and excludes subsequent non-implementation evidence
+commits beginning with the commit that records this figure. Its 215-line increase
+from `96c6b26573` is five generated, 92 tests/fixtures, 40 docs/plans, and 78
+production lines.

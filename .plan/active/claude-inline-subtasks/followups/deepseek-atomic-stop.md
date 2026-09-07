@@ -198,9 +198,15 @@ production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...96c6b
 reproduces it. The range includes every earlier measurement record and excludes
 subsequent non-implementation evidence commits beginning with the commit recording
 this figure. Its eight-line increase is four tests/fixtures and seven docs/plans
-offset by three fewer production lines. Splitting the response or partial-handling
-mapping from atomic STOP
-would leave the first PR vulnerable to re-stopping later work or missing independent
+offset by three fewer production lines. The final repository/DI boundary correction
+head `afae50a30705218535b087910cc6ef9624bb3766` measures +3,406/-286 =
+3,692 lines across 78 files: 634 generated, 1,718 tests/fixtures, 621 docs/plans,
+and 719 production. `git diff --numstat b43758e1b304d7f119787163875b78b38b1b25f1...afae50a30705218535b087910cc6ef9624bb3766`
+reproduces it against the same base. The range includes every earlier measurement
+record and excludes subsequent evidence commits beginning with the commit recording
+this figure. Its 215-line increase is five generated, 92 tests/fixtures, 40
+docs/plans, and 78 production lines. Splitting the response or partial-handling
+mapping from atomic STOP would leave the first PR vulnerable to re-stopping later work or missing independent
 work, while splitting the generated parser or admission-race fixes from their
 consumer would retain a duplicate schema or known escape path. The overrun is
 therefore accepted as one coherent, independently safe contract; every reviewed
@@ -218,6 +224,8 @@ The conservative-coverage and catalog-snapshot/exact-unhandled incremental revie
 approved with no findings. The final service/sealed-coverage incremental review also
 approved; the immediate follow-up narrows partial coverage to unhandled ids only so
 the repository derives a disjoint handled set without changing those boundaries.
+The final client/bridge repository, DI-composition, and route-serialization boundary
+review also approved with no findings.
 
 Native tests: delayed root/nested announcements; pending continuable admission;
 foreground handoff; pending/published background fork jobs; exact named scope;
@@ -232,9 +240,10 @@ notification backlog and prompt-write buffering; response delivered before reque
 stream drainage; visible-child confirm rejection and hidden-child accepted confirm;
 queued prompt versus resident child authority; independently resumed child plus a
 covered delegated sibling and partial client fanout; cleared process-local ancestry;
-client-less retained work; fully handled bridge lookup avoidance; nested exact unhandled fanout outside loaded-state gating; repository-boundary
-sealed coverage and service DI composition; lifecycle announcement during STOP;
-OpenCode legacy fanout when
+client-less retained work; fully handled bridge lookup avoidance; nested exact
+unhandled fanout outside loaded-state gating; repository-boundary sealed coverage
+and service DI composition; lifecycle announcement during STOP; OpenCode legacy
+fanout when
 child-stop outcomes are not authoritative; keep behavior; foreground retention; RPC
 failure; busy state after acceptance; whole-plugin stop. Verify new minimum/digests
 and frozen corpora. Run owning analyzers/tests; CI owns the full matrix.
