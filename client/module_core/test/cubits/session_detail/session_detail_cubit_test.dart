@@ -8,6 +8,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
@@ -723,6 +724,53 @@ void main() {
         ).called(1);
       },
     );
+
+    test("abort skips descendant fanout when the plugin handled sub-agents", () async {
+      const childId = "child-1";
+      when(
+        () => mockSessionService.getChildren(sessionId: sessionId),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [testSession(id: childId, parentID: sessionId)],
+          ),
+        ),
+      );
+      when(
+        () => mockSessionService.getSessionStatuses(),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SessionStatusResponse(statuses: {childId: SessionStatus.busy()}),
+        ),
+      );
+      when(
+        () => mockSessionService.abortSession(
+          sessionId: sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(const SessionAbortResponse(subAgentsHandled: true)),
+      );
+      final cubit = buildCubit();
+      await _awaitLoaded(cubit);
+
+      final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+
+      expect(outcome, isA<SessionAbortAccepted>());
+      verify(
+        () => mockSessionService.abortSession(
+          sessionId: sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).called(1);
+      verifyNever(
+        () => mockSessionService.abortSession(
+          sessionId: childId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      );
+      await cubit.close();
+    });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "replyToQuestion optimistically removes pending question and calls API",
@@ -2310,7 +2358,7 @@ void _stubAllDefaults(
       sessionId: any(named: "sessionId"),
       subAgents: any(named: "subAgents"),
     ),
-  ).thenAnswer((_) async => ApiResponse.success(null));
+  ).thenAnswer((_) async => ApiResponse.success(const SessionAbortResponse()));
   when(
     () => service.replyToQuestion(
       requestId: any(named: "requestId"),

@@ -2297,19 +2297,22 @@ class SessionDetailCubit(
   /// queue is cleared before the request so a staged send cannot drain while
   /// it is in flight (the bridge clears its own queue). A `confirm` probe may
   /// be refused, so it clears the queue only once the bridge accepted it.
-  /// Under `stop` every busy child session is aborted too — plugins whose
-  /// children are real sessions keep today's stop-everything behavior.
+  /// Under `stop`, busy child sessions are aborted too unless the root response
+  /// says the plugin already applied the requested descendant policy.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      if (root case ErrorResponse(:final error)) throw error;
+      final subAgentsHandled = switch (root) {
+        SuccessResponse(:final data) => data.subAgentsHandled,
+        ErrorResponse(:final error) => throw error,
+      };
       _clearLocalPromptQueue();
 
       // Read state after the await: an abort-driven status or transcript event
       // may have landed meanwhile and must not be overwritten by a stale copy.
       final current = state;
-      if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
+      if (!subAgentsHandled && subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
         final results = await Future.wait([
           for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
             if (status is SessionStatusBusy || status is SessionStatusRetry)

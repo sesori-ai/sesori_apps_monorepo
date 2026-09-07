@@ -723,6 +723,11 @@ interrupt response fields while retaining required/known-result checks; analysis
 and 104 tests pass. Named foreground children now correctly reject main-only stop
 even when all descendants are background; background named-child keep remains
 supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
+Merged actual `origin/main` in `a341dd144`, preserving upstream's required launch
+setting in the extracted DeepSeek test builder. ACP analysis + 323 tests and
+DeepSeek analysis + 106 tests pass after the merge.
+Managed runtime upgrades remain separately owned.
+
 The user chose a separate successor, then approved an adapter/release expansion
 when investigation showed activation end cannot identify interrupted-turn settlement.
 #1346 merged at `2cc1485d7c` (step 1/4), native #17 merged at
@@ -749,7 +754,3 @@ pass approved with no findings. Merged actual `origin/main` in `4eaf8ede58` and
 updated the affected async reply assertion. Post-merge ACP analysis + 325 tests,
 DeepSeek analysis + 114 tests, and Grok analysis + 85 tests pass. Final DeepSeek
 E2E follows, then Codex.
-Merged actual `origin/main` in `a341dd144`, preserving upstream's required launch
-setting in the extracted DeepSeek test builder. ACP analysis + 323 tests and
-DeepSeek analysis + 106 tests pass after the merge.
-Managed runtime upgrades remain separately owned.

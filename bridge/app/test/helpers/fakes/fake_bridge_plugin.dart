@@ -28,6 +28,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   List<PluginMessageWithParts> messagesResult = [];
   PluginProvidersResult providersResult = const PluginProvidersResult(providers: []);
   PluginSession? createSessionResult;
+  PluginAbortResult abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   PluginSession? renameSessionResult;
   PluginProject? renameProjectResult;
   List<PluginSession> childSessionsResult = [];
@@ -289,7 +290,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
     lastAbortSessionId = sessionId;
-    return const PluginAbortAccepted(workKept: false);
+    return abortResult;
   }
 
   @override

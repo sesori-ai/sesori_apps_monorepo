@@ -588,7 +588,7 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
-  }) async => const SessionAborted(workKept: false);
+  }) async => const SessionAborted(workKept: false, subAgentsHandled: false);
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
@@ -1091,8 +1091,13 @@ class FakeSessionRepository({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
   }) async {
-    await _plugin.abortSession(sessionId: sessionId, subAgents: subAgents.toPlugin());
-    return const SessionAborted(workKept: false);
+    return switch (await _plugin.abortSession(sessionId: sessionId, subAgents: subAgents.toPlugin())) {
+      PluginAbortAccepted(:final workKept, :final subAgentsHandled) => SessionAborted(
+        workKept: workKept,
+        subAgentsHandled: subAgentsHandled,
+      ),
+      final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
+    };
   }
 
   @override

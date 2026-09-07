@@ -1,6 +1,7 @@
 import "package:sesori_bridge/src/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -42,13 +43,15 @@ void main() {
       expect(plugin.lastAbortSessionId, equals("s1"));
     });
 
-    test("returns 200", () async {
+    test("returns whether the plugin handled descendant stops", () async {
+      plugin.abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
+
       final response = await handler.handle(
         makeRequest("POST", "/session/abort"),
         body: const AbortSessionRequest(sessionId: "s1"),
       );
 
-      expect(response, equals(const SuccessEmptyResponse()));
+      expect(response, equals(const SessionAbortResponse(subAgentsHandled: true)));
     });
   });
 }

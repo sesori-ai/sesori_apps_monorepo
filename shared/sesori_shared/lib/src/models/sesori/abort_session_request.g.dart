@@ -30,6 +30,15 @@ const _$SessionAbortSubAgentPolicyEnumMap = {
   SessionAbortSubAgentPolicy.stop: 'stop',
 };
 
+_SessionAbortResponse _$SessionAbortResponseFromJson(Map json) =>
+    _SessionAbortResponse(
+      subAgentsHandled: json['subAgentsHandled'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$SessionAbortResponseToJson(
+  _SessionAbortResponse instance,
+) => <String, dynamic>{'subAgentsHandled': instance.subAgentsHandled};
+
 _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>
     _SessionAbortRejection(
       runningSubAgentCount: (json['runningSubAgentCount'] as num).toInt(),

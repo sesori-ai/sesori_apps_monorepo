@@ -1,5 +1,6 @@
-import "package:json_annotation/json_annotation.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
 
+part "deepseek_protocol_dto.freezed.dart";
 part "deepseek_protocol_dto.g.dart";
 
 const String deepSeekExtensionMetadataKey = "sesori.ai/deepseek";
@@ -56,40 +57,20 @@ class const DeepSeekSubagentInterruptResponseDto({
   Map<String, dynamic> toJson() => _$DeepSeekSubagentInterruptResponseDtoToJson(this);
 }
 
-sealed class const DeepSeekSessionStopRequestDto() {
-  factory fromJson(Map<String, dynamic> json) {
-    // ignore: no_slop_linter/prefer_specific_type, the copied ACP JSON object has heterogeneous values
-    final fields = Map<String, dynamic>.of(json)..remove("kind");
-    return switch (json["kind"]) {
-      "session" => DeepSeekSessionStopSessionRequestDto.fromJson(fields),
-      "child" => DeepSeekSessionStopChildRequestDto.fromJson(fields),
-      _ => throw const FormatException("Invalid DeepSeek session stop request"),
-    };
-  }
+@Freezed(unionKey: "kind", unionValueCase: FreezedUnionCase.none, fromJson: true, toJson: true)
+sealed class DeepSeekSessionStopRequestDto with _$DeepSeekSessionStopRequestDto {
+  @FreezedUnionValue("session")
+  // ignore: invalid_annotation_target, Freezed forwards this serializer configuration to the generated variant
+  @JsonSerializable(disallowUnrecognizedKeys: true)
+  const factory session({required String sessionId}) = DeepSeekSessionStopSessionRequestDto;
 
-  Map<String, dynamic> toJson();
-}
+  @FreezedUnionValue("child")
+  // ignore: invalid_annotation_target, Freezed forwards this serializer configuration to the generated variant
+  @JsonSerializable(disallowUnrecognizedKeys: true)
+  const factory child({required String sessionId, required String childSessionId}) =
+      DeepSeekSessionStopChildRequestDto;
 
-@JsonSerializable(disallowUnrecognizedKeys: true)
-final class const DeepSeekSessionStopSessionRequestDto({required final String sessionId})
-    extends DeepSeekSessionStopRequestDto {
-  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopSessionRequestDtoFromJson(json);
-  @JsonKey(includeFromJson: false, includeToJson: true)
-  String get kind => "session";
-  @override
-  Map<String, dynamic> toJson() => _$DeepSeekSessionStopSessionRequestDtoToJson(this);
-}
-
-@JsonSerializable(disallowUnrecognizedKeys: true)
-final class const DeepSeekSessionStopChildRequestDto({
-  required final String sessionId,
-  required final String childSessionId,
-}) extends DeepSeekSessionStopRequestDto {
-  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopChildRequestDtoFromJson(json);
-  @JsonKey(includeFromJson: false, includeToJson: true)
-  String get kind => "child";
-  @override
-  Map<String, dynamic> toJson() => _$DeepSeekSessionStopChildRequestDtoToJson(this);
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopRequestDtoFromJson(json);
 }
 
 @JsonSerializable(disallowUnrecognizedKeys: true)

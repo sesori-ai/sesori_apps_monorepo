@@ -62,7 +62,7 @@ class SessionRepository({
   }
 
   /// Throws [SessionAbortRejectedException] for a refused `confirm`.
-  Future<ApiResponse<void>> abortSession({
+  Future<ApiResponse<SessionAbortResponse>> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
   }) async {

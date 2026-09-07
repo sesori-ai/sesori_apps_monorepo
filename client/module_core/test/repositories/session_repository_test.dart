@@ -95,7 +95,7 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(null));
     when(
       () => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop),
-    ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
+    ).thenAnswer((_) async => ApiResponse.success(const SessionAbortResponse()));
     when(
       () => api.replyToQuestion(
         requestId: "question-1",

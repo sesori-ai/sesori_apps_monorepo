@@ -2741,7 +2741,7 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
     required PluginAbortSubAgentPolicy subAgents,
   }) async {
     lastAbortSessionId = sessionId;
-    return const PluginAbortAccepted(workKept: false);
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   }
 
   @override

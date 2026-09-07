@@ -36,6 +36,19 @@ sealed class AbortSessionRequest with _$AbortSessionRequest {
   factory fromJson(Map<String, dynamic> json) => _$AbortSessionRequestFromJson(json);
 }
 
+/// Successful `POST /session/abort` response.
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionAbortResponse with _$SessionAbortResponse {
+  const factory({
+    // COMPATIBILITY 2026-09-07 (v1.8.4): Older bridges returned an empty
+    // success object and require the app's legacy descendant fanout. Remove
+    // the default when those bridges are no longer supported.
+    @Default(false) bool subAgentsHandled,
+  }) = _SessionAbortResponse;
+
+  factory fromJson(Map<String, dynamic> json) => _$SessionAbortResponseFromJson(json);
+}
+
 /// 409 body for a `confirm` stop the bridge refused because sub-agents run.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionAbortRejection with _$SessionAbortRejection {

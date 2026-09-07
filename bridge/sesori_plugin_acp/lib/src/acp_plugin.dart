@@ -1720,7 +1720,7 @@ abstract class AcpPlugin({
   }) async {
     if (!supportsScopedStop) {
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
-      return const PluginAbortAccepted(workKept: false);
+      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     }
     final children = childSessionTracker.runningChildren(sessionId: sessionId);
     final namedChild = childSessionTracker.runningChild(sessionId: sessionId);
@@ -1739,22 +1739,28 @@ abstract class AcpPlugin({
       );
     }
     if (subAgents == PluginAbortSubAgentPolicy.keep && children.isNotEmpty && !mainRunning) {
-      return const PluginAbortAccepted(workKept: true);
+      return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
     }
     if (subAgents == PluginAbortSubAgentPolicy.stop && supportsAtomicScopedStop) {
       for (final targetSessionId in {sessionId, ...children.map((child) => child.childSessionId)}) {
         _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
       }
       final client = _client;
-      if (client == null) return const PluginAbortAccepted(workKept: false);
-      final target = hasOwnPrompt || namedChild == null
+      if (client == null) {
+        return PluginAbortAccepted(
+          workKept: children.isNotEmpty || namedChild != null && !hasOwnPrompt,
+          subAgentsHandled: false,
+        );
+      }
+      final parentSessionId = namedChild?.parentSessionId ?? childSessionTracker.parentOf(sessionId: sessionId);
+      final target = hasOwnPrompt || parentSessionId == null
           ? AcpScopedStopSessionTarget(sessionId: sessionId)
           : AcpScopedStopChildTarget(
-              parentSessionId: namedChild.parentSessionId,
+              parentSessionId: parentSessionId,
               childSessionId: sessionId,
             );
       final result = await stopScopedTree(client: client, target: target);
-      return PluginAbortAccepted(workKept: result.workKept);
+      return PluginAbortAccepted(workKept: result.workKept, subAgentsHandled: true);
     }
     final mainResult = await _cancelScopedSession(
       sessionId: sessionId,
@@ -1763,6 +1769,7 @@ abstract class AcpPlugin({
     if (subAgents != PluginAbortSubAgentPolicy.stop) {
       return PluginAbortAccepted(
         workKept: children.isNotEmpty || mainResult == AcpChildCancelResult.notCancellable,
+        subAgentsHandled: false,
       );
     }
     final results = await Future.wait([
@@ -1792,6 +1799,7 @@ abstract class AcpPlugin({
       workKept:
           mainResult == AcpChildCancelResult.notCancellable ||
           children.any((child) => !cancelled.contains(child.childSessionId) && !coveredByParent(child: child)),
+      subAgentsHandled: true,
     );
   }
 

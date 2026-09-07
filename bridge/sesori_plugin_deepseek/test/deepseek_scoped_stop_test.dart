@@ -9,6 +9,32 @@ import "package:test/test.dart";
 import "support/deepseek_test_plugin.dart";
 
 void main() {
+  test("atomic stop reports tracked work kept when the native client is unavailable", () async {
+    final fake = FakeAcpProcess();
+    final plugin = buildDeepSeekTestPlugin(fake: fake);
+    try {
+      plugin.childSessionTracker.spawn(
+        sessionId: "root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "child",
+          description: "Tracked child",
+          agent: "deepseek",
+          prompt: "Continue",
+          isBackground: true,
+        ),
+        directory: "/repo",
+      );
+
+      final result = await plugin.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
+
+      expect(result, isA<PluginAbortAccepted>().having((accepted) => accepted.workKept, "work kept", true));
+      expect(fake.written, isEmpty);
+    } finally {
+      await plugin.dispose();
+      await fake.close();
+    }
+  });
+
   group("DeepSeek scoped stop", () {
     late _StopHarness harness;
     setUp(() async {
@@ -131,6 +157,21 @@ void main() {
       expect(harness.cancels, isEmpty);
       expect(harness.interrupts, isEmpty);
       expect(harness.plugin.childSessionTracker.busyChildIds(sessionId: "root"), {"child", "sibling"});
+    });
+
+    test("an ended child with a live descendant keeps its exact parent authority", () async {
+      await harness.spawn(child: "parent", parent: "root", background: true);
+      await harness.spawn(child: "descendant", parent: "parent", background: true);
+      await harness.end(child: "parent", parent: "root");
+
+      final stopping = harness.plugin.abortSession(sessionId: "parent", subAgents: PluginAbortSubAgentPolicy.stop);
+      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
+
+      expect(stop["params"], {"kind": "child", "sessionId": "root", "childSessionId": "parent"});
+      harness.reply(frame: stop, result: const {"workKept": false});
+      expect(await stopping, isA<PluginAbortAccepted>().having((r) => r.workKept, "kept", false));
+      expect(harness.cancels, isEmpty);
+      expect(harness.interrupts, isEmpty);
     });
 
     test("a finished child opened for a new user turn uses a resident-session target", () async {

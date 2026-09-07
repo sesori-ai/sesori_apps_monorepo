@@ -119,8 +119,11 @@ defaults and queued client sends coherent.
   are background; unsupported `keep` rejects before cancelling prompts or input.
   Full `stop` clears only prompts already queued at request time, then dispatches
   exactly one native atomic subtree request without a preceding standard cancel.
-  Native authority covers children admitted before or during stop even when the
-  bridge has not received their lifecycle frames. A named child request carries
+  Its successful response tells current clients that the plugin handled the
+  requested descendants, preventing legacy per-child fanout from re-stopping
+  sessions after the atomic request returns; an older bridge's empty success
+  response defaults to fanout. Native authority covers children admitted before
+  or during stop even when the bridge has not received their lifecycle frames. A named child request carries
   its exact direct parent and never widens to a parent or sibling; genuinely
   non-cancellable work is reported as retained. Stop responses never perform a
   later queue sweep, so prompts accepted after dispatch survive. Input cleanup is

@@ -534,11 +534,11 @@ confirmation, no child session or partial stop) and gets that subset.
   descendant subtree and leaves process-scoped tombstones against late frames;
   existing disconnect, process-exit, and disposal cleanup owns cancellation and
   releases those tombstones after the old event source drains.
-- User-directed release change (2026-09-05): publish adapter 0.1.3 before
-  slice 4 merges, using an exact pushed live-consumer commit for conformance.
-  Slice 4 removes v1 compatibility and must pin the managed target and minimum
-  accepted version to 0.1.3 using verified published checksums before it is ready.
-  Replay remains slice 5; scoped interrupt consumption remains a later PR.
+- Historical user-directed release change (2026-09-05): adapter 0.1.3 was
+  published before slice 4, which removed v1 compatibility and pinned 0.1.3 from
+  verified checksums. Replay remained slice 5 and scoped interrupt consumption
+  followed separately. The current 0.1.4 requirement below supersedes that
+  historical managed target/minimum without rewriting the completed slice.
 - Adapter 0.1.4 moves full-stop authority into the native session owner. The
   bridge now clears only request-time queued writes, sends one
   `deepseek/session/stop`, and handles `deepseek/input/cancel` on the ordered

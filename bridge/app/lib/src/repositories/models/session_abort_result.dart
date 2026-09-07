@@ -4,7 +4,11 @@ import "package:sesori_shared/sesori_shared.dart";
 sealed class const SessionAbortResult();
 
 /// The stop was performed; [workKept] says resident work was left running.
-final class const SessionAborted({required final bool workKept}) extends SessionAbortResult;
+/// [subAgentsHandled] prevents a client from repeating plugin-owned fanout.
+final class const SessionAborted({
+  required final bool workKept,
+  required final bool subAgentsHandled,
+}) extends SessionAbortResult;
 
 /// A `confirm` stop the plugin refused because sub-agents are running.
 final class const SessionAbortRejected({required final SessionAbortRejection rejection}) extends SessionAbortResult;

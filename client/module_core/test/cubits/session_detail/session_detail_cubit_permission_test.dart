@@ -427,7 +427,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      ).thenAnswer((_) async => ApiResponse.success(const SessionAbortResponse()));
       final analyticsService = stubbedProductAnalyticsService();
       final cubit = _buildCubit(
         sessionId: sessionId,

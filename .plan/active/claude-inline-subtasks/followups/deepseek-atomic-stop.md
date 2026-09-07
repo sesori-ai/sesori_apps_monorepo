@@ -133,8 +133,12 @@ New persistent state: zero. New long-lived coordination state: zero. Reuse nativ
 sessions/children/jobs/projections, bridge turn state and approval registry. Target
 lists and failures are request-local; the input abort callback is interaction-local
 and removed on settlement. No stop maps, epochs, timers, registries or admission
-cutoffs. Rough budget: 300–750 native and 250–600 bridge changed lines including
-fixtures/tests/codegen/docs, each below the ~1,500 soft cap unless justified.
+cutoffs. The native step landed at 840 changed lines after review fixes. The bridge
+estimate was 250–600 lines, but the complete consumer lands at 1,369: 791 lines are
+tests and frozen fixtures/codegen, while production, runtime pinning, and required
+capability/regression/plan reconciliation remain one coherent atomic contract. No
+independently useful split would be runnable before the 0.1.4 minimum and request
+handling landed together. Both steps remain below the ~1,500 soft cap.
 
 ## Verification and review record
 
