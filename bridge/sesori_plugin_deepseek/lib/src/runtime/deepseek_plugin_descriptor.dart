@@ -25,7 +25,7 @@ import "deepseek_runtime_manifest.dart";
 const int _probeOutputLimit = 64 * 1024;
 
 class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
-  static const String minVersion = "0.1.3";
+  static const String minVersion = DeepSeekRuntimeManifest.minimumVersion;
   static const String targetVersion = DeepSeekRuntimeManifest.targetVersion;
   static const String binOption = "bin";
   static const Duration _probeTimeout = Duration(seconds: 10);
@@ -286,6 +286,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
       deepSeekSessionService: DeepSeekSessionService(
         repository: const DeepSeekSessionRepository(api: api),
         childSessions: childSessionTracker,
+        minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
       ),
       deepSeekSessionOptionsService: deepSeekOptions,
       commandTracker: commandTracker,
