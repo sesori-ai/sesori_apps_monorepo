@@ -189,17 +189,20 @@ its observed-child snapshot retains legacy client fanout.
 ³ Codex (managed codex-cli 0.153.4, probed 2026-09-08): live children announce
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
-matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
-rollout and absent from `thread/read`. These are native probe findings.
-The table's tile checkmark covers existing live/replayed spawn-tool card
-projection with best-effort raw task-path child linkage; cards can remain
-unlinked. Exact-call tile correlation, nested activity replay, and plaintext
-`NEW_TASK` prompt projection are **not implemented** in Sesori yet.
-Sesori exposes child threads under their direct parent and keeps running
-descendants in root busy state. Metadata-only
-`thread/read(includeTurns: false)` retains parent and nickname enrichment. Raw task paths remain stable identity and are formatted
-for display. `turn/interrupt` works per child with its `turnId`, while parent
-interrupt leaves children running, so main-agent-only is supportable.
+matches `spawn_agent.call_id`. Sesori joins only that exact parent-local id,
+replaces the generic spawn card with one child-linked subtask tile, and applies
+the initial child turn's first terminal result consistently live and on replay.
+Normal initial child input is encrypted in the rollout and absent from
+metadata-only `thread/read(includeTurns: false)`, so the tile uses the exact
+nonblank message from that matching spawn call. It never uses parent user
+history, task names, labels, order, timing, or the encrypted envelope header.
+A complete child-owned plaintext `NEW_TASK` payload can replace the fallback
+for the initial turn; later resumed input cannot. Existing rollout tails observe
+input appends, with no extra watcher or timer. Sesori exposes child threads
+under their direct parent, keeps running descendants in root busy state, and
+formats raw path fallbacks for display. `turn/interrupt` works per child with
+its `turnId`, while parent interrupt leaves children running, so main-agent-only
+is supportable; scoped stop remains unimplemented.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,

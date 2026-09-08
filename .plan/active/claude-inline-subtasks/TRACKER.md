@@ -11,7 +11,8 @@
   the original Claude series is complete; harness follow-ups remain active
 - **Next action:** publish local Codex native-facts predecessor
   `claude-inline-subtasks-codex-native-facts-step5` (step 5/9), then stacked
-  integrated-tile step 6/9 and lifecycle-coverage step 7/9. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
+  integrated-tile step 6/9 and lifecycle-coverage step 7/9. Full reviewed
+  source remains preserved at `f8d5fbbc65`; actual-plugin QA remains open. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
   historical preparation superseded by the verified 0.153.4 rollout seam. DeepSeek #1363,
   #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
   stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
@@ -170,7 +171,7 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | #1396 merged at `7f6fb8cb50`; no tile code |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | Local predecessor complete; no tile capability activated |
 | [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay subtask tiles [step 6/9]` | Local branch `claude-inline-subtasks-codex-replay-tiles-step6`; package tests pass |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Stacked local successor; live plugin QA remains separate |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Local branch `claude-inline-subtasks-codex-live-coverage-step7`; package tests pass, live plugin QA remains separate |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Not started |
 | [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Live plugin QA outstanding |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |

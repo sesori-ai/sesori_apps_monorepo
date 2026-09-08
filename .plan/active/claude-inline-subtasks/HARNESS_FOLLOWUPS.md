@@ -289,9 +289,15 @@ confirmation, no child session or partial stop) and gets that subset.
 | 4/9 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | PR #1396 merged at `7f6fb8cb50`; metadata-only `thread/read`, no discarded cache |
 | 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | Local predecessor `claude-inline-subtasks-codex-native-facts-step5`; typed DTOs and repository facts only, no tile activation |
 | 6/9 | 🚧 | `codex: integrate live and replay subtask tiles [step 6/9]` | Local branch `claude-inline-subtasks-codex-replay-tiles-step6`; exact-call replacement, existing-tail wiring, lifecycle, and busy accounting |
-| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Local successor; plugin write-path regressions and current-state docs |
+| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Local branch `claude-inline-subtasks-codex-live-coverage-step7`; plugin write-path regressions and current-state docs |
 | 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
 | 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | matrix closure after live plugin QA |
+
+Split provenance is reviewed complete commit `f8d5fbbc65`, preserved on
+`claude-inline-subtasks-codex-tiles-step5-corrected`. Replacement branches
+stack from current `origin/main` `51faa03f6e`: native facts (1,419 changed
+lines), integrated tiles (1,403), then lifecycle coverage/docs (under 1,500).
+Tile behavior activates only in step 6; step 5 makes no capability claim.
 
 ### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 

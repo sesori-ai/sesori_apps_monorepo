@@ -139,6 +139,13 @@ reconnect or restart.
   part is swept the same way but to `cancelled` with no error text; because a
   root stays busy while any of its sub-agents runs, a live background
   sub-agent is never swept, only one whose bridge died.
+- Codex parent history joins a `spawn_agent` only to the exact nested
+  `item_completed/SubAgentActivity` id and replaces that generic card with one
+  child-linked subtask tile. Child replay first trims any copied parent prefix,
+  then uses only the initial child-owned turn for plaintext `NEW_TASK` prompt
+  precedence and first-terminal selection; resumed turns cannot rewrite either.
+  Encrypted input keeps the exact matching spawn message and never exposes its
+  envelope header. Missing or mismatched activity leaves the generic card.
 - Codex rollout replay applies each `thread_rolled_back` marker to the history
   surviving before it. `num_turns` counts user turns; each removed turn includes
   its user, assistant, reasoning, tool, and terminal records, while earlier
