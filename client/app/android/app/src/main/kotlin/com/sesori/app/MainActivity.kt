@@ -41,12 +41,13 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
                 if (call.method != "requestMicrophoneAccess") {
                     result.notImplemented()
                 } else if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    // True means permission was already granted before this gesture.
                     result.success(true)
                 } else if (previewMicrophoneResult != null) {
                     result.error("permission_request_pending", "A microphone permission request is already open.", null)
                 } else {
                     previewMicrophoneResult = result
-                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), previewMicrophoneRequestCode)
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), PREVIEW_MICROPHONE_REQUEST_CODE)
                 }
             }
         }
@@ -58,7 +59,7 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
         grantResults: IntArray,
     ) {
         super.onRequestPermissionsResult(requestCode, permissions, grantResults)
-        if (requestCode != previewMicrophoneRequestCode) return
+        if (requestCode != PREVIEW_MICROPHONE_REQUEST_CODE) return
         val result = previewMicrophoneResult ?: return
         previewMicrophoneResult = null
         val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
@@ -67,7 +68,8 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
             )
         }
-        result.success(granted)
+        // Native UI interrupted the gesture; check permission on a fresh gesture.
+        result.success(false)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -142,6 +144,6 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     }
 
     private companion object {
-        const val previewMicrophoneRequestCode = 43019
+        const val PREVIEW_MICROPHONE_REQUEST_CODE = 43019
     }
 }

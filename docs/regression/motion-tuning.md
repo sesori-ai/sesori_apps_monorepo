@@ -29,6 +29,9 @@ The explicitly selected microphone permission scenario opens real iOS/Android
 system permission UI, or app settings when access is denied. Recording remains
 simulated. Returning from that UI requires a fresh gesture; permission completion
 must never start a recording after the original hold ended or the sheet closed.
+Already-authorized access continues the current gesture without requiring an
+extra hold. Restricted iOS access does not send users to an inapplicable settings
+page.
 Automatic motion replay never opens permission UI.
 
 Global animation speed offers Normal (1×), 0.5×, and 0.2× without selecting a
@@ -93,6 +96,9 @@ mobile/desktop consumers using `CatalogScanRowMotion.standard`.
   leaves the destructive gradient visible during transcription.
 - Microphone failure adds inline error copy instead of opening native permission
   UI/settings; transcription failure fails to show the shared top error toast.
+- Permission completion starts a recording after the original hold ended or the
+  sheet closed, or returning from permission UI resumes without a fresh gesture.
+- Already-authorized microphone access discards the first recording gesture.
 - Ordinary scan-row defaults change, reduced motion is lost, or controllers
   continue after the widget is removed.
 - Production entrypoints import the toolkit or expose its controls.

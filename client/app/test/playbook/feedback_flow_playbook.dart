@@ -38,6 +38,7 @@ enum _InputMode() {
 enum _VoiceStage() {
   idle,
   requestingPermission,
+  awaitingPermissionAfterRelease,
   recording,
   cancelling,
   transcribing,
@@ -758,11 +759,11 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
   _SubmissionStage _submission = _SubmissionStage.editing;
   bool _submissionFailedOnce = false;
   bool _transcriptionFailedOnce = false;
-  bool _microphoneReady = false;
 
   bool get _canSend =>
       _submission != _SubmissionStage.submitting &&
       _voice != _VoiceStage.requestingPermission &&
+      _voice != _VoiceStage.awaitingPermissionAfterRelease &&
       _voice != _VoiceStage.recording &&
       _voice != _VoiceStage.cancelling &&
       _voice != _VoiceStage.transcribing;
@@ -849,24 +850,33 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
   Future<void> _startRecording() async {
     if (!_canSend) return;
     _focus.unfocus();
-    if (widget.scenario == FeedbackPreviewScenario.microphoneDenied && !_microphoneReady) {
+    if (widget.scenario == FeedbackPreviewScenario.microphoneDenied) {
       setState(() => _voice = _VoiceStage.requestingPermission);
       try {
-        _microphoneReady =
+        // True means access was already authorized, so no OS UI interrupted
+        // this gesture. Any permission/settings round trip returns false.
+        final canContinue =
             await const MethodChannel("com.sesori.app/feedback_preview")
                 .invokeMethod<bool>("requestMicrophoneAccess") ??
             false;
+        if (!mounted) return;
+        if (!canContinue || _voice == _VoiceStage.awaitingPermissionAfterRelease) {
+          setState(() => _voice = _VoiceStage.idle);
+          return;
+        }
       } on MissingPluginException {
         if (mounted) {
           _showVoiceError(message: "Microphone settings are available in the iOS and Android debug preview.");
+          setState(() => _voice = _VoiceStage.idle);
         }
+        return;
       } on PlatformException {
-        if (mounted) _showVoiceError(message: "Couldn’t open microphone settings. Please try again.");
+        if (mounted) {
+          _showVoiceError(message: "Couldn’t open microphone settings. Please try again.");
+          setState(() => _voice = _VoiceStage.idle);
+        }
+        return;
       }
-      // The original hold has ended while the OS prompt was open. A fresh
-      // gesture starts the simulated recording after permission is granted.
-      if (mounted) setState(() => _voice = _VoiceStage.idle);
-      return;
     }
     _cancelProgress.value = 0;
     setState(() {
@@ -891,7 +901,9 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
   }
 
   void _finishRecording() {
-    if (_voice == _VoiceStage.cancelling) {
+    if (_voice == _VoiceStage.requestingPermission) {
+      setState(() => _voice = _VoiceStage.awaitingPermissionAfterRelease);
+    } else if (_voice == _VoiceStage.cancelling) {
       _cancelRecording();
     } else {
       unawaited(_transcribe());
@@ -1145,7 +1157,11 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
     final hasText = _text.text.isNotEmpty;
     final keyboardMode = _mode == _InputMode.keyboard;
     final busy = _submission == _SubmissionStage.submitting;
-    final voiceBusy = _recording || _voice == _VoiceStage.transcribing || _voice == _VoiceStage.requestingPermission;
+    final voiceBusy =
+        _recording ||
+        _voice == _VoiceStage.transcribing ||
+        _voice == _VoiceStage.requestingPermission ||
+        _voice == _VoiceStage.awaitingPermissionAfterRelease;
     final transcriptReady = hasText && !keyboardMode && !_recording;
     return Row(
       children: [
@@ -1197,7 +1213,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
                           child: switch (_voice) {
                             _VoiceStage.recording ||
                             _VoiceStage.cancelling => _RecordingPreview(flattenProgress: _cancelProgress),
-                            _VoiceStage.requestingPermission => Text(
+                            _VoiceStage.requestingPermission || _VoiceStage.awaitingPermissionAfterRelease => Text(
                               "Microphone access…",
                               style: prego.textTheme.textMd.regular,
                             ),

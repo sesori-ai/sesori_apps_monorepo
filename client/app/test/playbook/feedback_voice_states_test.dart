@@ -26,7 +26,46 @@ void main() {
   for (final platform in [TargetPlatform.iOS, TargetPlatform.android]) {
     testWidgets(
       variant: TargetPlatformVariant.only(platform),
-      "permission grant waits for a fresh gesture and is reused",
+      "already-authorized access records on the first hold",
+      (tester) async {
+        permission = Completer<bool>()..complete(true);
+        await _open(tester: tester, permissionScenario: true);
+        final hold = await _hold(tester: tester);
+        expect(requests, hasLength(1));
+        expect(find.byType(PregoVoiceWaveform), findsOneWidget);
+        await hold.up();
+        await _finishTranscription(tester: tester);
+        expect(_draft(tester: tester), contains("The design is clean"));
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      variant: TargetPlatformVariant.only(platform),
+      "a native prompt round trip requires a fresh hold even before release",
+      (tester) async {
+        permission = Completer<bool>();
+        await _open(tester: tester, permissionScenario: true);
+        final hold = await _hold(tester: tester);
+        // The native handler returns false after any UI round trip, even a
+        // successful grant. A later check can authorize a fresh gesture.
+        permission.complete(false);
+        await tester.pumpAndSettle();
+        expect(find.byType(PregoVoiceWaveform), findsNothing);
+        await hold.up();
+        permission = Completer<bool>()..complete(true);
+        final freshHold = await _hold(tester: tester);
+        expect(find.byType(PregoVoiceWaveform), findsOneWidget);
+        expect(requests, hasLength(2));
+        await freshHold.up();
+        await _finishTranscription(tester: tester);
+        expect(tester.takeException(), isNull);
+      },
+    );
+
+    testWidgets(
+      variant: TargetPlatformVariant.only(platform),
+      "late authorization after release waits for a fresh gesture",
       (tester) async {
         permission = Completer<bool>();
         await _open(tester: tester, permissionScenario: true);
@@ -44,7 +83,7 @@ void main() {
 
         final freshHold = await _hold(tester: tester);
         expect(find.byType(PregoVoiceWaveform), findsOneWidget);
-        expect(requests, hasLength(1));
+        expect(requests, hasLength(2));
         await freshHold.up();
         await _finishTranscription(tester: tester);
         expect(_draft(tester: tester), contains("The design is clean"));
