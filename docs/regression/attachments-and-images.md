@@ -18,8 +18,11 @@ content the transcript renders live and after reload.
   settles after route exit; current-route failure instead transfers the one-shot
   snapshot into restoration. They never persist in a draft and travel inline
   within the staged-attachment size bound so the request fits the relay's message
-  limit. The owning plugin normalizes backend-produced images into a client-safe
-  attachment; host paths never cross that boundary.
+  limit. Existing-session picker, paste and drop entry are absent while that
+  chat's harness is blocked; a completion racing the block cannot dispatch, and
+  the availability gate does not retain staged bytes. The owning plugin normalizes
+  backend-produced images into a client-safe attachment; host paths never cross
+  that boundary.
 - Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
   Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
   copies; a provider-local image path remains bounded metadata and is never opened or sent to a client.
@@ -122,9 +125,9 @@ content the transcript renders live and after reload.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved. |
-| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, and desktop adapter coverage verifies file-pick and file-save success and cancellation, pasteboard writes, and system-share file lifecycle. |
+| L2 Routine | Automated existing-session UI/core, no plugin: a blocked fixture has no attachment entry, picker/paste/drop completion cannot dispatch after a live block, staged bytes are not retained by recovery, and transcript images remain viewable. Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, and desktop adapter coverage verifies file-pick and file-save success and cancellation, pasteboard writes, and system-share file lifecycle. |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
-| L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
+| L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
 ## Exploration Guidance
@@ -141,6 +144,9 @@ account-level rejection without changing the descriptor's capability claim.
 
 ## Failure Signals
 
+- A blocked existing chat offers picker, paste or drop submission; a late picker
+  result reaches the bridge; staged bytes survive solely because availability
+  recovered; or read-only mode prevents viewing existing transcript images.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload

@@ -17,7 +17,7 @@ This replaces the earlier broader proposal. There is **no queue recovery work**:
 no outbox, rejected-submission retention, attachment persistence, retry redesign,
 new composer handoff contract, or structured bridge rejection protocol. Existing
 queue ownership, storage, delivery uncertainty and cancellation behavior remain
-unchanged. Implementation has not started.
+unchanged. The gate landed in [PR #1375](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1375).
 
 ## Observed problem and current code
 
@@ -218,15 +218,15 @@ The user-approved scope reduction replaces the earlier six-step proposal before
 any implementation PR began. Slug remains `harness-unavailable-chats`. Count
 additions plus deletions, generated code and tests toward the 1,500-line soft cap;
 if implementation cannot fit, revise the split/total before opening that PR.
-The user explicitly approved a step-2 exception of approximately 1,750 changed
-lines after focused verification: keep the coherent gate and required internal
-API/test/generated updates together rather than add a prerequisite PR. The
-four-step series and input-gating-only scope remain unchanged.
+The user explicitly approved a step-2 cap exception after focused verification:
+keep the coherent gate and required internal API/test/generated updates together
+rather than add a prerequisite PR. Review fixes brought the merged PR to 1,897
+changed lines. The four-step series and input-gating-only scope remain unchanged.
 
 | Step and exact title | What / why | Risk and test focus | Expected result / estimate |
 |---|---|---|---|
 | 🌱 [harness-unavailable-chats] Plan read-only unavailable chats [step 1/4] | This plan and tracker; record prevention-only scope. | Low; documentation paths, titles and consistency. | No user-visible/database change; plan only. Approximately 350 documentation lines in the final plan/tracker. |
-| ⚙️ [harness-unavailable-chats] Gate unavailable chats on both clients [step 2/4] | Shared availability projection, metadata-first blocked view, cubit action/drain guards, shared notice/dialog gating and shell settings callbacks. | Medium; management transitions, existing startup/queue policy, cold history, disposal, both surfaces. | Known unusable chats are read-only with clear guidance and automatically regain eligible controls. No database/wire/storage change. Approximately 1,750 changed lines including generation and tests (user-approved cap exception). |
+| ⚙️ [harness-unavailable-chats] Gate unavailable chats on both clients [step 2/4] | Shared availability projection, metadata-first blocked view, cubit action/drain guards, shared notice/dialog gating and shell settings callbacks. | Medium; management transitions, existing startup/queue policy, cold history, disposal, both surfaces. | Known unusable chats are read-only with clear guidance and automatically regain eligible controls. No database/wire/storage change. Approximately 1,900 changed lines including generation, tests and review fixes (user-approved cap exception retained without widening scope). |
 | 🌿 [harness-unavailable-chats] Reconcile chat availability regressions [step 3/4] | Complete affected feature docs against delivered behavior and detection limits. | Low; accuracy of required behavior, failure signals and matrix. | No additional user-visible/database change; executable regression contracts. Approximately 100–200 lines. |
 | 🌿 [harness-unavailable-chats] Verify read-only chats and retire plan [step 4/4] | Run the recorded matrix, record privacy-safe EVIDENCE.md and cleanup, retire only after passing. | Low implementation complexity; isolated setup/auth fixtures required. | Proven gate and recovery of interaction, not messages. No additional product/database change. Approximately 100–200 lines plus directory move. |
 
@@ -323,4 +323,5 @@ attachment memory). The user chose **input gating only**, superseding all recove
 storage, typed admission responses, asynchronous handoff and queue changes. Those
 are removed, not deferred implementation requirements. No third architecture
 review is needed merely to approve applied findings; implementation receives its
-own scoped review. No implementation or live reproduction has run for this PR.
+own scoped review. Implementation and focused automated verification landed in PR #1375. Live
+client/bridge reproduction remains the final retirement step.

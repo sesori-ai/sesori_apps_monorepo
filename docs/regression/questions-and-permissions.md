@@ -127,15 +127,20 @@ reaches the backend so the turn continues.
   that session, sends replies through the owning session cubit, and dismisses it
   when the pending request settles; shell routing must not duplicate or bypass
   that ownership.
+- When management blocks the session's harness, pending banners and new response
+  dialogs are hidden. A dialog already open on either surface closes without
+  answering or rejecting; its pending model remains until an authoritative
+  refresh. Cubit reply and rejection seams independently refuse stale callbacks,
+  including completions from another surface, until interaction is usable again.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. |
+| L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. A blocked fixture exposes no pending banner/dialog; changing a loaded state to blocked closes an open dialog without a response. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
+| L2 Routine | Automated client: blocked question reply/reject and permission reply methods return refusal without resolving local state, dispatching remotely or emitting success analytics; recovery refreshes pending state before banners can return. Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. |
 | L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
-| L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
+| L4 Extended | Client end to end on both product surfaces: disable/restart or invalidate authentication from the other surface while a question or permission dialog is open; no answer is sent, both surfaces converge on read-only, and refreshed pending state returns only after recovery. Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
 
 ## Exploration Guidance
@@ -162,6 +167,10 @@ the prompt write is held, proving cancellation does not remove the later request
 
 ## Failure Signals
 
+- A blocked chat shows a pending banner, opens a response dialog, or accepts a
+  late answer/rejection callback. A dialog remains open through the transition,
+  closes by answering, clears pending data before refresh, or reappears before
+  interaction prerequisites recover.
 - A permission or question reply stalls behind a prompt sent to the same busy
   session instead of the accepted bridge send releasing its session lane
   immediately. For DeepSeek, the underlying `session/prompt` remains pending
@@ -232,7 +241,8 @@ the prompt write is held, proving cancellation does not remove the later request
 
 - Bridge pending-interaction and archived-validator services; per-plugin
   approval registries; shared pending permission/question and reply models.
-- Shared client permission and question surfaces and their auto-dismiss behavior:
+- Shared client permission and question surfaces, availability gating and
+  auto-dismiss behavior: `client/module_core/lib/src/cubits/session_detail/` and
   `client/module_app_ui/lib/src/features/session_detail/`, composed by
   `client/app/lib/features/session_detail/` and
   `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`.
