@@ -91,9 +91,11 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
   `SKStoreReviewController.requestReview(in:)` on the app's supported iOS 15.
   Release builds exclude this hook, and the
   normal product entry point does not call it. The same debug channel handles
-  `requestMicrophoneAccess`. Android registers both preview handlers only when
-  `BuildConfig.BUILD_TYPE == "debug"`, excluding Flutter profile builds too.
-  Android uses Google Play Review 2.0.2 to request and launch the native flow.
+  `requestMicrophoneAccess`. Android's debug source set owns both handlers in
+  `FeedbackPreviewActivity`, which inherits the normal activity's startup and
+  recorder lifecycle. The manifest selects that activity only for debug;
+  profile and release select `MainActivity`. Google Play Review 2.0.2 is a
+  `debugImplementation` dependency, excluded from profile and release builds.
   Completion does not establish that the OS displayed a prompt or accepted a rating.
   Permission/settings UI is real, while audio capture remains
   simulated. Late permission completion cannot begin a released or dismissed
@@ -181,7 +183,7 @@ Production work still needs:
 3. The agreed prompting rule (proposed: two minutes of foreground use, then a
    quiet return to the task list), cooldown persistence, and manual entry.
 4. A production native-review adapter and platform testing. Both current hooks
-   are debug-only. Apple’s prompt has been exercised; Android compilation and
+   are debug-only. Apple’s prompt has been exercised; full Android builds and
    Play-distributed device testing remain unverified. Wait for full sheet
    dismissal; OS suppression is not a failed review.
 5. Store-policy resolution for the requested positive-rating-only native
@@ -237,7 +239,16 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 - Rating choices, issue, and composer actions expose single labeled accessibility
   controls. Full VoiceOver navigation remains a team review item.
 
-StoreKit presentation was exercised in an iOS debug build. Android native
-compilation and device permission dialogs remain unverified locally. Real audio
+The Android activity sources pass standalone Kotlin 2.3.20 / JVM 21 compilation
+against Android 37 headers and the matching Flutter 3.47.2 debug, profile, and
+release engine APIs. Profile/release compile without any Google Play artifacts;
+debug also compiles `FeedbackPreviewActivity` with Play Review 2.0.2. This check
+uses compile-only stand-ins for the three existing Android resource symbols;
+it does not verify Gradle manifest merging, resource generation, or APK packaging.
+Source comparison confirms the moved review and permission handlers retain their
+behavior and the normal activity's startup/disposal methods are unchanged.
+
+StoreKit presentation was exercised in an iOS debug build. Full Android builds
+and device permission dialogs remain unverified locally. Real audio
 capture/transcription, Play Review device presentation, backend delivery, and production
 prompt/cooldown behavior remain production follow-up work.

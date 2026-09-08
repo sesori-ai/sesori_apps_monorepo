@@ -114,6 +114,8 @@ mobile/desktop consumers using `CatalogScanRowMotion.standard`.
   UI/settings; transcription failure fails to show the shared top error toast.
 - Denying the first retryable Android microphone prompt immediately opens Settings
   instead of returning to the preview and allowing another permission request.
+- Android profile or release builds include `FeedbackPreviewActivity`, the
+  feedback-preview channel, or the debug-only Google Play Review dependency.
 - Permission completion starts a recording after the original hold ended or the
   sheet closed, or returning from permission UI resumes without a fresh gesture.
 - Already-authorized microphone access discards the first recording gesture.

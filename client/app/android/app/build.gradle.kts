@@ -77,7 +77,6 @@ android {
     ndkVersion = flutter.ndkVersion
 
     buildFeatures {
-        buildConfig = true
         resValues = true
     }
 
@@ -90,6 +89,7 @@ android {
 
     defaultConfig {
         applicationId = "com.sesori.app"
+        manifestPlaceholders["mainActivityName"] = "com.sesori.app.MainActivity"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
@@ -111,6 +111,7 @@ android {
         debug {
             signingConfig = signingConfigs.getByName("debugTeam")
             applicationIdSuffix = ".debug"
+            manifestPlaceholders["mainActivityName"] = "com.sesori.app.FeedbackPreviewActivity"
             resValue("string", "app_name", "Sesori DEBUG")
 
             isMinifyEnabled = false
@@ -119,6 +120,7 @@ android {
         getByName("profile") {
             signingConfig = signingConfigs.getByName("debugTeam")
             applicationIdSuffix = ".profile"
+            manifestPlaceholders["mainActivityName"] = "com.sesori.app.MainActivity"
             resValue("string", "app_name", "Sesori PROFILE")
 
             proguardFiles.add(getDefaultProguardFile("proguard-android-optimize.txt"))
@@ -142,8 +144,8 @@ dependencies {
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
 
-    // Native feedback-preview review handoff; its MethodChannel is registered only in debug.
-    implementation("com.google.android.play:review:2.0.2")
+    // Only FeedbackPreviewActivity in src/debug uses Google Play Review.
+    debugImplementation("com.google.android.play:review:2.0.2")
 }
 
 // Fail fast if the signing properties file for the requested build type is missing.
