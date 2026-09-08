@@ -169,6 +169,10 @@ void main() {
       timestamp: null,
       payload: CodexRolloutEventDto.taskComplete(turnId: turnId, error: null),
     );
+    CodexRolloutLineDto rollback({required int numTurns}) => CodexRolloutLineDto.eventMessage(
+      timestamp: null,
+      payload: CodexRolloutEventDto.threadRolledBack(numTurns: numTurns),
+    );
     const userMessage = CodexRolloutLineDto.eventMessage(
       timestamp: null,
       payload: CodexRolloutEventDto.userMessage(message: "prompt"),
@@ -182,6 +186,25 @@ void main() {
         userMessage,
         taskComplete(turnId: "parent-turn-1"),
         taskStarted(turnId: "parent-turn-2"),
+        userMessage,
+        taskStarted(turnId: "child-turn-1"),
+        userMessage,
+        taskComplete(turnId: "child-turn-1"),
+      ];
+
+      final trimmed = CodexMessageRepository.trimForkedParentHistory(lines: lines);
+
+      expect(trimmed, [lines[0], ...lines.sublist(7)]);
+    });
+
+    test("keeps copied-parent turn detection aligned after a rollback", () {
+      final lines = [
+        meta(id: "child-1", source: CodexRolloutThreadSource.subagent),
+        meta(id: "root-1", source: null),
+        taskStarted(turnId: "rolled-back-parent-turn"),
+        userMessage,
+        rollback(numTurns: 1),
+        taskStarted(turnId: "parent-spawn-turn"),
         userMessage,
         taskStarted(turnId: "child-turn-1"),
         userMessage,

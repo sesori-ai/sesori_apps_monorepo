@@ -558,7 +558,7 @@ class CodexToolLifecycleTracker({
         event: event,
         time: time,
       ),
-      CodexRolloutUnknownEventDto() => const [],
+      CodexRolloutThreadRolledBackEventDto() || CodexRolloutUnknownEventDto() => const [],
     };
   }
 

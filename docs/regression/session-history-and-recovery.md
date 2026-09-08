@@ -138,11 +138,16 @@ reconnect or restart.
   part is swept the same way but to `cancelled` with no error text; because a
   root stays busy while any of its sub-agents runs, a live background
   sub-agent is never swept, only one whose bridge died.
-- A Codex child rollout created with `fork_turns` omits the copied parent
-  prefix from the child transcript. Trimming requires the child's leading
-  `thread_source == subagent` metadata followed by the copied parent
-  `session_meta`; root sessions, ordinary forks, malformed headers, and copies
-  whose first child-turn boundary is unresolved remain untouched.
+- Codex rollout replay applies each `thread_rolled_back` marker to the history
+  surviving before it. `num_turns` counts user turns; each removed turn includes
+  its user, assistant, reasoning, tool, and terminal records, while earlier
+  turns and content appended after rollback remain visible. Repeated markers
+  therefore compose cumulatively. A child rollout created with `fork_turns`
+  first omits the copied parent prefix from its transcript. Trimming requires
+  the child's leading `thread_source == subagent` metadata followed by the
+  copied parent `session_meta`; root sessions, ordinary forks, malformed
+  headers, and copies whose first child-turn boundary is unresolved remain
+  untouched.
 - Claude's CLI-authored API-failure assistant frame and its terminal result
   render as one error with the persisted assistant message identity. Transcript
   records marked `isApiErrorMessage` replay as that same error rather than as a
@@ -241,9 +246,12 @@ rules where supported.
   the session idle before `agent_settled`.
 - Buffered events are lost after a reconnect inside the replay window, or a slow
   request stalls other requests, plugins, or reconnects.
-- A Codex child transcript repeats copied parent turns, or a root, ordinary fork,
-  or malformed rollout loses its own first turn because it resembled a copied
-  sub-agent prefix.
+- A Codex rollback leaves reverted user, assistant, reasoning, tool, or subtask
+  content visible; removes an earlier retained turn; drops content added after
+  the marker; or applies a repeated marker to the original instead of already-
+  rolled-back history. A Codex child transcript repeats copied parent turns, or
+  a root, ordinary fork, or malformed rollout loses its own first turn because
+  it resembled a copied sub-agent prefix.
 - A Claude API failure appears once as ordinary assistant text and again as an
   error, or changes identity between live delivery and transcript replay. After
   a bridge restart an idle Claude root still shows a running subtask tile, or a
