@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.c merged; Step 9 open for review; Step 10.a architecture-approved locally
-- **Base:** Step 10.a current predecessor head `5c68c5b3a04ee284e72606a95be5e804dfa13939`
+- **Status:** Steps 1–9 merged; Step 10.a architecture-approved, publication prepared
+- **Base:** synced with main `28998e2f736c96eded48d6b604bce7c589d86863` after Step 9 merge
 - **Current branch:** `antigravity-harness-step-10a-archive-budgets`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -20,9 +20,10 @@
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b),
-  [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c)
-- **Open PR:** [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9).
-- **Next action:** monitor Step 9; synchronize and publish reviewed Step 10.a only after Step 9 merges.
+  [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c),
+  [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9)
+- **Open PR:** Step 10.a publication prepared.
+- **Next action:** publish and monitor Step 10.a; begin only Step 10.b locally.
 
 ## Fixed PR Series
 
@@ -391,6 +392,9 @@
 - [x] Integrated Step 9's unsupported-target/docs correction at `5c68c5b3a0`; archive-budget production/tests remain
   unchanged from their approved checkpoint. The corrected predecessor has its own passing descriptor evidence.
 - [x] Step 11 explicitly names root `README.md` and `bridge/README.md`, per user request.
+- [x] Step 9 merged with 16/16 checks; synchronized main `28998e2f73`. All reviewed bridge files remain byte-identical.
+  Main also changed app/plugin stop contracts, so reran the 10 app updater/registry tests and app analysis: all pass.
+  This overlaps the initial 54-test scope; unchanged archive tests were not rerun. Publication counts include metadata.
 
 ## Architecture Reviews
 
