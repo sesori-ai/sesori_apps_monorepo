@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$AbortSessionRequest {
 
- String get sessionId; SessionAbortSubAgentPolicy get subAgents;
+ String get sessionId; SessionAbortSubAgentPolicy get subAgents; bool get useAtomicStop;
 /// Create a copy of AbortSessionRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +29,16 @@ $AbortSessionRequestCopyWith<AbortSessionRequest> get copyWith => _$AbortSession
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AbortSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.subAgents, subAgents) || other.subAgents == subAgents));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AbortSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.subAgents, subAgents) || other.subAgents == subAgents)&&(identical(other.useAtomicStop, useAtomicStop) || other.useAtomicStop == useAtomicStop));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,subAgents);
+int get hashCode => Object.hash(runtimeType,sessionId,subAgents,useAtomicStop);
 
 @override
 String toString() {
-  return 'AbortSessionRequest(sessionId: $sessionId, subAgents: $subAgents)';
+  return 'AbortSessionRequest(sessionId: $sessionId, subAgents: $subAgents, useAtomicStop: $useAtomicStop)';
 }
 
 
@@ -49,7 +49,7 @@ abstract mixin class $AbortSessionRequestCopyWith<$Res>  {
   factory $AbortSessionRequestCopyWith(AbortSessionRequest value, $Res Function(AbortSessionRequest) _then) = _$AbortSessionRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, SessionAbortSubAgentPolicy subAgents
+ String sessionId, SessionAbortSubAgentPolicy subAgents, bool useAtomicStop
 });
 
 
@@ -66,11 +66,12 @@ class _$AbortSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of AbortSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? subAgents = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? subAgents = null,Object? useAtomicStop = null,}) {
   return _then(AbortSessionRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,subAgents: null == subAgents ? _self.subAgents : subAgents // ignore: cast_nullable_to_non_nullable
-as SessionAbortSubAgentPolicy,
+as SessionAbortSubAgentPolicy,useAtomicStop: null == useAtomicStop ? _self.useAtomicStop : useAtomicStop // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -82,11 +83,12 @@ as SessionAbortSubAgentPolicy,
 @JsonSerializable()
 
 class _AbortSessionRequest implements AbortSessionRequest {
-  const _AbortSessionRequest({required this.sessionId, this.subAgents = SessionAbortSubAgentPolicy.stop});
+  const _AbortSessionRequest({required this.sessionId, this.subAgents = SessionAbortSubAgentPolicy.stop, this.useAtomicStop = false});
   factory _AbortSessionRequest.fromJson(Map<String, dynamic> json) => _$AbortSessionRequestFromJson(json);
 
 @override final  String sessionId;
 @override@JsonKey() final  SessionAbortSubAgentPolicy subAgents;
+@override@JsonKey() final  bool useAtomicStop;
 
 /// Create a copy of AbortSessionRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -101,16 +103,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AbortSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.subAgents, subAgents) || other.subAgents == subAgents));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AbortSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.subAgents, subAgents) || other.subAgents == subAgents)&&(identical(other.useAtomicStop, useAtomicStop) || other.useAtomicStop == useAtomicStop));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,subAgents);
+int get hashCode => Object.hash(runtimeType,sessionId,subAgents,useAtomicStop);
 
 @override
 String toString() {
-  return 'AbortSessionRequest(sessionId: $sessionId, subAgents: $subAgents)';
+  return 'AbortSessionRequest(sessionId: $sessionId, subAgents: $subAgents, useAtomicStop: $useAtomicStop)';
 }
 
 
@@ -121,7 +123,7 @@ abstract mixin class _$AbortSessionRequestCopyWith<$Res> implements $AbortSessio
   factory _$AbortSessionRequestCopyWith(_AbortSessionRequest value, $Res Function(_AbortSessionRequest) _then) = __$AbortSessionRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, SessionAbortSubAgentPolicy subAgents
+ String sessionId, SessionAbortSubAgentPolicy subAgents, bool useAtomicStop
 });
 
 
@@ -138,11 +140,146 @@ class __$AbortSessionRequestCopyWithImpl<$Res>
 
 /// Create a copy of AbortSessionRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? subAgents = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? subAgents = null,Object? useAtomicStop = null,}) {
   return _then(_AbortSessionRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,subAgents: null == subAgents ? _self.subAgents : subAgents // ignore: cast_nullable_to_non_nullable
-as SessionAbortSubAgentPolicy,
+as SessionAbortSubAgentPolicy,useAtomicStop: null == useAtomicStop ? _self.useAtomicStop : useAtomicStop // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$SessionAbortResponse {
+
+ bool get subAgentsHandled;
+/// Create a copy of SessionAbortResponse
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionAbortResponseCopyWith<SessionAbortResponse> get copyWith => _$SessionAbortResponseCopyWithImpl<SessionAbortResponse>(this as SessionAbortResponse, _$identity);
+
+  /// Serializes this SessionAbortResponse to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,subAgentsHandled);
+
+@override
+String toString() {
+  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SessionAbortResponseCopyWith<$Res>  {
+  factory $SessionAbortResponseCopyWith(SessionAbortResponse value, $Res Function(SessionAbortResponse) _then) = _$SessionAbortResponseCopyWithImpl;
+@useResult
+$Res call({
+ bool subAgentsHandled
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionAbortResponseCopyWithImpl<$Res>
+    implements $SessionAbortResponseCopyWith<$Res> {
+  _$SessionAbortResponseCopyWithImpl(this._self, this._then);
+
+  final SessionAbortResponse _self;
+  final $Res Function(SessionAbortResponse) _then;
+
+/// Create a copy of SessionAbortResponse
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? subAgentsHandled = null,}) {
+  return _then(SessionAbortResponse(
+subAgentsHandled: null == subAgentsHandled ? _self.subAgentsHandled : subAgentsHandled // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _SessionAbortResponse implements SessionAbortResponse {
+  const _SessionAbortResponse({this.subAgentsHandled = false});
+  factory _SessionAbortResponse.fromJson(Map<String, dynamic> json) => _$SessionAbortResponseFromJson(json);
+
+@override@JsonKey() final  bool subAgentsHandled;
+
+/// Create a copy of SessionAbortResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$SessionAbortResponseCopyWith<_SessionAbortResponse> get copyWith => __$SessionAbortResponseCopyWithImpl<_SessionAbortResponse>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionAbortResponseToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,subAgentsHandled);
+
+@override
+String toString() {
+  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$SessionAbortResponseCopyWith<$Res> implements $SessionAbortResponseCopyWith<$Res> {
+  factory _$SessionAbortResponseCopyWith(_SessionAbortResponse value, $Res Function(_SessionAbortResponse) _then) = __$SessionAbortResponseCopyWithImpl;
+@override @useResult
+$Res call({
+ bool subAgentsHandled
+});
+
+
+
+
+}
+/// @nodoc
+class __$SessionAbortResponseCopyWithImpl<$Res>
+    implements _$SessionAbortResponseCopyWith<$Res> {
+  __$SessionAbortResponseCopyWithImpl(this._self, this._then);
+
+  final _SessionAbortResponse _self;
+  final $Res Function(_SessionAbortResponse) _then;
+
+/// Create a copy of SessionAbortResponse
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? subAgentsHandled = null,}) {
+  return _then(_SessionAbortResponse(
+subAgentsHandled: null == subAgentsHandled ? _self.subAgentsHandled : subAgentsHandled // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 

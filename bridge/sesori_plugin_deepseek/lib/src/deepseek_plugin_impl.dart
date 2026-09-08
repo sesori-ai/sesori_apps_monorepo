@@ -40,6 +40,12 @@ class DeepSeekPlugin({
   bool get supportsScopedStop => true;
 
   @override
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => deepSeekSessionService.stopScopedTree(client: client, target: target);
+
+  @override
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
     required String sessionId,

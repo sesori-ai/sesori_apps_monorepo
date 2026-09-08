@@ -114,13 +114,20 @@ defaults and queued client sends coherent.
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
+  OpenCode retains legacy client fallback: its observed-child snapshot does not
+  prove atomic subtree completion across separate HTTP/SSE channels.
 - DeepSeek 0.1.4 supports side-effect-free `confirm` rejection and child-only
-  `keep`. The bridge validates the native adapter floor and handles ordered
-  `deepseek/input/cancel`: input admitted before cancellation is rejected, while
-  later input survives even when question IDs are reused or prompt output was
-  buffered behind an unfinished stdin flush. Scoped stop otherwise retains the
-  existing direct-parent interrupt behavior until replacement step 5/5 consumes
-  native atomic subtree authority. Other ACP harnesses remain unchanged.
+  `keep`. For a current-client stop, ACP captures the named native scope plus
+  every independently resident descendant root, queues all native subtree STOPs
+  before awaiting responses, and waits for all of them. Persisted descendants
+  clear queued-only turns without inventing native ownership; retained children
+  use exact direct-parent authority. A partial native failure stays observable,
+  later prompts survive STOP responses, and lifecycle alone settles busy state.
+  Released clients keep named cancellation plus their own child fanout; a current
+  client treats an older bridge's `{}` response as no acknowledgment and falls
+  back to refreshed visible busy children or its request snapshot during reload.
+  `deepseek/input/cancel` remains ordered before later reused-ID input. Other ACP
+  harnesses remain unchanged.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the
   turn's requested model and thinking level on Pi's command line so

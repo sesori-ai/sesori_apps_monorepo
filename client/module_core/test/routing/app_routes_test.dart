@@ -43,6 +43,27 @@ void main() {
       }
     });
 
+    test("harness detail encodes identity once and defaults presentation at the boundary", () {
+      const id = "harness/with ? & symbols";
+      for (final presentation in HarnessSettingsPresentation.values) {
+        final uri = Uri.parse(AppRoute.settingsHarnessDetail(pluginId: id, presentation: presentation).buildPath());
+        final decoded = AppRoute.fromDef(
+          def: AppRouteDef.settingsHarnessDetail,
+          pathParams: {pluginIdPathParam: uri.pathSegments.last},
+          queryParams: uri.queryParameters,
+        ) as AppRouteSettingsHarnessDetail;
+        expect(decoded.pluginId, id);
+        expect(decoded.presentation, presentation);
+      }
+      expect(
+        AppRouteSettingsHarnessDetail.fromParams(
+          pathParams: const {pluginIdPathParam: id},
+          queryParams: const {},
+        ).presentation,
+        HarnessSettingsPresentation.modal,
+      );
+    });
+
     test("settings Harness management route is removed", () {
       expect(AppRouteDef.values.map((def) => def.name), isNot(contains("settingsHarnessManagement")));
       expect(AppRouteDef.values.map((def) => def.path), isNot(contains("/settings/harnesses/manage")));

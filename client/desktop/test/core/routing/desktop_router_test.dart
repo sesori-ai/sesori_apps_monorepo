@@ -1,11 +1,11 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
-import "package:sesori_desktop/features/settings/desktop_harnesses_settings_screen.dart";
 
 void main() {
   test("settings destination matching includes its child routes", () {
@@ -69,8 +69,8 @@ void main() {
       ),
     );
 
-    expect(widget, isA<DesktopHarnessesSettingsScreen>());
-    final screen = widget as DesktopHarnessesSettingsScreen;
+    expect(widget, isA<HarnessesSettingsView>());
+    final screen = widget as HarnessesSettingsView;
     expect(screen.presentation, HarnessSettingsPresentation.modal);
   });
 }

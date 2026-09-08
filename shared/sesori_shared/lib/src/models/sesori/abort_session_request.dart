@@ -31,9 +31,26 @@ sealed class AbortSessionRequest with _$AbortSessionRequest {
     // subAgents and mean today's stop-everything. Make it required once those
     // apps are unsupported.
     @Default(SessionAbortSubAgentPolicy.stop) SessionAbortSubAgentPolicy subAgents,
+    // COMPATIBILITY 2026-09-03 (v1.8.4): Released apps omit the atomic-stop
+    // handshake and retain their own child fanout. Remove the default once
+    // v1.8.3 clients are unsupported.
+    @Default(false) bool useAtomicStop,
   }) = _AbortSessionRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$AbortSessionRequestFromJson(json);
+}
+
+/// Successful `POST /session/abort` response.
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionAbortResponse with _$SessionAbortResponse {
+  const factory({
+    // COMPATIBILITY 2026-09-03 (v1.8.4): Released bridges return `{}` and do
+    // not acknowledge bridge-owned descendant handling. Remove the default
+    // once v1.8.3 bridges are unsupported.
+    @Default(false) bool subAgentsHandled,
+  }) = _SessionAbortResponse;
+
+  factory fromJson(Map<String, dynamic> json) => _$SessionAbortResponseFromJson(json);
 }
 
 /// 409 body for a `confirm` stop the bridge refused because sub-agents run.

@@ -230,13 +230,52 @@ idle suspension, the management snapshot, and lifecycle commands.
   the bridge refused outright, which the harness card already reports; a run that ends without
   a terminal outcome announces nothing at all.
 
+- Mobile and desktop share a grouped overview (Needs attention, Enabled, Not installed,
+  Disabled) and URL-addressable `/settings/harnesses/:pluginId` details. Registry order is
+  retained within groups; empty groups disappear. Installing entries belong to Not installed;
+  genuinely disabled entries belong to Disabled; only ready dormant/starting/active entries
+  are Enabled. Degraded remains attention even though its separate scan capability is routable.
+- Harness names open details, switches send actual enable/disable intent, and the separate
+  download target immediately starts an advertised install. Switches retain the bridge's
+  known enabled preference while blocked by setup or another operation; unknown runtime
+  has no inferred switch. A pending toggle replaces only that harness's switch with an
+  in-place indicator in the same 64×44 slot; the list stays visible and other mutations
+  remain temporarily gated. Independent per-harness toggles are follow-up #1358.
+- Running means reported busy session work, not merely an active runtime. Idle or stopped
+  overview entries have no subtitle section, even when the process is alive; disabled
+  entries also omit it. Installation/setup problems remain visible on eligible entries,
+  and unknown activity is not labelled Running. Global timeout is last; its value remains
+  visible but not editable during per-harness commands, and only its own all-harness update
+  shows progress.
+- Detail reports only known version and idle/busy activity, never a fabricated session count.
+  Missing runtime has setup/install content rather than operational actions. Unknown and
+  externally managed capabilities remain honest. Individual timeout inheritance, custom
+  minutes and no-timeout are all available through the timeout editor.
+- One flow-owned cubit and transient-presentation owner survives overview/detail navigation.
+  Opened from Settings, overview and detail show only left Back: detail returns to overview,
+  then overview returns to the same Settings page. Opened modally from New Session,
+  overview shows only right X and detail shows left Back plus right X. Detail Back retains
+  the overview flow; X from either page dismisses only the harness modal, preserving the
+  same New Session page and draft. Direct detail links construct overview ancestry without
+  creating an unrelated Settings page, and links without an opener fall back to
+  signed-in Projects on both shells. Removed IDs show an unavailable detail, not another harness.
+  Authentication and force sheets belong to this flow and leave with it; sheet dismissal
+  remains distinct from cancelling authentication. Safe lifecycle conflicts still authorize
+  force confirmation, never an install retry.
+- Shared cards use surface2, 26px radius, 16px page/section gaps, 68px minimum overview/action
+  rows and 52px minimum detail facts, growing at larger text sizes. Switches keep their
+  64×28 visual track inside an independently tappable, labeled 64×44 target; padding taps
+  toggle rather than navigate. Overview groups omit dividers and default badges.
+  Unsupported automatic-update and install pause/stop controls
+  are hidden rather than simulated.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
 | L2 Routine | Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
-| L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
+| L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, grouped overview and per-harness detail navigation, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
 | L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
 
@@ -259,6 +298,12 @@ headless and interactive-only authentication; catalog refresh; enable/disable;
 owned-process exit; and restart.
 
 ## Failure Signals
+
+- Detail navigation recreating operation state, duplicate force/auth sheets or scan announcements,
+  pushed Back skipping Settings, modal X losing the New Session page or draft, incorrect
+  Back/X header controls, or a missing ID displaying another harness.
+- A setup-blocked switch falsely shown off, unknown preference represented as disabled,
+  degraded grouped as healthy, or controls overflowing at phone width with larger text.
 
 - An isolated child receiving ambient variables, an inert JSON child selection creating
   directories, repeated child scopes losing concurrent updates, consumed ACP output appearing
