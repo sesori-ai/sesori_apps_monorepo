@@ -6,13 +6,12 @@ part of 'plugin_project.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-Map<String, dynamic> _$PluginProjectToJson(_PluginProject instance) =>
-    <String, dynamic>{
-      'id': instance.id,
-      'directory': instance.directory,
-      'name': ?instance.name,
-      'activity': ?instance.activity?.toJson(),
-    };
+Map<String, dynamic> _$PluginProjectToJson(_PluginProject instance) => <String, dynamic>{
+  'id': instance.id,
+  'directory': instance.directory,
+  'name': ?instance.name,
+  'activity': ?instance.activity?.toJson(),
+};
 
 Map<String, dynamic> _$PluginProjectActivityToJson(
   _PluginProjectActivity instance,

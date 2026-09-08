@@ -10,19 +10,24 @@ abstract final class const CatalogStrengthOrder() {
   /// in the order given.
   static const List<List<String>> _effortLadder = [
     ["ultra"],
-    ["max"],
+    ["max", "highest"],
     ["xhigh"],
     ["high"],
     ["medium", "mid"],
     ["low"],
-    ["minimal"],
+    ["minimal", "min"],
     ["off", "none"],
   ];
 
   static const List<String> _anthropicFamilies = ["fable", "opus", "sonnet", "haiku"];
   static const List<String> _openAiTiers = ["astra", "sol", "terra", "luna"];
 
-  static final RegExp _anthropicFamily = RegExp(_anthropicFamilies.join("|"));
+  /// Whole-word match, so `custom-sonnetlike` stays unranked.
+  static final RegExp _anthropicFamily = RegExp(
+    r"\b(?:"
+    "${_anthropicFamilies.join("|")}"
+    r")\b",
+  );
   static final RegExp _openAiId = RegExp(r"^gpt-?(\d+(?:\.\d+)*)-?(.*)$");
   static final RegExp _number = RegExp(r"\d+");
   static final RegExp _bracketSuffix = RegExp(r"\[[^\]]*\]");

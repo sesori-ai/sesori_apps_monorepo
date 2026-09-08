@@ -72,6 +72,8 @@ class GrokCatalogRepository({required final GrokAcpApi _api}) {
       values.add(value);
       if (option.isDefault) defaultValue ??= value;
     }
-    return (values: CatalogStrengthOrder.variants(values), defaultValue: defaultValue);
+    // Strongest first; without a declared default the first-listed effort
+    // stays the one a new session runs at.
+    return (values: CatalogStrengthOrder.variants(values), defaultValue: defaultValue ?? values.firstOrNull);
   }
 }

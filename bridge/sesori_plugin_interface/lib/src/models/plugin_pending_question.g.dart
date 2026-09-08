@@ -13,14 +13,13 @@ Map<String, dynamic> _$PluginQuestionOptionToJson(
   'description': instance.description,
 };
 
-Map<String, dynamic> _$PluginQuestionInfoToJson(_PluginQuestionInfo instance) =>
-    <String, dynamic>{
-      'question': instance.question,
-      'header': instance.header,
-      'options': instance.options.map((e) => e.toJson()).toList(),
-      'multiple': instance.multiple,
-      'custom': instance.custom,
-    };
+Map<String, dynamic> _$PluginQuestionInfoToJson(_PluginQuestionInfo instance) => <String, dynamic>{
+  'question': instance.question,
+  'header': instance.header,
+  'options': instance.options.map((e) => e.toJson()).toList(),
+  'multiple': instance.multiple,
+  'custom': instance.custom,
+};
 
 Map<String, dynamic> _$PluginPendingQuestionToJson(
   _PluginPendingQuestion instance,

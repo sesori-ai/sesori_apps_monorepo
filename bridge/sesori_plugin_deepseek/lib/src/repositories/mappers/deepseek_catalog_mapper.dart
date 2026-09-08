@@ -18,11 +18,12 @@ class const DeepSeekCatalogMapper() {
                   id: model.id,
                   name: model.name,
                   // Strongest first; model ids are opaque, so models keep
-                  // DeepSeek's order.
+                  // DeepSeek's order. Without a declared default the
+                  // first-listed effort stays the one a new session runs at.
                   variants: CatalogStrengthOrder.variants(model.reasoningEfforts),
                   defaultVariant: model.reasoningEfforts.contains(model.defaultReasoningEffort)
                       ? model.defaultReasoningEffort
-                      : null,
+                      : model.reasoningEfforts.firstOrNull,
                   family: null,
                   isAvailable: true,
                   releaseDate: null,

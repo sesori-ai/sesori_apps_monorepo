@@ -13,6 +13,10 @@ void main() {
     test("treats mid, minimal, and none as ladder entries", () {
       expect(CatalogStrengthOrder.variants(["none", "mid", "minimal", "High"]), ["High", "mid", "minimal", "none"]);
     });
+
+    test("ranks the highest and min aliases with max and minimal", () {
+      expect(CatalogStrengthOrder.variants(["min", "low", "highest", "high"]), ["highest", "high", "low", "min"]);
+    });
   });
 
   group("CatalogStrengthOrder.models", () {
@@ -57,6 +61,14 @@ void main() {
           "gpt-5.3-codex-spark",
         ],
       );
+    });
+
+    test("matches a family only as a whole word", () {
+      expect(order(["custom-sonnetlike", "claude-sonnet-4-6", "opusish"]), [
+        "claude-sonnet-4-6",
+        "custom-sonnetlike",
+        "opusish",
+      ]);
     });
 
     test("ignores namespace prefixes and keeps unknown models last in given order", () {

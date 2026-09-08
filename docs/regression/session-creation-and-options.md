@@ -27,12 +27,14 @@ variant, and worktree mode, and creating the session with its first input.
   agent's declared variant when valid, then the model's declared default when
   offered, then the first listed. Selecting a variant is therefore a switch
   between named levels, never a reset to unset.
-- Every plugin lists effort variants strongest first on one shared ladder
-  (`ultra`, `max`, `xhigh`, `high`, `medium`/`mid`, `low`, `minimal`, then
-  `off`/`none`; unknown names follow in backend order) and declares the default
-  separately: the backend's own default where it names one (Claude `high`,
-  Codex, DeepSeek, Grok), otherwise the variant the backend listed first, so
-  reordering never changes what runs.
+- Every plugin that exposes effort variants lists them strongest first on one
+  shared ladder (`ultra`, `max`/`highest`, `xhigh`, `high`, `medium`/`mid`,
+  `low`, `minimal`/`min`, then `off`/`none`; unknown names a plugin retains
+  follow in backend order) and declares the default separately: the backend's
+  own default where it names one (Claude `high`, Codex, DeepSeek, Grok),
+  otherwise the variant the backend listed first, so reordering never changes
+  what runs. Hermes exposes none, and Claude and Pi drop names outside their
+  own closed level sets before ordering.
 - Every plugin ranks Anthropic and OpenAI models strongest first from the model
   id through one shared rule: newest generation first, then Fable, Opus,
   Sonnet, Haiku, or Astra, Sol, Terra, Luna, the bare GPT model, then other

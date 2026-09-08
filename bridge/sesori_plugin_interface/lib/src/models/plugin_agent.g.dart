@@ -6,21 +6,19 @@ part of 'plugin_agent.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-Map<String, dynamic> _$PluginAgentModelToJson(_PluginAgentModel instance) =>
-    <String, dynamic>{
-      'modelID': instance.modelID,
-      'providerID': instance.providerID,
-      'variant': ?instance.variant,
-    };
+Map<String, dynamic> _$PluginAgentModelToJson(_PluginAgentModel instance) => <String, dynamic>{
+  'modelID': instance.modelID,
+  'providerID': instance.providerID,
+  'variant': ?instance.variant,
+};
 
-Map<String, dynamic> _$PluginAgentToJson(_PluginAgent instance) =>
-    <String, dynamic>{
-      'name': instance.name,
-      'description': ?instance.description,
-      'model': ?instance.model?.toJson(),
-      'mode': _$PluginAgentModeEnumMap[instance.mode]!,
-      'hidden': instance.hidden,
-    };
+Map<String, dynamic> _$PluginAgentToJson(_PluginAgent instance) => <String, dynamic>{
+  'name': instance.name,
+  'description': ?instance.description,
+  'model': ?instance.model?.toJson(),
+  'mode': _$PluginAgentModeEnumMap[instance.mode]!,
+  'hidden': instance.hidden,
+};
 
 const _$PluginAgentModeEnumMap = {
   PluginAgentMode.all: 'all',
