@@ -21,6 +21,7 @@ class FakeOpenCodeApi({
   String? lastPromptDirectory;
   SendPromptBody? lastPromptBody;
   final List<SendPromptBody> promptBodies = [];
+  final List<String> abortedSessionIds = [];
   Part? lastUpdatedPart;
   String? lastUpdatedMessageId;
   String? lastUpdatedPartId;
@@ -107,7 +108,10 @@ class FakeOpenCodeApi({
     lastCommandBody = body;
   }
 
-  Future<void> abortSession({required String sessionId, required String? directory}) async {}
+  Future<void> abortSession({required String sessionId, required String? directory}) async {
+    abortedSessionIds.add(sessionId);
+  }
+
   Future<List<Agent>> listAgents({required String directory}) async => [];
   Future<List<QuestionRequest>> getPendingQuestions({required String? directory}) async => [];
   Future<List<PermissionRequest>> getPendingPermissions({required String? directory}) async => [];

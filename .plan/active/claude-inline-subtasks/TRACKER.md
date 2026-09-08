@@ -9,9 +9,9 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the series is retired
-- **Next action:** deliver replacement step 4/5 (native input/contract), then
-  step 5/5 (complete ACP-owned stop). PR #1356 closed without merge. Complete
-  user-owned DeepSeek phone/desktop E2E before Codex.
+- **Next action:** finish review of native-stop step 5/5 (#1370); step 4/5
+  (#1363) is merged. PR #1356 remains closed without merge. Complete
+  user-owned DeepSeek phone/desktop E2E after step 5/5 merges, before Codex.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited

@@ -2307,17 +2307,16 @@ class SessionDetailCubit(
       };
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      if (root case ErrorResponse(:final error)) throw error;
+      final subAgentsHandled = switch (root) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw error,
+      };
       _clearLocalPromptQueue();
 
       // Prefer post-stop status truth, but retain the request snapshot when an
       // abort-driven reload temporarily replaces the loaded detail state.
       final current = state;
       final childStatuses = current is SessionDetailLoaded ? current.childStatuses : requestChildStatuses;
-      final subAgentsHandled = switch (root) {
-        SuccessResponse(:final data) => data,
-        ErrorResponse() => false,
-      };
       if (subAgents != SessionAbortSubAgentPolicy.keep && !subAgentsHandled) {
         final results = await Future.wait([
           for (final MapEntry(key: childId, value: status) in childStatuses.entries)

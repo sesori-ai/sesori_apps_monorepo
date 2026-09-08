@@ -1750,6 +1750,8 @@ abstract class AcpPlugin({
     required String childSessionId,
   }) => throw UnsupportedError("$id does not support scoped child cancellation");
 
+  /// Stops native work and orders cancellation of its pending input on the stream.
+  /// Callers fence local queued turns without racing the native input owner.
   Future<AcpScopedStopResult> stopScopedTree({
     required AcpStdioClient client,
     required AcpScopedStopTarget target,
@@ -1796,9 +1798,10 @@ abstract class AcpPlugin({
     final hasOwnPrompt = (_turnStates[sessionId]?.pending ?? 0) > 0;
     final activeSubAgentSessionIds = {
       ...children.map((child) => child.childSessionId),
-      for (final descendantSessionId in independentResidentSessionIds)
-        if (_inFlightTurnSessions.contains(descendantSessionId) ||
-            childSessionTracker.hasActiveWorkForSession(sessionId: descendantSessionId))
+      for (final descendantSessionId in allDescendantSessionIds)
+        if ((_turnStates[descendantSessionId]?.pending ?? 0) > 0 ||
+            independentResidentSessionIds.contains(descendantSessionId) &&
+                childSessionTracker.hasActiveWorkForSession(sessionId: descendantSessionId))
           descendantSessionId,
     };
     final mainRunning = hasOwnPrompt || namedChild != null;

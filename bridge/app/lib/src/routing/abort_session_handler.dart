@@ -25,15 +25,14 @@ class AbortSessionHandler({
       subAgents: body.subAgents,
       useAtomicStop: body.useAtomicStop,
     );
-    if (result case SessionAbortRejected(:final rejection)) {
+    return switch (result) {
+      SessionAborted(:final subAgentsHandled) => SessionAbortResponse(subAgentsHandled: subAgentsHandled),
       // The app parses the 409 body as SessionAbortRejection JSON.
-      throw buildJsonErrorResponse(request: request, status: 409, body: rejection.toJson());
-    }
-    return SessionAbortResponse(
-      subAgentsHandled: switch (result) {
-        SessionAborted(:final subAgentsHandled) => subAgentsHandled,
-        SessionAbortRejected() => false,
-      },
-    );
+      SessionAbortRejected(:final rejection) => throw buildJsonErrorResponse(
+        request: request,
+        status: 409,
+        body: rejection.toJson(),
+      ),
+    };
   }
 }

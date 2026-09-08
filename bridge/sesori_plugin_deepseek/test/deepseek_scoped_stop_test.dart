@@ -34,6 +34,34 @@ void main() {
       expect(harness.fake.written, hasLength(before));
     });
 
+    for (final resident in [false, true]) {
+      test("confirm preserves an accepted child turn before dispatch (resident: $resident)", () async {
+        await harness.spawn(child: "child", parent: "root", background: true);
+        await harness.end(child: "child", parent: "root");
+        if (resident) {
+          harness.settlePrompt(await harness.prompt(sessionId: "child"));
+          await harness.waitForIdle();
+        }
+        await harness.queuePromptUntilLoad(sessionId: "child");
+
+        final result = await harness.atomicAbort(
+          sessionId: "root",
+          policy: PluginAbortSubAgentPolicy.confirm,
+          knownSubAgentSessionIds: const {"child"},
+        );
+
+        expect(result, isA<PluginAbortRejectedSubAgentsRunning>());
+        expect(harness.stops, isEmpty);
+        expect(harness.cancels, isEmpty);
+        expect(harness.interrupts, isEmpty);
+        if (!resident) {
+          final load = await harness.waitForSession(method: AcpMethods.sessionLoad, sessionId: "child");
+          harness.reply(frame: load, result: <String, dynamic>{});
+        }
+        harness.settlePrompt(await harness.waitFor(method: AcpMethods.sessionPrompt, count: resident ? 2 : 1));
+      });
+    }
+
     test("unsupported keep is side-effect free", () async {
       await harness.prompt(sessionId: "root");
       await harness.spawn(child: "foreground", parent: "root", background: false);

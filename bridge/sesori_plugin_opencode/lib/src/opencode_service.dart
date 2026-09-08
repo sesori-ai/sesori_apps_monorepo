@@ -263,7 +263,7 @@ class OpenCodeService(
       abortRoot(sessionId: sessionId),
       for (final child in children) abortRoot(sessionId: child),
     ]);
-    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
   }
 
   /// Aborts exactly [sessionId] without touching its children.
