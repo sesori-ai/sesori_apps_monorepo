@@ -169,8 +169,8 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | #1387 merged; historical title unchanged (now step 3/9) |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | #1396 merged at `7f6fb8cb50`; no tile code |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | Local predecessor complete; no tile capability activated |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: replay inline subtask tiles [step 6/9]` | Stacked local successor |
-| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: wire live subtask lifecycle tiles [step 7/9]` | Stacked local successor |
+| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | Stacked local successor; full live/replay production and focused tests |
+| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Stacked local successor; write-path coverage and capability/regression docs only |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Not started |
 | [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Live plugin QA outstanding |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
