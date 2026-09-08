@@ -9,9 +9,9 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the original Claude series is complete; harness follow-ups remain active
-- **Next action:** land Codex causal cleanup [PR #1396](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1396)
-  (step 4/7), then integrate corrected inline tiles as step 5/7. Merged PR #1387 is historical preparation
-  superseded by the verified 0.153.4 rollout-input seam. DeepSeek #1363,
+- **Next action:** land native-facts PR #1398 (step 5/9), then the stacked
+  live/replay integration (6/9) and lifecycle coverage (7/9) slices. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
+  historical preparation superseded by the verified 0.153.4 rollout seam. DeepSeek #1363,
   #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
   stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
   remains deferred by user choice; the overall plan remains active.
@@ -163,13 +163,15 @@ post-merge E2E gates are unchanged.
 | Done | Harness | Description | State |
 |---|---|---|---|
 | [x] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) merged |
-| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged; historical title unchanged (now step 1/7) |
-| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) merged; lifecycle hardening [PR #1280](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1280) merged; historical title unchanged (now step 2/7) |
-| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | [PR #1387](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1387) merged; historical title unchanged (now step 3/7); preparation superseded by 0.153.4 evidence |
-| [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | [PR #1396](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1396) open; implemented, awaiting merge; no tile code |
-| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents [step 5/7]` | Rejected incomplete checkpoint preserved on `claude-inline-subtasks-codex-tiles-step4-integrated`; original successor refs remain preserved and unpublished |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 6/7]` | Not started |
-| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 7/7]` | Not started |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | #1263 merged; historical title unchanged (now step 1/9) |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | #1273/#1280 merged; historical title unchanged (now step 2/9) |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | #1387 merged; historical title unchanged (now step 3/9) |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | #1396 merged at `7f6fb8cb50`; no tile code |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | [PR #1398](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1398) open; implemented, awaiting merge; no tile capability activated |
+| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | Stacked local successor; full live/replay production and focused tests |
+| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Stacked local successor; write-path coverage and capability/regression docs only |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Not started |
+| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Live plugin QA outstanding |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
 | [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
@@ -740,7 +742,7 @@ corrected independent-scope stop and pending/later-input checks passed.
 The user deferred desktop and requested progression to Codex after phone checks;
 managed-runtime automation remains separately owned.
 
-Codex seven-step correction (user-authorized): merged PR #1387 keeps its
+Codex correction (now nine steps after automatic size-based splitting): #1387 keeps its
 historical `[step 3/6]` title but is superseded preparation. Current 0.153.4
 persists started activity as `event_msg/item_completed/item/SubAgentActivity`;
 its item id exactly matches `spawn_agent.call_id`. Normal child input appends as
@@ -754,14 +756,15 @@ unrelated parent `user_message`, copied parent history, task-name/order/timing
 match, or envelope header. Valid child-owned plaintext `NEW_TASK` input may
 replace that fallback for the initial delegated turn.
 
-Step 4/7 therefore removes only obsolete #1387 machinery: turn/item/content
+Merged cleanup #1396 (historical step 4/7, now 4/9) removed obsolete #1387 machinery: turn/item/content
 thread DTOs, `includeTurns: true`, prompt cache/lookups/cleanup, and synthetic
 prompt-cache tests. Parent/source/nickname metadata remains. Workspace codegen,
 focused metadata/write-path/service tests, the complete Codex package suite,
-and `dart analyze --fatal-infos` pass. Corrected tiles are step 5/7; scoped stop
-is 6/7; coverage is 7/7. Rejected tile work remains at
+and `dart analyze --fatal-infos` passed. Native facts are step 5/9, full
+live/replay integration 6/9, lifecycle coverage 7/9, scoped stop 8/9, and final
+coverage 9/9. Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-step4-integrated` (`c6aa29a8ce`), while
 `claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and
 `claude-inline-subtasks-codex-tiles-successor-ready` (`8a2952f318`) remain
 untouched. No runtime pin, native source, client/shared contract, database, or
-stop behavior changes in cleanup step 4/7.
+stop behavior changed in cleanup #1396.

@@ -72,6 +72,7 @@ class CodexToolLifecycleTracker({
       ),
       CodexRolloutSessionMetadataLineDto() ||
       CodexRolloutTurnContextLineDto() ||
+      CodexRolloutInterAgentCommunicationMetadataLineDto() ||
       CodexRolloutCompactedLineDto() ||
       CodexRolloutUnknownLineDto() => const [],
     };
@@ -553,6 +554,7 @@ class CodexToolLifecycleTracker({
         turnId: turnId ?? thread.activeTurnId,
         status: PluginToolStatus.error,
       ),
+      CodexRolloutItemCompletedEventDto() => const [],
       CodexRolloutImageGenerationEndEventDto() => _observeImageGenerationEnd(
         thread: thread,
         event: event,

@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/codex_rollout_api.dart";
 import "../api/models/codex_rollout_dto.dart";
+import "../api/models/codex_sub_agent_item_dto.dart";
 import "../codex_config_reader.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "codex_tool_lifecycle_tracker.dart";
@@ -9,6 +10,7 @@ import "mappers/codex_rollout_tool_mapper.dart";
 import "mappers/codex_tool_part_mapper.dart";
 import "mappers/codex_user_content_mapper.dart";
 import "models/codex_projected_tool.dart";
+import "models/codex_sub_agent_rollout_fact.dart";
 import "models/codex_thread_record.dart";
 
 final class CodexPreparedMessageRead({required Iterable<CodexRolloutLineDto> lines}) {
@@ -148,6 +150,7 @@ class CodexMessageRepository({
             CodexRolloutTurnContextLineDto() ||
             CodexRolloutResponseItemLineDto() ||
             CodexRolloutEventMessageLineDto() ||
+            CodexRolloutInterAgentCommunicationMetadataLineDto() ||
             CodexRolloutCompactedLineDto() ||
             CodexRolloutUnknownLineDto():
           break;
@@ -196,6 +199,7 @@ class CodexMessageRepository({
               CodexRolloutThreadRolledBackEventDto():
             openTurn = false;
           case CodexRolloutUserMessageEventDto() ||
+              CodexRolloutItemCompletedEventDto() ||
               CodexRolloutImageGenerationEndEventDto() ||
               CodexRolloutUnknownEventDto():
             break;
@@ -204,6 +208,86 @@ class CodexMessageRepository({
     }
     return lines;
   }
+
+  /// Projects only provenance-safe sub-agent facts from current Codex rollout
+  /// records. [previousLine] proves native communication-marker adjacency.
+  CodexSubAgentRolloutFact? subAgentRolloutFact({
+    required CodexRolloutLineDto line,
+    required CodexRolloutLineDto? previousLine,
+  }) {
+    if (line case CodexRolloutResponseItemLineDto(:final payload)) {
+      final spawn = _rolloutToolMapper.mapSubAgentSpawn(payload: payload);
+      if (spawn != null) return spawn;
+      if (payload case CodexRolloutAgentMessageDto()) {
+        return _initialChildInputFact(message: payload, previousLine: previousLine);
+      }
+    }
+    if (line case CodexRolloutEventMessageLineDto(
+      payload: CodexRolloutItemCompletedEventDto(
+        item: CodexRolloutCompletedSubAgentActivityDto(
+          kind: CodexSubAgentActivityKind.started,
+          :final id,
+          :final agentThreadId,
+          :final agentPath,
+        ),
+      ),
+    )) {
+      return CodexSubAgentStartedActivityFact(
+        callId: id,
+        childThreadId: agentThreadId,
+        agentPath: agentPath,
+      );
+    }
+    return null;
+  }
+
+  CodexSubAgentInitialInputFact? _initialChildInputFact({
+    required CodexRolloutAgentMessageDto message,
+    required CodexRolloutLineDto? previousLine,
+  }) {
+    if (previousLine case CodexRolloutInterAgentCommunicationMetadataLineDto(
+      payload: CodexRolloutInterAgentCommunicationMetadataDto(triggerTurn: true),
+    )) {
+      final turnId = _exactNonBlank(message.metadata?.turnId);
+      if (turnId == null) return null;
+      if (message.content.any((content) => content is CodexRolloutAgentMessageEncryptedContentDto)) {
+        return CodexSubAgentInitialInputFact(
+          turnId: turnId,
+          input: const CodexSubAgentEncryptedInput(),
+        );
+      }
+      if (message.content.any((content) => content is! CodexRolloutAgentMessageInputTextDto)) return null;
+      final plaintext = message.content
+          .whereType<CodexRolloutAgentMessageInputTextDto>()
+          .map((content) => content.text)
+          .join("\n");
+      final payload = _parsePlaintextNewTask(
+        text: plaintext,
+        author: message.author,
+        recipient: message.recipient,
+      );
+      if (payload == null) return null;
+      return CodexSubAgentInitialInputFact(
+        turnId: turnId,
+        input: CodexSubAgentPlaintextInput(message: payload),
+      );
+    }
+    return null;
+  }
+
+  String? _parsePlaintextNewTask({
+    required String text,
+    required String author,
+    required String recipient,
+  }) {
+    final match = RegExp(
+      r"^Message Type: NEW_TASK\nTask name: ([^\n]+)\nSender: ([^\n]+)\nPayload:\n([\s\S]*)$",
+    ).firstMatch(text);
+    if (match == null || match.group(1) != recipient || match.group(2) != author) return null;
+    return _exactNonBlank(match.group(3));
+  }
+
+  String? _exactNonBlank(String? value) => value == null || value.trim().isEmpty ? null : value;
 
   List<PluginMessageWithParts> projectMessages({
     required CodexPreparedMessageRead read,
@@ -402,7 +486,7 @@ class CodexMessageRepository({
             ),
           );
           continue;
-        case CodexRolloutEventMessageLineDto():
+        case CodexRolloutEventMessageLineDto() || CodexRolloutInterAgentCommunicationMetadataLineDto():
           continue;
         case CodexRolloutResponseItemLineDto(
           payload: final responseItem,
@@ -466,6 +550,8 @@ class CodexMessageRepository({
               attachments: generation.attachments,
             ),
           );
+        case CodexRolloutAgentMessageDto():
+          continue;
         case CodexRolloutReasoningDto(:final id, :final summary):
           final reasoning = [
             for (final item in summary)
@@ -588,6 +674,7 @@ class CodexMessageRepository({
       CodexRolloutTurnContextLineDto(:final timestamp) ||
       CodexRolloutResponseItemLineDto(:final timestamp) ||
       CodexRolloutEventMessageLineDto(:final timestamp) ||
+      CodexRolloutInterAgentCommunicationMetadataLineDto(:final timestamp) ||
       CodexRolloutCompactedLineDto(:final timestamp) ||
       CodexRolloutUnknownLineDto(:final timestamp) => timestamp,
     };
