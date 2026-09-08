@@ -1,4 +1,3 @@
-import "dart:async";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
@@ -34,10 +33,11 @@ class const AntigravityPluginDescriptor({
   final String? browserExecutable,
   final List<String>? browserPrefixArguments,
   final String? launchDirectory,
-  final HttpClient Function()? callbackHttpClientFactory,
+  required final HttpClient Function() callbackHttpClientFactory,
   final Duration operationTimeout = const Duration(minutes: 2),
   final Duration connectBudget = const Duration(seconds: 15),
 }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
+  factory production() => const AntigravityPluginDescriptor(callbackHttpClientFactory: HttpClient.new);
   static const binOption = "bin";
   static const cliOptions = [
     PluginValueOption(
@@ -230,8 +230,6 @@ class const AntigravityPluginDescriptor({
       yield ProvisionReady(binaryPath: prepared.runtime.pair.serverPath);
     } on PluginStartAbortedException {
       rethrow;
-    } on TimeoutException {
-      rethrow;
     } on Object catch (error, stackTrace) {
       _logPreparationFailure(error: error, stackTrace: stackTrace);
       yield const ProvisionFailed(
@@ -267,7 +265,7 @@ class const AntigravityPluginDescriptor({
     return const AntigravityAuthenticationComposer().compose(
       processes: processes,
       store: store,
-      callbackHttpClient: callbackHttpClientFactory?.call() ?? HttpClient(),
+      callbackHttpClient: callbackHttpClientFactory(),
       stateDirectory: stateDirectory,
       environment: environment,
       target: selectedTarget,

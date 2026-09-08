@@ -6,6 +6,7 @@ import "package:acp_plugin/acp_testing.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -45,15 +46,20 @@ class _HelperProcess() implements SpawnedProcess {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _AgentInput({required final FakeAcpProcess process, required final Map<String, dynamic> initialize})
-    extends CapturingIOSink {
+class _AgentInput({
+  required final FakeAcpProcess process,
+  required final Map<String, dynamic> initialize,
+  required final bool respondToInitialize,
+}) extends CapturingIOSink {
   @override
   void add(List<int> data) {
     super.add(data);
     final frame = frames.last;
     switch (frame["method"]) {
       case "initialize":
-        process.emit({"jsonrpc": "2.0", "id": frame["id"], "result": initialize});
+        if (respondToInitialize) {
+          process.emit({"jsonrpc": "2.0", "id": frame["id"], "result": initialize});
+        }
       case "authenticate":
         expect((frame["params"] as Map<String, dynamic>)["methodId"], AntigravityRelease.personalOauthMethodId);
         process.emit({"jsonrpc": "2.0", "id": frame["id"], "result": <String, dynamic>{}});
@@ -63,11 +69,18 @@ class _AgentInput({required final FakeAcpProcess process, required final Map<Str
   }
 }
 
-class _AgentProcess({required final Map<String, dynamic> initialize, @override required final int pid})
-    implements SpawnedProcess {
+class _AgentProcess({
+  required final Map<String, dynamic> initialize,
+  required final bool respondToInitialize,
+  @override required final int pid,
+}) implements SpawnedProcess {
   final FakeAcpProcess process = FakeAcpProcess();
   @override
-  late final stdin = _AgentInput(process: process, initialize: initialize);
+  late final stdin = _AgentInput(
+    process: process,
+    initialize: initialize,
+    respondToInitialize: respondToInitialize,
+  );
   @override
   Stream<List<int>> get stdout => process.stdout;
   @override
@@ -86,8 +99,11 @@ class _Launch({
   required final bool includeParentEnvironment,
 });
 
-class _Processes({required final String serverPath, required final Map<String, dynamic> initialize})
-    implements HostProcessService {
+class _Processes({
+  required final String serverPath,
+  required final Map<String, dynamic> initialize,
+  required final bool respondToInitialize,
+}) implements HostProcessService {
   final launches = <_Launch>[];
   final agents = <_AgentProcess>[];
 
@@ -110,7 +126,11 @@ class _Processes({required final String serverPath, required final Map<String, d
       ),
     );
     if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess();
-    final agent = _AgentProcess(initialize: initialize, pid: agents.length + 10);
+    final agent = _AgentProcess(
+      initialize: initialize,
+      respondToInitialize: respondToInitialize,
+      pid: agents.length + 10,
+    );
     agents.add(agent);
     return agent;
   }
@@ -195,7 +215,7 @@ void main() {
       Directory.systemTemp.createTempSync("antigravity-descriptor-runtime-").resolveSymbolicLinksSync(),
     );
     pair = _writePair(directory: runtime);
-    processes = _Processes(serverPath: pair.server, initialize: _initialize());
+    processes = _Processes(serverPath: pair.server, initialize: _initialize(), respondToInitialize: true);
     store = _Store(parent: null);
   });
 
@@ -207,15 +227,21 @@ void main() {
     runtime.deleteSync(recursive: true);
   });
 
-  AntigravityPluginDescriptor descriptor({required _Http? http}) => AntigravityPluginDescriptor(
-    target: _target,
-    browserExecutable: "/synthetic/bridge",
-    browserPrefixArguments: const [],
-    launchDirectory: "/synthetic/worktree",
-    callbackHttpClientFactory: http == null ? null : () => http,
-    operationTimeout: const Duration(seconds: 2),
-    connectBudget: const Duration(seconds: 2),
-  );
+  HttpClient unexpectedHttpClient() => throw StateError("Authentication HTTP client was not expected");
+
+  AntigravityPluginDescriptor descriptorWithTimeout({required _Http? http, required Duration timeout}) =>
+      AntigravityPluginDescriptor(
+        target: _target,
+        browserExecutable: "/synthetic/bridge",
+        browserPrefixArguments: const [],
+        launchDirectory: "/synthetic/worktree",
+        callbackHttpClientFactory: http == null ? unexpectedHttpClient : () => http,
+        operationTimeout: timeout,
+        connectBudget: const Duration(seconds: 2),
+      );
+
+  AntigravityPluginDescriptor descriptor({required _Http? http}) =>
+      descriptorWithTimeout(http: http, timeout: const Duration(seconds: 2));
 
   PluginConfig config({required String? server}) =>
       PluginConfig(values: {AntigravityPluginDescriptor.binOption: server});
@@ -369,6 +395,43 @@ void main() {
     expect(http.closed, isTrue);
     expect(processes.launches.every((launch) => !launch.includeParentEnvironment), isTrue);
     expect(processes.launches.every((launch) => !launch.environment.containsKey("GOOGLE_API_KEY")), isTrue);
+  });
+
+  test("probe timeout is logged and settles provisioning as best-effort failure", () async {
+    processes = _Processes(serverPath: pair.server, initialize: _initialize(), respondToInitialize: false);
+    final host = _Host(
+      config: config(server: pair.server),
+      stateDirectory: state.path,
+      environment: const {},
+      processes: processes,
+      store: store,
+      startAborted: StartAbortSignal.never,
+    );
+    final logs = BufferingStdout();
+    final previousLevel = Log.level;
+    late List<RuntimeProvisionProgress> progress;
+    try {
+      Log.level = LogLevel.debug;
+      await IOOverrides.runZoned(
+        () async => progress = await descriptorWithTimeout(
+          http: null,
+          timeout: const Duration(milliseconds: 50),
+        ).ensureRuntime(host: host).toList(),
+        stderr: () => logs,
+      );
+    } finally {
+      Log.level = previousLevel;
+    }
+
+    expect(progress.single, isA<ProvisionFailed>());
+    expect(logs.text, contains("TimeoutException"));
+    expect(
+      logs.text,
+      anyOf(contains("No matching process activity"), contains("Antigravity ACP initialize probe exceeded")),
+    );
+    expect(logs.text, anyOf(contains("ndjson_process_client.dart"), contains("antigravity_acp_api.dart")));
+    expect(processes.agents, hasLength(1));
+    expect(await processes.agents.single.exitCode, -15);
   });
 
   test("initial abort prevents preparation and runtime launch", () async {

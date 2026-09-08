@@ -319,7 +319,19 @@
 - [x] Synced with main `b13d197d517`; merge resolutions retain the reviewed Antigravity/shared owning source/tests
   unchanged. Unrelated upstream DeepSeek updates remain outside this PR's diff. No unchanged passing suites rerun.
 - [x] Per user request, capability matrix documents login initiation versus local setup for every registered harness,
-  plus Antigravity's explicitly unregistered browser-return implementation; detection/install are not login.
+  plus Antigravity's explicitly unregistered browser-return implementation; detection/install are not login. The
+  contract reference uses the exact `InteractivePluginAuthenticationDescriptor.authenticate` symbol.
+- [x] PR feedback corrections preserve exact opaque model IDs through the shared tracker and composed live/replay
+  attribution, while blank values remain absent. Provisioning timeouts now log their original timeout/stack and settle
+  as non-fatal `ProvisionFailed`; explicit aborts still propagate. Callback HTTP construction is required and production
+  deliberately passes `HttpClient.new`, so tests cannot fall through to a real loopback client.
+- [x] Static inspection logs recovered PATH storage causes/stacks before inert managed fallback. Ordinary PATH absence
+  and pair rejection remain normal candidate resolution, matching `resolve()` rather than manufacturing failures.
+- Correction verification: 46 Antigravity tests across descriptor, runtime, options and composed plugin suites plus 3
+  focused ACP tracker/mapper tests pass. Counts use JSON suite/test IDs and non-hidden successful `testDone` records;
+  both owning package analyzers pass with fatal infos. Final cap/review head is recorded in the immutable review scope.
+- Second/final actual architecture review is pending over the complete base-to-head correction artifact. The prior first
+  actual review remains the approval at `53296324b2`; incomplete-input blocks remain uncounted.
 
 ## Architecture Reviews
 

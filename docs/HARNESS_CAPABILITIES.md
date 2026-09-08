@@ -104,7 +104,7 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | Antigravity (unregistered) | Internal only: Google browser-return | No supported local fallback. |
 
 Among registered plugins, only Codex currently implements
-`PluginAuthenticationDescriptor.authenticate`; its action uses the existing
+`InteractivePluginAuthenticationDescriptor.authenticate`; its action uses the existing
 Sesori device-code UI. That is not a general API-key entry form or a claim of
 support for every Codex authentication method.
 
