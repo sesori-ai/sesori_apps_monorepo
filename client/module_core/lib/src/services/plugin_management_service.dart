@@ -632,7 +632,7 @@ class PluginManagementService({
     final captured = _captureRequest(staleGeneration: _staleGeneration);
     final result = await request();
     if (!_isConnectionFenceCurrent(captured.fence)) {
-      await _refreshAfterUncertainMutation();
+      await _refreshAfterMutation();
       return const PluginManagementMutationResult.uncertain();
     }
     switch (result) {
@@ -643,13 +643,21 @@ class PluginManagementService({
           consumeStalenessThrough: captured.fence.staleGeneration,
           retainSupportedOnFailure: false,
         );
-        if (publication != _PublicationOutcome.applied) {
-          await _refreshAfterUncertainMutation();
-          return const PluginManagementMutationResult.uncertain();
+        if (publication == _PublicationOutcome.applied) return result;
+
+        await _refreshAfterMutation();
+        // An intervening publication rejects this snapshot, not the correlated
+        // acknowledgment. Recheck identity after reconciliation: that GET can
+        // itself discover a replacement bridge, or outlive the connection.
+        if (publication == _PublicationOutcome.superseded &&
+            _isConnectionFenceCurrent(captured.fence) &&
+            _activeBridgeIdentityKnown &&
+            _activeBridgeId == response.bridgeId) {
+          return result;
         }
-        return result;
+        return const PluginManagementMutationResult.uncertain();
       case PluginManagementMutationResultUncertain():
-        await _refreshAfterUncertainMutation();
+        await _refreshAfterMutation();
         return result;
       case PluginManagementMutationResultNotFound() ||
           PluginManagementMutationResultConflict() ||
@@ -658,7 +666,7 @@ class PluginManagementService({
     }
   }
 
-  Future<void> _refreshAfterUncertainMutation() async {
+  Future<void> _refreshAfterMutation() async {
     _markStale();
     await (_refreshTail ?? Future<void>.value());
   }
@@ -693,6 +701,14 @@ class PluginManagementService({
     required bool retainSupportedOnFailure,
   }) {
     if (!_isConnectionFenceCurrent(captured.fence)) return _PublicationOutcome.fenced;
+    // Identity changes invalidate every captured request, even when a newer
+    // publication already prevents this response from replacing the snapshot.
+    if (candidate case PluginManagementLoadResultSupported(:final response)
+        when _responseIdentitySupersedesRequest(response: response, captured: captured)) {
+      _invalidateBridgeIdentityFence();
+      _rearmStale();
+      return _PublicationOutcome.identitySuperseded;
+    }
     if (_publicationGeneration != captured.fence.publicationGeneration) {
       _rearmStale();
       return _PublicationOutcome.superseded;
@@ -703,11 +719,6 @@ class PluginManagementService({
       case PluginManagementLoadResultLoading():
         break;
       case PluginManagementLoadResultSupported(:final response):
-        if (_responseIdentitySupersedesRequest(response: response, captured: captured)) {
-          _invalidateBridgeIdentityFence();
-          _rearmStale();
-          return _PublicationOutcome.identitySuperseded;
-        }
         _activeBridgeIdentityKnown = true;
         _activeBridgeId = response.bridgeId;
         final installs = Map<String, PluginInstallState>.from(_installStates.value);
