@@ -91,7 +91,7 @@ void main() {
       expect(repository.initialUserPrompt(threadId: "child-1", turnId: "unobserved-turn"), isNull);
     });
 
-    test("retains native text for a single provenance-matched turn", () async {
+    test("retains provenance-matched prompts until their thread is forgotten", () async {
       final repository = CodexThreadRepository(
         appServerApi: CodexAppServerApi(
           client: _ThreadReadTransport(
@@ -116,6 +116,13 @@ void main() {
 
       expect(
         repository.initialUserPrompt(threadId: "child-1", turnId: "child-turn"),
+        "Inspect child lifecycle.",
+      );
+      await repository.readThread(threadId: "child-2");
+      repository.forgetThread(threadId: "child-1");
+      expect(repository.initialUserPrompt(threadId: "child-1", turnId: "child-turn"), isNull);
+      expect(
+        repository.initialUserPrompt(threadId: "child-2", turnId: "child-turn"),
         "Inspect child lifecycle.",
       );
     });
@@ -247,7 +254,7 @@ final class _ThreadReadTransport({required final List<Map<String, Object?>> turn
     this.params = (params! as Map).cast<String, dynamic>();
     return {
       "thread": {
-        "id": "child-1",
+        "id": this.params!["threadId"],
         "parentThreadId": "parent-1",
         "turns": turns,
       },
