@@ -9,8 +9,8 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the original Claude series is complete; harness follow-ups remain active
-- **Next action:** finish Codex causal cleanup step 4/7 locally, then integrate
-  corrected inline tiles as step 5/7. Merged PR #1387 is historical preparation
+- **Next action:** land Codex causal cleanup [PR #1396](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1396)
+  (step 4/7), then integrate corrected inline tiles as step 5/7. Merged PR #1387 is historical preparation
   superseded by the verified 0.153.4 rollout-input seam. DeepSeek #1363,
   #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
   stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
@@ -165,8 +165,8 @@ post-merge E2E gates are unchanged.
 | [x] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) merged |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged; historical title unchanged (now step 1/7) |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) merged; lifecycle hardening [PR #1280](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1280) merged; historical title unchanged (now step 2/7) |
-| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | [PR #1387](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1387) merged; historical title unchanged; preparation superseded by 0.153.4 evidence |
-| [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | Completed locally on `claude-inline-subtasks-codex-cleanup-step4`; no tile code |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | [PR #1387](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1387) merged; historical title unchanged (now step 3/7); preparation superseded by 0.153.4 evidence |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | [PR #1396](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1396) open; implemented, awaiting merge; no tile code |
 | [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents [step 5/7]` | Rejected incomplete checkpoint preserved on `claude-inline-subtasks-codex-tiles-step4-integrated`; original successor refs remain preserved and unpublished |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 6/7]` | Not started |
 | [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 7/7]` | Not started |

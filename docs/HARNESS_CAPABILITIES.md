@@ -188,9 +188,11 @@ its observed-child snapshot retains legacy client fanout.
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
 matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
-rollout and absent from `thread/read`. These are native probe findings;
-exact-call tile correlation, nested activity replay, and plaintext `NEW_TASK`
-prompt projection are **not implemented** in Sesori yet.
+rollout and absent from `thread/read`. These are native probe findings.
+The table's tile checkmark covers existing live/replayed spawn-tool card
+projection with best-effort raw task-path child linkage; cards can remain
+unlinked. Exact-call tile correlation, nested activity replay, and plaintext
+`NEW_TASK` prompt projection are **not implemented** in Sesori yet.
 Sesori exposes child threads under their direct parent and keeps running
 descendants in root busy state. Metadata-only
 `thread/read(includeTurns: false)` retains parent and nickname enrichment. Raw task paths remain stable identity and are formatted
