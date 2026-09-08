@@ -7,10 +7,13 @@
   and Cursor, merge, then moved back)
 - **Plan date:** 2026-09-02
 - **Base:** `main` at `6e9028c4c6`
-- **Delivery:** PRs titled `<emoji> [claude-inline-subtasks] <description>` with
-  no step counters. The four harness chains run in parallel; within a
-  chain PRs stack. E2E testing happens after each PR merges, not before.
-  Progress is tracked in `TRACKER.md` "Harness Follow-Ups".
+- **Delivery:** one open PR at a time, following current repository rules.
+  Remaining Codex PRs use `<emoji> [claude-inline-subtasks] <description>
+  [step x/5]`: metadata and child sessions are merged steps 1/5 and 2/5;
+  tiles, scoped stop, and coverage are steps 3/5 through 5/5. Historical merged
+  titles remain unchanged. Progress is tracked in `TRACKER.md` "Harness
+  Follow-Ups". The DeepSeek phone handoff is recorded in
+  `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
 ## Goal
 

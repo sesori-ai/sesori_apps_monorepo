@@ -8,10 +8,11 @@
   [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257), which
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
-  the series is retired
-- **Next action:** finish review of native-stop step 5/5 (#1370); step 4/5
-  (#1363) is merged. PR #1356 remains closed without merge. Complete
-  user-owned DeepSeek phone/desktop E2E after step 5/5 merges, before Codex.
+  the original Claude series is complete; harness follow-ups remain active
+- **Next action:** Codex inline subtask tiles (step 3/5). DeepSeek #1363,
+  #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
+  stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
+  remains deferred by user choice; the overall plan remains active.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -179,7 +180,7 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Adapter #17 merged at `5eecdf68a3` |
 | [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
-| [ ] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) in review; final phone/desktop E2E remains user-owned |
+| [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
@@ -726,9 +727,11 @@ interrupt response fields while retaining required/known-result checks; analysis
 and 104 tests pass. Named foreground children now correctly reject main-only stop
 even when all descendants are background; background named-child keep remains
 supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
-Replacement delivery (2026-09-06): PR #1356 closed without merge. Step 4/5
-lands only the frozen v0.1.4 contract, ordered input cancellation, runtime pin,
-and initialize-version boundary. Step 5/5 will replace the existing direct-child
-policy with complete ACP-owned native stop. Until then scoped-stop behavior is
-unchanged. Final phone/desktop E2E is user-owned, then Codex; managed-runtime
-automation remains separately owned.
+Replacement delivery completed (2026-09-08): PR #1356 remains closed without
+merge. #1363 landed the frozen v0.1.4 contract, ordered input cancellation,
+runtime pin, and initialize-version boundary. #1370 landed complete ACP-owned
+native stop. Phone QA found the shared IOSink crash fixed by #1379; the
+corrected independent-scope stop and pending/later-input checks passed.
+`followups/deepseek-phone-qa.md` records the bounded evidence and follow-ups.
+The user deferred desktop and requested progression to Codex after phone checks;
+managed-runtime automation remains separately owned.

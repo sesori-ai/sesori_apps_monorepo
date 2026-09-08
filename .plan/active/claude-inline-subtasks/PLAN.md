@@ -17,7 +17,10 @@
 - **DeepSeek follow-up (2026-09-06):** PR #1356 was closed without merge and
   superseded by two simpler slices: step 4/5 pins and consumes the published
   v0.1.4 native contract/input cancellation; step 5/5 completes ACP-owned stop.
-  Final phone/desktop E2E remains user-owned and precedes Codex work.
+  Both slices merged (#1363, #1370). Agent-run phone QA found the transport
+  crash fixed by #1379; requested phone stop/input checks then passed. See
+  `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice;
+  Codex inline tiles are next, without retiring the overall harness plan.
 
 ## Goal
 
