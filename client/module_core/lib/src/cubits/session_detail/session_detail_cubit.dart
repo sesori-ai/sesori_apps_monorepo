@@ -2479,7 +2479,9 @@ class SessionDetailCubit(
     try {
       final requestChildStatuses = switch (state) {
         SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
-        SessionDetailLoading() || SessionDetailFailed() => const <String, SessionStatus>{},
+        SessionDetailLoading() ||
+        SessionDetailHarnessUnavailable() ||
+        SessionDetailFailed() => const <String, SessionStatus>{},
       };
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);

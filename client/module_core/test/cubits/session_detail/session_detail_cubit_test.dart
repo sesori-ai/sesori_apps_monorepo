@@ -206,6 +206,10 @@ void main() {
           inputMode: ComposerInputMode.typed,
           attachments: const [],
         );
+        expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortFailed>());
+        verifyNever(
+          () => mockSessionRepository.abortSession(sessionId: sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+        );
         expect(await cubit.replyToQuestion(requestId: "question", sessionId: sessionId, answers: const []), isFalse);
         expect(
           await cubit.replyToPermission(requestId: "permission", sessionId: sessionId, reply: PermissionReply.once),

@@ -6,7 +6,7 @@ No queue recovery, submission retention, attachment storage or bridge protocol w
 | Step | Complexity | Deliverable | Status |
 |---|---|---|---|
 | 1/4 | 🌱 | Plan read-only unavailable chats | [PR #1366](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1366) merged |
-| 2/4 | ⚙️ | Gate unavailable chats on both clients | Implemented and verified; preparing implementation PR |
+| 2/4 | ⚙️ | Gate unavailable chats on both clients | [PR #1375](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1375) open; CI/review ongoing |
 | 3/4 | 🌿 | Reconcile chat availability regressions | Not started |
 | 4/4 | 🌿 | Verify read-only chats and retire plan | Not started |
 
@@ -47,6 +47,11 @@ authorized direct execution without subagents. No dependencies may be installed.
   reused; the cubit alone coordinates availability; presentation stays shared and
   shells supply navigation. Independent architecture review is unavailable due to
   background runner failures; no subagent approval is claimed.
+- CI integration follow-up: merged current `main` and handled the unavailable
+  state in its newly introduced abort child-status switch. Cold/live gate tests
+  explicitly verify abort refusal without dispatch. The updated core session,
+  load-service and calculator scope passes 270 cases; all four analyzers remain
+  clean. Linux build validation is delegated to the next CI run.
 - No live device/bridge reproduction yet. L4 evidence and cleanup remain pending.
 - Retirement requires the recorded targeted L4 matrix, privacy-safe EVIDENCE.md
   and cleanup. Partial/Blocked/Fail keeps the plan active unless the user accepts
