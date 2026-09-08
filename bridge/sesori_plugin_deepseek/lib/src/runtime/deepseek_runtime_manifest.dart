@@ -20,6 +20,7 @@ class const DeepSeekRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "sesori-deepseek-acp-v0.1.4-darwin-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "fe565d18efc228b5d5a93835f5f4d900c00ae113649a1480266c305fc5623082",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -27,6 +28,7 @@ class const DeepSeekRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "sesori-deepseek-acp-v0.1.4-darwin-x64.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "f3d5d4df05069daab221f5bdda8480bbb6448ea4d8139b3d75ccd0f2722fd151",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -36,6 +38,7 @@ class const DeepSeekRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "sesori-deepseek-acp-v0.1.4-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "8fa13b6e5dea36eb33c38bc9e1b7960c690b5646d4010809f743e11555e0d979",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -43,6 +46,7 @@ class const DeepSeekRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "sesori-deepseek-acp-v0.1.4-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "0f1b187e54acb008b56fa99fa1c1d0e2ad33913f7c986d801758adf3c642a74d",
         archiveBinaryName: "sesori-deepseek-acp",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -52,6 +56,7 @@ class const DeepSeekRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "sesori-deepseek-acp-v0.1.4-windows-arm64.zip",
         format: ArchiveFormat.zip,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "f32f26bb5540cb899b5704d67be8a1ff7521d567382fe2f1a4561026e32678d4",
         archiveBinaryName: "sesori-deepseek-acp.cmd",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -59,6 +64,7 @@ class const DeepSeekRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "sesori-deepseek-acp-v0.1.4-windows-x64.zip",
         format: ArchiveFormat.zip,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "218cd61ad11c89a9f5d538e47ff0f27c4e23ce3748af235663917f58c3f8e252",
         archiveBinaryName: "sesori-deepseek-acp.cmd",
         layout: RuntimeArchiveLayout.packageDirectory,

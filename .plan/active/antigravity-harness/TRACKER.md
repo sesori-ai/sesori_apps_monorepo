@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.c merged; Step 9 open for review
-- **Base:** synced with main `20a1580688055dffc07d70e0c23ab27c95fa00c9` after Step 8.c merge
-- **Current branch:** `antigravity-harness-step-9-activation`
+- **Status:** Steps 1–8.c merged; Step 9 open for review; Step 10.a implemented locally, review pending
+- **Base:** Step 10.a exact predecessor head `635df576103511dffb18a41624d2599ff5d7e7b9`
+- **Current branch:** `antigravity-harness-step-10a-archive-budgets`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -22,7 +22,7 @@
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b),
   [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c)
 - **Open PR:** [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9).
-- **Next action:** monitor Step 9; begin only Step 10 locally.
+- **Next action:** monitor Step 9; finish and review only Step 10.a locally before publication.
 
 ## Fixed PR Series
 
@@ -42,7 +42,9 @@
 - [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
 - [x] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
-- [ ] Step 10/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10/12]`
+- [ ] Step 10.a/12 — `⚙️ [antigravity-harness] feat(runtime): declare archive command budgets [step 10.a/12]`
+- [ ] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
+- [ ] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.c/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
 - [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
 
@@ -364,6 +366,23 @@
 - [x] Synced with main `20a1580688` after Step 8.c merge. All bridge source/test/dependency inputs are unchanged from
   the reviewed checkpoint; merge resolutions preserve activation and all predecessor fixes. Unchanged passing commands
   were not rerun. Publication size is measured separately including this tracker reconciliation.
+
+## Step 10.a Checklist
+
+- [x] Split Step 10 under standing approval: archive budgets, isolated candidate validation, then official managed pair
+  integration. Only 10.a is being implemented; later slices retain every original requirement and the 1,500-line cap.
+- [x] Add required `ArchiveRuntimeAsset.archiveCommandTimeout` and extractor input, applying it to archive listing and
+  extraction. Update all 34 current platform assets, fixture assets, extractor doubles and the self-update caller.
+- [x] Existing archives/self-update explicitly keep a two-minute per-command budget. Listing no longer has a separate
+  fixed 30-second bound. No Antigravity managed asset, installation action or native timing claim is introduced.
+- [x] Add deterministic simulated slow-command/timeout-cleanup coverage and selected-asset forwarding assertions;
+  preserve real tar/zip/symlink tests and update both relevant regression documents.
+- [x] Focused JSON-counted tests pass: foundation archive 8; runtime install 12 + managed install 14 + provision 10;
+  app updater 6 + registry 4 = 54 executed tests across six suites. Foundation/runtime/app analyzers and all six changed
+  manifest-file analyzers pass with fatal infos; formatting and whitespace checks pass. No dependencies were installed.
+- [ ] First complete architecture review over the committed Step 10.a scope. User explicitly approved foreground
+  execution after background bootstrap failed; no earlier Step 10 review launched.
+- [x] Step 11 explicitly names root `README.md` and `bridge/README.md`, per user request.
 
 ## Architecture Reviews
 

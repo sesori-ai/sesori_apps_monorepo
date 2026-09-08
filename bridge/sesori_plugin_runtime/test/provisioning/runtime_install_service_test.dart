@@ -35,14 +35,17 @@ class _FakeArchiveExtractor({
   final bool rootPackage = false,
 }) implements ArchiveExtractor {
   int extractCalls = 0;
+  final List<Duration> observedTimeouts = [];
 
   @override
   Future<ArchiveExtractionResult> extract({
     required String archivePath,
     required String stagingPath,
     required ArchiveFormat format,
+    required Duration archiveCommandTimeout,
   }) async {
     extractCalls++;
+    observedTimeouts.add(archiveCommandTimeout);
     if (!success) {
       return const ArchiveExtractionResult.failure(reason: "powershell Expand-Archive exited with code 1: boom");
     }
@@ -85,6 +88,7 @@ class _FakeCommandExecutor() implements CommandExecutor {
 const _asset = ArchiveRuntimeAsset(
   assetName: "opencode-test.zip",
   format: ArchiveFormat.zip,
+  archiveCommandTimeout: Duration(minutes: 5),
   sha256: "abc123",
   archiveBinaryName: "opencode",
   layout: RuntimeArchiveLayout.singleBinary,
@@ -93,6 +97,7 @@ const _asset = ArchiveRuntimeAsset(
 const _packageAsset = ArchiveRuntimeAsset(
   assetName: "cursor-test.tar.gz",
   format: ArchiveFormat.tarGz,
+  archiveCommandTimeout: Duration(minutes: 2),
   sha256: "def456",
   archiveBinaryName: "cursor-agent",
   layout: RuntimeArchiveLayout.packageDirectory,
@@ -101,6 +106,7 @@ const _packageAsset = ArchiveRuntimeAsset(
 const _rootPackageAsset = ArchiveRuntimeAsset(
   assetName: "codex-package-test.tar.gz",
   format: ArchiveFormat.tarGz,
+  archiveCommandTimeout: Duration(minutes: 2),
   sha256: "fed321",
   archiveBinaryName: "bin/codex",
   layout: RuntimeArchiveLayout.packageDirectory,
@@ -160,7 +166,9 @@ void main() {
 
   test("places the binary, writes the sentinel, and emits phase progress", () async {
     final cmd = _FakeCommandExecutor();
-    final events = await install(build(cmd: cmd)).toList();
+    final extractor = _FakeArchiveExtractor(success: true, packageDirectory: false);
+    final events = await install(build(cmd: cmd, extractor: extractor)).toList();
+    expect(extractor.observedTimeouts, [_asset.archiveCommandTimeout]);
 
     expect(File(p.join(versionDir(), "opencode")).existsSync(), isTrue);
     expect(

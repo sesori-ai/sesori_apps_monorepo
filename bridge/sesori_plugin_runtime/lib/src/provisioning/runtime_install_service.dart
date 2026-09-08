@@ -117,6 +117,7 @@ class RuntimeInstallService({
             archivePath: downloadPath,
             stagingPath: stagingPath,
             format: asset.format,
+            archiveCommandTimeout: asset.archiveCommandTimeout,
           );
           if (!extracted.succeeded) {
             throw RuntimeInstallException("failed to extract ${asset.assetName} (${extracted.failureReason})");

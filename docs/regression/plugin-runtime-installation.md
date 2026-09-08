@@ -28,6 +28,13 @@ bridge start when Sesori already manages an older version.
   GitHub Copilot installs the official bare `copilot`/`copilot.exe` from exactly
   six arm64/x64 macOS, Linux, and Windows archives for the pinned release.
   Artifacts are checksum-verified, and no partial binary or package is adopted.
+- Every archive asset declares a required per-command extraction budget. The same value bounds
+  member listing and extraction for tar.gz/POSIX zip; Windows zip passes it to `Expand-Archive`,
+  whose existing traversal validation remains in use. This is not a total install deadline.
+  Existing archived runtimes declare two minutes: extraction keeps its previous bound while
+  listing now uses that explicit budget instead of the former fixed 30 seconds. Bare binaries
+  are unaffected. A larger budget never skips traversal or symlink checks; command timeouts
+  remain observable failures with rejected staging cleanup.
 - The command is accepted immediately because an install can outlast a request budget;
   progress reports phases with a percentage, and the terminal outcome also lands in the
   management snapshot.
@@ -141,3 +148,7 @@ download, verification, or placement. Use a disposable data directory.
   `client/app/lib/features/settings/harnesses_settings_screen.dart`
 - Tests: `bridge/app/test/services/plugin_lifecycle_service_test.dart`, per-plugin
   descriptor tests, client management and harness suites
+- `bridge/sesori_bridge_foundation/lib/src/archive_extractor.dart` and its test cover
+  explicit budgets, simulated slow commands, timeout cleanup and real tar/zip hardening;
+  `bridge/sesori_plugin_runtime/test/provisioning/runtime_install_service_test.dart`
+  verifies that the selected asset's budget reaches extraction.
