@@ -545,7 +545,6 @@ class CodexPlugin._({
     return _eventMapper.mapProjectedTool(
       threadId: threadId,
       tool: tool,
-      children: _sessionService.knownChildThreads(sessionId: threadId),
     );
   }
 
