@@ -13,6 +13,13 @@ choice. Typed controls edit a draft snapshot. Replay captures one immutable
 snapshot for the animation and its related timing. Original comparison and
 target reset leave unrelated draft values intact.
 
+Global animation speed offers Normal (1×), 0.5×, and 0.2× without selecting a
+target. It changes Flutter's scheduler clock immediately across the preview,
+including unconnected animations, and shows slow speed in the collapsed header.
+It leaves tuned durations and presets unchanged and restores the previous clock
+when the host is removed. Dart timers/delayed fixture actions and native platform
+animations are outside Flutter's animation clock.
+
 Clipboard presets contain a fixture ID, format version, and complete parameter
 values. Invalid imports leave the previous settings intact. Presets do not
 change source code or add persistent runtime settings.
@@ -48,6 +55,9 @@ When shared scan motion configuration changes, run
 mobile/desktop consumers using `CatalogScanRowMotion.standard`.
 
 ## Material failure signals
+
+- Global speed changes only the selected target, changes stored duration values,
+  uses the inverse speed incorrectly, or leaks after leaving the tuning host.
 
 - Selecting triggers a feedback action or scan cancel/dismiss callback.
 - Replay invokes native rating, real recording/submission, backend scanning,
