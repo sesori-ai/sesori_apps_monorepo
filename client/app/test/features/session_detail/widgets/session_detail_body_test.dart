@@ -851,6 +851,9 @@ void main() {
         find.byWidgetPredicate((widget) => widget is Semantics && (widget.properties.liveRegion ?? false)),
         findsWidgets,
       );
+      final settingsAction = tester.getRect(find.byKey(const Key("session_harness_settings")));
+      final retryAction = tester.getRect(find.byKey(const Key("session_harness_retry")));
+      expect(retryAction.center.dy, settingsAction.center.dy);
       if (!cold) {
         await tester.tap(find.widgetWithText(TextButton, "Cancel"));
         verify(() => cubit.cancelQueuedMessage(0)).called(1);
