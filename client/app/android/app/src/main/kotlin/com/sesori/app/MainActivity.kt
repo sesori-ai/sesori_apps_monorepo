@@ -63,7 +63,10 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
         val result = previewMicrophoneResult ?: return
         previewMicrophoneResult = null
         val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
-        if (!granted && grantResults.isNotEmpty()) {
+        if (
+            !granted && grantResults.isNotEmpty() &&
+            !shouldShowRequestPermissionRationale(Manifest.permission.RECORD_AUDIO)
+        ) {
             startActivity(
                 Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
             )

@@ -57,7 +57,7 @@ permission / settings** scenario opens real iOS/Android permission or settings U
 | Tap the voice area twice | Accessible preview shortcut: start, then finish the simulated recording. |
 | Submit feedback | Show loading, close the sheet, and show the Figma confirmation toast. No content leaves the preview. |
 | Select Submission fails once | First submission preserves the draft and shows Retry; retry succeeds. |
-| Select Microphone permission / settings | Open native permission/settings UI in iOS/Android debug builds. Already-authorized access continues the first gesture; returning from native UI requires a fresh gesture. Restricted iOS access stays in the preview. |
+| Select Microphone permission / settings | Open native permission/settings UI in iOS/Android debug builds. Already-authorized access continues the first gesture; returning from native UI requires a fresh gesture. Restricted iOS access stays in the preview. A retryable Android denial returns to the preview; Settings opens only when Android no longer offers another permission prompt. |
 | Select Transcription fails once | Show the shared top error toast, preserve the draft and issue choices, and allow a fresh recording or keyboard input. |
 | Drag a held recording toward Cancel, then release | Show the red cancellation state and discard only that recording. Drag back before releasing to continue transcription; the direct Cancel recording action also retains the existing draft. |
 | Open the preview outside an iOS debug build | The native-rating request reports that it is available in the iOS debug preview; no custom review dialog is substituted. |

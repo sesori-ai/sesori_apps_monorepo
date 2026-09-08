@@ -104,6 +104,8 @@ mobile/desktop consumers using `CatalogScanRowMotion.standard`.
   leaves the destructive gradient visible during transcription.
 - Microphone failure adds inline error copy instead of opening native permission
   UI/settings; transcription failure fails to show the shared top error toast.
+- Denying the first retryable Android microphone prompt immediately opens Settings
+  instead of returning to the preview and allowing another permission request.
 - Permission completion starts a recording after the original hold ended or the
   sheet closed, or returning from permission UI resumes without a fresh gesture.
 - Already-authorized microphone access discards the first recording gesture.
