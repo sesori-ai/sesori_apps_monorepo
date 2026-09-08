@@ -67,7 +67,8 @@ void main() {
     expect(providers.providers.first.id, "custom");
     expect(providers.providers.first.defaultModelID, "custom/team/model-v2");
     expect(providers.providers.first.models.single.id, "custom/team/model-v2");
-    expect(providers.providers.first.models.single.variants, ["off", "high"]);
+    expect(providers.providers.first.models.single.variants, ["high", "off"]);
+    expect(providers.providers.first.models.single.defaultVariant, "off");
   });
 
   test("new sessions and reconnect clear stale shared configuration", () {

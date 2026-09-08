@@ -83,17 +83,20 @@ class AntigravitySessionOptionsService({
                   id: AntigravityIdentity.pluginId,
                   name: AntigravityIdentity.displayName,
                   authType: PluginProviderAuthType.oauth,
-                  models: [
-                    for (final model in catalog.models)
-                      PluginModel(
-                        id: model.id,
-                        name: model.name,
-                        variants: const [],
-                        family: null,
-                        isAvailable: true,
-                        releaseDate: null,
-                      ),
-                  ],
+                  models: CatalogStrengthOrder.models(
+                    [
+                      for (final model in catalog.models)
+                        PluginModel(
+                          id: model.id,
+                          name: model.name,
+                          variants: const [],
+                          family: null,
+                          isAvailable: true,
+                          releaseDate: null,
+                        ),
+                    ],
+                    idOf: (model) => model.id,
+                  ),
                   defaultModelID: _catalogTracker.newSessionDefaultModelId,
                 ),
               ],

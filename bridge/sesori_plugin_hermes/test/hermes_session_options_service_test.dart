@@ -31,8 +31,8 @@ void main() {
     expect(provider.name, "OpenCode Go");
     expect(provider.defaultModelID, "opencode-go:deepseek-v4-flash");
     expect(provider.models.map((model) => model.id), [
-      "opencode-go:deepseek-v4-flash",
       "opencode-go:gpt-5",
+      "opencode-go:deepseek-v4-flash",
     ]);
     expect(concurrentOptions, firstOptions);
 

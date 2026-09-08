@@ -244,17 +244,22 @@ class PiBackendCatalogRepository({
       for (final entry in entries)
         _provider(
           id: entry.key,
-          models: [
-            for (final model in entry.value)
-              PluginModel(
-                id: model.id!,
-                name: _displayName(model),
-                variants: thinkingByModel[_modelKey(model)] ?? const [],
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
+          models: CatalogStrengthOrder.models(
+            [
+              for (final model in entry.value)
+                PluginModel(
+                  id: model.id!,
+                  name: _displayName(model),
+                  // Strongest first; Pi's first-listed level stays the default.
+                  variants: CatalogStrengthOrder.variants(thinkingByModel[_modelKey(model)] ?? const []),
+                  defaultVariant: CatalogStrengthOrder.backendDefault(thinkingByModel[_modelKey(model)] ?? const []),
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
+            ],
+            idOf: (model) => model.id,
+          ),
           defaultModelId: entry.key == initial.provider ? initial.id : null,
         ),
     ];

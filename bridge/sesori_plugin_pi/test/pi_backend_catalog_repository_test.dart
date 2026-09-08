@@ -43,7 +43,8 @@ void main() {
     expect(anthropic.authType, PluginProviderAuthType.unknown);
     expect(anthropic.defaultModelID, "claude/team");
     expect(anthropic.models.single.id, "claude/team");
-    expect(anthropic.models.single.variants, ["off", "max"]);
+    expect(anthropic.models.single.variants, ["max", "off"]);
+    expect(anthropic.models.single.defaultVariant, "off");
     final custom = options.providers.providers.last;
     expect(custom.id, "custom/team");
     expect(custom.name, "custom/team");

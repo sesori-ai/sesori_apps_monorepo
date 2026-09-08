@@ -27,12 +27,22 @@ variant, and worktree mode, and creating the session with its first input.
   agent's declared variant when valid, then the model's declared default when
   offered, then the first listed. Selecting a variant is therefore a switch
   between named levels, never a reset to unset.
-- Claude and Codex list models and effort variants strongest first (Claude:
-  Fable, Opus, Sonnet, Haiku with `max` down to `low`; Codex: newest GPT
-  generation first, then Astra, Sol, Terra, Luna, the bare model, and other
-  suffixes such as Mini, with `ultra` down to `low`). OpenCode lists models
-  newest release first, undated last, ties by name. The model picker never
-  reorders models: it shows each plugin's declared order.
+- Every plugin that exposes effort variants lists them strongest first on one
+  shared ladder (`ultra`, `max`/`highest`, `xhigh`, `high`, `medium`/`mid`,
+  `low`, `minimal`/`min`, then `off`/`none`; unknown names a plugin retains
+  follow in backend order) and declares the default separately: the backend's
+  own default where it names one (Claude `high`, Codex, DeepSeek, Grok),
+  otherwise the variant the backend listed first, so reordering never changes
+  what runs. Hermes exposes none, and Claude and Pi drop names outside their
+  own closed level sets before ordering.
+- Every plugin ranks Anthropic and OpenAI models strongest first from the model
+  id through one shared rule: newest generation first, then Fable, Opus,
+  Sonnet, Haiku, or Astra, Sol, Terra, Luna, the bare GPT model, then other
+  suffixes such as Mini, then the fuller version. Models of other vendors keep
+  the plugin's own order after them: OpenCode newest release first, undated
+  last, ties by name; other plugins backend order. DeepSeek model ids are opaque,
+  so its models keep DeepSeek's order. The model picker never reorders models:
+  it shows each plugin's declared order.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a
