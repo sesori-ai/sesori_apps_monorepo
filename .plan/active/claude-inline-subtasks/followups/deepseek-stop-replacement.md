@@ -1,7 +1,9 @@
 # DeepSeek scoped-stop replacement
 
 PR #1356 is closed without merge; its source is preserved at `58bbe71384a7d5f71b00cad3e573995e4fbb587a`.
-Replacement step 4/5 merged as #1363 at `b13d197d51`; step 5/5 is in review as #1370, with user-owned E2E still outstanding.
+Replacement step 4/5 merged as #1363 at `b13d197d51`; step 5/5 merged as #1370 at `c88d4ade82`.
+Phone QA found the shared transport crash fixed by #1379 at `c436d3d4ae`; requested phone checks then passed.
+See `deepseek-phone-qa.md` for evidence and limitations. Desktop remains deferred by user choice.
 Each replacement targets at most 1,500 changed lines including generated code, tests, fixtures, and documentation.
 The adapter checkout is read-only evidence: v0.1.4 is already released, with no new native release planned.
 
@@ -87,4 +89,6 @@ ordering. Step 5 covers delayed admission, settled/nested independent roots, ret
 loads, keep/confirm, partial failure, frames before responses, later-work survival, reset/close, mixed public versions,
 and legacy reload fallback. Run relevant bridge/client and impacted mobile title-hydration/split-pane tests,
 not the old DI fix.
-Final phone/desktop feature E2E remains user-owned and separate from package/CI checks. Finish DeepSeek before Codex.
+Feature E2E remains separate from package/CI checks. The requested agent-run phone stop/input checks passed;
+`deepseek-phone-qa.md` records the handoff to Codex and outstanding desktop/UX coverage. Do not retire the overall
+plan while its required final matrix remains incomplete.

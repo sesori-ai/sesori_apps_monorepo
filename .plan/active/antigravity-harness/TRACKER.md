@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.b merged; Step 10.c open for review
-- **Base:** synced with main `b74841ac14e5d4bf07bedb93e73d80c68fef491a` after Step 10.b merge
-- **Current branch:** `antigravity-harness-step-10c-managed-pair`
+- **Status:** Steps 1–10.c merged; Step 10.d open for review
+- **Base:** synced with main `4fdd433392eabde75f1d800b649337206f057421` after Step 10.c merge
+- **Current branch:** `antigravity-harness-step-10d-managed-install`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -25,8 +25,10 @@
   [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a)
 - **Merged PR:** [#1380](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1380) (Step 10.b). At the terminal
   report, 15/16 checks were complete with clean Cubic approval; Codex review was still running, so no 16/16 claim is made.
-- **Open PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c).
-- **Next action:** monitor Step 10.c; resolve four missing native measurements before Step 10.d activation.
+- **Merged PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c); terminal report
+  had 15/16 checks complete, with clean Cubic approval and no actionable Codex feedback.
+- **Open PR:** [#1386](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1386) (Step 10.d).
+- **Next action:** monitor Step 10.d; begin Step 11 guidance locally.
 
 ## Fixed PR Series
 
@@ -48,7 +50,7 @@
 - [x] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
 - [x] Step 10.a/12 — `🌿 [antigravity-harness] feat(runtime): require archive command budgets [step 10.a/12]`
 - [x] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
-- [ ] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): validate official managed candidates [step 10.c/12]`
+- [x] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): validate official managed candidates [step 10.c/12]`
 - [ ] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
 - [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
@@ -383,7 +385,7 @@
 - [x] Add required `ArchiveRuntimeAsset.archiveCommandTimeout` and extractor input, applying it to archive listing and
   extraction. Update all 34 current platform assets, fixture assets, extractor doubles and the self-update caller.
 - [x] Existing archives/self-update explicitly keep a two-minute per-command budget. Listing no longer has a separate
-  fixed 30-second bound. No Antigravity managed asset, installation action or native timing claim is introduced.
+  fixed 30-second bound. No Antigravity managed asset or installation action is introduced.
 - [x] Add deterministic simulated slow-command/timeout-cleanup coverage and selected-asset forwarding assertions;
   preserve real tar/zip/symlink tests and update both relevant regression documents.
 - [x] Focused JSON-counted tests pass: foundation archive 8; runtime install 12 + managed install 14 + provision 10;
@@ -410,7 +412,7 @@
   validation plus context cleanup for downloads and cached candidates.
 - [x] Pass `StartAbortSignal` through the seam while retaining honest bounded-command behavior for current validators.
 - [x] Cover validation ordering/containment/private-mode commands, cache validation, exact-version behavior, and
-  rejection/abort rollback preserving the prior package and sentinel.
+  rejection/abort before placement preserving the retained supported prior package and sentinel.
 - [x] Pinned Dart 3.13.2 verification: all 195 non-hidden tests across the runtime package's 19 suites pass; runtime,
   OpenCode, Codex, Cursor, DeepSeek, Copilot, OMP and Pi analyzers are clean with fatal infos. Counts use successful
   JSON `testDone` records keyed by suite/test IDs; logs are retained under `/tmp/antigravity-step10b-*`.
@@ -424,8 +426,8 @@
 
 ## Step 10.c Checklist
 
-- [x] Before editing, estimated the complete Step 10.c implementation at 950–1,350 changed lines. The five-target
-  archive budget gate required an earlier coherent split under standing approval rather than inventing timings.
+- [x] Step 10.c delivers release facts and candidate validation. Manifest and descriptor installation belong to
+  Step 10.d under the approved split.
 - [x] Independently downloaded all five archives from the exact official registry URLs at commit
   `536e378b70a7a6d5f078a9160180e3569a23253c`; recomputed every SHA-256 and archive byte count, and listed both member
   names/sizes. All facts match `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`.
@@ -434,9 +436,9 @@
 - [x] Add `AntigravityRuntimeVersionValidator(required runtimeService)`. It uses the installer-owned state as
   `GEMINI_HOME`, shares the profile's ambient-credential stripping policy, forces file storage, uses the supplied staged
   cwd and abort signal, and awaits the existing initialize-only ACP process lifecycle under a 90-second bound.
-- [x] Native macOS arm64 evidence: the packaged `ArchiveExtractor` listed in 84 ms and extracted in 8,586 ms; a second
-  extraction plus the production validator accepted the exact official initialize contract in 18,781 ms. It created no
-  auth/session request and left no files in disposable validation cwd/state. These are macOS facts only.
+- [x] Native macOS arm64 correctness evidence: the packaged extractor and production validator accepted the official
+  artifact and exact initialize contract, created no auth/session request, and left no files in disposable validation
+  cwd/state. This does not establish native correctness on other platforms.
 - [x] Keep Install unavailable: no manifest, descriptor install capability, installer composition or managed-download
   disclosure is added in this slice.
 - [x] Worker `9d318de2` reached its 30-minute timeout after committing `68fd08a88e`, with a clean tree. Recovered only
@@ -446,11 +448,49 @@
 - [x] Initial focused tests: profile 17 + release 3 + runtime service 13 + validator 4 = 37; owning analyzer clean.
   After main's ACP/NDJSON lifecycle changes, reran the 17 runtime-service/validator cases and owning analysis: passed.
   This overlaps the initial 37, not 54 unique cases. Reviewed production files remain unchanged after synchronization.
-- [ ] Obtain packaged-host listing and extraction measurements on Linux x64, Linux arm64, Windows x64 and Windows arm64.
-  Native runners are not available in this macOS arm64 worktree. The successor needs those measured budgets, or an
-  explicit product/evidence decision changing the requirement, before manifest and Install exposure.
-- [ ] Add the manifest, descriptor integration/disclosure, target-budget and install rollback/failure tests, and update
-  the managed-runtime capability rows only after the native gate above.
+
+## Step 10.d Checklist
+
+- [x] Added `AntigravityRuntimeManifest` from the already pinned five official release artifacts. Every asset is a ZIP
+  package directory with a conservative two-minute per listing/extraction command budget.
+  Managed directories use registry package version `1.0.0`, while candidate validation
+  separately requires runtime identity `agy_acp_server_20260818_01_RC01`.
+- [x] Composed the shared managed installer/cleaner with the existing initialize-only
+  `AntigravityRuntimeVersionValidator`. The descriptor keeps explicit -> valid PATH -> installed managed precedence,
+  advertises Install only on Google's five targets without `--antigravity-bin`, and closes its required download client.
+- [x] Added pre-action proprietary Google download disclosure with terms/documentation links. Updated the capability,
+  runtime-installation, setup/lifecycle and Antigravity descriptor regression contracts without advancing the Step 11
+  root/bridge README reconciliation.
+- [x] Focused pinned-Dart verification passes: 34 non-hidden Antigravity tests across five suites and 4 app registry
+  tests, counted from successful JSON `testDone` records with suite/test IDs. Antigravity and app analyzers are clean
+  with fatal infos. One initial app registry run failed because its fixture omitted the now-read `bin` option; the
+  fixture was corrected and its four tests plus app analysis pass.
+- [x] Foreground native macOS arm64 managed-pipeline smoke reused the independently rehashed cached official archive in
+  disposable state. It downloaded through the descriptor, verified/extracted the package, preserved the server/harness
+  siblings, ran exactly one false-inheritance initialize-only validation, removed validation cwd/state and staging,
+  and returned the `1.0.0` managed server. No OAuth, authentication, session or real user profile was used.
+- [x] Native Linux x64/arm64 and Windows x64/arm64 correctness remains unexecuted and is not claimed. Shared automated
+  tests continue to own integrity, traversal/symlink, candidate-before-placement, abort, cleanup and prior-runtime
+  retention coverage. Same-pinned-directory placement itself is not claimed to roll back after rename.
+- Pre-review cap against `4fdd433392eabde75f1d800b649337206f057421`: 483 additions + 97 deletions = 580
+  changed lines across 14 files, including the committed user plan correction.
+- [x] First foreground architecture review `5d75ef9a` approved complete `4fdd433392` → `4ecc6b141f`: all 14 files,
+  483 additions + 97 deletions = 580 lines, no findings. Publication metadata is counted separately.
+- [x] Review correction: overview download opens existing detail without installing; detail always shows setup guidance
+  before its Install button. Invalid managed-pair guidance includes both Google URLs. No new wire field or UI component.
+  Current focused evidence: 12 descriptor tests + 50 client settings tests pass; Antigravity and shared UI analyzers clean.
+  This overlaps earlier evidence, not 62 additional unique cases. Documentation now states retained supported-runtime
+  protection, permits existing managed upgrades, and attributes coverage/slices accurately.
+- [x] CI follow-up: update the two stale shared-UI expectations for overview navigation and visible hints;
+  all 19 shared settings-view tests pass. Reconcile the later lifecycle-document requirement with the same flow.
+  Production code is unchanged; prior passing analyzers and mobile-shell tests were not rerun.
+- [x] Linux ZIP prerequisite follow-up: an action-only bounded ZipInfo preflight fails before download-client creation
+  or staging writes, retaining local diagnostics and observing abort before/after the command. The install guide names
+  the distribution package. All 18 descriptor tests pass; owning analysis is clean after a const-only test lint fix.
+  Synthetic Linux cases cover missing/incompatible/timed-out tools, abort boundaries and successful preflight ordering;
+  host macOS ZipInfo help succeeded, not a native Linux installation claim. No unchanged client suites were rerun.
+- User declined additional recovery machinery for the rare externally supplied PATH pair that passes inert filename
+  inspection but fails runtime validation. Preserve existing inspection/lifecycle semantics rather than expanding this PR.
 
 ## Architecture Reviews
 
@@ -523,7 +563,7 @@ Required representative end-to-end rows:
 | Model/session create and turn | client -> relay -> bridge -> official agent -> Google | Not run |
 | Permission and interaction question | official agent -> bridge -> client -> exact response | Not run |
 | History, cold resume, bridge restart | isolated profile -> ACP load/resume -> client | Not run |
-| Managed install rollback/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
+| Managed install pre-placement retention/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
 | Unknown/older-client fallback | shared wire/plugin identity -> client presentation | Not run |
 
 Antigravity-affected regression documents are listed in Step 11 of `PLAN.md`. Step 12 additionally collects every

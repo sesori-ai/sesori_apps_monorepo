@@ -66,7 +66,94 @@ class CodexMessageRepository({
         stackTrace,
       );
     }
-    return CodexPreparedMessageRead(lines: trimForkedParentHistory(lines: lines));
+    final ownHistory = trimForkedParentHistory(lines: lines);
+    return CodexPreparedMessageRead(lines: _replayThreadRollbacks(lines: ownHistory));
+  }
+
+  /// Replays persisted rollback markers over user-turn boundaries.
+  ///
+  /// An explicit `task_started` begins the turn span removed by rollback, which
+  /// also removes that turn's assistant, tool, and completion records. Legacy
+  /// rollouts without explicit starts begin the span at the response-item user
+  /// message paired with `user_message`. Later records build on the retained
+  /// prefix, so repeated markers apply to the already-rolled-back history.
+  static List<CodexRolloutLineDto> _replayThreadRollbacks({
+    required List<CodexRolloutLineDto> lines,
+  }) {
+    final replayed = <CodexRolloutLineDto>[];
+    final userTurnStarts = <int>[];
+    int? activeTurnStart;
+    String? activeTurnId;
+    var activeTurnHasUser = false;
+    int? pendingUserResponseStart;
+
+    for (final line in lines) {
+      if (line case CodexRolloutEventMessageLineDto(
+        payload: CodexRolloutThreadRolledBackEventDto(:final numTurns),
+      )) {
+        if (numTurns > 0 && userTurnStarts.isNotEmpty) {
+          final firstRemovedTurn = numTurns >= userTurnStarts.length ? 0 : userTurnStarts.length - numTurns;
+          final cutIndex = userTurnStarts[firstRemovedTurn];
+          replayed.removeRange(cutIndex, replayed.length);
+          userTurnStarts.removeRange(firstRemovedTurn, userTurnStarts.length);
+        }
+        activeTurnStart = null;
+        activeTurnId = null;
+        activeTurnHasUser = false;
+        pendingUserResponseStart = null;
+        continue;
+      }
+
+      final lineIndex = replayed.length;
+      replayed.add(line);
+      switch (line) {
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutTaskStartedEventDto(:final turnId),
+        ):
+          activeTurnStart = lineIndex;
+          activeTurnId = turnId;
+          activeTurnHasUser = false;
+          pendingUserResponseStart = null;
+        case CodexRolloutResponseItemLineDto(
+          payload: CodexRolloutMessageDto(role: CodexRolloutRole.user),
+        ):
+          pendingUserResponseStart = lineIndex;
+        case CodexRolloutEventMessageLineDto(payload: CodexRolloutUserMessageEventDto()):
+          if (activeTurnStart case final turnStart?) {
+            if (!activeTurnHasUser) {
+              userTurnStarts.add(turnStart);
+              activeTurnHasUser = true;
+            }
+          } else {
+            userTurnStarts.add(pendingUserResponseStart ?? lineIndex);
+          }
+          pendingUserResponseStart = null;
+        case CodexRolloutEventMessageLineDto(
+          payload: CodexRolloutTaskCompleteEventDto(:final turnId),
+        ):
+          if (activeTurnId == turnId) {
+            activeTurnStart = null;
+            activeTurnId = null;
+            activeTurnHasUser = false;
+            pendingUserResponseStart = null;
+          }
+        case CodexRolloutEventMessageLineDto(payload: CodexRolloutTurnAbortedEventDto(:final turnId)):
+          if (turnId == null || activeTurnId == turnId) {
+            activeTurnStart = null;
+            activeTurnId = null;
+            activeTurnHasUser = false;
+            pendingUserResponseStart = null;
+          }
+        case CodexRolloutSessionMetadataLineDto() ||
+            CodexRolloutTurnContextLineDto() ||
+            CodexRolloutResponseItemLineDto() ||
+            CodexRolloutEventMessageLineDto() ||
+            CodexRolloutCompactedLineDto() ||
+            CodexRolloutUnknownLineDto():
+          break;
+      }
+    }
+    return replayed;
   }
 
   /// Drops the parent history a `fork_turns` sub-agent rollout copies ahead of
@@ -104,7 +191,9 @@ class CodexMessageRepository({
               return [...lines.sublist(0, copyStart), ...lines.sublist(index)];
             }
             openTurn = true;
-          case CodexRolloutTaskCompleteEventDto() || CodexRolloutTurnAbortedEventDto():
+          case CodexRolloutTaskCompleteEventDto() ||
+              CodexRolloutTurnAbortedEventDto() ||
+              CodexRolloutThreadRolledBackEventDto():
             openTurn = false;
           case CodexRolloutUserMessageEventDto() ||
               CodexRolloutImageGenerationEndEventDto() ||

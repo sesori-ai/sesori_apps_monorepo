@@ -8,10 +8,13 @@
   [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257), which
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
-  the series is retired
-- **Next action:** finish review of native-stop step 5/5 (#1370); step 4/5
-  (#1363) is merged. PR #1356 remains closed without merge. Complete
-  user-owned DeepSeek phone/desktop E2E after step 5/5 merges, before Codex.
+  the original Claude series is complete; harness follow-ups remain active
+- **Next action:** Codex typed child-prompt parsing (step 3/6), followed by
+  inline subtask tiles (step 4/6). This is a user-authorized packaging split;
+  approved behavior and architecture are unchanged. DeepSeek #1363,
+  #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
+  stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
+  remains deferred by user choice; the overall plan remains active.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -160,11 +163,12 @@ post-merge E2E gates are unchanged.
 | Done | Harness | Description | State |
 |---|---|---|---|
 | [x] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) merged |
-| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged |
-| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) merged; lifecycle hardening [PR #1280](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1280) merged |
-| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads` | Not started |
-| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage` | Not started |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged; historical title unchanged (step 1/6) |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) merged; lifecycle hardening [PR #1280](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1280) merged; historical title unchanged (step 2/6) |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | Implemented on `claude-inline-subtasks-codex-tiles`; preparatory parsing/codegen only |
+| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents [step 4/6]` | Full checkpoint preserved on local branch `claude-inline-subtasks-codex-tiles-successor`; review-ready successor on `claude-inline-subtasks-codex-tiles-successor-ready`; neither published |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 5/6]` | Not started |
+| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 6/6]` | Not started |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
 | [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
@@ -179,7 +183,7 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Adapter #17 merged at `5eecdf68a3` |
 | [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
-| [ ] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) in review; final phone/desktop E2E remains user-owned |
+| [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
@@ -726,9 +730,37 @@ interrupt response fields while retaining required/known-result checks; analysis
 and 104 tests pass. Named foreground children now correctly reject main-only stop
 even when all descendants are background; background named-child keep remains
 supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
-Replacement delivery (2026-09-06): PR #1356 closed without merge. Step 4/5
-lands only the frozen v0.1.4 contract, ordered input cancellation, runtime pin,
-and initialize-version boundary. Step 5/5 will replace the existing direct-child
-policy with complete ACP-owned native stop. Until then scoped-stop behavior is
-unchanged. Final phone/desktop E2E is user-owned, then Codex; managed-runtime
-automation remains separately owned.
+Replacement delivery completed (2026-09-08): PR #1356 remains closed without
+merge. #1363 landed the frozen v0.1.4 contract, ordered input cancellation,
+runtime pin, and initialize-version boundary. #1370 landed complete ACP-owned
+native stop. Phone QA found the shared IOSink crash fixed by #1379; the
+corrected independent-scope stop and pending/later-input checks passed.
+`followups/deepseek-phone-qa.md` records the bounded evidence and follow-ups.
+The user deferred desktop and requested progression to Codex after phone checks;
+managed-runtime automation remains separately owned.
+
+Codex delivery split (user-authorized): complete typed-prompt + tile source is
+preserved unchanged on local branch
+`claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and the
+review-ready snapshot remains on
+`claude-inline-subtasks-codex-tiles-successor-ready` (`8a2952f318`). Those
+snapshots predate the step 3/6 provenance correction and must be integrated
+later without losing their tile work. Full-source successor Codex
+`dart analyze --fatal-infos`, focused live/replay/terminal tests, and the owning
+package test suite passed before extraction. Step 3/6 contains typed
+`thread/read` prompt parsing/codegen only; step 4/6 retains exact call-id
+replacement, service-owned lifecycle, child terminal joins, and cleanup without
+design changes. Review this branch only against `origin/main`; do not include
+preserved successor source in the preparatory PR.
+
+Codex step 3/6 correction: `thread/read` now parses turn ids and caches typed
+`text` prompts by turn id. `initialUserPrompt` requires the child lifecycle's
+exact, nullable `turnId`; null or unmatched provenance returns null instead of
+choosing copied parent history. The step 4/6 integration must resolve this cache
+when the existing `turn/started` owner observes the child turn id, while keeping
+live child-message prompt selection first and this read result as fallback.
+Unsupported rollout-only `input_text` decodes through the unknown content
+variant. Generated Freezed/JSON sources, the focused eight-test metadata suite,
+`dart analyze --fatal-infos`, and the complete `sesori_plugin_codex` test suite
+pass. No tile lifecycle, stop policy, runtime pin, native adapter, client,
+shared contract, or database behavior changes.

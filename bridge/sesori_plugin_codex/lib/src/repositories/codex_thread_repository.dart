@@ -38,6 +38,7 @@ final class const _CodexPromptAttachmentException({required final String message
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
 class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
+  final Map<String, Map<String, String>> _initialPromptByTurnByThread = {};
   static const _supportedImageMimes = {
     "image/bmp",
     "image/gif",
@@ -70,7 +71,42 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       operation: "thread/read",
       request: () => _appServerApi.readThread(threadId: threadId),
     );
+    _cacheInitialUserPrompts(threadId: threadId, thread: dto.thread);
     return _mapRequired(dto: dto, operation: "thread/read");
+  }
+
+  void forgetThread({required String threadId}) {
+    _initialPromptByTurnByThread.remove(threadId);
+  }
+
+  /// Returns the initial user prompt from the exact turn observed through the
+  /// child thread lifecycle. A thread read alone cannot distinguish a child's
+  /// own turn from parent turns copied by `fork_turns`, so missing or unmatched
+  /// turn provenance intentionally returns `null`.
+  String? initialUserPrompt({required String threadId, required String? turnId}) {
+    final usefulTurnId = _usefulText(turnId);
+    return usefulTurnId == null ? null : _initialPromptByTurnByThread[threadId]?[usefulTurnId];
+  }
+
+  void _cacheInitialUserPrompts({required String threadId, required CodexThreadDto? thread}) {
+    if (thread == null) return;
+    final promptsByTurn = _initialPromptByTurnByThread.putIfAbsent(threadId, () => {});
+    for (final turn in thread.turns) {
+      final turnId = _usefulText(turn.id);
+      if (turnId == null) continue;
+      for (final item in turn.items) {
+        if (item case CodexThreadUserMessageItemDto(:final content)) {
+          final prompt = [
+            for (final part in content)
+              if (part case CodexThreadTextContentDto(:final text)) text,
+          ].join();
+          if (prompt.trim().isNotEmpty) {
+            promptsByTurn[turnId] = prompt;
+            break;
+          }
+        }
+      }
+    }
   }
 
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {

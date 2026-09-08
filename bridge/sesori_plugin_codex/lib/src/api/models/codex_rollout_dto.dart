@@ -110,6 +110,11 @@ sealed class CodexRolloutEventDto with _$CodexRolloutEventDto {
     @JsonKey(name: "turn_id") required String? turnId,
   }) = CodexRolloutTurnAbortedEventDto;
 
+  @FreezedUnionValue("thread_rolled_back")
+  const factory threadRolledBack({
+    @JsonKey(name: "num_turns") required int numTurns,
+  }) = CodexRolloutThreadRolledBackEventDto;
+
   const factory unknown() = CodexRolloutUnknownEventDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexRolloutEventDtoFromJson(json);

@@ -120,6 +120,13 @@ CodexRolloutTurnAbortedEventDto _$CodexRolloutTurnAbortedEventDtoFromJson(
   $type: json['type'] as String?,
 );
 
+CodexRolloutThreadRolledBackEventDto
+_$CodexRolloutThreadRolledBackEventDtoFromJson(Map json) =>
+    CodexRolloutThreadRolledBackEventDto(
+      numTurns: (json['num_turns'] as num).toInt(),
+      $type: json['type'] as String?,
+    );
+
 CodexRolloutUnknownEventDto _$CodexRolloutUnknownEventDtoFromJson(Map json) =>
     CodexRolloutUnknownEventDto($type: json['type'] as String?);
 

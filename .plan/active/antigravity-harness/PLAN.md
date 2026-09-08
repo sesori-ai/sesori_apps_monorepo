@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.b merged, Step 10.c in review, Step 10.d awaiting native measurements
+- **Status:** active; Steps 1–10.c merged, Step 10.d in review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
@@ -976,14 +976,15 @@ full-diff cap per PR. Keep only the immediate successor local:
 - **10.a — Archive command budgets (estimated 250–450 lines):** required asset/extractor command budgets,
   every current manifest/caller updated explicitly, focused forwarding/slow-command/timeout tests, and runtime/self-update
   regression contracts. Existing archive extraction retains two minutes; listing now uses the same declared budget.
-  No Antigravity installation is exposed, no official artifact budgets or native timing claims are made yet.
+  No Antigravity installation or official artifact budgets are introduced in this slice.
 - **10.b — Isolated candidate validation (estimated 600–1,000 lines):** the required shared pre-placement seam,
   explicit current-caller adapters, disposable owner-only staging/cached validation context and failure/shutdown cleanup.
 - **10.c — Official candidate validation (review checkpoint: 587 lines):** independently rehashed five-target artifact
-  facts and the isolated initialize-only validator. Native macOS arm64 archive/probe evidence is recorded separately.
+  facts and the isolated initialize-only validator, with native macOS arm64 correctness evidence.
 - **10.d — Managed pair activation (estimated 600–1,100 lines):** manifest, descriptor composition, install disclosure,
-  measured target budgets and failure/rollback coverage. This successor requires packaged Linux x64/arm64 and Windows
-  x64/arm64 measurements; Install remains unavailable until those gates pass. Further coherent splits remain preapproved.
+  conservative bounded archive-command timeouts and pre-placement prior-runtime retention/abort coverage. Integrity,
+  traversal, isolated candidate
+  validation and cleanup remain required. Further coherent splits remain preapproved.
 
 The requirements below apply across those slices; partitioning does not remove any of them:
 
@@ -997,7 +998,7 @@ The requirements below apply across those slices; partitioning does not remove a
 - Compose `AntigravityRuntimeVersionValidator(required runtimeService)` as that seam's adapter. The shared installer
   creates an owner-only disposable state directory inside managed staging; the adapter supplies it as `GEMINI_HOME`,
   strips ambient credentials, runs initialize-only, and terminates without auth/session creation. Timeout, failure, or
-  shutdown kills the probe and removes staging, leaving the prior installed pair untouched; success removes the probe
+  shutdown kills the probe and removes staging, leaving retained supported prior pairs untouched; success removes the probe
   home before placement. Cached validation uses the same disposable managed-area context.
 - Narrowly document the install contract's distinction between a bounded, noninteractive staging validator and a live
   plugin start: no process is registered/exposed, and all validator cwd/state/files remain inside managed staging.
@@ -1005,10 +1006,10 @@ The requirements below apply across those slices; partitioning does not remove a
   an explicit override and on one of the five supported targets; install is always explicit.
 - Add required `archiveCommandTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor`
   input, and update every existing asset/caller explicitly. Apply it to both traversal preflight listing and extraction,
-  replacing the fixed 30-second/two-minute limits. Give each Antigravity target a measured budget that completes both
-  full archive passes on its packaged host; retain traversal/symlink checks and test successful slow preflight/extract.
+  replacing the fixed 30-second/two-minute limits. Give Antigravity assets conservative bounded command timeouts;
+  retain traversal/symlink checks and deterministic successful slow-command and timeout-cleanup tests.
 - Add managed-download disclosure and five-target/macOS-x64 capability facts before Install is exposed. Update
-  `docs/regression/plugin-runtime-installation.md` with the supported targets, budgets, rollback, and abort evidence in
+  `docs/regression/plugin-runtime-installation.md` with supported targets, budgets, pre-placement retention and abort evidence in
   this PR rather than deferring it to Step 11.
 - Cover all target mappings/digests, package sibling preservation, corrupt archive/hash, partial pair, staging-home
   containment/mode/cleanup, no auth/session call, failed probe before placement, shutdown abort at phase boundaries,
@@ -1097,9 +1098,9 @@ Feature matrix:
     in logs, SSE replay, or persisted state.
   - Boundary: automated, live Google service on representative macOS arm64 and Linux x64 hosts, iOS and desktop E2E.
 - **`plugin-runtime-installation.md`**
-  - Evidence: five independently pinned digests, target-sized archive-command budgets, successful huge-package
+  - Evidence: five independently pinned digests, conservative bounded archive-command budgets, successful huge-package
     traversal preflight and extraction, sibling preservation, validation-before-activation, shutdown abort/recovery,
-    rollback, cleanup, and macOS x64 gap.
+    pre-placement prior-runtime retention, cleanup, and macOS x64 gap.
   - Boundary: automated plus packaged execution on every listed host target.
 - **`projects-and-sessions.md`**
   - Evidence: isolated-profile metadata import, DB-only ordinary reads, canonical cwd attribution, malformed metadata
@@ -1110,7 +1111,7 @@ Feature matrix:
     exact selection, stale rejection/refresh, `default` mode before prompt, session creation, and remembered defaults.
   - Boundary: automated, live agent, and client E2E.
 - **`session-turns.md`**
-  - Evidence: text/reasoning/tool/status streaming, accepted-send timing, model application, abort, stop-and-send,
+  - Evidence: text/reasoning/tool/status streaming, accepted-send ordering, model application, abort, stop-and-send,
     two-session concurrency, visible failures, and idle completion with no permission bypass.
   - Boundary: live agent and both client shells.
 - **`session-history-and-recovery.md`**
@@ -1143,9 +1144,10 @@ Feature matrix:
 - **Terms/proprietary distribution:** the registry intentionally publishes Google binaries for ACP clients, while
   Google separately controls account eligibility and terms. Fetch only from the official registry URLs after explicit
   action, link current terms, and avoid legal promises or community wrappers.
-- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Replace fixed listing and
-  extraction limits with one required per-asset command budget, then verify successful traversal preflight/extraction,
-  shutdown abort, disk/timeout failure, prior-runtime rollback, and cleanup without duplicating the shared installer.
+- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Use one conservative,
+  bounded per-asset command budget for listing and extraction, then verify traversal preflight/extraction, shutdown
+  abort, disk/timeout failure, pre-placement prior-runtime retention, and cleanup without duplicating the shared
+  installer.
 - **Pair drift:** server and local harness must match. Resolve/place/lease them as one directory, then validate both
   before activation.
 - **OAuth callback security:** a pasted URL is attacker-controlled input containing a short-lived code. Pure-Dart

@@ -730,6 +730,10 @@ CodexRolloutEventDto _$CodexRolloutEventDtoFromJson(
           return CodexRolloutTurnAbortedEventDto.fromJson(
             json
           );
+                case 'thread_rolled_back':
+          return CodexRolloutThreadRolledBackEventDto.fromJson(
+            json
+          );
         
           default:
             return CodexRolloutUnknownEventDto.fromJson(
@@ -1136,6 +1140,76 @@ class _$CodexRolloutTurnAbortedEventDtoCopyWithImpl<$Res>
   return _then(CodexRolloutTurnAbortedEventDto(
 turnId: freezed == turnId ? _self.turnId : turnId // ignore: cast_nullable_to_non_nullable
 as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class CodexRolloutThreadRolledBackEventDto implements CodexRolloutEventDto {
+  const CodexRolloutThreadRolledBackEventDto({@JsonKey(name: "num_turns") required this.numTurns,  String? $type}): $type = $type ?? 'thread_rolled_back';
+  factory CodexRolloutThreadRolledBackEventDto.fromJson(Map<String, dynamic> json) => _$CodexRolloutThreadRolledBackEventDtoFromJson(json);
+
+@JsonKey(name: "num_turns") final  int numTurns;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CodexRolloutThreadRolledBackEventDtoCopyWith<CodexRolloutThreadRolledBackEventDto> get copyWith => _$CodexRolloutThreadRolledBackEventDtoCopyWithImpl<CodexRolloutThreadRolledBackEventDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutThreadRolledBackEventDto&&(identical(other.numTurns, numTurns) || other.numTurns == numTurns));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,numTurns);
+
+@override
+String toString() {
+  return 'CodexRolloutEventDto.threadRolledBack(numTurns: $numTurns)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CodexRolloutThreadRolledBackEventDtoCopyWith<$Res> implements $CodexRolloutEventDtoCopyWith<$Res> {
+  factory $CodexRolloutThreadRolledBackEventDtoCopyWith(CodexRolloutThreadRolledBackEventDto value, $Res Function(CodexRolloutThreadRolledBackEventDto) _then) = _$CodexRolloutThreadRolledBackEventDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "num_turns") int numTurns
+});
+
+
+
+
+}
+/// @nodoc
+class _$CodexRolloutThreadRolledBackEventDtoCopyWithImpl<$Res>
+    implements $CodexRolloutThreadRolledBackEventDtoCopyWith<$Res> {
+  _$CodexRolloutThreadRolledBackEventDtoCopyWithImpl(this._self, this._then);
+
+  final CodexRolloutThreadRolledBackEventDto _self;
+  final $Res Function(CodexRolloutThreadRolledBackEventDto) _then;
+
+/// Create a copy of CodexRolloutEventDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? numTurns = null,}) {
+  return _then(CodexRolloutThreadRolledBackEventDto(
+numTurns: null == numTurns ? _self.numTurns : numTurns // ignore: cast_nullable_to_non_nullable
+as int,
   ));
 }
 
