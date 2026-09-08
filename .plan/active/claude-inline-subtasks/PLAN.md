@@ -20,9 +20,10 @@
   Both slices merged (#1363, #1370). Agent-run phone QA found the transport
   crash fixed by #1379; requested phone stop/input checks then passed. See
   `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice. Codex
-  now uses a user-authorized six-step packaging sequence: typed child-prompt
-  parsing is step 3/6 and inline tiles step 4/6, with approved behavior and
-  architecture unchanged. Overall harness plan remains active.
+  now uses a user-authorized seven-step sequence: merged PR #1387 is historical
+  preparation superseded by the verified 0.153.4 rollout-input seam; causal
+  cleanup is step 4/7, tiles step 5/7, scoped stop step 6/7, and coverage step
+  7/7. Overall harness plan remains active.
 
 ## Goal
 

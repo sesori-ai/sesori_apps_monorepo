@@ -11,7 +11,7 @@ class const SessionHarnessUnavailableNotice({
   required final SessionInteractionState interaction,
   required final bool historyUnavailable,
   required final VoidCallback onOpenHarnessSettings,
-  required final VoidCallback onRetry,
+  required final VoidCallback onRecheck,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -44,7 +44,7 @@ class const SessionHarnessUnavailableNotice({
       if (blocked?.refreshError != null && blocked?.reason != SessionInteractionBlockedReason.statusCheckFailed)
         loc.sessionDetailHarnessRefreshWarning,
     ].join("\n");
-    final canRetry = interaction is! SessionInteractionLegacyUnverified;
+    final canRecheck = blocked?.reason == SessionInteractionBlockedReason.authenticationRequired;
     final prego = context.prego;
 
     return Semantics(
@@ -80,11 +80,11 @@ class const SessionHarnessUnavailableNotice({
                       size: PregoButtonsSolidSize.sm,
                       onPressed: onOpenHarnessSettings,
                     ),
-                  if (canRetry)
+                  if (canRecheck)
                     TextButton(
-                      key: const Key("session_harness_retry"),
-                      onPressed: onRetry,
-                      child: Text(loc.sessionDetailRetry),
+                      key: const Key("session_harness_recheck"),
+                      onPressed: onRecheck,
+                      child: Text(loc.sessionDetailRecheck),
                     ),
                 ],
               ),

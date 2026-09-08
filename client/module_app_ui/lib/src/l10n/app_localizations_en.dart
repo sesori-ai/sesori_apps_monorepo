@@ -841,6 +841,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailRetry => 'Retry';
 
   @override
+  String get sessionDetailRecheck => 'Recheck';
+
+  @override
   String get sessionDetailPromptHint => 'Ask anything...';
 
   @override
@@ -1643,7 +1646,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailContentLoadFailedReason =>
-      'The harness is available, but chat content or options could not be loaded. Retry to continue.';
+      'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.';
 
   @override
   String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';

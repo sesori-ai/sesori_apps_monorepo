@@ -731,7 +731,6 @@ class CodexSessionService({
     }
     _loadedThreads.remove(sessionId);
     _threadModels.remove(sessionId);
-    _threadRepository?.forgetThread(threadId: sessionId);
   }
 
   Future<CodexSessionMessageRead?> prepareSessionMessageRead({

@@ -52,20 +52,6 @@ void main() {
     expect(secondRepository.resumeCount, 1);
   });
 
-  test("deleting a session forgets its repository prompt candidates", () async {
-    final service = _newService();
-    final repository = _StubThreadRepository();
-    service.attachAppServerRepositories(
-      threadRepository: repository,
-      modelRepository: _StubModelRepository(),
-      skillRepository: _StubSkillRepository(),
-    );
-
-    await service.deleteSessionSubtree(sessionIds: const ["thread-to-delete"]);
-
-    expect(repository.forgottenThreadIds, ["thread-to-delete"]);
-  });
-
   test("getCommands always includes compact without duplicating an advertised command", () async {
     final service = _newService();
     final threadRepository = _StubThreadRepository();
@@ -564,14 +550,6 @@ class _StubThreadRepository() extends CodexThreadRepository {
           client: CodexAppServerClient(serverUrl: "ws://127.0.0.1:0"),
         ),
       );
-
-  final List<String> forgottenThreadIds = [];
-
-  @override
-  void forgetThread({required String threadId}) {
-    forgottenThreadIds.add(threadId);
-    super.forgetThread(threadId: threadId);
-  }
 
   int resumeCount = 0;
   int compactCount = 0;

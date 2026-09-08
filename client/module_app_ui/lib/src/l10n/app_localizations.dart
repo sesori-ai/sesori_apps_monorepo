@@ -1645,6 +1645,12 @@ abstract class AppLocalizations {
   /// **'Retry'**
   String get sessionDetailRetry;
 
+  /// Action that refreshes harness availability after authentication may have been restored elsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Recheck'**
+  String get sessionDetailRecheck;
+
   /// No description provided for @sessionDetailPromptHint.
   ///
   /// In en, this message translates to:
@@ -3034,7 +3040,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailContentLoadFailedReason.
   ///
   /// In en, this message translates to:
-  /// **'The harness is available, but chat content or options could not be loaded. Retry to continue.'**
+  /// **'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.'**
   String get sessionDetailContentLoadFailedReason;
 
   /// No description provided for @sessionDetailHarnessCheckingReason.
