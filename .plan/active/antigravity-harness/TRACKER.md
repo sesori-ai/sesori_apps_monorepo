@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.b merged; Step 8.c architecture-approved and synchronized for publication
+- **Status:** Steps 1–8.b merged; Step 8.c open for review
 - **Base:** synced with main `b13d197d517adeb51810e05011b300b31a20b014` after Step 8.b merge
 - **Current branch:** `antigravity-harness-step-8c-descriptor-and-setup`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -20,8 +20,8 @@
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b)
-- **Open PR:** Step 8.c publication prepared.
-- **Next action:** publish and monitor Step 8.c; begin only Step 9 locally.
+- **Open PR:** [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c).
+- **Next action:** monitor Step 8.c; begin only Step 9 locally.
 
 ## Fixed PR Series
 
