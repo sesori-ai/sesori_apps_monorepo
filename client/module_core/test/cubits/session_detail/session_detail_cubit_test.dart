@@ -217,6 +217,7 @@ void main() {
           final reloading = cubit.reload();
           expect(cubit.state, isA<SessionDetailLoading>());
           snapshots.add(management(blocked: true));
+          sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()));
           metadata.complete(savedMetadata);
           await reloading;
           when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) async => savedMetadata);
@@ -226,6 +227,7 @@ void main() {
             description: "live block",
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
+          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy());
           cubit.cancelQueuedMessage(0);
           expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
@@ -297,6 +299,24 @@ void main() {
         expect((cubit.state as SessionDetailLoaded).interaction, isA<SessionInteractionAvailable>());
       });
     }
+
+    test("metadata refresh failure preserves the loaded transcript and buffered events", () async {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      final before = cubit.state as SessionDetailLoaded;
+      final metadata = Completer<ApiResponse<Session>>();
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+      final reloading = cubit.reload();
+      expect(cubit.state, isA<SessionDetailLoading>());
+      sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()));
+      metadata.complete(ApiResponse.error(ApiError.generic()));
+      await reloading;
+      final after = cubit.state as SessionDetailLoaded;
+      expect(after.messages, before.messages);
+      expect(after.interaction.canInteract, isTrue);
+      expect(after.sessionStatus, const SessionStatus.busy());
+    });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "initial load success emits SessionDetailLoaded",

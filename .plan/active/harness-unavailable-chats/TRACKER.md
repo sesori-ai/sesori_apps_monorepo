@@ -60,6 +60,10 @@ authorized direct execution without subagents. No dependencies may be installed.
   guarded because store reads can backfill from the harness. These review fixes
   and their coverage bring the implementation diff to roughly 1,865 lines; no
   additional feature scope or recovery machinery was added.
+- Further reload review: restored transcripts replay buffered session/global and
+  deferred-part events; metadata refresh failure preserves already-loaded content
+  and the current availability decision. Cubit/event-buffer scope: 89 passing
+  tests; `dart analyze --fatal-infos` is clean in core.
 - No live device/bridge reproduction yet. L4 evidence and cleanup remain pending.
 - Retirement requires the recorded targeted L4 matrix, privacy-safe EVIDENCE.md
   and cleanup. Partial/Blocked/Fail keeps the plan active unless the user accepts

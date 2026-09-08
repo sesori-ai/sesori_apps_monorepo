@@ -315,13 +315,19 @@ class SessionDetailCubit(
         return _SessionRefreshResult.waitingForConnection;
       case SessionDetailMetadataFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
         loge("Session metadata load failed", error, stackTrace);
-        emit(
-          SessionDetailState.failed(
-            reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
-          ),
-        );
+        if (previous is SessionDetailLoaded) {
+          emit(previous.copyWith(interaction: _interaction));
+          _drainPendingEvents();
+          _drainDeferredPartsForLoadedMessages();
+        } else {
+          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+          emit(
+            SessionDetailState.failed(
+              reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+            ),
+          );
+        }
         return _SessionRefreshResult.failed;
       case SessionDetailMetadataFound(:final session):
         if (result == null || !_interaction.canInteract) {
@@ -330,6 +336,8 @@ class SessionDetailCubit(
           final retained = current is SessionDetailLoaded ? current : previous;
           if (retained is SessionDetailLoaded) {
             emit(retained.copyWith(interaction: _interaction));
+            _drainPendingEvents();
+            _drainDeferredPartsForLoadedMessages();
           } else {
             _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: session.projectID);
             emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
