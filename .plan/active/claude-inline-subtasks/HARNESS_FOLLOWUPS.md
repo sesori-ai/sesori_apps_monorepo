@@ -287,7 +287,7 @@ confirmation, no child session or partial stop) and gets that subset.
 | 2/9 | ⚙️ | `codex: sub-agent threads become child sessions` | Merged historical title unchanged; repository/mapper/service child-session flow, roots-only listing, and busy-child summaries |
 | 3/9 | ⚙️ | `codex: parse typed child prompts from thread reads [step 3/6]` | PR #1387 merged under this historical title; preparation superseded by 0.153.4 evidence |
 | 4/9 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | PR #1396 merged at `7f6fb8cb50`; metadata-only `thread/read`, no discarded cache |
-| 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | Local predecessor `claude-inline-subtasks-codex-native-facts-step5`; typed DTOs and repository facts only, no tile activation |
+| 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | PR #1398 open, awaiting merge; typed DTOs and repository facts only, no tile activation |
 | 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | Local successor; full live/replay production integration, lifecycle, busy accounting, and focused tests |
 | 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Local successor; write-path coverage and capability/regression documentation; no production changes |
 | 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
