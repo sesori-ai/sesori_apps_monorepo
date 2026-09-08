@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.b merged, Step 10.c split implementation in progress
+- **Status:** active; Steps 1–10.b merged, Step 10.c architecture-approved, Step 10.d awaiting native measurements
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
@@ -979,12 +979,11 @@ full-diff cap per PR. Keep only the immediate successor local:
   No Antigravity installation is exposed, no official artifact budgets or native timing claims are made yet.
 - **10.b — Isolated candidate validation (estimated 600–1,000 lines):** the required shared pre-placement seam,
   explicit current-caller adapters, disposable owner-only staging/cached validation context and failure/shutdown cleanup.
-- **10.c — Official managed pair integration (estimated 800–1,400 lines):** independently verified public artifacts,
-  manifest/Antigravity validator/descriptor composition, install disclosure, target budgets and failure/rollback coverage.
-  Further splits remain pre-approved if the measured complete scope needs them; native infrastructure gaps stay explicit.
-  The first coherent slice pins independently rehashed five-target artifact facts and adds the isolated initialize-only
-  validator. Manifest and descriptor integration remain a successor slice because honest archive-command budgets still
-  require packaged Linux x64/arm64 and Windows x64/arm64 measurements; Install remains undisclosed until those gates pass.
+- **10.c — Official candidate validation (review checkpoint: 587 lines):** independently rehashed five-target artifact
+  facts and the isolated initialize-only validator. Native macOS arm64 archive/probe evidence is recorded separately.
+- **10.d — Managed pair activation (estimated 600–1,100 lines):** manifest, descriptor composition, install disclosure,
+  measured target budgets and failure/rollback coverage. This successor requires packaged Linux x64/arm64 and Windows
+  x64/arm64 measurements; Install remains unavailable until those gates pass. Further coherent splits remain preapproved.
 
 The requirements below apply across those slices; partitioning does not remove any of them:
 
