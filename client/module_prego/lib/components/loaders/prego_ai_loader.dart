@@ -192,6 +192,8 @@ class _PregoAiLoaderState()
   }
 
   Widget _nativeSparkle({required PregoColors colors}) {
+    // StandardMessageCodec carries ARGB integers, a double phase, and a bool.
+    // ignore: no_slop_linter/prefer_specific_type, heterogeneous native codec payload
     final params = <String, Object>{
       "solid": colors.textPrimaryOnBrand.toARGB32(),
       "outline": colors.textPrimary.toARGB32(),
