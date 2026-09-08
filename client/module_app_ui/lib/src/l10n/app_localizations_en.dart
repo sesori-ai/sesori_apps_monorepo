@@ -408,13 +408,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementTimeoutHelp => 'Custom timeouts must be a whole number greater than zero.';
 
   @override
+  String get harnessManagementReview => 'Review';
+
+  @override
   String get harnessManagementCancel => 'Cancel';
 
   @override
   String get harnessManagementSave => 'Save';
 
   @override
-  String get harnessManagementForceDisableTitle => 'Force disable harness?';
+  String harnessManagementForceDisableTitle(String harnessName) {
+    return 'Force disable $harnessName?';
+  }
 
   @override
   String get harnessManagementForceRestartTitle => 'Force restart harness?';

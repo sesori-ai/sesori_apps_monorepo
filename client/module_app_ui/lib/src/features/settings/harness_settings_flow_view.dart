@@ -24,18 +24,29 @@ class const HarnessSettingsFlowView({super.key, required final Widget child}) ex
   @override
   Widget build(BuildContext context) {
     final cubit = context.read<PluginManagementCubit>();
+    final state = context.watch<PluginManagementCubit>().state;
     return _HarnessPresentationScope(
       presentationContext: context,
       child: MultiBlocListener(
         listeners: [
-          BlocListener<PluginManagementCubit, PluginManagementState>(
-            listenWhen: (previous, current) => _forceConfirmation(previous) != _forceConfirmation(current),
-            listener: (context, state) {
-              final confirmation = _forceConfirmation(state);
-              if (confirmation == null || !(ModalRoute.of(context)?.isCurrent ?? false)) return;
-              unawaited(_showForceConfirmation(context: context, cubit: cubit, confirmation: confirmation));
-            },
-          ),
+          if (state is PluginManagementReady)
+            for (final plugin in state.response.plugins)
+              BlocListener<PluginManagementCubit, PluginManagementState>(
+                key: ValueKey(plugin.setup.id),
+                listenWhen: (previous, current) =>
+                    current is PluginManagementReady &&
+                    current.harnessActions[plugin.setup.id] is PluginManagementActionForceConfirmationRequired &&
+                    (previous is! PluginManagementReady ||
+                        !identical(previous.harnessActions[plugin.setup.id], current.harnessActions[plugin.setup.id])),
+                listener: (context, state) {
+                  if (state is! PluginManagementReady) return;
+                  final confirmation = state.harnessActions[plugin.setup.id];
+                  if (confirmation is! PluginManagementActionForceConfirmationRequired) return;
+                  // A covered flow does not stack dialogs. Its retained result
+                  // is reachable through the harness' explicit Review action.
+                  unawaited(_showForceConfirmation(context: context, cubit: cubit, confirmation: confirmation));
+                },
+              ),
           // This screen hosts no progress row, so a scan started here would
           // otherwise end in silence: the spinner stops and the service clears
           // its result before the user could reach a list to read it.
@@ -104,14 +115,6 @@ PluginAuthenticationPresentationState? _authenticationChallenge({required Plugin
 CatalogRescanOutcome? _scanOutcome(PluginManagementState state) => switch (state) {
   PluginManagementReady(:final scanOutcome) => scanOutcome,
   PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
-};
-
-PluginManagementActionForceConfirmationRequired? _forceConfirmation(PluginManagementState state) => switch (state) {
-  PluginManagementReady(action: final PluginManagementActionForceConfirmationRequired confirmation) => confirmation,
-  PluginManagementReady() ||
-  PluginManagementLoading() ||
-  PluginManagementUnsupported() ||
-  PluginManagementFailure() => null,
 };
 
 // Sheets belong to the stable outer flow page, not an offstage overview or a

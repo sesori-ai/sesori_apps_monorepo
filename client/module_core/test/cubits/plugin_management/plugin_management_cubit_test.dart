@@ -109,7 +109,8 @@ void main() {
       const PluginManagementState.ready(
         response: _response,
         refresh: PluginManagementRefreshState.idle(),
-        action: PluginManagementActionState.idle(),
+        globalAction: PluginManagementActionState.idle(),
+        harnessActions: {},
         authentication: PluginAuthenticationPresentationState.idle(),
         installs: {},
         scanningPluginIds: {},
@@ -448,7 +449,12 @@ void main() {
           request: const PluginLifecycleCommandRequest.refresh(),
         ),
       ).called(1);
-      expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
+      expect(
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
+        const PluginManagementActionState.idle(),
+      );
     });
 
     test("install sends the install command and surfaces streamed progress", () async {
@@ -516,6 +522,8 @@ void main() {
       expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
       await _settle();
+      expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
+      await reopened.enable(pluginId: "two");
       expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
     });
 
@@ -644,7 +652,7 @@ void main() {
       await cubit.applyIdleTimeoutToAll(input: input);
 
       expect(
-        (cubit.state as PluginManagementReady).action,
+        (cubit.state as PluginManagementReady).globalAction,
         const PluginManagementActionState.failed(
           target: PluginManagementActionTarget.allHarnesses(),
           error: PluginManagementActionError.invalidIdleTimeout(),
@@ -672,7 +680,9 @@ void main() {
       await cubit.disable(pluginId: "one");
 
       expect(
-        (cubit.state as PluginManagementReady).action,
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
         PluginManagementActionState.forceConfirmationRequired(
           pluginId: "one",
           action: PluginManagementForceAction.disable,
@@ -687,7 +697,11 @@ void main() {
         ),
       );
 
-      await cubit.confirmForce();
+      await cubit.confirmForce(
+        confirmation:
+            (cubit.state as PluginManagementReady).harnessActions["one"]!
+                as PluginManagementActionForceConfirmationRequired,
+      );
 
       verify(
         () => service.command(
@@ -695,7 +709,12 @@ void main() {
           request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
         ),
       ).called(1);
-      expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
+      expect(
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
+        const PluginManagementActionState.idle(),
+      );
     });
 
     test("dismissing force confirmation allows another action", () async {
@@ -715,10 +734,19 @@ void main() {
       );
       await cubit.disable(pluginId: "one");
 
-      cubit.dismissForceConfirmation();
+      cubit.dismissForceConfirmation(
+        confirmation:
+            (cubit.state as PluginManagementReady).harnessActions["one"]!
+                as PluginManagementActionForceConfirmationRequired,
+      );
       await cubit.enable(pluginId: "two");
 
-      expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
+      expect(
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
+        const PluginManagementActionState.idle(),
+      );
       verify(
         () => service.command(
           pluginId: "two",
@@ -742,7 +770,9 @@ void main() {
       await cubit.restart(pluginId: "one");
 
       expect(
-        (cubit.state as PluginManagementReady).action,
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
         PluginManagementActionState.failed(
           target: const PluginManagementActionTarget.harness(pluginId: "one"),
           error: PluginManagementActionError.conflict(conflict: conflict),
@@ -760,15 +790,24 @@ void main() {
 
       await cubit.enable(pluginId: "one");
       expect(
-        (cubit.state as PluginManagementReady).action,
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
         const PluginManagementActionState.failed(
           target: PluginManagementActionTarget.harness(pluginId: "one"),
           error: PluginManagementActionError.uncertain(),
         ),
       );
 
-      cubit.dismissActionError();
-      expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
+      cubit.dismissActionError(
+        failure: (cubit.state as PluginManagementReady).harnessActions["one"]! as PluginManagementActionFailed,
+      );
+      expect(
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
+        const PluginManagementActionState.idle(),
+      );
     });
 
     test("preserves an in-flight action across successful and failed refresh publications", () async {
@@ -783,7 +822,9 @@ void main() {
       final action = cubit.enable(pluginId: "one");
       const target = PluginManagementActionTarget.harness(pluginId: "one");
       expect(
-        (cubit.state as PluginManagementReady).action,
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
         const PluginManagementActionState.inProgress(target: target),
       );
 
@@ -795,7 +836,9 @@ void main() {
       );
       await _settle();
       expect(
-        (cubit.state as PluginManagementReady).action,
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
         const PluginManagementActionState.inProgress(target: target),
       );
 
@@ -807,12 +850,17 @@ void main() {
       );
       await _settle();
       final refreshed = cubit.state as PluginManagementReady;
-      expect(refreshed.action, const PluginManagementActionState.inProgress(target: target));
+      expect(refreshed.actionFor(target: target), const PluginManagementActionState.inProgress(target: target));
       expect(refreshed.refresh, isA<PluginManagementRefreshFailed>());
 
       command.complete(const PluginManagementMutationResult.success(response: _response));
       await action;
-      expect((cubit.state as PluginManagementReady).action, const PluginManagementActionState.idle());
+      expect(
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
+        const PluginManagementActionState.idle(),
+      );
     });
 
     test("preserves pending force confirmation across refresh", () async {
@@ -831,7 +879,9 @@ void main() {
         ),
       );
       await cubit.restart(pluginId: "one");
-      final pending = (cubit.state as PluginManagementReady).action;
+      final pending = (cubit.state as PluginManagementReady).actionFor(
+        target: const PluginManagementActionTarget.harness(pluginId: "one"),
+      );
 
       snapshots.add(
         PluginManagementLoadResult.supported(
@@ -841,7 +891,269 @@ void main() {
       );
       await _settle();
 
-      expect((cubit.state as PluginManagementReady).action, pending);
+      expect(
+        (cubit.state as PluginManagementReady).actionFor(
+          target: const PluginManagementActionTarget.harness(pluginId: "one"),
+        ),
+        pending,
+      );
+    });
+
+    for (final reverse in [false, true]) {
+      test("independent harness outcomes and duplicate exclusion reversed=$reverse", () async {
+        final one = Completer<PluginManagementMutationResult>();
+        final two = Completer<PluginManagementMutationResult>();
+        when(
+          () => service.command(
+            pluginId: "one",
+            request: any(named: "request"),
+          ),
+        ).thenAnswer((_) => one.future);
+        when(
+          () => service.command(
+            pluginId: "two",
+            request: any(named: "request"),
+          ),
+        ).thenAnswer((_) => two.future);
+        when(() => service.planClearIdleTimeoutOverride(pluginId: "one")).thenReturn(
+          const PluginManagementCommandPlan.request(
+            request: PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "one"),
+          ),
+        );
+        const input = PluginManagementIdleTimeoutInput.noTimeout();
+        when(() => service.planApplyAllIdleTimeout(input: input)).thenReturn(
+          const PluginManagementCommandPlan.request(
+            request: PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0),
+          ),
+        );
+        final first = cubit.enable(pluginId: "one");
+        final second = cubit.disable(pluginId: "two");
+        expect((cubit.state as PluginManagementReady).harnessActions.keys, ["one", "two"]);
+        for (final duplicate in [
+          cubit.enable(pluginId: "one"),
+          cubit.disable(pluginId: "one"),
+          cubit.restart(pluginId: "one"),
+          cubit.install(pluginId: "one"),
+          cubit.refreshSetup(pluginId: "one"),
+          cubit.clearIdleTimeoutOverride(pluginId: "one"),
+          cubit.applyIdleTimeoutToAll(input: input),
+          cubit.startAuthentication(pluginId: "one"),
+        ]) {
+          await duplicate;
+        }
+        verify(
+          () => service.command(
+            pluginId: "one",
+            request: any(named: "request"),
+          ),
+        ).called(1);
+        verify(
+          () => service.command(
+            pluginId: "two",
+            request: any(named: "request"),
+          ),
+        ).called(1);
+        verifyNever(() => service.updateIdleTimeout(request: any(named: "request")));
+        verifyNever(() => service.startAuthentication(pluginId: "one"));
+        final error = ApiError.generic();
+        if (reverse) {
+          two.complete(PluginManagementMutationResult.failure(error: error));
+          await second;
+          one.complete(const PluginManagementMutationResult.success(response: _response));
+          await first;
+        } else {
+          one.complete(const PluginManagementMutationResult.success(response: _response));
+          await first;
+          two.complete(PluginManagementMutationResult.failure(error: error));
+          await second;
+        }
+        final ready = cubit.state as PluginManagementReady;
+        expect(ready.harnessActions.keys, ["two"]);
+        final failure = ready.harnessActions["two"]! as PluginManagementActionFailed;
+        expect((failure.error as PluginManagementActionRequestError).error, same(error));
+        cubit.dismissActionError(failure: failure);
+        expect((cubit.state as PluginManagementReady).harnessActions, isEmpty);
+      });
+    }
+
+    test("global timeout excludes harness commands and overrides until settlement", () async {
+      final pending = Completer<PluginManagementMutationResult>();
+      const input = PluginManagementIdleTimeoutInput.noTimeout();
+      when(() => service.planApplyAllIdleTimeout(input: input)).thenReturn(
+        const PluginManagementCommandPlan.request(request: PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0)),
+      );
+      when(() => service.planClearIdleTimeoutOverride(pluginId: "two")).thenReturn(
+        const PluginManagementCommandPlan.request(
+          request: PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: "two"),
+        ),
+      );
+      when(() => service.updateIdleTimeout(request: any(named: "request"))).thenAnswer((_) => pending.future);
+      final global = cubit.applyIdleTimeoutToAll(input: input);
+      await cubit.enable(pluginId: "one");
+      await cubit.clearIdleTimeoutOverride(pluginId: "two");
+      await cubit.applyIdleTimeoutToAll(input: input);
+      verifyNever(
+        () => service.command(
+          pluginId: any(named: "pluginId"),
+          request: any(named: "request"),
+        ),
+      );
+      verify(() => service.updateIdleTimeout(request: any(named: "request"))).called(1);
+      pending.complete(const PluginManagementMutationResult.uncertain());
+      await global;
+      final failure = (cubit.state as PluginManagementReady).globalAction as PluginManagementActionFailed;
+      await cubit.enable(pluginId: "one");
+      expect((cubit.state as PluginManagementReady).globalAction, same(failure));
+      cubit.dismissActionError(failure: failure);
+      expect((cubit.state as PluginManagementReady).globalAction, isA<PluginManagementActionIdle>());
+    });
+
+    test("two confirmations retain independent authority and stale callbacks cannot authorize a retry", () async {
+      for (final pluginId in ["one", "two"]) {
+        final base = _conflict(const [PluginLifecycleConflictReason.busy]);
+        final conflict = base.copyWith(
+          pluginId: pluginId,
+          current: base.current.copyWith(
+            setup: base.current.setup.copyWith(id: pluginId, displayName: pluginId),
+          ),
+        );
+        when(
+          () => service.command(
+            pluginId: pluginId,
+            request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+          ),
+        ).thenAnswer((_) async => PluginManagementMutationResult.conflict(conflict: conflict));
+        when(() => service.assessForce(conflict: conflict, action: PluginManagementForceAction.disable)).thenReturn(
+          const PluginManagementForceAssessment.requiresConfirmation(
+            request: PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+          ),
+        );
+      }
+      const input = PluginManagementIdleTimeoutInput.noTimeout();
+      when(() => service.planApplyAllIdleTimeout(input: input))
+          .thenReturn(const PluginManagementCommandPlan.invalidInput());
+      await cubit.disable(pluginId: "one");
+      final first =
+          (cubit.state as PluginManagementReady).harnessActions["one"]!
+              as PluginManagementActionForceConfirmationRequired;
+      await cubit.disable(pluginId: "two");
+      final second =
+          (cubit.state as PluginManagementReady).harnessActions["two"]!
+              as PluginManagementActionForceConfirmationRequired;
+      await cubit.applyIdleTimeoutToAll(input: input);
+      expect((cubit.state as PluginManagementReady).globalAction, isA<PluginManagementActionIdle>());
+      await cubit.enable(pluginId: "one");
+      verifyNever(() => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable()));
+      cubit.dismissForceConfirmation(confirmation: first);
+      await cubit.disable(pluginId: "one");
+      final replacement = (cubit.state as PluginManagementReady).harnessActions["one"]!;
+      await cubit.confirmForce(confirmation: first);
+      cubit.dismissForceConfirmation(confirmation: first);
+      expect((cubit.state as PluginManagementReady).harnessActions["one"], same(replacement));
+      await cubit.confirmForce(confirmation: second);
+      await cubit.confirmForce(confirmation: second);
+      verify(
+        () => service.command(
+          pluginId: "two",
+          request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+        ),
+      ).called(1);
+      verifyNever(
+        () => service.command(
+          pluginId: "one",
+          request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+        ),
+      );
+    });
+
+    for (final reset in [
+      const PluginManagementLoadResult.loading(),
+      const PluginManagementLoadResult.unsupported(),
+      PluginManagementLoadResult.failure(error: ApiError.generic()),
+      PluginManagementLoadResult.supported(response: _response.copyWith(bridgeId: "replacement"), refreshError: null),
+    ]) {
+      test("reset ${reset.runtimeType} fences both pending targets and admits fresh attempts", () async {
+        final one = Completer<PluginManagementMutationResult>();
+        final two = Completer<PluginManagementMutationResult>();
+        when(
+          () => service.command(
+            pluginId: "one",
+            request: any(named: "request"),
+          ),
+        ).thenAnswer((_) => one.future);
+        when(
+          () => service.command(
+            pluginId: "two",
+            request: any(named: "request"),
+          ),
+        ).thenAnswer((_) => two.future);
+        final first = cubit.enable(pluginId: "one");
+        final second = cubit.enable(pluginId: "two");
+        snapshots.add(reset);
+        await _settle();
+        snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+        await _settle();
+        final retry = Completer<PluginManagementMutationResult>();
+        when(
+          () => service.command(
+            pluginId: "one",
+            request: any(named: "request"),
+          ),
+        ).thenAnswer((_) => retry.future);
+        final newAttempt = cubit.enable(pluginId: "one");
+        final entry = (cubit.state as PluginManagementReady).harnessActions["one"];
+        one.complete(const PluginManagementMutationResult.success(response: _response));
+        two.complete(const PluginManagementMutationResult.uncertain());
+        await Future.wait([first, second]);
+        expect((cubit.state as PluginManagementReady).harnessActions.keys, ["one"]);
+        expect((cubit.state as PluginManagementReady).harnessActions["one"], same(entry));
+        retry.complete(const PluginManagementMutationResult.success(response: _response));
+        await newAttempt;
+        expect((cubit.state as PluginManagementReady).harnessActions, isEmpty);
+      });
+    }
+
+    test("active authentication and install reserve only their named harness", () async {
+      final auth = Completer<PluginAuthenticationStartResult>();
+      when(() => service.startAuthentication(pluginId: "one")).thenAnswer((_) => auth.future);
+      final starting = cubit.startAuthentication(pluginId: "one");
+      await cubit.enable(pluginId: "one");
+      await cubit.enable(pluginId: "two");
+      verifyNever(
+        () => service.command(
+          pluginId: "one",
+          request: any(named: "request"),
+        ),
+      );
+      verify(
+        () => service.command(
+          pluginId: "two",
+          request: any(named: "request"),
+        ),
+      ).called(1);
+      auth.complete(const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()));
+      await starting;
+      installStates.add(const {
+        "one": PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+        ),
+      });
+      await _settle();
+      await cubit.install(pluginId: "one");
+      await cubit.enable(pluginId: "one");
+      await cubit.enable(pluginId: "two");
+      verifyNever(
+        () => service.command(
+          pluginId: "one",
+          request: any(named: "request"),
+        ),
+      );
+      verify(
+        () => service.command(
+          pluginId: "two",
+          request: any(named: "request"),
+        ),
+      ).called(1);
     });
 
     test("does not emit after closing during an action", () async {

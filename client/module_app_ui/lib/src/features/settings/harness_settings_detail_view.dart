@@ -41,9 +41,15 @@ class const HarnessSettingsDetailView({
               children: [
                 if (state is PluginManagementReady) _HarnessErrors(state: state),
                 if (plugin != null && state is PluginManagementReady)
+                  _HarnessActionFeedback(
+                    state: state,
+                    target: PluginManagementActionTarget.harness(pluginId: pluginId),
+                  ),
+                if (plugin != null && state is PluginManagementReady)
                   _HarnessControlCard(
                     plugin: plugin,
-                    action: state.action,
+                    action: state.harnessActions[pluginId] ?? const PluginManagementActionState.idle(),
+                    blocked: state.harnessControlsBlocked(pluginId: pluginId),
                     authentication: state.authentication,
                     install: state.installs[pluginId],
                     scanning: state.scanningPluginIds.contains(pluginId),
@@ -68,6 +74,7 @@ class const HarnessSettingsDetailView({
 class const _HarnessControlCard({
   required final PluginManagementMetadata plugin,
   required final PluginManagementActionState action,
+  required final bool blocked,
   required final PluginAuthenticationPresentationState authentication,
 
   /// This harness' in-flight installation or retained failure.
@@ -138,7 +145,6 @@ class const _HarnessControlCard({
       PluginAuthenticationPresentationCancelling() ||
       PluginAuthenticationPresentationCancellingUncertain() => true,
     };
-    final blocked = _controlsBlocked(action) || install is PluginInstallInProgress;
     final actionHint = plugin.actionHint ?? plugin.setup.actionHint;
     // The service reports an install as in-flight from the moment its command
     // is issued until the bridge's terminal event, so this covers the window
@@ -167,7 +173,7 @@ class const _HarnessControlCard({
                       Expanded(child: Text(plugin.setup.displayName)),
                     ],
                   ),
-                  trailing: _HarnessSwitch(plugin: plugin, action: action, install: install),
+                  trailing: _HarnessSwitch(plugin: plugin, action: action, install: install, blocked: blocked),
                 ),
                 _FactRow(
                   title: loc.harnessesStatusLabel,
@@ -202,7 +208,10 @@ class const _HarnessControlCard({
                     // Only one authentication flow can exist. Its own row can reopen
                     // a retained challenge after uncertain cancellation; every other
                     // row stays disabled until that flow settles.
-                    onTap: blocked || authenticationStarting || (authenticationActive && !authenticationForThisHarness)
+                    onTap:
+                        (blocked && !authenticationForThisHarness) ||
+                            authenticationStarting ||
+                            (authenticationActive && !authenticationForThisHarness)
                         ? null
                         : authenticationForThisHarness
                         ? () => unawaited(
@@ -384,8 +393,4 @@ bool _supportsOperationalTimeout(PluginManagementMetadata plugin) {
   return plugin.setup.state == PluginSetupState.ready &&
       plugin.runtimeState.isEnabled &&
       plugin.managementCapabilities.contains(PluginManagementCapability.idleTimeout);
-}
-
-bool _controlsBlocked(PluginManagementActionState action) {
-  return action is PluginManagementActionInProgress || action is PluginManagementActionForceConfirmationRequired;
 }

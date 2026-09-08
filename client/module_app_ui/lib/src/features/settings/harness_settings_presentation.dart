@@ -97,6 +97,7 @@ class const _HarnessStatus({
 class const _HarnessSwitch({
   required final PluginManagementMetadata plugin,
   required final PluginManagementActionState action,
+  required final bool blocked,
   required final PluginInstallState? install,
 }) extends StatelessWidget {
   @override
@@ -126,7 +127,6 @@ class const _HarnessSwitch({
         ),
       );
     }
-    final blocked = _controlsBlocked(action) || install is PluginInstallInProgress;
     Future<void> setEnabled({required bool enabled}) => enabled
         ? context.read<PluginManagementCubit>().enable(pluginId: plugin.setup.id)
         : context.read<PluginManagementCubit>().disable(pluginId: plugin.setup.id);
