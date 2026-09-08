@@ -3,6 +3,16 @@ import "package:test/test.dart";
 
 void main() {
   group("AppRoute", () {
+    test("Default input round-trips a parameterless settings route with a pinned screen name", () {
+      const route = AppRoute.settingsDefaultInput();
+      expect(route.buildPath(), "/settings/default-input");
+      expect(
+        AppRoute.fromDef(def: route.def, pathParams: const {}, queryParams: const {}),
+        isA<AppRouteSettingsDefaultInput>(),
+      );
+      expect(AnalyticsScreen.settingsDefaultInput.wireValue, "settings_default_input");
+    });
+
     test("settings Harnesses route round-trips its presentation", () {
       for (final presentation in HarnessSettingsPresentation.values) {
         final route = AppRoute.settingsHarnesses(presentation: presentation);

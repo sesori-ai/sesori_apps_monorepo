@@ -144,6 +144,7 @@ class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyt
     return switch (_topRoute) {
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
+      AppRouteDef.settingsDefaultInput ||
       AppRouteDef.settingsProfile ||
       AppRouteDef.settingsHarnesses ||
       AppRouteDef.settingsHarnessDetail => true,

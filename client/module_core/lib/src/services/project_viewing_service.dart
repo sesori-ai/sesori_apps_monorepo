@@ -271,6 +271,7 @@ class ProjectViewingService({
       AppRouteDef.projects ||
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
+      AppRouteDef.settingsDefaultInput ||
       AppRouteDef.settingsHarnesses ||
       AppRouteDef.settingsHarnessDetail ||
       AppRouteDef.settingsProfile ||

@@ -52,6 +52,12 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   bridge. Scope, scan, or publication failure leaves voice input available without an updated glossary.
 - The preference defaults to voice-first, persists, and falls back to voice-first on a corrupt or unknown stored
   value.
+- Mobile and desktop Settings group Harnesses and Default input under Sessions. The keyboard row shows the live
+  Voice/Text value and opens a dedicated page rather than selecting a mode inline.
+- The Default input page has an inline title, explanatory subtitle, and two mutually exclusive Voice/Text previews.
+  Selection updates the existing app-root preference and persists immediately; external preference changes update
+  both the row and the open page. Back returns to Settings; X closes the entire settings flow to its opener.
+  Labels and subtitle remain readable with accessibility text scaling, and preview artwork is excluded from semantics.
 
 ## Regression Levels
 
@@ -59,7 +65,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
 | L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference, exact-scope reconciliation, and shutdown cancellation. |
-| L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, transcript inserted and editable, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. |
+| L3 Release | Client end to end on the release-target client platform: hold to record, release to transcribe, transcript inserted and editable, drag-to-cancel, layout stability, and the voice-first/text-first preference changing which control leads. On mobile and desktop, open Settings → Default input, select each mode, check Back and X from a non-home opener, reopen the page, and verify the saved row value. |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
 
@@ -71,6 +77,9 @@ exercise voice-span survival, and switch the preference between interactions. On
 interruptions such as a call.
 
 ## Failure Signals
+
+- Default input shows a stale row value, selection fails to persist, Back skips Settings, X leaves Settings open, or
+  enlarged text clips the labels/subtitle.
 
 - A blocked existing chat exposes voice entry, keeps capture/transcription alive,
   accepts a late transcript or send, leaks a wake-lock/recording resource, or
@@ -104,6 +113,8 @@ interruptions such as a call.
 
 ## Sources
 
+`client/module_app_ui/test/features/settings/default_input_settings_view_test.dart`,
+`client/app/test/features/settings/`, `client/desktop/test/features/settings/`,
 `client/app/test/capabilities/voice/`, `client/app/test/features/session_detail/widgets/`,
 `client/module_core/test/{capabilities,cubits,repositories,services}/`, and bridge glossary tests under
 `bridge/app/test/{bridge,listeners}/`; production code under `client/app/lib/core/platform/`,

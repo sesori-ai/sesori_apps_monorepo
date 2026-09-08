@@ -228,6 +228,7 @@ void main() {
     getIt.registerSingleton<ConnectionService>(connectionService);
     var profileOpens = 0;
     var harnessOpens = 0;
+    var defaultInputOpens = 0;
 
     await tester.pumpWidget(
       app(
@@ -235,6 +236,7 @@ void main() {
           onClose: () {},
           onOpenProfile: () => profileOpens++,
           onOpenHarnesses: () => harnessOpens++,
+          onOpenDefaultInput: () => defaultInputOpens++,
         ),
       ),
     );
@@ -247,17 +249,22 @@ void main() {
     expect(find.text("Session Messages"), findsNothing);
     expect(find.text("Connection Status"), findsNothing);
     expect(find.text("Harnesses"), findsOneWidget);
+    expect(find.text("Default input"), findsOneWidget);
+    expect(find.text("Voice"), findsOneWidget);
+    expect(find.text("Text"), findsNothing);
     expect(find.text("Warm harness on session open"), findsOneWidget);
     expect(find.text("30 seconds"), findsOneWidget);
     expect(find.text("v0.1.0 (1)"), findsOneWidget);
 
     await tester.tap(find.text("alex"));
     await tester.tap(find.text("Harnesses"));
+    await tester.tap(find.text("Default input"));
     await tester.tap(find.text("Dark"));
     await tester.pumpAndSettle();
 
     expect(profileOpens, 1);
     expect(harnessOpens, 1);
+    expect(defaultInputOpens, 1);
     expect(appearanceCubit.state, AppearanceMode.dark);
     verify(() => appearanceStore.write(mode: AppearanceMode.dark)).called(1);
   });

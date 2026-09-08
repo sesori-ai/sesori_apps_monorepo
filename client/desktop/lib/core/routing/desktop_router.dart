@@ -278,12 +278,24 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         builder: (BuildContext context, GoRouterState state) => DesktopSettingsScreen(
           onClose: () => _popRoute(context: context),
           onOpenProfile: () => _pushRoute(context: context, route: const AppRoute.settingsProfile()),
+          onOpenDefaultInput: () => _pushRoute(context: context, route: const AppRoute.settingsDefaultInput()),
           onOpenHarnesses: () => _pushRoute(
             context: context,
             route: const AppRoute.settingsHarnesses(
               presentation: HarnessSettingsPresentation.pushed,
             ),
           ),
+        ),
+      ),
+      GoRoute(
+        path: AppRouteDef.settingsDefaultInput.path,
+        builder: (context, state) => DefaultInputSettingsView(
+          onBack: () => _popRouteOrGo(context: context, fallback: const AppRoute.settings()),
+          onClose: () {
+            // This page is pushed from Settings; close both pages to its opener.
+            _popRoute(context: context);
+            _popRoute(context: context);
+          },
         ),
       ),
       GoRoute(
