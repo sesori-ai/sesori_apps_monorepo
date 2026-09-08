@@ -15,7 +15,6 @@ import "managed_runtime_cleaner.dart";
 import "runtime_install_service.dart";
 import "runtime_manifest.dart";
 import "runtime_version.dart";
-import "runtime_version_validator.dart";
 
 /// Installs a manifest's pinned managed runtime on explicit request and
 /// reports progress.
@@ -23,8 +22,8 @@ import "runtime_version_validator.dart";
 /// This is the on-demand counterpart of [ManagedRuntimeProvisionService]
 /// (which only resolves already-present runtimes): it selects the platform
 /// asset, reuses a healthy existing install, otherwise downloads, verifies,
-/// extracts, and places the binary via [RuntimeInstallService], probes the
-/// result actually runs, and sweeps managed versions before reporting the
+/// extracts, validates, and places the candidate via [RuntimeInstallService],
+/// then sweeps managed versions before reporting the
 /// terminal event (a consumer may unsubscribe on that event).
 ///
 /// The sweep runs in two stages because the plugin may be running from an older
@@ -38,7 +37,6 @@ import "runtime_version_validator.dart";
 /// as [PluginStartAbortedException].
 class ManagedRuntimeInstallService({
   required final RuntimeManifest _manifest,
-  required final RuntimeVersionValidator _versionValidator,
   required final RuntimeInstallService _installService,
   required final ManagedRuntimeCleaner _cleaner,
   required final RuntimeAssetResolver _assetResolver,
@@ -117,14 +115,27 @@ class ManagedRuntimeInstallService({
       binaryFileName: _manifest.binaryFileName,
       sha256: asset.sha256,
     )) {
-      // Confirm the cached binary still runs before reporting it as the
-      // install result; a broken cached copy falls through to a reinstall.
-      final RuntimeVersion? cachedVersion = await _versionValidator.detectVersion(
-        executable: binaryPath,
-        environment: environment,
-      );
+      // Cached candidates use the same disposable private validation context
+      // as downloads; a broken cached copy falls through to a reinstall.
+      final bool cachedValid;
+      try {
+        cachedValid = await _installService.validateCachedCandidate(
+          managedDir: managedDir,
+          executablePath: binaryPath,
+          environment: environment,
+          startAborted: startAborted,
+        );
+      } on PluginStartAbortedException {
+        rethrow;
+      } on Object catch (error, stackTrace) {
+        Log.w("[$id] cached managed $name runtime validation failed", error, stackTrace);
+        yield ProvisionFailed(
+          message: "Could not validate the installed $name runtime. Check the bridge logs for details.",
+        );
+        return;
+      }
       _throwIfAborted(startAborted: startAborted);
-      if (cachedVersion != null && cachedVersion.compareTo(bundled) == 0) {
+      if (cachedValid) {
         Log.i("[$id] managed $name ${bundled.toString()} already installed");
         // Sweep before the terminal event: consumers may stop listening as
         // soon as ProvisionReady arrives, which would cancel this stream and
@@ -133,10 +144,7 @@ class ManagedRuntimeInstallService({
         yield ProvisionReady(binaryPath: binaryPath);
         return;
       }
-      Log.w(
-        "[$id] cached managed runtime at '$binaryPath' is version "
-        "'${cachedVersion?.toString() ?? "unrunnable"}' (expected '${bundled.toString()}'); reinstalling",
-      );
+      Log.w("[$id] cached managed runtime at '$binaryPath' failed candidate validation; reinstalling");
     }
 
     try {
@@ -148,35 +156,29 @@ class ManagedRuntimeInstallService({
         binaryFileName: _manifest.binaryFileName,
         downloadUrl: _manifest.downloadUrlFor(asset: asset),
         asset: asset,
+        environment: environment,
         startAborted: startAborted,
       )) {
         yield event;
       }
     } on PluginStartAbortedException {
       rethrow;
-    } on Object catch (error, stackTrace) {
+    } on RuntimeInstallException catch (error, stackTrace) {
       // The wire message must stay sanitized (install errors can carry local
       // paths and raw command output), so only the local log keeps the detail.
       Log.w("[$id] managed $name runtime install failed", error, stackTrace);
+      final String message = switch (error.kind) {
+        RuntimeInstallFailureKind.candidateValidation =>
+          "The downloaded $name runtime is not runnable on this machine "
+              "(expected '${bundled.toString()}').",
+        RuntimeInstallFailureKind.general => "Could not install the $name runtime. Check the bridge logs for details.",
+      };
+      yield ProvisionFailed(message: message);
+      return;
+    } on Object catch (error, stackTrace) {
+      Log.w("[$id] managed $name runtime install failed", error, stackTrace);
       yield ProvisionFailed(
         message: "Could not install the $name runtime. Check the bridge logs for details.",
-      );
-      return;
-    }
-
-    // Probe the freshly-placed binary before trusting it: a downloaded asset
-    // that cannot execute on this host (CPU/dynamic-loader mismatch) must
-    // fail honestly rather than reporting a ready path start() cannot spawn.
-    final RuntimeVersion? installedVersion = await _versionValidator.detectVersion(
-      executable: binaryPath,
-      environment: environment,
-    );
-    _throwIfAborted(startAborted: startAborted);
-    if (installedVersion == null || installedVersion.compareTo(bundled) != 0) {
-      yield ProvisionFailed(
-        message:
-            "The downloaded $name runtime is not runnable on this machine "
-            "(reported '${installedVersion?.toString() ?? "no version"}', expected '${bundled.toString()}').",
       );
       return;
     }

@@ -165,7 +165,7 @@ final class const OmpPluginDescriptor({
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        versionValidator: _versionValidator(processes: processes),
+        candidateValidator: _versionValidator(processes: processes),
         assetResolver: runtimeAssetService.resolve,
       );
       yield* service.install(

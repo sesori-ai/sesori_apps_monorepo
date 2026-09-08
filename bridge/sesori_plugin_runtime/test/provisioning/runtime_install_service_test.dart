@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -69,6 +70,7 @@ class _FakeArchiveExtractor({
 
 class _FakeCommandExecutor() implements CommandExecutor {
   int chmodCalls = 0;
+  final List<List<String>> chmodArguments = [];
 
   @override
   Future<CommandResult> run(
@@ -80,8 +82,23 @@ class _FakeCommandExecutor() implements CommandExecutor {
   }) async {
     if (executable == "chmod") {
       chmodCalls++;
+      chmodArguments.add(arguments);
     }
     return const CommandResult(exitCode: 0, stdout: "", stderr: "");
+  }
+}
+
+class _FakeCandidateValidator({
+  final bool valid = true,
+  final Future<bool> Function(RuntimeCandidateValidationContext context)? onValidate,
+}) implements RuntimeCandidateValidator {
+  final List<RuntimeCandidateValidationContext> contexts = [];
+
+  @override
+  Future<bool> validate({required RuntimeCandidateValidationContext context}) {
+    contexts.add(context);
+    final callback = onValidate;
+    return callback == null ? Future<bool>.value(valid) : callback(context);
   }
 }
 
@@ -135,6 +152,7 @@ void main() {
     bool rootPackage = false,
     _FakeCommandExecutor? cmd,
     _FakeArchiveExtractor? extractor,
+    RuntimeCandidateValidator? candidateValidator,
   }) {
     return RuntimeInstallService(
       downloadClient: _FakeDownloadClient(exception: downloadError),
@@ -147,6 +165,7 @@ void main() {
             rootPackage: rootPackage,
           ),
       commandExecutor: cmd ?? _FakeCommandExecutor(),
+      candidateValidator: candidateValidator ?? _FakeCandidateValidator(),
       runtimeId: "opencode",
     );
   }
@@ -160,6 +179,7 @@ void main() {
       binaryFileName: "opencode",
       downloadUrl: "https://example.test/opencode-test.zip",
       asset: _asset,
+      environment: const {"PATH": "/runtime-test"},
       startAborted: abort ?? StartAbortSignal.never,
     );
   }
@@ -179,7 +199,7 @@ void main() {
     expect(events.any((e) => e is ProvisionVerifying), isTrue);
     expect(events.any((e) => e is ProvisionExtracting), isTrue);
     if (!Platform.isWindows) {
-      expect(cmd.chmodCalls, equals(1));
+      expect(cmd.chmodCalls, equals(4));
     }
     // The download + staging scratch are cleaned up. The download carries the
     // archive's extension so PowerShell Expand-Archive accepts it on Windows.
@@ -202,6 +222,7 @@ void main() {
           binaryFileName: "cursor-agent",
           downloadUrl: "https://example.test/cursor-test.tar.gz",
           asset: _packageAsset,
+          environment: const {},
           startAborted: StartAbortSignal.never,
         )
         .drain<void>();
@@ -227,6 +248,7 @@ void main() {
           binaryFileName: p.join("bin", "codex"),
           downloadUrl: "https://example.test/codex-package-test.tar.gz",
           asset: _rootPackageAsset,
+          environment: const {},
           startAborted: StartAbortSignal.never,
         )
         .drain<void>();
@@ -253,6 +275,7 @@ void main() {
           binaryFileName: "omp",
           downloadUrl: "https://example.test/omp-test",
           asset: _directAsset,
+          environment: const {},
           startAborted: StartAbortSignal.never,
         )
         .toList();
@@ -273,6 +296,7 @@ void main() {
           binaryFileName: "omp.exe",
           downloadUrl: "https://example.test/omp-test.exe",
           asset: _directAsset,
+          environment: const {},
           startAborted: StartAbortSignal.never,
         )
         .drain<void>();
@@ -289,6 +313,7 @@ void main() {
             binaryFileName: "omp",
             downloadUrl: "https://example.test/omp-test",
             asset: _directAsset,
+            environment: const {},
             startAborted: StartAbortSignal.never,
           )
           .drain<void>(),
@@ -309,6 +334,7 @@ void main() {
             binaryFileName: "omp",
             downloadUrl: "https://example.test/omp-test",
             asset: _directAsset,
+            environment: const {},
             startAborted: controller.signal,
           )
           .drain<void>(),
@@ -316,6 +342,91 @@ void main() {
     );
     expect(File(p.join(versionDir(), "omp")).existsSync(), isFalse);
     expect(File(p.join(managedDir.path, ".sesori-runtime-download")).existsSync(), isFalse);
+  });
+
+  test("validates a hardened candidate inside private disposable staging before placement", () async {
+    final cmd = _FakeCommandExecutor();
+    final validator = _FakeCandidateValidator(
+      onValidate: (context) async {
+        final stagingPath = p.join(managedDir.path, ".sesori-runtime-staging");
+        expect(context.executablePath, p.join(stagingPath, "candidate", "opencode"));
+        expect(p.isWithin(stagingPath, context.workingDirectory), isTrue);
+        expect(p.isWithin(stagingPath, context.stateDirectory), isTrue);
+        expect(context.environment, const {"PATH": "/runtime-test"});
+        expect(File(context.executablePath).existsSync(), isTrue);
+        expect(Directory(context.workingDirectory).existsSync(), isTrue);
+        expect(Directory(context.stateDirectory).existsSync(), isTrue);
+        expect(File(p.join(versionDir(), "old-binary")).existsSync(), isTrue);
+        if (!Platform.isWindows) {
+          expect(cmd.chmodArguments, [
+            ["700", stagingPath],
+            ["+x", context.executablePath],
+            ["700", context.workingDirectory],
+            ["700", context.stateDirectory],
+          ]);
+        }
+        return true;
+      },
+    );
+    File(p.join(versionDir(), "old-binary"))
+      ..createSync(recursive: true)
+      ..writeAsStringSync("OLD");
+
+    await install(build(cmd: cmd, candidateValidator: validator)).drain<void>();
+
+    expect(validator.contexts, hasLength(1));
+    expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
+    expect(File(p.join(versionDir(), "old-binary")).existsSync(), isFalse);
+  });
+
+  test("failed candidate validation preserves the prior package and sentinel", () async {
+    final oldBinary = File(p.join(versionDir(), "opencode"))
+      ..createSync(recursive: true)
+      ..writeAsStringSync("OLD");
+    final oldSibling = File(p.join(versionDir(), "sibling"))..writeAsStringSync("OLD-SIBLING");
+    final oldSentinel = File(p.join(versionDir(), RuntimeInstallService.sentinelFileName))
+      ..writeAsStringSync("old-hash");
+
+    await expectLater(
+      install(build(candidateValidator: _FakeCandidateValidator(valid: false))).drain<void>(),
+      throwsA(isA<RuntimeInstallException>()),
+    );
+
+    expect(oldBinary.readAsStringSync(), "OLD");
+    expect(oldSibling.readAsStringSync(), "OLD-SIBLING");
+    expect(oldSentinel.readAsStringSync(), "old-hash");
+    expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
+  });
+
+  test("awaits abort-aware validation and cleanup without touching the prior install", () async {
+    final aborted = StartAbortController();
+    final validationStarted = Completer<void>();
+    final validationMaySettle = Completer<void>();
+    final oldBinary = File(p.join(versionDir(), "opencode"))
+      ..createSync(recursive: true)
+      ..writeAsStringSync("OLD");
+    final oldSentinel = File(p.join(versionDir(), RuntimeInstallService.sentinelFileName))
+      ..writeAsStringSync("old-hash");
+    final validator = _FakeCandidateValidator(
+      onValidate: (context) async {
+        expect(context.abortSignal, same(aborted.signal));
+        validationStarted.complete();
+        await validationMaySettle.future;
+        return true;
+      },
+    );
+    final installing = install(build(candidateValidator: validator), abort: aborted.signal).drain<void>();
+
+    await validationStarted.future;
+    aborted.abort();
+    expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isTrue);
+    expect(oldBinary.readAsStringSync(), "OLD");
+    validationMaySettle.complete();
+
+    await expectLater(installing, throwsA(isA<PluginStartAbortedException>()));
+    expect(oldBinary.readAsStringSync(), "OLD");
+    expect(oldSentinel.readAsStringSync(), "old-hash");
+    expect(Directory(p.join(managedDir.path, ".sesori-runtime-staging")).existsSync(), isFalse);
   });
 
   test("isInstalled is false before, true after, and rejects a hash mismatch", () async {

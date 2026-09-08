@@ -2,8 +2,9 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginStartAbortedException;
 
+import "runtime_candidate_validator.dart";
 import "runtime_manifest.dart";
 import "runtime_version.dart";
 
@@ -36,17 +37,24 @@ class RuntimeVersionValidator({
   required final CommandExecutor _commandExecutor,
   required final RuntimeManifest _manifest,
   final Duration _probeTimeout = const Duration(seconds: 10),
-}) {
+}) implements RuntimeCandidateValidator {
   /// Runs `<executable> --version` and classifies the result without throwing.
   Future<RuntimeProbeOutcome> probe({
     required String executable,
     required Map<String, String>? environment,
+  }) => _probe(executable: executable, environment: environment, workingDirectory: null);
+
+  Future<RuntimeProbeOutcome> _probe({
+    required String executable,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
   }) async {
     final CommandResult result;
     try {
       result = await _commandExecutor.run(
         executable,
         const ["--version"],
+        workingDirectory: workingDirectory,
         environment: environment,
         timeout: _probeTimeout,
       );
@@ -70,6 +78,25 @@ class RuntimeVersionValidator({
       return const RuntimeProbeUnrecognized();
     }
     return RuntimeProbeReady(version: version);
+  }
+
+  /// Validates an install candidate with the existing exact bundled-version
+  /// check. The command executor retains its bounded run-to-completion
+  /// behavior; abort is observed before and after that awaited command rather
+  /// than falsely promising instant cancellation of an uninterruptible call.
+  @override
+  Future<bool> validate({required RuntimeCandidateValidationContext context}) async {
+    _throwIfAborted(context: context);
+    final outcome = await _probe(
+      executable: context.executablePath,
+      environment: context.environment,
+      workingDirectory: context.workingDirectory,
+    );
+    _throwIfAborted(context: context);
+    return switch (outcome) {
+      RuntimeProbeReady(:final version) => version.compareTo(_manifest.bundledVersion) == 0,
+      RuntimeProbeFailure() => false,
+    };
   }
 
   /// Returns only the parsed version for callers that do not need failure
@@ -98,5 +125,11 @@ class RuntimeVersionValidator({
       }
     }
     return null;
+  }
+
+  void _throwIfAborted({required RuntimeCandidateValidationContext context}) {
+    if (context.abortSignal.isAborted) {
+      throw const PluginStartAbortedException();
+    }
   }
 }

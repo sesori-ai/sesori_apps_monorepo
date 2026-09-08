@@ -71,6 +71,9 @@ class _FakeValidator({
   final List<String> detectedExecutables = [];
 
   @override
+  Future<bool> validate({required RuntimeCandidateValidationContext context}) => Future<bool>.value(false);
+
+  @override
   Future<RuntimeProbeOutcome> probe({
     required String executable,
     required Map<String, String>? environment,

@@ -13,6 +13,7 @@ export "src/provisioning/managed_runtime_install_service.dart";
 export "src/provisioning/managed_runtime_inventory.dart";
 export "src/provisioning/managed_runtime_provision_service.dart";
 export "src/provisioning/managed_runtime_selection_service.dart";
+export "src/provisioning/runtime_candidate_validator.dart";
 export "src/provisioning/runtime_install_service.dart";
 export "src/provisioning/runtime_manifest.dart";
 export "src/provisioning/runtime_version.dart";

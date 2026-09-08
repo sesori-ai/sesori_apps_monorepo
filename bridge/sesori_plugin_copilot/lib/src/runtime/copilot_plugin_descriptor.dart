@@ -144,7 +144,7 @@ final class const CopilotPluginDescriptor({
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        versionValidator: RuntimeVersionValidator(
+        candidateValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,

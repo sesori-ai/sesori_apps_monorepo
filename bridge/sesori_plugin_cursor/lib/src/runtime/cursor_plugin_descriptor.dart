@@ -208,7 +208,7 @@ class const CursorPluginDescriptor({
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        versionValidator: _versionValidatorFor(
+        candidateValidator: _versionValidatorFor(
           processes: processes,
           maxCapturedOutputCharactersPerStream: null,
         ),
