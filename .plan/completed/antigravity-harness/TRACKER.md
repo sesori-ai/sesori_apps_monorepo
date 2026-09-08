@@ -61,6 +61,7 @@
 - [x] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
 - [x] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
 - [x] Step 12/12 — `🌱 [antigravity-harness] docs: retire plan with accepted verification limits [step 12/12]`
+  Retirement implemented; PR #1397 is open, pending merge. This check does not assert that its PR merged.
 
 ## Step 1 Checklist
 
@@ -589,33 +590,14 @@
 
 ## Retirement Coverage
 
-Highest required level: **L5 Full**, including the complete applicable documented L1-L5 catalog.
+The original **L5 Full** requirement was reduced for retirement by the owner's explicit acceptance recorded in
+`PLAN.md`. The authoritative final target, account/client and complete 33-feature catalog dispositions are in
+[EVIDENCE.md](EVIDENCE.md); the original intended boundaries remain in `PLAN.md`.
 
-Required target rows:
-
-| Target | Local pair | Managed install | ACP identity | Process smoke | Status |
-| --- | --- | --- | --- | --- | --- |
-| macOS arm64 | Required | Required | Required | Required | Not run |
-| Linux x64 | Required | Required | Required | Required | Not run |
-| Linux arm64 | Required | Required | Required | Required | Not run |
-| Windows x64 | Required | Required | Required | Required | Not run |
-| Windows arm64 | Required | Required | Required | Required | Not run |
-| macOS x64 | Unsupported guidance | Must be absent | N/A | N/A | Not run |
-
-Required representative end-to-end rows:
-
-| Flow | Boundary | Status |
-| --- | --- | --- |
-| Same-host personal OAuth | Google -> bridge host -> official agent -> desktop | Not run |
-| Remote personal OAuth | Google -> client -> pasted redirect -> bridge loopback -> agent | Not run |
-| Model/session create and turn | client -> relay -> bridge -> official agent -> Google | Not run |
-| Permission and interaction question | official agent -> bridge -> client -> exact response | Not run |
-| History, cold resume, bridge restart | isolated profile -> ACP load/resume -> client | Not run |
-| Managed install pre-placement retention/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
-| Unknown/older-client fallback | shared wire/plugin identity -> client presentation | Not run |
-
-Antigravity-affected regression documents are listed in Step 11 of `PLAN.md`. Step 12 additionally collects every
-applicable catalog entry from L1 through L5 across its required plugin/platform boundaries.
+The macOS arm64 native subset is **Partial**; macOS x64 capability omission is **Pass (automated)**. Native Linux/Windows
+and real personal Google flows are **Blocked**. Packaged client journeys and other unexecuted catalog checks remain
+**Not run**, with only the listed automated/native subsets marked **Partial** or **Pass**. No full L5 pass is claimed.
+These recorded gaps are accepted for retirement, not outstanding requirements under this completed plan.
 
 ## Evidence Log
 

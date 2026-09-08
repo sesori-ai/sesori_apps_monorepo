@@ -1055,6 +1055,9 @@ The first cumulative architecture review passed, as did 1,398 focused tests and 
 [EVIDENCE.md](EVIDENCE.md) for exact scope and versions. No production corrections were required. The owner explicitly
 accepted the named verification reduction below and requested retirement on that evidence; this is not an L5 pass.
 
+Original intended verification procedure, retained to identify the scope reduced by the explicit acceptance below;
+these bullets are not outstanding requirements under this completed plan:
+
 - Run `architecture-implementation-review` through a sub-agent over the Git-defined Step 2-10 production commit/PR
   range. Resolve valid in-scope findings with at most the two passes allowed by repository policy.
 - Run focused package/app/shared/client tests and analyzers after the final code state and any review fixes.
@@ -1092,8 +1095,8 @@ below is retained to identify the accepted gap, not to claim it ran.
 Originally required level: **L5 Full**, reduced for retirement only by the explicit acceptance above.
 The delivered managed runtime makes packaged claims across five host targets, and
 browser authentication/session behavior crosses Google, bridge, encrypted transport, and client boundaries. Under
-`docs/regression/README.md`, Step 12 runs the complete applicable documented catalog cumulatively from L1 through L5,
-not only the Antigravity-focused feature rows below. Missing infrastructure is `Blocked`, not silently out of scope.
+`docs/regression/README.md`, the original Step 12 procedure required the complete applicable documented catalog
+cumulatively from L1 through L5, not only the Antigravity-focused feature rows below. Missing infrastructure is `Blocked`, not silently out of scope.
 
 Release matrix:
 
