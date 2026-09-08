@@ -81,6 +81,7 @@ const _message = MessageWithParts(
 
 SessionDetailLoaded _loadedState() {
   return const SessionDetailLoaded(
+    interaction: SessionInteractionState.available(refreshError: null),
     messages: [_message],
     olderMessagesCursor: null,
     streamingText: {},
@@ -158,6 +159,7 @@ void main() {
               return _MockImageClipboard();
             },
             child: DesktopSessionDetailView(
+              onOpenHarnessSettings: () {},
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",
@@ -251,6 +253,7 @@ void main() {
           home: _composerScope(
             imageClipboard: _MockImageClipboard.new,
             child: DesktopSessionDetailView(
+              onOpenHarnessSettings: () {},
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",

@@ -17,6 +17,7 @@ class const SessionDetailPresentationScope({
   required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
+  required final VoidCallback openHarnessSettings,
   required super.child,
 }) extends InheritedWidget {
   static SessionDetailPresentationScope of(BuildContext context) {
@@ -37,7 +38,8 @@ class const SessionDetailPresentationScope({
       imageSharer != oldWidget.imageSharer ||
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
-      openSession != oldWidget.openSession;
+      openSession != oldWidget.openSession ||
+      openHarnessSettings != oldWidget.openHarnessSettings;
 }
 
 typedef SessionDetailCapabilityProvider<T> = T Function();

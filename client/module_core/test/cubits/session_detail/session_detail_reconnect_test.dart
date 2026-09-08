@@ -10,6 +10,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -38,7 +39,6 @@ void main() {
     final mockPermissionRepository = MockPermissionRepository();
     final loadService = SessionDetailLoadService(
       repository: mockSessionRepository,
-      projectRepository: mockProjectRepository,
       pluginRepository: stubbedPluginRepository(),
       connectionService: mockConnectionService,
     );
@@ -80,6 +80,8 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
+      pluginManagementService: stubbedPluginManagementService(),
+      interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
@@ -143,7 +145,7 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(null));
     when(
       () => mockLoadService.load(
-        sessionId: _sessionId,
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(
@@ -151,7 +153,7 @@ void main() {
     );
     when(
       () => mockLoadService.reload(
-        sessionId: _sessionId,
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(
@@ -181,6 +183,8 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
+      pluginManagementService: stubbedPluginManagementService(),
+      interactionCalculator: const SessionInteractionCalculator(),
       loadService: mockLoadService,
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
@@ -198,8 +202,18 @@ void main() {
 
     await _awaitLoaded(cubit);
 
-    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
-    verify(() => mockLoadService.reload(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(
+      () => mockLoadService.load(
+        session: any(named: "session"),
+        projectId: "project-1",
+      ),
+    ).called(1);
+    verify(
+      () => mockLoadService.reload(
+        session: any(named: "session"),
+        projectId: "project-1",
+      ),
+    ).called(1);
     verify(
       () => projectViewingService.markClaimFailed(claim: any(named: "claim")),
     ).called(1);
@@ -262,7 +276,7 @@ void main() {
 
     when(
       () => mockLoadService.load(
-        sessionId: _sessionId,
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(
@@ -270,7 +284,7 @@ void main() {
     );
     when(
       () => mockLoadService.reload(
-        sessionId: _sessionId,
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(
@@ -279,6 +293,8 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
+      pluginManagementService: stubbedPluginManagementService(),
+      interactionCalculator: const SessionInteractionCalculator(),
       loadService: mockLoadService,
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
@@ -295,14 +311,19 @@ void main() {
     addTearDown(cubit.close);
 
     await _awaitLoaded(cubit);
-    verify(() => mockLoadService.load(sessionId: _sessionId, projectId: "project-1")).called(1);
+    verify(
+      () => mockLoadService.load(
+        session: any(named: "session"),
+        projectId: "project-1",
+      ),
+    ).called(1);
 
     globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
     await Future<void>.delayed(Duration.zero);
 
     verifyNever(
       () => mockLoadService.reload(
-        sessionId: _sessionId,
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     );
@@ -311,7 +332,7 @@ void main() {
 
     verifyNever(
       () => mockLoadService.reload(
-        sessionId: _sessionId,
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     );

@@ -218,11 +218,15 @@ The user-approved scope reduction replaces the earlier six-step proposal before
 any implementation PR began. Slug remains `harness-unavailable-chats`. Count
 additions plus deletions, generated code and tests toward the 1,500-line soft cap;
 if implementation cannot fit, revise the split/total before opening that PR.
+The user explicitly approved a step-2 exception of approximately 1,750 changed
+lines after focused verification: keep the coherent gate and required internal
+API/test/generated updates together rather than add a prerequisite PR. The
+four-step series and input-gating-only scope remain unchanged.
 
 | Step and exact title | What / why | Risk and test focus | Expected result / estimate |
 |---|---|---|---|
 | 🌱 [harness-unavailable-chats] Plan read-only unavailable chats [step 1/4] | This plan and tracker; record prevention-only scope. | Low; documentation paths, titles and consistency. | No user-visible/database change; plan only. Approximately 350 documentation lines in the final plan/tracker. |
-| ⚙️ [harness-unavailable-chats] Gate unavailable chats on both clients [step 2/4] | Shared availability projection, metadata-first blocked view, cubit action/drain guards, shared notice/dialog gating and shell settings callbacks. | Medium; management transitions, existing startup/queue policy, cold history, disposal, both surfaces. | Known unusable chats are read-only with clear guidance and automatically regain eligible controls. No database/wire/storage change. Approximately 1,000–1,450 changed lines including generation and tests. |
+| ⚙️ [harness-unavailable-chats] Gate unavailable chats on both clients [step 2/4] | Shared availability projection, metadata-first blocked view, cubit action/drain guards, shared notice/dialog gating and shell settings callbacks. | Medium; management transitions, existing startup/queue policy, cold history, disposal, both surfaces. | Known unusable chats are read-only with clear guidance and automatically regain eligible controls. No database/wire/storage change. Approximately 1,750 changed lines including generation and tests (user-approved cap exception). |
 | 🌿 [harness-unavailable-chats] Reconcile chat availability regressions [step 3/4] | Complete affected feature docs against delivered behavior and detection limits. | Low; accuracy of required behavior, failure signals and matrix. | No additional user-visible/database change; executable regression contracts. Approximately 100–200 lines. |
 | 🌿 [harness-unavailable-chats] Verify read-only chats and retire plan [step 4/4] | Run the recorded matrix, record privacy-safe EVIDENCE.md and cleanup, retire only after passing. | Low implementation complexity; isolated setup/auth fixtures required. | Proven gate and recovery of interaction, not messages. No additional product/database change. Approximately 100–200 lines plus directory move. |
 
