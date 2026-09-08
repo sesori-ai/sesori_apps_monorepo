@@ -218,6 +218,11 @@ state.
   preserves parent/child metadata, and never scans or imports normal
   `DSH_HOME/sessions`. Ordinary project/session list reads remain bridge-database
   reads after import; adapter JSONL is not a second normal catalog source.
+- Antigravity explicit import uses the isolated profile's bounded read-only `.meta` records to recover only UUID
+  session IDs and canonical absolute working directories. It never scans ordinary catalog reads, parses private SQLite
+  or brain content, reads tokens, mutates Google history, or replaces authoritative bridge/live attribution. The
+  plugin's one recovery batch is prepared once per cold live connection and existing bridge tombstones keep locally
+  deleted rows out of later import.
 - GitHub Copilot explicit import follows standard ACP `session/list` pagination,
   up to the bounded page limit, attributes committed rows to `copilot`, and then
   returns to bridge-database reads for ordinary listing. Sesori never scans
@@ -280,7 +285,10 @@ state.
 ## Exploration Guidance
 
 Vary the owning plugin, manual open versus import discovery, git and non-git
-folders, and whether the directory moved between runs. For Copilot, vary a
+folders, and whether the directory moved between runs. For Antigravity, vary
+fresh and cold-restarted connections, valid/malformed/duplicate `.meta` records,
+bridge/live attribution precedence, and a tombstoned retained Google session.
+For Copilot, vary a
 single-page and multi-page ACP catalog, unchanged re-import, cancellation,
 first-page failure, and a later-page failure after a prior committed import.
 For Grok, vary an empty and populated ACP catalog, persisted and live children,
@@ -339,6 +347,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 - Desktop wide navigation recreates the session inventory on each selected
   detail/diff route, loses selection, or narrow navigation renders both panes.
+- Antigravity import parses SQLite/brain/token content, writes Google files, scans during an ordinary catalog read,
+  manufactures a cwd, replaces bridge/live attribution, repeats recovery within one connection, or resurrects a
+  tombstoned session.
 - A healthy Copilot import stops before cursor exhaustion, scans private on-disk
   history, or a first-page failure mutates the committed catalog. A later-page
   fail-soft import drops prior rows instead of only adding gathered observations
@@ -391,6 +402,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.
+- Antigravity discovery is limited to valid `.meta` records in its Sesori-owned isolated profile. Missing or changed
+  private metadata can reduce discovery/attribution; Sesori does not mutate or migrate Google's history format.
 - Copilot discovery is limited to sessions its public ACP catalog reports. Grok
   likewise requires each root to appear in its public ACP catalog, but augments
   those roots with child lineage from Grok's local persisted session tree. A

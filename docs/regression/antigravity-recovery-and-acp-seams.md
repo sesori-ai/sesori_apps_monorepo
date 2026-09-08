@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-Step 8.a foundations, consumed once per cold live connection by the unregistered Step 8.b plugin. Descriptor/setup
-composition remains Step 8.c. No ordinary-read scan, database migration, history deletion, OAuth, token
-inspection, ambient credential access, managed installation or user-visible capability is introduced here.
+Registered local-runtime behavior over the Step 8 recovery and ACP seams, consumed once per cold live connection.
+No ordinary-read scan, database migration, history deletion, token inspection, ambient credential access or managed
+installation is introduced by activation.
 
 ## Supported behavior
 

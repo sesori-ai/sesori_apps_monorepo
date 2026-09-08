@@ -2,10 +2,9 @@
 
 ## Status and scope
 
-Internal, unregistered personal-login operation, boundaries and provider policy. The injected composition seam is
-executable with synthetic peers; real Antigravity descriptor wiring and product activation remain Step 9. Browser
-login requires the current mobile/desktop client, not a bridge-host CLI fallback. Never execute real Google OAuth or
-inspect ambient credentials/token contents to validate these foundations.
+Registered personal-login operation, boundaries and provider policy. Browser login requires a current mobile/desktop
+client, not a bridge-host CLI fallback. Synthetic verification must never execute real Google OAuth or inspect ambient
+credentials/token contents.
 
 ## Required behavior
 
@@ -44,7 +43,7 @@ inspect ambient credentials/token contents to validate these foundations.
   callbacks; their closures cannot dispatch through another attempt's services.
 - The existing bridge `PluginLifecycleService` reinspects setup only after operation stream closure/error, including
   cancellation/failure. The plugin operation does not duplicate setup inspection or infer readiness from token
-  presence. Real descriptor integration remains unregistered until Step 9.
+  presence. Registration adds no second lifecycle owner.
 
 ## Failure signals and coverage
 
@@ -65,7 +64,7 @@ inspect ambient credentials/token contents to validate these foundations.
 - `antigravity_authentication_operation_test.dart`: shared environment/budget, one-shot continuation, same-host
   completion, runtime rejection, callback/authorization failure, timeout/process exit, cancellation while cleanup or
   callback work is in flight, and isolation from subsequent attempts.
-- `antigravity_authentication_composer_test.dart`: full unregistered composition with real temporary runtime files,
+- `antigravity_authentication_composer_test.dart`: full composition with real temporary runtime files,
   shared store scopes, fake host-spawned helper/probe/auth processes, exact personal handshake and complete disposal.
 - `antigravity_acp_api_test.dart`: delayed probe/auth spawn cancellation waits for release and reaping without initialize.
 - Bridge `plugin_lifecycle_service_test.dart`: representative browser terminal event cannot trigger setup reinspection

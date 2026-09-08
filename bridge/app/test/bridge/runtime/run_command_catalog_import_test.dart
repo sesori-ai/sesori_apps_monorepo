@@ -12,7 +12,15 @@ void main() {
 
     expect(
       options.keys,
-      containsAll(["opencode-bin", "codex-bin", "copilot-bin", "cursor-bin", "deepseek-bin", "grok-bin"]),
+      containsAll([
+        "opencode-bin",
+        "antigravity-bin",
+        "codex-bin",
+        "copilot-bin",
+        "cursor-bin",
+        "deepseek-bin",
+        "grok-bin",
+      ]),
     );
     expect(options["import-plugin"]?.hide, isTrue);
     expect(options, isNot(contains("plugin")));

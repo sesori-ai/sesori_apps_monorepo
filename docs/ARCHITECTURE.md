@@ -14,6 +14,7 @@ sesori_apps_monorepo/
 │   sesori_plugin_opencode/     # OpenCode backend plugin
 │   sesori_plugin_codex/        # Codex backend plugin
 │   sesori_plugin_acp/          # Agent Client Protocol backend plugin
+│   sesori_plugin_antigravity/  # Google Antigravity ACP backend plugin
 │   sesori_plugin_cursor/       # Cursor ACP backend plugin
 │   sesori_plugin_copilot/      # GitHub Copilot ACP backend plugin
 │   sesori_plugin_grok/         # Grok Build ACP backend plugin
@@ -46,6 +47,7 @@ graph TD
   bridge_app --> sesori_plugin_opencode[bridge/sesori_plugin_opencode]
   bridge_app --> sesori_plugin_codex[bridge/sesori_plugin_codex]
   bridge_app --> sesori_plugin_acp[bridge/sesori_plugin_acp]
+  bridge_app --> sesori_plugin_antigravity[bridge/sesori_plugin_antigravity]
   bridge_app --> sesori_plugin_cursor[bridge/sesori_plugin_cursor]
   bridge_app --> sesori_plugin_copilot[bridge/sesori_plugin_copilot]
   bridge_app --> sesori_plugin_grok[bridge/sesori_plugin_grok]
@@ -69,6 +71,10 @@ graph TD
   sesori_plugin_acp --> sesori_plugin_interface
   sesori_plugin_acp --> sesori_bridge_foundation
   sesori_plugin_acp --> sesori_shared
+  sesori_plugin_antigravity --> sesori_plugin_interface
+  sesori_plugin_antigravity --> sesori_bridge_foundation
+  sesori_plugin_antigravity --> sesori_plugin_acp
+  sesori_plugin_antigravity --> sesori_shared
   sesori_plugin_cursor --> sesori_plugin_interface
   sesori_plugin_cursor --> sesori_bridge_foundation
   sesori_plugin_cursor --> sesori_plugin_acp

@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-Internal, unregistered Step 7.c foundations. Shared ACP now offers an identity-by-default normalization hook;
-Antigravity's protocol mapper is tested through that hook, but concrete plugin composition remains Step 8 and
-activation Step 9. No client/wire tool-state expansion, database changes, OAuth, credential access or history mutation.
+Registered local-runtime behavior over the shared ACP identity-by-default normalization hook and Step 8 plugin
+composition. Activation adds no client/wire tool-state expansion or database change; synthetic tests perform no OAuth,
+credential access or history mutation.
 
 ## Required behavior
 
@@ -57,5 +57,5 @@ activation Step 9. No client/wire tool-state expansion, database changes, OAuth,
   preservation without duplication, and exit-only terminal updates retaining earlier output.
 - `acp_session_loader_test.dart`, `acp_tool_content_integration_test.dart`, and `acp_history_replay_test.dart` exercise
   standard identity behavior and production replay; DeepSeek history/time tests cover its direct collector path.
-- Owning ACP/Antigravity and changed DeepSeek analyses are the static boundary. Actual Antigravity plugin hooks,
-  authenticated sessions, real Google-generated images and final L5 Full remain later integration gates.
+- Owning ACP/Antigravity and changed DeepSeek analyses are the static boundary. Authenticated native sessions, real
+  Google-generated images and final L5 Full remain pending integration gates.
