@@ -282,6 +282,30 @@ void main() {
     expect(store.scopes, isEmpty);
   });
 
+  test("macOS x64 reports unsupported setup without preparing or launching a runtime", () async {
+    final candidate = AntigravityPluginDescriptor(
+      target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
+      callbackHttpClientFactory: unexpectedHttpClient,
+    );
+    for (final server in [null, pair.server]) {
+      final status = await candidate.inspectSetup(
+        config: config(server: server),
+        processes: processes,
+        environment: {"PATH": runtime.path},
+        stateDirectory: state.path,
+      );
+      expect(
+        status,
+        const PluginSetupUnavailable(
+          actionHint: "Google does not publish the Antigravity ACP runtime for this platform.",
+        ),
+      );
+    }
+    expect(processes.launches, isEmpty);
+    expect(store.scopes, isEmpty);
+    expect(state.listSync(), isEmpty);
+  });
+
   test("PATH precedes managed pair and keeps an empty POSIX entry as current directory", () async {
     final oldCurrent = Directory.current;
     Directory.current = runtime;
