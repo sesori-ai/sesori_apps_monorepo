@@ -149,11 +149,10 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 turn.
 
 ⁹ DeepSeek's published adapter 0.1.4 over dsh 0.1.1-rc.2 is the managed target
-and minimum accepted runtime. The consumer handles its typed native stop/input
-contract while preserving the existing direct-parent scoped-stop policy until
-step 5/5 moves complete native stop authority into ACP. Live/replayed tiles,
-child catalogs, exact-child cancellation, and authoritative lifecycle remain
-implemented; final DeepSeek phone/desktop E2E is still outstanding.
+and minimum accepted runtime. ACP uses native subtree stop for the named scope
+and every independently resident descendant root, while ordered input cancel,
+exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
+Released clients retain their own child fanout; final phone/desktop E2E remains outstanding.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as

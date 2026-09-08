@@ -7,7 +7,7 @@ import "request_handler.dart";
 /// Handles `POST /session/abort` — stops in-progress session execution.
 class AbortSessionHandler({
   required final SessionAbortService _sessionAbortService,
-}) extends BodyRequestHandler<AbortSessionRequest, SuccessEmptyResponse> {
+}) extends BodyRequestHandler<AbortSessionRequest, SessionAbortResponse> {
   this
     : super(
         HttpMethod.post,
@@ -16,15 +16,24 @@ class AbortSessionHandler({
       );
 
   @override
-  Future<SuccessEmptyResponse> handle(
+  Future<SessionAbortResponse> handle(
     RelayRequest request, {
     required AbortSessionRequest body,
   }) async {
-    final result = await _sessionAbortService.abortSession(sessionId: body.sessionId, subAgents: body.subAgents);
+    final result = await _sessionAbortService.abortSession(
+      sessionId: body.sessionId,
+      subAgents: body.subAgents,
+      useAtomicStop: body.useAtomicStop,
+    );
     if (result case SessionAbortRejected(:final rejection)) {
       // The app parses the 409 body as SessionAbortRejection JSON.
       throw buildJsonErrorResponse(request: request, status: 409, body: rejection.toJson());
     }
-    return const SuccessEmptyResponse();
+    return SessionAbortResponse(
+      subAgentsHandled: switch (result) {
+        SessionAborted(:final subAgentsHandled) => subAgentsHandled,
+        SessionAbortRejected() => false,
+      },
+    );
   }
 }

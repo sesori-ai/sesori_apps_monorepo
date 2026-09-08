@@ -1,6 +1,7 @@
 import "package:sesori_bridge/src/routing/abort_session_handler.dart";
 import "package:sesori_bridge/src/services/session_abort_service.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -33,22 +34,24 @@ void main() {
       expect(handler.canHandle(makeRequest("POST", "/session/abort")), isTrue);
     });
 
-    test("extracts sessionId from request body", () async {
+    test("extracts sessionId and atomic-stop opt-in from request body", () async {
       await handler.handle(
         makeRequest("POST", "/session/abort"),
-        body: const AbortSessionRequest(sessionId: "s1"),
+        body: const AbortSessionRequest(sessionId: "s1", useAtomicStop: true),
       );
 
       expect(plugin.lastAbortSessionId, equals("s1"));
+      expect(plugin.lastAbortUseAtomicStop, isTrue);
     });
 
-    test("returns 200", () async {
+    test("returns the plugin descendant-handling acknowledgment", () async {
+      plugin.abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
       final response = await handler.handle(
         makeRequest("POST", "/session/abort"),
-        body: const AbortSessionRequest(sessionId: "s1"),
+        body: const AbortSessionRequest(sessionId: "s1", useAtomicStop: true),
       );
 
-      expect(response, equals(const SuccessEmptyResponse()));
+      expect(response, equals(const SessionAbortResponse(subAgentsHandled: true)));
     });
   });
 }

@@ -18,6 +18,7 @@ import "acp_session_loader.dart";
 import "acp_session_options_service.dart";
 import "acp_stdio_client.dart";
 import "api/acp_agent_api.dart";
+import "models/acp_scoped_stop.dart";
 import "repositories/acp_session_config_repository.dart";
 import "repositories/trackers/acp_child_session_tracker.dart";
 
@@ -1749,70 +1750,111 @@ abstract class AcpPlugin({
     required String childSessionId,
   }) => throw UnsupportedError("$id does not support scoped child cancellation");
 
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => throw UnsupportedError("$id does not support complete scoped cancellation");
+
   @override
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     if (!supportsScopedStop) {
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
-      return const PluginAbortAccepted(workKept: false);
+      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     }
-    final children = childSessionTracker.runningChildren(sessionId: sessionId);
-    final namedChild = childSessionTracker.runningChild(sessionId: sessionId);
-    final hasOwnPrompt = (_turnStates[sessionId]?.pending ?? 0) > 0;
-    final mainRunning = hasOwnPrompt || namedChild != null;
-    final mainOnlySupported =
-        (hasOwnPrompt || namedChild == null || namedChild.isBackground) &&
-        children.every((child) => child.isBackground);
-    if (children.isNotEmpty &&
-        (subAgents == PluginAbortSubAgentPolicy.confirm ||
-            subAgents == PluginAbortSubAgentPolicy.keep && mainRunning && !mainOnlySupported)) {
-      return PluginAbortRejectedSubAgentsRunning(
-        runningSubAgentCount: children.length,
-        mainAgentRunning: mainRunning,
-        mainAgentOnlySupported: mainOnlySupported,
-      );
-    }
-    if (subAgents == PluginAbortSubAgentPolicy.keep && children.isNotEmpty && !mainRunning) {
-      return const PluginAbortAccepted(workKept: true);
-    }
-    final mainResult = await _cancelScopedSession(
-      sessionId: sessionId,
-      parentSessionId: namedChild?.parentSessionId,
-    );
-    if (subAgents != PluginAbortSubAgentPolicy.stop) {
-      return PluginAbortAccepted(
-        workKept: children.isNotEmpty || mainResult == AcpChildCancelResult.notCancellable,
-      );
-    }
-    final results = await Future.wait([
-      for (final child in children)
-        _cancelScopedSession(sessionId: child.childSessionId, parentSessionId: child.parentSessionId),
-    ]);
-    final cancelled = <String>{
-      if (mainResult != AcpChildCancelResult.notCancellable) sessionId,
-      for (var i = 0; i < children.length; i++)
-        if (results[i] != AcpChildCancelResult.notCancellable) children[i].childSessionId,
+
+    final allDescendantSessionIds = {
+      ...knownSubAgentSessionIds,
+      ...childSessionTracker.childSessionIds(sessionId: sessionId),
+    }..remove(sessionId);
+    final independentResidentSessionIds = {
+      for (final descendantSessionId in allDescendantSessionIds)
+        if (_residentSessions.contains(descendantSessionId)) descendantSessionId,
     };
-    final byId = {for (final child in children) child.childSessionId: child};
-    bool coveredByParent({required AcpRunningChild child}) {
-      var current = child;
-      while (!current.isBackground) {
-        if (cancelled.contains(current.parentSessionId)) return true;
-        final parent = byId[current.parentSessionId];
-        if (parent == null) return false;
-        current = parent;
+
+    bool belongsToIndependentScope({required String childSessionId}) {
+      String? currentSessionId = childSessionId;
+      while (currentSessionId != null && currentSessionId != sessionId) {
+        if (independentResidentSessionIds.contains(currentSessionId)) return true;
+        currentSessionId = childSessionTracker.parentOf(sessionId: currentSessionId);
       }
       return false;
     }
 
-    // Pending lifecycle delivery is not retained work. A foreground descendant
-    // is covered by its parent's cancellation even when it has no own interrupt.
+    final children = childSessionTracker.runningChildren(sessionId: sessionId);
+    final mainScopeChildren = [
+      for (final child in children)
+        if (!belongsToIndependentScope(childSessionId: child.childSessionId)) child,
+    ];
+    final namedChild = childSessionTracker.runningChild(sessionId: sessionId);
+    // Queue presence is logical work for keep/confirm even before load admits
+    // the session. Native target selection below remains residency-based.
+    final hasOwnPrompt = (_turnStates[sessionId]?.pending ?? 0) > 0;
+    final activeSubAgentSessionIds = {
+      ...children.map((child) => child.childSessionId),
+      for (final descendantSessionId in independentResidentSessionIds)
+        if (_inFlightTurnSessions.contains(descendantSessionId) ||
+            childSessionTracker.hasActiveWorkForSession(sessionId: descendantSessionId))
+          descendantSessionId,
+    };
+    final mainRunning = hasOwnPrompt || namedChild != null;
+    final mainOnlySupported =
+        (hasOwnPrompt || namedChild == null || namedChild.isBackground) &&
+        mainScopeChildren.every((child) => child.isBackground);
+    if (activeSubAgentSessionIds.isNotEmpty &&
+        (subAgents == PluginAbortSubAgentPolicy.confirm ||
+            subAgents == PluginAbortSubAgentPolicy.keep && mainRunning && !mainOnlySupported)) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: activeSubAgentSessionIds.length,
+        mainAgentRunning: mainRunning,
+        mainAgentOnlySupported: mainOnlySupported,
+      );
+    }
+    if (subAgents == PluginAbortSubAgentPolicy.keep && activeSubAgentSessionIds.isNotEmpty && !mainRunning) {
+      return const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
+    }
+
+    if (useAtomicStop && subAgents != PluginAbortSubAgentPolicy.keep) {
+      for (final targetSessionId in {sessionId, ...allDescendantSessionIds}) {
+        _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
+      }
+      final client = _client;
+      if (client == null) {
+        return const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
+      }
+      final parentSessionId = childSessionTracker.parentOf(sessionId: sessionId);
+      final targets = <AcpScopedStopTarget>[
+        if (_residentSessions.contains(sessionId))
+          AcpScopedStopSessionTarget(sessionId: sessionId)
+        else if (parentSessionId != null)
+          AcpScopedStopChildTarget(parentSessionId: parentSessionId, childSessionId: sessionId),
+        for (final descendantSessionId in independentResidentSessionIds)
+          AcpScopedStopSessionTarget(sessionId: descendantSessionId),
+      ];
+      // Calling every hook constructs and dispatches every native request before
+      // Future.wait observes a response. Its default behavior still waits for
+      // every already-dispatched request when one fails.
+      final stopFutures = [
+        for (final target in targets) stopScopedTree(client: client, target: target),
+      ];
+      final results = await Future.wait(stopFutures);
+      return PluginAbortAccepted(
+        workKept: results.any((result) => result.workKept),
+        subAgentsHandled: true,
+      );
+    }
+
+    final mainResult = await _cancelScopedSession(
+      sessionId: sessionId,
+      parentSessionId: childSessionTracker.parentOf(sessionId: sessionId),
+    );
     return PluginAbortAccepted(
-      workKept:
-          mainResult == AcpChildCancelResult.notCancellable ||
-          children.any((child) => !cancelled.contains(child.childSessionId) && !coveredByParent(child: child)),
+      workKept: activeSubAgentSessionIds.isNotEmpty || mainResult == AcpChildCancelResult.notCancellable,
+      subAgentsHandled: false,
     );
   }
 
@@ -1820,11 +1862,12 @@ abstract class AcpPlugin({
     required String sessionId,
     required String? parentSessionId,
   }) async {
-    // An opened child may own a new standard prompt after its delegation ends.
-    // Prompt ownership, not ancestry alone, determines cancellation transport.
-    final standardCancel = parentSessionId == null || (_turnStates[sessionId]?.pending ?? 0) > 0;
+    // Residency, not a turn still waiting for load, determines native session
+    // authority. A queued-only root is fenced locally without a fake target;
+    // a retained nonresident child still uses its exact direct parent.
+    final standardCancel = _residentSessions.contains(sessionId);
     await _abortSession(sessionId: sessionId, sendSessionCancel: standardCancel);
-    if (standardCancel) return AcpChildCancelResult.interrupted;
+    if (standardCancel || parentSessionId == null) return AcpChildCancelResult.interrupted;
     final client = _client;
     if (client == null) return AcpChildCancelResult.unknownChild;
     try {
@@ -1835,11 +1878,9 @@ abstract class AcpPlugin({
     }
   }
 
-  Future<void> _abortSession({required String sessionId, required bool sendSessionCancel}) async {
-    // Aborting means "stop this conversation now": drop the queued-but-
-    // undispatched turns first so they don't dispatch after the cancel. The
-    // in-flight turn (if any) ends via the agent's cancellation, which
-    // resolves its `session/prompt` future and settles the accounting.
+  void _prepareSessionAbort({required String sessionId, required bool cancelBufferedInputs}) {
+    // Discard only work accepted before this stop. A later prompt captures the
+    // incremented generation and is never cleaned up from the stop response.
     final state = _turnStates[sessionId];
     if (state != null) {
       state.generation++;
@@ -1856,7 +1897,17 @@ abstract class AcpPlugin({
         _emitQueueUpdate(sessionId: sessionId, state: state);
       }
     }
-    if (_isPromptFrameWriting(sessionId: sessionId)) _cancelledPromptWriteSessions.add(sessionId);
+    if (cancelBufferedInputs && _isPromptFrameWriting(sessionId: sessionId)) {
+      _cancelledPromptWriteSessions.add(sessionId);
+    }
+  }
+
+  Future<void> _abortSession({required String sessionId, required bool sendSessionCancel}) async {
+    // Aborting means "stop this conversation now": drop the queued-but-
+    // undispatched turns first so they don't dispatch after the cancel. The
+    // in-flight turn (if any) ends via the agent's cancellation, which
+    // resolves its `session/prompt` future and settles the accounting.
+    _prepareSessionAbort(sessionId: sessionId, cancelBufferedInputs: true);
     final client = _client;
     if (client == null) return;
     if (sendSessionCancel) {
@@ -1893,7 +1944,13 @@ abstract class AcpPlugin({
             if (entry.value.pending > 0 && childSessionTracker.runningChild(sessionId: entry.key) == null) entry.key,
         };
         await Future.wait([
-          for (final sessionId in roots) abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop),
+          for (final sessionId in roots)
+            abortSession(
+              sessionId: sessionId,
+              subAgents: PluginAbortSubAgentPolicy.stop,
+              useAtomicStop: true,
+              knownSubAgentSessionIds: childSessionTracker.childSessionIds(sessionId: sessionId).toSet(),
+            ),
         ]);
       } else {
         await Future.wait([
