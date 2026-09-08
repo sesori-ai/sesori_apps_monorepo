@@ -114,8 +114,8 @@ defaults and queued client sends coherent.
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
-  OpenCode acknowledges completed root/child aborts so current clients do not
-  issue duplicate child stops.
+  OpenCode retains legacy client fallback: its observed-child snapshot does not
+  prove atomic subtree completion across separate HTTP/SSE channels.
 - DeepSeek 0.1.4 supports side-effect-free `confirm` rejection and child-only
   `keep`. For a current-client stop, ACP captures the named native scope plus
   every independently resident descendant root, queues all native subtree STOPs

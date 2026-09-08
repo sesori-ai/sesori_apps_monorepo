@@ -109,6 +109,8 @@ background sub-agents together with the running main turn.
 ² OpenCode's task tool cancels a foreground child when its root is aborted
 (verified on 1.18.25); background children survive, and the tracker cannot tell
 the two apart, so the option is not offered.
+Atomic subtree completion acknowledgment is **not implemented** for OpenCode;
+its observed-child snapshot retains legacy client fanout.
 
 ³ Codex (codex-cli 0.148.0, `multi_agent` stable, probed 2026-09-02): a child
 announces itself through the parent's `subAgentActivity started`

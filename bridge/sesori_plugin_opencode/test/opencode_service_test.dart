@@ -13,20 +13,6 @@ import "support/fake_open_code_api.dart";
 import "support/open_code_fixtures.dart";
 
 void main() {
-  test("OpenCodeService acknowledges completed root and child stop", () async {
-    final repository = FakeOpenCodeRepository();
-    final tracker = ActiveSessionTracker(repository);
-    tracker.registerSession(sessionId: "child", directory: "/repo", parentId: "root");
-    tracker.markTurnAccepted(sessionId: "child");
-    final service = OpenCodeService(repository, tracker);
-    addTearDown(service.dispose);
-
-    final result = await service.abortSession(sessionId: "root", subAgents: PluginAbortSubAgentPolicy.stop);
-
-    expect(repository.api.abortedSessionIds, ["root", "child"]);
-    expect(result, isA<PluginAbortAccepted>().having((result) => result.subAgentsHandled, "handled", true));
-  });
-
   group("OpenCodeService.getProjects", () {
     test("returns projects and owns tracker alias bookkeeping", () async {
       final repository = FakeOpenCodeRepository(
