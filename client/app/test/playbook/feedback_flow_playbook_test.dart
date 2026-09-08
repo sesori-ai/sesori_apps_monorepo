@@ -1,6 +1,7 @@
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/module_prego.dart";
 
 import "feedback_flow_playbook.dart";
 
@@ -77,6 +78,39 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    "feedback confirmation clears the top bar and disappears automatically",
+    (tester) async {
+      await _launch(tester: tester);
+      tester.view.padding = const FakeViewPadding(top: 47);
+      addTearDown(tester.view.resetPadding);
+      await tester.pumpAndSettle();
+      await _open(tester: tester);
+      await _rate(tester: tester, rating: 2);
+      await _tap(tester: tester, finder: find.text("Hard to navigate"));
+      await _tap(
+        tester: tester,
+        finder: _control(label: "Send feedback"),
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      await tester.pumpAndSettle();
+
+      final toast = find.byType(PregoPopupAlertsNotifications);
+      expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+      expect(find.byType(BottomSheet), findsNothing);
+      expect(tester.getTopLeft(toast).dy, 47 + PregoTopNavigation.barHeight + PregoSpacing.xl);
+      await tester.pump(const Duration(seconds: 2));
+      expect(toast, findsOneWidget);
+      await tester.pump(const Duration(seconds: 1));
+      await tester.pumpAndSettle();
+      expect(toast, findsNothing);
+      expect(tester.binding.hasScheduledFrame, isFalse);
+      expect(nativeRequests, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final failure in <({Exception error, String notice})>[
     (error: MissingPluginException(), notice: "Native rating is available in the iOS debug preview."),
@@ -274,6 +308,7 @@ Future<void> _launch({required WidgetTester tester, Size size = const Size(390, 
   tester.view.physicalSize = size;
   addTearDown(tester.view.resetDevicePixelRatio);
   addTearDown(tester.view.resetPhysicalSize);
+  addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
   await tester.pumpWidget(const FeedbackFlowPlaybook(openOnLaunch: false));
   await tester.pumpAndSettle();
 }
