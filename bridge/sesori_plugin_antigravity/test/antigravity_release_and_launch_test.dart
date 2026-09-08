@@ -27,23 +27,17 @@ void main() {
         "agy_acp_server_20260818_01_RC01",
       ),
     );
+    final macArtifact = AntigravityRelease.artifactFor(target: macArm)!;
     expect(
-      (
-        AntigravityRelease.macosArm64ArchiveBytes,
-        AntigravityRelease.macosArm64ServerBytes,
-        AntigravityRelease.macosArm64HarnessBytes,
-      ),
+      (macArtifact.archiveBytes, macArtifact.serverBytes, macArtifact.harnessBytes),
       (314500221, 792105680, 101551680),
     );
     expect(
-      AntigravityRelease.macosArm64ArchiveUrl,
+      macArtifact.archiveUrl,
       "https://dl.google.com/agy-extensions/releases/macos/"
       "agy-acp-server-agy_acp_server_20260818_01_RC01-darwin-arm64.zip",
     );
-    expect(
-      AntigravityRelease.macosArm64ArchiveSha256,
-      "f122ca7e7030a27f9649da4cf1a7d80e12c48c5f6118ff35affc34d56cbf83dd",
-    );
+    expect(macArtifact.archiveSha256, "f122ca7e7030a27f9649da4cf1a7d80e12c48c5f6118ff35affc34d56cbf83dd");
     expect(
       AntigravityRelease.macosArm64ServerSha256,
       "6d700b48eaaab70b1083b4d18d63e81b6d8cdc1da1c4670db29f5986f9d484ef",
@@ -58,10 +52,56 @@ void main() {
     );
   });
 
-  test("maps the five published targets and rejects macOS x64", () {
-    for (final target in [macArm, linuxX64, linuxArm, winX64, winArm]) {
+  test("maps every independently verified archive and rejects macOS x64", () {
+    final expected = <PlatformTarget, (String, String, int, int, int)>{
+      macArm: (
+        "darwin-arm64.zip",
+        "f122ca7e7030a27f9649da4cf1a7d80e12c48c5f6118ff35affc34d56cbf83dd",
+        314500221,
+        792105680,
+        101551680,
+      ),
+      linuxX64: (
+        "linux-x86_64.zip",
+        "ce3f09628575b25497cf5a3c19d073b49acb80f1dab1ff8592919e9c9b8799e1",
+        543411011,
+        1529513909,
+        117532520,
+      ),
+      linuxArm: (
+        "linux-arm64.zip",
+        "70fcdac70684de60f7a0eb16ea497d6cc4498728420f060e0850cfc9a9329b40",
+        524995159,
+        1519373648,
+        110601552,
+      ),
+      winX64: (
+        "windows-x86_64.zip",
+        "35c7dd169c2794172ce02e9444a6db4a8ed4bb11398be07976cac2ee494f44e6",
+        331985114,
+        297200088,
+        122038424,
+      ),
+      winArm: (
+        "windows-arm64.zip",
+        "1522056748d45fbc34d0be72b41b99b0637be1b4caad0b34d37eb16d04ccb9c4",
+        332484576,
+        301449928,
+        114173080,
+      ),
+    };
+    for (final entry in expected.entries) {
+      final target = entry.key;
+      final facts = entry.value;
+      final artifact = AntigravityRelease.artifactFor(target: target)!;
+      expect(artifact.archiveUrl, endsWith(facts.$1));
+      expect(
+        (artifact.archiveSha256, artifact.archiveBytes, artifact.serverBytes, artifact.harnessBytes),
+        (facts.$2, facts.$3, facts.$4, facts.$5),
+      );
       expect(AntigravityRelease.supportsTarget(target: target), isTrue);
     }
+    expect(AntigravityRelease.artifactFor(target: macX64), isNull);
     expect(AntigravityRelease.supportsTarget(target: macX64), isFalse);
     expect(() => AntigravityRelease.serverFileName(target: macX64), throwsUnsupportedError);
     expect(AntigravityRelease.serverFileName(target: winArm), "agy_acp_server.exe");

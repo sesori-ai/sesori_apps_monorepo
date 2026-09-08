@@ -44,8 +44,11 @@ idle suspension, the management snapshot, and lifecycle commands.
   any request; later requests fail immediately until a fresh connection is established.
   Without interception the existing ACP transport behavior is unchanged.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
-  never downloads or mutates files, and failure there is non-fatal. The persisted disable
-  list is the only durable eligibility policy, with setup deciding blocked versus routable.
+  never downloads or mutates files, and failure there is non-fatal. Eligible descriptors
+  resolve and start concurrently within one startup batch; each settled descriptor closes
+  its generation stream independently, while the startup mutex remains held until every
+  descriptor settles. The persisted disable list is the only durable eligibility policy,
+  with setup deciding blocked versus routable.
 - Managed selection prefers the pinned target and otherwise takes the newest installed
   managed version still at or above the harness's minimum, so raising the target leaves
   the previous install usable rather than reporting the runtime as missing. A managed
@@ -334,6 +337,9 @@ owned-process exit; and restart.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.
+- A slow descriptor's provisioning or start keeps a ready descriptor's generation
+  stream open, a descriptor-local failure takes down another descriptor, or the startup
+  mutex releases before every descriptor start settles.
 - An eligible harness dropped from listings, a drifting or unselectable default, or
   snapshot tokens that miss real changes.
 - A harness card showing raw version-probe output, a rejected runtime's version, or a version
@@ -429,6 +435,9 @@ owned-process exit; and restart.
   scopes, explicit inheritance, byte preservation, pre-log consumption, and cleanup.
 - `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered production plugin
   descriptors; plugin routing handlers
+- `bridge/app/lib/src/runtime/plugin_generation_factory.dart` and
+  `bridge/app/test/bridge/runtime/plugin_generation_factory_test.dart` cover concurrent
+  provisioning/start, per-descriptor stream settlement and startup mutex ownership.
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
   `bridge/app/lib/src/services/plugin_warmup_service.dart`,
   `bridge/app/lib/src/listeners/plugin_warmup_setting_listener.dart`,

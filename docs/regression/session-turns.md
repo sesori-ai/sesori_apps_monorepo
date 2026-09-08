@@ -268,8 +268,12 @@ defaults and queued client sends coherent.
   it supplies another immediate active-turn delivery path; natural-completion
   queueing is not valid production behavior. Cursor, Hermes, DeepSeek, Copilot,
   Grok, and OMP use the shared fallback. Their
-  synthetic user transcript message is published only after its frame flushes
-  successfully to the agent's stdin. A prompt rejected after that dispatch
+  synthetic user transcript message is published only after its frame is
+  synchronously admitted to the agent's stdin. The shared NDJSON transport
+  relies on one IOSink's FIFO admission rather than per-request flushing, so
+  concurrent requests and notifications preserve order without binding the sink;
+  an asynchronous stdin failure is logged and fails every pending response with
+  the original error. A prompt rejected after that dispatch
   renders a durable inline error, preserving the agent's diagnostic detail
   rather than transitioning silently to idle. The shared 30-minute ACP prompt
   safety bound measures same-session inactivity, not total turn duration:
@@ -517,7 +521,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   instead of updated when compaction ends, or survives an abort or process
   exit.
 - An abort, permission reply, or question reply stalls behind a send to a
-  busy session on the same session lane, or a stop-and-send ACP follow-up waits
+  busy session on the same session lane; concurrent NDJSON dispatch binds stdin,
+  reorders control frames and prompts, or loses an asynchronous sink failure; or
+  a stop-and-send ACP follow-up waits
   for the active turn to finish naturally instead of cancelling it before dispatch.
   A Pi abort waits for the general history/control timeout, lets hidden steering
   resume after Stop, or leaves later sends stuck in their sending state.
