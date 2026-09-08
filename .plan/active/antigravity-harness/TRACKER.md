@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.a merged; Step 8.b ready for human review; Step 8.c architecture-approved locally
-- **Base:** Step 8.c exact comparison base `c13843000d1532debef0efca5192aaf50fc761c3`
+- **Status:** Steps 1–8.b merged; Step 8.c architecture-approved and synchronized for publication
+- **Base:** synced with main `b13d197d517adeb51810e05011b300b31a20b014` after Step 8.b merge
 - **Current branch:** `antigravity-harness-step-8c-descriptor-and-setup`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -18,9 +18,10 @@
   [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a),
   [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b),
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
-  [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a)
-- **Open PR:** [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b).
-- **Next action:** monitor Step 8.b; synchronize and publish reviewed Step 8.c only after Step 8.b merges.
+  [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
+  [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b)
+- **Open PR:** Step 8.c publication prepared.
+- **Next action:** publish and monitor Step 8.c; begin only Step 9 locally.
 
 ## Fixed PR Series
 
@@ -37,7 +38,7 @@
 - [x] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
 - [x] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [x] Step 8.a/12 — `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
-- [ ] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
+- [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
 - [ ] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
 - [ ] Step 10/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10/12]`
@@ -315,6 +316,10 @@
 - [x] First actual architecture review approved all 22 files at `53296324b2954c706d95ab2d492cd5518ab08a1a`
   against `c13843000d1532debef0efca5192aaf50fc761c3`: 1,039 additions + 38 deletions = 1,077 lines.
   Reviewer `293fcc78`, no findings. Prior incomplete-input blocks `de058330` and `1c53fd03` are not attempts.
+- [x] Synced with main `b13d197d517`; merge resolutions retain the reviewed Antigravity/shared owning source/tests
+  unchanged. Unrelated upstream DeepSeek updates remain outside this PR's diff. No unchanged passing suites rerun.
+- [x] Per user request, capability matrix documents login initiation versus local setup for every registered harness,
+  plus Antigravity's explicitly unregistered browser-return implementation; detection/install are not login.
 
 ## Architecture Reviews
 

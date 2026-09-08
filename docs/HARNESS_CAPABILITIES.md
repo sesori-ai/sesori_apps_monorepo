@@ -6,7 +6,8 @@ a deliberate, visible state rather than an accident. Update it whenever a
 capability lands for some harnesses but not others, or a harness limitation is
 verified or lifted.
 
-Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registry.dart`.
+Main matrix columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registry.dart`.
+The login table additionally identifies the unregistered Antigravity implementation explicitly.
 
 ## Legend
 
@@ -80,6 +81,43 @@ The marks above cover setup inspection only. A plugin that raises
 `PluginAuthenticationRequiredException` while running still moves the slot to
 `authenticationRequired` and blocks further starts; the ⬜ plugins do not do
 that either.
+
+## Login initiation
+
+Login is separate from detecting a logged-out backend or installing its runtime.
+This table records the current **Sesori-initiated harness/provider login action**,
+not login to the Sesori account. "Not implemented" means no such Sesori action;
+it does not claim an unprobed upstream ACP/RPC login API is supported or unsupported.
+
+| Harness | Login initiated from Sesori | Current local alternative/setup |
+|---|---|---|
+| Claude | Not implemented | `claude auth login` on the bridge machine. |
+| OpenCode | Not implemented | Local `opencode auth login` or provider configuration. |
+| Codex | Implemented: ChatGPT device-code login | Local Codex login/configuration remains an alternative. |
+| Copilot | Not implemented | `copilot login` on the bridge machine. |
+| Cursor | Not implemented | Local Cursor CLI login, or `CURSOR_API_KEY`. |
+| Hermes | Not implemented | Configure the provider/model through `hermes setup` or `hermes model`. |
+| Pi | Not implemented | Run `pi` locally and use `/login`, or configure supported provider credentials. |
+| OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
+| DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
+| Grok | Not implemented | `grok login` on the bridge machine. |
+| Antigravity (unregistered) | Internal only: Google browser-return | No supported local fallback. |
+
+Among registered plugins, only Codex currently implements
+`PluginAuthenticationDescriptor.authenticate`; its action uses the existing
+Sesori device-code UI. That is not a general API-key entry form or a claim of
+support for every Codex authentication method.
+
+The unregistered Antigravity descriptor implements the browser-return action:
+a current phone/desktop client opens Google's authorization page and returns
+the callback through Sesori. It permits personal Google OAuth only, suppresses
+the bridge host's browser, and uses the same isolated profile for login and
+live sessions. Activation remains Step 9; ambient Google login is not imported.
+
+Local login/configuration must apply to the profile/environment used by that
+bridge's harness. Provider keys and local/free models may make a backend usable
+without an OAuth login. Setup detection above does **not** imply that Sesori
+can initiate login, and managed installation does **not** authenticate a harness.
 
 ## Command limitations
 
