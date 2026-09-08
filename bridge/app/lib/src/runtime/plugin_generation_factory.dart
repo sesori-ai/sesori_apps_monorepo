@@ -117,12 +117,12 @@ class PluginGenerationFactory({
         try {
           await _attemptBatch(attempt: 1, batch: batch);
         } on Object catch (error, stackTrace) {
-          for (final request in batch) {
-            request.controller.addError(error, stackTrace);
+          if (batch.every((request) => request.controller.isClosed)) {
+            Log.w("Plugin startup infrastructure failed after all requests settled", error, stackTrace);
           }
-        } finally {
           for (final request in batch) {
-            await request.controller.close();
+            _addError(request: request, error: error, stackTrace: stackTrace);
+            await _closeRequest(request: request);
           }
         }
       }
@@ -146,35 +146,12 @@ class PluginGenerationFactory({
         );
         switch (resolution.status) {
           case BridgeInstanceResolutionStatus.allowed:
-            final startSettlements = <Future<void>>[];
-            for (final request in batch) {
-              try {
-                final host = await _buildHost(request: request, resolution: resolution);
-                await for (final event in request.registration.descriptor.ensureRuntime(host: host)) {
-                  request.controller.add(PluginGenerationProvisionProgress(event: event));
-                  if (event case ProvisionReady(:final binaryPath)) {
-                    host.provisionedRuntimePath = binaryPath;
-                  }
-                }
-                startSettlements.add(
-                  _settleDescriptorStart(
-                    request: request,
-                    start: request.registration.descriptor.start(host),
-                  ),
-                );
-              } on PluginStartAbortedException catch (error, stackTrace) {
-                request.controller.addError(error, stackTrace);
-              } on Object catch (error, stackTrace) {
-                request.controller.addError(
-                  PluginGenerationStartFailedException(
-                    pluginId: request.registration.descriptor.id,
-                    cause: error,
-                  ),
-                  stackTrace,
-                );
-              }
-            }
-            await Future.wait(startSettlements);
+            await Future.wait<void>(
+              [
+                for (final request in batch) _startRequest(request: request, resolution: resolution),
+              ],
+              eagerError: false,
+            );
           case BridgeInstanceResolutionStatus.declined:
             throw const BridgeRuntimeServerException(
               "Startup aborted because another Sesori bridge is already running and replacement was declined.",
@@ -217,25 +194,48 @@ class PluginGenerationFactory({
     );
   }
 
-  Future<void> _settleDescriptorStart({
+  Future<void> _startRequest({
     required _GenerationStartRequest request,
-    required Future<BridgePlugin> start,
+    required BridgeInstanceResolution resolution,
   }) async {
     try {
-      request.controller.add(
-        PluginGenerationStarted(plugin: await start),
-      );
+      final host = await _buildHost(request: request, resolution: resolution);
+      await for (final event in request.registration.descriptor.ensureRuntime(host: host)) {
+        request.controller.add(PluginGenerationProvisionProgress(event: event));
+        if (event case ProvisionReady(:final binaryPath)) {
+          host.provisionedRuntimePath = binaryPath;
+        }
+      }
+      final plugin = await request.registration.descriptor.start(host);
+      request.controller.add(PluginGenerationStarted(plugin: plugin));
     } on PluginStartAbortedException catch (error, stackTrace) {
-      request.controller.addError(error, stackTrace);
+      _addError(request: request, error: error, stackTrace: stackTrace);
     } on Object catch (error, stackTrace) {
-      request.controller.addError(
-        PluginGenerationStartFailedException(
+      _addError(
+        request: request,
+        error: PluginGenerationStartFailedException(
           pluginId: request.registration.descriptor.id,
           cause: error,
         ),
-        stackTrace,
+        stackTrace: stackTrace,
       );
+    } finally {
+      await _closeRequest(request: request);
     }
+  }
+
+  void _addError({
+    required _GenerationStartRequest request,
+    required Object error,
+    required StackTrace stackTrace,
+  }) {
+    if (request.controller.isClosed) return;
+    request.controller.addError(error, stackTrace);
+  }
+
+  Future<void> _closeRequest({required _GenerationStartRequest request}) {
+    if (request.controller.isClosed) return Future<void>.value();
+    return request.controller.close();
   }
 
   Future<BridgePluginHostImpl> _buildHost({
