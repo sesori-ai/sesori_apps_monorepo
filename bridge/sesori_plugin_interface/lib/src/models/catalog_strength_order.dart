@@ -5,7 +5,7 @@
 /// vendor: Anthropic ids carry a family word (`fable`, `opus`, `sonnet`,
 /// `haiku`) and OpenAI ids start with `gpt`. Anything else keeps the order the
 /// caller passed, after the ranked models.
-abstract final class CatalogStrengthOrder {
+abstract final class const CatalogStrengthOrder() {
   /// Effort names strongest first. Aliases share a rank; unknown names follow
   /// in the order given.
   static const List<List<String>> _effortLadder = [
@@ -65,7 +65,7 @@ abstract final class CatalogStrengthOrder {
       if (byGeneration != 0) return byGeneration;
       final byTier = aRank.tier.compareTo(bRank.tier);
       if (byTier != 0) return byTier;
-      final byVersion = _compareVersions(bRank.version, aRank.version);
+      final byVersion = _compareVersions(a: bRank.version, b: aRank.version);
       return byVersion != 0 ? byVersion : a.index.compareTo(b.index);
     });
     return [for (final entry in entries) entry.model];
@@ -82,7 +82,7 @@ abstract final class CatalogStrengthOrder {
   /// suffix (`opus[1m]`) are ignored.
   static _StrengthRank? _rank({required String id}) {
     var bare = id.trim().toLowerCase().replaceAll(_bracketSuffix, "");
-    final namespaceEnd = bare.lastIndexOf(RegExp(r"[/:]"));
+    final namespaceEnd = bare.lastIndexOf(RegExp("[/:]"));
     if (namespaceEnd >= 0) bare = bare.substring(namespaceEnd + 1);
 
     if (_openAiId.firstMatch(bare) case final match?) {
@@ -110,7 +110,7 @@ abstract final class CatalogStrengthOrder {
     return null;
   }
 
-  static int _compareVersions(List<int> a, List<int> b) {
+  static int _compareVersions({required List<int> a, required List<int> b}) {
     final parts = a.length > b.length ? a.length : b.length;
     for (var i = 0; i < parts; i++) {
       final aPart = i < a.length ? a[i] : 0;
