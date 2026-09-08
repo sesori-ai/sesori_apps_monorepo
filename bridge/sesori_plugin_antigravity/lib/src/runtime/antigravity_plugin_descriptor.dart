@@ -76,12 +76,15 @@ class const AntigravityPluginDescriptor({
 
   PlatformTarget _target() => target ?? PlatformTarget.current();
   String _geminiHome({required String stateDirectory}) => p.join(stateDirectory, "profile");
-  String _managedServerPath({required String stateDirectory, required PlatformTarget target}) => p.join(
-    stateDirectory,
-    AntigravityIdentity.pluginId,
-    AntigravityRelease.agentVersion,
-    AntigravityRelease.serverFileName(target: target),
-  );
+  String? _managedServerPath({required String stateDirectory, required PlatformTarget target}) {
+    if (!AntigravityRelease.supportsTarget(target: target)) return null;
+    return p.join(
+      stateDirectory,
+      AntigravityIdentity.pluginId,
+      AntigravityRelease.agentVersion,
+      AntigravityRelease.serverFileName(target: target),
+    );
+  }
 
   ({String executable, List<String> arguments}) _browserInvocation() {
     final injectedExecutable = browserExecutable;

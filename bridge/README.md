@@ -103,8 +103,9 @@ Antigravity support uses Google's proprietary official ACP runtime pair. Review
 [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/) before using it.
 This release does not install or update the pair: place `agy_acp_server.par` and
-`localharness_external` together on macOS/Linux (the `.exe` pair on Windows),
-then either make the server discoverable on PATH or pass
+`localharness_external` together on macOS arm64 or Linux x64/arm64 (the `.exe`
+pair on Windows x64/arm64). macOS x64 is unsupported. Either make the server
+discoverable on PATH or pass
 `--antigravity-bin <path-to-server>`. The sibling harness is mandatory and an
 explicit server path is authoritative.
 

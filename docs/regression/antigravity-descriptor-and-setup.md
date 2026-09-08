@@ -11,6 +11,8 @@ migration or analytics event and its synthetic verification performs no real OAu
 - Runtime precedence is authoritative explicit pair, then PATH, then the future managed-layout location. Empty POSIX
   PATH entries continue to mean the current directory. Static inspection does not claim a validated runtime version.
 - Missing/rejected/unsupported/boundary outcomes map to honest setup statuses and current-client authentication hints.
+  macOS x64 reports unsupported-platform guidance without constructing a managed filename, preparing a profile or
+  launching a process, including when an explicit binary option is supplied.
   A recovered PATH storage failure retains its cause, stack and PATH context in local logs before managed fallback;
   ordinary absence or pair rejection remains non-error resolution. Install is not advertised. The app registry exposes
   `Antigravity` and namespaces the descriptor's bare `bin` option as `--antigravity-bin`; OpenCode remains the preferred

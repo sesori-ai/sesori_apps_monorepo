@@ -366,6 +366,10 @@
 - [x] Synced with main `20a1580688` after Step 8.c merge. All bridge source/test/dependency inputs are unchanged from
   the reviewed checkpoint; merge resolutions preserve activation and all predecessor fixes. Unchanged passing commands
   were not rerun. Publication size is measured separately including this tracker reconciliation.
+- [x] Activation review correction: unsupported targets have no managed-path candidate, allowing the existing setup
+  service to report unavailable without a filename exception. Nine descriptor tests pass, including inert macOS x64
+  inspection with/without an explicit path; owning analysis is clean. Index ordering, source indentation, plan status
+  and platform guidance are corrected. This is a localized logic/docs fix, not an architectural expansion.
 
 ## Step 10.a Checklist
 
