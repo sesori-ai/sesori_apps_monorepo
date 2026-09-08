@@ -18,8 +18,8 @@ content the transcript renders live and after reload.
   settles after route exit; current-route failure instead transfers the one-shot
   snapshot into restoration. They never persist in a draft and travel inline
   within the staged-attachment size bound so the request fits the relay's message
-  limit. Existing-session picker, paste and drop entry are absent while that
-  chat's harness is blocked; a completion racing the block cannot dispatch, and
+  limit. Existing-session picker and paste entry are absent while that chat's
+  harness is blocked; a completion racing the block cannot dispatch, and
   the availability gate does not retain staged bytes. The owning plugin normalizes
   backend-produced images into a client-safe attachment; host paths never cross
   that boundary.
@@ -144,8 +144,8 @@ account-level rejection without changing the descriptor's capability claim.
 
 ## Failure Signals
 
-- A blocked existing chat offers picker, paste or drop submission; a late picker
-  result reaches the bridge; staged bytes survive solely because availability
+- A blocked existing chat offers picker or paste submission; a late picker result
+  reaches the bridge; staged bytes survive solely because availability
   recovered; or read-only mode prevents viewing existing transcript images.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.

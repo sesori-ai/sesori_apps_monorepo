@@ -19,35 +19,36 @@ new composer handoff contract, or structured bridge rejection protocol. Existing
 queue ownership, storage, delivery uncertainty and cancellation behavior remain
 unchanged. The gate landed in [PR #1375](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1375).
 
-## Observed problem and current code
+## Observed problem and original code baseline
 
 The user reported Claude Code returning expired authentication. Local login
 failed; restarting the harness put setup into `authenticationRequired`. The chat
 still accepted input, showed it as Queued, and that apparent queued message was
 absent after authentication and a settings round trip.
 
-Code inspection confirms the prevention gap, not the exact reported timing:
+The following historical snapshot records the prevention gap that PR #1375
+closed; it is the original baseline, not current code guidance:
 
 - `shared/sesori_shared/lib/src/models/sesori/plugin_setup_response.dart` already
   reports ready, authenticationRequired, runtimeMissing, unavailable,
   notInspected and unknown. `plugin_management.dart` adds runtime state and
   safe action hints. No new wire field is needed.
-- `client/module_core/lib/src/services/plugin_management_service.dart` owns
-  management snapshots, bridge/connection fencing, change-event refresh and
-  coalescing. Chats do not consume its `snapshots` stream.
-- `SessionDetailCubit.sendMessage` and `_drainQueuedMessages` check connection,
+- `client/module_core/lib/src/services/plugin_management_service.dart` already
+  owned management snapshots, bridge/connection fencing, change-event refresh
+  and coalescing. Chats did not yet consume its `snapshots` stream.
+- `SessionDetailCubit.sendMessage` and `_drainQueuedMessages` checked connection,
   archive and attachment constraints, but not harness usability. Generic errors
-  requeue locally. This plan prevents known-unavailable admission; it does not
-  repair or redesign those error/queue paths.
-- Shared `SessionDetailBody` selects read-only presentation only for route
+  requeued locally. The implementation prevents known-unavailable admission; it
+  does not repair or redesign those error/queue paths.
+- Shared `SessionDetailBody` selected read-only presentation only for route
   read-only mode or archive. Pending question/permission modal predicates also
-  omit harness status.
+  omitted harness status.
 - `PluginRuntime._acquire` already refuses setup-blocked, disabled, transitioning
   and unstartable harnesses. Reuse that authoritative bridge protection; do not
   add a second admission mechanism.
-- Catalog session metadata is readable without a plugin, but message history
-  calls the owning plugin. `SessionDetailLoadService` currently starts history
-  before resolving metadata. A cold blocked chat therefore needs a reason-bearing
+- Catalog session metadata was readable without a plugin, but message history
+  called the owning plugin. `SessionDetailLoadService` started history before
+  resolving metadata. A cold blocked chat therefore needs a reason-bearing
   shell, not a promise of newly cached/offline history.
 
 ## Required behavior
@@ -94,7 +95,7 @@ behavior rather than introducing a different connectivity policy.
 - Expose Retry for unavailable status/metadata checks. Recovery means reloading
   prerequisites and re-enabling interaction, **not recovering queued messages**.
 - Disable all harness-mutating chat controls while blocked: send, text/voice
-  input, attachments/paste/drop submission, slash commands, selection changes,
+  input, attachments/paste submission, slash commands, selection changes,
   stop and remote queued-prompt cancellation. Apply the same decision before
   cubit mutation methods, not only in widgets.
 - Do not open question/permission response dialogs while blocked. Dismiss an

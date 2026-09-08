@@ -130,7 +130,8 @@ reaches the backend so the turn continues.
 - When management blocks the session's harness, pending banners and new response
   dialogs are hidden. A dialog already open on either surface closes without
   answering or rejecting; its pending model remains until an authoritative
-  refresh. Cubit reply and rejection seams independently refuse stale callbacks,
+  refresh or settlement event. Cubit reply and rejection seams independently
+  refuse stale callbacks,
   including completions from another surface, until interaction is usable again.
 
 ## Regression Levels
@@ -169,8 +170,9 @@ the prompt write is held, proving cancellation does not remove the later request
 
 - A blocked chat shows a pending banner, opens a response dialog, or accepts a
   late answer/rejection callback. A dialog remains open through the transition,
-  closes by answering, clears pending data before refresh, or reappears before
-  interaction prerequisites recover.
+  closes by answering, clears pending data before either an authoritative
+  settlement event or refresh, or reappears before interaction prerequisites
+  recover.
 - A permission or question reply stalls behind a prompt sent to the same busy
   session instead of the accepted bridge send releasing its session lane
   immediately. For DeepSeek, the underlying `session/prompt` remains pending
