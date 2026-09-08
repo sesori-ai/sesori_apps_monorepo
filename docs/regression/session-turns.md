@@ -601,7 +601,7 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
-- Antigravity native turn behavior, personal OAuth and cross-target reconnect remain pending L5 gates; synthetic ACP
+- Antigravity native turn behavior, personal OAuth and cross-target reconnect remain unverified; synthetic ACP
   composition does not substitute for them.
 - Grok does not advertise ACP image prompt capability in the supported release;
   image attachments are not Grok turn coverage.
