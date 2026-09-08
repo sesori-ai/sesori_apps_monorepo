@@ -325,7 +325,18 @@ class const _FeedbackActionTransition({required final Widget child}) extends Sta
             child: child,
           ),
         );
-        return reducedMotion ? content : SizeTransition(axis: Axis.horizontal, sizeFactor: animation, child: content);
+        if (reducedMotion) return content;
+        // Reserve the animated width without clipping the native press growth.
+        return AnimatedBuilder(
+          animation: animation,
+          builder: (context, child) => Align(
+            alignment: Alignment.topCenter,
+            widthFactor: animation.value,
+            heightFactor: 1,
+            child: child,
+          ),
+          child: content,
+        );
       },
       child: child,
     );

@@ -1,3 +1,4 @@
+import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -5,6 +6,47 @@ import "package:theme_prego/module_prego.dart";
 import "feedback_flow_playbook.dart";
 
 void main() {
+  testWidgets(
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    "composer buttons can paint their full pressed scale without rectangular clipping",
+    (tester) async {
+      await _openPrivate(tester: tester);
+      await tester.tap(find.text("Hard to navigate"));
+      await tester.pumpAndSettle();
+
+      for (final label in ["Use keyboard", "Send feedback"]) {
+        final button = _control(label: label);
+        final hold = await tester.startGesture(tester.getCenter(button));
+        await tester.pump(const Duration(milliseconds: 100));
+        await tester.pump(const Duration(milliseconds: 100));
+        final enlarged = tester
+            .widgetList<Transform>(
+              find.descendant(of: button, matching: find.byType(Transform)),
+            )
+            .where((transform) => transform.transform.entry(0, 0) > 1);
+        expect(enlarged, isNotEmpty);
+        final painted = tester.renderObject<RenderTransform>(find.byWidget(enlarged.first)).child!;
+        final paintedBounds = MatrixUtils.transformRect(painted.getTransformTo(null), painted.paintBounds);
+        RenderObject? ancestor = painted.parent;
+        while (ancestor != null) {
+          if (ancestor is RenderClipRect && ancestor.clipBehavior != Clip.none) {
+            final clipBounds = MatrixUtils.transformRect(ancestor.getTransformTo(null), ancestor.paintBounds);
+            expect(clipBounds.contains(paintedBounds.topLeft), isTrue, reason: "$label is clipped at its top/left");
+            expect(
+              clipBounds.contains(paintedBounds.bottomRight),
+              isTrue,
+              reason: "$label is clipped at its bottom/right",
+            );
+          }
+          ancestor = ancestor.parent;
+        }
+        await hold.cancel();
+        await tester.pumpAndSettle();
+      }
+      expect(tester.takeException(), isNull);
+    },
+  );
+
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
     "rating content fades into feedback while the same sheet resizes",
