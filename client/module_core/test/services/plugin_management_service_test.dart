@@ -18,6 +18,14 @@ import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+enum _ReconciliationInvalidation() {
+  disconnect,
+  reconnect,
+  bridgeReplacement,
+  disposal,
+  unsupported,
+}
+
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
 void main() {
@@ -467,6 +475,58 @@ void main() {
   });
 
   group("publication fencing", () {
+    for (final request in [
+      const PluginLifecycleCommandRequest.enable(),
+      const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+    ]) {
+      test("management SSE before ${request.runtimeType} response preserves its acknowledgment", () async {
+        final mutation = Completer<PluginManagementMutationResult>();
+        final authoritativeLoad = Completer<PluginManagementLoadResult>();
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueLoad(_supported(_response(token: "starting")))
+          ..queueLoad(authoritativeLoad.future)
+          ..queueMutation(mutation.future);
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+        );
+        addTearDown(() async {
+          await service.onDispose();
+          await connection.dispose();
+        });
+        await _waitFor(() => service.snapshots.hasValue);
+        final publishedTokens = <String>[];
+        final subscription = service.snapshots.listen((snapshot) {
+          if (snapshot case PluginManagementLoadResultSupported(:final response)) {
+            publishedTokens.add(response.snapshotToken);
+          }
+        });
+        addTearDown(subscription.cancel);
+
+        final command = service.command(pluginId: "one", request: request);
+        // The bridge publishes a starting transition before start/restart
+        // completes. Its event-triggered GET can beat the command response.
+        connection.emitManagementChanged(snapshotToken: "starting");
+        await _waitFor(() => _supportedResponse(service).snapshotToken == "starting");
+        final acknowledgment = _success(_response(token: "command-result"));
+        mutation.complete(acknowledgment);
+        await _waitFor(() => repository.loadCalls == 3);
+        expect(_supportedResponse(service).snapshotToken, "starting");
+        authoritativeLoad.complete(_supported(_response(token: "authoritative")));
+        final result = await command;
+        await _pump();
+
+        expect(publishedTokens, isNot(contains("command-result")));
+        expect(_supportedResponse(service).snapshotToken, "authoritative");
+        expect(repository.mutationCalls, 1);
+        // Success is proved by this request's response, never by GET metadata.
+        expect(result, same(acknowledgment));
+      });
+    }
+
     test("a mutation publication supersedes an older refresh and forces a clean GET", () async {
       final oldRefresh = Completer<PluginManagementLoadResult>();
       final repository = _FakePluginRepository()
@@ -500,7 +560,7 @@ void main() {
       expect(_supportedResponse(service).snapshotToken, "authoritative");
     });
 
-    test("an intervening refresh makes a mutation uncertain and triggers an authoritative GET", () async {
+    test("an intervening refresh preserves the acknowledgment and triggers an authoritative GET", () async {
       final mutation = Completer<PluginManagementMutationResult>();
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
@@ -527,10 +587,149 @@ void main() {
       mutation.complete(_success(_response(token: "mutation")));
       final result = await mutationFuture;
 
-      expect(result, isA<PluginManagementMutationResultUncertain>());
+      expect(result, isA<PluginManagementMutationResultSuccess>());
       expect(repository.loadCalls, 3);
       expect(_supportedResponse(service).snapshotToken, "authoritative");
     });
+
+    for (final completionOrder in [false, true]) {
+      test("overlapping command acknowledgments survive publication order reversed=$completionOrder", () async {
+        final firstResponse = Completer<PluginManagementMutationResult>();
+        final secondResponse = Completer<PluginManagementMutationResult>();
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueLoad(_supported(_response(token: "authoritative")))
+          ..queueMutation(firstResponse.future)
+          ..queueMutation(secondResponse.future);
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+        );
+        addTearDown(() async {
+          await service.onDispose();
+          await connection.dispose();
+        });
+        await _waitFor(() => service.snapshots.hasValue);
+        final first = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+        final second = service.command(
+          pluginId: "two",
+          request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+        );
+        final early = _success(_response(token: "early"));
+        final late = _success(_response(token: "late"));
+        (completionOrder ? secondResponse : firstResponse).complete(early);
+        expect(await (completionOrder ? second : first), same(early));
+        (completionOrder ? firstResponse : secondResponse).complete(late);
+        expect(await (completionOrder ? first : second), same(late));
+        expect(repository.mutationCalls, 2);
+        expect(repository.loadCalls, 2);
+        expect(_supportedResponse(service).snapshotToken, "authoritative");
+      });
+    }
+
+    test("a failed reconciliation retains its typed error without losing the acknowledgment", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final error = ApiError.dartHttpClient(TimeoutException("management refresh"));
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueLoad(_supported(_response(token: "intervening")))
+        ..queueLoad(PluginManagementLoadResult.failure(error: error))
+        ..queueLoad(_supported(_response(token: "recovered")))
+        ..queueMutation(mutation.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      final command = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+      await service.refresh();
+      final acknowledgment = _success(_response(token: "command-result"));
+      mutation.complete(acknowledgment);
+      expect(await command, same(acknowledgment));
+      final retained = service.snapshots.value as PluginManagementLoadResultSupported;
+      expect(retained.response.snapshotToken, "intervening");
+      expect(retained.refreshError, same(error));
+      await _pump();
+      expect(repository.loadCalls, 3);
+      connection.emitStale();
+      await _waitFor(() => _supportedResponse(service).snapshotToken == "recovered");
+      expect(repository.loadCalls, 4);
+      expect(repository.mutationCalls, 1);
+    });
+
+    for (final invalidation in _ReconciliationInvalidation.values) {
+      test("${invalidation.name} during reconciliation cannot release an old acknowledgment", () async {
+        final mutation = Completer<PluginManagementMutationResult>();
+        final reconciliation = Completer<PluginManagementLoadResult>();
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueLoad(_supported(_response(token: "intervening")))
+          ..queueLoad(reconciliation.future)
+          ..queueMutation(mutation.future);
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+        );
+        addTearDown(() async {
+          await service.onDispose();
+          await connection.dispose();
+        });
+        await _waitFor(() => service.snapshots.hasValue);
+        final command = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+        await service.refresh();
+        mutation.complete(_success(_response(token: "command-result")));
+        await _waitFor(() => repository.loadCalls == 3);
+
+        switch (invalidation) {
+          case _ReconciliationInvalidation.disconnect:
+            connection.emitStatus(const ConnectionStatus.disconnected());
+          case _ReconciliationInvalidation.reconnect:
+            repository.queueLoad(_supported(_response(token: "reconnected")));
+            connection
+              ..emitStatus(const ConnectionStatus.disconnected())
+              ..emitStatus(_connected);
+          case _ReconciliationInvalidation.bridgeReplacement:
+            repository.queueLoad(_supported(_response(token: "confirmed", bridgeId: "br_b")));
+          case _ReconciliationInvalidation.disposal:
+            unawaited(service.onDispose());
+          case _ReconciliationInvalidation.unsupported:
+            break;
+        }
+        await _pump();
+        reconciliation.complete(switch (invalidation) {
+          _ReconciliationInvalidation.bridgeReplacement => _supported(
+            _response(token: "replacement", bridgeId: "br_b"),
+          ),
+          _ReconciliationInvalidation.unsupported => const PluginManagementLoadResult.unsupported(),
+          _ => _supported(_response(token: "reconciled")),
+        });
+        expect(await command, isA<PluginManagementMutationResultUncertain>());
+        expect(repository.mutationCalls, 1);
+        switch (invalidation) {
+          case _ReconciliationInvalidation.disconnect:
+            expect(service.snapshots.value, isA<PluginManagementLoadResultLoading>());
+          case _ReconciliationInvalidation.reconnect:
+            await _waitFor(() => service.snapshots.value is PluginManagementLoadResultSupported);
+            expect(_supportedResponse(service).snapshotToken, "reconnected");
+          case _ReconciliationInvalidation.bridgeReplacement:
+            expect(_supportedResponse(service).snapshotToken, "confirmed");
+          case _ReconciliationInvalidation.disposal:
+            expect(_supportedResponse(service).snapshotToken, "intervening");
+          case _ReconciliationInvalidation.unsupported:
+            expect(service.snapshots.value, isA<PluginManagementLoadResultUnsupported>());
+        }
+      });
+    }
 
     test("disconnect during a mutation returns uncertain without publishing its response", () async {
       final mutation = Completer<PluginManagementMutationResult>();
@@ -626,10 +825,13 @@ void main() {
       expect(service.snapshots.value, isA<PluginManagementLoadResultLoading>());
     });
 
-    test("repository uncertain schedules a clean GET before returning", () async {
+    test("repository uncertainty survives an active idle enabled snapshot", () async {
+      final active = _response(token: "authoritative").copyWith(
+        plugins: [_conflict(const []).current.copyWith(runtimeState: PluginRuntimeState.active)],
+      );
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
-        ..queueLoad(_supported(_response(token: "authoritative")))
+        ..queueLoad(_supported(active))
         ..queueMutation(const PluginManagementMutationResult.uncertain());
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = PluginManagementService(
@@ -716,6 +918,41 @@ void main() {
       expect(repository.loadCalls, 3);
       expect(_supportedResponse(service).bridgeId, "br_b");
       expect(_supportedResponse(service).snapshotToken, "b2");
+    });
+
+    test("identity mismatch after an intervening GET still fences all captured responses", () async {
+      final firstResponse = Completer<PluginManagementMutationResult>();
+      final lateResponse = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueLoad(_supported(_response(token: "intervening")))
+        ..queueLoad(_supported(_response(token: "confirmed")))
+        ..queueLoad(_supported(_response(token: "after-late")))
+        ..queueMutation(firstResponse.future)
+        ..queueMutation(lateResponse.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      final first = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+      final late = service.command(pluginId: "two", request: const PluginLifecycleCommandRequest.enable());
+      await service.refresh();
+      firstResponse.complete(_success(_response(token: "wrong-bridge", bridgeId: "br_b")));
+      expect(await first, isA<PluginManagementMutationResultUncertain>());
+      expect(_supportedResponse(service).snapshotToken, "confirmed");
+      // Even when the clean GET restores br_a, this request's epoch is gone.
+      lateResponse.complete(_success(_response(token: "old-br-a")));
+      expect(await late, isA<PluginManagementMutationResultUncertain>());
+      expect(_supportedResponse(service).snapshotToken, "after-late");
+      expect(repository.loadCalls, 4);
+      expect(repository.mutationCalls, 2);
     });
 
     test("offline mutations fail without dispatch", () async {
