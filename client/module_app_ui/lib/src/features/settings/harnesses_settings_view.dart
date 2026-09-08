@@ -27,17 +27,18 @@ class const HarnessesSettingsView({
       title: loc.settingsHarnessesTitle,
       titleMode: PregoTopNavigationTitleMode.inline,
       banner: connectionBanner,
-      // Back leaves one level; X closes all settings in either presentation.
+      // Pushed pages go back to Settings; only modal flows offer dismissal.
       automaticallyImplyLeading: false,
       onBack: isModal ? null : onBack,
       actions: [
-        PregoButtonsIconGlass(
-          icon: TablerRegular.x,
-          semanticLabel: loc.settingsClose,
-          // The shell decides whether this pops the opener or falls back
-          // to its signed-in home route.
-          onPressed: onClose,
-        ),
+        if (isModal)
+          PregoButtonsIconGlass(
+            icon: TablerRegular.x,
+            semanticLabel: loc.settingsClose,
+            // The shell decides whether this pops the opener or falls back
+            // to its signed-in home route.
+            onPressed: onClose,
+          ),
       ],
       onRefresh: cubit.refresh,
       slivers: [

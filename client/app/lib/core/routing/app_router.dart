@@ -34,7 +34,6 @@ const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
 const _settingsNotificationsRouteSegment = "notifications";
-const _settingsHarnessesRouteSegment = "harnesses";
 const _settingsProfileRouteSegment = "profile";
 
 extension AppRouteToGoRoute on AppRouteDef {
@@ -367,13 +366,13 @@ List<RouteBase> _buildAppRoutes({
         ),
       ],
     ),
+    buildHarnessSettingsRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [
         GoRoute(
           path: _settingsNotificationsRouteSegment,
           builder: (context, state) => AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
         ),
-        buildHarnessSettingsRoute(),
         GoRoute(
           path: _settingsProfileRouteSegment,
           builder: (context, state) => AppRouteDef.settingsProfile._buildScreen(context: context, state: state),
@@ -437,56 +436,21 @@ final appRouter = GoRouter(
 @visibleForTesting
 ShellRoute buildHarnessSettingsRoute() {
   final navigatorKey = GlobalKey<NavigatorState>();
-  late final ShellRoute flow;
   void close({required BuildContext context}) {
-    // ignore: no_slop_linter/avoid_raw_go_router, shell-owned stack boundary
-    final router = GoRouter.of(context);
-    final settingsKeys = <LocalKey>{};
-    void collect({required List<RouteMatchBase> matches}) {
-      for (final match in matches) {
-        if (match is ShellRouteMatch) {
-          if (match.route == flow) settingsKeys.add(match.pageKey);
-          collect(matches: match.matches);
-        } else if (match.matchedLocation == AppRouteDef.settings.path ||
-            match.matchedLocation.startsWith("${AppRouteDef.settings.path}/")) {
-          settingsKeys.add(match.pageKey);
-        }
-      }
-    }
-
-    collect(matches: router.routerDelegate.currentConfiguration.matches);
-    var needsHome = false;
-    // The context of the nested Navigator belongs to the outer navigator.
-    // Popping its shell page removes the entire flow, including owned sheets.
-    final outerNavigator =
-        navigatorKey.currentContext?.findAncestorStateOfType<NavigatorState>() ??
-        (throw StateError("Harness flow is not mounted"));
-    outerNavigator.popUntil((route) {
-      final page = route.settings;
-      if (page is! Page) return false;
-      if (!settingsKeys.contains(page.key)) return true;
-      if (route.isFirst) {
-        needsHome = true;
-        return true;
-      }
-      return false;
-    });
-    if (needsHome) {
-      // ignore: no_slop_linter/avoid_raw_go_router, direct links have no signed-in opener
-      router.go(const AppRoute.projects().buildPath());
-    }
-  }
-
-  void back({required BuildContext context}) {
-    if (context.canPop()) {
-      context.pop();
+    // The nested Navigator's context belongs to the stable outer flow page.
+    final flowContext = navigatorKey.currentContext ?? (throw StateError("Harness flow is not mounted"));
+    final flowRoute = ModalRoute.of(flowContext) ?? (throw StateError("Harness flow has no owning route"));
+    final outerNavigator = flowRoute.navigator ?? (throw StateError("Harness flow has no navigator"));
+    // Remove owned pageless sheets first, without touching the opener.
+    outerNavigator.popUntil((route) => route == flowRoute);
+    if (flowRoute.isFirst) {
+      context.goRoute(const AppRoute.projects());
     } else {
-      // ignore: no_slop_linter/avoid_raw_go_router, typed route boundary
-      GoRouter.of(context).go(const AppRoute.settings().buildPath());
+      outerNavigator.pop();
     }
   }
 
-  return flow = ShellRoute(
+  return ShellRoute(
     navigatorKey: navigatorKey,
     pageBuilder: (context, state, child) {
       final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
@@ -497,7 +461,7 @@ ShellRoute buildHarnessSettingsRoute() {
     },
     routes: [
       GoRoute(
-        path: _settingsHarnessesRouteSegment,
+        path: AppRouteDef.settingsHarnesses.path,
         builder: (context, state) {
           final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
               .presentation;
@@ -505,27 +469,28 @@ ShellRoute buildHarnessSettingsRoute() {
             presentation: presentation,
             connectionBanner: ConnectionBanner.maybeFor(context),
             onClose: () => close(context: context),
-            onBack: () => back(context: context),
-            onOpenHarness: ({required pluginId}) {
-              // ignore: no_slop_linter/avoid_raw_go_router, typed route boundary
-              GoRouter.of(
-                context,
-              ).push<void>(AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation).buildPath());
-            },
+            onBack: () => close(context: context),
+            onOpenHarness: ({required pluginId}) => context.pushRoute(
+              AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation),
+            ),
           );
         },
         routes: [
           GoRoute(
             path: ":$pluginIdPathParam",
-            builder: (context, state) => HarnessSettingsDetailView(
-              pluginId: AppRouteSettingsHarnessDetail.fromParams(
+            builder: (context, state) {
+              final route = AppRouteSettingsHarnessDetail.fromParams(
                 pathParams: state.pathParameters,
                 queryParams: state.uri.queryParameters,
-              ).pluginId,
-              connectionBanner: ConnectionBanner.maybeFor(context),
-              onBack: () => context.pop(),
-              onClose: () => close(context: context),
-            ),
+              );
+              return HarnessSettingsDetailView(
+                pluginId: route.pluginId,
+                presentation: route.presentation,
+                connectionBanner: ConnectionBanner.maybeFor(context),
+                onBack: () => context.pop(),
+                onClose: () => close(context: context),
+              );
+            },
           ),
         ],
       ),

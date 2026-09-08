@@ -169,16 +169,17 @@ void main() {
       expect(settingsPage.child, isA<SettingsScreen>());
     });
 
-    test("settings retains its hierarchy around the harness-only shell", () {
+    test("harness-only shell is a sibling of Settings with overview ancestry", () {
       final settingsRoute = buildAppRoutes().whereType<GoRoute>().singleWhere(
         (route) => route.path == AppRouteDef.settings.path,
       );
       final children = settingsRoute.routes;
       expect((children[0] as GoRoute).path, "notifications");
-      expect((children[2] as GoRoute).path, "profile");
-      final harnessShell = children[1] as ShellRoute;
+      expect((children[1] as GoRoute).path, "profile");
+      expect(children, hasLength(2));
+      final harnessShell = buildAppRoutes().whereType<ShellRoute>().single;
       final overview = harnessShell.routes.single as GoRoute;
-      expect(overview.path, "harnesses");
+      expect(overview.path, AppRouteDef.settingsHarnesses.path);
       expect((overview.routes.single as GoRoute).path, ":$pluginIdPathParam");
       const child = SizedBox();
       final modal = harnessShell.pageBuilder!(
@@ -247,10 +248,10 @@ void main() {
           AppRouteDef.newSession.path,
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
-          AppRouteDef.settings.path,
-          AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsHarnesses.path,
           AppRouteDef.settingsHarnessDetail.path,
+          AppRouteDef.settings.path,
+          AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsProfile.path,
         ]),
       );

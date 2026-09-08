@@ -65,6 +65,9 @@ bridge start when Sesori already manages an older version.
   first progress event. Only reported download percentage is determinate; verification,
   extraction, finalization and unknown phases remain indeterminate rather than claiming
   total-install completion. No install pause/stop menu or stopped outcome is invented.
+- Harness detail Back returns to overview without recreating its flow-owned cubit. Settings-opened
+  pages offer Back only; New Session modal X dismisses the entire harness modal from either
+  page while retaining the composer and draft.
 - Failed terminal SSE is retained in connection-scoped client memory and replayed across
   overview/detail navigation and cubit recreation. Retry starts immediately and clears it;
   observed progress from another surface replaces it. An unchanged missing/unavailable

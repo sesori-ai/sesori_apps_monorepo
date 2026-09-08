@@ -94,7 +94,11 @@ void main() {
     ),
   );
 
-  Widget app({String? detailId, double scale = 1}) => BlocProvider.value(
+  Widget app({
+    String? detailId,
+    double scale = 1,
+    HarnessSettingsPresentation presentation = HarnessSettingsPresentation.modal,
+  }) => BlocProvider.value(
     value: cubit,
     child: MaterialApp(
       theme: buildPregoThemeData(brightness: Brightness.light),
@@ -107,13 +111,19 @@ void main() {
       home: HarnessSettingsFlowView(
         child: detailId == null
             ? HarnessesSettingsView(
-                presentation: HarnessSettingsPresentation.modal,
+                presentation: presentation,
                 connectionBanner: null,
                 onClose: () {},
-                onBack: null,
+                onBack: () {},
                 onOpenHarness: ({required pluginId}) => opened.add(pluginId),
               )
-            : HarnessSettingsDetailView(pluginId: detailId, connectionBanner: null, onBack: () {}, onClose: () {}),
+            : HarnessSettingsDetailView(
+                presentation: presentation,
+                pluginId: detailId,
+                connectionBanner: null,
+                onBack: () {},
+                onClose: () {},
+              ),
       ),
     ),
   );
@@ -122,6 +132,27 @@ void main() {
     tester.view.physicalSize = const Size(393, 852);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
+  }
+
+  for (final presentation in HarnessSettingsPresentation.values) {
+    for (final detail in [false, true]) {
+      testWidgets("$presentation ${detail ? 'detail' : 'overview'} header offers only its navigation actions", (
+        tester,
+      ) async {
+        publish(plugins: [_ready]);
+        await tester.pumpWidget(app(detailId: detail ? "ready" : null, presentation: presentation));
+        await tester.pumpAndSettle();
+        final hasBack = detail || presentation == HarnessSettingsPresentation.pushed;
+        final hasClose = presentation == HarnessSettingsPresentation.modal;
+        final back = find.bySemanticsLabel("Back");
+        final close = find.bySemanticsLabel("Close settings");
+        expect(back, hasBack ? findsOneWidget : findsNothing);
+        expect(close, hasClose ? findsOneWidget : findsNothing);
+        final center = tester.getCenter(find.byType(PregoGlassScaffold)).dx;
+        if (hasBack) expect(tester.getCenter(back).dx, lessThan(center));
+        if (hasClose) expect(tester.getCenter(close).dx, greaterThan(center));
+      });
+    }
   }
 
   testWidgets("overview groups honest states in design order and preserves registry order", (tester) async {

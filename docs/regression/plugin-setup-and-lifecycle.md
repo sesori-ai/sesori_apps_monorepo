@@ -246,9 +246,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   externally managed capabilities remain honest. Individual timeout inheritance, custom
   minutes and no-timeout are all available through the timeout editor.
 - One flow-owned cubit and transient-presentation owner survives overview/detail navigation.
-  Back returns detail to overview; X removes the harness flow and the contiguous settings
-  suffix, preserving the first unrelated opener, including a live new-session composer.
-  Direct detail links construct overview ancestry, and links without an opener fall back to
+  Opened from Settings, overview and detail show only left Back: detail returns to overview,
+  then overview returns to the same Settings page. Opened modally from New Session,
+  overview shows only right X and detail shows left Back plus right X. Detail Back retains
+  the overview flow; X from either page dismisses only the harness modal, preserving the
+  same New Session page and draft. Direct detail links construct overview ancestry without
+  creating an unrelated Settings page, and links without an opener fall back to
   signed-in Projects on both shells. Removed IDs show an unavailable detail, not another harness.
   Authentication and force sheets belong to this flow and leave with it; sheet dismissal
   remains distinct from cancelling authentication. Safe lifecycle conflicts still authorize
@@ -287,7 +290,8 @@ owned-process exit; and restart.
 ## Failure Signals
 
 - Detail navigation recreating operation state, duplicate force/auth sheets or scan announcements,
-  X exposing Settings instead of the original opener, or a missing ID displaying another harness.
+  pushed Back skipping Settings, modal X losing the New Session page or draft, incorrect
+  Back/X header controls, or a missing ID displaying another harness.
 - A setup-blocked switch falsely shown off, unknown preference represented as disabled,
   degraded grouped as healthy, or controls overflowing at phone width with larger text.
 

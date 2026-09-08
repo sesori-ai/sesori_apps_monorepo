@@ -4,6 +4,7 @@ part of "harness_settings_flow_view.dart";
 class const HarnessSettingsDetailView({
   super.key,
   required final String pluginId,
+  required final HarnessSettingsPresentation presentation,
   required final VoidCallback onBack,
   required final VoidCallback onClose,
   required final Widget? connectionBanner,
@@ -23,7 +24,8 @@ class const HarnessSettingsDetailView({
       onRefresh: cubit.refresh,
       banner: connectionBanner,
       actions: [
-        PregoButtonsIconGlass(icon: TablerRegular.x, semanticLabel: context.loc.settingsClose, onPressed: onClose),
+        if (presentation == HarnessSettingsPresentation.modal)
+          PregoButtonsIconGlass(icon: TablerRegular.x, semanticLabel: context.loc.settingsClose, onPressed: onClose),
       ],
       slivers: [
         SliverToBoxAdapter(

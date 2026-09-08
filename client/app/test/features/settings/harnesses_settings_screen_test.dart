@@ -1526,7 +1526,7 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("pull refresh delegates to the cubit and close returns to Projects", (tester) async {
+  testWidgets("pull refresh delegates to the cubit and direct modal X returns to Projects", (tester) async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
@@ -1560,10 +1560,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(HarnessesSettingsScreen), findsOneWidget);
-    // `/settings/harnesses` is a child route of `/settings`, but an imperative
-    // push adds one page for the location's last route — the Settings list is
-    // not inserted underneath. If a go_router upgrade ever changed that, the
-    // single pop below would land on Settings instead of the opener.
+    // The harness-only shell never synthesizes an unrelated Settings page.
     expect(find.byType(SettingsScreen), findsNothing);
 
     await tester.tap(find.bySemanticsLabel("Close settings"));
@@ -1575,7 +1572,7 @@ void main() {
   });
 
   for (final openerPath in ["/projects", "/projects/p/sessions/s", "/projects/p/sessions/new"]) {
-    testWidgets("X closes the contiguous settings suffix above $openerPath", (tester) async {
+    testWidgets("pushed Back preserves Settings and its original $openerPath opener", (tester) async {
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
       await tester.pumpWidget(
         _appPushedFromOpener(
@@ -1588,13 +1585,27 @@ void main() {
       final opener = tester.element(find.text("open-harnesses"));
       await tester.tap(find.text("open-harnesses"));
       await tester.pumpAndSettle();
+      final settings = tester.element(find.text("settings-open-harnesses"));
       await tester.tap(find.text("settings-open-harnesses"));
       await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel("Close settings"), findsNothing);
+      final cubit = tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>();
       await _showDetail(tester, "future-harness");
-      await tester.tap(find.bySemanticsLabel("Close settings"));
+      expect(find.bySemanticsLabel("Close settings"), findsNothing);
+      await tester.tap(find.bySemanticsLabel("Back"));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>(), same(cubit));
+      await tester.tap(find.bySemanticsLabel("Back"));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.text("settings-open-harnesses")), same(settings));
+      // Stream cancellation completes outside the widget-test clock.
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      expect(cubit.isClosed, isTrue);
+      expect(snapshots.hasListener, isFalse);
+      expect(authenticationTerminal.hasListener, isFalse);
+      GoRouter.of(settings).pop();
       await tester.pumpAndSettle();
       expect(tester.element(find.text("open-harnesses")), same(opener));
-      expect(find.text("settings-open-harnesses"), findsNothing);
       expect(find.byType(HarnessesSettingsView), findsNothing);
     });
   }
@@ -1631,16 +1642,17 @@ void main() {
     verifyNever(() => service.cancelAuthentication(pluginId: any(named: "pluginId")));
   });
 
-  testWidgets("direct detail constructs overview ancestry and X removes synthesized Settings", (tester) async {
+  testWidgets("direct pushed detail constructs only overview ancestry and Back falls back to Projects", (tester) async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
-    await tester.pumpWidget(_app(initialLocation: "/settings/harnesses/future-harness"));
+    await tester.pumpWidget(_app(initialLocation: "/settings/harnesses/future-harness?presentation=pushed"));
     await tester.pumpAndSettle();
     expect(find.byType(HarnessSettingsDetailView), findsOneWidget);
     expect(find.byType(HarnessesSettingsView, skipOffstage: false), findsOneWidget);
     await tester.tap(find.bySemanticsLabel("Back"));
     await tester.pumpAndSettle();
     expect(find.byType(HarnessesSettingsView), findsOneWidget);
-    await tester.tap(find.bySemanticsLabel("Close settings"));
+    expect(find.text("settings-ancestor", skipOffstage: false), findsNothing);
+    await tester.tap(find.bySemanticsLabel("Back"));
     await tester.pumpAndSettle();
     expect(find.text("projects-route"), findsOneWidget);
   });
@@ -1699,7 +1711,7 @@ void main() {
     expect(find.bySemanticsLabel("Back"), findsNothing);
   });
 
-  testWidgets("pushed onto the settings stack, the bar offers Back and close", (tester) async {
+  testWidgets("pushed onto the settings stack, the bar offers Back only", (tester) async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     await tester.pumpWidget(_appPushedFromOpener(presentation: HarnessSettingsPresentation.pushed));
     await tester.pumpAndSettle();
@@ -1708,7 +1720,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(HarnessesSettingsScreen), findsOneWidget);
-    expect(find.bySemanticsLabel("Close settings"), findsOneWidget);
+    expect(find.bySemanticsLabel("Close settings"), findsNothing);
 
     await tester.tap(find.bySemanticsLabel("Back"));
     await tester.pumpAndSettle();

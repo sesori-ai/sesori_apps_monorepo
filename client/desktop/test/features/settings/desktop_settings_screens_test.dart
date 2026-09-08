@@ -304,7 +304,7 @@ void main() {
   }
 
   for (final throughSettings in [false, true]) {
-    testWidgets("desktop harness detail retains its flow and X preserves opener (settings: $throughSettings)", (
+    testWidgets("desktop harness Back and modal X preserve their own opener (settings: $throughSettings)", (
       tester,
     ) async {
       registerHarnessServices();
@@ -365,34 +365,102 @@ void main() {
       final opener = tester.element(find.text("open"));
       await tester.tap(find.text("open"));
       await tester.pumpAndSettle();
+      final settings = throughSettings ? tester.element(find.text("harnesses")) : null;
       if (throughSettings) {
         await tester.tap(find.text("harnesses"));
         await tester.pumpAndSettle();
       }
       final cubit = tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>();
+      expect(find.bySemanticsLabel("Close settings"), throughSettings ? findsNothing : findsOneWidget);
+      expect(find.bySemanticsLabel("Back"), throughSettings ? findsOneWidget : findsNothing);
       await tester.tap(find.text("OpenCode"));
       await tester.pumpAndSettle();
+      expect(find.bySemanticsLabel("Close settings"), throughSettings ? findsNothing : findsOneWidget);
       expect(tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(), same(cubit));
       expect(find.byType(HarnessSettingsFlowView), findsOneWidget);
       await tester.tap(find.bySemanticsLabel("Back"));
       await tester.pumpAndSettle();
       expect(find.byType(HarnessesSettingsView), findsOneWidget);
-      await tester.tap(find.text("OpenCode"));
-      await tester.pumpAndSettle();
-      await tester.tap(find.bySemanticsLabel("Close settings"));
+      expect(tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>(), same(cubit));
+      if (throughSettings) {
+        await tester.tap(find.bySemanticsLabel("Back"));
+        await tester.pumpAndSettle();
+        expect(tester.element(find.text("harnesses")), same(settings));
+        GoRouter.of(settings!).pop();
+      } else {
+        await tester.tap(find.text("OpenCode"));
+        await tester.pumpAndSettle();
+        await tester.tap(find.bySemanticsLabel("Close settings"));
+      }
       await tester.pumpAndSettle();
       expect(tester.element(find.text("open")), same(opener));
+      // Stream cancellation completes outside the widget-test clock.
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      expect(cubit.isClosed, isTrue);
       expect(pluginSnapshots.hasListener, isFalse);
+      expect(authenticationTerminal.hasListener, isFalse);
       expect(find.text("home"), findsNothing);
+      if (!throughSettings) {
+        // Overview X has the same outer-flow boundary as detail X.
+        await tester.tap(find.text("open"));
+        await tester.pumpAndSettle();
+        await tester.tap(find.bySemanticsLabel("Close settings"));
+        await tester.pumpAndSettle();
+        expect(tester.element(find.text("open")), same(opener));
+        expect(pluginSnapshots.hasListener, isFalse);
+
+        // Owned pageless authentication UI must leave with the outer flow,
+        // without turning dismissal into an upstream cancellation.
+        final service = getIt<PluginManagementService>();
+        final challenge = PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        );
+        when(() => service.startAuthentication(pluginId: "opencode")).thenAnswer(
+          (_) async => PluginAuthenticationStartResult.challenge(challenge: challenge),
+        );
+        authenticationChallenges.add({"opencode": challenge});
+        pluginSnapshots.add(
+          PluginManagementLoadResult.supported(
+            response: _pluginResponse.copyWith(
+              plugins: [
+                _plugin.copyWith(
+                  setup: _plugin.setup.copyWith(state: PluginSetupState.authenticationRequired),
+                  managementCapabilities: {PluginManagementCapability.authentication},
+                ),
+              ],
+            ),
+            refreshError: null,
+          ),
+        );
+        await tester.tap(find.text("open"));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text("OpenCode"));
+        await tester.pumpAndSettle();
+        final detail = tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView));
+        await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
+        await tester.pumpAndSettle();
+        expect(find.byType(PregoBottomSheet), findsOneWidget);
+        detail.onClose();
+        await tester.pumpAndSettle();
+        expect(find.byType(PregoBottomSheet), findsNothing);
+        expect(tester.element(find.text("open")), same(opener));
+        expect(pluginSnapshots.hasListener, isFalse);
+        verifyNever(() => service.cancelAuthentication(pluginId: "opencode"));
+      }
       router.go(
-        const AppRoute.settingsHarnessDetail(
+        AppRoute.settingsHarnessDetail(
           pluginId: "opencode",
-          presentation: HarnessSettingsPresentation.modal,
+          presentation: presentation,
         ).buildPath(),
       );
       await tester.pumpAndSettle();
       expect(find.byType(HarnessesSettingsView, skipOffstage: false), findsOneWidget);
-      await tester.tap(find.bySemanticsLabel("Close settings"));
+      expect(find.text("harnesses", skipOffstage: false), findsNothing);
+      await tester.tap(find.bySemanticsLabel("Back"));
+      await tester.pumpAndSettle();
+      expect(find.byType(HarnessesSettingsView), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel(throughSettings ? "Back" : "Close settings"));
       await tester.pumpAndSettle();
       expect(find.text("home"), findsOneWidget);
     });
