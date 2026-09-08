@@ -29,7 +29,8 @@
   had 15/16 checks complete, with clean Cubic approval and no actionable Codex feedback.
 - **Merged PR:** [#1386](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1386) (Step 10.d), with 19/19 checks
   passing at merge, Cubic approval and all review feedback handled. Final head `f9fa90695f` had 888 changed lines.
-- **Next action:** publish Step 11; prepare only Step 12's cumulative verification locally.
+- **Open PR:** [#1395](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1395) (Step 11 guidance).
+- **Next action:** monitor Step 11; prepare only Step 12's cumulative verification locally.
 
 ## Fixed PR Series
 
@@ -509,7 +510,7 @@
   documented behavior and pending native/authenticated coverage; reconcile operator links and Linux prerequisite prose.
 - [x] Validate local Markdown links/anchors, release pin/pair names, whitespace and the complete 1,500-line diff cap.
   Validation is documentation-only; no Dart/Flutter suites or architecture reviewers run for this non-production step.
-- [ ] Publish Step 11 and start its monitor. Step 12 remains required; no plan retirement or L5 pass is claimed.
+- [x] Publish Step 11 as #1395 and start its monitor. Step 12 remains required; no plan retirement or L5 pass is claimed.
 
 ## Architecture Reviews
 
