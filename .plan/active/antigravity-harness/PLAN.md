@@ -982,7 +982,8 @@ full-diff cap per PR. Keep only the immediate successor local:
 - **10.c — Official candidate validation (review checkpoint: 587 lines):** independently rehashed five-target artifact
   facts and the isolated initialize-only validator, with native macOS arm64 correctness evidence.
 - **10.d — Managed pair activation (estimated 600–1,100 lines):** manifest, descriptor composition, install disclosure,
-  conservative bounded archive-command timeouts and failure/rollback coverage. Integrity, traversal, isolated candidate
+  conservative bounded archive-command timeouts and pre-placement prior-runtime retention/abort coverage. Integrity,
+  traversal, isolated candidate
   validation and cleanup remain required. Further coherent splits remain preapproved.
 
 The requirements below apply across those slices; partitioning does not remove any of them:
@@ -997,7 +998,7 @@ The requirements below apply across those slices; partitioning does not remove a
 - Compose `AntigravityRuntimeVersionValidator(required runtimeService)` as that seam's adapter. The shared installer
   creates an owner-only disposable state directory inside managed staging; the adapter supplies it as `GEMINI_HOME`,
   strips ambient credentials, runs initialize-only, and terminates without auth/session creation. Timeout, failure, or
-  shutdown kills the probe and removes staging, leaving the prior installed pair untouched; success removes the probe
+  shutdown kills the probe and removes staging, leaving retained supported prior pairs untouched; success removes the probe
   home before placement. Cached validation uses the same disposable managed-area context.
 - Narrowly document the install contract's distinction between a bounded, noninteractive staging validator and a live
   plugin start: no process is registered/exposed, and all validator cwd/state/files remain inside managed staging.
@@ -1008,7 +1009,7 @@ The requirements below apply across those slices; partitioning does not remove a
   replacing the fixed 30-second/two-minute limits. Give Antigravity assets conservative bounded command timeouts;
   retain traversal/symlink checks and deterministic successful slow-command and timeout-cleanup tests.
 - Add managed-download disclosure and five-target/macOS-x64 capability facts before Install is exposed. Update
-  `docs/regression/plugin-runtime-installation.md` with the supported targets, budgets, rollback, and abort evidence in
+  `docs/regression/plugin-runtime-installation.md` with supported targets, budgets, pre-placement retention and abort evidence in
   this PR rather than deferring it to Step 11.
 - Cover all target mappings/digests, package sibling preservation, corrupt archive/hash, partial pair, staging-home
   containment/mode/cleanup, no auth/session call, failed probe before placement, shutdown abort at phase boundaries,

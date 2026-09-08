@@ -50,7 +50,8 @@ class AntigravitySetupService({
               ? "Fix the configured Antigravity runtime pair, then restart the bridge."
               : managedInstallAvailable
               ? "The discovered Antigravity runtime pair is invalid. Install Google's official proprietary runtime "
-                    "after reviewing https://antigravity.google/terms, or replace the local pair."
+                    "after reviewing Google's terms (https://antigravity.google/terms) and documentation "
+                    "(https://antigravity.google/docs/), or replace the local pair."
               : "The discovered Antigravity runtime pair is invalid. Replace it with the official pair.",
         );
       case AntigravityRuntimeCandidateUnsupported():

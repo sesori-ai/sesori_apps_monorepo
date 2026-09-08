@@ -412,7 +412,7 @@
   validation plus context cleanup for downloads and cached candidates.
 - [x] Pass `StartAbortSignal` through the seam while retaining honest bounded-command behavior for current validators.
 - [x] Cover validation ordering/containment/private-mode commands, cache validation, exact-version behavior, and
-  rejection/abort rollback preserving the prior package and sentinel.
+  rejection/abort before placement preserving the retained supported prior package and sentinel.
 - [x] Pinned Dart 3.13.2 verification: all 195 non-hidden tests across the runtime package's 19 suites pass; runtime,
   OpenCode, Codex, Cursor, DeepSeek, Copilot, OMP and Pi analyzers are clean with fatal infos. Counts use successful
   JSON `testDone` records keyed by suite/test IDs; logs are retained under `/tmp/antigravity-step10b-*`.
@@ -426,8 +426,8 @@
 
 ## Step 10.c Checklist
 
-- [x] Split the complete Step 10.c implementation under standing approval: release facts and candidate validation
-  first, followed by manifest and descriptor installation integration.
+- [x] Step 10.c delivers release facts and candidate validation. Manifest and descriptor installation belong to
+  Step 10.d under the approved split.
 - [x] Independently downloaded all five archives from the exact official registry URLs at commit
   `536e378b70a7a6d5f078a9160180e3569a23253c`; recomputed every SHA-256 and archive byte count, and listed both member
   names/sizes. All facts match `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`.
@@ -448,9 +448,6 @@
 - [x] Initial focused tests: profile 17 + release 3 + runtime service 13 + validator 4 = 37; owning analyzer clean.
   After main's ACP/NDJSON lifecycle changes, reran the 17 runtime-service/validator cases and owning analysis: passed.
   This overlaps the initial 37, not 54 unique cases. Reviewed production files remain unchanged after synchronization.
-- [x] Add the manifest, descriptor integration/disclosure, conservative command budgets and focused install-failure
-  tests, retain shared rollback coverage, then update the managed-runtime capability rows. Unexecuted native correctness
-  coverage remains explicit.
 
 ## Step 10.d Checklist
 
@@ -479,6 +476,11 @@
   changed lines across 14 files, including the committed user plan correction.
 - [x] First foreground architecture review `5d75ef9a` approved complete `4fdd433392` → `4ecc6b141f`: all 14 files,
   483 additions + 97 deletions = 580 lines, no findings. Publication metadata is counted separately.
+- [x] Review correction: overview download opens existing detail without installing; detail always shows setup guidance
+  before its Install button. Invalid managed-pair guidance includes both Google URLs. No new wire field or UI component.
+  Current focused evidence: 12 descriptor tests + 50 client settings tests pass; Antigravity and shared UI analyzers clean.
+  This overlaps earlier evidence, not 62 additional unique cases. Documentation now states retained supported-runtime
+  protection, permits existing managed upgrades, and attributes coverage/slices accurately.
 
 ## Architecture Reviews
 
@@ -551,7 +553,7 @@ Required representative end-to-end rows:
 | Model/session create and turn | client -> relay -> bridge -> official agent -> Google | Not run |
 | Permission and interaction question | official agent -> bridge -> client -> exact response | Not run |
 | History, cold resume, bridge restart | isolated profile -> ACP load/resume -> client | Not run |
-| Managed install rollback/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
+| Managed install pre-placement retention/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
 | Unknown/older-client fallback | shared wire/plugin identity -> client presentation | Not run |
 
 Antigravity-affected regression documents are listed in Step 11 of `PLAN.md`. Step 12 additionally collects every

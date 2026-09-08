@@ -76,8 +76,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   installed managed pair are checked. Setup inspection is static and inert, reports personal-auth readiness from
   token-file presence without reading it, and advertises current-client browser login only when required. It never
   imports ambient credentials, starts a process, opens a browser or downloads a runtime. Managed Install is explicit,
-  limited to Google's five published targets, absent with an override, and preceded by Google terms/documentation
-  guidance. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
+  limited to macOS arm64, Linux x64/arm64 and Windows x64/arm64 (not macOS x64), absent with an override, and preceded
+  by Google terms/documentation guidance visible on the detail screen before installation. The overview download icon
+  opens that screen rather than starting a download. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
   with parent inheritance disabled.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`

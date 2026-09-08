@@ -377,7 +377,11 @@ void main() {
     expect(missing, isA<PluginSetupRuntimeMissing>());
     expect(
       (missing as PluginSetupRuntimeMissing).actionHint,
-      allOf(contains("proprietary"), contains("https://antigravity.google/terms")),
+      allOf(
+        contains("proprietary"),
+        contains("https://antigravity.google/terms"),
+        contains("https://antigravity.google/docs/"),
+      ),
     );
 
     final superseded = Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0"))
@@ -401,6 +405,32 @@ void main() {
       unsupported.managementCapabilities(config: config(server: null)),
       isNot(contains(PluginControlCapability.install)),
     );
+  });
+
+  test("invalid managed pair retains both disclosure URLs before installation", () async {
+    final managed = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    final invalidPair = _writePair(directory: managed);
+    File(invalidPair.harness).deleteSync();
+    Directory(invalidPair.harness).createSync();
+    final status = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: state.path,
+    );
+    expect(status, isA<PluginSetupUnavailable>());
+    expect(
+      (status as PluginSetupUnavailable).actionHint,
+      allOf(
+        contains("proprietary"),
+        contains("https://antigravity.google/terms"),
+        contains("https://antigravity.google/docs/"),
+      ),
+    );
+    expect(processes.launches, isEmpty);
+    expect(store.scopes, isEmpty);
   });
 
   test("explicit override prevents download and managed download failures stay plugin-local", () async {

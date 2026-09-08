@@ -15,8 +15,9 @@ performs no real OAuth or Google history access.
   launching a process, including when an explicit binary option is supplied.
   A recovered PATH storage failure retains its cause, stack and PATH context in local logs before managed fallback;
   ordinary absence or pair rejection remains non-error resolution. Install is advertised only without an explicit
-  override on macOS arm64, Linux x64/arm64 and Windows x64/arm64; macOS x64 remains unsupported. Missing/invalid local
-  setup guidance discloses the proprietary Google download and links Google's terms before the action is offered. The
+  override on macOS arm64, Linux x64/arm64 and Windows x64/arm64; macOS x64 remains unsupported. Eligible missing or
+  invalid PATH/managed setup guidance discloses the proprietary Google download and provides terms/documentation URLs.
+  The overview download icon opens detail; detail keeps that guidance visible before the explicit Install button. The
   app registry exposes `Antigravity` and namespaces the descriptor's bare `bin` option as `--antigravity-bin`; OpenCode
   remains the preferred default.
 - Provisioning and start prepare the same isolated profile before exact runtime probing. Every profile helper, probe and
@@ -41,13 +42,16 @@ performs no real OAuth or Google history access.
 Setup inspection writing state, reading token contents, launching a process, weakening explicit-path authority,
 inheriting ambient credentials, opening a browser, silently authenticating, retaining stale configuration after reset,
 terminating best-effort provisioning on timeout, or omitting Antigravity from inventory are regressions. Advertising
-managed install with an explicit override or on macOS x64, downloading without an explicit action, adding a shared
-`Harness` case, or replacing the generic client presentation is also a regression. Preparation or probe timeouts
+managed install with an explicit override or on macOS x64, first installation without an explicit action, adding a shared
+`Harness` case, or replacing the generic client presentation is also a regression. Existing Sesori-managed runtimes may
+upgrade at bridge start. Preparation or probe timeouts
 preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abort still propagates.
 
 - **L1/L2:** app `plugin_registry_test.dart` and `run_command_catalog_import_test.dart` cover the exact registered ID,
-  display name, plugin-owned identity, target/override-aware management capabilities, OpenCode default, inert
-  declaration and namespaced CLI option. `antigravity_runtime_manifest_test.dart` covers the official five-target
+  display name, plugin-owned identity, current-target management capabilities, OpenCode default, inert
+  declaration and namespaced CLI option. `antigravity_plugin_descriptor_test.dart` owns target/override gating.
+  Client `harnesses_settings_screen_test.dart` covers overview-to-detail navigation without an install request and
+  visible missing/invalid-runtime guidance before explicit installation. `antigravity_runtime_manifest_test.dart` covers the official five-target
   assets, checksums, package-directory layout, conservative two-minute archive-command budget, version directory and
   macOS x64 omission. `antigravity_profile_service_test.dart` covers read-only token-presence inspection and isolated
   preparation. `antigravity_session_options_service_test.dart` covers exact opaque fresh/existing defaults, acknowledged

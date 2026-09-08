@@ -33,7 +33,8 @@ bridge start when Sesori already manages an older version.
   arm64, Linux x64/arm64, and Windows x64/arm64; Google publishes no macOS x64 archive. The user must review
   [Google's terms](https://antigravity.google/terms) and
   [Antigravity documentation](https://antigravity.google/docs/) before explicitly choosing Install. A configured
-  `--antigravity-bin` remains authoritative and removes the managed action.
+  `--antigravity-bin` remains authoritative and removes the managed action. In the client, the overview download icon
+  opens harness detail without issuing Install; detail presents setup guidance before its explicit installation button.
   Artifacts are checksum-verified, and no partial binary or package is adopted.
 - Every downloaded candidate is validated before placement or sentinel creation. The shared installer first completes
   checksum verification, archive traversal/symlink checks, extraction and executable hardening, then invokes the
@@ -82,7 +83,7 @@ bridge start when Sesori already manages an older version.
   before the download begins, because it can never be selected either way. A superseded
   but still supported one survives until the pinned version is installed and verified,
   and is kept when the harness has a live generation; a later install reclaims it. Candidate rejection or abort before
-  placement leaves the prior package and sentinel untouched and removes staging. Placement itself is not claimed to be
+  placement leaves retained supported prior packages and their sentinels untouched and removes staging. Placement itself is not claimed to be
   rollback-capable: the package directory rename happens before the sentinel write, so interruption there leaves an
   unverified pinned directory that the next install replaces.
 - A failed upgrade changes nothing: an older supported runtime stays selected and ready,
