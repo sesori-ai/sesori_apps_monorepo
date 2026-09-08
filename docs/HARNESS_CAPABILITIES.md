@@ -187,14 +187,13 @@ its observed-child snapshot retains legacy client fanout.
 ³ Codex (managed codex-cli 0.153.4, probed 2026-09-08): live children announce
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
-matches `spawn_agent.call_id`. Sesori exposes child threads under their direct
-parent, keeps running descendants in root busy state, and links live/replayed
-spawn tiles to the child. Normal initial child input is encrypted in the rollout
-and absent from `thread/read`; tile prompt provenance is therefore only the exact
-nonblank message from that matching spawn call, never parent history or an
-envelope header. A valid child-owned plaintext `NEW_TASK` payload may replace
-that fallback. Metadata-only `thread/read(includeTurns: false)` retains parent
-and nickname enrichment. Raw task paths remain stable identity and are formatted
+matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
+rollout and absent from `thread/read`. These are native probe findings;
+exact-call tile correlation, nested activity replay, and plaintext `NEW_TASK`
+prompt projection are **not implemented** in Sesori yet.
+Sesori exposes child threads under their direct parent and keeps running
+descendants in root busy state. Metadata-only
+`thread/read(includeTurns: false)` retains parent and nickname enrichment. Raw task paths remain stable identity and are formatted
 for display. `turn/interrupt` works per child with its `turnId`, while parent
 interrupt leaves children running, so main-agent-only is supportable.
 

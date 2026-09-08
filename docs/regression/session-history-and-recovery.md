@@ -147,11 +147,7 @@ reconnect or restart.
   the child's leading `thread_source == subagent` metadata followed by the
   copied parent `session_meta`; root sessions, ordinary forks, malformed
   headers, and copies whose first child-turn boundary is unresolved remain
-  untouched. Current 0.153.4 activity replays from nested
-  `item_completed/SubAgentActivity` and joins its exact id to
-  `spawn_agent.call_id`. Initial child input is selected only after copied-prefix
-  trimming; encrypted input falls back to that exact spawn call's nonblank
-  message, never a parent user message or envelope text.
+  untouched.
 - Claude's CLI-authored API-failure assistant frame and its terminal result
   render as one error with the persisted assistant message identity. Transcript
   records marked `isApiErrorMessage` replay as that same error rather than as a
