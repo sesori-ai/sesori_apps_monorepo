@@ -57,6 +57,9 @@ state.
   probe, CLI session listing, or REST API. It reads projects, project-directory
   aliases, every root, and every descendant without the REST API's 100-row ceiling,
   and does not read messages, parts, prompts, transcript content, or credentials.
+  Complete discovery includes real global roots stored in ancestor directories;
+  unlike the old project-list API, it does not exclude them from their best matching
+  project family.
   The connection is read-only, uses the live database and WAL normally (never
   immutable mode or checkpointing), and performs no migration or mutation. Missing,
   unreadable, malformed, incompatible, or unidentifiable data fails closed to the

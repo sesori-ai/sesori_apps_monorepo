@@ -1474,6 +1474,8 @@ class PluginLifecycleService({
 
   /// The timeout driving whole-plugin idle suspension; `0` disables it.
   ///
+  /// Positive configured timeouts are capped at five minutes while a generation
+  /// remains import-only, then normal residency restores the configured value.
   /// Resident plugins are never suspended: they either attach to an external
   /// backend the bridge does not own (OpenCode attach mode) or own idle
   /// reclamation internally (Claude's per-session process reap).

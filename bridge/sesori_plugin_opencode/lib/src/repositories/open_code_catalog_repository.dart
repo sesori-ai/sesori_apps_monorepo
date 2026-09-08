@@ -168,7 +168,7 @@ class OpenCodeCatalogRepository({
       families[project.id] = _CatalogFamily(project: project, roots: [], sessions: []);
     }
 
-    for (final root in sessionsById.values.where((session) => session.parentId == null && session.archivedAt == null)) {
+    for (final root in sessionsById.values.where((session) => session.parentId == null)) {
       final familyId = _bestFamilyFor(directory: root.directory, aliasesByProjectId: aliasesByProjectId);
       if (familyId == null) {
         if (root.projectId != _globalProjectId) {

@@ -2012,6 +2012,53 @@ void main() {
     expect(runtime.snapshot.single.leaseCount, 0);
   });
 
+  test("force stop bounds a pending snapshot read and fences its late result", () async {
+    final descriptorReadStarted = Completer<void>();
+    final descriptorReadGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        catalogSnapshot: () async {
+          descriptorReadStarted.complete();
+          await descriptorReadGate.future;
+          return const PluginCatalogSnapshotAvailable(
+            snapshot: PluginCatalogSnapshot(projects: []),
+          );
+        },
+      ),
+      shutdownBudget: const Duration(milliseconds: 20),
+    );
+    addTearDown(runtime.dispose);
+    var published = false;
+    final importDone = runtime
+        .useCatalogImportStream<void>(
+          pluginId: "one",
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (_) async* {
+            published = true;
+          },
+        )
+        .drain<void>();
+    await descriptorReadStarted.future;
+
+    final elapsed = Stopwatch()..start();
+    final result = await runtime.stop(pluginId: "one", intent: PluginStopIntent.force);
+    elapsed.stop();
+
+    expect(result, isA<PluginRuntimeCommandApplied>());
+    expect(elapsed.elapsed, lessThan(const Duration(seconds: 1)));
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(factory.startCount, 0);
+    expect(published, isFalse);
+
+    descriptorReadGate.complete();
+    await importDone;
+    expect(published, isFalse);
+    expect(runtime.snapshot.single.leaseCount, 0);
+  });
+
   test("start reports in-flight conflict while dormant snapshot permit is held", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(

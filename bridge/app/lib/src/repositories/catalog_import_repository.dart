@@ -74,6 +74,7 @@ class CatalogImportRepository({
   }) async* {
     final publicationFinished = Completer<void>();
     ({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})? result;
+    var cancelledEmitted = false;
     try {
       await for (final event in _runtime.useCatalogImportStream<Object>(
         pluginId: pluginId,
@@ -87,6 +88,7 @@ class CatalogImportRepository({
       )) {
         switch (event) {
           case final CatalogImportProgress progress:
+            if (progress is CatalogImportCancelled) cancelledEmitted = true;
             yield progress;
           case final _CatalogImportObservation ready:
             try {
@@ -96,6 +98,7 @@ class CatalogImportRepository({
                 sessionsSeen: ready.sessionsSeen,
               );
               if (ready.cancellation.isCancelled) {
+                cancelledEmitted = true;
                 yield CatalogImportProgress.cancelled(pluginId: pluginId);
               } else {
                 result = await _publishCatalog(observation: ready, control: control);
@@ -109,7 +112,12 @@ class CatalogImportRepository({
       if (!publicationFinished.isCompleted) publicationFinished.complete();
     }
     final completed = result;
-    if (completed == null) return;
+    if (completed == null) {
+      if (control.cancellationRequested && !cancelledEmitted) {
+        yield CatalogImportProgress.cancelled(pluginId: pluginId);
+      }
+      return;
+    }
     yield CatalogImportProgress.completed(
       pluginId: pluginId,
       projectsImported: completed.projectsImported,

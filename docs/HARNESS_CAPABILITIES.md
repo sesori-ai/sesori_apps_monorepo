@@ -59,13 +59,15 @@ They do not claim that a harness's native CLI could never implement an equivalen
 
 ## Pre-start catalog import
 
-| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
-|---|---|---|---|---|---|---|---|---|---|---|---|
-| Metadata-only import before harness startup | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Capability | OpenCode |
+|---|---|
+| Metadata-only import before harness startup | ✅ |
 
 OpenCode can read a safely identified local SQLite database as a coherent,
-read-only snapshot. Other harnesses retain their existing plugin-backed import;
-these marks describe Sesori implementation gaps, not verified upstream limits.
+read-only snapshot. The reader consumes the pinned v1.18.19 project,
+project-directory, and session schema and safely falls back to live import when
+that contract is absent or invalid. Other harnesses retain their existing
+plugin-backed import; no pre-start capability claim is made for them.
 All harnesses cold-started only by import fallback use the shared five-minute
 import-only idle residency cap.
 

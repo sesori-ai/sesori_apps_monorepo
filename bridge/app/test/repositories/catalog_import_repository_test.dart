@@ -847,6 +847,30 @@ void main() {
       expect(await database.projectsDao.getAllProjects(), isEmpty);
     });
 
+    test("cancellation before enumeration emits exactly one terminal cancelled event", () async {
+      final runtime = _PreEnumerationCancellationRuntime();
+      final repository = CatalogImportRepository(
+        runtime: runtime,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final control = CatalogImportControl(
+        explicitImportRequested: true,
+        hydrationMarkerRequested: true,
+      );
+      final result = repository.importCatalog(pluginId: "snapshot", control: control).toList();
+      await runtime.descriptorReadStarted.future;
+
+      control.cancellationRequested = true;
+      final statuses = await result;
+
+      expect(statuses, [isA<CatalogImportCancelled>()]);
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+      expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNull);
+    });
+
     test("consumer cancellation at committing releases the import stream without publication", () async {
       final projectPath = "${directory.path}/cancel-committing";
       final plugin = _NativeImportPlugin(
@@ -1008,6 +1032,28 @@ void main() {
       expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
     });
   });
+}
+
+class _PreEnumerationCancellationRuntime() extends TestPluginRuntime {
+  this : super(plugins: const {}, eligiblePluginIds: const {"snapshot"});
+
+  final Completer<void> descriptorReadStarted = Completer<void>();
+
+  @override
+  Set<String> get startAllowedPluginIds => const {"snapshot"};
+
+  @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) async* {
+    descriptorReadStarted.complete();
+    while (!cancellation.isCancelled) {
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
 }
 
 class _SnapshotTestRuntime({required final PluginCatalogSnapshot catalogSnapshot}) extends TestPluginRuntime {

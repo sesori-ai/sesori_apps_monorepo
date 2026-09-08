@@ -1310,11 +1310,15 @@ class PluginRuntime({
     required _PluginRuntimeSlot slot,
     required PluginStopIntent intent,
   }) async {
+    var dormantSnapshotBarrierAttempted = false;
     if (intent == PluginStopIntent.force) {
       slot.startAbortController?.abort();
       if (slot.plugin == null && slot.catalogSnapshotPermit != null) {
-        await _cancelOperationStreams(slot);
-        await _waitForLeaseDrain(slot);
+        dormantSnapshotBarrierAttempted = true;
+        await _drainForcedStopBarrier(
+          slot: slot,
+          budgetElapsed: Stopwatch()..start(),
+        );
       }
     }
     Object? startError;
@@ -1356,7 +1360,7 @@ class PluginRuntime({
           );
         }
       }
-    } else {
+    } else if (!dormantSnapshotBarrierAttempted) {
       await _waitForDurableCommits(slot);
     }
     slot

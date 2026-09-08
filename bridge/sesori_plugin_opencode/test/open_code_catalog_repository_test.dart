@@ -132,6 +132,45 @@ void main() {
       );
     });
 
+    test("retains archived-only global families with descendants and timestamps", () async {
+      final database = sqlite3.open(databasePath);
+      _createSchema(database: database);
+      _insertProject(database: database, id: "global", worktree: "/");
+      database.execute(
+        "INSERT INTO session(id,project_id,parent_id,directory,title,time_created,time_updated,time_archived) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        ["archived-root", "global", null, "${temporaryDirectory.path}/archived", "Archived root", 10, 20, 30],
+      );
+      database.execute(
+        "INSERT INTO session(id,project_id,parent_id,directory,title,time_created,time_updated,time_archived) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        [
+          "archived-child",
+          "global",
+          "archived-root",
+          "${temporaryDirectory.path}/archived",
+          "Archived child",
+          11,
+          21,
+          31,
+        ],
+      );
+      database.close();
+
+      final result = await _repository().read(
+        environment: {"OPENCODE_DB": databasePath, "HOME": temporaryDirectory.path},
+        cancellation: const _NeverCancelled(),
+      );
+
+      final projects = (result as PluginCatalogSnapshotAvailable).snapshot.projects;
+      final family = projects.singleWhere(
+        (entry) => entry.project.directory == "${temporaryDirectory.path}/archived",
+      );
+      expect(family.sessions.map((session) => session.id), unorderedEquals(["archived-root", "archived-child"]));
+      expect(family.sessions.singleWhere((session) => session.id == "archived-root").time?.archived, 30);
+      expect(family.sessions.singleWhere((session) => session.id == "archived-child").time?.archived, 31);
+    });
+
     test("ordinary read-only connection sees committed WAL and leaves database and WAL bytes unchanged", () async {
       final writer = sqlite3.open(databasePath);
       writer.execute("PRAGMA journal_mode=WAL");

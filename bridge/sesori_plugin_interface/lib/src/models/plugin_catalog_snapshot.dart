@@ -4,10 +4,14 @@ import "plugin_project.dart";
 import "plugin_session.dart";
 
 /// Complete metadata-only catalog for one plugin, grouped by project family.
+///
+/// Callers MUST provide an unmodifiable [projects] list.
 @immutable
 final class const PluginCatalogSnapshot({required final List<PluginProjectCatalogSnapshot> projects});
 
 /// One project and every root/descendant session belonging to that project.
+///
+/// Callers MUST provide an unmodifiable [sessions] list.
 @immutable
 final class const PluginProjectCatalogSnapshot({
   required final PluginProject project,
