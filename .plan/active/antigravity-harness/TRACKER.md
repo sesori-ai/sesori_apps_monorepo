@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.b merged; Step 10.c architecture-approved, publication prepared
+- **Status:** Steps 1–10.b merged; Step 10.c open for review
 - **Base:** synced with main `b74841ac14e5d4bf07bedb93e73d80c68fef491a` after Step 10.b merge
 - **Current branch:** `antigravity-harness-step-10c-managed-pair`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -25,8 +25,8 @@
   [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a)
 - **Merged PR:** [#1380](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1380) (Step 10.b). At the terminal
   report, 15/16 checks were complete with clean Cubic approval; Codex review was still running, so no 16/16 claim is made.
-- **Open PR:** Step 10.c publication prepared.
-- **Next action:** publish and monitor Step 10.c; resolve four missing native measurements before Step 10.d activation.
+- **Open PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c).
+- **Next action:** monitor Step 10.c; resolve four missing native measurements before Step 10.d activation.
 
 ## Fixed PR Series
 
