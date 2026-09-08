@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.b merged; Step 8.c open for review; Step 9 complete locally
+- **Status:** Steps 1–8.b merged; Step 8.c ready for human review; Step 9 architecture-approved locally
 - **Base:** Step 9 exact predecessor head `7befa7059a431e9dfbf0d32142d2dfd9202aa3af`
 - **Current branch:** `antigravity-harness-step-9-activation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -21,7 +21,7 @@
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b)
 - **Open PR:** [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c).
-- **Next action:** review the complete immutable Step 9 scope; publish only after Step 8.c merges.
+- **Next action:** monitor Step 8.c; synchronize and publish reviewed Step 9 only after Step 8.c merges.
 
 ## Fixed PR Series
 
@@ -356,8 +356,10 @@
   + 1 authentication-composer tests in Antigravity, for 16 executed tests across four suites. Both owning analyzers are
   clean with fatal infos. Counts use JSON suite/test IDs and non-hidden successful `testDone` records, never compact
   reporter filenames.
-- [ ] First complete Step 9 implementation review. Reviewer `4e5105a2` blocked before assessment on the incomplete WIP
-  checkpoint and does not count as an attempt.
+- [x] First complete architecture review approved `7befa7059a431e9dfbf0d32142d2dfd9202aa3af` →
+  `0cc657c1612f233320ce8d687d672739f5077e0a`: all 30 files, 313 additions + 103 deletions = 416 changed lines.
+  Reviewer `d4fee422`, no findings. Reviewer `4e5105a2` blocked before assessment on the incomplete WIP checkpoint
+  and does not count as an attempt. Keep this reviewed checkpoint distinct from later publication measurements.
 
 ## Architecture Reviews
 
