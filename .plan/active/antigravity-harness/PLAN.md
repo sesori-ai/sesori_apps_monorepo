@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.b merged, Step 10.c in review, Step 10.d awaiting native measurements
+- **Status:** active; Steps 1–10.c merged, Step 10.d next
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
@@ -976,14 +976,14 @@ full-diff cap per PR. Keep only the immediate successor local:
 - **10.a — Archive command budgets (estimated 250–450 lines):** required asset/extractor command budgets,
   every current manifest/caller updated explicitly, focused forwarding/slow-command/timeout tests, and runtime/self-update
   regression contracts. Existing archive extraction retains two minutes; listing now uses the same declared budget.
-  No Antigravity installation is exposed, no official artifact budgets or native timing claims are made yet.
+  No Antigravity installation or official artifact budgets are introduced in this slice.
 - **10.b — Isolated candidate validation (estimated 600–1,000 lines):** the required shared pre-placement seam,
   explicit current-caller adapters, disposable owner-only staging/cached validation context and failure/shutdown cleanup.
 - **10.c — Official candidate validation (review checkpoint: 587 lines):** independently rehashed five-target artifact
-  facts and the isolated initialize-only validator. Native macOS arm64 archive/probe evidence is recorded separately.
+  facts and the isolated initialize-only validator, with native macOS arm64 correctness evidence.
 - **10.d — Managed pair activation (estimated 600–1,100 lines):** manifest, descriptor composition, install disclosure,
-  measured target budgets and failure/rollback coverage. This successor requires packaged Linux x64/arm64 and Windows
-  x64/arm64 measurements; Install remains unavailable until those gates pass. Further coherent splits remain preapproved.
+  conservative bounded archive-command timeouts and failure/rollback coverage. Integrity, traversal, isolated candidate
+  validation and cleanup remain required. Further coherent splits remain preapproved.
 
 The requirements below apply across those slices; partitioning does not remove any of them:
 
@@ -1005,8 +1005,8 @@ The requirements below apply across those slices; partitioning does not remove a
   an explicit override and on one of the five supported targets; install is always explicit.
 - Add required `archiveCommandTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor`
   input, and update every existing asset/caller explicitly. Apply it to both traversal preflight listing and extraction,
-  replacing the fixed 30-second/two-minute limits. Give each Antigravity target a measured budget that completes both
-  full archive passes on its packaged host; retain traversal/symlink checks and test successful slow preflight/extract.
+  replacing the fixed 30-second/two-minute limits. Give Antigravity assets conservative bounded command timeouts;
+  retain traversal/symlink checks and deterministic successful slow-command and timeout-cleanup tests.
 - Add managed-download disclosure and five-target/macOS-x64 capability facts before Install is exposed. Update
   `docs/regression/plugin-runtime-installation.md` with the supported targets, budgets, rollback, and abort evidence in
   this PR rather than deferring it to Step 11.
@@ -1110,7 +1110,7 @@ Feature matrix:
     exact selection, stale rejection/refresh, `default` mode before prompt, session creation, and remembered defaults.
   - Boundary: automated, live agent, and client E2E.
 - **`session-turns.md`**
-  - Evidence: text/reasoning/tool/status streaming, accepted-send timing, model application, abort, stop-and-send,
+  - Evidence: text/reasoning/tool/status streaming, accepted-send ordering, model application, abort, stop-and-send,
     two-session concurrency, visible failures, and idle completion with no permission bypass.
   - Boundary: live agent and both client shells.
 - **`session-history-and-recovery.md`**

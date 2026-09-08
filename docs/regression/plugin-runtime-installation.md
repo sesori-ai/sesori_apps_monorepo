@@ -168,8 +168,8 @@ download, verification, or placement. Use a disposable data directory.
 - The isolated candidate-validation seam is available to every managed runtime. Antigravity now pins independently
   rehashed facts for all five official Google archives and has an initialize-only validator using disposable managed
   state, a sanitized false-inheritance environment, and the shared abort signal. Its manifest and descriptor Install
-  capability remain unavailable: packaged-host archive listing/extraction budgets are still unmeasured for Linux x64,
-  Linux arm64, Windows x64 and Windows arm64. The macOS arm64 measurement does not substantiate those targets.
+  capability remain unavailable pending integration with conservative bounded archive-command timeouts. Integrity,
+  traversal, isolated candidate validation and cleanup remain required; unexecuted native correctness checks stay explicit.
 - The upgrade replaces only a runtime Sesori already manages; a harness that has never
   been installed through Sesori still needs the explicit Install action. A user who runs
   a PATH install and also has a stale managed directory downloads one target they do not
