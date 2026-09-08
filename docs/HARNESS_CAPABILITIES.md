@@ -6,8 +6,9 @@ a deliberate, visible state rather than an accident. Update it whenever a
 capability lands for some harnesses but not others, or a harness limitation is
 verified or lifted.
 
-Main matrix columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registry.dart`.
-The login table additionally identifies the unregistered Antigravity implementation explicitly.
+Capability tables include registered plugins where the relevant integration behavior has been verified. Antigravity is
+included below for local runtime, options, setup, login, and permission behavior; its upstream sub-agent behavior has
+not been verified, so the sub-agent table makes no claim about it.
 
 ## Legend
 
@@ -19,11 +20,13 @@ The login table additionally identifies the unregistered Antigravity implementat
 
 ## Managed runtime
 
-| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Sesori-managed runtime installed on request | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
-| Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Sesori-managed runtime installed on request | 🚫 | ✅ | ⬜ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ⬜ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
 
+Antigravity currently resolves only a user-supplied official runtime pair from
+PATH or `--antigravity-bin`; managed installation is not implemented yet.
 Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
 user-installed CLI from PATH or an explicit binary option, so there is nothing
 for Sesori to install or upgrade. The upgrade follows the install capability
@@ -52,15 +55,17 @@ They do not claim that a harness's native CLI could never implement an equivalen
 
 ## Option pickers
 
-| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Effort variants listed strongest first, default declared separately | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
-| Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Effort variants listed strongest first, default declared separately | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
+| Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
 
 The picker shows each plugin's declared order. Every plugin ranks through the
 shared `CatalogStrengthOrder`; models of other vendors keep the plugin's own
 order after the ranked ones (OpenCode newest release first, others backend
-order).
+order). Antigravity's account-advertised order is what remains for its
+unranked models, and before the first real session catalog in a process it
+exposes no model choice and uses the account default.
 
 ## Codex question input
 
@@ -77,9 +82,9 @@ question card is shown; secret prompts are never downgraded to plain text.
 
 ## Setup detection
 
-| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Logged-out backend reported as `authenticationRequired` | ✅ | 🚫¹² | ✅ | ⬜¹³ | ✅ | ✅ | ✅¹¹ | ✅¹⁴ | ⬜¹⁵ | ✅¹⁶ |
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Logged-out backend reported as `authenticationRequired` | ✅ | 🚫¹² | ✅ | ✅ | ⬜¹³ | ✅ | ✅ | ✅¹¹ | ✅¹⁴ | ⬜¹⁵ | ✅¹⁶ |
 
 `inspectSetup` owns this state. Where a plugin does not probe credentials it
 returns `PluginSetupReady` as soon as it resolves a runtime, so a harness that
@@ -117,18 +122,23 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
 | DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
 | Grok | Not implemented | `grok login` on the bridge machine. |
-| Antigravity (unregistered) | Internal only: Google browser-return | No supported local fallback. |
+| Antigravity | Implemented: personal Google browser OAuth | No local fallback; current client required. |
 
-Among registered plugins, only Codex currently implements
-`InteractivePluginAuthenticationDescriptor.authenticate`; its action uses the existing
-Sesori device-code UI. That is not a general API-key entry form or a claim of
-support for every Codex authentication method.
-
-The unregistered Antigravity descriptor implements the browser-return action:
+Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
+Codex uses the existing Sesori device-code UI; Antigravity implements the browser-return action:
 a current phone/desktop client opens Google's authorization page and returns
 the callback through Sesori. It permits personal Google OAuth only, suppresses
-the bridge host's browser, and uses the same isolated profile for login and
-live sessions. Activation remains Step 9; ambient Google login is not imported.
+the bridge host's browser, and uses the same isolated profile for login and live
+sessions. Ambient Google login is not imported. Neither row is a general API-key
+entry form or a claim of support for every provider authentication method.
+
+Antigravity deliberately omits every persistent `allow_always` choice because
+Sesori's current permission contract cannot safely represent persistent approval.
+Independently, it excludes any choice of any kind carrying a non-null
+`agy.security.warning`, because the warning cannot cross the current contract.
+Only unambiguous warning-free `allow_once` and optional `reject_once` choices are
+shown. Enterprise OAuth, Gemini API key, and Agent Platform authentication are
+not implemented; no upstream support limitation is asserted for those methods.
 
 Local login/configuration must apply to the profile/environment used by that
 bridge's harness. Provider keys and local/free models may make a backend usable
@@ -260,7 +270,8 @@ setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
 
 ¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
-ACP seam, so there is nothing to order.
+ACP seam, and Antigravity has no Sesori effort variants, so for both there is
+nothing to order.
 
 ¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
 its models keep DeepSeek's catalog order; its efforts are ordered.

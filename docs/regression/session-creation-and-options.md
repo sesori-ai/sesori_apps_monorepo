@@ -101,6 +101,11 @@ variant, and worktree mode, and creating the session with its first input.
   and applied through Grok's plugin-local `session/set_model` extension; a failed
   write preserves the prior tracked selection and dispatches no prompt. An
   effort-only load waits for the session's exact loaded model before validation.
+- Antigravity exposes one primary agent and no selectable models until a real `session/new`, load, or resume response
+  advertises the account catalog. The first fresh-process session therefore uses the account default without creating a
+  discovery session. Later exact opaque model IDs are validated against the last-good catalog before queue admission,
+  selected through standard ACP configuration, and followed by mode `default` before every prompt. A malformed catalog
+  retains the prior snapshot; connection reset clears catalog and shared message-attribution state together.
 - GitHub Copilot discovers model, mode, model-specific reasoning, and slash-command
   options through a bounded isolated ACP session while retaining the user's normal
   Copilot configuration for login, settings, and BYOK. The probe closes its own
@@ -252,7 +257,10 @@ matching-remote, colliding, and rollback-failing branches while confirming the
 directory stays fixed and title application does not wait for branch refinement.
 For launch behavior, vary in-route versus background completion, success versus
 definitive rejection versus response loss, navigation before completion, and
-reconnect or option refresh while restoration is pending. For Copilot, vary the
+reconnect or option refresh while restoration is pending. For Antigravity, vary
+the first session before discovery, account default versus an exact advertised
+model, malformed catalog retention, cold reset/residency, and a stale model
+rejected before dispatch. For Copilot, vary the
 account's default and explicit model/mode/reasoning choices, a model change whose
 reasoning catalog differs, no advertised mode, an exact slash command, stale
 selection rejection, and authentication failure during discovery. For Grok,
@@ -294,6 +302,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   an opaque model ID, exposes a catalog-resolvable opaque ID in the session
   header, dispatches before both requested config writes settle, or records a
   partially applied selection as successful.
+- Antigravity creates a scratch session for discovery, invents or normalizes a model ID, selects an unknown/stale model,
+  retains a catalog after connection reset, applies a mode other than `default`, or prompts after failed configuration.
 - A Copilot catalog invents an option, validates reasoning against another model,
   overlaps unlike probes, replaces a coherent cache after authentication failure,
   or accepts a stale selection before applying every requested config value.
@@ -324,6 +334,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   but still needs a live desktop release exercise.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
 - Only plugins registered in the build under test count.
+- Antigravity's fresh-process first session has no selectable model until the account advertises a catalog through a
+  real session response; using the account default in that interval is intentional.
 - Copilot's ACP catalog probe closes its scratch session, but the pinned CLI has
   no deletion method; low-impact upstream history residue can remain in the
   user's normal Copilot home.
@@ -342,6 +354,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   `bridge/sesori_plugin_deepseek/lib/src/services/`, and package tests
 - Copilot: `bridge/sesori_plugin_copilot/lib/src/services/` and
   `bridge/sesori_plugin_copilot/lib/src/repositories/`, and package tests
+- Antigravity: `bridge/sesori_plugin_antigravity/lib/src/services/antigravity_session_options_service.dart`,
+  its catalog tracker, protocol mapper, composed plugin and tests
 - Grok: `bridge/sesori_plugin_grok/lib/src/services/`,
   `bridge/sesori_plugin_grok/lib/src/repositories/`,
   `bridge/sesori_plugin_grok/lib/src/trackers/`, and package tests

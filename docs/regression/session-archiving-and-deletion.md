@@ -44,6 +44,9 @@ entirely along with its transcript and, optionally, its worktree.
   matching session without replay, invokes `/session delete`, then closes it.
   A bounded but truncated scan uses OMP's global-ID resume fallback; only an
   exhausted scan is treated as idempotent not-found.
+- Antigravity does not advertise standard session close in the pinned runtime. Sesori deletion removes its own row,
+  transcript and requested worktree state, then retains the plugin-scoped tombstone so the isolated profile's surviving
+  Google conversation cannot be re-imported. It never mutates private conversation, SQLite, brain or profile files.
 - GitHub Copilot exposes standard `session/close` but no delete/archive RPC.
   Deletion cancels and closes a resident session when possible, purges Sesori's
   row and transcript, and retains the plugin-scoped tombstone so a later explicit
@@ -91,7 +94,10 @@ worktree with another active session, and a family with children. Vary state at
 retirement: idle, mid-turn, awaiting a request, or with its plugin stopped. Vary
 the entry surface and worktree-cleanup choice, and alternate archive-then-delete
 with direct deletion. Delete disposable sessions and remove any test worktrees
-and branches that remain after the asserted cleanup behavior. For Copilot,
+and branches that remain after the asserted cleanup behavior. For Antigravity,
+compare idle and active local deletion, retained isolated-profile metadata,
+bridge restart and an explicit import that honors the tombstone without touching
+Google files. For Copilot,
 compare idle and active deletion, verify standard close when resident, then run
 an exhausted explicit import and confirm the retained upstream row stays hidden.
 Repeat that matrix for Grok, including deletion with a permission pending and a
@@ -106,6 +112,8 @@ restart before explicit re-import.
   retains live prompt defaults.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
+- Antigravity deletion mutates Google-owned profile/history files, invents a close capability, omits the local
+  tombstone, or lets retained metadata recreate the deleted local session.
 - Copilot or Grok deletion removes private upstream files, omits the local
   tombstone, or lets a later explicit import recreate the deleted local session.
 - A close-capable backend is closed while its prompt is still settling, emits
@@ -138,6 +146,8 @@ restart before explicit re-import.
   purges its database, transcript, and requested worktree state and retains a
   plugin-scoped tombstone; it never infers and deletes private JSONL or attachment
   paths. A later explicit import must not resurrect the retained adapter row.
+- Antigravity's pinned runtime advertises no standard close/delete capability. Its conversation/profile files remain
+  in the isolated profile after local deletion; Sesori's tombstone prevents re-import without parsing or mutating them.
 - Copilot's pinned CLI likewise has close but no delete/archive method. Its
   history can remain in the user's normal Copilot home after local deletion;
   Sesori's tombstone prevents re-import without inspecting or deleting that data.
@@ -150,5 +160,5 @@ restart before explicit re-import.
 Bridge session lifecycle, deletion, archived-validator, and mutation dispatch
 services; chat-history export and purge; archived-record completeness model;
 worktree service; shared cleanup rejection model; OMP cleanup service; shared
-ACP close/tombstone behavior used by Copilot and Grok; Grok package deletion
+ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity composed deletion tests; Grok package deletion
 tests; client list/detail surfaces.

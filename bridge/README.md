@@ -18,6 +18,7 @@ Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [
 | `sesori_plugin_opencode` | OpenCode backend implementation of the plugin contract |
 | `sesori_plugin_codex` | Codex backend implementation |
 | `sesori_plugin_acp` | Shared ACP protocol plugin base |
+| `sesori_plugin_antigravity` | Google Antigravity implementation over ACP |
 | `sesori_plugin_cursor` | Cursor implementation over ACP |
 | `sesori_plugin_omp` | Oh My Pi implementation over ACP |
 | `sesori_plugin_claude` | Claude Code backend implementation |
@@ -95,6 +96,24 @@ resolve a compatible PATH binary or an existing pinned managed runtime before
 they are started, monitored, failed, and stopped independently. A plugin failure
 disables controls routed to that plugin but does not stop the relay, catalog
 browsing, or another plugin.
+
+### Antigravity local runtime
+
+Antigravity support uses Google's proprietary official ACP runtime pair. Review
+[Google's terms](https://antigravity.google/terms) and
+[Antigravity documentation](https://antigravity.google/docs/) before using it.
+This release does not install or update the pair: place `agy_acp_server.par` and
+`localharness_external` together on macOS arm64 or Linux x64/arm64 (the `.exe`
+pair on Windows x64/arm64). macOS x64 is unsupported. Either make the server
+discoverable on PATH or pass
+`--antigravity-bin <path-to-server>`. The sibling harness is mandatory and an
+explicit server path is authoritative.
+
+Authentication supports personal Google OAuth only and must be started from a
+current Sesori mobile or desktop app; there is no bridge-CLI fallback. Sesori
+uses an isolated Antigravity profile below bridge plugin state and never imports
+ambient Google credentials. Local session deletion removes Sesori's record but
+does not mutate Google's retained conversation/profile files.
 
 Normal project, root-session, session-detail, and child reads use the durable
 database catalog only; external harness work enters through an explicit,

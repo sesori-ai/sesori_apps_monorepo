@@ -8,20 +8,19 @@ part of 'antigravity_permission_dto.dart';
 
 _AntigravityPermissionRequestDto _$AntigravityPermissionRequestDtoFromJson(
   Map json,
-) =>
-    $checkedCreate('_AntigravityPermissionRequestDto', json, ($checkedConvert) {
-      final val = _AntigravityPermissionRequestDto(
-        sessionId: $checkedConvert('sessionId', (v) => v as String),
-        toolCall: $checkedConvert(
-          'toolCall',
-          (v) => AntigravityPermissionToolDto.fromJson(
-            Map<String, dynamic>.from(v as Map),
-          ),
-        ),
-        options: $checkedConvert('options', (v) => _optionsFromJson(v as List)),
-      );
-      return val;
-    });
+) => $checkedCreate('_AntigravityPermissionRequestDto', json, ($checkedConvert) {
+  final val = _AntigravityPermissionRequestDto(
+    sessionId: $checkedConvert('sessionId', (v) => v as String),
+    toolCall: $checkedConvert(
+      'toolCall',
+      (v) => AntigravityPermissionToolDto.fromJson(
+        Map<String, dynamic>.from(v as Map),
+      ),
+    ),
+    options: $checkedConvert('options', (v) => _optionsFromJson(v as List)),
+  );
+  return val;
+});
 
 _AntigravityPermissionToolDto _$AntigravityPermissionToolDtoFromJson(
   Map json,

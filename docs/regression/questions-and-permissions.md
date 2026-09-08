@@ -56,6 +56,11 @@ reaches the backend so the turn continues.
   persist process-local dialog promises. Decorative extension UI is ignored;
   bounded `notify` messages use the existing toast event attributed to their
   owning session, so another session or an unrelated route does not present them.
+- Antigravity converts valid `interaction_` permission requests into one single-choice question while preserving exact
+  advertised labels and opaque option IDs; duplicate labels fail closed. Ordinary permissions expose exactly one
+  unambiguous warning-free `allow_once` and an optional warning-free `reject_once`. Persistent `allow_always` choices
+  are always excluded as a separate policy, and any choice of any kind with non-null `agy.security.warning` metadata is
+  independently excluded. Invalid or ambiguous input cancels instead of guessing, escalating, or leaving hidden work.
 - GitHub Copilot uses standard ACP permission requests correlated to their tool
   call. The client always presents Once and Reject for a pending permission and
   presents Always only when the request offers `allow_always`. The registry maps
@@ -139,7 +144,10 @@ Vary which backend raises the request and how it is provoked, the answer kind,
 the answer order when several are outstanding, and whether the answer comes from
 the request's own session view, a parent view, or a second client. Vary whether
 the session is fresh, resumed after a bridge restart, or reopened cold. Prefer a
-different combination than the previous recorded run. For Copilot, provoke a
+different combination than the previous recorded run. For Antigravity, vary an
+ordinary permission and `interaction_` question, warning-bearing once/reject
+options, persistent options without warnings, duplicate labels/IDs, malformed
+answers, two sessions and process cleanup. For Copilot, provoke a
 real tool permission, exercise Once and Reject plus Always when surfaced, include
 an upstream option set lacking `allow_once` or reject to confirm safe
 cancellation, abort with a request pending, and confirm the management/session
@@ -189,6 +197,8 @@ the prompt write is held, proving cancellation does not remove the later request
   marker, or an auto-approved permission reply advances it.
 - Reading pending state starts an intentionally stopped backend.
 - An archived session accepts a reply.
+- Antigravity displays or dispatches a persistent choice, displays any warning-bearing choice, escalates Once, changes
+  an opaque option ID, guesses an ambiguous label, or leaves malformed input pending after cancellation/cleanup.
 - Copilot offers a question surface or waits for a Sesori answer to an upstream
   `ask_user` interaction that the CLI did not forward over ACP.
 - A Grok request is silently approved by launch policy, loses its session or tool
@@ -205,6 +215,8 @@ the prompt write is held, proving cancellation does not remove the later request
   is not a failure.
 - GitHub Copilot CLI currently does not forward `ask_user` over ACP
   (`github/copilot-cli#2109`); only its standard permission requests are in scope.
+- Antigravity intentionally omits persistent approvals and independently filters every non-null security-warning
+  choice. This is a Sesori safety policy, not a claim that the upstream method or scope is unsupported.
 - Grok permission scopes are tool/account dependent. A scope not advertised by
   the live request is absent capability, not failed coverage; Once and Reject
   remain required.
@@ -224,6 +236,8 @@ the prompt write is held, proving cancellation does not remove the later request
   `client/module_app_ui/lib/src/features/session_detail/`, composed by
   `client/app/lib/features/session_detail/` and
   `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`.
+- `bridge/sesori_plugin_antigravity/lib/src/services/antigravity_interaction_service.dart`, its mapper/registry tests,
+  and the shared ACP pending registry.
 - `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart`,
   `bridge/sesori_plugin_grok/`, and the shared ACP approval registry.
 - Owning tests for pending interaction, reply routes, and pending state without
