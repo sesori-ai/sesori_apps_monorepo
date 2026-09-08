@@ -39,10 +39,10 @@ sealed class const PluginManagementMutationResult() {
     required PluginLifecycleConflict conflict,
   }) = PluginManagementMutationResultConflict;
 
-  /// The mutation request was sent but its outcome cannot be truthfully
-  /// published: the response cannot prove it or the connection/service fence
-  /// moved. Consumers render this as an uncertain state requiring refresh,
-  /// never as a bridge rejection or a committed success.
+  /// The mutation request was sent but its outcome cannot be confirmed by its
+  /// response, or its connection/bridge identity fence moved. Snapshot-only
+  /// supersession does not invalidate a correlated acknowledgment. Consumers
+  /// render uncertainty as requiring refresh, never as rejection or success.
   const factory uncertain() = PluginManagementMutationResultUncertain;
 
   const factory failure({required ApiError error}) = PluginManagementMutationResultFailure;
