@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.b merged; Step 8.c ready for human review; Step 9 architecture-approved locally
-- **Base:** Step 9 exact predecessor head `7befa7059a431e9dfbf0d32142d2dfd9202aa3af`
+- **Status:** Steps 1–8.c merged; Step 9 architecture-approved and synchronized for publication
+- **Base:** synced with main `20a1580688055dffc07d70e0c23ab27c95fa00c9` after Step 8.c merge
 - **Current branch:** `antigravity-harness-step-9-activation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -19,9 +19,10 @@
   [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b),
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
-  [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b)
-- **Open PR:** [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c).
-- **Next action:** monitor Step 8.c; synchronize and publish reviewed Step 9 only after Step 8.c merges.
+  [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b),
+  [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c)
+- **Open PR:** Step 9 publication prepared.
+- **Next action:** publish and monitor Step 9; begin only Step 10 locally.
 
 ## Fixed PR Series
 
@@ -39,7 +40,7 @@
 - [x] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
 - [x] Step 8.a/12 — `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
 - [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
-- [ ] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
+- [x] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
 - [ ] Step 10/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
@@ -360,6 +361,9 @@
   `0cc657c1612f233320ce8d687d672739f5077e0a`: all 30 files, 313 additions + 103 deletions = 416 changed lines.
   Reviewer `d4fee422`, no findings. Reviewer `4e5105a2` blocked before assessment on the incomplete WIP checkpoint
   and does not count as an attempt. Keep this reviewed checkpoint distinct from later publication measurements.
+- [x] Synced with main `20a1580688` after Step 8.c merge. All bridge source/test/dependency inputs are unchanged from
+  the reviewed checkpoint; merge resolutions preserve activation and all predecessor fixes. Unchanged passing commands
+  were not rerun. Publication size is measured separately including this tracker reconciliation.
 
 ## Architecture Reviews
 
