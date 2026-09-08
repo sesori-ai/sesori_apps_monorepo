@@ -318,22 +318,27 @@ void main() {
       await disconnected.close();
     });
 
-    test("whole-plugin stop uses native authority and waits for lifecycle", () async {
+    test("whole-plugin stop deduplicates native scopes and waits for lifecycle", () async {
       await harness.prompt(sessionId: "root");
       await harness.spawn(child: "child", parent: "root", background: true);
+      await harness.end(child: "child", parent: "root");
+      final childPrompt = await harness.prompt(sessionId: "child");
+      await harness.spawn(child: "grandchild", parent: "child", background: true);
       var settled = false;
       final stopping = harness.plugin.interruptActiveWork(budget: const Duration(seconds: 2)).then((value) {
         settled = true;
         return value;
       });
-      final stop = await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 1);
-      harness.reply(frame: stop, result: {"workKept": false});
+      await harness.waitFor(method: DeepSeekAcpApi.sessionStopMethod, count: 2);
+      expect(harness.stops, hasLength(2));
+      harness.replyStops(workKeptBySession: const {"root": false, "child": false});
       await Future<void>.delayed(Duration.zero);
       expect(settled, isFalse);
-      await harness.end(child: "child", parent: "root");
+      await harness.end(child: "grandchild", parent: "child");
       final prompt = await harness.waitForSession(method: AcpMethods.sessionPrompt, sessionId: "root");
       harness.settlePrompt(prompt);
-      expect(await stopping, containsAll(["root", "child"]));
+      harness.settlePrompt(childPrompt);
+      expect(await stopping, containsAll(["root", "child", "grandchild"]));
     });
   });
 }

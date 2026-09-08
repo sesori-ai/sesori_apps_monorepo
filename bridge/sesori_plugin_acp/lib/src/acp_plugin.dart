@@ -1941,10 +1941,6 @@ abstract class AcpPlugin({
       if (supportsScopedStop) {
         final roots = {
           for (final sessionId in activeSessionIds) childSessionTracker.rootOf(sessionId: sessionId),
-          // A finished delegated child can now own a directly prompted turn,
-          // which is no longer covered by the root's running-child snapshot.
-          for (final entry in _turnStates.entries)
-            if (entry.value.pending > 0 && childSessionTracker.runningChild(sessionId: entry.key) == null) entry.key,
         };
         await Future.wait([
           for (final sessionId in roots)
