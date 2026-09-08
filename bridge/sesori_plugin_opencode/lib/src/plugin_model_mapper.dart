@@ -37,6 +37,26 @@ class const PluginModelMapper({
     );
   }
 
+  PluginSession mapCatalogSession({
+    required String id,
+    required String projectID,
+    required String directory,
+    required String? parentID,
+    required String? title,
+    required int createdAt,
+    required int updatedAt,
+    required int? archivedAt,
+  }) {
+    return PluginSession(
+      id: id,
+      projectID: projectID,
+      directory: directory,
+      parentID: parentID,
+      title: title,
+      time: PluginSessionTime(created: createdAt, updated: updatedAt, archived: archivedAt),
+    );
+  }
+
   PluginProject mapProject({
     required String worktree,
     required String directory,

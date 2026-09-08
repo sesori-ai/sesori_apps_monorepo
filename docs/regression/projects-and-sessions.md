@@ -52,6 +52,19 @@ state.
   routable, which is not the same as enabled: a blocked or failed harness is
   refused by the bridge and is left out. The harness settings surface offers the
   same import for one named harness.
+- A dormant OpenCode import first attempts a direct metadata-only SQLite snapshot. A
+  successful snapshot must not resolve or start an OpenCode runtime, server, health
+  probe, CLI session listing, or REST API. It reads projects, project-directory
+  aliases, every root, and every descendant without the REST API's 100-row ceiling,
+  and does not read messages, parts, prompts, transcript content, or credentials.
+  The connection is read-only, uses the live database and WAL normally (never
+  immutable mode or checkpointing), and performs no migration or mutation. Missing,
+  unreadable, malformed, incompatible, or unidentifiable data fails closed to the
+  existing live server import before any partial catalog publication. Explicit
+  `OPENCODE_DB` paths and `OPENCODE_DISABLE_CHANNEL_DB` are honored. Ordinary
+  non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
+  custom binary does not guess that default or a channel-specific filename. OpenCode
+  attach/no-auto-start mode always retains its existing server path.
 - One scan is one row above the list, however many harnesses take part. Between
   dispatch and the first progress event it can name neither a harness nor a
   count and says only that it is starting; from that event on it names the

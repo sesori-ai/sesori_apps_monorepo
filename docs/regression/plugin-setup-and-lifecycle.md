@@ -168,6 +168,15 @@ idle suspension, the management snapshot, and lifecycle commands.
   immediately re-arms each currently idle session from the change, while busy
   sessions pick it up at their next idle transition; no timeout invalidates the
   existing idle timer and keeps the child resident.
+- A harness generation cold-started solely because catalog snapshot import fell back
+  to the live plugin path uses an import-only idle residency cap of five minutes.
+  A shorter positive configured timeout stays shorter and a non-positive timeout
+  stays disabled. Any ordinary plugin acquisition, explicit/eager start, session
+  warm-up, or session operation monotonically promotes that same generation to its
+  configured normal residency and immediately re-arms applicable idle ownership;
+  importing through an already-running or starting generation never changes its
+  profile. This policy controls post-use idleness only: it is not an import,
+  enumeration, server-start, or publication deadline.
 - A Claude session whose CLI scheduled a `ScheduleWakeup` loop wakeup is not reaped
   before the wakeup fires (the in-process timer would die and `--resume` cannot rearm
   it); a wakeup that never fires stops deferring one idle window past its fire time.

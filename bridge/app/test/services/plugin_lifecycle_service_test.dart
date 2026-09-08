@@ -2553,6 +2553,48 @@ void main() {
     await _waitFor(() => repository.stopCalls == 1);
   });
 
+  test("import-only generation uses five-minute suspension cap until promoted", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: timerScheduler,
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+    );
+    addTearDown(service.dispose);
+    service.initialize(disabledPluginIds: const {}, setupById: const {"one": PluginSetupReady()});
+
+    repository.publish(
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+      generationResidency: PluginGenerationResidency.importOnly,
+    );
+    await _waitFor(() => timerScheduler.timers.isNotEmpty);
+    expect(timerScheduler.timers.last.duration, const Duration(minutes: 5));
+
+    repository.publish(
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+      generationResidency: PluginGenerationResidency.normal,
+    );
+    await _waitFor(() => timerScheduler.timers.length == 2);
+    expect(timerScheduler.timers.last.duration, const Duration(minutes: defaultPluginIdleTimeoutMins));
+  });
+
   test("non-positive idle timeout keeps a demanded plugin resident", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
@@ -2764,6 +2806,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
     required PluginWorkState workState,
     required int leaseCount,
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
+    PluginGenerationResidency generationResidency = PluginGenerationResidency.normal,
   }) {
     _current = [
       _snapshot(
@@ -2771,6 +2814,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
         workState: workState,
         leaseCount: leaseCount,
         transition: transition,
+        generationResidency: generationResidency,
       ),
     ];
     _snapshots.add(snapshot);
@@ -2795,6 +2839,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
+        generationResidency: PluginGenerationResidency.normal,
       ),
     );
   }
@@ -2811,6 +2856,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
     PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.enabled,
     bool startAllowed = true,
+    PluginGenerationResidency generationResidency = PluginGenerationResidency.normal,
   }) {
     return PluginRuntimeSnapshot(
       pluginId: "one",
@@ -2823,6 +2869,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
       workState: workState,
       leaseCount: leaseCount,
       transition: transition,
+      generationResidency: generationResidency,
     );
   }
 }
@@ -2845,6 +2892,7 @@ class _ConflictingDisableLifecycleRepository() extends _IdleLifecycleRepository 
         workState: PluginWorkState.busy,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
+        generationResidency: PluginGenerationResidency.normal,
       ),
       reasons: const [PluginRuntimeConflictReason.busy],
     );
@@ -2871,6 +2919,7 @@ class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepositor
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.stopping,
+        generationResidency: PluginGenerationResidency.normal,
       ),
     );
   }
@@ -2913,6 +2962,7 @@ class _CommandLifecycleRepository({
     workState: PluginWorkState.unknown,
     leaseCount: 0,
     transition: PluginRuntimeTransition.none,
+    generationResidency: PluginGenerationResidency.normal,
   );
   int inspectCalls = 0;
   int startCalls = 0;
@@ -2992,6 +3042,7 @@ class _CommandLifecycleRepository({
           ? PluginRuntimeState.active
           : PluginRuntimeState.dormant,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
   }
@@ -3011,6 +3062,7 @@ class _CommandLifecycleRepository({
       startAllowed: _current.startAllowed,
       state: _current.state,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
     return {"one": inspectionResult};
@@ -3029,6 +3081,7 @@ class _CommandLifecycleRepository({
       startAllowed: _current.startAllowed,
       state: PluginRuntimeState.active,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
     return PluginRuntimeCommandApplied(snapshot: _runtimeSnapshot());
@@ -3055,6 +3108,7 @@ class _CommandLifecycleRepository({
       startAllowed: _current.startAllowed,
       state: PluginRuntimeState.stopping,
       transition: PluginRuntimeTransition.stopping,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
     return PluginRuntimeCommandApplied(snapshot: _runtimeSnapshot());
@@ -3068,6 +3122,7 @@ class _CommandLifecycleRepository({
       startAllowed: false,
       state: PluginRuntimeState.disabled,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
   }
@@ -3081,6 +3136,7 @@ class _CommandLifecycleRepository({
     required bool startAllowed,
     required PluginRuntimeState state,
     required PluginRuntimeTransition transition,
+    required PluginGenerationResidency generationResidency,
   }) {
     return PluginRuntimeSnapshot(
       pluginId: "one",
@@ -3093,6 +3149,7 @@ class _CommandLifecycleRepository({
       workState: PluginWorkState.unknown,
       leaseCount: 0,
       transition: transition,
+      generationResidency: generationResidency,
     );
   }
 
@@ -3107,6 +3164,7 @@ class _CommandLifecycleRepository({
     workState: _current.workState,
     leaseCount: _current.leaseCount,
     transition: _current.transition,
+    generationResidency: _current.generationResidency,
   );
 
   void _publish() => _snapshots.add(snapshot);

@@ -6,9 +6,13 @@ import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
-import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions;
+import "package:sesori_shared/sesori_shared.dart" show Harness, StringExtensions, maxTranscriptImageCollectionBytes;
 
+import "../api/open_code_catalog_database_api.dart";
+import "../message_part_mapper.dart";
 import "../opencode_plugin_impl.dart";
+import "../plugin_model_mapper.dart";
+import "../repositories/open_code_catalog_repository.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_record_mapper.dart";
@@ -71,6 +75,12 @@ class const OpenCodePluginDescriptor({
   final Duration _degradedDebounce = const Duration(seconds: 5),
   final Duration _coldStartBudget = openCodeColdStartBudget,
   final Duration _versionProbeTimeout = openCodeVersionProbeTimeout,
+  final OpenCodeCatalogRepository? _catalogRepository,
+
+  /// Test seam for an explicitly trusted compile-time OpenCode channel.
+  /// Production treats ordinary non-overridden runtime selection as the public
+  /// latest channel; an explicit binary remains untrusted unless this is set.
+  final String? _catalogInstallationChannel,
 
   /// Test seam for existing-runtime resolution. Production builds a default in
   /// [ensureRuntime] from the host's process service.
@@ -391,6 +401,33 @@ class const OpenCodePluginDescriptor({
         actionHint: "OpenCode setup could not be determined. Verify the local installation and retry.",
       ),
     };
+  }
+
+  @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required PluginCatalogCancellationSignal cancellation,
+  }) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart)) {
+      return Future.value(const PluginCatalogSnapshotUnavailable());
+    }
+    final repository =
+        _catalogRepository ??
+        OpenCodeCatalogRepository(
+          databaseApi: OpenCodeCatalogDatabaseApi.production(),
+          modelMapper: const PluginModelMapper(
+            messagePartMapper: MessagePartMapper(),
+            maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+          ),
+          operatingSystem: PlatformTarget.current().os,
+          fileExists: openCodeCatalogFileExists,
+          // Ordinary PATH/managed selection targets OpenCode's public latest
+          // channel. An explicit binary can carry a custom compile-time channel,
+          // so it must use OPENCODE_DB or disable channel-specific databases.
+          trustedInstallationChannel: _catalogInstallationChannel ?? (_explicitBin(config) == null ? "latest" : null),
+        );
+    return repository.read(environment: environment, cancellation: cancellation);
   }
 
   /// Resolves an existing OpenCode runtime (a recent-enough PATH install or the
