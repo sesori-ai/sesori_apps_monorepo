@@ -62,7 +62,8 @@ mobile/desktop consumers using `CatalogScanRowMotion.standard`.
 ## Material failure signals
 
 - Global speed changes only the selected target, changes stored duration values,
-  uses the inverse speed incorrectly, or leaks after leaving the tuning host.
+  uses the inverse speed incorrectly, or leaks after leaving or replacing the
+  tuning host. Reparenting a retained host must preserve its selected speed.
 
 - Selecting triggers a feedback action or scan cancel/dismiss callback.
 - Replay invokes native rating, real recording/submission, backend scanning,

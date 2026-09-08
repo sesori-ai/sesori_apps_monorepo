@@ -58,7 +58,7 @@ void main() {
     expect(timeDilation, 1);
   });
 
-  testWidgets("slow speed stays visible when collapsed and is cleared on leaving the preview", (tester) async {
+  testWidgets("fixture replacement releases slowdown and reparenting preserves the selected speed", (tester) async {
     addTearDown(() => timeDilation = 1);
     await _pump(
       tester: tester,
@@ -77,6 +77,29 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Motion · 0.2×"), findsOneWidget);
     expect(timeDilation, 5);
+    final preview = tester.widget<MotionTuningHost>(find.byType(MotionTuningHost));
+    final nextPreview = MotionTuningHost(
+      key: GlobalKey(),
+      fixtureId: "next-fixture",
+      targets: preview.targets,
+      onReplay: preview.onReplay,
+      child: preview.child,
+    );
+    await tester.pumpWidget(nextPreview);
+    expect(timeDilation, 1);
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(timeDilation, 1);
+
+    await tester.pumpWidget(nextPreview);
+    await tester.tap(find.byTooltip("Expand motion controls"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Normal (1×)"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("0.5×"));
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(SizedBox(child: nextPreview));
+    expect(timeDilation, 2);
+    expect(find.text("Motion · 0.5×"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     expect(timeDilation, 1);
   });

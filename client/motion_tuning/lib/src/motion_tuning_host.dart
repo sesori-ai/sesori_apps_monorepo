@@ -74,9 +74,17 @@ class _MotionTuningHostState() extends State<MotionTuningHost> {
   }
 
   @override
-  void dispose() {
+  void deactivate() {
+    // Release the clock before a replacement host captures its baseline.
+    // dispose runs after the replacement has already mounted.
     timeDilation = _previousTimeDilation;
-    super.dispose();
+    super.deactivate();
+  }
+
+  @override
+  void activate() {
+    super.activate();
+    timeDilation = _speed.dilation;
   }
 
   MotionTarget? get _target => switch (_selection) {
