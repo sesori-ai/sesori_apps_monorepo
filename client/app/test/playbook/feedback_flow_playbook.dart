@@ -1055,6 +1055,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
 
   Widget _buildComposerControls({required BuildContext context}) {
     final prego = context.prego;
+    final voiceLabelStyle = prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary);
     final hasText = _text.text.isNotEmpty;
     final keyboardMode = _mode == _InputMode.keyboard;
     final busy = _submission == _SubmissionStage.submitting;
@@ -1089,7 +1090,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
                           key: ValueKey((_voice, hasText)),
                           child: switch (_voice) {
                             _VoiceStage.recording => const _RecordingPreview(),
-                            _VoiceStage.transcribing => Text("Transcribing…", style: prego.textTheme.textSm.regular),
+                            _VoiceStage.transcribing => Text("Transcribing…", style: voiceLabelStyle),
                             _ => Padding(
                               // Balance the trailing 44px Send action, as in Figma.
                               padding: EdgeInsetsDirectional.only(start: transcriptReady ? 44 : 0),
@@ -1097,7 +1098,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
                                 hasText ? "Hold to talk more" : "Hold to talk to give feedback",
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                                style: voiceLabelStyle,
                               ),
                             ),
                           },
