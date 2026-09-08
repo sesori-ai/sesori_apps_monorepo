@@ -17,7 +17,7 @@ The updated entry uses **Yes, love it!** and **Could be better**.
 
 | Rating · light | Celebration and native handoff |
 | --- | --- |
-| ![Light rating sheet](feedback_preview/rating-light.png) | [Watch the iOS preview](feedback_preview/rating-celebration.mp4) |
+| ![Light rating sheet](feedback_preview/rating-light.png) | [Dark preview](feedback_preview/rating-celebration.mp4) · [Light preview](feedback_preview/rating-celebration-light.mp4) |
 
 Feedback input corrected to [Figma `5035:11030`](https://www.figma.com/design/NILKXLD9cwuWHhLnGqPqeJ/Sesori?node-id=5035-11030):
 
@@ -120,7 +120,10 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
   controller and one timeline; the button adds no second platform press spring.
   Static artwork stays outside per-frame builders, image filters are baked, and
   animation uses transforms, opacity, button color and one bounded glow shader.
-  The white/pink button retains a subtle outline in light mode. Figma and
+  In light mode the default uses Primary Alt’s `fgPrimary` fill,
+  `textPrimaryOnWhite` label and 2px `alphaWhite10` border. The first authored
+  color segment blends those colors smoothly into the pink celebration, then
+  returns to Primary Alt’s dark fill and light label before sheet closure. Figma and
   Impeller differ slightly in the early soft-light glow; source blend settings
   and keyframes are preserved. Physical-device frame performance is unmeasured.
 - The Figma label `Notifications don’t arirve` is preserved intentionally.

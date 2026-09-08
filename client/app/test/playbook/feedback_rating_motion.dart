@@ -257,7 +257,7 @@ class const _HeroLayer({
   );
 }
 
-/// This Figma instance has a white fill override and its own click animation.
+/// Light mode starts with Primary Alt's colors; dark mode keeps Figma's white.
 /// A stock TextButton retains focus/keyboard/semantics without adding Prego's
 /// separate iOS press spring on top of the authored celebration.
 class const FeedbackLoveButton({
@@ -268,12 +268,17 @@ class const FeedbackLoveButton({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final isLight = Theme.of(context).brightness == Brightness.light;
+    final background = _loveColor(restColor: isLight ? prego.colors.fgPrimary : const Color(0xfffcfcfc));
     return RepaintBoundary(
       child: AnimatedBuilder(
         animation: animation,
         builder: (context, child) {
           final t = animation.value;
           final scale = _loveScale.transform(t);
+          // The first authored color segment blends Primary Alt into pink.
+          // Keep its label and border in sync, without a white flash on tap.
+          final colorProgress = _loveTint.transform(t);
           return Opacity(
             opacity: _loveOpacity.transform(t),
             child: Transform(
@@ -288,17 +293,17 @@ class const FeedbackLoveButton({
                   animationDuration: Duration.zero,
                   minimumSize: const WidgetStatePropertyAll(Size(double.infinity, 52)),
                   padding: const WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 20, vertical: 12)),
-                  backgroundColor: WidgetStatePropertyAll(_loveColor.transform(t)),
-                  foregroundColor: const WidgetStatePropertyAll(Colors.black),
+                  backgroundColor: WidgetStatePropertyAll(background.transform(t)),
+                  foregroundColor: WidgetStatePropertyAll(
+                    isLight ? Color.lerp(prego.colors.textPrimaryOnWhite, Colors.black, colorProgress) : Colors.black,
+                  ),
                   textStyle: WidgetStatePropertyAll(prego.textTheme.textMd.bold),
                   shape: WidgetStatePropertyAll(
                     StadiumBorder(
                       side: BorderSide(
-                        // Keep the white/pink Figma fill identifiable on a
-                        // light sheet without changing the authored colors.
-                        color: Theme.of(context).brightness == Brightness.dark
-                            ? prego.colors.alphaWhite10
-                            : prego.colors.borderSecondary,
+                        color: isLight
+                            ? Color.lerp(prego.colors.alphaWhite10, prego.colors.borderSecondary, colorProgress)!
+                            : prego.colors.alphaWhite10,
                         width: 2,
                       ),
                     ),
@@ -972,13 +977,25 @@ final _loveRotation = _scalar(
 );
 
 // Figma 5528:1783 · pregoButtonsSolid · background-color
-final _loveColor = _color(
+const _lovePinkAt = 0.04936;
+Animatable<Color?> _loveColor({required Color restColor}) => _color(
+  keys: [
+    (at: 0.0, value: restColor, curve: _easeOut),
+    (at: _lovePinkAt, value: const Color(0xffff54a3), curve: _easeInOut),
+    (at: 0.18509, value: const Color(0xffffbfd9), curve: _easeInOut),
+    (at: 0.40103, value: restColor, curve: Curves.linear),
+    (at: 1.0, value: restColor, curve: Curves.linear),
+  ],
+);
+
+// Label and border follow the same pink entrance and return to Primary Alt.
+final _loveTint = _scalar(
   keys: const [
-    (at: 0.0, value: Color(0xfffcfcfc), curve: _easeOut),
-    (at: 0.04936, value: Color(0xffff54a3), curve: _easeInOut),
-    (at: 0.18509, value: Color(0xffffbfd9), curve: _easeInOut),
-    (at: 0.40103, value: Color(0xfffcfcfc), curve: Curves.linear),
-    (at: 1.0, value: Color(0xfffcfcfc), curve: Curves.linear),
+    (at: 0, value: 0, curve: _easeOut),
+    (at: _lovePinkAt, value: 1, curve: _easeInOut),
+    (at: 0.18509, value: 1, curve: _easeInOut),
+    (at: 0.40103, value: 0, curve: Curves.linear),
+    (at: 1, value: 0, curve: Curves.linear),
   ],
 );
 
