@@ -70,6 +70,7 @@ class const SessionHarnessUnavailableNotice({
               const SizedBox(height: 12),
               Wrap(
                 spacing: 8,
+                crossAxisAlignment: WrapCrossAlignment.center,
                 children: [
                   if (blocked?.reason != SessionInteractionBlockedReason.contentLoadFailed)
                     PregoButtonsSolid(
