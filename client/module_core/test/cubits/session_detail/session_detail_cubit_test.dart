@@ -233,6 +233,16 @@ void main() {
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
           verifyNever(() => mockSessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: "remote-prompt"));
         }
+        clearInteractions(mockSessionRepository);
+        clearInteractions(mockPermissionRepository);
+        clearInteractions(mockProductAnalyticsService);
+        final blockedState = cubit.state;
+        cubit.selectAgent("coder");
+        cubit.selectModel(providerID: "blocked-provider", modelID: "blocked-model");
+        cubit.selectVariant(const SessionVariant(id: "blocked-variant"));
+        cubit.stageCommand(testCommandInfo());
+        cubit.clearStagedCommand();
+        await cubit.loadOlderMessages();
         await cubit.sendMessage(
           text: "must not send",
           command: null,
@@ -255,6 +265,32 @@ void main() {
             reply: any(named: "reply"),
           ),
         );
+        expect(await cubit.rejectQuestion("question"), isFalse);
+        verifyNever(
+          () => mockSessionRepository.rejectQuestion(
+            requestId: any(named: "requestId"),
+            sessionId: any(named: "sessionId"),
+          ),
+        );
+        verifyNever(
+          () => mockSessionRepository.sendMessage(
+            promptId: any(named: "promptId"),
+            attachments: any(named: "attachments"),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+          ),
+        );
+        verifyNever(
+          () => mockProductAnalyticsService.logEvent(
+            event: any(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
+        expect(cubit.state, same(blockedState));
         if (cubit.state case SessionDetailLoaded(:final queuedMessages)) expect(queuedMessages, isEmpty);
         if (!initialBlocked) {
           final saved = await mockSessionService.getMessages(
