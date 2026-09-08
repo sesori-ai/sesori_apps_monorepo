@@ -33,7 +33,9 @@ class WorktreeRemoveInput {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is WorktreeRemoveInput && other.directory == directory);
+      identical(this, other) ||
+      (other is WorktreeRemoveInput &&
+          other.directory == directory);
 
   @override
   int get hashCode => directory.hashCode;

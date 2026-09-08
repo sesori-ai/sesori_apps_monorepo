@@ -6,32 +6,34 @@ part of 'antigravity_initialize_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_AntigravityInitializeDto _$AntigravityInitializeDtoFromJson(Map json) => _AntigravityInitializeDto(
-  protocolVersion: (json['protocolVersion'] as num?)?.toInt(),
-  agentInfo: json['agentInfo'] == null
-      ? null
-      : AntigravityAgentInfoDto.fromJson(
-          Map<String, dynamic>.from(json['agentInfo'] as Map),
-        ),
-  agentCapabilities: json['agentCapabilities'] == null
-      ? null
-      : AntigravityAgentCapabilitiesDto.fromJson(
-          Map<String, dynamic>.from(json['agentCapabilities'] as Map),
-        ),
-  authMethods: (json['authMethods'] as List<dynamic>?)
-      ?.map(
-        (e) => AntigravityAuthMethodDto.fromJson(
-          Map<String, dynamic>.from(e as Map),
-        ),
-      )
-      .toList(),
-);
+_AntigravityInitializeDto _$AntigravityInitializeDtoFromJson(Map json) =>
+    _AntigravityInitializeDto(
+      protocolVersion: (json['protocolVersion'] as num?)?.toInt(),
+      agentInfo: json['agentInfo'] == null
+          ? null
+          : AntigravityAgentInfoDto.fromJson(
+              Map<String, dynamic>.from(json['agentInfo'] as Map),
+            ),
+      agentCapabilities: json['agentCapabilities'] == null
+          ? null
+          : AntigravityAgentCapabilitiesDto.fromJson(
+              Map<String, dynamic>.from(json['agentCapabilities'] as Map),
+            ),
+      authMethods: (json['authMethods'] as List<dynamic>?)
+          ?.map(
+            (e) => AntigravityAuthMethodDto.fromJson(
+              Map<String, dynamic>.from(e as Map),
+            ),
+          )
+          .toList(),
+    );
 
-_AntigravityAgentInfoDto _$AntigravityAgentInfoDtoFromJson(Map json) => _AntigravityAgentInfoDto(
-  name: json['name'] as String?,
-  title: json['title'] as String?,
-  version: json['version'] as String?,
-);
+_AntigravityAgentInfoDto _$AntigravityAgentInfoDtoFromJson(Map json) =>
+    _AntigravityAgentInfoDto(
+      name: json['name'] as String?,
+      title: json['title'] as String?,
+      version: json['version'] as String?,
+    );
 
 _AntigravityAgentCapabilitiesDto _$AntigravityAgentCapabilitiesDtoFromJson(
   Map json,

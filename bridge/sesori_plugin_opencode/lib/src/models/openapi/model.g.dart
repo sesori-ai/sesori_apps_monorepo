@@ -112,21 +112,7 @@ class Model {
           const DeepCollectionEquality().equals(other.variants, variants));
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    providerID,
-    api,
-    name,
-    family,
-    capabilities,
-    cost,
-    limit,
-    status,
-    const DeepCollectionEquality().hash(options),
-    const DeepCollectionEquality().hash(headers),
-    releaseDate,
-    const DeepCollectionEquality().hash(variants),
-  );
+  int get hashCode => Object.hash(id, providerID, api, name, family, capabilities, cost, limit, status, const DeepCollectionEquality().hash(options), const DeepCollectionEquality().hash(headers), releaseDate, const DeepCollectionEquality().hash(variants));
 
   final String id;
   final String providerID;
@@ -183,7 +169,11 @@ class ModelApi {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ModelApi && other.id == id && other.url == url && other.npm == npm);
+      identical(this, other) ||
+      (other is ModelApi &&
+          other.id == id &&
+          other.url == url &&
+          other.npm == npm);
 
   @override
   int get hashCode => Object.hash(id, url, npm);
@@ -264,15 +254,7 @@ class ModelCapabilities {
           const DeepCollectionEquality().equals(other.interleaved, interleaved));
 
   @override
-  int get hashCode => Object.hash(
-    temperature,
-    reasoning,
-    attachment,
-    toolcall,
-    input,
-    output,
-    const DeepCollectionEquality().hash(interleaved),
-  );
+  int get hashCode => Object.hash(temperature, reasoning, attachment, toolcall, input, output, const DeepCollectionEquality().hash(interleaved));
 
   final bool temperature;
   final bool reasoning;
@@ -298,12 +280,8 @@ class ModelCost {
       input: (json["input"] as num).toDouble(),
       output: (json["output"] as num).toDouble(),
       cache: ModelCostCache.fromJson(json["cache"] as Map<String, dynamic>),
-      tiers: (json["tiers"] as List<dynamic>?)
-          ?.map((e) => ModelCostTiersItem.fromJson(e as Map<String, dynamic>))
-          .toList(),
-      experimentalOver200K: json["experimentalOver200K"] == null
-          ? null
-          : ModelCostExperimentalOver200K.fromJson(json["experimentalOver200K"] as Map<String, dynamic>),
+      tiers: (json["tiers"] as List<dynamic>?)?.map((e) => ModelCostTiersItem.fromJson(e as Map<String, dynamic>)).toList(),
+      experimentalOver200K: json["experimentalOver200K"] == null ? null : ModelCostExperimentalOver200K.fromJson(json["experimentalOver200K"] as Map<String, dynamic>),
     );
   }
 
@@ -346,8 +324,7 @@ class ModelCost {
           other.experimentalOver200K == experimentalOver200K);
 
   @override
-  int get hashCode =>
-      Object.hash(input, output, cache, const DeepCollectionEquality().hash(tiers), experimentalOver200K);
+  int get hashCode => Object.hash(input, output, cache, const DeepCollectionEquality().hash(tiers), experimentalOver200K);
 
   final double input;
   final double output;
@@ -397,7 +374,10 @@ class ModelLimit {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ModelLimit && other.context == context && other.input == input && other.output == output);
+      (other is ModelLimit &&
+          other.context == context &&
+          other.input == input &&
+          other.output == output);
 
   @override
   int get hashCode => Object.hash(context, input, output);
@@ -578,7 +558,10 @@ class ModelCostCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ModelCostCache && other.read == read && other.write == write);
+      identical(this, other) ||
+      (other is ModelCostCache &&
+          other.read == read &&
+          other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);
@@ -737,7 +720,10 @@ class ModelCostTiersItemCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ModelCostTiersItemCache && other.read == read && other.write == write);
+      identical(this, other) ||
+      (other is ModelCostTiersItemCache &&
+          other.read == read &&
+          other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);
@@ -781,7 +767,10 @@ class ModelCostTiersItemTier {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ModelCostTiersItemTier && other.type == type && other.size == size);
+      identical(this, other) ||
+      (other is ModelCostTiersItemTier &&
+          other.type == type &&
+          other.size == size);
 
   @override
   int get hashCode => Object.hash(type, size);
@@ -826,7 +815,9 @@ class ModelCostExperimentalOver200KCache {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ModelCostExperimentalOver200KCache && other.read == read && other.write == write);
+      (other is ModelCostExperimentalOver200KCache &&
+          other.read == read &&
+          other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);

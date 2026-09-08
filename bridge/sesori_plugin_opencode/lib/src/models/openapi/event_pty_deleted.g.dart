@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 
 @immutable
@@ -42,7 +41,10 @@ class EventPtyDeleted implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventPtyDeleted && other.id == id && other.properties == properties);
+      identical(this, other) ||
+      (other is EventPtyDeleted &&
+          other.id == id &&
+          other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);
@@ -80,7 +82,10 @@ class EventPtyDeletedProperties {
   }
 
   @override
-  bool operator ==(Object other) => identical(this, other) || (other is EventPtyDeletedProperties && other.id == id);
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is EventPtyDeletedProperties &&
+          other.id == id);
 
   @override
   int get hashCode => id.hashCode;

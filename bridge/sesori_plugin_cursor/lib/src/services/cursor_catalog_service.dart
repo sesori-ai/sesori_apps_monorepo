@@ -7,20 +7,18 @@ import "../models/cursor_catalog_models.dart";
 import "../repositories/cursor_catalog_repository.dart";
 import "../trackers/cursor_catalog_tracker.dart";
 
-enum _MissingCommandSnapshotPolicy() {
-  retain,
-  invalidate,
-}
+enum _MissingCommandSnapshotPolicy() { retain, invalidate }
 
 /// Coordinates bounded, isolated Cursor catalog discovery.
 class CursorCatalogService({
-  required final CursorCatalogRepository _repository,
-  required final CursorCatalogTracker _tracker,
-  required final AcpCommandTracker _commandTracker,
-  required final AcpCommandTracker _stagedCommandTracker,
-  required final Duration _totalTimeout,
-  required final int _maxCandidates,
-}) {
+    required final CursorCatalogRepository _repository,
+    required final CursorCatalogTracker _tracker,
+    required final AcpCommandTracker _commandTracker,
+    required final AcpCommandTracker _stagedCommandTracker,
+    required final Duration _totalTimeout,
+    required final int _maxCandidates,
+  }) {
+
   Future<CursorCatalogProbeOutcome>? _inFlight;
   Future<bool>? _forcedInFlight;
   final Set<String> _retriedScopes = {};

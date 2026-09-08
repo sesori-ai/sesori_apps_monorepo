@@ -49,7 +49,11 @@ class AgentPartInput {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AgentPartInput && other.id == id && other.type == type && other.name == name && other.source == source);
+      (other is AgentPartInput &&
+          other.id == id &&
+          other.type == type &&
+          other.name == name &&
+          other.source == source);
 
   @override
   int get hashCode => Object.hash(id, type, name, source);
@@ -101,7 +105,10 @@ class AgentPartInputSource {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AgentPartInputSource && other.value == value && other.start == start && other.end == end);
+      (other is AgentPartInputSource &&
+          other.value == value &&
+          other.start == start &&
+          other.end == end);
 
   @override
   int get hashCode => Object.hash(value, start, end);

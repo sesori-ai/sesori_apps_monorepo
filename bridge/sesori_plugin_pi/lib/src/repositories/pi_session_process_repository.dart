@@ -72,7 +72,7 @@ final class const PiSessionAbortProcessExited({
 final class const PiPromptPayload({required final String message, required final List<Map<String, Object?>> images});
 
 enum _PiPromptStreamingBehavior(final String wireValue) {
-  steer("steer"),
+  steer("steer");
 }
 
 final class const PiAgentState({required final bool streaming, required final int pendingMessageCount});

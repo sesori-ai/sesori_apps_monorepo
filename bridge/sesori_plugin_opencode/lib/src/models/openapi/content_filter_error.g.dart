@@ -38,7 +38,10 @@ class ContentFilterError {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ContentFilterError && other.name == name && other.data == data);
+      identical(this, other) ||
+      (other is ContentFilterError &&
+          other.name == name &&
+          other.data == data);
 
   @override
   int get hashCode => Object.hash(name, data);
@@ -77,7 +80,9 @@ class ContentFilterErrorData {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ContentFilterErrorData && other.message == message);
+      identical(this, other) ||
+      (other is ContentFilterErrorData &&
+          other.message == message);
 
   @override
   int get hashCode => message.hashCode;

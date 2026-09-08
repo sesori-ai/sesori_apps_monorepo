@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 import 'question_info.g.dart';
 import 'question_tool.g.dart';
@@ -45,7 +44,10 @@ class EventQuestionAsked implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventQuestionAsked && other.id == id && other.properties == properties);
+      identical(this, other) ||
+      (other is EventQuestionAsked &&
+          other.id == id &&
+          other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);
@@ -67,9 +69,7 @@ class EventQuestionAskedProperties {
     return EventQuestionAskedProperties(
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
-      questions: (json["questions"] as List<dynamic>)
-          .map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      questions: (json["questions"] as List<dynamic>).map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>)).toList(),
       tool: json["tool"] == null ? null : QuestionTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }

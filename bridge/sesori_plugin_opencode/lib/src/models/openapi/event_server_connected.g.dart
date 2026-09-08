@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 
 @immutable

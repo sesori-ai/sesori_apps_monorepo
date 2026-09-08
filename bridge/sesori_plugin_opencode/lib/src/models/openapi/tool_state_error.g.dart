@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'tool_state.g.dart';
 
 @immutable
@@ -61,12 +60,7 @@ class ToolStateError implements ToolState {
           other.time == time);
 
   @override
-  int get hashCode => Object.hash(
-    const DeepCollectionEquality().hash(input),
-    error,
-    const DeepCollectionEquality().hash(metadata),
-    time,
-  );
+  int get hashCode => Object.hash(const DeepCollectionEquality().hash(input), error, const DeepCollectionEquality().hash(metadata), time);
 
   final Map<String, dynamic> input;
   final String error;
@@ -109,7 +103,10 @@ class ToolStateErrorTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ToolStateErrorTime && other.start == start && other.end == end);
+      identical(this, other) ||
+      (other is ToolStateErrorTime &&
+          other.start == start &&
+          other.end == end);
 
   @override
   int get hashCode => Object.hash(start, end);

@@ -38,7 +38,10 @@ class StructuredOutputError {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is StructuredOutputError && other.name == name && other.data == data);
+      identical(this, other) ||
+      (other is StructuredOutputError &&
+          other.name == name &&
+          other.data == data);
 
   @override
   int get hashCode => Object.hash(name, data);
@@ -83,7 +86,9 @@ class StructuredOutputErrorData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is StructuredOutputErrorData && other.message == message && other.retries == retries);
+      (other is StructuredOutputErrorData &&
+          other.message == message &&
+          other.retries == retries);
 
   @override
   int get hashCode => Object.hash(message, retries);

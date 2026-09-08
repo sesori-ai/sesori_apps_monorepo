@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 
 @immutable
@@ -43,7 +42,10 @@ class EventSessionError implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventSessionError && other.id == id && other.properties == properties);
+      identical(this, other) ||
+      (other is EventSessionError &&
+          other.id == id &&
+          other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);

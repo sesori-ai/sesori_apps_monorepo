@@ -44,7 +44,10 @@ class FilePartSourceText {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FilePartSourceText && other.value == value && other.start == start && other.end == end);
+      (other is FilePartSourceText &&
+          other.value == value &&
+          other.start == start &&
+          other.end == end);
 
   @override
   int get hashCode => Object.hash(value, start, end);

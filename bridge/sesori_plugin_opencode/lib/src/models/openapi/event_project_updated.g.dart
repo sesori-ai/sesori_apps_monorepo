@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 
 @immutable
@@ -43,7 +42,10 @@ class EventProjectUpdated implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventProjectUpdated && other.id == id && other.properties == properties);
+      identical(this, other) ||
+      (other is EventProjectUpdated &&
+          other.id == id &&
+          other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);
@@ -71,12 +73,8 @@ class EventProjectUpdatedProperties {
       worktree: json["worktree"] as String,
       vcs: json["vcs"] as String?,
       name: json["name"] as String?,
-      icon: json["icon"] == null
-          ? null
-          : EventProjectUpdatedPropertiesIcon.fromJson(json["icon"] as Map<String, dynamic>),
-      commands: json["commands"] == null
-          ? null
-          : EventProjectUpdatedPropertiesCommands.fromJson(json["commands"] as Map<String, dynamic>),
+      icon: json["icon"] == null ? null : EventProjectUpdatedPropertiesIcon.fromJson(json["icon"] as Map<String, dynamic>),
+      commands: json["commands"] == null ? null : EventProjectUpdatedPropertiesCommands.fromJson(json["commands"] as Map<String, dynamic>),
       time: EventProjectUpdatedPropertiesTime.fromJson(json["time"] as Map<String, dynamic>),
       sandboxes: (json["sandboxes"] as List<dynamic>).cast<String>(),
     );
@@ -133,8 +131,7 @@ class EventProjectUpdatedProperties {
           const DeepCollectionEquality().equals(other.sandboxes, sandboxes));
 
   @override
-  int get hashCode =>
-      Object.hash(id, worktree, vcs, name, icon, commands, time, const DeepCollectionEquality().hash(sandboxes));
+  int get hashCode => Object.hash(id, worktree, vcs, name, icon, commands, time, const DeepCollectionEquality().hash(sandboxes));
 
   final String id;
   final String worktree;
@@ -230,7 +227,9 @@ class EventProjectUpdatedPropertiesCommands {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventProjectUpdatedPropertiesCommands && other.start == start);
+      identical(this, other) ||
+      (other is EventProjectUpdatedPropertiesCommands &&
+          other.start == start);
 
   @override
   int get hashCode => start.hashCode;

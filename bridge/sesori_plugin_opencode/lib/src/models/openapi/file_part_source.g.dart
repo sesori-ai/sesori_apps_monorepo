@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'file_source.g.dart';
 import 'resource_source.g.dart';
 import 'symbol_source.g.dart';
@@ -52,7 +51,8 @@ class FilePartSourceUnknown implements FilePartSource {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is FilePartSourceUnknown && const DeepCollectionEquality().equals(other.raw, raw));
+      (other is FilePartSourceUnknown &&
+          const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

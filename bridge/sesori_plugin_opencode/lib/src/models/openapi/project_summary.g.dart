@@ -44,7 +44,10 @@ class ProjectSummary {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProjectSummary && other.id == id && other.name == name && other.worktree == worktree);
+      (other is ProjectSummary &&
+          other.id == id &&
+          other.name == name &&
+          other.worktree == worktree);
 
   @override
   int get hashCode => Object.hash(id, name, worktree);

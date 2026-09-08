@@ -38,7 +38,10 @@ class ProviderAuthError {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ProviderAuthError && other.name == name && other.data == data);
+      identical(this, other) ||
+      (other is ProviderAuthError &&
+          other.name == name &&
+          other.data == data);
 
   @override
   int get hashCode => Object.hash(name, data);
@@ -83,7 +86,9 @@ class ProviderAuthErrorData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ProviderAuthErrorData && other.providerID == providerID && other.message == message);
+      (other is ProviderAuthErrorData &&
+          other.providerID == providerID &&
+          other.message == message);
 
   @override
   int get hashCode => Object.hash(providerID, message);

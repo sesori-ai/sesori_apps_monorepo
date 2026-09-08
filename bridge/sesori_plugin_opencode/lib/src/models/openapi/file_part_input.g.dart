@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
-
 import 'file_part_source.g.dart';
 
 @immutable

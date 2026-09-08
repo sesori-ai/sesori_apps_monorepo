@@ -13,7 +13,9 @@ class QuestionAnswer {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is QuestionAnswer && const DeepCollectionEquality().equals(other.items, items));
+      identical(this, other) ||
+      (other is QuestionAnswer &&
+          const DeepCollectionEquality().equals(other.items, items));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(items);

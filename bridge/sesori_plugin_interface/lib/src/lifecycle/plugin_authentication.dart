@@ -61,10 +61,8 @@ final class const PluginAuthenticationBrowserChallenge({
   required final Uri expectedCallbackUri,
 }) extends PluginAuthenticationEvent implements PluginAuthenticationBrowserEvent;
 
-final class const PluginAuthenticationCompleted()
-    extends PluginAuthenticationEvent
+final class const PluginAuthenticationCompleted() extends PluginAuthenticationEvent
     implements PluginAuthenticationDeviceCodeEvent, PluginAuthenticationBrowserEvent;
 
-final class const PluginAuthenticationFailed({required final String message})
-    extends PluginAuthenticationEvent
+final class const PluginAuthenticationFailed({required final String message}) extends PluginAuthenticationEvent
     implements PluginAuthenticationDeviceCodeEvent, PluginAuthenticationBrowserEvent;

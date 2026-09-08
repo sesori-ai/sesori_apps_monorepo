@@ -19,14 +19,11 @@ class TerminalGlyphValidator._() {
     if (environment["TERM"] == "dumb") {
       return false;
     }
-    final locale =
-        ([
-                  environment["LC_ALL"],
-                  environment["LC_CTYPE"],
-                  environment["LANG"],
-                ].firstWhere((value) => value != null && value.isNotEmpty, orElse: () => "") ??
-                "")
-            .toLowerCase();
+    final locale = ([
+      environment["LC_ALL"],
+      environment["LC_CTYPE"],
+      environment["LANG"],
+    ].firstWhere((value) => value != null && value.isNotEmpty, orElse: () => "") ?? "").toLowerCase();
     return locale.contains("utf-8") || locale.contains("utf8");
   }
 }

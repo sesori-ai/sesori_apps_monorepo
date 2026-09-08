@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 import 'todo.g.dart';
 
@@ -44,7 +43,10 @@ class EventTodoUpdated implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventTodoUpdated && other.id == id && other.properties == properties);
+      identical(this, other) ||
+      (other is EventTodoUpdated &&
+          other.id == id &&
+          other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);

@@ -32,5 +32,6 @@ sealed class OpenCodeOwnershipRecord with _$OpenCodeOwnershipRecord {
     required OpenCodeOwnershipStatus status,
   }) = _OpenCodeOwnershipRecord;
 
-  factory fromJson(Map<String, dynamic> json) => _$OpenCodeOwnershipRecordFromJson(json);
+  factory fromJson(Map<String, dynamic> json) =>
+      _$OpenCodeOwnershipRecordFromJson(json);
 }

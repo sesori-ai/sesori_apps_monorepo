@@ -169,13 +169,14 @@ Map<String, dynamic> _$PluginMessageAttachmentMetadataToJson(
   'source': instance.$type,
 };
 
-Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) => <String, dynamic>{
-  'status': _$PluginToolStatusEnumMap[instance.status]!,
-  'title': ?instance.title,
-  'output': ?instance.output,
-  'error': ?instance.error,
-  'attachments': instance.attachments.map((e) => e.toJson()).toList(),
-};
+Map<String, dynamic> _$PluginToolStateToJson(_PluginToolState instance) =>
+    <String, dynamic>{
+      'status': _$PluginToolStatusEnumMap[instance.status]!,
+      'title': ?instance.title,
+      'output': ?instance.output,
+      'error': ?instance.error,
+      'attachments': instance.attachments.map((e) => e.toJson()).toList(),
+    };
 
 const _$PluginToolStatusEnumMap = {
   PluginToolStatus.pending: 'pending',
@@ -186,14 +187,15 @@ const _$PluginToolStatusEnumMap = {
   PluginToolStatus.unknown: 'unknown',
 };
 
-Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) => <String, dynamic>{
-  'id': instance.id,
-  'sessionID': instance.sessionID,
-  'agent': ?instance.agent,
-  'time': ?instance.time?.toJson(),
-  'promptId': ?instance.promptId,
-  'role': instance.$type,
-};
+Map<String, dynamic> _$PluginMessageUserToJson(PluginMessageUser instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'agent': ?instance.agent,
+      'time': ?instance.time?.toJson(),
+      'promptId': ?instance.promptId,
+      'role': instance.$type,
+    };
 
 Map<String, dynamic> _$PluginMessageAssistantToJson(
   PluginMessageAssistant instance,
@@ -215,20 +217,22 @@ const _$PluginMessageSenderEnumMap = {
   PluginMessageSender.unknown: 'unknown',
 };
 
-Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) => <String, dynamic>{
-  'id': instance.id,
-  'sessionID': instance.sessionID,
-  'agent': ?instance.agent,
-  'modelID': ?instance.modelID,
-  'providerID': ?instance.providerID,
-  'variant': ?instance.variant,
-  'errorName': instance.errorName,
-  'errorMessage': instance.errorMessage,
-  'time': ?instance.time?.toJson(),
-  'role': instance.$type,
-};
+Map<String, dynamic> _$PluginMessageErrorToJson(PluginMessageError instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'sessionID': instance.sessionID,
+      'agent': ?instance.agent,
+      'modelID': ?instance.modelID,
+      'providerID': ?instance.providerID,
+      'variant': ?instance.variant,
+      'errorName': instance.errorName,
+      'errorMessage': instance.errorMessage,
+      'time': ?instance.time?.toJson(),
+      'role': instance.$type,
+    };
 
-Map<String, dynamic> _$PluginMessageTimeToJson(_PluginMessageTime instance) => <String, dynamic>{
-  'created': instance.created,
-  'completed': ?instance.completed,
-};
+Map<String, dynamic> _$PluginMessageTimeToJson(_PluginMessageTime instance) =>
+    <String, dynamic>{
+      'created': instance.created,
+      'completed': ?instance.completed,
+    };

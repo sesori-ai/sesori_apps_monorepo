@@ -14,7 +14,9 @@ class JSONSchema {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is JSONSchema && const DeepCollectionEquality().equals(other.json, json));
+      identical(this, other) ||
+      (other is JSONSchema &&
+          const DeepCollectionEquality().equals(other.json, json));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(json);

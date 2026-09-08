@@ -75,15 +75,7 @@ class PermissionRequest {
           other.tool == tool);
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    sessionID,
-    permission,
-    const DeepCollectionEquality().hash(patterns),
-    const DeepCollectionEquality().hash(metadata),
-    const DeepCollectionEquality().hash(always),
-    tool,
-  );
+  int get hashCode => Object.hash(id, sessionID, permission, const DeepCollectionEquality().hash(patterns), const DeepCollectionEquality().hash(metadata), const DeepCollectionEquality().hash(always), tool);
 
   final String id;
   final String sessionID;
@@ -130,7 +122,9 @@ class PermissionRequestTool {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is PermissionRequestTool && other.messageID == messageID && other.callID == callID);
+      (other is PermissionRequestTool &&
+          other.messageID == messageID &&
+          other.callID == callID);
 
   @override
   int get hashCode => Object.hash(messageID, callID);

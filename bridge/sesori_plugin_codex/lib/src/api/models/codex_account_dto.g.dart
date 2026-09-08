@@ -27,7 +27,8 @@ Map<String, dynamic> _$CodexAccountLoginCancelParamsDtoToJson(
   _CodexAccountLoginCancelParamsDto instance,
 ) => <String, dynamic>{'loginId': instance.loginId};
 
-_CodexAccountLoginCancelResponseDto _$CodexAccountLoginCancelResponseDtoFromJson(Map json) =>
+_CodexAccountLoginCancelResponseDto
+_$CodexAccountLoginCancelResponseDtoFromJson(Map json) =>
     _CodexAccountLoginCancelResponseDto(
       status: $enumDecode(
         _$CodexAccountLoginCancelStatusEnumMap,
@@ -42,7 +43,8 @@ const _$CodexAccountLoginCancelStatusEnumMap = {
   CodexAccountLoginCancelStatus.unknown: 'unknown',
 };
 
-_CodexAccountLoginCompletedNotificationDto _$CodexAccountLoginCompletedNotificationDtoFromJson(Map json) =>
+_CodexAccountLoginCompletedNotificationDto
+_$CodexAccountLoginCompletedNotificationDtoFromJson(Map json) =>
     _CodexAccountLoginCompletedNotificationDto(
       loginId: json['loginId'] as String?,
       success: json['success'] as bool,

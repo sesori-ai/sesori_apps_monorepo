@@ -3,7 +3,6 @@
 
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 
 @immutable
@@ -43,7 +42,10 @@ class EventFileWatcherUpdated implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventFileWatcherUpdated && other.id == id && other.properties == properties);
+      identical(this, other) ||
+      (other is EventFileWatcherUpdated &&
+          other.id == id &&
+          other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);
@@ -88,7 +90,9 @@ class EventFileWatcherUpdatedProperties {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is EventFileWatcherUpdatedProperties && other.file == file && other.event == event);
+      (other is EventFileWatcherUpdatedProperties &&
+          other.file == file &&
+          other.event == event);
 
   @override
   int get hashCode => Object.hash(file, event);

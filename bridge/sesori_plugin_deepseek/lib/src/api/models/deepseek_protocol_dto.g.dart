@@ -6,7 +6,8 @@ part of 'deepseek_protocol_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-DeepSeekSubagentInterruptRequestDto _$DeepSeekSubagentInterruptRequestDtoFromJson(Map json) {
+DeepSeekSubagentInterruptRequestDto
+_$DeepSeekSubagentInterruptRequestDtoFromJson(Map json) {
   $checkKeys(json, allowedKeys: const ['sessionId', 'childSessionId']);
   return DeepSeekSubagentInterruptRequestDto(
     sessionId: json['sessionId'] as String,
@@ -21,7 +22,8 @@ Map<String, dynamic> _$DeepSeekSubagentInterruptRequestDtoToJson(
   'childSessionId': instance.childSessionId,
 };
 
-DeepSeekSubagentInterruptResponseDto _$DeepSeekSubagentInterruptResponseDtoFromJson(Map json) =>
+DeepSeekSubagentInterruptResponseDto
+_$DeepSeekSubagentInterruptResponseDtoFromJson(Map json) =>
     DeepSeekSubagentInterruptResponseDto(
       result: $enumDecode(
         _$DeepSeekSubagentInterruptResultEnumMap,
@@ -116,13 +118,15 @@ DeepSeekCatalogResponseDto _$DeepSeekCatalogResponseDtoFromJson(Map json) {
     ),
     providers: (json['providers'] as List<dynamic>)
         .map(
-          (e) => DeepSeekProviderDto.fromJson(Map<String, dynamic>.from(e as Map)),
+          (e) =>
+              DeepSeekProviderDto.fromJson(Map<String, dynamic>.from(e as Map)),
         )
         .toList(),
     defaultSelectionId: json['defaultSelectionId'] as String?,
     commands: (json['commands'] as List<dynamic>)
         .map(
-          (e) => DeepSeekCommandDto.fromJson(Map<String, dynamic>.from(e as Map)),
+          (e) =>
+              DeepSeekCommandDto.fromJson(Map<String, dynamic>.from(e as Map)),
         )
         .toList(),
     failures: (json['failures'] as List<dynamic>)
@@ -151,21 +155,24 @@ DeepSeekAgentDto _$DeepSeekAgentDtoFromJson(Map json) => DeepSeekAgentDto(
   primary: json['primary'] as bool,
 );
 
-Map<String, dynamic> _$DeepSeekAgentDtoToJson(DeepSeekAgentDto instance) => <String, dynamic>{
-  'id': instance.id,
-  'name': instance.name,
-  'primary': instance.primary,
-};
+Map<String, dynamic> _$DeepSeekAgentDtoToJson(DeepSeekAgentDto instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'name': instance.name,
+      'primary': instance.primary,
+    };
 
-DeepSeekProviderDto _$DeepSeekProviderDtoFromJson(Map json) => DeepSeekProviderDto(
-  id: json['id'] as String,
-  name: json['name'] as String,
-  models: (json['models'] as List<dynamic>)
-      .map(
-        (e) => DeepSeekModelDto.fromJson(Map<String, dynamic>.from(e as Map)),
-      )
-      .toList(),
-);
+DeepSeekProviderDto _$DeepSeekProviderDtoFromJson(Map json) =>
+    DeepSeekProviderDto(
+      id: json['id'] as String,
+      name: json['name'] as String,
+      models: (json['models'] as List<dynamic>)
+          .map(
+            (e) =>
+                DeepSeekModelDto.fromJson(Map<String, dynamic>.from(e as Map)),
+          )
+          .toList(),
+    );
 
 Map<String, dynamic> _$DeepSeekProviderDtoToJson(
   DeepSeekProviderDto instance,
@@ -181,36 +188,41 @@ DeepSeekModelDto _$DeepSeekModelDtoFromJson(Map json) {
     id: json['id'] as String,
     upstreamModelId: json['upstreamModelId'] as String,
     name: json['name'] as String,
-    reasoningEfforts: (json['reasoningEfforts'] as List<dynamic>).map((e) => e as String).toList(),
+    reasoningEfforts: (json['reasoningEfforts'] as List<dynamic>)
+        .map((e) => e as String)
+        .toList(),
     defaultReasoningEffort: json['defaultReasoningEffort'] as String?,
     supportsImages: json['supportsImages'] as bool,
   );
 }
 
-Map<String, dynamic> _$DeepSeekModelDtoToJson(DeepSeekModelDto instance) => <String, dynamic>{
-  'id': instance.id,
-  'upstreamModelId': instance.upstreamModelId,
-  'name': instance.name,
-  'reasoningEfforts': instance.reasoningEfforts,
-  'defaultReasoningEffort': instance.defaultReasoningEffort,
-  'supportsImages': instance.supportsImages,
-};
+Map<String, dynamic> _$DeepSeekModelDtoToJson(DeepSeekModelDto instance) =>
+    <String, dynamic>{
+      'id': instance.id,
+      'upstreamModelId': instance.upstreamModelId,
+      'name': instance.name,
+      'reasoningEfforts': instance.reasoningEfforts,
+      'defaultReasoningEffort': instance.defaultReasoningEffort,
+      'supportsImages': instance.supportsImages,
+    };
 
 DeepSeekCommandDto _$DeepSeekCommandDtoFromJson(Map json) => DeepSeekCommandDto(
   name: json['name'] as String,
   description: json['description'] as String,
 );
 
-Map<String, dynamic> _$DeepSeekCommandDtoToJson(DeepSeekCommandDto instance) => <String, dynamic>{
-  'name': instance.name,
-  'description': instance.description,
-};
+Map<String, dynamic> _$DeepSeekCommandDtoToJson(DeepSeekCommandDto instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'description': instance.description,
+    };
 
-DeepSeekProviderFailureDto _$DeepSeekProviderFailureDtoFromJson(Map json) => DeepSeekProviderFailureDto(
-  providerId: json['providerId'] as String,
-  category: json['category'] as String,
-  message: json['message'] as String,
-);
+DeepSeekProviderFailureDto _$DeepSeekProviderFailureDtoFromJson(Map json) =>
+    DeepSeekProviderFailureDto(
+      providerId: json['providerId'] as String,
+      category: json['category'] as String,
+      message: json['message'] as String,
+    );
 
 Map<String, dynamic> _$DeepSeekProviderFailureDtoToJson(
   DeepSeekProviderFailureDto instance,
@@ -220,11 +232,14 @@ Map<String, dynamic> _$DeepSeekProviderFailureDtoToJson(
   'message': instance.message,
 };
 
-DeepSeekHistoryRequestDto _$DeepSeekHistoryRequestDtoFromJson(Map json) => DeepSeekHistoryRequestDto(
-  sessionId: json['sessionId'] as String,
-  beforeSeq: _nullableInteger(json['beforeSeq']),
-  maxMessages: json['maxMessages'] == null ? 50 : _integer(json['maxMessages']),
-);
+DeepSeekHistoryRequestDto _$DeepSeekHistoryRequestDtoFromJson(Map json) =>
+    DeepSeekHistoryRequestDto(
+      sessionId: json['sessionId'] as String,
+      beforeSeq: _nullableInteger(json['beforeSeq']),
+      maxMessages: json['maxMessages'] == null
+          ? 50
+          : _integer(json['maxMessages']),
+    );
 
 Map<String, dynamic> _$DeepSeekHistoryRequestDtoToJson(
   DeepSeekHistoryRequestDto instance,
@@ -234,7 +249,8 @@ Map<String, dynamic> _$DeepSeekHistoryRequestDtoToJson(
   'maxMessages': instance.maxMessages,
 };
 
-DeepSeekPaginatedHistoryResponseDto _$DeepSeekPaginatedHistoryResponseDtoFromJson(Map json) =>
+DeepSeekPaginatedHistoryResponseDto
+_$DeepSeekPaginatedHistoryResponseDtoFromJson(Map json) =>
     DeepSeekPaginatedHistoryResponseDto(
       updates: (json['updates'] as List<dynamic>)
           .map(
@@ -293,7 +309,8 @@ Map<String, dynamic> _$DeepSeekSessionUpdateEnvelopeDtoToJson(
   'update': instance.update,
 };
 
-DeepSeekEnvelopeDeepSeekMetadataDto _$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(Map json) =>
+DeepSeekEnvelopeDeepSeekMetadataDto
+_$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(Map json) =>
     DeepSeekEnvelopeDeepSeekMetadataDto(
       messageCreatedAt: _nullableInteger(json['messageCreatedAt']),
       subagent: json['subagent'] == null
@@ -310,18 +327,19 @@ Map<String, dynamic> _$DeepSeekEnvelopeDeepSeekMetadataDtoToJson(
   'subagent': ?instance.subagent?.toJson(),
 };
 
-DeepSeekSubagentStartedDto _$DeepSeekSubagentStartedDtoFromJson(Map json) => DeepSeekSubagentStartedDto(
-  sessionId: json['sessionId'] as String,
-  childSessionId: json['childSessionId'] as String,
-  toolCallId: json['toolCallId'] as String,
-  prompt: json['prompt'] as String,
-  label: json['label'] as String,
-  mode: $enumDecode(
-    _$DeepSeekSubagentModeEnumMap,
-    json['mode'],
-    unknownValue: DeepSeekSubagentMode.unknown,
-  ),
-);
+DeepSeekSubagentStartedDto _$DeepSeekSubagentStartedDtoFromJson(Map json) =>
+    DeepSeekSubagentStartedDto(
+      sessionId: json['sessionId'] as String,
+      childSessionId: json['childSessionId'] as String,
+      toolCallId: json['toolCallId'] as String,
+      prompt: json['prompt'] as String,
+      label: json['label'] as String,
+      mode: $enumDecode(
+        _$DeepSeekSubagentModeEnumMap,
+        json['mode'],
+        unknownValue: DeepSeekSubagentMode.unknown,
+      ),
+    );
 
 Map<String, dynamic> _$DeepSeekSubagentStartedDtoToJson(
   DeepSeekSubagentStartedDto instance,
@@ -341,16 +359,17 @@ const _$DeepSeekSubagentModeEnumMap = {
   DeepSeekSubagentMode.unknown: 'unknown',
 };
 
-DeepSeekSubagentEndedDto _$DeepSeekSubagentEndedDtoFromJson(Map json) => DeepSeekSubagentEndedDto(
-  sessionId: json['sessionId'] as String,
-  childSessionId: json['childSessionId'] as String,
-  stopReason: $enumDecode(
-    _$DeepSeekSubagentStopReasonEnumMap,
-    json['stopReason'],
-    unknownValue: DeepSeekSubagentStopReason.unknown,
-  ),
-  summary: json['summary'] as String?,
-);
+DeepSeekSubagentEndedDto _$DeepSeekSubagentEndedDtoFromJson(Map json) =>
+    DeepSeekSubagentEndedDto(
+      sessionId: json['sessionId'] as String,
+      childSessionId: json['childSessionId'] as String,
+      stopReason: $enumDecode(
+        _$DeepSeekSubagentStopReasonEnumMap,
+        json['stopReason'],
+        unknownValue: DeepSeekSubagentStopReason.unknown,
+      ),
+      summary: json['summary'] as String?,
+    );
 
 Map<String, dynamic> _$DeepSeekSubagentEndedDtoToJson(
   DeepSeekSubagentEndedDto instance,
@@ -371,21 +390,22 @@ const _$DeepSeekSubagentStopReasonEnumMap = {
   DeepSeekSubagentStopReason.unknown: 'unknown',
 };
 
-DeepSeekSubagentReplayDto _$DeepSeekSubagentReplayDtoFromJson(Map json) => DeepSeekSubagentReplayDto(
-  prompt: json['prompt'] as String,
-  label: json['label'] as String,
-  mode: $enumDecode(
-    _$DeepSeekSubagentModeEnumMap,
-    json['mode'],
-    unknownValue: DeepSeekSubagentMode.unknown,
-  ),
-  childSessionId: json['childSessionId'] as String?,
-  ended: json['ended'] == null
-      ? null
-      : DeepSeekSubagentReplayEndedDto.fromJson(
-          Map<String, dynamic>.from(json['ended'] as Map),
-        ),
-);
+DeepSeekSubagentReplayDto _$DeepSeekSubagentReplayDtoFromJson(Map json) =>
+    DeepSeekSubagentReplayDto(
+      prompt: json['prompt'] as String,
+      label: json['label'] as String,
+      mode: $enumDecode(
+        _$DeepSeekSubagentModeEnumMap,
+        json['mode'],
+        unknownValue: DeepSeekSubagentMode.unknown,
+      ),
+      childSessionId: json['childSessionId'] as String?,
+      ended: json['ended'] == null
+          ? null
+          : DeepSeekSubagentReplayEndedDto.fromJson(
+              Map<String, dynamic>.from(json['ended'] as Map),
+            ),
+    );
 
 Map<String, dynamic> _$DeepSeekSubagentReplayDtoToJson(
   DeepSeekSubagentReplayDto instance,
@@ -415,10 +435,11 @@ Map<String, dynamic> _$DeepSeekSubagentReplayEndedDtoToJson(
   'summary': ?instance.summary,
 };
 
-DeepSeekRenameRequestDto _$DeepSeekRenameRequestDtoFromJson(Map json) => DeepSeekRenameRequestDto(
-  sessionId: json['sessionId'] as String,
-  title: json['title'] as String,
-);
+DeepSeekRenameRequestDto _$DeepSeekRenameRequestDtoFromJson(Map json) =>
+    DeepSeekRenameRequestDto(
+      sessionId: json['sessionId'] as String,
+      title: json['title'] as String,
+    );
 
 Map<String, dynamic> _$DeepSeekRenameRequestDtoToJson(
   DeepSeekRenameRequestDto instance,
@@ -434,14 +455,17 @@ Map<String, dynamic> _$DeepSeekRenameResponseDtoToJson(
   DeepSeekRenameResponseDto instance,
 ) => <String, dynamic>{'title': instance.title};
 
-DeepSeekOrdinaryQuestionDto _$DeepSeekOrdinaryQuestionDtoFromJson(Map json) => DeepSeekOrdinaryQuestionDto(
-  id: json['id'] as String,
-  text: json['text'] as String,
-  header: json['header'] as String?,
-  detail: json['detail'] as String?,
-  options: (json['options'] as List<dynamic>?)?.map((e) => e as String).toList(),
-  multiSelect: json['multiSelect'] as bool?,
-);
+DeepSeekOrdinaryQuestionDto _$DeepSeekOrdinaryQuestionDtoFromJson(Map json) =>
+    DeepSeekOrdinaryQuestionDto(
+      id: json['id'] as String,
+      text: json['text'] as String,
+      header: json['header'] as String?,
+      detail: json['detail'] as String?,
+      options: (json['options'] as List<dynamic>?)
+          ?.map((e) => e as String)
+          .toList(),
+      multiSelect: json['multiSelect'] as bool?,
+    );
 
 Map<String, dynamic> _$DeepSeekOrdinaryQuestionDtoToJson(
   DeepSeekOrdinaryQuestionDto instance,
@@ -485,7 +509,8 @@ DeepSeekAskUserQuestionRequestDto _$DeepSeekAskUserQuestionRequestDtoFromJson(
   sessionId: json['sessionId'] as String,
   questions: (json['questions'] as List<dynamic>)
       .map(
-        (e) => DeepSeekQuestionDto.fromJson(Map<String, dynamic>.from(e as Map)),
+        (e) =>
+            DeepSeekQuestionDto.fromJson(Map<String, dynamic>.from(e as Map)),
       )
       .toList(),
 );
@@ -497,11 +522,14 @@ Map<String, dynamic> _$DeepSeekAskUserQuestionRequestDtoToJson(
   'questions': instance.questions.map((e) => e.toJson()).toList(),
 };
 
-DeepSeekQuestionAnswerDto _$DeepSeekQuestionAnswerDtoFromJson(Map json) => DeepSeekQuestionAnswerDto._(
-  questionId: json['questionId'] as String,
-  selectedLabels: (json['selectedLabels'] as List<dynamic>).map((e) => e as String).toList(),
-  customAnswer: json['customAnswer'] as String?,
-);
+DeepSeekQuestionAnswerDto _$DeepSeekQuestionAnswerDtoFromJson(Map json) =>
+    DeepSeekQuestionAnswerDto._(
+      questionId: json['questionId'] as String,
+      selectedLabels: (json['selectedLabels'] as List<dynamic>)
+          .map((e) => e as String)
+          .toList(),
+      customAnswer: json['customAnswer'] as String?,
+    );
 
 Map<String, dynamic> _$DeepSeekQuestionAnswerDtoToJson(
   DeepSeekQuestionAnswerDto instance,
@@ -529,11 +557,12 @@ Map<String, dynamic> _$DeepSeekAskUserQuestionResponseDtoToJson(
   'answers': instance.answers.map((e) => e.toJson()).toList(),
 };
 
-DeepSeekRetryStatusDto _$DeepSeekRetryStatusDtoFromJson(Map json) => DeepSeekRetryStatusDto(
-  sessionId: json['sessionId'] as String,
-  attempt: _integer(json['attempt']),
-  limit: _nullableInteger(json['limit']),
-);
+DeepSeekRetryStatusDto _$DeepSeekRetryStatusDtoFromJson(Map json) =>
+    DeepSeekRetryStatusDto(
+      sessionId: json['sessionId'] as String,
+      attempt: _integer(json['attempt']),
+      limit: _nullableInteger(json['limit']),
+    );
 
 Map<String, dynamic> _$DeepSeekRetryStatusDtoToJson(
   DeepSeekRetryStatusDto instance,
@@ -552,7 +581,8 @@ Map<String, dynamic> _$DeepSeekCompactionStartedStatusDtoToJson(
   DeepSeekCompactionStartedStatusDto instance,
 ) => <String, dynamic>{'sessionId': instance.sessionId, 'kind': instance.kind};
 
-DeepSeekCompactionCompletedStatusDto _$DeepSeekCompactionCompletedStatusDtoFromJson(Map json) =>
+DeepSeekCompactionCompletedStatusDto
+_$DeepSeekCompactionCompletedStatusDtoFromJson(Map json) =>
     DeepSeekCompactionCompletedStatusDto(
       sessionId: json['sessionId'] as String,
     );
@@ -561,10 +591,11 @@ Map<String, dynamic> _$DeepSeekCompactionCompletedStatusDtoToJson(
   DeepSeekCompactionCompletedStatusDto instance,
 ) => <String, dynamic>{'sessionId': instance.sessionId, 'kind': instance.kind};
 
-DeepSeekWarningStatusDto _$DeepSeekWarningStatusDtoFromJson(Map json) => DeepSeekWarningStatusDto(
-  sessionId: json['sessionId'] as String,
-  message: json['message'] as String,
-);
+DeepSeekWarningStatusDto _$DeepSeekWarningStatusDtoFromJson(Map json) =>
+    DeepSeekWarningStatusDto(
+      sessionId: json['sessionId'] as String,
+      message: json['message'] as String,
+    );
 
 Map<String, dynamic> _$DeepSeekWarningStatusDtoToJson(
   DeepSeekWarningStatusDto instance,
@@ -574,7 +605,8 @@ Map<String, dynamic> _$DeepSeekWarningStatusDtoToJson(
   'kind': instance.kind,
 };
 
-DeepSeekSessionStopSessionRequestDto _$DeepSeekSessionStopSessionRequestDtoFromJson(Map json) {
+DeepSeekSessionStopSessionRequestDto
+_$DeepSeekSessionStopSessionRequestDtoFromJson(Map json) {
   $checkKeys(json, allowedKeys: const ['sessionId', 'kind']);
   return DeepSeekSessionStopSessionRequestDto(
     sessionId: json['sessionId'] as String,

@@ -38,7 +38,10 @@ class ContextOverflowError {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is ContextOverflowError && other.name == name && other.data == data);
+      identical(this, other) ||
+      (other is ContextOverflowError &&
+          other.name == name &&
+          other.data == data);
 
   @override
   int get hashCode => Object.hash(name, data);
@@ -83,7 +86,9 @@ class ContextOverflowErrorData {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ContextOverflowErrorData && other.message == message && other.responseBody == responseBody);
+      (other is ContextOverflowErrorData &&
+          other.message == message &&
+          other.responseBody == responseBody);
 
   @override
   int get hashCode => Object.hash(message, responseBody);

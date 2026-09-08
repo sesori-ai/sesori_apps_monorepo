@@ -19,11 +19,11 @@ class Console._() {
 
   /// Writes a user-facing warning to stderr in yellow, followed by a newline.
   static void warning(String text) => stderr.writeln(
-    AnsiColorFormatter.colorize(text: text, color: AnsiColor.yellow, out: stderr),
-  );
+        AnsiColorFormatter.colorize(text: text, color: AnsiColor.yellow, out: stderr),
+      );
 
   /// Writes a user-facing error to stderr in red, followed by a newline.
   static void error(String text) => stderr.writeln(
-    AnsiColorFormatter.colorize(text: text, color: AnsiColor.red, out: stderr),
-  );
+        AnsiColorFormatter.colorize(text: text, color: AnsiColor.red, out: stderr),
+      );
 }

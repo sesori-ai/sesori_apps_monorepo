@@ -75,8 +75,7 @@ class TextPartInput {
           const DeepCollectionEquality().equals(other.metadata, metadata));
 
   @override
-  int get hashCode =>
-      Object.hash(id, type, text, synthetic, ignored, time, const DeepCollectionEquality().hash(metadata));
+  int get hashCode => Object.hash(id, type, text, synthetic, ignored, time, const DeepCollectionEquality().hash(metadata));
 
   final String? id;
   final String type;
@@ -122,7 +121,10 @@ class TextPartInputTime {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is TextPartInputTime && other.start == start && other.end == end);
+      identical(this, other) ||
+      (other is TextPartInputTime &&
+          other.start == start &&
+          other.end == end);
 
   @override
   int get hashCode => Object.hash(start, end);

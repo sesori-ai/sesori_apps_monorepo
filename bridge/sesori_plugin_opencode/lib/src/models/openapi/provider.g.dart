@@ -4,7 +4,6 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
-
 import 'model.g.dart';
 
 @immutable
@@ -27,9 +26,7 @@ class Provider {
       env: (json["env"] as List<dynamic>).cast<String>(),
       key: json["key"] as String?,
       options: json["options"] as Map<String, dynamic>,
-      models: (json["models"] as Map<String, dynamic>).map(
-        (k, v) => MapEntry(k, Model.fromJson(v as Map<String, dynamic>)),
-      ),
+      models: (json["models"] as Map<String, dynamic>).map((k, v) => MapEntry(k, Model.fromJson(v as Map<String, dynamic>))),
     );
   }
 
@@ -80,15 +77,7 @@ class Provider {
           const DeepCollectionEquality().equals(other.models, models));
 
   @override
-  int get hashCode => Object.hash(
-    id,
-    name,
-    source,
-    const DeepCollectionEquality().hash(env),
-    key,
-    const DeepCollectionEquality().hash(options),
-    const DeepCollectionEquality().hash(models),
-  );
+  int get hashCode => Object.hash(id, name, source, const DeepCollectionEquality().hash(env), key, const DeepCollectionEquality().hash(options), const DeepCollectionEquality().hash(models));
 
   final String id;
   final String name;

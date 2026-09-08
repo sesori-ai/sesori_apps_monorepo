@@ -109,11 +109,11 @@ sealed class CodexImageBearingContentDto with _$CodexImageBearingContentDto {
 
   const factory unknown() = CodexUnknownImageBearingContentDto;
 
-  factory fromJson(Map<String, dynamic> json) => _$CodexImageBearingContentDtoFromJson(json);
+  factory fromJson(Map<String, dynamic> json) =>
+      _$CodexImageBearingContentDtoFromJson(json);
 }
 
-class const CodexImageBearingContentListConverter()
-    implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
+class const CodexImageBearingContentListConverter() implements JsonConverter<List<CodexImageBearingContentDto>, Object?> {
   @override
   List<CodexImageBearingContentDto> fromJson(Object? json) {
     if (json == null) return const [];

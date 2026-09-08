@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'question_option.g.dart';
 
 @immutable
@@ -20,9 +19,7 @@ class QuestionInfo {
     return QuestionInfo(
       question: json["question"] as String,
       header: json["header"] as String,
-      options: (json["options"] as List<dynamic>)
-          .map((e) => QuestionOption.fromJson(e as Map<String, dynamic>))
-          .toList(),
+      options: (json["options"] as List<dynamic>).map((e) => QuestionOption.fromJson(e as Map<String, dynamic>)).toList(),
       multiple: json["multiple"] as bool?,
       custom: json["custom"] as bool?,
     );

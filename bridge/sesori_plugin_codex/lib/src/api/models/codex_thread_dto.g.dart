@@ -6,16 +6,17 @@ part of 'codex_thread_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexThreadEnvelopeDto _$CodexThreadEnvelopeDtoFromJson(Map json) => _CodexThreadEnvelopeDto(
-  thread: json['thread'] == null
-      ? null
-      : CodexThreadDto.fromJson(
-          Map<String, dynamic>.from(json['thread'] as Map),
-        ),
-  model: json['model'] as String?,
-  modelProvider: json['modelProvider'] as String?,
-  cwd: json['cwd'] as String?,
-);
+_CodexThreadEnvelopeDto _$CodexThreadEnvelopeDtoFromJson(Map json) =>
+    _CodexThreadEnvelopeDto(
+      thread: json['thread'] == null
+          ? null
+          : CodexThreadDto.fromJson(
+              Map<String, dynamic>.from(json['thread'] as Map),
+            ),
+      model: json['model'] as String?,
+      modelProvider: json['modelProvider'] as String?,
+      cwd: json['cwd'] as String?,
+    );
 
 _CodexThreadDto _$CodexThreadDtoFromJson(Map json) => _CodexThreadDto(
   id: json['id'] as String?,

@@ -10,10 +10,7 @@ class AntigravityModelCatalog({
 }
 
 /// Only a fresh session response establishes the backend's new-session default.
-enum AntigravityCatalogSource() {
-  newSession,
-  existingSession,
-}
+enum AntigravityCatalogSource() { newSession, existingSession }
 
 /// The only permission mode Sesori may select. Other agent modes are never exposed.
 enum AntigravitySessionMode({required final String id}) {

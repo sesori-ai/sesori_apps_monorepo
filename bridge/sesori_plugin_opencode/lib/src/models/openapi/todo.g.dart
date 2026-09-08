@@ -44,7 +44,10 @@ class Todo {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Todo && other.content == content && other.status == status && other.priority == priority);
+      (other is Todo &&
+          other.content == content &&
+          other.status == status &&
+          other.priority == priority);
 
   @override
   int get hashCode => Object.hash(content, status, priority);

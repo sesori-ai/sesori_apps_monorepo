@@ -3,7 +3,6 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-
 import 'tool_state.g.dart';
 
 @immutable
@@ -44,7 +43,9 @@ class ToolStatePending implements ToolState {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ToolStatePending && const DeepCollectionEquality().equals(other.input, input) && other.raw == raw);
+      (other is ToolStatePending &&
+          const DeepCollectionEquality().equals(other.input, input) &&
+          other.raw == raw);
 
   @override
   int get hashCode => Object.hash(const DeepCollectionEquality().hash(input), raw);

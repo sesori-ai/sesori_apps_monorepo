@@ -9,7 +9,9 @@ part of 'plugin_command.dart';
 _PluginCommand _$PluginCommandFromJson(Map json) => _PluginCommand(
   name: json['name'] as String,
   template: json['template'] as String?,
-  hints: (json['hints'] as List<dynamic>?)?.map((e) => e as String).toList() ?? const <String>[],
+  hints:
+      (json['hints'] as List<dynamic>?)?.map((e) => e as String).toList() ??
+      const <String>[],
   description: json['description'] as String?,
   agent: json['agent'] as String?,
   model: json['model'] as String?,
@@ -18,17 +20,18 @@ _PluginCommand _$PluginCommandFromJson(Map json) => _PluginCommand(
   subtask: json['subtask'] as bool?,
 );
 
-Map<String, dynamic> _$PluginCommandToJson(_PluginCommand instance) => <String, dynamic>{
-  'name': instance.name,
-  'template': ?instance.template,
-  'hints': instance.hints,
-  'description': ?instance.description,
-  'agent': ?instance.agent,
-  'model': ?instance.model,
-  'provider': ?instance.provider,
-  'source': ?_$PluginCommandSourceEnumMap[instance.source],
-  'subtask': ?instance.subtask,
-};
+Map<String, dynamic> _$PluginCommandToJson(_PluginCommand instance) =>
+    <String, dynamic>{
+      'name': instance.name,
+      'template': ?instance.template,
+      'hints': instance.hints,
+      'description': ?instance.description,
+      'agent': ?instance.agent,
+      'model': ?instance.model,
+      'provider': ?instance.provider,
+      'source': ?_$PluginCommandSourceEnumMap[instance.source],
+      'subtask': ?instance.subtask,
+    };
 
 const _$PluginCommandSourceEnumMap = {
   PluginCommandSource.command: 'command',

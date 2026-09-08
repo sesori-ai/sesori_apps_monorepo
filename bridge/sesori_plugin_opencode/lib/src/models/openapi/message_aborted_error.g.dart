@@ -38,7 +38,10 @@ class MessageAbortedError {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is MessageAbortedError && other.name == name && other.data == data);
+      identical(this, other) ||
+      (other is MessageAbortedError &&
+          other.name == name &&
+          other.data == data);
 
   @override
   int get hashCode => Object.hash(name, data);
@@ -77,7 +80,9 @@ class MessageAbortedErrorData {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is MessageAbortedErrorData && other.message == message);
+      identical(this, other) ||
+      (other is MessageAbortedErrorData &&
+          other.message == message);
 
   @override
   int get hashCode => message.hashCode;

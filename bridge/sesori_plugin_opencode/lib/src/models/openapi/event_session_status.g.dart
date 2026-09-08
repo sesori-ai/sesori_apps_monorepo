@@ -2,7 +2,6 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
-
 import 'event.g.dart';
 import 'session_status.g.dart';
 
@@ -43,7 +42,10 @@ class EventSessionStatus implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) || (other is EventSessionStatus && other.id == id && other.properties == properties);
+      identical(this, other) ||
+      (other is EventSessionStatus &&
+          other.id == id &&
+          other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);
@@ -88,7 +90,9 @@ class EventSessionStatusProperties {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is EventSessionStatusProperties && other.sessionID == sessionID && other.status == status);
+      (other is EventSessionStatusProperties &&
+          other.sessionID == sessionID &&
+          other.status == status);
 
   @override
   int get hashCode => Object.hash(sessionID, status);
