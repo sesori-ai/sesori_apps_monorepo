@@ -1,6 +1,7 @@
 // Developer-only controls use literal labels; values enter through validated parameter descriptors.
 // ignore_for_file: no_slop_linter/avoid_string_literals_in_widgets, no_slop_linter/prefer_specific_type
 
+import "package:flutter/scheduler.dart";
 import "package:flutter/services.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -10,6 +11,24 @@ import "motion_parameters.dart";
 enum _InteractionMode() {
   interact,
   select,
+}
+
+enum _PlaybackSpeed() {
+  normal,
+  half,
+  fifth;
+
+  String get label => switch (this) {
+    normal => "Normal (1×)",
+    half => "0.5×",
+    fifth => "0.2×",
+  };
+
+  double get dilation => switch (this) {
+    normal => 1,
+    half => 2,
+    fifth => 5,
+  };
 }
 
 sealed class const _TargetSelection();
@@ -39,6 +58,26 @@ class _MotionTuningHostState() extends State<MotionTuningHost> {
   bool _expanded = false;
   bool _original = false;
   String? _notice;
+  _PlaybackSpeed _speed = _PlaybackSpeed.normal;
+  late final double _previousTimeDilation;
+
+  @override
+  void initState() {
+    super.initState();
+    _previousTimeDilation = timeDilation;
+    timeDilation = _speed.dilation;
+  }
+
+  void _setSpeed({required _PlaybackSpeed speed}) {
+    timeDilation = speed.dilation;
+    setState(() => _speed = speed);
+  }
+
+  @override
+  void dispose() {
+    timeDilation = _previousTimeDilation;
+    super.dispose();
+  }
 
   MotionTarget? get _target => switch (_selection) {
     _SelectedTarget(:final target) => target,
@@ -281,7 +320,7 @@ class const _MotionPanel({
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
-                              "Motion",
+                              host._speed == _PlaybackSpeed.normal ? "Motion" : "Motion · ${host._speed.label}",
                               style: prego.textTheme.textSm.bold,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -318,6 +357,15 @@ class const _MotionPanel({
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.stretch,
                   children: [
+                    Text("Global animation speed", style: prego.textTheme.textSm.medium),
+                    _MotionMenu<_PlaybackSpeed>(
+                      label: host._speed.label,
+                      options: _PlaybackSpeed.values,
+                      labelOf: ({required _PlaybackSpeed option}) => option.label,
+                      onSelected: ({required _PlaybackSpeed option}) => host._setSpeed(speed: option),
+                    ),
+                    Text("Applies immediately across the preview.", style: prego.textTheme.textXs.regular),
+                    const SizedBox(height: 12),
                     _MotionMenu<MotionTarget>(
                       label: target?.label ?? "Choose an animation",
                       options: host.widget.targets,

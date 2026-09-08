@@ -1,3 +1,4 @@
+import "package:flutter/scheduler.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_motion_tuning/sesori_motion_tuning.dart";
@@ -22,6 +23,64 @@ const _hidden = MotionTarget(id: "hidden", label: "Hidden transition", parameter
 const _outer = MotionTarget(id: "outer", label: "Outer transition", parameters: []);
 
 void main() {
+  testWidgets("global speed slows unconnected tickers and restores normal without editing values", (tester) async {
+    addTearDown(() => timeDilation = 1);
+    final runs = <MotionSnapshot>[];
+    await _pump(
+      tester: tester,
+      overlapping: false,
+      textScale: 1,
+      onPress: () {},
+      onReplay: ({required target, required values}) => runs.add(values),
+    );
+    await tester.tap(find.byTooltip("Expand motion controls"));
+    await tester.pumpAndSettle();
+    final animation = AnimationController(vsync: tester, duration: const Duration(seconds: 1));
+    addTearDown(animation.dispose);
+    var selectedLabel = "Normal (1×)";
+    for (final (label, progress) in [("0.5×", 0.05), ("0.2×", 0.02), ("Normal (1×)", 0.1)]) {
+      await tester.tap(find.text(selectedLabel));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(label));
+      await tester.pumpAndSettle();
+      selectedLabel = label;
+      animation.forward(from: 0);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(animation.value, closeTo(progress, 0.001));
+      animation.stop();
+    }
+    expect(runs, isEmpty);
+    await _selectCard(tester: tester);
+    await tester.tap(find.byTooltip("Replay animation"));
+    expect(runs.single.duration(parameter: _duration), const Duration(milliseconds: 200));
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(timeDilation, 1);
+  });
+
+  testWidgets("slow speed stays visible when collapsed and is cleared on leaving the preview", (tester) async {
+    addTearDown(() => timeDilation = 1);
+    await _pump(
+      tester: tester,
+      overlapping: false,
+      textScale: 1,
+      onPress: () {},
+      onReplay: ({required target, required values}) {},
+    );
+    await tester.tap(find.byTooltip("Expand motion controls"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Normal (1×)"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("0.2×"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip("Collapse motion controls"));
+    await tester.pumpAndSettle();
+    expect(find.text("Motion · 0.2×"), findsOneWidget);
+    expect(timeDilation, 5);
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(timeDilation, 1);
+  });
+
   testWidgets("selection consumes a tap, then normal interaction resumes", (tester) async {
     var presses = 0;
     await _pump(

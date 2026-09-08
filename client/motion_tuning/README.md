@@ -7,6 +7,15 @@ animations it supports; the editor does not discover arbitrary Flutter widgets.
 
 ## Use the editor
 
+Expand **Motion** and set **Global animation speed** to **Normal (1×)**,
+**0.5×**, or **0.2×** to inspect timing and glitches. It applies immediately to
+all Flutter ticker-driven animations in the preview, including unconnected
+widgets and route transitions. Slow speed remains visible in the collapsed
+header. Normal restores ordinary timing; leaving the preview restores the
+previous global clock. Speed is temporary and does not alter duration values
+or clipboard presets. Dart timers, delayed fixture actions, and native platform
+animations keep their own clocks.
+
 1. Open a connected preview, expand **Motion**, and choose an animation from the
    list. Alternatively, activate **Select an element** and tap its marked region.
    Selection consumes the tap; overlapping regions offer a choice.
