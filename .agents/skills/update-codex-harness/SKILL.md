@@ -205,20 +205,27 @@ an incidental event or an assumed PATH binary version. State branch retirement
 and minimum version. Never weaken approval or sandbox semantics to accommodate
 an older runtime.
 
-## Phase 3 — Safe per-target probe matrix
+## Phase 3 — Safe current-host probe
 
-Validate each of the six managed archives independently. Record asset name,
-digest, OS/architecture, disposable boundary, production extraction/placement,
-exact version, stdio handshake, and WebSocket handshake results. A host-only
-smoke does not validate other platforms or another transport.
+Verify the downloaded SHA-256 of all six managed archives as opaque bytes;
+checksum validation does not require extracting or launching them. Run the
+installation and live probes below only for the archive matching the current
+host OS and architecture. Other platforms do not need installation or launch
+probes to approve a target refresh; report them as untested, not validated by
+the host result. Record the tested asset and digest, OS/architecture, disposable
+boundary, production extraction/placement, exact version, stdio handshake, and
+WebSocket handshake results. Both current-host transports must be checked.
 
-1. Establish a target-appropriate disposable VM/container/restricted OS account
-   before parsing archive contents. No sensitive mounts; block outbound network
-   access (local loopback may be allowed for WebSocket probes). Temporary HOME
-   or environment filtering alone is not a sandbox. If no boundary is available,
-   do not inspect, extract, or execute the archive; mark the row unvalidated.
-2. Download inside that boundary, or transfer opaque bytes into it. Verify the
-   matching SHA-256 before parsing. Inspect `CodexPluginDescriptor.installRuntime()`
+1. Establish a current-host disposable VM/container/restricted OS account before
+   parsing archive contents. No sensitive mounts; block outbound network access
+   (local loopback may be allowed for WebSocket probes). Temporary HOME or
+   environment filtering alone is not a sandbox. If no boundary is available,
+   do not inspect, extract, or execute the host archive; report the current-host
+   probe as blocked.
+2. Download the current-host archive inside that boundary, or transfer opaque
+   bytes into it. Verify its SHA-256 before parsing. Keep other archives opaque
+   unless an optional platform-specific check is warranted.
+   Inspect `CodexPluginDescriptor.installRuntime()`
    for production wiring, but do not call it for a newer candidate: it hard-codes
    the current manifest. Start at `ManagedRuntimeComposition.createInstaller()`
    with a temporary candidate manifest and matching asset resolver, then exercise
@@ -240,7 +247,7 @@ smoke does not validate other platforms or another transport.
    that `.sesori-runtime-sha256` contains the candidate's bare digest. Generic
    tar extraction or a lone executable check is not a substitute. Apply production
    traversal/link rejection, including rejection of all extracted symlinks.
-   Failure to run this chain blocks the row.
+   Failure to run this chain blocks the current-host probe.
 3. Resolve the extracted entrypoint to an absolute path inside the package.
    Never use bare PATH `codex`, copy the CLI away from its helpers, or launch
    the user's Codex Desktop app or existing app-server.
@@ -310,9 +317,11 @@ smoke does not validate other platforms or another transport.
    capability gates, and required helpers. Schema generation inside the same
    boundary can supplement probes, not replace live protocol checks.
 
-Skipped or failed provenance, extraction, version, or required transport checks
-are hard gates, not passing platform limitations. This manifest has one target
-for all six archives: any unvalidated row blocks the whole target refresh.
+Skipped or failed provenance, current-host extraction, version, or required
+current-host transport checks block the target refresh. Missing install/launch
+results for other platforms do not block it. Optional platform checks may be
+added for a concrete release change or regression; report any observed failure.
+All six archive digests and source-to-artifact verification remain required.
 Never mix old digests with a new shared release URL. Continue source-only audit
 and report useful findings even when pinning is blocked; label them unprobed.
 
@@ -325,7 +334,8 @@ Before editing target or protocol code report:
   separating published metadata, checksum-list agreement, and downloaded hashes;
 - source-to-artifact evidence or blocker; complete diff size/coverage;
 - high/medium findings with immutable links and actual app-server visibility;
-- six-row matrix for extraction, version, stdio and WebSocket, including skips;
+- current-host OS/architecture, extraction, version, stdio and WebSocket results;
+  list other platforms as untested unless optionally checked;
 - proposed version-only edits versus capabilities, simplifications, follow-ups;
 - tolerant-path versus justified version-selected implementation strategy and
   compatibility retirement thresholds.
@@ -339,6 +349,11 @@ internal shims. Apply repository architecture-review rules only to approved
 architecture-bearing production work, not this skill or a target-only edit.
 
 ## Phase 5 — Implement only after approval and passing gates
+
+Require all six archive digests, source-to-artifact verification, successful
+current-host install/version/transport probes, and user approval. Other
+platforms do not require installation or launch probes; their untested status
+does not block the complete six-asset target update.
 
 1. Update `CodexRuntimeManifest.targetVersion`, six matching digests, and
    target-specific manifest comments. Strip GitHub's `sha256:` prefix: manifest
