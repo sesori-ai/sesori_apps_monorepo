@@ -34,8 +34,9 @@ On Linux, install Info-ZIP `unzip` with ZipInfo support first; see the
 Sesori checks the extractor before downloading, but does not install system packages for you.
 
 The bridge downloads directly from `dl.google.com`, checks the pinned archive digest, rejects unsafe archive paths and
-symlinks, hardens the executables, and validates the pair using an isolated **initialize-only** ACP process before
-placement. Validation creates no session and initiates no OAuth. Disposable validation state is cleaned up before a
+symlinks, and on POSIX makes the server executable; the sibling harness retains its archived permission mode.
+It then validates using an isolated **initialize-only** ACP process before placement.
+Validation creates no session and initiates no OAuth. Disposable validation state is cleaned up before a
 successful result. Archive listing and extraction each have a conservative two-minute command limit, not a guarantee
 of total installation duration.
 

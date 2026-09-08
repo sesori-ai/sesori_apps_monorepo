@@ -143,9 +143,9 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   SQLite conversation contents or mutate private history files.
 - Local deletion remains a Sesori tombstone plus standard close when advertised. It does not delete Google's
   conversation/profile files; Git/database behavior and UI must describe this honestly.
-- Managed installation is explicit user action, never startup download or background update. Download directly from
-  `dl.google.com`, verify independently computed immutable SHA-256 digests, preserve the pair together, then run the
-  exact ACP identity probe before activation.
+- First managed installation requires explicit user action; existing Sesori-managed installations may upgrade on
+  bridge start. Download directly from `dl.google.com`, verify independently computed immutable SHA-256 digests,
+  preserve the pair together, then run the exact ACP identity probe before activation.
 - Show that the runtime is proprietary and link Google's current terms/docs in setup/product documentation. Sesori
   does not interpret entitlement or copy credentials; the user chooses whether to install and authenticate.
 - No Antigravity-specific analytics. Existing generic authoritative session/auth/install outcomes are sufficient, and
@@ -533,8 +533,8 @@ New persistent mutable state:
 - Google-owned isolated profile under the plugin state root: typed `settings.json` written by Sesori, then token,
   conversation databases, metadata, and brain files written by the official agent. This is required for explicit
   authentication and recovery without touching a user's unrelated Google profile.
-- Managed runtime package directory and existing shared runtime activation metadata after Step 10. No automatic install
-  or update.
+- Managed runtime package directory and existing shared runtime activation metadata after Step 10. First installation
+  is explicit; existing managed installations may upgrade on bridge start.
 - Existing bridge session/project/tombstone tables only. No schema, migration, duplicated session sidecar, or persisted
   auth continuation.
 

@@ -478,6 +478,12 @@
   changed lines across 14 files, including the committed user plan correction.
 - [x] First foreground architecture review `5d75ef9a` approved complete `4fdd433392` → `4ecc6b141f`: all 14 files,
   483 additions + 97 deletions = 580 lines, no findings. Publication metadata is counted separately.
+- Final Step 10.d publication: base `4fdd433392eabde75f1d800b649337206f057421` to
+  head `f9fa90695feba09865a2843fe6fc1751cdb2e2a4`. Summing additions/deletions from
+  `git diff --numstat <base> <head>` gives 764 + 124 = 888 lines across 20 files.
+  Unlike the 580-line review checkpoint, this includes publication/tracker metadata plus the README, client disclosure,
+  shared-UI coverage and Linux preflight follow-ups below. It is a full net diff, not commit churn; no tracker-only
+  reconciliation is omitted. Step 11's later tracker edits are outside this immutable Step 10.d range.
 - [x] Review correction: overview download opens existing detail without installing; detail always shows setup guidance
   before its Install button. Invalid managed-pair guidance includes both Google URLs. No new wire field or UI component.
   Current focused evidence: 12 descriptor tests + 50 client settings tests pass; Antigravity and shared UI analyzers clean.
