@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.c merged; Step 10.d implemented and verified locally
+- **Status:** Steps 1–10.c merged; Step 10.d architecture-approved, publication prepared
 - **Base:** synced with main `4fdd433392eabde75f1d800b649337206f057421` after Step 10.c merge
 - **Current branch:** `antigravity-harness-step-10d-managed-install`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -27,8 +27,8 @@
   report, 15/16 checks were complete with clean Cubic approval; Codex review was still running, so no 16/16 claim is made.
 - **Merged PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c); terminal report
   had 15/16 checks complete, with clean Cubic approval and no actionable Codex feedback.
-- **Open PR:** none.
-- **Next action:** parent-owned independent architecture review and publication for Step 10.d.
+- **Open PR:** Step 10.d publication prepared.
+- **Next action:** publish and monitor Step 10.d; begin Step 11 guidance locally.
 
 ## Fixed PR Series
 
@@ -455,8 +455,8 @@
 ## Step 10.d Checklist
 
 - [x] Added `AntigravityRuntimeManifest` from the already pinned five official release artifacts. Every asset is a ZIP
-  package directory with a conservative two-minute per listing/extraction command budget; no host timing evidence or
-  benchmark gate is introduced. Managed directories use registry package version `1.0.0`, while candidate validation
+  package directory with a conservative two-minute per listing/extraction command budget.
+  Managed directories use registry package version `1.0.0`, while candidate validation
   separately requires runtime identity `agy_acp_server_20260818_01_RC01`.
 - [x] Composed the shared managed installer/cleaner with the existing initialize-only
   `AntigravityRuntimeVersionValidator`. The descriptor keeps explicit -> valid PATH -> installed managed precedence,
@@ -477,7 +477,8 @@
   retention coverage. Same-pinned-directory placement itself is not claimed to roll back after rename.
 - Pre-review cap against `4fdd433392eabde75f1d800b649337206f057421`: 483 additions + 97 deletions = 580
   changed lines across 14 files, including the committed user plan correction.
-- [ ] Parent-owned independent architecture implementation review, push, PR and monitor.
+- [x] First foreground architecture review `5d75ef9a` approved complete `4fdd433392` → `4ecc6b141f`: all 14 files,
+  483 additions + 97 deletions = 580 lines, no findings. Publication metadata is counted separately.
 
 ## Architecture Reviews
 
