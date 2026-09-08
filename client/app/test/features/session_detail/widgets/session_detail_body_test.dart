@@ -848,7 +848,7 @@ void main() {
       expect(find.text("1 pending question"), findsNothing);
       expect(find.text("1 permission request pending"), findsNothing);
       expect(
-        find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.liveRegion == true),
+        find.byWidgetPredicate((widget) => widget is Semantics && (widget.properties.liveRegion ?? false)),
         findsWidgets,
       );
       if (!cold) {
