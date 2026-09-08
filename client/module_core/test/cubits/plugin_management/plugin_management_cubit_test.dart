@@ -27,7 +27,7 @@ Future<void> _settle() async {
 void main() {
   late _MockPluginManagementService service;
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
-  late BehaviorSubject<Map<String, PluginInstallProgress>> installProgress;
+  late BehaviorSubject<Map<String, PluginInstallState>> installStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late PluginManagementCubit cubit;
@@ -46,11 +46,11 @@ void main() {
     service = _MockPluginManagementService();
     urlLauncher = _MockUrlLauncher();
     snapshots = BehaviorSubject();
-    installProgress = BehaviorSubject.seeded(const {});
+    installStates = BehaviorSubject.seeded(const {});
     authenticationTerminal = StreamController.broadcast(sync: true);
     authenticationChallenges = BehaviorSubject.seeded(const {});
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
-    when(() => service.installProgress).thenAnswer((_) => installProgress.stream);
+    when(() => service.installStates).thenAnswer((_) => installStates.stream);
     when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
     when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
@@ -93,7 +93,7 @@ void main() {
     await cubit.close();
     await rescan.onDispose();
     await snapshots.close();
-    await installProgress.close();
+    await installStates.close();
     await authenticationTerminal.close();
     await authenticationChallenges.close();
   });
@@ -160,8 +160,10 @@ void main() {
     ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.invalidRedirect());
     await cubit.submitAuthenticationRedirect(intent: invalidIntent);
     final invalidState = (cubit.state as PluginManagementReady).authentication;
-    expect((invalidState as PluginAuthenticationPresentationChallenge).challenge,
-        isA<PluginAuthenticationInvalidRedirectPresentation>());
+    expect(
+      (invalidState as PluginAuthenticationPresentationChallenge).challenge,
+      isA<PluginAuthenticationInvalidRedirectPresentation>(),
+    );
     const intent = PluginAuthenticationContinuationIntent.pasted(
       rawInput: "http://127.0.0.1/callback?code=opaque",
     );
@@ -459,23 +461,31 @@ void main() {
         ),
       ).called(1);
 
-      installProgress.add(const {
-        "one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+      installStates.add(const {
+        "one": PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+        ),
       });
       await _settle();
       expect(
         (cubit.state as PluginManagementReady).installs,
-        const {"one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42)},
+        const {
+          "one": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+          ),
+        },
       );
 
-      installProgress.add(const {});
+      installStates.add(const {});
       await _settle();
       expect((cubit.state as PluginManagementReady).installs, isEmpty);
     });
 
     test("a cubit created mid-install seeds progress from the service", () async {
-      installProgress.add(const {
-        "one": PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null),
+      installStates.add(const {
+        "one": PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null),
+        ),
       });
       await _settle();
 
@@ -488,13 +498,32 @@ void main() {
 
       expect(
         (reopened.state as PluginManagementReady).installs,
-        const {"one": PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null)},
+        const {
+          "one": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null),
+          ),
+        },
       );
     });
 
+    test("retained install failure replays into a recreated flow cubit", () async {
+      installStates.add(const {"one": PluginInstallState.failed()});
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+      final reopened = PluginManagementCubit(service: service, urlLauncher: urlLauncher, catalogRescanService: rescan);
+      addTearDown(reopened.close);
+      await _settle();
+      expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+      expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
+    });
+
     test("a loading transition mid-install restores progress with the next snapshot", () async {
-      installProgress.add(const {
-        "one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10),
+      installStates.add(const {
+        "one": PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10),
+        ),
       });
       await _settle();
 
@@ -507,21 +536,29 @@ void main() {
 
       expect(
         (cubit.state as PluginManagementReady).installs,
-        const {"one": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10)},
+        const {
+          "one": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10),
+          ),
+        },
       );
     });
 
     test("an equivalent progress map does not emit a new state", () async {
-      installProgress.add(const {
-        "one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+      installStates.add(const {
+        "one": PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+        ),
       });
       await _settle();
       final emitted = <PluginManagementState>[];
       final subscription = cubit.stream.listen(emitted.add);
       addTearDown(subscription.cancel);
 
-      installProgress.add(const {
-        "one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+      installStates.add(const {
+        "one": PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+        ),
       });
       await _settle();
 
@@ -529,8 +566,10 @@ void main() {
     });
 
     test("install progress survives a refreshed snapshot", () async {
-      installProgress.add(const {
-        "one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+      installStates.add(const {
+        "one": PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+        ),
       });
       await _settle();
 
@@ -539,7 +578,11 @@ void main() {
 
       expect(
         (cubit.state as PluginManagementReady).installs,
-        const {"one": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null)},
+        const {
+          "one": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+          ),
+        },
       );
     });
 
@@ -1132,7 +1175,6 @@ void main() {
       expect((reopened.state as PluginManagementReady).scanningPluginIds, {"codex"});
     });
   });
-
 }
 
 PluginLifecycleConflict _conflict(List<PluginLifecycleConflictReason> reasons) {

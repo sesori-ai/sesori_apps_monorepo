@@ -10,8 +10,10 @@ bridge start when Sesori already manages an older version.
 
 - Install is offered only where the bridge advertises the capability for that harness in
   its configuration and platform; a binary override or a platform with no pinned asset
-  removes the offer. The app offers it only for a missing or too-old runtime, never for
-  ready, authentication-required, or unknown states.
+  removes the offer. The app offers it only for runtimeMissing or unavailable setup with advertised install support, never for
+  ready, authentication-required, or unknown states. Install-ready missing runtimes use
+  the dedicated installation content; manual setup hints remain for externally installed
+  harnesses and other setup failures.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
@@ -29,8 +31,8 @@ bridge start when Sesori already manages an older version.
   six arm64/x64 macOS, Linux, and Windows archives for the pinned release.
   Artifacts are checksum-verified, and no partial binary or package is adopted.
 - The command is accepted immediately because an install can outlast a request budget;
-  progress reports phases with a percentage, and the terminal outcome also lands in the
-  management snapshot.
+  progress reports phases with an optional download percentage. Completion re-inspects setup;
+  a setup snapshot alone is not evidence of a historical installation failure.
 - Success then implies enable: the harness is persisted enabled, setup is re-inspected,
   and the post-install enable phase starts it when ready. A still-blocked setup is
   reported honestly, and failure text sent to the client is sanitized while paths and
@@ -59,6 +61,27 @@ bridge start when Sesori already manages an older version.
   and a harness whose only managed runtime was below the minimum stays runtime-missing
   with its install hint. Failure detail stays in the bridge log.
 
+- The client marks a requested installation busy immediately, before its command response or
+  first progress event. Only reported download percentage is determinate; verification,
+  extraction, finalization and unknown phases remain indeterminate rather than claiming
+  total-install completion. No install pause/stop menu or stopped outcome is invented.
+- Harness detail Back returns to overview without recreating its flow-owned cubit. Settings-opened
+  pages offer Back only; New Session modal X dismisses the entire harness modal from either
+  page while retaining the composer and draft.
+- Failed terminal SSE is retained in connection-scoped client memory and replayed across
+  overview/detail navigation and cubit recreation. Retry starts immediately and clears it;
+  observed progress from another surface replaces it. An unchanged missing/unavailable
+  snapshot preserves failure; a newly applied ready snapshot or completed SSE clears it.
+  Connection/bridge invalidation clears all retained installation state.
+- Failure detail offers Restart installation where install remains eligible. Status still
+  follows actual setup: a missing runtime is Not installed, unavailable remains Unavailable,
+  and a recovered runtime is never relabelled missing. A definite command rejection is an
+  action error, not evidence that an installation ran and failed. Uncertain acceptance stays busy.
+- Terminal events racing accepted, uncertain or rejected command responses settle correctly:
+  retained failure is not replaced by synthetic progress or removed on response settlement.
+  Analytics reports each locally authored outcome once; merely observing another surface's
+  installation or navigating its detail never reports another outcome.
+
 ## Regression Levels
 
 | Level | Additional coverage |
@@ -79,6 +102,11 @@ an upgrade completes; whether another harness is busy; and the interruption poin
 download, verification, or placement. Use a disposable data directory.
 
 ## Failure Signals
+
+- Losing a failed terminal event on navigation or unchanged setup refresh, treating command
+  rejection as failed installation, retry leaving stale failure, or attributing remote installs locally.
+- Displaying download percentage as total progress or enabling conflicting controls between
+  acceptance and the first progress event.
 
 - Install offered where it cannot apply, or hidden where it genuinely can.
 - Anything written outside the managed state area, a system-wide install, or an
@@ -106,6 +134,10 @@ download, verification, or placement. Use a disposable data directory.
   its failure detail reaching the client instead of the log.
 
 ## Known Limitations
+
+- Retained client failure is not persisted or historical: a new surface cannot reconstruct an
+  earlier failure from runtimeMissing alone. Automatic bridge-start upgrades remain independent
+  of the unsupported client automatic-update preference.
 
 - Only harnesses declaring the capability with a pinned per-platform asset can install; a
   registered harness without one is correctly not installable.

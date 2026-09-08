@@ -27,11 +27,13 @@ class const PregoGroupedRows({
 
   /// Rows rendered with dividers between children.
   required final List<Widget> children,
+  final Color? color,
+  final bool showDividers = true,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: context.prego.colors.bgSurface3,
+      color: color ?? context.prego.colors.bgSurface3,
       clipBehavior: Clip.antiAlias,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(PregoRadius.x5l)),
       child: Column(
@@ -44,7 +46,7 @@ class const PregoGroupedRows({
                 final key? => ValueKey<Key>(key),
                 null => null,
               },
-              isLast: index == children.length - 1,
+              isLast: !showDividers || index == children.length - 1,
               child: children[index],
             ),
         ],
@@ -78,6 +80,10 @@ class const PregoGroupedRow({
   /// Trailing slot. Icon descendants default to 20px in the tertiary colour.
   final Widget? trailing,
   final VoidCallback? onTap,
+  final double? minHeight,
+
+  /// Vertical content inset, independently of the minimum row height.
+  final double verticalPadding = PregoSpacing.md,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -128,10 +134,10 @@ class const PregoGroupedRow({
     );
 
     Widget tile = Container(
-      constraints: BoxConstraints(minHeight: subtitle != null ? _tallRowMinHeight : _rowMinHeight),
-      padding: const EdgeInsets.symmetric(
+      constraints: BoxConstraints(minHeight: minHeight ?? (subtitle != null ? _tallRowMinHeight : _rowMinHeight)),
+      padding: EdgeInsets.symmetric(
         horizontal: PregoSpacing.xl,
-        vertical: PregoSpacing.md,
+        vertical: verticalPadding,
       ),
       alignment: AlignmentDirectional.centerStart,
       child: row,

@@ -9,6 +9,7 @@ import "../../platform/url_launcher.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../services/catalog_rescan_service.dart";
 import "../../services/models/catalog_rescan_state.dart";
+import "../../services/models/plugin_install_state.dart";
 import "../../services/plugin_management_service.dart";
 import "plugin_management_state.dart";
 
@@ -20,7 +21,7 @@ class PluginManagementCubit({
   this : super(const PluginManagementState.loading()) {
     _subscriptions
       ..add(_service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot)))
-      ..add(_service.installProgress.listen((installs) => _onInstallProgress(installs: installs)))
+      ..add(_service.installStates.listen((installs) => _onInstallStates(installs: installs)))
       ..add(_service.authenticationTerminal.listen(_onAuthenticationTerminal))
       ..add(_catalogRescanService.state.listen(_onCatalogScan));
   }
@@ -70,8 +71,9 @@ class PluginManagementCubit({
         final presentation = switch (challenge) {
           final PluginAuthenticationDeviceCodeChallenge challenge =>
             PluginAuthenticationChallengePresentation.deviceCode(challenge: challenge),
-          final PluginAuthenticationBrowserChallenge challenge =>
-            PluginAuthenticationChallengePresentation.browser(challenge: challenge),
+          final PluginAuthenticationBrowserChallenge challenge => PluginAuthenticationChallengePresentation.browser(
+            challenge: challenge,
+          ),
           final PluginAuthenticationUnsupportedChallenge challenge =>
             PluginAuthenticationChallengePresentation.updateRequired(challenge: challenge),
           null => null,
@@ -163,8 +165,7 @@ class PluginManagementCubit({
       PluginManagementReady(:final authentication) => authentication,
       PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
     };
-    if (authentication is! PluginAuthenticationPresentationChallenge ||
-        authentication.pluginId != challenge.pluginId) {
+    if (authentication is! PluginAuthenticationPresentationChallenge || authentication.pluginId != challenge.pluginId) {
       return;
     }
     final presentation = authentication.challenge;
@@ -588,7 +589,7 @@ class PluginManagementCubit({
         // this cubit is recreated (the screen builds a new one per visit), so
         // seeding from an empty map would hide a live install until its next
         // progress event.
-        final installs = _service.installProgress.valueOrNull ?? const <String, PluginInstallProgress>{};
+        final installs = _service.installStates.valueOrNull ?? const <String, PluginInstallState>{};
         emit(
           PluginManagementState.ready(
             response: response,
@@ -741,13 +742,13 @@ class PluginManagementCubit({
     CatalogRescanNoHarness() => null,
   };
 
-  void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {
+  void _onInstallStates({required Map<String, PluginInstallState> installs}) {
     if (isClosed) return;
     final current = state;
     // A non-ready state has no card to update; the next ready snapshot reads
     // the service's current progress, so nothing is lost by ignoring it here.
     if (current is! PluginManagementReady) return;
-    if (const MapEquality<String, PluginInstallProgress>().equals(current.installs, installs)) return;
+    if (const MapEquality<String, PluginInstallState>().equals(current.installs, installs)) return;
     emit(current.copyWith(installs: installs));
   }
 
@@ -761,12 +762,16 @@ class PluginManagementCubit({
 ({String pluginId, PluginAuthenticationChallenge challenge})? _authenticationChallengeData(
   PluginAuthenticationPresentationState state,
 ) => switch (state) {
-  PluginAuthenticationPresentationChallenge(:final pluginId, :final challenge) =>
-    (pluginId: pluginId, challenge: challenge.challenge),
+  PluginAuthenticationPresentationChallenge(:final pluginId, :final challenge) => (
+    pluginId: pluginId,
+    challenge: challenge.challenge,
+  ),
   PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId, :final challenge) ||
   PluginAuthenticationPresentationCancelling(:final pluginId, :final challenge) ||
-  PluginAuthenticationPresentationCancellingUncertain(:final pluginId, :final challenge) =>
-    (pluginId: pluginId, challenge: challenge),
+  PluginAuthenticationPresentationCancellingUncertain(
+    :final pluginId,
+    :final challenge,
+  ) => (pluginId: pluginId, challenge: challenge),
   PluginAuthenticationPresentationIdle() ||
   PluginAuthenticationPresentationStarting() ||
   PluginAuthenticationPresentationFailed() => null,
