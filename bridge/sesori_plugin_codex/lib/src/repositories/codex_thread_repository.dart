@@ -75,14 +75,14 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
     return _mapRequired(dto: dto, operation: "thread/read");
   }
 
-  /// Returns the initial user prompt from the exact turn observed through the
-  /// child thread lifecycle. A thread read alone cannot distinguish a child's
-  /// own turn from parent turns copied by `fork_turns`, so missing or unmatched
-  /// turn provenance intentionally returns `null`.
   void forgetThread({required String threadId}) {
     _initialPromptByTurnByThread.remove(threadId);
   }
 
+  /// Returns the initial user prompt from the exact turn observed through the
+  /// child thread lifecycle. A thread read alone cannot distinguish a child's
+  /// own turn from parent turns copied by `fork_turns`, so missing or unmatched
+  /// turn provenance intentionally returns `null`.
   String? initialUserPrompt({required String threadId, required String? turnId}) {
     final usefulTurnId = _usefulText(turnId);
     return usefulTurnId == null ? null : _initialPromptByTurnByThread[threadId]?[usefulTurnId];
