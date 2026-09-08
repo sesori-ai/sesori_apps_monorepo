@@ -7,8 +7,8 @@ No queue recovery, submission retention, attachment storage or bridge protocol w
 |---|---|---|---|
 | 1/4 | 🌱 | Plan read-only unavailable chats | [PR #1366](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1366) merged |
 | 2/4 | ⚙️ | Gate unavailable chats on both clients | [PR #1375](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1375) merged |
-| 3/4 | 🌿 | Reconcile chat availability regressions | Implemented and validated locally; preparing PR |
-| 4/4 | 🌿 | Verify read-only chats and retire plan | Not started |
+| 3/4 | 🌿 | Reconcile chat availability regressions | [PR #1381](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1381) open; in review |
+| 4/4 | 🌿 | Verify read-only chats and retire plan | Started locally behind step 3 |
 
 The earlier six-step proposal was replaced before implementation after the user
 explicitly rejected queue-recovery scope. Use the four exact titles in PLAN.md.
@@ -23,8 +23,8 @@ authorized direct execution without subagents. No dependencies may be installed.
 - Recovery-related PR findings are superseded by the explicit user decision;
   no approved architecture verdict is claimed for the revised plan.
 - The user approved the step-2 cap exception without changing scope or the
-  four-step total. Review fixes brought the merged PR to 1,897 changed lines,
-  including generated code, tests and docs.
+  four-step total. The merged PR remained input-gating only; its final GitHub
+  diff was approximately 1,900 changed lines including generated code and tests.
 - Shared interaction projection, metadata-first loading, mutation guards,
   notice/dialog gating and both shell settings callbacks implemented. No bridge,
   database, protocol or queue-recovery changes.

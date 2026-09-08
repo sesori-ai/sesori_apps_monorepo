@@ -220,8 +220,9 @@ additions plus deletions, generated code and tests toward the 1,500-line soft ca
 if implementation cannot fit, revise the split/total before opening that PR.
 The user explicitly approved a step-2 cap exception after focused verification:
 keep the coherent gate and required internal API/test/generated updates together
-rather than add a prerequisite PR. Review fixes brought the merged PR to 1,897
-changed lines. The four-step series and input-gating-only scope remain unchanged.
+rather than add a prerequisite PR. Review fixes brought the merged PR to
+approximately 1,900 changed lines. The four-step series and input-gating-only
+scope remain unchanged.
 
 | Step and exact title | What / why | Risk and test focus | Expected result / estimate |
 |---|---|---|---|
