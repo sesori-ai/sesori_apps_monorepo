@@ -2,16 +2,16 @@
 
 ## Status and supported behavior
 
-Internal, unregistered Step 8.b composition only. Inputs are an already-validated official runtime pair and prepared
-isolated profile, not ambient credentials. Descriptor/setup/exit supervision are Step 8.c; activation is Step 9.
-No database/wire migration, analytics event, managed installation, OAuth attempt or Google history deletion lands here.
+Registered local-runtime behavior over the Step 8.b composition. Inputs are an already-validated official runtime pair
+and prepared isolated profile, not ambient credentials. Activation adds no database/wire migration, analytics event,
+managed installation, OAuth attempt or Google history deletion.
 
 - One existing ACP lifecycle owns live processes, turn lanes, pending input and replay clients. Composition injects
   required peers; options use the actual connection's configuration repository per call. No scratch session is used.
 - Fresh options expose one primary agent and no models. Real new sessions establish the picker default; load/resume
   do not redefine it. Explicit models are checked before admission when the catalog is known. After reset, real
   residency restores the catalog; strict dispatch validation still precedes model/mode/prompt writes. Every turn uses
-  mode `default`. Reset clears picker state. Step 8.c now composes model/provider stamping while activation remains later.
+  mode `default`. Reset clears picker state. Descriptor composition stamps model/provider metadata live and on replay.
 - Metadata recovery runs once per new live connection before it is advertised, not during ordinary enumeration or DB
   catalog reads. Imports consume those warmed hints. DB/live bindings override recovery regardless of arrival order. Live residency prefers advertised resume, otherwise load; replay always uses load.
 - Cancellation/deletion settle the target's pending input without altering other sessions. Local deletion never removes

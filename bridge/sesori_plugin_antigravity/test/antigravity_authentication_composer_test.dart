@@ -123,7 +123,7 @@ class _Processes({required final Map<String, dynamic> initialize}) implements Ho
 }
 
 void main() {
-  test("unregistered composition uses shared profile scopes and isolated helpers/probe/auth", () async {
+  test("composition uses shared profile scopes and isolated helpers/probe/auth", () async {
     final directory = Directory(
       Directory.systemTemp.createTempSync("antigravity-composition-").resolveSymbolicLinksSync(),
     );

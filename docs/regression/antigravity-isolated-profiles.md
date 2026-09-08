@@ -2,9 +2,8 @@
 
 ## Status and scope
 
-Internal, unregistered profile foundations. No user-visible Antigravity capability or database change yet.
-Registration and managed activation remain separate delivery steps.
-[Personal authentication](antigravity-personal-authentication.md) covers the unregistered composed operation,
+Registered local-runtime profile behavior. Activation adds no database change; managed installation remains separate.
+[Personal authentication](antigravity-personal-authentication.md) covers the composed operation,
 callback policy and shared preparation/authentication budget.
 
 ## Required behavior

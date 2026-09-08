@@ -27,8 +27,8 @@ import "../storage/antigravity_runtime_storage.dart";
 import "antigravity_authentication_composer.dart";
 import "antigravity_plugin_composer.dart";
 
-/// Unregistered composition root for Google's official Antigravity ACP pair.
-/// Bridge activation and managed installation remain later plan gates.
+/// Local-runtime composition root for Google's official Antigravity ACP pair.
+/// Managed installation remains a later plan gate.
 class const AntigravityPluginDescriptor({
   final PlatformTarget? target,
   final String? browserExecutable,

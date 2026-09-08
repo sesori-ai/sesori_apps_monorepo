@@ -1,3 +1,4 @@
+import "package:antigravity_plugin/antigravity_plugin.dart" show AntigravityPluginDescriptor;
 import "package:claude_plugin/claude_plugin.dart" show ClaudePluginDescriptor;
 import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:copilot_plugin/copilot_plugin.dart" show CopilotPluginDescriptor;
@@ -16,6 +17,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 /// setup readiness, eligibility, or a running backend generation.
 final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
   const OpenCodePluginDescriptor(),
+  const AntigravityPluginDescriptor(),
   const CodexPluginDescriptor(),
   CopilotPluginDescriptor.production(),
   const CursorPluginDescriptor(),
