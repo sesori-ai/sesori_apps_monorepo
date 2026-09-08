@@ -288,32 +288,30 @@ When a single tolerant path is sufficient, prefer it over the
 two-implementation interface; if neither path has a concrete caller and
 meaningful damage, reject both as speculative machinery.
 
-## Phase 3 — Run a safe per-target probe matrix
+## Phase 3 — Run a safe current-host probe
 
-Before changing the target, validate every managed archive in a temporary,
-platform-appropriate disposable boundary. This is a six-row matrix, not a
-single current-host smoke test. For each of the six assets, record the asset
-name and digest, sandbox/host and architecture, production extraction and
-package-placement result, exact `--version` result, and the JSONL/RPC
-`get_state` result. A host-only extraction or a probe of one architecture does
-not validate another row. Treat every downloaded archive as an untrusted
-executable even after its official digest is verified:
+Verify the downloaded SHA-256 of all six managed archives as opaque bytes;
+checksum validation does not require extracting or launching them. Run the
+installation and live probe below only for the archive matching the current
+host OS and architecture. Other platforms do not need installation or launch
+probes to approve a target refresh; report them as untested, not validated by
+the host result. Record the tested asset and digest, host OS/architecture,
+disposable boundary, production extraction/placement, exact `--version`, and
+JSONL/RPC `get_state` results. Treat downloaded archives as untrusted executables
+even after verifying their official digests:
 
-1. For each asset row, establish the disposable boundary before handling
-   archive contents. Use a native host or suitable target VM/container/restricted
-   OS account with no sensitive mounts and blocked outbound network access. A
-   temporary `HOME`, Pi directories, or allowlisted environment does not sandbox
-   a process running as the maintainer's account. If a target cannot provide
-   this boundary, do not inspect, extract, or execute that archive there; mark
-   that row unvalidated and leave its asset unpinned.
-2. For each row, download the matching official archive into that boundary and
-   verify its SHA-256. If the boundary cannot download directly, transfer the
-   archive as opaque bytes from the host and perform the digest check before
-   parsing it. Do not use one platform's successful checksum or probe as
-   evidence for another row.
-3. Inspect and extract every archive inside its same disposable boundary
-   without changing the repository. For each managed asset, run the production
-   extraction and package-placement path
+1. Establish the current-host disposable boundary before handling archive
+   contents. Use a suitable VM/container/restricted OS account with no sensitive
+   mounts and blocked outbound network access. A temporary `HOME`, Pi directories,
+   or allowlisted environment does not sandbox a process running as the
+   maintainer's account. If this boundary is unavailable, do not inspect, extract,
+   or execute the host archive; report the current-host probe as blocked.
+2. Transfer the matching official archive as opaque bytes into that boundary,
+   or download it there. Verify its SHA-256 before parsing it. Keep every other
+   archive opaque unless an optional platform-specific check is warranted.
+3. Inspect and extract the current-host archive inside the same disposable
+   boundary without changing the repository. Run the production extraction and
+   package-placement path
    (`bridge/sesori_bridge_foundation/lib/src/archive_extractor.dart` and
    `bridge/sesori_plugin_runtime/lib/src/provisioning/runtime_install_service.dart`)
    on a target-appropriate host; do not substitute a generic extractor for this
@@ -321,8 +319,8 @@ executable even after its official digest is verified:
    escaping symlink/hardlink targets before writing; confirm the package tree
    and platform-specific entrypoint remain intact. This repository rejects all
    symlinks after extraction, not only links that escape. If the production
-   path cannot run in the row's sandbox, mark the row unvalidated and leave its
-   asset unpinned. Resolve that entrypoint to an absolute path and invoke that
+   path cannot run in the host sandbox, report the current-host probe as blocked.
+   Resolve that entrypoint to an absolute path and invoke that
    path for every check; never
    invoke a bare PATH-installed `pi` or copy the executable away from its
    package files. If a temporary PATH wrapper is unavoidable, use only a
@@ -344,14 +342,14 @@ executable even after its official digest is verified:
    `SSH_AUTH_SOCK`, credential-helper settings, and other unrelated secrets.
    The probe must remain unauthenticated; use a separately authorized and
    explicitly approved procedure if authenticated behavior needs testing.
-6. For each row, run the separate `--version` process with a bounded 10-second
+6. Run the separate current-host `--version` process with a bounded 10-second
    timeout and the same process-group/Job Object cleanup guarantee. If it hangs
    or exits unexpectedly, terminate its entire process tree before reporting
    failure; do not let it block the RPC probe or filesystem cleanup. Verify that
    its output identifies exactly the candidate release, rather than merely
    returning success. Preserve the normal environment policy in the production
    launch design.
-7. For each row, launch the extracted entrypoint with exactly these arguments:
+7. Launch the extracted current-host entrypoint with exactly these arguments:
 
    ```text
    --mode rpc --no-session --approve
@@ -390,15 +388,13 @@ executable even after its official digest is verified:
    response-correlation, package-layout, isolation, or required-surface
    regression. Do not pin a candidate based on a version output alone.
 
-A skipped or failed live probe is a hard gate for that asset, not a
-successful platform limitation. Production extraction and package placement
-must be exercised for every managed archive, and the version/RPC launch probe
-must pass for every supported target before its corresponding digest is eligible
-for pinning. Phase 4 may report blocked or unvalidated rows, but do not approve
-or edit/pin those assets in Phase 5. If the manifest requires a complete
-six-asset release, any unvalidated row blocks the target update; otherwise leave
-only the unvalidated asset(s) unchanged. Artifact/source verification and a
-successful probe on another platform cannot substitute for the missing row.
+A skipped or failed required current-host probe blocks the target refresh.
+Missing install/launch results for other platforms do not block it. Optional
+platform checks may be added for a concrete release change or regression; report
+any observed failure rather than treating it as a passing host limitation.
+All six archive digests and source-to-artifact verification remain required.
+When approved, update the complete release consistently; never combine a new
+shared target URL with old asset digests.
 
 Keep probe output redacted and bounded. Do not retain raw frames, credentials,
 transcripts, prompts, user/project/local filesystem paths, or provider/account
@@ -415,8 +411,8 @@ Before editing the runtime target or production protocol code, report:
   blocker;
 - aggregate diff size and the high/medium findings with source links;
 - which findings are truly visible on JSONL/RPC stdout;
-- the six-row probe matrix: production extraction/placement, exact version,
-  and RPC results for every asset, plus any blocked or unvalidated row;
+- current-host OS/architecture, production extraction/placement, exact version,
+  and RPC results; list other platforms as untested unless optionally checked;
 - proposed Sesori edits, explicitly separating version-only changes from
   capability changes, simplifications, and follow-up work;
 - the compatibility strategy: tolerant single path versus a justified
@@ -433,13 +429,12 @@ explicitly requested, while the runtime/capability PR remains behind this gate.
 
 ## Phase 5 — Implement only after approval
 
-Enter this phase only after every asset being pinned has passed the
-sandboxed production extraction/placement and live version/RPC probe on a
-suitable target host, source-to-artifact provenance has been verified (or the
-artifacts have been reproducibly rebuilt), and the user has approved the
-resulting scope. A skipped or failed row blocks that asset; when the manifest
-requires a complete six-asset target, it blocks all target edits. Digest or
-source verification alone is insufficient.
+Enter this phase only after all six archive digests are verified, the
+current-host sandboxed production extraction/placement and live version/RPC
+probe pass, source-to-artifact provenance is verified (or the artifacts have
+been reproducibly rebuilt), and the user approves the resulting scope.
+Other platforms do not require installation or launch probes. Report their
+untested status without blocking the complete six-asset target update.
 
 For an approved target refresh:
 
