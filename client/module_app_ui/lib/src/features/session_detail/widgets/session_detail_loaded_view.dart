@@ -108,7 +108,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           queuedMessages: state.queuedMessages,
                           bridgeQueuedPrompts: state.bridgeQueuedPrompts,
                           awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
-                          onCancelBridgeQueuedPrompt: widget.readOnly
+                          onCancelBridgeQueuedPrompt: widget.readOnly || !state.interaction.canInteract
                               ? null
                               : (promptId) => unawaited(
                                   context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
@@ -159,7 +159,10 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
               // where the composer used to be, and drop the pending banners —
               // an archived session's requests can never be answered.
               if (state.isArchived) const SessionDetailArchivedNotice(),
-              if (!widget.readOnly && !state.isArchived && state.pendingQuestions.isNotEmpty)
+              if (!widget.readOnly &&
+                  !state.isArchived &&
+                  state.interaction.canInteract &&
+                  state.pendingQuestions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.help_outline,
                   backgroundColor: context.prego.colors.bgBrandPrimary,
@@ -167,7 +170,10 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                   label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
                   onTap: widget.onShowPendingQuestions,
                 ),
-              if (!widget.readOnly && !state.isArchived && state.pendingPermissions.isNotEmpty)
+              if (!widget.readOnly &&
+                  !state.isArchived &&
+                  state.interaction.canInteract &&
+                  state.pendingPermissions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.shield_outlined,
                   backgroundColor: context.prego.colors.bgSuccessPrimary,

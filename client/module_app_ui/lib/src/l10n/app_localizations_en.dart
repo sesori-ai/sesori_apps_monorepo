@@ -1642,6 +1642,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailHarnessCheckFailedReason => 'Couldn’t check whether this session’s harness is available.';
 
   @override
+  String get sessionDetailContentLoadFailedReason =>
+      'The harness is available, but chat content or options could not be loaded. Retry to continue.';
+
+  @override
   String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';
 
   @override

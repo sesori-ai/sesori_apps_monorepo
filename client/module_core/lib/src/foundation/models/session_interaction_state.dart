@@ -11,6 +11,7 @@ enum SessionInteractionBlockedReason() {
   unknownStatus,
   missingHarness,
   statusCheckFailed,
+  contentLoadFailed,
 }
 
 @immutable

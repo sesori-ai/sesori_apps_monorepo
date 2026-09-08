@@ -28,11 +28,11 @@ class const SessionInteractionCalculator() {
     return switch (managementResult) {
       null || PluginManagementLoadResultLoading() => const SessionInteractionState.checking(),
       PluginManagementLoadResultUnsupported() => const SessionInteractionState.legacyUnverified(),
-      PluginManagementLoadResultFailure() => const SessionInteractionState.blocked(
+      PluginManagementLoadResultFailure(:final error) => SessionInteractionState.blocked(
         reason: SessionInteractionBlockedReason.statusCheckFailed,
         displayName: null,
         actionHint: null,
-        refreshError: null,
+        refreshError: error,
       ),
       PluginManagementLoadResultSupported(:final response, :final refreshError) => _fromSupported(
         pluginId: pluginId,

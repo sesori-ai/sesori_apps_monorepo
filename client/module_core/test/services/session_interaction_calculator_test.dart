@@ -59,18 +59,21 @@ void main() {
         isA<SessionInteractionChecking>(),
       );
     }
+    final loadError = ApiError.generic();
     expect(
       calculator.calculate(
         pluginId: "harness",
-        managementResult: PluginManagementLoadResult.failure(error: ApiError.generic()),
+        managementResult: PluginManagementLoadResult.failure(error: loadError),
         connectionStatus: connected,
         previous: null,
       ),
-      isA<SessionInteractionBlocked>().having(
-        (state) => state.reason,
-        "reason",
-        SessionInteractionBlockedReason.statusCheckFailed,
-      ),
+      isA<SessionInteractionBlocked>()
+          .having(
+            (state) => state.reason,
+            "reason",
+            SessionInteractionBlockedReason.statusCheckFailed,
+          )
+          .having((state) => state.refreshError, "original error", same(loadError)),
     );
     expect(
       calculator.calculate(

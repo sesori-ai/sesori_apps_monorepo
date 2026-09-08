@@ -30,6 +30,7 @@ class const SessionHarnessUnavailableNotice({
       SessionInteractionBlockedReason.unknownStatus => loc.sessionDetailHarnessUnknownReason(harnessName),
       SessionInteractionBlockedReason.missingHarness => loc.sessionDetailHarnessMissingReason,
       SessionInteractionBlockedReason.statusCheckFailed => loc.sessionDetailHarnessCheckFailedReason,
+      SessionInteractionBlockedReason.contentLoadFailed => loc.sessionDetailContentLoadFailedReason,
       SessionInteractionBlockedReason.unavailable => loc.sessionDetailHarnessUnavailableReason(harnessName),
       null => switch (interaction) {
         SessionInteractionLegacyUnverified() => loc.sessionDetailHarnessLegacyWarning,
@@ -40,13 +41,15 @@ class const SessionHarnessUnavailableNotice({
     final details = [
       if (blocked?.actionHint case final hint? when hint.trim().isNotEmpty) hint,
       if (historyUnavailable) loc.sessionDetailHarnessHistoryUnavailable,
-      if (blocked?.refreshError != null) loc.sessionDetailHarnessRefreshWarning,
+      if (blocked?.refreshError != null && blocked?.reason != SessionInteractionBlockedReason.statusCheckFailed)
+        loc.sessionDetailHarnessRefreshWarning,
     ].join("\n");
     final canRetry = interaction is! SessionInteractionLegacyUnverified;
     final prego = context.prego;
 
     return Semantics(
       container: true,
+      liveRegion: true,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: GlassContainer(
@@ -68,13 +71,14 @@ class const SessionHarnessUnavailableNotice({
               Wrap(
                 spacing: 8,
                 children: [
-                  PregoButtonsSolid(
-                    key: const Key("session_harness_settings"),
-                    label: loc.sessionDetailOpenHarnessSettings,
-                    hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                    size: PregoButtonsSolidSize.sm,
-                    onPressed: onOpenHarnessSettings,
-                  ),
+                  if (blocked?.reason != SessionInteractionBlockedReason.contentLoadFailed)
+                    PregoButtonsSolid(
+                      key: const Key("session_harness_settings"),
+                      label: loc.sessionDetailOpenHarnessSettings,
+                      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                      size: PregoButtonsSolidSize.sm,
+                      onPressed: onOpenHarnessSettings,
+                    ),
                   if (canRetry)
                     TextButton(
                       key: const Key("session_harness_retry"),

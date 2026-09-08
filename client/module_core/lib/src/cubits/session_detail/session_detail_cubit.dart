@@ -216,9 +216,13 @@ class SessionDetailCubit(
     );
   }
 
-  void _onManagementResult(PluginManagementLoadResult _) {
+  void _onManagementResult(PluginManagementLoadResult result) {
+    if (isClosed) return;
+    if (result case PluginManagementLoadResultFailure(:final error)) {
+      logw("Harness availability check failed for session $_sessionId", error);
+    }
     final session = _sessionMetadata;
-    if (isClosed || session == null) return;
+    if (session == null) return;
     final next = _calculateInteraction(session: session);
     if (next == _interaction) return;
     _interaction = next;
@@ -262,6 +266,7 @@ class SessionDetailCubit(
     final connectionGeneration = _connectionGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
+    final previous = state;
     emit(const SessionDetailState.loading());
     final parkEpochAtFetch = _parkEpoch;
     late final SessionDetailMetadataLoadResult metadataResult;
@@ -322,12 +327,12 @@ class SessionDetailCubit(
         if (result == null || !_interaction.canInteract) {
           _waitingForConnection = false;
           final current = state;
-          if (current is SessionDetailLoaded) {
-            emit(current.copyWith(interaction: _interaction));
+          final retained = current is SessionDetailLoaded ? current : previous;
+          if (retained is SessionDetailLoaded) {
+            emit(retained.copyWith(interaction: _interaction));
           } else {
             _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: session.projectID);
             emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
-            if (_interaction.canInteract) unawaited(reload());
           }
           return _SessionRefreshResult.applied;
         }
@@ -788,7 +793,7 @@ class SessionDetailCubit(
     emit(
       current.copyWith(
         interaction: const SessionInteractionState.blocked(
-          reason: SessionInteractionBlockedReason.statusCheckFailed,
+          reason: SessionInteractionBlockedReason.contentLoadFailed,
           displayName: null,
           actionHint: null,
           refreshError: null,
@@ -1723,7 +1728,6 @@ class SessionDetailCubit(
   }
 
   void cancelQueuedMessage(int index) {
-    if (_refuseWhenInteractionBlocked(action: "cancel a queued prompt")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 

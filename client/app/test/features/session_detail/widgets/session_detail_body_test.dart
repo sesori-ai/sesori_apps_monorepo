@@ -826,7 +826,19 @@ void main() {
           : _loadedState(
               pendingQuestions: const [_question],
               pendingPermissions: const [_permission],
-            ).copyWith(interaction: authRequired);
+            ).copyWith(
+              interaction: authRequired,
+              queuedMessages: const [
+                QueuedSessionSubmission.text(
+                  promptId: "local",
+                  text: "Local queued prompt",
+                  inputMode: ComposerInputMode.typed,
+                  attachments: [],
+                  agent: null,
+                  agentModel: null,
+                ),
+              ],
+            );
       when(() => cubit.state).thenReturn(state);
       var settingsOpened = 0;
       await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
@@ -835,11 +847,40 @@ void main() {
       expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
       expect(find.text("1 pending question"), findsNothing);
       expect(find.text("1 permission request pending"), findsNothing);
+      expect(
+        find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.liveRegion == true),
+        findsWidgets,
+      );
+      if (!cold) {
+        await tester.tap(find.widgetWithText(TextButton, "Cancel"));
+        verify(() => cubit.cancelQueuedMessage(0)).called(1);
+      }
       await tester.tap(find.byKey(const Key("session_harness_settings")));
       expect(settingsOpened, 1);
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets("content restoration failure offers retry rather than harness setup", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      interaction: const SessionInteractionState.blocked(
+        reason: SessionInteractionBlockedReason.contentLoadFailed,
+        displayName: null,
+        actionHint: null,
+        refreshError: null,
+      ),
+    );
+    when(() => cubit.state).thenReturn(state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(
+      find.text("The harness is available, but chat content or options could not be loaded. Retry to continue."),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+    expect(find.byKey(const Key("session_harness_retry")), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+  });
 
   testWidgets("harness block closes an open question without answering", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();

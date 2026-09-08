@@ -52,6 +52,14 @@ authorized direct execution without subagents. No dependencies may be installed.
   explicitly verify abort refusal without dispatch. The updated core session,
   load-service and calculator scope passes 270 cases; all four analyzers remain
   clean. Linux build validation is delegated to the next CI run.
+- Review follow-up preserves local-only cancellation and transcripts when reload
+  overlaps a block, retains/logs initial status failures, distinguishes content
+  restoration failure, announces the notice to accessibility, and removes a dead
+  retry branch. Focused rerun: 257 core session/calculator cases and 99 session-body
+  widget cases pass; owning core/shared-UI analyzers are clean. Pagination remains
+  guarded because store reads can backfill from the harness. These review fixes
+  and their coverage bring the implementation diff to roughly 1,865 lines; no
+  additional feature scope or recovery machinery was added.
 - No live device/bridge reproduction yet. L4 evidence and cleanup remain pending.
 - Retirement requires the recorded targeted L4 matrix, privacy-safe EVIDENCE.md
   and cleanup. Partial/Blocked/Fail keeps the plan active unless the user accepts

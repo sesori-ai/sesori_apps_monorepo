@@ -198,7 +198,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           // it; the inline title is used instead, as on the new-session screen.
           final SessionDetailLoaded loaded => SliverFillRemaining(
             hasScrollBody: true,
-            child: widget.readOnly || loaded.isArchived || !loaded.interaction.canInteract
+            child: widget.readOnly || loaded.isArchived
                 ? SessionDetailLoadedView.readOnly(
                     projectId: widget.projectId,
                     sessionId: widget.sessionId,
@@ -215,12 +215,14 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                     state: loaded,
                     onShowPendingQuestions: _showPendingQuestions,
                     onShowPendingPermissions: _showPendingPermissions,
-                    bottomControls: widget.bottomControlsBuilder?.call(
-                      context: context,
-                      projectId: widget.projectId,
-                      sessionId: widget.sessionId,
-                      state: loaded,
-                    ),
+                    bottomControls: !loaded.interaction.canInteract
+                        ? _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false)
+                        : widget.bottomControlsBuilder?.call(
+                            context: context,
+                            projectId: widget.projectId,
+                            sessionId: widget.sessionId,
+                            state: loaded,
+                          ),
                   ),
           ),
           SessionDetailHarnessUnavailable(:final interaction) => SliverFillRemaining(

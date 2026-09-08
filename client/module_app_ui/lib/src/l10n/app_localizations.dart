@@ -3031,6 +3031,12 @@ abstract class AppLocalizations {
   /// **'Couldn’t check whether this session’s harness is available.'**
   String get sessionDetailHarnessCheckFailedReason;
 
+  /// No description provided for @sessionDetailContentLoadFailedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is available, but chat content or options could not be loaded. Retry to continue.'**
+  String get sessionDetailContentLoadFailedReason;
+
   /// No description provided for @sessionDetailHarnessCheckingReason.
   ///
   /// In en, this message translates to:

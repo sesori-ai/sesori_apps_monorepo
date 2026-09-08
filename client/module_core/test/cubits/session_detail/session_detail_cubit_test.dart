@@ -192,13 +192,44 @@ void main() {
             ),
           );
         } else {
+          when(
+            () => mockSessionService.sendMessage(
+              promptId: any(named: "promptId"),
+              attachments: const [],
+              sessionId: sessionId,
+              text: any(named: "text"),
+              agent: any(named: "agent"),
+              model: any(named: "model"),
+              variant: any(named: "variant"),
+              command: null,
+            ),
+          ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+          await cubit.sendMessage(
+            text: "cancel locally",
+            command: null,
+            inputMode: ComposerInputMode.typed,
+            attachments: const [],
+          );
+          expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+          final savedMetadata = await mockSessionRepository.getSession(sessionId: sessionId);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          expect(cubit.state, isA<SessionDetailLoading>());
           snapshots.add(management(blocked: true));
+          metadata.complete(savedMetadata);
+          await reloading;
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) async => savedMetadata);
           await awaitState(
             cubit: cubit,
             predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
             description: "live block",
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
+          cubit.cancelQueuedMessage(0);
+          expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+          await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
+          verifyNever(() => mockSessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: "remote-prompt"));
         }
         await cubit.sendMessage(
           text: "must not send",
@@ -243,7 +274,7 @@ void main() {
                 state is SessionDetailLoaded &&
                 state.interaction is SessionInteractionBlocked &&
                 (state.interaction as SessionInteractionBlocked).reason ==
-                    SessionInteractionBlockedReason.statusCheckFailed,
+                    SessionInteractionBlockedReason.contentLoadFailed,
             description: "recovery refresh failure",
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
