@@ -10,6 +10,8 @@ import "package:test/test.dart";
 class _FakeCommandExecutor({final CommandResult? result, final Object? error}) implements CommandExecutor {
   String? ranExecutable;
   List<String>? ranArguments;
+  String? ranWorkingDirectory;
+  Map<String, String>? ranEnvironment;
 
   @override
   Future<CommandResult> run(
@@ -21,6 +23,8 @@ class _FakeCommandExecutor({final CommandResult? result, final Object? error}) i
   }) async {
     ranExecutable = executable;
     ranArguments = arguments;
+    ranWorkingDirectory = workingDirectory;
+    ranEnvironment = environment;
     if (error != null) {
       throw error!;
     }
@@ -159,6 +163,62 @@ void main() {
       );
 
       expect(validator.parseVersionOutput(output: "codex-cli v0.144.5")?.raw, "0.144.5");
+    });
+  });
+
+  group("RuntimeVersionValidator candidate adapter", () {
+    test("retains exact bundled-version validation in the supplied context", () async {
+      final executor = _FakeCommandExecutor(
+        result: const CommandResult(exitCode: 0, stdout: "opencode 1.17.9", stderr: ""),
+      );
+      final validator = RuntimeVersionValidator(
+        commandExecutor: executor,
+        manifest: const _SemverManifest(),
+      );
+      final context = RuntimeCandidateValidationContext(
+        executablePath: "/managed/staging/candidate/opencode",
+        workingDirectory: "/managed/staging/validation-cwd",
+        stateDirectory: "/managed/staging/validation-state",
+        environment: const {"PATH": "/runtime-test"},
+        abortSignal: StartAbortSignal.never,
+      );
+
+      expect(await validator.validate(context: context), isTrue);
+      expect(executor.ranWorkingDirectory, context.workingDirectory);
+      expect(executor.ranEnvironment, context.environment);
+
+      final mismatched = RuntimeVersionValidator(
+        commandExecutor: _FakeCommandExecutor(
+          result: const CommandResult(exitCode: 0, stdout: "1.17.8", stderr: ""),
+        ),
+        manifest: const _SemverManifest(),
+      );
+      expect(await mismatched.validate(context: context), isFalse);
+    });
+
+    test("observes abort before starting the bounded version command", () async {
+      final executor = _FakeCommandExecutor(
+        result: const CommandResult(exitCode: 0, stdout: "1.17.9", stderr: ""),
+      );
+      final aborted = StartAbortController()..abort();
+      final validator = RuntimeVersionValidator(
+        commandExecutor: executor,
+        manifest: const _SemverManifest(),
+      );
+
+      await expectLater(
+        validator.validate(
+          context: RuntimeCandidateValidationContext(
+            executablePath: "/managed/staging/candidate/opencode",
+            workingDirectory: "/managed/staging/validation-cwd",
+            stateDirectory: "/managed/staging/validation-state",
+            environment: const {},
+            abortSignal: aborted.signal,
+          ),
+        ),
+        throwsA(isA<PluginStartAbortedException>()),
+      );
+      expect(executor.ranExecutable, isNull);
     });
   });
 

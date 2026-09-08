@@ -30,6 +30,18 @@ bridge start when Sesori already manages an older version.
   GitHub Copilot installs the official bare `copilot`/`copilot.exe` from exactly
   six arm64/x64 macOS, Linux, and Windows archives for the pinned release.
   Artifacts are checksum-verified, and no partial binary or package is adopted.
+- Every downloaded candidate is validated before placement or sentinel creation. The shared installer first completes
+  checksum verification, archive traversal/symlink checks, extraction and executable hardening, then invokes the
+  harness's required backend-neutral validator. Existing harnesses retain their exact bundled `--version` check through
+  an explicit adapter; a rejected candidate cannot replace the prior package or sentinel.
+- Validation uses disposable cwd and state directories beneath an owner-only managed-staging parent. Archive extraction
+  receives a child of that parent because the extractor recreates its supplied directory. Cached candidates use the
+  same private context. Validation and context cleanup are awaited; the cwd/state are removed before placement, and
+  the entire staging parent is removed on success, rejection or shutdown. POSIX applies mode `700`; Windows relies on
+  the managed directory's inherited private user-profile ACL.
+- The validator receives the install's cooperative abort signal. Validators that own cancellable processes must await
+  teardown; existing bounded run-to-completion `--version` commands observe abort before and after the command and do
+  not claim instant cancellation of an uninterruptible call.
 - Every archive asset declares a required per-command extraction budget. The same value bounds
   member listing and extraction for tar.gz/POSIX zip; Windows zip passes it to `Expand-Archive`,
   whose existing traversal validation remains in use. This is not a total install deadline.
@@ -132,8 +144,9 @@ download, verification, or placement. Use a disposable data directory.
   An unwritable managed runtime directory, a read-only volume, or a disk that fills
   mid-download must end as a reported failure with every other harness untouched.
 - A superseded but still supported runtime removed before its replacement is verified, or
-  removed while a generation is running from it; a below-minimum directory still present
-  once a download has begun.
+  removed while a generation is running from it; a candidate validator running after destructive placement; validator
+  cwd/state escaping managed staging or surviving completion; a rejected/aborted candidate changing the prior package
+  or sentinel; or a below-minimum directory still present once a download has begun.
 - A harness dropping out of the selectable set while its upgrade downloads, or a
   below-minimum harness staying blocked after a successful upgrade until the bridge is
   restarted.
@@ -152,6 +165,8 @@ download, verification, or placement. Use a disposable data directory.
   login, and it never supersedes a configured binary path. Copilot authentication remains
   an out-of-band `copilot login`, supported token environment, or BYOK configuration.
 - Pinned digests are release-engineering state, checked upstream externally.
+- The isolated candidate-validation seam is available to every managed runtime, but Antigravity's official artifacts,
+  initialize-only validator, manifest and descriptor install capability remain Step 10.c work and are not claimed here.
 - The upgrade replaces only a runtime Sesori already manages; a harness that has never
   been installed through Sesori still needs the explicit Install action. A user who runs
   a PATH install and also has a stale managed directory downloads one target they do not
@@ -183,4 +198,6 @@ download, verification, or placement. Use a disposable data directory.
 - `bridge/sesori_bridge_foundation/lib/src/archive_extractor.dart` and its test cover
   explicit budgets, simulated slow commands, timeout cleanup and real tar/zip hardening;
   `bridge/sesori_plugin_runtime/test/provisioning/runtime_install_service_test.dart`
-  verifies that the selected asset's budget reaches extraction.
+  verifies that the selected asset's budget reaches extraction and covers pre-placement validation ordering, private
+  context containment/cleanup, cached validation and rollback on rejection or abort; the adjacent managed-install and
+  version-validator suites cover cache reuse and the existing exact-version adapter.

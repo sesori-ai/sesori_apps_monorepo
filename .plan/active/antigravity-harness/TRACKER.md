@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–9 merged; Step 10.a open for review
-- **Base:** synced with main `28998e2f736c96eded48d6b604bce7c589d86863` after Step 9 merge
-- **Current branch:** `antigravity-harness-step-10a-archive-budgets`
+- **Status:** Steps 1–10.a merged; Step 10.b open for review
+- **Base:** synced with main `57e9ecf33e000612fc04a00d4fa0f7757366f427` after Step 10.a merge
+- **Current branch:** `antigravity-harness-step-10b-candidate-validation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -21,9 +21,10 @@
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b),
   [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c),
-  [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9)
-- **Open PR:** [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a).
-- **Next action:** monitor Step 10.a; begin only Step 10.b locally.
+  [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9),
+  [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a)
+- **Open PR:** [#1380](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1380) (Step 10.b).
+- **Next action:** monitor Step 10.b; begin only Step 10.c locally.
 
 ## Fixed PR Series
 
@@ -42,8 +43,8 @@
 - [x] Step 8.a/12 — `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
 - [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
 - [x] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
-- [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
-- [ ] Step 10.a/12 — `⚙️ [antigravity-harness] feat(runtime): declare archive command budgets [step 10.a/12]`
+- [x] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
+- [x] Step 10.a/12 — `⚙️ [antigravity-harness] feat(runtime): declare archive command budgets [step 10.a/12]`
 - [ ] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
 - [ ] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.c/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
@@ -395,6 +396,28 @@
 - [x] Step 9 merged with 16/16 checks; synchronized main `28998e2f73`. All reviewed bridge files remain byte-identical.
   Main also changed app/plugin stop contracts, so reran the 10 app updater/registry tests and app analysis: all pass.
   This overlaps the initial 54-test scope; unchanged archive tests were not rerun. Publication counts include metadata.
+
+## Step 10.b Checklist
+
+- [x] Add one required backend-neutral candidate-validation seam and adapt all seven managed-runtime installers
+  explicitly through their existing exact bundled-version validators.
+- [x] Validate downloaded candidates after checksum, archive hardening and executable chmod but before package placement
+  or sentinel creation; remove the duplicate destructive post-placement probe.
+- [x] Own disposable validation cwd/state below private managed staging, keep extraction in a child directory, and await
+  validation plus context cleanup for downloads and cached candidates.
+- [x] Pass `StartAbortSignal` through the seam while retaining honest bounded-command behavior for current validators.
+- [x] Cover validation ordering/containment/private-mode commands, cache validation, exact-version behavior, and
+  rejection/abort rollback preserving the prior package and sentinel.
+- [x] Pinned Dart 3.13.2 verification: all 195 non-hidden tests across the runtime package's 19 suites pass; runtime,
+  OpenCode, Codex, Cursor, DeepSeek, Copilot, OMP and Pi analyzers are clean with fatal infos. Counts use successful
+  JSON `testDone` records keyed by suite/test IDs; logs are retained under `/tmp/antigravity-step10b-*`.
+- [x] First foreground architecture review `d9e0453b` approved complete `57e9ecf33e` → `1cc96e98ff`: all 21 files,
+  581 additions + 111 deletions = 692 lines, no findings. Keep this immutable review distinct from publication metadata.
+- [x] Final localized diagnostics retain candidate launch errors/stacks and actual/expected version mismatches before
+  returning a rejected candidate. Sixteen overlapping validator tests pass and owning analysis is clean; these are
+  not additional unique cases on top of the initial 195. No architecture boundary changed in this follow-up.
+- [ ] Step 10.c official Antigravity artifacts, manifest, initialize-only validator and descriptor install capability
+  remain unstarted.
 
 ## Architecture Reviews
 

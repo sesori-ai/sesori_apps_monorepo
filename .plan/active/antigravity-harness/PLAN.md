@@ -3,10 +3,11 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–9 merged, Step 10.a in review
+- **Status:** active; Steps 1–10.a merged, Step 10.b in review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
-- **Delivery:** twelve ordered top-level steps; approved ordered slices are 6.a/6.b/6.c/6.d and 7.a/7.b/7.c
+- **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
+  8.a/8.b/8.c, and 10.a/10.b/10.c
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
