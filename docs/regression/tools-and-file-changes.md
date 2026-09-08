@@ -79,6 +79,10 @@ sub-agent parts, plus the signal that a tool changed files.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.
+- Antigravity normalizes its `formatted_output`, `exit_code`, `command_line`, and `working_dir` aliases before the
+  shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
+  bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
+  and provider text is retained within the shared display cap, and a nonzero exit note never changes ACP tool status.
 - GitHub Copilot uses the same standard ACP tool lifecycle. Permission linkage
   must be exact while the request is live. Call identity, terminal state, and
   diff content then converge after `session/load`; permission
@@ -103,12 +107,15 @@ sub-agent parts, plus the signal that a tool changed files.
 
 Vary the tool mix per run: read-only inspection, single- and multi-file edits,
 shell-style execution, a failing tool, a sub-agent task. Alternate long,
-multi-byte, and empty shell output; compare live with a later reload. For
-Copilot, verify permission linkage against the live call, then cold-replay the
-resulting call identity, terminal tool state, and diff without expecting its
-process-local permission decision to replay. For Grok, compare read-only,
-mutating, and failing tools live and after `session/load`, including one
-permission-gated mutation and one repeated terminal update.
+multi-byte, and empty shell output; compare live with a later reload. For Antigravity,
+compare command/output aliases, long stdout/stderr, nonzero exits, malformed
+native fields, standard images and path-only image metadata live and after
+replay. For Copilot, verify permission linkage against the live call, then
+cold-replay the resulting call identity, terminal tool state, and diff without
+expecting its process-local permission decision to replay. For Grok, compare
+read-only, mutating, and failing tools live and after `session/load`, including
+one permission-gated mutation, one repeated terminal update, and a verified
+shell command with long output.
 
 ## Failure Signals
 
@@ -123,6 +130,9 @@ permission-gated mutation and one repeated terminal update.
   current peer serializes null variant data.
 - A Cursor tool extension with an originating call ID is attributed to a
   different concurrently active session.
+- Antigravity changes ACP status from an exit code, loses an exit note to truncation, leaks an image path as a fetched
+  attachment, retains unbounded/redundant raw fields, drops differing text, or
+  produces different live/replay tool state.
 - A Copilot tool loses permission correlation while live, or its call identity,
   terminal status, or diff changes when reopened through ACP history.
 - A Grok tool loses live permission correlation, changes call identity or status
@@ -152,6 +162,8 @@ permission-gated mutation and one repeated terminal update.
 - ACP permission decisions and pending requests are process-local interaction
   state. Cold replay restores the resulting tool lifecycle and diff, not the
   earlier decision or its linkage event.
+- Real Antigravity tool execution and generated-image output remain pending native/L5 evidence; synthetic normalization
+  establishes the boundary contract only.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
 - An older client does not tolerate an unknown message-part `type` from a newer
@@ -163,7 +175,8 @@ permission-gated mutation and one repeated terminal update.
 - Contract: `bridge/sesori_plugin_interface/lib/src/models/plugin_message.dart`;
   `shared/sesori_shared/lib/src/models/sesori/message_part.dart`
 - Bridge: `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`,
-  the shared ACP mapper used by `bridge/sesori_plugin_copilot/` and
+  the shared ACP mapper used by `bridge/sesori_plugin_antigravity/`,
+  `bridge/sesori_plugin_copilot/` and
   `bridge/sesori_plugin_grok/`, `bridge/app/lib/src/sse/bridge_event_mapper.dart`;
   mappers and tests under
   `bridge/sesori_plugin_*/`; `client/app/lib/features/session_detail/widgets/`

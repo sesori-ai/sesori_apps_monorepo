@@ -59,6 +59,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   of settings, credentials, providers, and skills but its session root is never
   scanned. Session, attachment, query, and spill mutations stay below plugin
   state, and session-local model/reasoning writes never modify user settings.
+- Antigravity is a local-only ACP v1 harness over Google's official proprietary runtime pair. An explicit
+  `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH is checked.
+  Setup inspection is static and inert, reports personal-auth readiness from token-file presence without reading it,
+  and advertises current-client browser login only when required. It never imports ambient credentials, starts a
+  process, opens a browser, or offers managed installation. Preparation, exact identity/version probing, login and live
+  start use the same isolated profile/environment with parent inheritance disabled.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`
   authoritative, otherwise prefers a compatible PATH release (`>=1.0.78`) over
@@ -280,7 +286,11 @@ managed, explicit binary path, externally managed backend. Vary the trigger betw
 and management API, whether a session is idle or working, and fresh versus reused data
 directories. For Hermes, vary missing and pre-ACP installs, a release below `0.20.0`, an
 unconfigured model/provider, PATH discovery, and `--hermes-bin`. Restore eligibility,
-timeouts, and sessions afterwards. For Copilot, vary missing, malformed, too-old,
+timeouts, and sessions afterwards. For Antigravity, vary missing, mismatched and
+valid official pairs, PATH versus authoritative explicit selection,
+authenticated versus authentication-required isolated profiles, and current
+versus unsupported older clients. Do not use real Google OAuth for synthetic
+setup checks. For Copilot, vary missing, malformed, too-old,
 compatible PATH, managed, and explicit runtimes; authenticated and unauthenticated
 normal configuration; owned-process exit; and bridge restart. For Grok, vary
 missing, malformed, too-old, current PATH, and authoritative explicit binaries;
@@ -341,6 +351,9 @@ owned-process exit; and restart.
   instead of the explicit no-harness state when none is usable.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
   being logged, failed, or restarted as an unexpected crash.
+- Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, launches ACP,
+  opens a browser, falls through from an explicit pair, or advertises managed install; registration changes the
+  OpenCode preferred default or adds a shared `Harness` enum case.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
   PATH release, offers install with an explicit path or on an unsupported
@@ -358,7 +371,7 @@ owned-process exit; and restart.
 ## Known Limitations
 
 - The harness set comes from the current registry; unregistered in-development harnesses
-  are out of scope.
+  are out of scope. Antigravity managed installation and native cross-target/OAuth evidence remain pending gates.
 - DeepSeek is registered and enabled by default. Its official theme-independent
   brand-blue artwork, local provider setup guidance, and managed install controls
   follow the same backend-neutral registry and client surfaces as every other harness.
@@ -383,8 +396,9 @@ owned-process exit; and restart.
 
 ## Sources
 
-- [Internal Antigravity isolated-profile contract](antigravity-isolated-profiles.md): unregistered profile
-  preparation, neutral browser-noop mode, and selective OAuth stderr handling (not active harness support).
+- [Antigravity local runtime activation](antigravity-descriptor-and-setup.md),
+  [isolated profile](antigravity-isolated-profiles.md), and
+  [personal authentication](antigravity-personal-authentication.md) contracts.
 - Shared host/process boundary coverage: `bridge_host_json_store_test.dart`,
   `bridge_host_process_service_test.dart`, `host_process_acp_factory_test.dart`,
   `acp_output_interceptor_test.dart`, and `acp_stdio_client_test.dart` cover atomic

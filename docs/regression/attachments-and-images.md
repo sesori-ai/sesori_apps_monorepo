@@ -20,6 +20,9 @@ content the transcript renders live and after reload.
   within the staged-attachment size bound so the request fits the relay's message
   limit. The owning plugin normalizes backend-produced images into a client-safe
   attachment; host paths never cross that boundary.
+- Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
+  Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
+  copies; a provider-local image path remains bounded metadata and is never opened or sent to a client.
 - GitHub Copilot's production descriptor advertises prompt attachments
   unconditionally, and the shared ACP mapper sends bounded inline image parts
   without renegotiating that declaration against initialization metadata. A
@@ -129,7 +132,10 @@ content the transcript renders live and after reload.
 Vary the image source (picker, clipboard, backend-generated, tool output, remote
 reference), raster format, collection size from one image to over the candidate
 limit, and bytes from small to over budget. Vary whether the transcript is seen
-live, after paging back, or after a reopen, and vary the plugin. For Copilot,
+live, after paging back, or after a reopen, and vary the plugin. For
+Antigravity, vary inline prompt images, standard provider image content,
+redundant raw image aliases, path-only metadata, mixed text/image output and
+live versus replay. For Copilot,
 vary a vision-capable selected model, a model that rejects images, and an
 account-level rejection without changing the descriptor's capability claim.
 
@@ -161,6 +167,8 @@ account-level rejection without changing the descriptor's capability claim.
   decode succeeds, or retains original bytes/provider cache entries after closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
+- Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard
+  image, diverges between live and replay, or bypasses existing count/byte/type limits.
 - Copilot advertises images but drops the ACP image part, accepts it with the
   wrong selected model, or hides a model/account rejection.
 - Failed creation loses, duplicates, or persists submitted attachment bytes;
@@ -176,6 +184,8 @@ account-level rejection without changing the descriptor's capability claim.
 - Markdown inline image URLs use the platform network image loader for HTTP and
   HTTPS and do not pass through the guarded attachment loader; they are not
   covered by the remote-attachment guarantee.
+- Antigravity native prompt-image acceptance and Google-generated image behavior remain pending L5 evidence; account or
+  model rejection must stay visible and does not justify reading path-only provider output.
 - Copilot does not negotiate its descriptor's attachment support against the
   initialized CLI capability. Image acceptance can vary by selected model and
   account entitlement; a visible upstream rejection is expected coverage, not a
@@ -190,8 +200,8 @@ account-level rejection without changing the descriptor's capability claim.
 ## Sources
 
 Shared attachment variants, budgets, safe-URI rules, and prompt part shapes;
-per-plugin image mappers, including Cursor generated-image reading, the shared
-ACP image mapping used by Copilot, and descriptor capability declarations;
+per-plugin image mappers, including Cursor generated-image reading, Antigravity raw-alias normalization, the shared
+ACP image mapping used by Antigravity and Copilot, and descriptor capability declarations;
 shared client composer validation, attachment cache, loader, viewer, and
 surface tests under `client/module_core` and `client/module_app_ui`; mobile
 picker, voice, and keyboard composition under `client/app`; and desktop picker,

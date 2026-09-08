@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-Internal, unregistered Step 7.a foundations. This slice adds no active descriptor, user-facing harness capability,
-permission/question handling, update normalization, or database change. Step 8 composes these services with real
-session lifecycle hooks; registration remains Step 9. No OAuth or persistent discovery session is executed here.
+Registered local-runtime behavior over the Step 7.a foundations and Step 8 lifecycle composition. Activation adds no
+database change. No persistent discovery session is created: a fresh process exposes no selectable model until a real
+new/load/resume response advertises the account catalog.
 
 ## Required behavior
 
@@ -44,4 +44,4 @@ session lifecycle hooks; registration remains Step 9. No OAuth or persistent dis
 - `acp_session_config_repository_test.dart`: repository through actual ACP API/stdio framing with a fake process checks
   exact standard mode parameters, correlated completion, and backend rejection propagation.
 - Owning Antigravity and ACP analyzers and focused tests are the automated proof boundary. Real account catalogs,
-  complete plugin lifecycle integration, and cross-target runtime evidence remain later plan/regression work.
+  native OAuth and cross-target runtime evidence remain pending plan/regression gates.

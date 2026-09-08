@@ -26,6 +26,8 @@ dependencies:
     path: ../sesori_plugin_interface
   sesori_bridge_foundation:
     path: ../sesori_bridge_foundation
+  antigravity_plugin:
+    path: ../sesori_plugin_antigravity
   opencode_plugin:
     path: ../sesori_plugin_opencode
   codex_plugin:
@@ -55,8 +57,6 @@ dependencies:
 dev_dependencies:
   acp_plugin:
     path: ../sesori_plugin_acp
-  antigravity_plugin:
-    path: ../sesori_plugin_antigravity
   test: ^1.31.2
   lints: ^6.1.0
   fake_async: ^1.3.3

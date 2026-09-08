@@ -20,8 +20,8 @@ import "../services/antigravity_runtime_service.dart";
 import "../storage/antigravity_profile_storage.dart";
 import "../storage/antigravity_runtime_storage.dart";
 
-/// Unregistered composition seam for the future descriptor. Each invocation
-/// receives a dedicated HTTP client and the SAME plugin-root store as live use.
+/// Per-attempt composition seam for the descriptor. Each invocation receives a
+/// dedicated HTTP client and the SAME plugin-root store as live use.
 class const AntigravityAuthenticationComposer() {
   PluginAuthenticationBrowserOperation compose({
     required HostProcessService processes,
