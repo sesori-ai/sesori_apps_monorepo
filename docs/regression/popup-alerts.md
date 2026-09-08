@@ -11,7 +11,8 @@ and render above the current route, below the top navigation bar.
   accent treatment from the Prego design system.
 - An alert without supporting text stays compact; supporting text and optional
   actions expand the card without clipping at accessibility text sizes.
-- The card is centered with 16 px screen margins and a 343 px maximum width.
+- The card is centered with 16 px screen margins and sizes to its content up to
+  the available width.
 - A newly presented alert replaces the alert already visible on the same route,
   including while the previous alert is still dismissing.
 - Session-attributed backend alerts appear only while the matching session detail
@@ -19,6 +20,14 @@ and render above the current route, below the top navigation bar.
 - Alerts dismiss after three seconds by default, immediately when the close
   button is tapped, and on an upward swipe that follows the finger and completes
   on release.
+- Alerts enter from just above their resting position with a fade and subtle
+  scale over 220 ms, and fade upward over 160 ms when dismissed. Closing during
+  entrance continues from the current position without a jump.
+- Android Remove animations and iOS Reduce Motion use fade-only entry and exit,
+  including when the preference changes while an alert is visible. User-driven
+  upward swipe dismissal remains available alongside close and automatic dismissal.
+- Presented alerts expose a live region so assistive technology can announce
+  transient feedback.
 - Alerts presented from asynchronous operations remain visible when the source
   row or modal is removed, and alerts raised from a modal or full-screen image
   viewer render above that route rather than behind it.
@@ -27,7 +36,7 @@ and render above the current route, below the top navigation bar.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. |
+| L1 Smoke | Automated: the owning widget suite proves each visual variant, placement below navigation, auto-dismiss, close-on-tap, upward-swipe dismissal, replacement including replacement during dismissal, interrupted entrance, entry/exit direction and responsiveness, fade-only reduced motion and live preference changes, live-region semantics, sizing for short and long text and for action-bearing alerts, and overlay inset behavior when a modal strips top padding. |
 | L2 Routine | Client end to end on the release-target client platform: an alert raised by a real asynchronous operation survives removal of its source row or modal, and renders above a modal or full-screen image viewer. |
 | L3 Release | Client end to end: a session-attributed backend alert appears on the matching session detail or diffs route and stays suppressed elsewhere, while an unattributed backend alert shows app-wide. |
 | L4 Extended | Client end to end at accessibility text sizes: supporting text and actions expand the card without clipping. |
@@ -44,6 +53,8 @@ and render above the current route, below the top navigation bar.
 - An alert outlives its source operation's route in a way that hides it, or a
   swipe or close tap fails to dismiss it.
 - Supporting text or actions clip at accessibility text sizes.
+- An alert jumps when dismissed during entrance, automatically slides or scales
+  with reduced motion enabled, or is not announced by assistive technology.
 
 ## Sources
 

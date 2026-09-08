@@ -100,7 +100,6 @@ class _PreviewLauncherState()
     extends State<_PreviewLauncher>
     with SingleTickerProviderStateMixin, WidgetsBindingObserver {
   FeedbackPreviewScenario _scenario = FeedbackPreviewScenario.success;
-  String? _notice;
   bool _presenting = false;
   late final AnimationController _sheetAnimation = AnimationController(vsync: this);
   final _sheetKey = GlobalKey<_FeedbackSheetState>();
@@ -150,10 +149,9 @@ class _PreviewLauncherState()
   Future<void> _openFeedback() async {
     if (_presenting) return;
     _syncSheetMotion();
-    setState(() {
-      _presenting = true;
-      _notice = null;
-    });
+    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
+    popupAlertPresenter.dismiss();
+    setState(() => _presenting = true);
     final scenario = _scenario;
     ModalRoute<_PreviewOutcome>? sheetRoute;
     final result = await showModalBottomSheet<_PreviewOutcome>(
@@ -180,18 +178,21 @@ class _PreviewLauncherState()
     if (!mounted) return;
     switch (result) {
       case _PreviewOutcome.privateFeedback:
-        setState(() => _notice = "Feedback sent. Thank you!");
+        popupAlertPresenter.show(
+          title: "Feedback sent. Thank you!",
+          variant: PregoPopupAlertsNotificationsVariant.success,
+        );
       case _PreviewOutcome.nativeReview:
         if (FeedbackMotionScope.maybeOf(context: context) != null) {
-          setState(() => _notice = "Native rating skipped during motion preview.");
+          popupAlertPresenter.show(title: "Native rating skipped during motion preview.");
           break;
         }
         try {
           await const MethodChannel("com.sesori.app/feedback_preview").invokeMethod<void>("requestReview");
         } on MissingPluginException {
-          if (mounted) setState(() => _notice = "Native rating is available in the iOS debug preview.");
+          if (mounted) popupAlertPresenter.show(title: "Native rating is available in the iOS debug preview.");
         } on PlatformException {
-          if (mounted) setState(() => _notice = "Couldn’t open native rating. Please try again.");
+          if (mounted) popupAlertPresenter.show(title: "Couldn’t open native rating. Please try again.");
         }
       case null:
         break;
@@ -202,107 +203,74 @@ class _PreviewLauncherState()
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return Scaffold(
-      body: Stack(
-        children: [
-          PregoGlassScaffold(
-            title: "Sesori_app_monorepo",
-            titleMode: PregoTopNavigationTitleMode.backLeading,
-            automaticallyImplyLeading: false,
-            subtitle: MediaQuery.textScalerOf(context).scale(14) > 18
-                ? null
-                : const PregoNavSubtitle(text: "sesori-ai/sesori_app_monorepo", icon: TablerRegular.brand_github),
-            actions: [
-              PregoButtonsIconGlass(
-                icon: Theme.of(context).brightness == Brightness.dark ? TablerRegular.sun : TablerRegular.moon,
-                semanticLabel: "Toggle preview theme",
-                onPressed: widget.onToggleTheme,
+    return PregoGlassScaffold(
+      title: "Sesori_app_monorepo",
+      titleMode: PregoTopNavigationTitleMode.backLeading,
+      automaticallyImplyLeading: false,
+      subtitle: MediaQuery.textScalerOf(context).scale(14) > 18
+          ? null
+          : const PregoNavSubtitle(text: "sesori-ai/sesori_app_monorepo", icon: TablerRegular.brand_github),
+      actions: [
+        PregoButtonsIconGlass(
+          icon: Theme.of(context).brightness == Brightness.dark ? TablerRegular.sun : TablerRegular.moon,
+          semanticLabel: "Toggle preview theme",
+          onPressed: widget.onToggleTheme,
+        ),
+      ],
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+          sliver: SliverList.list(
+            children: [
+              const _BackdropLine(icon: TablerRegular.terminal_2, label: "OpenCode"),
+              const SizedBox(height: 20),
+              const _BackdropLine(icon: TablerRegular.git_branch, label: "main"),
+              const SizedBox(height: 20),
+              Text("Dedicated workspace", style: prego.textTheme.textMd.regular),
+              const SizedBox(height: 52),
+              Text("Feedback preview", style: prego.textTheme.textXl.medium),
+              const SizedBox(height: 8),
+              Text(
+                FeedbackMotionScope.maybeOf(context: context) != null
+                    ? "Voice and feedback submission are simulated. Native rating is skipped while tuning motion."
+                    : "Voice and feedback submission are simulated. 4–5 stars opens Apple’s native rating prompt in iOS debug builds.",
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
               ),
-            ],
-            slivers: [
-              SliverPadding(
-                padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
-                sliver: SliverList.list(
-                  children: [
-                    const _BackdropLine(icon: TablerRegular.terminal_2, label: "OpenCode"),
-                    const SizedBox(height: 20),
-                    const _BackdropLine(icon: TablerRegular.git_branch, label: "main"),
-                    const SizedBox(height: 20),
-                    Text("Dedicated workspace", style: prego.textTheme.textMd.regular),
-                    const SizedBox(height: 52),
-                    Text("Feedback preview", style: prego.textTheme.textXl.medium),
-                    const SizedBox(height: 8),
-                    Text(
-                      FeedbackMotionScope.maybeOf(context: context) != null
-                          ? "Voice and feedback submission are simulated. Native rating is skipped while tuning motion."
-                          : "Voice and feedback submission are simulated. 4–5 stars opens Apple’s native rating prompt in iOS debug builds.",
-                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-                    ),
-                    const SizedBox(height: 24),
-                    DropdownButtonFormField<FeedbackPreviewScenario>(
-                      initialValue: _scenario,
-                      isExpanded: true,
-                      decoration: const InputDecoration(labelText: "Preview scenario"),
-                      items: [
-                        for (final scenario in FeedbackPreviewScenario.values)
-                          DropdownMenuItem(value: scenario, child: Text(scenario.label)),
-                      ],
-                      onChanged: (value) {
-                        if (value != null) setState(() => _scenario = value);
-                      },
-                    ),
-                    const SizedBox(height: 24),
-                    PregoButtonsSolid(
-                      label: "Open feedback",
-                      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                      size: PregoButtonsSolidSize.xl,
-                      fullWidth: true,
-                      onPressed: _presenting ? null : _openFeedback,
-                    ),
-                    const SizedBox(height: 14),
-                    Text(
-                      FeedbackMotionScope.maybeOf(context: context) == null
-                          ? "Try 1–3 stars for private feedback, or 4–5 stars for Apple’s native rating prompt. "
-                                "Dismiss to change the scenario or theme."
-                          : "Motion preview uses simulated feedback and skips native rating. "
-                                "Dismiss to change the scenario or theme.",
-                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
-                    ),
-                    const SizedBox(height: 40),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          Positioned(
-            left: 20,
-            right: 20,
-            bottom: MediaQuery.paddingOf(context).bottom + 24,
-            child: feedbackMotionRegion(
-              context: context,
-              scene: FeedbackMotionScene.notice,
-              child: _FeedbackContentTransition(
-                child: switch (_notice) {
-                  final notice? => Center(
-                    key: ValueKey(notice),
-                    child: Semantics(
-                      liveRegion: true,
-                      child: PregoPopupAlertsNotifications(
-                        title: notice,
-                        variant: notice == "Feedback sent. Thank you!"
-                            ? PregoPopupAlertsNotificationsVariant.success
-                            : PregoPopupAlertsNotificationsVariant.info,
-                        onClose: () => setState(() => _notice = null),
-                      ),
-                    ),
-                  ),
-                  null => const SizedBox.shrink(),
+              const SizedBox(height: 24),
+              DropdownButtonFormField<FeedbackPreviewScenario>(
+                initialValue: _scenario,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: "Preview scenario"),
+                items: [
+                  for (final scenario in FeedbackPreviewScenario.values)
+                    DropdownMenuItem(value: scenario, child: Text(scenario.label)),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _scenario = value);
                 },
               ),
-            ),
+              const SizedBox(height: 24),
+              PregoButtonsSolid(
+                label: "Open feedback",
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                size: PregoButtonsSolidSize.xl,
+                fullWidth: true,
+                onPressed: _presenting ? null : _openFeedback,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                FeedbackMotionScope.maybeOf(context: context) == null
+                    ? "Try 1–3 stars for private feedback, or 4–5 stars for Apple’s native rating prompt. "
+                          "Dismiss to change the scenario or theme."
+                    : "Motion preview uses simulated feedback and skips native rating. "
+                          "Dismiss to change the scenario or theme.",
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+              ),
+              const SizedBox(height: 40),
+            ],
           ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }

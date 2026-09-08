@@ -271,8 +271,9 @@ const feedbackMotionTargets = <MotionTarget>[
   ),
   MotionTarget(
     id: "notice",
-    label: "Feedback result · Notice transition",
-    parameters: [feedbackContentDuration, feedbackContentReverseDuration, feedbackContentOffset, feedbackContentCurve],
+    label: "Feedback result · Shared toast (replay only)",
+    // The shared presenter owns toast motion; these content controls do not.
+    parameters: [],
   ),
   MotionTarget(
     id: "flow",

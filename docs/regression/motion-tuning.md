@@ -13,6 +13,11 @@ choice. Typed controls edit a draft snapshot. Replay captures one immutable
 snapshot for the animation and its related timing. Original comparison and
 target reset leave unrelated draft values intact.
 
+The feedback result target replays the shared top toast with its standard
+motion and automatic dismissal. It is labeled replay only and exposes no
+unconnected tuning controls. Whole-flow replay uses that same presenter;
+native rating requests remain disabled in tuning mode.
+
 Clipboard presets contain a fixture ID, format version, and complete parameter
 values. Invalid imports leave the previous settings intact. Presets do not
 change source code or add persistent runtime settings.

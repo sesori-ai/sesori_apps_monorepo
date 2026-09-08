@@ -69,6 +69,8 @@ StoreKit does not report whether a rating was submitted. Its development-mode
 prompt lets us verify the native UI; this is not proof of a published review.
 [Apple documents development and TestFlight behavior here](https://developer.apple.com/documentation/storekit/appstore/requestreview%28in%3A%29-1q8qs).
 The private-feedback success toast remains simulated.
+It appears below the top navigation through the shared Prego presenter and
+dismisses automatically after three seconds. Close or swipe up to dismiss sooner.
 
 ## Implementation boundaries
 
@@ -122,8 +124,13 @@ The remaining flow now uses coordinated motion:
   fast-start exit using the flipped `Cubic(0.23, 1, 0.32, 1)`.
 - Content: 220 ms fade with a small vertical offset; outgoing content loses
   pointer access and semantics. The rating handoff resizes the existing sheet
-  during that same transition. Voice, failures, and the bottom confirmation
-  share this treatment.
+  during that same transition. Voice and inline failures share this treatment.
+- Confirmation: the shared top-toast presenter owns placement and the three-second
+  timeout. The card settles downward from a small offset and 96% scale in 220 ms,
+  then fades and contracts upward in 160 ms. Reduced motion uses only the fade.
+  These changes also apply to existing production Prego toasts. The static card
+  is isolated behind a repaint boundary; motion changes only transform and opacity,
+  with no animated blur or repeated layout. The toast schedules no frames at rest.
 - Chips: pointer-down feedback, synchronized 160 ms border/checkbox/text
   selection, and 100 ms press release. Composer actions reveal over 160 ms,
   with neighboring content adjusting alongside them.
@@ -172,12 +179,13 @@ dart analyze
 
 Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 
-- The 38 feedback flow, star, motion, and tuning tests pass, including rating-only
-  submission for 1–3 stars, stable Send/keyboard positions during issue toggles,
-  and disabled Send while recording/transcribing.
+- All 40 feedback flow, star, motion, and tuning tests pass, including shared
+  top-toast replay and automatic dismissal. The toast target is replay only;
+  its motion remains owned by the shared presenter.
 - Focused widget tests cover: all five rating branches, rating-only and category-only
   private submission, dismiss/reopen, draft-preserving retry, editable simulated
-  transcription without automatic submission, and a 320 × 568 viewport with
+  transcription without automatic submission, stable Send/keyboard positions
+  during issue toggles, disabled Send while recording/transcribing, and a 320 × 568 viewport with
   1.5× text and keyboard insets. Native-channel tests verify exactly one request
   for 4/5 stars after full sheet removal, none for 1–3, and explicit handling
   of missing-plugin/platform failures.
@@ -190,6 +198,11 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
   Input checks also cover the voice-first state, keyboard-to-Send replacement,
   measured Figma insets/radii, tap-to-edit, and appending a second transcription
   without losing the existing draft or submitting automatically.
+- The confirmation integration check verifies placement below the top navigation
+  and automatic removal after the three-second reading interval. Twenty shared
+  popup tests pass, covering entry/exit, an interrupted entrance, close/swipe,
+  replacement, both reduced-motion signals and live preference changes, accessible
+  announcement, and no scheduled frames while the toast is idle or dismissed.
 - Shared Prego button checks pass: seven native widget tests, two Chrome tests,
   and the owning module analyzer. See `docs/regression/prego-button-interactions.md`.
 - The app analyzer passes. Formatting and the final playbook analyzer pass.

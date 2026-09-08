@@ -58,8 +58,10 @@ void main() {
       await tester.pump();
       await tester.pump();
       // Pump the simulated delays in order; each interval permits a rendered frame.
+      var sawResultToast = false;
       for (var frame = 0; frame < 40; frame++) {
         await tester.pump(const Duration(milliseconds: 100));
+        sawResultToast = sawResultToast || find.text("Feedback sent. Thank you!").evaluate().isNotEmpty;
       }
       switch (scene) {
         case FeedbackMotionScene.sheetOpen || FeedbackMotionScene.stars:
@@ -71,12 +73,36 @@ void main() {
         case FeedbackMotionScene.composer || FeedbackMotionScene.voice:
           expect(find.byKey(const ValueKey("feedback-text")), findsOneWidget);
         case FeedbackMotionScene.notice || FeedbackMotionScene.flow:
-          expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+          expect(sawResultToast, isTrue);
       }
       expect(nativeRequests, 0);
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets("notice replay uses the shared top toast and its automatic dismissal", (tester) async {
+    await _open(tester: tester);
+    _replay(
+      tester: tester,
+      scene: FeedbackMotionScene.notice,
+      values: const MotionSnapshot()
+          .withInput(parameter: feedbackSheetOpenDuration, input: 0)
+          .withInput(parameter: feedbackSheetCloseDuration, input: 0),
+    );
+    await tester.pump();
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    final toast = find.byKey(const ValueKey("prego_popup_alert"));
+    expect(toast, findsOneWidget);
+    expect(tester.getTopLeft(toast).dy, lessThan(844 / 2));
+    expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+    await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
+    expect(toast, findsNothing);
+    expect(nativeRequests, 0);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("restarting a sequence disposes its pending actions", (tester) async {
     await _open(tester: tester);
