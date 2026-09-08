@@ -1,6 +1,11 @@
 package com.sesori.app
 
+import android.Manifest
+import android.content.Intent
+import android.content.pm.ApplicationInfo
+import android.content.pm.PackageManager
 import android.graphics.Color
+import android.net.Uri
 import android.os.Build
 import android.os.Bundle
 import android.provider.Settings
@@ -17,6 +22,7 @@ import io.flutter.plugin.common.MethodChannel
 
 class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     private var recorderPrewarmService: RecorderPrewarmService? = null
+    private var previewMicrophoneResult: MethodChannel.Result? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -26,6 +32,42 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
                 RecorderPrewarmService.channelName,
             ),
         )
+        // Local feedback playbook only; unavailable in profile and release builds.
+        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+            MethodChannel(
+                flutterEngine.dartExecutor.binaryMessenger,
+                "com.sesori.app/feedback_preview",
+            ).setMethodCallHandler { call, result ->
+                if (call.method != "requestMicrophoneAccess") {
+                    result.notImplemented()
+                } else if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
+                    result.success(true)
+                } else if (previewMicrophoneResult != null) {
+                    result.error("permission_request_pending", "A microphone permission request is already open.", null)
+                } else {
+                    previewMicrophoneResult = result
+                    requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), previewMicrophoneRequestCode)
+                }
+            }
+        }
+    }
+
+    override fun onRequestPermissionsResult(
+        requestCode: Int,
+        permissions: Array<out String>,
+        grantResults: IntArray,
+    ) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults)
+        if (requestCode != previewMicrophoneRequestCode) return
+        val result = previewMicrophoneResult ?: return
+        previewMicrophoneResult = null
+        val granted = grantResults.firstOrNull() == PackageManager.PERMISSION_GRANTED
+        if (!granted && grantResults.isNotEmpty()) {
+            startActivity(
+                Intent(Settings.ACTION_APPLICATION_DETAILS_SETTINGS, Uri.parse("package:$packageName")),
+            )
+        }
+        result.success(granted)
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -97,5 +139,9 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
             return false
         }
         return getNavigationMode() == 2
+    }
+
+    private companion object {
+        const val previewMicrophoneRequestCode = 43019
     }
 }
