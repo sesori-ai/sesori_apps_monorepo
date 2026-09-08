@@ -200,7 +200,8 @@ rules where supported.
   shell.
 - Older-page loading reaches a blocked harness, or interaction returns before a
   successful content/options refresh. A failed restoration erases the retained
-  transcript or tells the user that availability itself could not be checked.
+  transcript or tells the user that availability itself could not be checked. A
+  blocked state other than authentication-required offers harness-status Recheck.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders
