@@ -44,6 +44,14 @@ abstract final class const CatalogStrengthOrder() {
     return [for (final entry in ranked) entry.$2];
   }
 
+  /// The variant a backend implies by listing it first, for a catalog that
+  /// declares no default of its own. `none` is a backend spelling of "no
+  /// variant" that clients never offer, so it is skipped: declaring it would
+  /// leave the model with an invalid default and fall through to whichever
+  /// level sorted strongest.
+  static String? backendDefault(Iterable<String> variants) =>
+      variants.where((variant) => variant != "none").firstOrNull;
+
   /// [models] strongest first. Ranked vendors group in order of first
   /// appearance; within a vendor, newest generation first, then the tier
   /// (Fable, Opus, Sonnet, Haiku; Astra, Sol, Terra, Luna, then the bare

@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'assistant_message.g.dart';
 import 'part.g.dart';
 

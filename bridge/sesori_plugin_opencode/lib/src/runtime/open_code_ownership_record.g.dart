@@ -6,22 +6,19 @@ part of 'open_code_ownership_record.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_OpenCodeOwnershipRecord _$OpenCodeOwnershipRecordFromJson(Map json) =>
-    _OpenCodeOwnershipRecord(
-      ownerSessionId: json['ownerSessionId'] as String,
-      openCodePid: (json['openCodePid'] as num).toInt(),
-      openCodeStartMarker: json['openCodeStartMarker'] as String?,
-      openCodeExecutablePath: json['openCodeExecutablePath'] as String,
-      openCodeCommand: json['openCodeCommand'] as String,
-      openCodeArgs: (json['openCodeArgs'] as List<dynamic>)
-          .map((e) => e as String)
-          .toList(),
-      port: (json['port'] as num).toInt(),
-      bridgePid: (json['bridgePid'] as num).toInt(),
-      bridgeStartMarker: json['bridgeStartMarker'] as String?,
-      startedAt: DateTime.parse(json['startedAt'] as String),
-      status: $enumDecode(_$OpenCodeOwnershipStatusEnumMap, json['status']),
-    );
+_OpenCodeOwnershipRecord _$OpenCodeOwnershipRecordFromJson(Map json) => _OpenCodeOwnershipRecord(
+  ownerSessionId: json['ownerSessionId'] as String,
+  openCodePid: (json['openCodePid'] as num).toInt(),
+  openCodeStartMarker: json['openCodeStartMarker'] as String?,
+  openCodeExecutablePath: json['openCodeExecutablePath'] as String,
+  openCodeCommand: json['openCodeCommand'] as String,
+  openCodeArgs: (json['openCodeArgs'] as List<dynamic>).map((e) => e as String).toList(),
+  port: (json['port'] as num).toInt(),
+  bridgePid: (json['bridgePid'] as num).toInt(),
+  bridgeStartMarker: json['bridgeStartMarker'] as String?,
+  startedAt: DateTime.parse(json['startedAt'] as String),
+  status: $enumDecode(_$OpenCodeOwnershipStatusEnumMap, json['status']),
+);
 
 Map<String, dynamic> _$OpenCodeOwnershipRecordToJson(
   _OpenCodeOwnershipRecord instance,

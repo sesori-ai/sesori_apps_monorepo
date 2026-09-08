@@ -252,7 +252,7 @@ class PiBackendCatalogRepository({
                   name: _displayName(model),
                   // Strongest first; Pi's first-listed level stays the default.
                   variants: CatalogStrengthOrder.variants(thinkingByModel[_modelKey(model)] ?? const []),
-                  defaultVariant: thinkingByModel[_modelKey(model)]?.firstOrNull,
+                  defaultVariant: CatalogStrengthOrder.backendDefault(thinkingByModel[_modelKey(model)] ?? const []),
                   family: null,
                   isAvailable: true,
                   releaseDate: null,

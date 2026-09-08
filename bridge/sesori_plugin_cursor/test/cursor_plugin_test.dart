@@ -1428,6 +1428,10 @@ void main() {
       expect(providers.providers.single.models.map((model) => model.id), ["gpt-5.6-sol", "default"]);
       expect(providers.providers.single.defaultModelID, "default");
       expect(
+        providers.providers.single.models.last.defaultVariant,
+        "medium",
+      );
+      expect(
         providers.providers.single.models.last.variants,
         ["high", "medium", "low", "none"],
       );

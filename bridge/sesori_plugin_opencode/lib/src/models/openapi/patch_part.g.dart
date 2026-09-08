@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'part.g.dart';
 
 @immutable

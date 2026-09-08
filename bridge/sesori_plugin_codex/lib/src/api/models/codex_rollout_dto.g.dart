@@ -6,12 +6,11 @@ part of 'codex_rollout_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexSessionIndexEntryDto _$CodexSessionIndexEntryDtoFromJson(Map json) =>
-    _CodexSessionIndexEntryDto(
-      id: json['id'] as String?,
-      threadName: json['thread_name'] as String?,
-      updatedAt: json['updated_at'] as String?,
-    );
+_CodexSessionIndexEntryDto _$CodexSessionIndexEntryDtoFromJson(Map json) => _CodexSessionIndexEntryDto(
+  id: json['id'] as String?,
+  threadName: json['thread_name'] as String?,
+  updatedAt: json['updated_at'] as String?,
+);
 
 CodexRolloutSessionMetadataLineDto _$CodexRolloutSessionMetadataLineDtoFromJson(
   Map json,
@@ -53,17 +52,15 @@ CodexRolloutEventMessageLineDto _$CodexRolloutEventMessageLineDtoFromJson(
   $type: json['type'] as String?,
 );
 
-CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) =>
-    CodexRolloutCompactedLineDto(
-      timestamp: json['timestamp'] as String?,
-      $type: json['type'] as String?,
-    );
+CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) => CodexRolloutCompactedLineDto(
+  timestamp: json['timestamp'] as String?,
+  $type: json['type'] as String?,
+);
 
-CodexRolloutUnknownLineDto _$CodexRolloutUnknownLineDtoFromJson(Map json) =>
-    CodexRolloutUnknownLineDto(
-      timestamp: json['timestamp'] as String?,
-      $type: json['type'] as String?,
-    );
+CodexRolloutUnknownLineDto _$CodexRolloutUnknownLineDtoFromJson(Map json) => CodexRolloutUnknownLineDto(
+  timestamp: json['timestamp'] as String?,
+  $type: json['type'] as String?,
+);
 
 CodexRolloutUserMessageEventDto _$CodexRolloutUserMessageEventDtoFromJson(
   Map json,
@@ -72,8 +69,7 @@ CodexRolloutUserMessageEventDto _$CodexRolloutUserMessageEventDtoFromJson(
   $type: json['type'] as String?,
 );
 
-CodexRolloutImageGenerationEndEventDto
-_$CodexRolloutImageGenerationEndEventDtoFromJson(Map json) =>
+CodexRolloutImageGenerationEndEventDto _$CodexRolloutImageGenerationEndEventDtoFromJson(Map json) =>
     CodexRolloutImageGenerationEndEventDto(
       callId: json['call_id'] as String,
       status: $enumDecode(
@@ -126,8 +122,7 @@ CodexRolloutUnknownEventDto _$CodexRolloutUnknownEventDtoFromJson(Map json) =>
 _CodexRolloutErrorDto _$CodexRolloutErrorDtoFromJson(Map json) =>
     _CodexRolloutErrorDto(message: json['message'] as String);
 
-_CodexRolloutSessionMetadataPayloadDto
-_$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
+_CodexRolloutSessionMetadataPayloadDto _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
     _CodexRolloutSessionMetadataPayloadDto(
       id: json['id'] as String?,
       cwd: json['cwd'] as String?,
@@ -159,19 +154,18 @@ _CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
 _CodexRolloutItemMetadataDto _$CodexRolloutItemMetadataDtoFromJson(Map json) =>
     _CodexRolloutItemMetadataDto(turnId: json['turn_id'] as String?);
 
-CodexRolloutMessageDto _$CodexRolloutMessageDtoFromJson(Map json) =>
-    CodexRolloutMessageDto(
-      id: json['id'] as String?,
-      role: $enumDecode(
-        _$CodexRolloutRoleEnumMap,
-        json['role'],
-        unknownValue: CodexRolloutRole.unknown,
-      ),
-      content: const CodexRolloutContentListConverter().fromJson(
-        json['content'],
-      ),
-      $type: json['type'] as String?,
-    );
+CodexRolloutMessageDto _$CodexRolloutMessageDtoFromJson(Map json) => CodexRolloutMessageDto(
+  id: json['id'] as String?,
+  role: $enumDecode(
+    _$CodexRolloutRoleEnumMap,
+    json['role'],
+    unknownValue: CodexRolloutRole.unknown,
+  ),
+  content: const CodexRolloutContentListConverter().fromJson(
+    json['content'],
+  ),
+  $type: json['type'] as String?,
+);
 
 const _$CodexRolloutRoleEnumMap = {
   CodexRolloutRole.user: 'user',
@@ -179,30 +173,28 @@ const _$CodexRolloutRoleEnumMap = {
   CodexRolloutRole.unknown: 'unknown',
 };
 
-CodexRolloutReasoningDto _$CodexRolloutReasoningDtoFromJson(Map json) =>
-    CodexRolloutReasoningDto(
-      id: json['id'] as String?,
-      summary: const CodexRolloutContentListConverter().fromJson(
-        json['summary'],
-      ),
-      $type: json['type'] as String?,
-    );
+CodexRolloutReasoningDto _$CodexRolloutReasoningDtoFromJson(Map json) => CodexRolloutReasoningDto(
+  id: json['id'] as String?,
+  summary: const CodexRolloutContentListConverter().fromJson(
+    json['summary'],
+  ),
+  $type: json['type'] as String?,
+);
 
-CodexRolloutFunctionCallDto _$CodexRolloutFunctionCallDtoFromJson(Map json) =>
-    CodexRolloutFunctionCallDto(
-      id: json['id'] as String?,
-      callId: json['call_id'] as String,
-      name: json['name'] as String,
-      arguments: json['arguments'] as String,
-      metadata: json['internal_chat_message_metadata_passthrough'] == null
-          ? null
-          : CodexRolloutItemMetadataDto.fromJson(
-              Map<String, dynamic>.from(
-                json['internal_chat_message_metadata_passthrough'] as Map,
-              ),
-            ),
-      $type: json['type'] as String?,
-    );
+CodexRolloutFunctionCallDto _$CodexRolloutFunctionCallDtoFromJson(Map json) => CodexRolloutFunctionCallDto(
+  id: json['id'] as String?,
+  callId: json['call_id'] as String,
+  name: json['name'] as String,
+  arguments: json['arguments'] as String,
+  metadata: json['internal_chat_message_metadata_passthrough'] == null
+      ? null
+      : CodexRolloutItemMetadataDto.fromJson(
+          Map<String, dynamic>.from(
+            json['internal_chat_message_metadata_passthrough'] as Map,
+          ),
+        ),
+  $type: json['type'] as String?,
+);
 
 CodexRolloutFunctionCallOutputDto _$CodexRolloutFunctionCallOutputDtoFromJson(
   Map json,
@@ -229,24 +221,22 @@ CodexRolloutCustomToolCallDto _$CodexRolloutCustomToolCallDtoFromJson(
   $type: json['type'] as String?,
 );
 
-CodexRolloutCustomToolCallOutputDto
-_$CodexRolloutCustomToolCallOutputDtoFromJson(Map json) =>
+CodexRolloutCustomToolCallOutputDto _$CodexRolloutCustomToolCallOutputDtoFromJson(Map json) =>
     CodexRolloutCustomToolCallOutputDto(
       callId: json['call_id'] as String,
       output: const CodexRolloutOutputConverter().fromJson(json['output']),
       $type: json['type'] as String?,
     );
 
-CodexRolloutWebSearchCallDto _$CodexRolloutWebSearchCallDtoFromJson(Map json) =>
-    CodexRolloutWebSearchCallDto(
-      id: json['id'] as String?,
-      action: json['action'] == null
-          ? null
-          : CodexRolloutActionDto.fromJson(
-              Map<String, dynamic>.from(json['action'] as Map),
-            ),
-      $type: json['type'] as String?,
-    );
+CodexRolloutWebSearchCallDto _$CodexRolloutWebSearchCallDtoFromJson(Map json) => CodexRolloutWebSearchCallDto(
+  id: json['id'] as String?,
+  action: json['action'] == null
+      ? null
+      : CodexRolloutActionDto.fromJson(
+          Map<String, dynamic>.from(json['action'] as Map),
+        ),
+  $type: json['type'] as String?,
+);
 
 CodexRolloutImageGenerationDto _$CodexRolloutImageGenerationDtoFromJson(
   Map json,
@@ -265,41 +255,37 @@ CodexRolloutUnknownResponseItemDto _$CodexRolloutUnknownResponseItemDtoFromJson(
   Map json,
 ) => CodexRolloutUnknownResponseItemDto($type: json['type'] as String?);
 
-CodexRolloutInputTextDto _$CodexRolloutInputTextDtoFromJson(Map json) =>
-    CodexRolloutInputTextDto(
-      text: json['text'] as String,
-      $type: json['type'] as String?,
-    );
+CodexRolloutInputTextDto _$CodexRolloutInputTextDtoFromJson(Map json) => CodexRolloutInputTextDto(
+  text: json['text'] as String,
+  $type: json['type'] as String?,
+);
 
 Map<String, dynamic> _$CodexRolloutInputTextDtoToJson(
   CodexRolloutInputTextDto instance,
 ) => <String, dynamic>{'text': instance.text, 'type': instance.$type};
 
-CodexRolloutOutputTextDto _$CodexRolloutOutputTextDtoFromJson(Map json) =>
-    CodexRolloutOutputTextDto(
-      text: json['text'] as String,
-      $type: json['type'] as String?,
-    );
+CodexRolloutOutputTextDto _$CodexRolloutOutputTextDtoFromJson(Map json) => CodexRolloutOutputTextDto(
+  text: json['text'] as String,
+  $type: json['type'] as String?,
+);
 
 Map<String, dynamic> _$CodexRolloutOutputTextDtoToJson(
   CodexRolloutOutputTextDto instance,
 ) => <String, dynamic>{'text': instance.text, 'type': instance.$type};
 
-CodexRolloutSummaryTextDto _$CodexRolloutSummaryTextDtoFromJson(Map json) =>
-    CodexRolloutSummaryTextDto(
-      text: json['text'] as String,
-      $type: json['type'] as String?,
-    );
+CodexRolloutSummaryTextDto _$CodexRolloutSummaryTextDtoFromJson(Map json) => CodexRolloutSummaryTextDto(
+  text: json['text'] as String,
+  $type: json['type'] as String?,
+);
 
 Map<String, dynamic> _$CodexRolloutSummaryTextDtoToJson(
   CodexRolloutSummaryTextDto instance,
 ) => <String, dynamic>{'text': instance.text, 'type': instance.$type};
 
-CodexRolloutInputImageDto _$CodexRolloutInputImageDtoFromJson(Map json) =>
-    CodexRolloutInputImageDto(
-      imageUrl: json['image_url'] as String,
-      $type: json['type'] as String?,
-    );
+CodexRolloutInputImageDto _$CodexRolloutInputImageDtoFromJson(Map json) => CodexRolloutInputImageDto(
+  imageUrl: json['image_url'] as String,
+  $type: json['type'] as String?,
+);
 
 Map<String, dynamic> _$CodexRolloutInputImageDtoToJson(
   CodexRolloutInputImageDto instance,
@@ -316,15 +302,14 @@ Map<String, dynamic> _$CodexRolloutUnknownContentDtoToJson(
 _CodexRolloutActionDto _$CodexRolloutActionDtoFromJson(Map json) =>
     _CodexRolloutActionDto(query: json['query'] as String?);
 
-_CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) =>
-    _CodexToolArgumentsDto(
-      cmd: json['cmd'],
-      command: json['command'],
-      path: json['path'],
-      filePath: json['file_path'],
-      query: json['query'],
-      cellId: json['cell_id'],
-      taskName: _stringOrNull(json['task_name']),
-      message: _stringOrNull(json['message']),
-      agentType: _stringOrNull(json['agent_type']),
-    );
+_CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) => _CodexToolArgumentsDto(
+  cmd: json['cmd'],
+  command: json['command'],
+  path: json['path'],
+  filePath: json['file_path'],
+  query: json['query'],
+  cellId: json['cell_id'],
+  taskName: _stringOrNull(json['task_name']),
+  message: _stringOrNull(json['message']),
+  agentType: _stringOrNull(json['agent_type']),
+);

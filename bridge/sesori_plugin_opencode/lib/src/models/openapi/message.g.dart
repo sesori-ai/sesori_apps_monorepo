@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'assistant_message.g.dart';
 import 'user_message.g.dart';
 
@@ -47,9 +48,7 @@ class MessageUnknown implements Message {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is MessageUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) || (other is MessageUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

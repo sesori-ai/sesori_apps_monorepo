@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'message.g.dart';
 
 @immutable
@@ -132,7 +133,24 @@ class AssistantMessage implements Message {
           other.finish == finish);
 
   @override
-  int get hashCode => Object.hash(id, sessionID, time, const DeepCollectionEquality().hash(error), parentID, modelID, providerID, mode, agent, path, summary, cost, tokens, const DeepCollectionEquality().hash(structured), variant, finish);
+  int get hashCode => Object.hash(
+    id,
+    sessionID,
+    time,
+    const DeepCollectionEquality().hash(error),
+    parentID,
+    modelID,
+    providerID,
+    mode,
+    agent,
+    path,
+    summary,
+    cost,
+    tokens,
+    const DeepCollectionEquality().hash(structured),
+    variant,
+    finish,
+  );
 
   final String id;
   final String sessionID;
@@ -188,9 +206,7 @@ class AssistantMessageTime {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is AssistantMessageTime &&
-          other.created == created &&
-          other.completed == completed);
+      (other is AssistantMessageTime && other.created == created && other.completed == completed);
 
   @override
   int get hashCode => Object.hash(created, completed);
@@ -234,10 +250,7 @@ class AssistantMessagePath {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is AssistantMessagePath &&
-          other.cwd == cwd &&
-          other.root == root);
+      identical(this, other) || (other is AssistantMessagePath && other.cwd == cwd && other.root == root);
 
   @override
   int get hashCode => Object.hash(cwd, root);
@@ -349,10 +362,7 @@ class AssistantMessageTokensCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is AssistantMessageTokensCache &&
-          other.read == read &&
-          other.write == write);
+      identical(this, other) || (other is AssistantMessageTokensCache && other.read == read && other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);

@@ -360,7 +360,7 @@ class CopilotSessionOptionsService({
                   name: model.name,
                   // Strongest first; Copilot's first-listed level stays the default.
                   variants: CatalogStrengthOrder.variants(_reasoningLevels(modelValue: model.value)),
-                  defaultVariant: _reasoningLevels(modelValue: model.value).firstOrNull,
+                  defaultVariant: CatalogStrengthOrder.backendDefault(_reasoningLevels(modelValue: model.value)),
                   family: null,
                   isAvailable: true,
                   releaseDate: null,

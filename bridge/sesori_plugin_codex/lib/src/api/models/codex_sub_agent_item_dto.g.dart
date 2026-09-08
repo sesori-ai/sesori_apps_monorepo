@@ -6,26 +6,24 @@ part of 'codex_sub_agent_item_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
-_CodexSubAgentItemParamsDto _$CodexSubAgentItemParamsDtoFromJson(Map json) =>
-    _CodexSubAgentItemParamsDto(
-      threadId: json['threadId'] as String?,
-      turnId: json['turnId'] as String?,
-      item: CodexSubAgentItemDto.fromJson(
-        Map<String, dynamic>.from(json['item'] as Map),
-      ),
-    );
+_CodexSubAgentItemParamsDto _$CodexSubAgentItemParamsDtoFromJson(Map json) => _CodexSubAgentItemParamsDto(
+  threadId: json['threadId'] as String?,
+  turnId: json['turnId'] as String?,
+  item: CodexSubAgentItemDto.fromJson(
+    Map<String, dynamic>.from(json['item'] as Map),
+  ),
+);
 
-_CodexCollabAgentStateDto _$CodexCollabAgentStateDtoFromJson(Map json) =>
-    _CodexCollabAgentStateDto(
-      status:
-          $enumDecodeNullable(
-            _$CodexCollabAgentStatusEnumMap,
-            json['status'],
-            unknownValue: CodexCollabAgentStatus.unknown,
-          ) ??
-          CodexCollabAgentStatus.unknown,
-      message: _textFromJson(json['message']),
-    );
+_CodexCollabAgentStateDto _$CodexCollabAgentStateDtoFromJson(Map json) => _CodexCollabAgentStateDto(
+  status:
+      $enumDecodeNullable(
+        _$CodexCollabAgentStatusEnumMap,
+        json['status'],
+        unknownValue: CodexCollabAgentStatus.unknown,
+      ) ??
+      CodexCollabAgentStatus.unknown,
+  message: _textFromJson(json['message']),
+);
 
 const _$CodexCollabAgentStatusEnumMap = {
   CodexCollabAgentStatus.pendingInit: 'pendingInit',
@@ -89,20 +87,19 @@ const _$CodexCollabItemStatusEnumMap = {
   CodexCollabItemStatus.unknown: 'unknown',
 };
 
-CodexSubAgentActivityItemDto _$CodexSubAgentActivityItemDtoFromJson(Map json) =>
-    CodexSubAgentActivityItemDto(
-      id: json['id'] as String?,
-      kind:
-          $enumDecodeNullable(
-            _$CodexSubAgentActivityKindEnumMap,
-            json['kind'],
-            unknownValue: CodexSubAgentActivityKind.unknown,
-          ) ??
-          CodexSubAgentActivityKind.unknown,
-      agentThreadId: _textFromJson(json['agentThreadId']),
-      agentPath: _textFromJson(json['agentPath']),
-      $type: json['type'] as String?,
-    );
+CodexSubAgentActivityItemDto _$CodexSubAgentActivityItemDtoFromJson(Map json) => CodexSubAgentActivityItemDto(
+  id: json['id'] as String?,
+  kind:
+      $enumDecodeNullable(
+        _$CodexSubAgentActivityKindEnumMap,
+        json['kind'],
+        unknownValue: CodexSubAgentActivityKind.unknown,
+      ) ??
+      CodexSubAgentActivityKind.unknown,
+  agentThreadId: _textFromJson(json['agentThreadId']),
+  agentPath: _textFromJson(json['agentPath']),
+  $type: json['type'] as String?,
+);
 
 const _$CodexSubAgentActivityKindEnumMap = {
   CodexSubAgentActivityKind.started: 'started',

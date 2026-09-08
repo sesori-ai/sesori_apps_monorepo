@@ -82,7 +82,8 @@ class Pty {
           other.exitCode == exitCode);
 
   @override
-  int get hashCode => Object.hash(id, title, command, const DeepCollectionEquality().hash(args), cwd, status, pid, exitCode);
+  int get hashCode =>
+      Object.hash(id, title, command, const DeepCollectionEquality().hash(args), cwd, status, pid, exitCode);
 
   final String id;
   final String? title;

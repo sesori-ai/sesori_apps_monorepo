@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'message.g.dart';
 import 'output_format.g.dart';
 import 'snapshot_file_diff.g.dart';
@@ -92,7 +93,17 @@ class UserMessage implements Message {
           const DeepCollectionEquality().equals(other.tools, tools));
 
   @override
-  int get hashCode => Object.hash(id, sessionID, time, format, summary, agent, model, system, const DeepCollectionEquality().hash(tools));
+  int get hashCode => Object.hash(
+    id,
+    sessionID,
+    time,
+    format,
+    summary,
+    agent,
+    model,
+    system,
+    const DeepCollectionEquality().hash(tools),
+  );
 
   final String id;
   final String sessionID;
@@ -134,10 +145,7 @@ class UserMessageTime {
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is UserMessageTime &&
-          other.created == created);
+  bool operator ==(Object other) => identical(this, other) || (other is UserMessageTime && other.created == created);
 
   @override
   int get hashCode => created.hashCode;

@@ -23,7 +23,7 @@ class const DeepSeekCatalogMapper() {
                   variants: CatalogStrengthOrder.variants(model.reasoningEfforts),
                   defaultVariant: model.reasoningEfforts.contains(model.defaultReasoningEffort)
                       ? model.defaultReasoningEffort
-                      : model.reasoningEfforts.firstOrNull,
+                      : CatalogStrengthOrder.backendDefault(model.reasoningEfforts),
                   family: null,
                   isAvailable: true,
                   releaseDate: null,

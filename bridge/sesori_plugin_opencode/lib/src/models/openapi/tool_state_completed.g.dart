@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'file_part.g.dart';
 import 'tool_state.g.dart';
 
@@ -24,7 +25,9 @@ class ToolStateCompleted implements ToolState {
       title: json["title"] as String?,
       metadata: json["metadata"] as Map<String, dynamic>,
       time: ToolStateCompletedTime.fromJson(json["time"] as Map<String, dynamic>),
-      attachments: (json["attachments"] as List<dynamic>?)?.map((e) => FilePart.fromJson(e as Map<String, dynamic>)).toList(),
+      attachments: (json["attachments"] as List<dynamic>?)
+          ?.map((e) => FilePart.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -73,7 +76,14 @@ class ToolStateCompleted implements ToolState {
           const DeepCollectionEquality().equals(other.attachments, attachments));
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(input), output, title, const DeepCollectionEquality().hash(metadata), time, const DeepCollectionEquality().hash(attachments));
+  int get hashCode => Object.hash(
+    const DeepCollectionEquality().hash(input),
+    output,
+    title,
+    const DeepCollectionEquality().hash(metadata),
+    time,
+    const DeepCollectionEquality().hash(attachments),
+  );
 
   final Map<String, dynamic> input;
   final String output;
@@ -124,10 +134,7 @@ class ToolStateCompletedTime {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is ToolStateCompletedTime &&
-          other.start == start &&
-          other.end == end &&
-          other.compacted == compacted);
+      (other is ToolStateCompletedTime && other.start == start && other.end == end && other.compacted == compacted);
 
   @override
   int get hashCode => Object.hash(start, end, compacted);

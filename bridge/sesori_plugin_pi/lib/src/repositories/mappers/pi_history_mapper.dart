@@ -782,5 +782,5 @@ enum _PiHistoryWarning(final String message) {
   unsupportedUserContent("[pi] history contains unsupported user content blocks; omitting them"),
   unsupportedToolContent("[pi] history contains unsupported tool-result blocks; omitting them"),
   imageCount("[pi] history image collection exceeds count limit; omitting excess images"),
-  invalidBranch("[pi] history active branch is incomplete; mapping reachable entries only");
+  invalidBranch("[pi] history active branch is incomplete; mapping reachable entries only"),
 }

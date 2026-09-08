@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'event.g.dart';
 import 'question_answer.g.dart';
 
@@ -43,10 +44,7 @@ class EventQuestionReplied implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is EventQuestionReplied &&
-          other.id == id &&
-          other.properties == properties);
+      identical(this, other) || (other is EventQuestionReplied && other.id == id && other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);

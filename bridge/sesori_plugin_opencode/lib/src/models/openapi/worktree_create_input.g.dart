@@ -39,9 +39,7 @@ class WorktreeCreateInput {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is WorktreeCreateInput &&
-          other.name == name &&
-          other.startCommand == startCommand);
+      (other is WorktreeCreateInput && other.name == name && other.startCommand == startCommand);
 
   @override
   int get hashCode => Object.hash(name, startCommand);

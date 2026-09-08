@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'permission_ruleset.g.dart';
 import 'project_summary.g.dart';
 import 'snapshot_file_diff.g.dart';
@@ -156,7 +157,28 @@ class GlobalSession {
           other.project == project);
 
   @override
-  int get hashCode => Object.hash(id, slug, projectID, workspaceID, directory, path, parentID, summary, cost, tokens, share, title, agent, model, version, const DeepCollectionEquality().hash(metadata), time, permission, revert, project);
+  int get hashCode => Object.hash(
+    id,
+    slug,
+    projectID,
+    workspaceID,
+    directory,
+    path,
+    parentID,
+    summary,
+    cost,
+    tokens,
+    share,
+    title,
+    agent,
+    model,
+    version,
+    const DeepCollectionEquality().hash(metadata),
+    time,
+    permission,
+    revert,
+    project,
+  );
 
   final String id;
   final String slug;
@@ -194,7 +216,9 @@ class GlobalSessionSummary {
       additions: (json["additions"] as num).toDouble(),
       deletions: (json["deletions"] as num).toDouble(),
       files: (json["files"] as num).toDouble(),
-      diffs: (json["diffs"] as List<dynamic>?)?.map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>)).toList(),
+      diffs: (json["diffs"] as List<dynamic>?)
+          ?.map((e) => SnapshotFileDiff.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 
@@ -331,10 +355,7 @@ class GlobalSessionShare {
   }
 
   @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is GlobalSessionShare &&
-          other.url == url);
+  bool operator ==(Object other) => identical(this, other) || (other is GlobalSessionShare && other.url == url);
 
   @override
   int get hashCode => url.hashCode;
@@ -383,10 +404,7 @@ class GlobalSessionModel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is GlobalSessionModel &&
-          other.id == id &&
-          other.providerID == providerID &&
-          other.variant == variant);
+      (other is GlobalSessionModel && other.id == id && other.providerID == providerID && other.variant == variant);
 
   @override
   int get hashCode => Object.hash(id, providerID, variant);
@@ -553,10 +571,7 @@ class GlobalSessionTokensCache {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is GlobalSessionTokensCache &&
-          other.read == read &&
-          other.write == write);
+      identical(this, other) || (other is GlobalSessionTokensCache && other.read == read && other.write == write);
 
   @override
   int get hashCode => Object.hash(read, write);

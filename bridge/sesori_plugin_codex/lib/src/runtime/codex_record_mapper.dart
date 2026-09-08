@@ -14,8 +14,7 @@ class const CodexRecordMapper() implements RuntimeRecordMapper<CodexOwnershipRec
   Map<String, dynamic> toJson({required CodexOwnershipRecord record}) => record.toJson();
 
   @override
-  CodexOwnershipRecord fromJson({required Map<String, dynamic> json}) =>
-      CodexOwnershipRecord.fromJson(json);
+  CodexOwnershipRecord fromJson({required Map<String, dynamic> json}) => CodexOwnershipRecord.fromJson(json);
 
   @override
   String ownerSessionIdOf({required CodexOwnershipRecord record}) => record.ownerSessionId;

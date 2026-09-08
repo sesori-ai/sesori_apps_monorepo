@@ -44,10 +44,7 @@ class Worktree {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is Worktree &&
-          other.name == name &&
-          other.branch == branch &&
-          other.directory == directory);
+      (other is Worktree && other.name == name && other.branch == branch && other.directory == directory);
 
   @override
   int get hashCode => Object.hash(name, branch, directory);

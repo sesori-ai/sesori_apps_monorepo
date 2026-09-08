@@ -121,7 +121,9 @@ class CursorSessionOptionsService({
                   name: model.name,
                   // Strongest first; Cursor's first-listed level stays the default.
                   variants: CatalogStrengthOrder.variants(_catalogTracker.variantsForModel(modelId: model.value)),
-                  defaultVariant: _catalogTracker.variantsForModel(modelId: model.value).firstOrNull,
+                  defaultVariant: CatalogStrengthOrder.backendDefault(
+                    _catalogTracker.variantsForModel(modelId: model.value),
+                  ),
                   family: null,
                   isAvailable: true,
                   releaseDate: null,

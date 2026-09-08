@@ -241,7 +241,9 @@ class OmpSessionOptionsService({
                   name: model.name,
                   // Strongest first; OMP's first-listed level stays the default.
                   variants: CatalogStrengthOrder.variants(catalog.thinkingByModel[model.value]?.variants ?? const []),
-                  defaultVariant: catalog.thinkingByModel[model.value]?.variants.firstOrNull,
+                  defaultVariant: CatalogStrengthOrder.backendDefault(
+                    catalog.thinkingByModel[model.value]?.variants ?? const [],
+                  ),
                   family: null,
                   isAvailable: true,
                   releaseDate: null,

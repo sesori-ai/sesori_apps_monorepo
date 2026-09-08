@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'agent_part.g.dart';
 import 'compaction_part.g.dart';
 import 'file_part.g.dart';
@@ -77,9 +78,7 @@ class PartUnknown implements Part {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is PartUnknown &&
-          const DeepCollectionEquality().equals(other.raw, raw));
+      identical(this, other) || (other is PartUnknown && const DeepCollectionEquality().equals(other.raw, raw));
 
   @override
   int get hashCode => const DeepCollectionEquality().hash(raw);

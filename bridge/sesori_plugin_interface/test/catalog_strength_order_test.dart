@@ -19,6 +19,21 @@ void main() {
     });
   });
 
+  group("CatalogStrengthOrder.backendDefault", () {
+    test("takes the first listed variant", () {
+      expect(CatalogStrengthOrder.backendDefault(["low", "high"]), "low");
+    });
+
+    test("skips a leading none, which clients never offer", () {
+      expect(CatalogStrengthOrder.backendDefault(["none", "low", "medium", "high"]), "low");
+    });
+
+    test("is null when a model offers nothing selectable", () {
+      expect(CatalogStrengthOrder.backendDefault(const []), isNull);
+      expect(CatalogStrengthOrder.backendDefault(["none"]), isNull);
+    });
+  });
+
   group("CatalogStrengthOrder.models", () {
     List<String> order(List<String> ids) => CatalogStrengthOrder.models(ids, idOf: (id) => id);
 

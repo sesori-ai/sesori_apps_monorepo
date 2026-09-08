@@ -4,6 +4,7 @@
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+
 import 'permission_ruleset.g.dart';
 
 @immutable
@@ -119,7 +120,22 @@ class Agent {
           other.steps == steps);
 
   @override
-  int get hashCode => Object.hash(name, description, mode, native, hidden, topP, temperature, color, permission, model, variant, prompt, const DeepCollectionEquality().hash(options), steps);
+  int get hashCode => Object.hash(
+    name,
+    description,
+    mode,
+    native,
+    hidden,
+    topP,
+    temperature,
+    color,
+    permission,
+    model,
+    variant,
+    prompt,
+    const DeepCollectionEquality().hash(options),
+    steps,
+  );
 
   final String name;
   final String? description;
@@ -172,10 +188,7 @@ class AgentModel {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is AgentModel &&
-          other.modelID == modelID &&
-          other.providerID == providerID);
+      identical(this, other) || (other is AgentModel && other.modelID == modelID && other.providerID == providerID);
 
   @override
   int get hashCode => Object.hash(modelID, providerID);

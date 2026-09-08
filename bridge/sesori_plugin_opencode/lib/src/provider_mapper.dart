@@ -18,7 +18,7 @@ enum _ProviderModelStatus() {
 /// Models are listed in picker order: Anthropic and OpenAI models strongest
 /// first through [CatalogStrengthOrder], every other model newest release
 /// first, undated models last, ties by name. Variants are strongest first
-/// with OpenCode's first-listed variant kept as the default.
+/// with OpenCode's first-listed selectable variant kept as the default.
 PluginProvidersResult mapProviderResponse({
   required ConfigProvidersResponse response,
 }) {
@@ -29,7 +29,7 @@ PluginProvidersResult mapProviderResponse({
         id: m.id,
         name: m.name,
         variants: CatalogStrengthOrder.variants(enabled),
-        defaultVariant: enabled.firstOrNull,
+        defaultVariant: CatalogStrengthOrder.backendDefault(enabled),
         family: m.family,
         isAvailable: _isModelAvailable(
           status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),

@@ -38,10 +38,7 @@ class UnknownError {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is UnknownError &&
-          other.name == name &&
-          other.data == data);
+      identical(this, other) || (other is UnknownError && other.name == name && other.data == data);
 
   @override
   int get hashCode => Object.hash(name, data);
@@ -85,10 +82,7 @@ class UnknownErrorData {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is UnknownErrorData &&
-          other.message == message &&
-          other.ref == ref);
+      identical(this, other) || (other is UnknownErrorData && other.message == message && other.ref == ref);
 
   @override
   int get hashCode => Object.hash(message, ref);

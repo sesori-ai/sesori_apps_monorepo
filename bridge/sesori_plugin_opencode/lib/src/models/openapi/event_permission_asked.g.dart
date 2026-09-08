@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'event.g.dart';
 
 @immutable
@@ -42,10 +43,7 @@ class EventPermissionAsked implements Event {
 
   @override
   bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is EventPermissionAsked &&
-          other.id == id &&
-          other.properties == properties);
+      identical(this, other) || (other is EventPermissionAsked && other.id == id && other.properties == properties);
 
   @override
   int get hashCode => Object.hash(id, properties);
@@ -74,7 +72,9 @@ class EventPermissionAskedProperties {
       patterns: (json["patterns"] as List<dynamic>).cast<String>(),
       metadata: json["metadata"] as Map<String, dynamic>,
       always: (json["always"] as List<dynamic>).cast<String>(),
-      tool: json["tool"] == null ? null : EventPermissionAskedPropertiesTool.fromJson(json["tool"] as Map<String, dynamic>),
+      tool: json["tool"] == null
+          ? null
+          : EventPermissionAskedPropertiesTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }
 
@@ -125,7 +125,15 @@ class EventPermissionAskedProperties {
           other.tool == tool);
 
   @override
-  int get hashCode => Object.hash(id, sessionID, permission, const DeepCollectionEquality().hash(patterns), const DeepCollectionEquality().hash(metadata), const DeepCollectionEquality().hash(always), tool);
+  int get hashCode => Object.hash(
+    id,
+    sessionID,
+    permission,
+    const DeepCollectionEquality().hash(patterns),
+    const DeepCollectionEquality().hash(metadata),
+    const DeepCollectionEquality().hash(always),
+    tool,
+  );
 
   final String id;
   final String sessionID;
@@ -172,9 +180,7 @@ class EventPermissionAskedPropertiesTool {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is EventPermissionAskedPropertiesTool &&
-          other.messageID == messageID &&
-          other.callID == callID);
+      (other is EventPermissionAskedPropertiesTool && other.messageID == messageID && other.callID == callID);
 
   @override
   int get hashCode => Object.hash(messageID, callID);

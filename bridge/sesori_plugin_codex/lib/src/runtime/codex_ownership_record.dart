@@ -35,6 +35,5 @@ sealed class CodexOwnershipRecord with _$CodexOwnershipRecord {
     required CodexOwnershipStatus status,
   }) = _CodexOwnershipRecord;
 
-  factory fromJson(Map<String, dynamic> json) =>
-      _$CodexOwnershipRecordFromJson(json);
+  factory fromJson(Map<String, dynamic> json) => _$CodexOwnershipRecordFromJson(json);
 }

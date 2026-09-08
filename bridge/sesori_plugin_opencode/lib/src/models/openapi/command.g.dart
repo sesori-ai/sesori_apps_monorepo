@@ -88,7 +88,17 @@ class Command {
           other.provider == provider);
 
   @override
-  int get hashCode => Object.hash(name, description, agent, model, source, template, subtask, const DeepCollectionEquality().hash(hints), provider);
+  int get hashCode => Object.hash(
+    name,
+    description,
+    agent,
+    model,
+    source,
+    template,
+    subtask,
+    const DeepCollectionEquality().hash(hints),
+    provider,
+  );
 
   final String name;
   final String? description;

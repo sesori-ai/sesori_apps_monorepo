@@ -3,6 +3,7 @@
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
+
 import 'question_info.g.dart';
 import 'question_tool.g.dart';
 
@@ -19,7 +20,9 @@ class QuestionRequest {
     return QuestionRequest(
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
-      questions: (json["questions"] as List<dynamic>).map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>)).toList(),
+      questions: (json["questions"] as List<dynamic>)
+          .map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>))
+          .toList(),
       tool: json["tool"] == null ? null : QuestionTool.fromJson(json["tool"] as Map<String, dynamic>),
     );
   }

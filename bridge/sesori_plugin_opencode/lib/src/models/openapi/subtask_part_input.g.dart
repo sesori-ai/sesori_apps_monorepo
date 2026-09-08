@@ -121,9 +121,7 @@ class SubtaskPartInputModel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SubtaskPartInputModel &&
-          other.providerID == providerID &&
-          other.modelID == modelID);
+      (other is SubtaskPartInputModel && other.providerID == providerID && other.modelID == modelID);
 
   @override
   int get hashCode => Object.hash(providerID, modelID);

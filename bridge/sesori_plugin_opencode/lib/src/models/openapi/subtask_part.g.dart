@@ -2,6 +2,7 @@
 // Source: anomalyco/opencode@v1.17.7 (4ed4f749e644ffb5b279fb30b7b915e743d80142)
 
 import 'package:meta/meta.dart';
+
 import 'part.g.dart';
 
 @immutable
@@ -131,9 +132,7 @@ class SubtaskPartModel {
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SubtaskPartModel &&
-          other.providerID == providerID &&
-          other.modelID == modelID);
+      (other is SubtaskPartModel && other.providerID == providerID && other.modelID == modelID);
 
   @override
   int get hashCode => Object.hash(providerID, modelID);

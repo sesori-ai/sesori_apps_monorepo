@@ -226,8 +226,7 @@ sealed class SseEventData {
       "tui.toast.show" => SseTuiToastShow.fromJson(json),
       "worktree.ready" => SseWorktreeReady.fromJson(json),
       "worktree.failed" => SseWorktreeFailed.fromJson(json),
-      final String unknown =>
-        throw FormatException("Unknown SSE event type: $unknown"),
+      final String unknown => throw FormatException("Unknown SSE event type: $unknown"),
     };
   }
 }
@@ -246,6 +245,7 @@ class SseServerConnected extends SseEventData {
     return const SseServerConnected();
   }
 }
+
 class SseServerHeartbeat extends SseEventData {
   const SseServerHeartbeat();
 
@@ -260,6 +260,7 @@ class SseServerHeartbeat extends SseEventData {
     return const SseServerHeartbeat();
   }
 }
+
 class SseServerInstanceDisposed extends SseEventData {
   const SseServerInstanceDisposed({
     this.directory,
@@ -282,6 +283,7 @@ class SseServerInstanceDisposed extends SseEventData {
     );
   }
 }
+
 class SseGlobalDisposed extends SseEventData {
   const SseGlobalDisposed();
 
@@ -296,6 +298,7 @@ class SseGlobalDisposed extends SseEventData {
     return const SseGlobalDisposed();
   }
 }
+
 class SseSessionCreated extends SseEventData implements SseSessionEventData {
   const SseSessionCreated({
     required this.info,
@@ -318,6 +321,7 @@ class SseSessionCreated extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseSessionUpdated extends SseEventData implements SseSessionEventData {
   const SseSessionUpdated({
     required this.info,
@@ -340,6 +344,7 @@ class SseSessionUpdated extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseSessionDeleted extends SseEventData implements SseSessionEventData {
   const SseSessionDeleted({
     required this.info,
@@ -362,6 +367,7 @@ class SseSessionDeleted extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseSessionDiff extends SseEventData implements SseSessionEventData {
   const SseSessionDiff({
     required this.sessionID,
@@ -388,6 +394,7 @@ class SseSessionDiff extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseSessionError extends SseEventData implements SseSessionEventData {
   const SseSessionError({
     this.sessionID,
@@ -410,6 +417,7 @@ class SseSessionError extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseSessionCompacted extends SseEventData implements SseSessionEventData {
   const SseSessionCompacted({
     required this.sessionID,
@@ -432,6 +440,7 @@ class SseSessionCompacted extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseSessionStatus extends SseEventData implements SseSessionEventData {
   const SseSessionStatus({
     required this.sessionID,
@@ -458,6 +467,7 @@ class SseSessionStatus extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 /// Deprecated event. Use sessionStatus instead. Emitted for backward compatibility.
 // ignore: remove_deprecations_in_breaking_versions, keep idle event for backward compatibility
 @Deprecated("Use sessionStatus instead. Emitted for backward compatibility.")
@@ -487,6 +497,7 @@ class SseSessionIdle extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseCommandExecuted extends SseEventData implements SseSessionEventData {
   const SseCommandExecuted({
     required this.name,
@@ -521,6 +532,7 @@ class SseCommandExecuted extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseMessageUpdated extends SseEventData implements SseSessionEventData {
   const SseMessageUpdated({
     required this.info,
@@ -543,6 +555,7 @@ class SseMessageUpdated extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseMessageRemoved extends SseEventData implements SseSessionEventData {
   const SseMessageRemoved({
     required this.sessionID,
@@ -569,6 +582,7 @@ class SseMessageRemoved extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseMessagePartUpdated extends SseEventData implements SseSessionEventData {
   const SseMessagePartUpdated({
     required this.part,
@@ -591,6 +605,7 @@ class SseMessagePartUpdated extends SseEventData implements SseSessionEventData 
     );
   }
 }
+
 class SseMessagePartDelta extends SseEventData implements SseSessionEventData {
   const SseMessagePartDelta({
     required this.sessionID,
@@ -629,6 +644,7 @@ class SseMessagePartDelta extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseMessagePartRemoved extends SseEventData implements SseSessionEventData {
   const SseMessagePartRemoved({
     required this.sessionID,
@@ -659,6 +675,7 @@ class SseMessagePartRemoved extends SseEventData implements SseSessionEventData 
     );
   }
 }
+
 class SsePtyCreated extends SseEventData {
   const SsePtyCreated();
 
@@ -673,6 +690,7 @@ class SsePtyCreated extends SseEventData {
     return const SsePtyCreated();
   }
 }
+
 class SsePtyUpdated extends SseEventData {
   const SsePtyUpdated();
 
@@ -687,6 +705,7 @@ class SsePtyUpdated extends SseEventData {
     return const SsePtyUpdated();
   }
 }
+
 class SsePtyExited extends SseEventData {
   const SsePtyExited({
     this.id,
@@ -713,6 +732,7 @@ class SsePtyExited extends SseEventData {
     );
   }
 }
+
 class SsePtyDeleted extends SseEventData {
   const SsePtyDeleted({
     this.id,
@@ -735,6 +755,7 @@ class SsePtyDeleted extends SseEventData {
     );
   }
 }
+
 class SsePermissionAsked extends SseEventData implements SseSessionEventData {
   const SsePermissionAsked({
     required this.id,
@@ -769,6 +790,7 @@ class SsePermissionAsked extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SsePermissionReplied extends SseEventData implements SseSessionEventData {
   const SsePermissionReplied({
     required this.requestID,
@@ -799,6 +821,7 @@ class SsePermissionReplied extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SsePermissionUpdated extends SseEventData {
   const SsePermissionUpdated();
 
@@ -813,6 +836,7 @@ class SsePermissionUpdated extends SseEventData {
     return const SsePermissionUpdated();
   }
 }
+
 class SseQuestionAsked extends SseEventData implements SseSessionEventData {
   const SseQuestionAsked({
     required this.id,
@@ -839,10 +863,13 @@ class SseQuestionAsked extends SseEventData implements SseSessionEventData {
     return SseQuestionAsked(
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
-      questions: (json["questions"] as List<dynamic>).map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>)).toList(),
+      questions: (json["questions"] as List<dynamic>)
+          .map((e) => QuestionInfo.fromJson(e as Map<String, dynamic>))
+          .toList(),
     );
   }
 }
+
 class SseQuestionReplied extends SseEventData implements SseSessionEventData {
   const SseQuestionReplied({
     required this.requestID,
@@ -869,6 +896,7 @@ class SseQuestionReplied extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseQuestionRejected extends SseEventData implements SseSessionEventData {
   const SseQuestionRejected({
     required this.requestID,
@@ -895,6 +923,7 @@ class SseQuestionRejected extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseTodoUpdated extends SseEventData implements SseSessionEventData {
   const SseTodoUpdated({
     required this.sessionID,
@@ -917,6 +946,7 @@ class SseTodoUpdated extends SseEventData implements SseSessionEventData {
     );
   }
 }
+
 class SseProjectUpdated extends SseEventData {
   const SseProjectUpdated();
 
@@ -931,6 +961,7 @@ class SseProjectUpdated extends SseEventData {
     return const SseProjectUpdated();
   }
 }
+
 class SseVcsBranchUpdated extends SseEventData {
   const SseVcsBranchUpdated();
 
@@ -945,6 +976,7 @@ class SseVcsBranchUpdated extends SseEventData {
     return const SseVcsBranchUpdated();
   }
 }
+
 class SseFileEdited extends SseEventData {
   const SseFileEdited({
     this.file,
@@ -967,6 +999,7 @@ class SseFileEdited extends SseEventData {
     );
   }
 }
+
 class SseFileWatcherUpdated extends SseEventData {
   const SseFileWatcherUpdated({
     this.file,
@@ -993,6 +1026,7 @@ class SseFileWatcherUpdated extends SseEventData {
     );
   }
 }
+
 class SseLspUpdated extends SseEventData {
   const SseLspUpdated();
 
@@ -1007,6 +1041,7 @@ class SseLspUpdated extends SseEventData {
     return const SseLspUpdated();
   }
 }
+
 class SseLspClientDiagnostics extends SseEventData {
   const SseLspClientDiagnostics({
     this.serverID,
@@ -1033,6 +1068,7 @@ class SseLspClientDiagnostics extends SseEventData {
     );
   }
 }
+
 class SseMcpToolsChanged extends SseEventData {
   const SseMcpToolsChanged();
 
@@ -1047,6 +1083,7 @@ class SseMcpToolsChanged extends SseEventData {
     return const SseMcpToolsChanged();
   }
 }
+
 class SseMcpBrowserOpenFailed extends SseEventData {
   const SseMcpBrowserOpenFailed();
 
@@ -1061,6 +1098,7 @@ class SseMcpBrowserOpenFailed extends SseEventData {
     return const SseMcpBrowserOpenFailed();
   }
 }
+
 class SseInstallationUpdated extends SseEventData {
   const SseInstallationUpdated({
     this.version,
@@ -1083,6 +1121,7 @@ class SseInstallationUpdated extends SseEventData {
     );
   }
 }
+
 class SseInstallationUpdateAvailable extends SseEventData {
   const SseInstallationUpdateAvailable({
     this.version,
@@ -1105,6 +1144,7 @@ class SseInstallationUpdateAvailable extends SseEventData {
     );
   }
 }
+
 class SseWorkspaceReady extends SseEventData {
   const SseWorkspaceReady({
     this.name,
@@ -1127,6 +1167,7 @@ class SseWorkspaceReady extends SseEventData {
     );
   }
 }
+
 class SseWorkspaceFailed extends SseEventData {
   const SseWorkspaceFailed({
     this.message,
@@ -1149,6 +1190,7 @@ class SseWorkspaceFailed extends SseEventData {
     );
   }
 }
+
 class SseTuiToastShow extends SseEventData {
   const SseTuiToastShow({
     this.title,
@@ -1179,6 +1221,7 @@ class SseTuiToastShow extends SseEventData {
     );
   }
 }
+
 class SseWorktreeReady extends SseEventData {
   const SseWorktreeReady();
 
@@ -1193,6 +1236,7 @@ class SseWorktreeReady extends SseEventData {
     return const SseWorktreeReady();
   }
 }
+
 class SseWorktreeFailed extends SseEventData {
   const SseWorktreeFailed();
 
