@@ -9,13 +9,21 @@ idle suspension, the management snapshot, and lifecycle commands.
 ## Required Behavior
 
 - Existing chat interaction consumes the shared management snapshot, not a separate
-  poller. Disabled, authentication-required, missing-runtime, unavailable, stopping,
-  uninspected, unknown and missing-harness states block interaction. Ready setup with
-  dormant, starting, active or degraded runtime remains routable.
-- An unverified initial check blocks input with Retry; retained refresh errors show
-  a warning without changing the last established decision. An older bridge without
-  management support keeps interaction available with an upgrade warning. Reconnect
-  refreshes management and session prerequisites before restoring blocked input.
+  poller. It resolves the session's exact plugin ID rather than the default harness;
+  a missing exact entry blocks only that chat, and unrelated harness changes do not
+  reload it. Disabled, authentication-required, missing-runtime, unavailable,
+  stopping, uninspected, unknown and missing-harness states block interaction. Ready
+  setup with dormant, starting, active or degraded runtime remains routable.
+- An unverified initial check blocks input with Retry; a first check failure remains
+  blocked and keeps its original error for local diagnosis. Retained refresh errors
+  show a warning without changing the last established decision. An older public
+  bridge without management support keeps interaction available with an upgrade
+  warning; a request failure is never treated as endpoint absence.
+- Disconnect preserves an established block. Reconnect requires fresh connected
+  management evidence before restoring positive availability, then refreshes session
+  prerequisites before restoring blocked input. Setup evidence is advisory rather
+  than continuous credential validation: a provider can still reject an admitted
+  turn before a later management refresh reports the change.
 
 - Registration is inert: it contributes CLI options and listing presence but starts
   nothing, and all registered harnesses appear in the snapshots. Setup inspection never
@@ -181,12 +189,6 @@ idle suspension, the management snapshot, and lifecycle commands.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
-- A correlated management command acknowledgment remains successful when an intervening
-  same-bridge refresh supersedes only its snapshot. The client discards that response's
-  snapshot and reconciles through GET, retaining refresh failures separately. Success is
-  never inferred from active, idle, or enabled metadata. Response loss, unprovable responses,
-  and connection/bridge identity changes remain uncertain; reconciliation cannot revive
-  a fenced acknowledgment or publish a stale response.
 - Deliberate bridge shutdown enters each live harness's lifecycle shutdown before closing
   its transport directly. Stdio transports close child stdin before graceful termination
   and bounded force-kill. Managed runtime monitors disarm before transport or process
@@ -300,10 +302,10 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. Automated client service coverage separately proves that a management SSE-triggered GET during enable/restart preserves the correlated acknowledgment without publishing its superseded snapshot; a failed reconciliation retains its typed refresh error. Representative neutral fixtures, no live plugin or rendered UI claim. Cubit/service composition and shared-widget automation prove two independent toggles dispatch before either response, per-target progress/errors and peer padding taps; bridge lifecycle fixtures prove independent named command slots and settings preservation. |
+| L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Automated client projection covers the exact session harness for ready/routable versus disabled, setup-blocked, stopping, failed, unknown, missing-entry, initial-loading, initial-failure and public-old-bridge unsupported evidence. Headless bridge; all registered harnesses listed. |
+| L2 Routine | Automated client coverage retains an established block through disconnect, requires current evidence after reconnect, preserves a supported snapshot's decision across refresh failure, and retains an initial check failure's original cause for local diagnosis. Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. Automated client service coverage separately proves that a management SSE-triggered GET during enable/restart preserves the correlated acknowledgment without publishing its superseded snapshot; a failed reconciliation retains its typed refresh error. Representative neutral fixtures, no live plugin or rendered UI claim. Cubit/service composition and shared-widget automation prove two independent toggles dispatch before either response, per-target progress/errors and peer padding taps; bridge lifecycle fixtures prove independent named command slots and settings preservation. |
 | L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, grouped overview and per-harness detail navigation, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
-| L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. Automated client service ordering coverage separately exercises reversed command completion, bridge mismatch after an intervening GET, and disconnect/reconnect, replacement, unsupported management or disposal during reconciliation; old responses stay fenced and uncertain results stay uncertain despite active/idle metadata. Cubit/widget automation also covers same-harness duplicates, global-timeout exclusion, retained auth/install exclusion, both completion orders, reset/retry fencing, and two safe conflicts with explicit Review and stale dialog callbacks. |
+| L4 Extended | Client end to end for an existing chat: Claude authentication-required then restored, one managed runtime missing then restored, and one supporting ACP harness disabled then enabled; another harness remains usable throughout, and an unrelated-harness management change leaves the open chat untouched. Repeat one unavailable-to-usable transition from a second surface and one reconnect against a different bridge identity. Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. Automated client service ordering coverage separately exercises reversed command completion, bridge mismatch after an intervening GET, and disconnect/reconnect, replacement, unsupported management or disposal during reconciliation; old responses stay fenced and uncertain results stay uncertain despite active/idle metadata. Cubit/widget automation also covers same-harness duplicates, global-timeout exclusion, retained auth/install exclusion, both completion orders, reset/retry fencing, and two safe conflicts with explicit Review and stale dialog callbacks. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
 
 ## Exploration Guidance
@@ -330,6 +332,10 @@ owned-process exit; and restart.
   error, a duplicate/conflicting request escapes its target slot, or Review sends force
   without confirmation. Stacked/queued force sheets or an old callback authorizing a retry.
 
+- A chat uses the default or another harness's state, unknown evidence enables
+  input, a disconnect bypasses a known block, reconnect reuses stale positive
+  evidence, an initial request failure is mistaken for unsupported management,
+  or a retained refresh error changes the last established decision.
 - Detail navigation recreating operation state, duplicate force/auth sheets or scan announcements,
   pushed Back skipping Settings, modal X losing the New Session page or draft, incorrect
   Back/X header controls, or a missing ID displaying another harness.
@@ -349,9 +355,6 @@ owned-process exit; and restart.
   mutex releases before every descriptor start settles.
 - An eligible harness dropped from listings, a drifting or unselectable default, or
   snapshot tokens that miss real changes.
-- A correlated enable/restart acknowledgment becoming uncertain solely because a refresh
-  published first, a superseded response overwriting newer metadata, or refreshed active/idle
-  state being used to manufacture success after response loss or identity invalidation.
 - A harness card showing raw version-probe output, a rejected runtime's version, or a version
   different from the executable selected by setup inspection and runtime resolution.
 - A control offered for an undeclared capability, a supported control missing, a busy
@@ -412,6 +415,9 @@ owned-process exit; and restart.
 - DeepSeek is registered and enabled by default. Its official theme-independent
   brand-blue artwork, local provider setup guidance, and managed install controls
   follow the same backend-neutral registry and client surfaces as every other harness.
+- Management reports bounded setup evidence, not continuous provider entitlement.
+  Credentials can expire after a ready inspection and the admitted turn can fail
+  before the next authoritative refresh; client gating does not parse backend text.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted. Grok installation, updates, interactive login,
   API-key, enterprise, and custom-model configuration remain local and out of
@@ -456,9 +462,11 @@ owned-process exit; and restart.
 - `bridge/sesori_plugin_grok/lib/src/runtime/grok_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_grok/lib/src/grok_plugin_impl.dart` and `grok_plugin_test.dart`
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
-- `client/module_core/lib/src/services/plugin_management_service.dart`, `PregoBrandLogo`, the
-  Grok marks and `client/module_prego/BRAND_ASSETS.md`, and the harness settings
-  screen
+- Client availability gate: `client/module_core/lib/src/services/plugin_management_service.dart`,
+  `session_interaction_calculator.dart`, session-detail cubit composition and
+  their focused tests
+- Shared management presentation: `PregoBrandLogo`, the Grok marks,
+  `client/module_prego/BRAND_ASSETS.md`, and the harness settings screen
 - Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites;
   `client/module_core/test/services/plugin_management_service_test.dart` proves client
   acknowledgment/publication ordering and identity fencing through fake repository and
