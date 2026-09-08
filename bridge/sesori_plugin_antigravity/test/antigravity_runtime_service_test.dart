@@ -391,6 +391,41 @@ void main() {
     expect(storage.inspectedPaths, isEmpty);
   });
 
+  test("managed candidate inspection and initialize stay in the supplied validation context", () async {
+    const candidatePair = AntigravityRuntimePair(
+      serverPath: "/staging/candidate/agy_acp_server.par",
+      harnessPath: "/staging/candidate/localharness_external",
+      target: target,
+    );
+    final storage = _FakeStorage(
+      pairResults: const {
+        "/staging/candidate/agy_acp_server.par": AntigravityRuntimePairFound(pair: candidatePair),
+      },
+      pathResult: const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server),
+    );
+    final api = _FakeAcpApi(
+      outcomes: [() async => initializeResult(agentVersion: AntigravityRelease.agentVersion)],
+    );
+
+    final result = await _service(storage: storage, api: api).validateManagedCandidate(
+      serverPath: candidatePair.serverPath,
+      probeEnvironment: const {"GEMINI_HOME": "/staging/validation-state"},
+      workingDirectory: "/staging/validation-cwd",
+      target: target,
+      timeout: const Duration(seconds: 5),
+      abortSignal: StartAbortSignal.never,
+    ) as AntigravityRuntimeSelected;
+
+    expect(result.source, AntigravityRuntimeSource.managed);
+    expect(storage.inspectedPaths, [candidatePair.serverPath]);
+    expect(storage.pathInspections, 0);
+    expect(api.launches.single.cwd, "/staging/validation-cwd");
+    expect(api.launches.single.environment, {
+      "GEMINI_HOME": "/staging/validation-state",
+      AntigravityRelease.harnessPathEnvironmentKey: candidatePair.harnessPath,
+    });
+  });
+
   test("reports every exact contract violation", () async {
     const invalid = AntigravityInitializeDto(
       protocolVersion: 2,
@@ -414,6 +449,7 @@ void main() {
               source: AntigravityRuntimeSource.explicit,
               pair: pathPair,
               probeEnvironment: const {},
+              workingDirectory: null,
               timeout: const Duration(seconds: 5),
               abortSignal: StartAbortSignal.never,
             )
@@ -433,6 +469,7 @@ void main() {
       source: AntigravityRuntimeSource.explicit,
       pair: pathPair,
       probeEnvironment: const {},
+      workingDirectory: null,
       timeout: const Duration(seconds: 5),
       abortSignal: StartAbortSignal.never,
     ) as AntigravityRuntimeProbeFailed;

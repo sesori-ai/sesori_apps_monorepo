@@ -165,8 +165,11 @@ download, verification, or placement. Use a disposable data directory.
   login, and it never supersedes a configured binary path. Copilot authentication remains
   an out-of-band `copilot login`, supported token environment, or BYOK configuration.
 - Pinned digests are release-engineering state, checked upstream externally.
-- The isolated candidate-validation seam is available to every managed runtime, but Antigravity's official artifacts,
-  initialize-only validator, manifest and descriptor install capability remain Step 10.c work and are not claimed here.
+- The isolated candidate-validation seam is available to every managed runtime. Antigravity now pins independently
+  rehashed facts for all five official Google archives and has an initialize-only validator using disposable managed
+  state, a sanitized false-inheritance environment, and the shared abort signal. Its manifest and descriptor Install
+  capability remain unavailable: packaged-host archive listing/extraction budgets are still unmeasured for Linux x64,
+  Linux arm64, Windows x64 and Windows arm64. The macOS arm64 measurement does not substantiate those targets.
 - The upgrade replaces only a runtime Sesori already manages; a harness that has never
   been installed through Sesori still needs the explicit Install action. A user who runs
   a PATH install and also has a stale managed directory downloads one target they do not
@@ -200,4 +203,6 @@ download, verification, or placement. Use a disposable data directory.
   `bridge/sesori_plugin_runtime/test/provisioning/runtime_install_service_test.dart`
   verifies that the selected asset's budget reaches extraction and covers pre-placement validation ordering, private
   context containment/cleanup, cached validation and rollback on rejection or abort; the adjacent managed-install and
-  version-validator suites cover cache reuse and the existing exact-version adapter.
+  version-validator suites cover cache reuse and the existing exact-version adapter. Antigravity's release, runtime
+  service and candidate-validator suites cover all five immutable artifact mappings plus isolated initialize-only
+  environment, cwd, exact-contract, timeout and abort forwarding without advertising installation.
