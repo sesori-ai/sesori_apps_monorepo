@@ -208,10 +208,12 @@ smoke does not validate other platforms or another transport.
    or environment filtering alone is not a sandbox. If no boundary is available,
    do not inspect, extract, or execute the archive; mark the row unvalidated.
 2. Download inside that boundary, or transfer opaque bytes into it. Verify the
-   matching SHA-256 before parsing. Exercise the production install chain inside
-   the boundary: `CodexPluginDescriptor.installRuntime()` through
-   `ManagedRuntimeComposition.createInstaller()`, `ManagedRuntimeInstallService.install()`,
-   `RuntimeInstallService.install()`, and `ArchiveExtractor.extract()`. Inspect:
+   matching SHA-256 before parsing. Inspect `CodexPluginDescriptor.installRuntime()`
+   for production wiring, but do not call it for a newer candidate: it hard-codes
+   the current manifest. Start at `ManagedRuntimeComposition.createInstaller()`
+   with a temporary candidate manifest and matching asset resolver, then exercise
+   `ManagedRuntimeInstallService.install()`, `RuntimeInstallService.install()`,
+   and `ArchiveExtractor.extract()` inside the boundary. Inspect:
 
    - `bridge/sesori_plugin_runtime/lib/src/composition/managed_runtime_composition.dart`
    - `bridge/sesori_plugin_runtime/lib/src/provisioning/managed_runtime_install_service.dart`
@@ -219,12 +221,16 @@ smoke does not validate other platforms or another transport.
    - `bridge/sesori_bridge_foundation/lib/src/archive_extractor.dart`
 
    Supply only disposable state roots and candidate manifest data in the probe;
-   do not edit the production pin to run it. Assert the final managed path is
-   `<stateDirectory>/codex/<version>/bin/codex` (Windows: `bin/codex.exe`) and
-   compare the complete placed tree with the extracted package, including helper
-   and resource files. Generic tar extraction or a lone executable check is not
-   a substitute. Apply production traversal/link rejection, including rejection
-   of all extracted symlinks. Failure to run this chain blocks the row.
+   do not edit the production pin to run it. Strip GitHub's `sha256:` prefix and
+   require a 64-character hexadecimal digest for each temporary candidate asset.
+   Assert the final managed path is `<stateDirectory>/codex/<version>/bin/codex`
+   (Windows: `bin/codex.exe`). Compare the complete placed archive payload with
+   the extracted package, including helper and resource files, excluding only
+   installer metadata `RuntimeInstallService.sentinelFileName`. Separately assert
+   that `.sesori-runtime-sha256` contains the candidate's bare digest. Generic
+   tar extraction or a lone executable check is not a substitute. Apply production
+   traversal/link rejection, including rejection of all extracted symlinks.
+   Failure to run this chain blocks the row.
 3. Resolve the extracted entrypoint to an absolute path inside the package.
    Never use bare PATH `codex`, copy the CLI away from its helpers, or launch
    the user's Codex Desktop app or existing app-server.
@@ -325,8 +331,10 @@ architecture-bearing production work, not this skill or a target-only edit.
 ## Phase 5 — Implement only after approval and passing gates
 
 1. Update `CodexRuntimeManifest.targetVersion`, six matching digests, and
-   target-specific manifest comments. Keep bundled version derived, minimum
-   unchanged, and every archive format/layout/entrypoint intact.
+   target-specific manifest comments. Strip GitHub's `sha256:` prefix: manifest
+   `sha256` values must contain only the validated 64-character hexadecimal hash.
+   Keep bundled version derived, minimum unchanged, and every archive
+   format/layout/entrypoint intact.
 2. Update target-specific test assertions, URLs and managed-path fixtures.
    Preserve historical behavior and compatibility-floor fixtures.
 3. For approved capabilities, use typed wire models and plugin-local mapping.
