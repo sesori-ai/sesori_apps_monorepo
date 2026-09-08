@@ -57,6 +57,9 @@ state.
   probe, CLI session listing, or REST API. It reads projects, project-directory
   aliases, every root, and every descendant without the REST API's 100-row ceiling,
   and does not read messages, parts, prompts, transcript content, or credentials.
+  The consumed schema is OpenCode v1.18.19's `project`, `project_directory`, and
+  `session` table shapes: additive columns are allowed, while incompatible required
+  columns, types, or values trigger the live-import fallback.
   Complete discovery includes real global roots stored in ancestor directories;
   unlike the old project-list API, it does not exclude them from their best matching
   project family.
