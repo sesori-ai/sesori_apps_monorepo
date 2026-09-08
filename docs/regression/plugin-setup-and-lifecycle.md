@@ -247,9 +247,11 @@ managed, explicit binary path, externally managed backend. Vary the trigger betw
 and management API, whether a session is idle or working, and fresh versus reused data
 directories. For Hermes, vary missing and pre-ACP installs, a release below `0.20.0`, an
 unconfigured model/provider, PATH discovery, and `--hermes-bin`. Restore eligibility,
-timeouts, and sessions afterwards. For Antigravity, vary missing, mismatched and valid official pairs, PATH versus authoritative explicit selection,
-authenticated versus authentication-required isolated profiles, and current versus unsupported older clients. Do not
-use real Google OAuth for synthetic setup checks. For Copilot, vary missing, malformed, too-old,
+timeouts, and sessions afterwards. For Antigravity, vary missing, mismatched and
+valid official pairs, PATH versus authoritative explicit selection,
+authenticated versus authentication-required isolated profiles, and current
+versus unsupported older clients. Do not use real Google OAuth for synthetic
+setup checks. For Copilot, vary missing, malformed, too-old,
 compatible PATH, managed, and explicit runtimes; authenticated and unauthenticated
 normal configuration; owned-process exit; and bridge restart. For Grok, vary
 missing, malformed, too-old, current PATH, and authoritative explicit binaries;

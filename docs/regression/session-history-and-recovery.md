@@ -35,6 +35,11 @@ reconnect or restart.
   and after tiles preserve their order: the first ordinary run retains its IDs,
   and later runs get deterministic unique IDs with parts referencing their owning
   envelope, so database import cannot collapse separated runs.
+- Antigravity history uses standard ACP `session/load` for replay and resume-first residency for live continuation when
+  the exact capability is advertised, falling back to load only when resume is unavailable. Both paths run through the
+  same bounded update normalizer and isolated profile. Cold metadata recovery reads only bounded `.meta` session/cwd
+  records once per live connection; it does not parse SQLite/brain content or mutate Google-owned history. Bridge/live
+  directory bindings stay authoritative over recovered fallbacks.
 - GitHub Copilot history uses standard ACP `session/load` on a dedicated
   short-lived connection. Replayed updates backfill the bridge transcript, while
   reopening a prior session after plugin, process, or bridge restart loads it
@@ -164,7 +169,10 @@ reconnect or restart.
 Vary transcript size relative to page size and how far back you page. Vary the
 disruption: stop the plugin, restart the bridge, drop the client link briefly and
 then beyond the replay window, or advance the session from the backend's own CLI
-between reads. For Copilot and Grok, compare ordinary reopen, plugin restart,
+between reads. For Antigravity, compare load replay with resume-first live
+residency, plugin/process/bridge restart, metadata fallback against bridge/live
+attribution, and a malformed or absent `.meta` record. For Copilot and Grok,
+compare ordinary reopen, plugin restart,
 bridge restart, and forced ACP process replacement for the same imported
 session. For Grok, also vary a changed loaded model/effort and confirm replay
 uses the loaded tuple without replacing live defaults. Vary root versus child
@@ -222,6 +230,9 @@ rules where supported.
   a bridge restart an idle Claude root still shows a running subtask tile, or a
   busy root's live background sub-agent tile is swept to cancelled; a child
   transcript duplicates its parts after reload.
+- Antigravity scans private SQLite/brain/token content, writes Google history, recovers metadata more than once per live
+  connection, lets fallback attribution replace bridge/live data, retries an arbitrary resume failure through load, or
+  normalizes live and replay differently.
 - A Copilot restart prompts before `session/load`, duplicates replay as new live
   output, or reads private history files instead of the ACP replay boundary.
 - Grok replay mutates live defaults during initialize, stamps messages from an
@@ -238,6 +249,8 @@ rules where supported.
   discovery can also still start a stopped backend.
 - Client session-detail refresh triggers are still under diagnosis; only the
   diagnostic logging is in place and any refresh correction is unfinished.
+- Antigravity's native personal-authenticated history, cold bridge restart, retained-history import/tombstone behavior,
+  and cross-target pairs remain pending L5 gates.
 - Grok's sub-agent tile and child catalog are live/persisted lifecycle views;
   reconstructing the inline tile and child transcript from `session/load` is the
   separate planned child-history step, so the capability matrix remains open.
@@ -248,5 +261,5 @@ Bridge chat-history service, repository, reconcile service, history listeners,
 SSE replay window, and routed request dispatch; database and audit compatibility
 tests under `bridge/app/test/bridge/services/`; Pi session process repository,
 storage API, and history mapper; shared ACP event mapper, turn serialization,
-and session loader plus Copilot and Grok plugins and package tests; shared
+and session loader plus Antigravity, Copilot and Grok plugins and package tests; shared
 pagination cursor; client detail load service and cubit.

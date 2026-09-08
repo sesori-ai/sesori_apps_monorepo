@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–6 merged, Step 7.a in review
+- **Status:** active; Steps 1–8.b merged, Step 8.c in review, Step 9 complete locally
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices are 6.a/6.b/6.c/6.d and 7.a/7.b/7.c

@@ -42,12 +42,14 @@ a runtime the user has not asked for.
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Models and effort variants listed strongest first, default declared separately | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Strongest-first models/effort; separate default | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
 
 The picker shows each plugin's declared order. OpenCode ranks models newest
 release first, which is the best signal its catalog offers. Antigravity preserves
-the account-advertised order and has no Sesori effort variants; before the first
-real session catalog in a process, it exposes no model choice and uses the
+the account-advertised order and has no Sesori effort variants; its ⬜ records
+only the absence of Sesori-defined ranking, not verified upstream ranking
+metadata. Before the first real session catalog in a process, it exposes no
+model choice and uses the
 account default. Other plugins still declare variants default-first (the client
 falls back to the first listed variant when no default is declared) and models
 in plugin-defined order.
@@ -107,7 +109,7 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
 | DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
 | Grok | Not implemented | `grok login` on the bridge machine. |
-| Antigravity | Implemented: personal Google browser OAuth | No supported local fallback; a current client is required. |
+| Antigravity | Implemented: personal Google browser OAuth | No local fallback; current client required. |
 
 Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
 Codex uses the existing Sesori device-code UI; Antigravity implements the browser-return action:
@@ -117,11 +119,13 @@ the bridge host's browser, and uses the same isolated profile for login and live
 sessions. Ambient Google login is not imported. Neither row is a general API-key
 entry form or a claim of support for every provider authentication method.
 
-Antigravity deliberately exposes only safe once-kind permission choices. It does
-not expose `allow_always`, because Sesori cannot carry the agent's accompanying
-prompt-injection warning. Enterprise OAuth, Gemini API key, and Agent Platform
-authentication are not implemented. No upstream support limitation is asserted
-for those methods.
+Antigravity deliberately omits every persistent `allow_always` choice because
+Sesori's current permission contract cannot safely represent persistent approval.
+Independently, it excludes any choice of any kind carrying a non-null
+`agy.security.warning`, because the warning cannot cross the current contract.
+Only unambiguous warning-free `allow_once` and optional `reject_once` choices are
+shown. Enterprise OAuth, Gemini API key, and Agent Platform authentication are
+not implemented; no upstream support limitation is asserted for those methods.
 
 Local login/configuration must apply to the profile/environment used by that
 bridge's harness. Provider keys and local/free models may make a backend usable

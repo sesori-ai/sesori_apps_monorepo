@@ -17,7 +17,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 /// setup readiness, eligibility, or a running backend generation.
 final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
   const OpenCodePluginDescriptor(),
-  const AntigravityPluginDescriptor(),
+  AntigravityPluginDescriptor.production(),
   const CodexPluginDescriptor(),
   CopilotPluginDescriptor.production(),
   const CursorPluginDescriptor(),

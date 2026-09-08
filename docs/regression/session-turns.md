@@ -206,6 +206,11 @@ defaults and queued client sends coherent.
   multi-tool turn does not depend on the final turn snapshot. Sesori does not
   call form-elicitation or unadvertised session-close methods to complete an
   ordinary turn.
+- Antigravity uses the shared ACP per-session lanes, prompt acceptance,
+  cancellation, command delivery and idle recovery. Before each prompt it
+  validates any known-catalog model, applies an exact requested model when present, then forces
+  mode `default`; it never selects `auto_edit` or `yolo`. Live and replay updates share the same bounded provider
+  normalizer, and an agent-process exit clears connection-scoped state before one lazy reconnect restores residency.
 - GitHub Copilot runs through the same standard ACP normalization for text,
   reasoning when emitted, tools, statuses, commands, cancellation, and image
   parts. Its complete model/mode/reasoning selection is validated before
@@ -403,7 +408,10 @@ Vary prompt shape, prompt versus slash command, explicit versus default
 agent/model, aborting early versus late, sending while busy to steer at a tool
 boundary where supported or stop-and-send over ACP, sending a command or
 selection change that must wait, cancelling before dispatch, leaving and
-reopening while an entry is visible, turn length, and client count. For Hermes,
+reopening while an entry is visible, turn length, and client count. For
+Antigravity, vary first-turn account defaults, exact-model turns after catalog
+capture, slash commands, early and late abort, two sessions, process exit and
+lazy reconnect. For Hermes,
 include text and image prompts, tool updates, a permission decision, cold history
 replay, and abort after output has started. For DeepSeek, include busy
 stop-and-send around tool use or pending input. For Copilot, include prose, an
@@ -499,6 +507,8 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   without asking, the scope dialog appears when none run, a confirmed stop leaves a sub-agent running or the
   session stuck busy, a killed sub-agent leaves the session busy or the stop
   request hanging, or dismissing the dialog stops anything.
+- An Antigravity turn uses a stale/normalized model ID, omits `default` mode, dispatches after failed selection, applies
+  an unsafe mode, loses normalized output between live and replay, or reconnects without clearing connection state.
 - A Grok turn dispatches before exact model/effort selection settles, accepts a
   stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
   loses text, reasoning, tool, status, or terminal failure output. A child lets
@@ -544,6 +554,8 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
+- Antigravity native turn behavior, personal OAuth and cross-target reconnect remain pending L5 gates; synthetic ACP
+  composition does not substitute for them.
 - Grok does not advertise ACP image prompt capability in the supported release;
   image attachments are not Grok turn coverage.
 - Copilot reasoning is model/account dependent; absence is not a failure unless
@@ -582,6 +594,7 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 - Hermes: `bridge/sesori_plugin_hermes/` and the shared ACP plugin implementation
 - DeepSeek: `bridge/sesori_plugin_deepseek/` and the shared ACP plugin implementation
 - Copilot: `bridge/sesori_plugin_copilot/` and the shared ACP plugin implementation
+- Antigravity: `bridge/sesori_plugin_antigravity/` and the shared ACP plugin implementation
 - Grok: `bridge/sesori_plugin_grok/` and the shared ACP plugin implementation
 - Client: `client/module_core/lib/src/cubits/session_detail/`,
   `client/module_app_ui/lib/src/features/session_detail/`,

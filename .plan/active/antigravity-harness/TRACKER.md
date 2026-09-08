@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.b merged; Step 8.c open for review
-- **Base:** synced with main `b13d197d517adeb51810e05011b300b31a20b014` after Step 8.b merge
-- **Current branch:** `antigravity-harness-step-8c-descriptor-and-setup`
+- **Status:** Steps 1–8.b merged; Step 8.c open for review; Step 9 complete locally
+- **Base:** Step 9 exact predecessor head `7befa7059a431e9dfbf0d32142d2dfd9202aa3af`
+- **Current branch:** `antigravity-harness-step-9-activation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -21,7 +21,7 @@
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b)
 - **Open PR:** [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c).
-- **Next action:** monitor Step 8.c; begin only Step 9 locally.
+- **Next action:** review the complete immutable Step 9 scope; publish only after Step 8.c merges.
 
 ## Fixed PR Series
 
@@ -334,6 +334,30 @@
   57 deletions = 1,396 changed lines. Reviewer `2bb17500`, no findings. The worker's post-commit provider disconnection
   lost only result delivery; preserved verification/artifacts were used without rerunning unchanged passing commands.
   First approval at `53296324b2` remains recorded; incomplete-input blocks and the never-launched reviewer are not attempts.
+
+## Step 9 Checklist
+
+- [x] Register `AntigravityPluginDescriptor.production()` through the existing app composition root and add the app
+  package dependency; production explicitly injects `HttpClient.new` and no test/consumer can fall through to a real
+  callback client.
+- [x] Keep the plugin-owned opaque `antigravity` ID, generic client presentation, bridge-derived projects, OpenCode
+  preferred default and existing lifecycle owner; add no shared `Harness` case or managed install capability.
+- [x] Expose the descriptor's bare `bin` option as `--antigravity-bin` and retain authoritative explicit/PATH local-pair
+  behavior, isolated auth/live profile, false parent-environment inheritance and exact runtime probing from Step 8.c.
+- [x] Update setup/operator guidance before login is reachable: proprietary official pair, Google terms, current-client
+  personal OAuth, no local fallback, isolated credentials and retained Google history after local deletion.
+- [x] Update capability and affected regression contracts for fresh-process model discovery, exact opaque selection,
+  default mode, safe once-kind interactions, bounded live/replay mapping, recovery, images and local tombstone behavior.
+  Persistent choices are excluded categorically; warning-bearing choices are independently excluded without claiming
+  an unverified upstream limitation.
+- [x] Preserve every other harness login row and leave authentication methods beyond personal OAuth as honest Sesori
+  implementation gaps. Native OAuth, supported-target runtime execution and the final L5 matrix remain pending gates.
+- [x] Focused verification passes on pinned Dart 3.13.2: 4 registry + 3 CLI inventory tests in the app and 8 descriptor
+  + 1 authentication-composer tests in Antigravity, for 16 executed tests across four suites. Both owning analyzers are
+  clean with fatal infos. Counts use JSON suite/test IDs and non-hidden successful `testDone` records, never compact
+  reporter filenames.
+- [ ] First complete Step 9 implementation review. Reviewer `4e5105a2` blocked before assessment on the incomplete WIP
+  checkpoint and does not count as an attempt.
 
 ## Architecture Reviews
 

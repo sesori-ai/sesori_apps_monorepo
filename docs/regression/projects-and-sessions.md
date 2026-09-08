@@ -285,8 +285,10 @@ state.
 ## Exploration Guidance
 
 Vary the owning plugin, manual open versus import discovery, git and non-git
-folders, and whether the directory moved between runs. For Antigravity, vary fresh and cold-restarted connections, valid/malformed/duplicate `.meta` records, bridge/live
-attribution precedence, and a tombstoned retained Google session. For Copilot, vary a
+folders, and whether the directory moved between runs. For Antigravity, vary
+fresh and cold-restarted connections, valid/malformed/duplicate `.meta` records,
+bridge/live attribution precedence, and a tombstoned retained Google session.
+For Copilot, vary a
 single-page and multi-page ACP catalog, unchanged re-import, cancellation,
 first-page failure, and a later-page failure after a prior committed import.
 For Grok, vary an empty and populated ACP catalog, persisted and live children,
