@@ -23,13 +23,13 @@ import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 /// the downloaded archive), confirm the [_assets] filenames still match the
 /// release, raise [minPathVersion] only if the bridge starts to require a newer
 /// codex API, and re-run the integration tests. The hashes below are the
-/// published asset digests for codex `rust-v0.148.0`.
+/// published asset digests for codex `rust-v0.153.4`.
 class const CodexRuntimeManifest() extends RuntimeManifest {
   /// Minimum pre-installed codex version the bridge will use as-is.
   static final SemanticRuntimeVersion _minPathVersion = SemanticRuntimeVersion.parse(value: "0.139.0");
 
   /// The latest stable codex release targeted by this plugin.
-  static const String targetVersion = "0.148.0";
+  static const String targetVersion = "0.153.4";
 
   /// The exact codex version the managed runtime installs.
   static final SemanticRuntimeVersion _bundledVersion = SemanticRuntimeVersion.parse(value: targetVersion);
@@ -44,7 +44,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
         assetName: "codex-package-aarch64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "bfae69c7bb7a3fbe68161f2ca9328839c7e6eea053a8871186eb6edbb1346870",
+        sha256: "35438da1fbf7a6db7ddb3bcec84448fa6015ba188461472a97d9d1da7d9c4353",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -52,7 +52,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
         assetName: "codex-package-x86_64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "9ac9245ea244629a9ba4db3315f0cdaebb05182b790ee34271a5060875d836e1",
+        sha256: "3ee638d7155c856ef31f3f4a85cb2195de1939962d3924c935b24f0514564a3d",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -62,7 +62,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
         assetName: "codex-package-aarch64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "580db3c7411f5852b550876f185c30b61b674e01b948fd5030f2cd7a30db110a",
+        sha256: "fc395cb043a1093ab0db34f44aba3199bfaa9ce640cd9be7fd588f44b0da64a4",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -70,7 +70,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
         assetName: "codex-package-x86_64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "8c790500af2ba6e74ce4948fe26c651ac1f77f6dbb005b47c8d26ff711146262",
+        sha256: "a822187e1a2420c61c5926721bfbd878701ed95547c9bb0d4de4498a16ba1821",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -80,7 +80,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
         assetName: "codex-package-aarch64-pc-windows-msvc.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "0258ac84ebf8fdc6d8e1f4b0541d55a703f3d8996debca157a013cf753134c54",
+        sha256: "ac51b1a5932e07dffcaa6e98f4801f13b25192094739b732fc8b40ddb41bbda2",
         archiveBinaryName: "bin/codex.exe",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),
@@ -88,7 +88,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
         assetName: "codex-package-x86_64-pc-windows-msvc.tar.gz",
         format: ArchiveFormat.tarGz,
         archiveCommandTimeout: Duration(minutes: 2),
-        sha256: "cc09f725b8ed133b76a2882fda750b3f1672b10701e8172c9680b5ab79b861ff",
+        sha256: "a6ef3442cb12766a88b39311d79244289e4f9763e2c53ff4fbebc2cb653cc5f3",
         archiveBinaryName: "bin/codex.exe",
         layout: RuntimeArchiveLayout.packageDirectory,
       ),

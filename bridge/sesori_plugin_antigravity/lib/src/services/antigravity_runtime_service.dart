@@ -61,6 +61,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
       final resolution = await _resolveCandidate(
         candidate: candidate,
         probeEnvironment: probeEnvironment,
+        workingDirectory: null,
         timeout: _remaining(timeout: timeout, deadline: deadline),
         abortSignal: abortSignal,
       );
@@ -72,6 +73,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
     final pathResolution = await _resolveCandidate(
       candidate: pathCandidate,
       probeEnvironment: probeEnvironment,
+      workingDirectory: null,
       timeout: _remaining(timeout: timeout, deadline: deadline),
       abortSignal: abortSignal,
     );
@@ -95,6 +97,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
     final managedResolution = await _resolveCandidate(
       candidate: managedCandidate,
       probeEnvironment: probeEnvironment,
+      workingDirectory: null,
       timeout: _remaining(timeout: timeout, deadline: deadline),
       abortSignal: abortSignal,
     );
@@ -102,10 +105,36 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
     return managedResolution;
   }
 
+  /// Inspects and initialize-validates a staged managed pair without selecting
+  /// PATH or an existing installation.
+  Future<AntigravityRuntimeResolution> validateManagedCandidate({
+    required String serverPath,
+    required Map<String, String> probeEnvironment,
+    required String workingDirectory,
+    required PlatformTarget target,
+    required Duration timeout,
+    required StartAbortSignal abortSignal,
+  }) async {
+    _throwIfAborted(abortSignal: abortSignal);
+    final candidate = _runtimeRepository.inspectPair(
+      source: AntigravityRuntimeSource.managed,
+      serverPath: serverPath,
+      target: target,
+    );
+    return await _resolveCandidate(
+      candidate: candidate,
+      probeEnvironment: probeEnvironment,
+      workingDirectory: workingDirectory,
+      timeout: timeout,
+      abortSignal: abortSignal,
+    );
+  }
+
   Future<AntigravityRuntimeResolution> validatePair({
     required AntigravityRuntimeSource source,
     required AntigravityRuntimePair pair,
     required Map<String, String> probeEnvironment,
+    required String? workingDirectory,
     required Duration timeout,
     required StartAbortSignal abortSignal,
   }) async {
@@ -114,6 +143,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
       source: source,
       pair: pair,
       environment: probeEnvironment,
+      workingDirectory: workingDirectory,
       timeout: timeout,
       abortSignal: abortSignal,
     );
@@ -142,6 +172,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
   Future<AntigravityRuntimeResolution> _resolveCandidate({
     required AntigravityRuntimeCandidateResult candidate,
     required Map<String, String> probeEnvironment,
+    required String? workingDirectory,
     required Duration timeout,
     required StartAbortSignal abortSignal,
   }) async {
@@ -152,6 +183,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
           source: source,
           pair: pair,
           probeEnvironment: probeEnvironment,
+          workingDirectory: workingDirectory,
           timeout: timeout,
           abortSignal: abortSignal,
         );

@@ -26,8 +26,12 @@ not been verified, so the sub-agent table makes no claim about it.
 | Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ⬜ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
 
 Antigravity currently resolves only a user-supplied official runtime pair from
-PATH or `--antigravity-bin`; managed installation is not implemented yet.
-Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
+PATH or `--antigravity-bin`; managed installation is not exposed yet. Sesori pins
+independently rehashed facts for all five Google archives and has an isolated
+initialize-only candidate validator, but the manifest and Install capability stay
+blocked until archive listing/extraction budgets are measured on the four Linux
+and Windows packaged targets. The available macOS arm64 measurement is not used
+as evidence for those hosts. Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
 user-installed CLI from PATH or an explicit binary option, so there is nothing
 for Sesori to install or upgrade. The upgrade follows the install capability
 exactly — a harness configured with an explicit binary override, running on a

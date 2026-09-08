@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.a merged; Step 10.b open for review
-- **Base:** synced with main `57e9ecf33e000612fc04a00d4fa0f7757366f427` after Step 10.a merge
-- **Current branch:** `antigravity-harness-step-10b-candidate-validation`
+- **Status:** Steps 1–10.b merged; Step 10.c open for review
+- **Base:** synced with main `b74841ac14e5d4bf07bedb93e73d80c68fef491a` after Step 10.b merge
+- **Current branch:** `antigravity-harness-step-10c-managed-pair`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -23,8 +23,10 @@
   [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c),
   [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9),
   [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a)
-- **Open PR:** [#1380](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1380) (Step 10.b).
-- **Next action:** monitor Step 10.b; begin only Step 10.c locally.
+- **Merged PR:** [#1380](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1380) (Step 10.b). At the terminal
+  report, 15/16 checks were complete with clean Cubic approval; Codex review was still running, so no 16/16 claim is made.
+- **Open PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c).
+- **Next action:** monitor Step 10.c; resolve four missing native measurements before Step 10.d activation.
 
 ## Fixed PR Series
 
@@ -44,9 +46,10 @@
 - [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
 - [x] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
 - [x] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
-- [x] Step 10.a/12 — `⚙️ [antigravity-harness] feat(runtime): declare archive command budgets [step 10.a/12]`
-- [ ] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
-- [ ] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.c/12]`
+- [x] Step 10.a/12 — `🌿 [antigravity-harness] feat(runtime): require archive command budgets [step 10.a/12]`
+- [x] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
+- [ ] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): validate official managed candidates [step 10.c/12]`
+- [ ] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
 - [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
 
@@ -416,8 +419,38 @@
 - [x] Final localized diagnostics retain candidate launch errors/stacks and actual/expected version mismatches before
   returning a rejected candidate. Sixteen overlapping validator tests pass and owning analysis is clean; these are
   not additional unique cases on top of the initial 195. No architecture boundary changed in this follow-up.
-- [ ] Step 10.c official Antigravity artifacts, manifest, initialize-only validator and descriptor install capability
-  remain unstarted.
+- [x] Step 10.b merged in PR #1380. Its terminal report had 15/16 completed checks, clean Cubic approval, and Codex
+  review still running; do not restate that as 16/16.
+
+## Step 10.c Checklist
+
+- [x] Before editing, estimated the complete Step 10.c implementation at 950–1,350 changed lines. The five-target
+  archive budget gate required an earlier coherent split under standing approval rather than inventing timings.
+- [x] Independently downloaded all five archives from the exact official registry URLs at commit
+  `536e378b70a7a6d5f078a9160180e3569a23253c`; recomputed every SHA-256 and archive byte count, and listed both member
+  names/sizes. All facts match `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`.
+- [x] Pin all five verified archive facts in `AntigravityRelease`, retaining the independently hashed macOS member
+  digests and the unsupported macOS x64 result.
+- [x] Add `AntigravityRuntimeVersionValidator(required runtimeService)`. It uses the installer-owned state as
+  `GEMINI_HOME`, shares the profile's ambient-credential stripping policy, forces file storage, uses the supplied staged
+  cwd and abort signal, and awaits the existing initialize-only ACP process lifecycle under a 90-second bound.
+- [x] Native macOS arm64 evidence: the packaged `ArchiveExtractor` listed in 84 ms and extracted in 8,586 ms; a second
+  extraction plus the production validator accepted the exact official initialize contract in 18,781 ms. It created no
+  auth/session request and left no files in disposable validation cwd/state. These are macOS facts only.
+- [x] Keep Install unavailable: no manifest, descriptor install capability, installer composition or managed-download
+  disclosure is added in this slice.
+- [x] Worker `9d318de2` reached its 30-minute timeout after committing `68fd08a88e`, with a clean tree. Recovered only
+  missing artifacts through foreground run `6d34e6d3`; no tests/downloads were repeated for that recovery.
+- [x] First architecture review `10b3a055` approved complete `8184d028f3` → `68fd08a88e`: all 15 files,
+  532 additions + 55 deletions = 587 lines, no findings. Artifact SHA-256 is recorded in the recovered scope file.
+- [x] Initial focused tests: profile 17 + release 3 + runtime service 13 + validator 4 = 37; owning analyzer clean.
+  After main's ACP/NDJSON lifecycle changes, reran the 17 runtime-service/validator cases and owning analysis: passed.
+  This overlaps the initial 37, not 54 unique cases. Reviewed production files remain unchanged after synchronization.
+- [ ] Obtain packaged-host listing and extraction measurements on Linux x64, Linux arm64, Windows x64 and Windows arm64.
+  Native runners are not available in this macOS arm64 worktree. The successor needs those measured budgets, or an
+  explicit product/evidence decision changing the requirement, before manifest and Install exposure.
+- [ ] Add the manifest, descriptor integration/disclosure, target-budget and install rollback/failure tests, and update
+  the managed-runtime capability rows only after the native gate above.
 
 ## Architecture Reviews
 
