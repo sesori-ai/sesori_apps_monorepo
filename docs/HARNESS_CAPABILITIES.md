@@ -184,20 +184,19 @@ the two apart, so the option is not offered.
 Atomic subtree completion acknowledgment is **not implemented** for OpenCode;
 its observed-child snapshot retains legacy client fanout.
 
-³ Codex (codex-cli 0.148.0, `multi_agent` stable, probed 2026-09-02): a child
-announces itself through the parent's `subAgentActivity started`
-(`agentThreadId`) and `thread/status/changed`, never `thread/started`;
-`receiverThreadIds` stays empty. Sesori exposes the verified child thread and
-persisted rollout under its direct parent and rolls running descendants into
-the root's busy state. Spawn calls appear as inline subtask tiles both live
-and in saved history, linked to the child thread; the tile follows the child's
-session status instead of treating spawn completion as task completion.
-Raw task-path fallbacks are formatted for display (for example,
-`/root/architecture_review_1271` becomes `Architecture review · 1271`), while
-raw paths remain the identity used to match saved spawn calls to children.
-`turn/interrupt` works per child thread with its
-`turnId`, and interrupting the parent leaves children running, so
-main-agent-only is supportable.
+³ Codex (managed codex-cli 0.153.4, probed 2026-09-08): live children announce
+through parent activity and status, never `thread/started`; persisted activity
+is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
+matches `spawn_agent.call_id`. Sesori exposes child threads under their direct
+parent, keeps running descendants in root busy state, and links live/replayed
+spawn tiles to the child. Normal initial child input is encrypted in the rollout
+and absent from `thread/read`; tile prompt provenance is therefore only the exact
+nonblank message from that matching spawn call, never parent history or an
+envelope header. A valid child-owned plaintext `NEW_TASK` payload may replace
+that fallback. Metadata-only `thread/read(includeTurns: false)` retains parent
+and nickname enrichment. Raw task paths remain stable identity and are formatted
+for display. `turn/interrupt` works per child with its `turnId`, while parent
+interrupt leaves children running, so main-agent-only is supportable.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,

@@ -84,9 +84,13 @@ defaults and queued client sends coherent.
   must not stop its spinner while the child runs. Readable child nicknames and
   titles are preserved; raw path fallbacks such as
   `/root/architecture_review_1271` display as `Architecture review · 1271`.
-  Matching uses the raw task path under the direct parent, not the formatted
-  label. An interrupted launch that never creates a child retains its own
-  terminal tool status.
+  Matching uses exact spawn/activity call identity, not description, task name,
+  child order, timing, or copied parent history. On current Codex 0.153.4 the
+  initial child input is normally encrypted, so the tile uses only the nonblank
+  message from that matching `spawn_agent` call; a valid child-owned plaintext
+  `NEW_TASK` payload for the initial turn may replace it. The encrypted envelope
+  header is never rendered. An interrupted launch that never creates a child
+  retains its own terminal tool status.
 - A Codex root remains effectively busy after its own turn completes while any
   tracked descendant turn is running. The root's idle status and completion
   signal are deferred and released exactly once after the last child settles;
@@ -97,7 +101,8 @@ defaults and queued client sends coherent.
   busy child thread ids, and roll a child's pending permission or question up
   to the root's awaiting-input state and pending-input snapshot, including a
   restored request with no live status and a request that arrives while
-  `thread/read` is still enriching the spawn. A stop or deletion accepted before
+  metadata-only `thread/read(includeTurns: false)` is still enriching the spawn.
+  A stop or deletion accepted before
   the child's `turn/started` queues its interrupt until the turn id arrives.
   Closing an active child emits its idle status before any deferred root release.
 - A plain Claude prompt sent while its resident process is working is written
