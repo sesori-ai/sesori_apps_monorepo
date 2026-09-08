@@ -20,6 +20,10 @@ performs no real OAuth or Google history access.
   The overview download icon opens detail; detail keeps that guidance visible before the explicit Install button. The
   app registry exposes `Antigravity` and namespaces the descriptor's bare `bin` option as `--antigravity-bin`; OpenCode
   remains the preferred default.
+- Linux installation checks `unzip -Z -h` for Info-ZIP/ZipInfo support before creating the download client or staging
+  files. A missing/incompatible extractor or preflight failure reports package-installation guidance locally and to the
+  client without downloading the archive. The command is bounded; abort is observed before and after it. Setup inspection
+  remains inert. macOS and Windows retain their existing extraction paths.
 - Provisioning and start prepare the same isolated profile before exact runtime probing. Every profile helper, probe and
   live ACP process receives the sanitized environment with parent inheritance disabled. No ambient Google/Gemini
   credential or browser override reaches those processes.
@@ -58,7 +62,8 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
   selection stamping, contradictory replies and atomic catalog/configuration reset. Shared ACP tracker coverage retains
   blank-as-absent behavior without normalizing valid opaque values.
 - **L3/L4:** `antigravity_plugin_descriptor_test.dart` covers inert explicit/PATH/managed inspection, shared root store,
-  sanitized profile/probe/live inputs, managed capability/override/failure behavior, probe-timeout degradation, source
+  sanitized profile/probe/live inputs, managed capability/override/failure behavior, Linux extractor preflight failure,
+  abort and download ordering, probe-timeout degradation, source
   browser-noop invocation, abort, exit reset/reconnect and shutdown. `antigravity_runtime_service_test.dart` covers
   recovered PATH storage diagnostics and inert managed fallback. `antigravity_plugin_test.dart` covers exact
   whitespace-bearing live/replay stamping and cold-reset resume before strict dispatch.

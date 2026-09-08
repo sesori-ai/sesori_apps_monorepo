@@ -187,6 +187,19 @@ class const AntigravityPluginDescriptor({
       includeParentEnvironment: true,
       maxCapturedOutputCharactersPerStream: null,
     );
+    if (startAborted.isAborted) throw const PluginStartAbortedException();
+    if (_target().os == PlatformOs.linux) {
+      final extractorAvailable = await _hasLinuxZipExtractor(commands: commandExecutor, environment: environment);
+      if (startAborted.isAborted) throw const PluginStartAbortedException();
+      if (!extractorAvailable) {
+        yield const ProvisionFailed(
+          message:
+              "Antigravity installation requires Info-ZIP unzip with ZipInfo support on Linux. "
+              "Install your distribution's unzip package, then retry.",
+        );
+        return;
+      }
+    }
     final httpClient = runtimeDownloadHttpClientFactory();
     try {
       final runtimeService = _runtime(processes: processes, environment: environment);
@@ -205,6 +218,28 @@ class const AntigravityPluginDescriptor({
       );
     } finally {
       httpClient.close();
+    }
+  }
+
+  Future<bool> _hasLinuxZipExtractor({
+    required CommandExecutor commands,
+    required Map<String, String> environment,
+  }) async {
+    try {
+      final result = await commands.run(
+        "unzip",
+        const ["-Z", "-h"],
+        environment: environment,
+        timeout: const Duration(seconds: 10),
+      );
+      if (result.exitCode == 0) return true;
+      Log.w("[antigravity] Linux unzip ZipInfo preflight failed", result);
+      return false;
+    } on PluginStartAbortedException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      Log.w("[antigravity] Linux unzip ZipInfo preflight failed", error, stackTrace);
+      return false;
     }
   }
 

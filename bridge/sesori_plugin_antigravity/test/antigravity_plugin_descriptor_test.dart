@@ -34,7 +34,7 @@ class _Store({required final _Store? parent}) implements HostJsonStore {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _HelperProcess() implements SpawnedProcess {
+class _HelperProcess({required final int status}) implements SpawnedProcess {
   @override
   int get pid => 1;
   @override
@@ -42,7 +42,7 @@ class _HelperProcess() implements SpawnedProcess {
   @override
   Stream<List<int>> get stderr => const Stream.empty();
   @override
-  Future<int> get exitCode async => 0;
+  Future<int> get exitCode async => status;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -126,7 +126,7 @@ class _Processes({
         includeParentEnvironment: includeParentEnvironment,
       ),
     );
-    if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess();
+    if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess(status: 0);
     final agent = _AgentProcess(
       initialize: initialize,
       respondToInitialize: respondToInitialize,
@@ -155,6 +155,29 @@ class _Processes({
     wasRequested: true,
     attemptedAt: DateTime.now(),
   );
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _ZipProcesses({required final Future<SpawnedProcess> Function() preflight}) implements HostProcessService {
+  int calls = 0;
+
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) {
+    calls++;
+    expect(executable, "unzip");
+    expect(arguments, ["-Z", "-h"]);
+    expect(environment, {"PATH": "/synthetic/bin"});
+    return preflight();
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -466,6 +489,93 @@ void main() {
     expect(progress.first, isA<ProvisionResolving>());
     expect(progress.last, isA<ProvisionFailed>());
     expect((progress.last as ProvisionFailed).message, isNot(contains(state.path)));
+    expect(download.closed, isTrue);
+  });
+
+  for (final failure in [
+    (name: "missing", run: () async => throw const ProcessException("unzip", ["-Z", "-h"], "not found")),
+    (name: "no ZipInfo", run: () async => _HelperProcess(status: 2)),
+    (name: "timeout", run: () async => throw TimeoutException("synthetic extractor timeout")),
+  ]) {
+    test("Linux extractor ${failure.name} fails before download or state writes", () async {
+      final zip = _ZipProcesses(preflight: failure.run);
+      final candidate = AntigravityPluginDescriptor(
+        target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
+        callbackHttpClientFactory: unexpectedHttpClient,
+        runtimeDownloadHttpClientFactory: () => throw StateError("Download must not be created"),
+      );
+      final progress = await candidate
+          .installRuntime(
+            config: config(server: null),
+            processes: zip,
+            environment: const {"PATH": "/synthetic/bin"},
+            stateDirectory: state.path,
+            startAborted: StartAbortSignal.never,
+            runtimeInUse: RuntimeInUseSignal.never,
+          )
+          .toList();
+      expect((progress.single as ProvisionFailed).message, contains("Info-ZIP unzip with ZipInfo"));
+      expect(zip.calls, 1);
+      expect(state.listSync(), isEmpty);
+    });
+  }
+
+  for (final abortBefore in [true, false]) {
+    test("Linux install observes abort ${abortBefore ? 'before' : 'after'} extractor preflight", () async {
+      final abort = StartAbortController();
+      if (abortBefore) abort.abort();
+      final zip = _ZipProcesses(
+        preflight: () async {
+          abort.abort();
+          return _HelperProcess(status: 0);
+        },
+      );
+      final candidate = AntigravityPluginDescriptor(
+        target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
+        callbackHttpClientFactory: unexpectedHttpClient,
+        runtimeDownloadHttpClientFactory: () => throw StateError("Download must not be created"),
+      );
+      await expectLater(
+        candidate
+            .installRuntime(
+              config: config(server: null),
+              processes: zip,
+              environment: const {"PATH": "/synthetic/bin"},
+              stateDirectory: state.path,
+              startAborted: abort.signal,
+              runtimeInUse: RuntimeInUseSignal.never,
+            )
+            .toList(),
+        throwsA(isA<PluginStartAbortedException>()),
+      );
+      expect(zip.calls, abortBefore ? 0 : 1);
+      expect(state.listSync(), isEmpty);
+    });
+  }
+
+  test("Linux extractor success precedes download-client creation", () async {
+    final zip = _ZipProcesses(preflight: () async => _HelperProcess(status: 0));
+    final download = _DownloadHttp(failure: http.ClientException("synthetic download failure"));
+    final candidate = AntigravityPluginDescriptor(
+      target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
+      callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () {
+        expect(zip.calls, 1);
+        return download;
+      },
+    );
+    final progress = await candidate
+        .installRuntime(
+          config: config(server: null),
+          processes: zip,
+          environment: const {"PATH": "/synthetic/bin"},
+          stateDirectory: state.path,
+          startAborted: StartAbortSignal.never,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+    expect(progress.first, isA<ProvisionResolving>());
+    expect(progress.last, isA<ProvisionFailed>());
     expect(download.closed, isTrue);
   });
 

@@ -484,6 +484,13 @@
 - [x] CI follow-up: update the two stale shared-UI expectations for overview navigation and visible hints;
   all 19 shared settings-view tests pass. Reconcile the later lifecycle-document requirement with the same flow.
   Production code is unchanged; prior passing analyzers and mobile-shell tests were not rerun.
+- [x] Linux ZIP prerequisite follow-up: an action-only bounded ZipInfo preflight fails before download-client creation
+  or staging writes, retaining local diagnostics and observing abort before/after the command. The install guide names
+  the distribution package. All 18 descriptor tests pass; owning analysis is clean after a const-only test lint fix.
+  Synthetic Linux cases cover missing/incompatible/timed-out tools, abort boundaries and successful preflight ordering;
+  host macOS ZipInfo help succeeded, not a native Linux installation claim. No unchanged client suites were rerun.
+- User declined additional recovery machinery for the rare externally supplied PATH pair that passes inert filename
+  inspection but fails runtime validation. Preserve existing inspection/lifecycle semantics rather than expanding this PR.
 
 ## Architecture Reviews
 
