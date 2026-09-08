@@ -113,9 +113,7 @@ class CatalogImportRepository({
     }
     final completed = result;
     if (completed == null) {
-      if (control.cancellationRequested && !cancelledEmitted) {
-        yield CatalogImportProgress.cancelled(pluginId: pluginId);
-      }
+      if (!cancelledEmitted) yield CatalogImportProgress.cancelled(pluginId: pluginId);
       return;
     }
     yield CatalogImportProgress.completed(

@@ -1,4 +1,5 @@
 import "dart:io";
+import "dart:isolate";
 
 import "package:opencode_plugin/src/api/open_code_catalog_database_api.dart";
 import "package:opencode_plugin/src/message_part_mapper.dart";
@@ -238,21 +239,68 @@ void main() {
       });
     });
 
+    test("worker read keeps main isolate responsive and cancellation fences its result", () async {
+      final workerStarted = ReceivePort();
+      addTearDown(workerStarted.close);
+      final cancellation = _MutableCancellation();
+      final repository = OpenCodeCatalogRepository(
+        databaseApi: OpenCodeCatalogDatabaseApi(
+          worker: _GatedCatalogDatabaseWorker(started: workerStarted.sendPort).read,
+        ),
+        modelMapper: const PluginModelMapper(
+          messagePartMapper: MessagePartMapper(),
+          maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+        ),
+        operatingSystem: PlatformOs.macos,
+        fileExists: ({required path}) => true,
+        trustedInstallationChannel: null,
+      );
+
+      final read = repository.read(
+        environment: {"OPENCODE_DB": databasePath},
+        cancellation: cancellation,
+      );
+      final releaseWorker = await workerStarted.first as SendPort;
+      cancellation.isCancelled = true;
+      releaseWorker.send(null);
+
+      await expectLater(read, throwsA(isA<PluginStartAbortedException>()));
+    });
+
     test("Windows database paths map forward slashes to native separators", () async {
       final databaseApi = _FakeCatalogDatabaseApi(
         snapshot: const OpenCodeCatalogDatabaseSnapshot(
           projects: [
             OpenCodeCatalogProjectRow(
               id: "real",
-              worktree: "C:/repo",
+              worktree: "C:/Repo",
               name: null,
               createdAt: 1,
               updatedAt: 2,
               sandboxes: ["C:/repo-sandbox"],
             ),
+            OpenCodeCatalogProjectRow(
+              id: "global",
+              worktree: "C:/",
+              name: null,
+              createdAt: 1,
+              updatedAt: 2,
+              sandboxes: [],
+            ),
           ],
           projectDirectories: [],
-          sessions: [],
+          sessions: [
+            OpenCodeCatalogSessionRow(
+              id: "mixed-case",
+              projectId: "global",
+              parentId: null,
+              directory: "c:/repo/pkg",
+              title: "Mixed case",
+              createdAt: 1,
+              updatedAt: 2,
+              archivedAt: null,
+            ),
+          ],
         ),
       );
       final repository = OpenCodeCatalogRepository(
@@ -272,7 +320,9 @@ void main() {
       );
 
       expect(databaseApi.path, "C:/data/opencode.db");
-      expect((result as PluginCatalogSnapshotAvailable).snapshot.projects.single.project.directory, r"C:\repo");
+      final family = (result as PluginCatalogSnapshotAvailable).snapshot.projects.single;
+      expect(family.project.directory, r"C:\Repo");
+      expect(family.sessions.single.directory, r"c:\repo\pkg");
     });
 
     test("production descriptor reads ordinary public-channel default database", () async {
@@ -284,7 +334,7 @@ void main() {
       _insertProject(database: database, id: "real", worktree: "${temporaryDirectory.path}/repo");
       database.close();
 
-      final result = await const OpenCodePluginDescriptor().readCatalogSnapshot(
+      final result = await OpenCodePluginDescriptor.production().readCatalogSnapshot(
         config: const PluginConfig(values: {"no-auto-start": false, "bin": null}),
         environment: {"HOME": temporaryDirectory.path},
         cancellation: const _NeverCancelled(),
@@ -294,7 +344,7 @@ void main() {
     });
 
     test("attach mode always keeps the existing server import path", () async {
-      final result = await const OpenCodePluginDescriptor().readCatalogSnapshot(
+      final result = await OpenCodePluginDescriptor.production().readCatalogSnapshot(
         config: const PluginConfig(values: {"no-auto-start": true, "port": 4096}),
         environment: {"OPENCODE_DB": databasePath, "HOME": temporaryDirectory.path},
         cancellation: const _NeverCancelled(),
@@ -408,10 +458,29 @@ class _FakeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseSnapshot sn
   String? path;
 
   @override
-  OpenCodeCatalogDatabaseSnapshot read({required String databasePath}) {
+  Future<OpenCodeCatalogDatabaseSnapshot> read({required String databasePath}) async {
     path = databasePath;
     return snapshot;
   }
+}
+
+class _GatedCatalogDatabaseWorker({required final SendPort started}) {
+  Future<OpenCodeCatalogDatabaseSnapshot> read({required String databasePath}) async {
+    final release = ReceivePort();
+    started.send(release.sendPort);
+    await release.first;
+    release.close();
+    return const OpenCodeCatalogDatabaseSnapshot(
+      projects: [],
+      projectDirectories: [],
+      sessions: [],
+    );
+  }
+}
+
+class _MutableCancellation() implements PluginCatalogCancellationSignal {
+  @override
+  bool isCancelled = false;
 }
 
 class const _NeverCancelled() implements PluginCatalogCancellationSignal {

@@ -45,7 +45,7 @@ class OpenCodeCatalogRepository({
       return const PluginCatalogSnapshotUnavailable();
     }
     if (cancellation.isCancelled) throw const PluginStartAbortedException();
-    final raw = databaseApi.read(databasePath: databasePath);
+    final raw = await databaseApi.read(databasePath: databasePath);
     if (cancellation.isCancelled) throw const PluginStartAbortedException();
     final snapshot = await _mapSnapshot(raw: raw, cancellation: cancellation);
     return PluginCatalogSnapshotAvailable(snapshot: snapshot);
@@ -300,10 +300,15 @@ class OpenCodeCatalogRepository({
   }
 
   bool _isUnder({required String directory, required String root}) {
-    final normalizedDirectory = _normalizedPath(directory);
-    final normalizedRoot = _normalizedPath(root);
+    final normalizedDirectory = _comparisonPath(value: directory);
+    final normalizedRoot = _comparisonPath(value: root);
     if (normalizedRoot == "/") return true;
     return normalizedDirectory == normalizedRoot || normalizedDirectory.startsWith("$normalizedRoot/");
+  }
+
+  String _comparisonPath({required String value}) {
+    final normalized = _normalizedPath(value);
+    return operatingSystem == PlatformOs.windows ? normalized.toLowerCase() : normalized;
   }
 
   String _normalizedPath(String value) {

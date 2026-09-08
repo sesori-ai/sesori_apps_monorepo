@@ -1,3 +1,6 @@
+import "dart:async";
+import "dart:isolate";
+
 import "package:sqlite3/sqlite3.dart";
 
 class const OpenCodeCatalogDatabaseException({required final String message, required final Object? cause})
@@ -5,10 +8,6 @@ class const OpenCodeCatalogDatabaseException({required final String message, req
   @override
   String toString() => "OpenCodeCatalogDatabaseException: $message${cause == null ? "" : ": $cause"}";
 }
-
-typedef OpenCodeReadOnlyDatabaseOpener = Database Function({required String path});
-
-Database _openReadOnly({required String path}) => sqlite3.open(path, mode: OpenMode.readOnly);
 
 class const OpenCodeCatalogProjectRow({
   required final String id,
@@ -43,16 +42,29 @@ class const OpenCodeCatalogDatabaseSnapshot({
   required final List<OpenCodeCatalogSessionRow> sessions,
 });
 
-/// Layer-1 read-only wrapper around OpenCode's SQLite catalog.
-class OpenCodeCatalogDatabaseApi({required final OpenCodeReadOnlyDatabaseOpener _opener}) {
+/// Isolate worker dependency. It must capture only sendable values and
+/// open/close native resources inside the invocation.
+typedef OpenCodeCatalogDatabaseWorker = FutureOr<OpenCodeCatalogDatabaseSnapshot> Function({
+  required String databasePath,
+});
+
+/// Layer-1 isolate boundary around OpenCode's read-only SQLite catalog.
+class const OpenCodeCatalogDatabaseApi({required final OpenCodeCatalogDatabaseWorker _worker}) {
   static OpenCodeCatalogDatabaseApi production() {
-    return OpenCodeCatalogDatabaseApi(opener: _openReadOnly);
+    return OpenCodeCatalogDatabaseApi(worker: const _SqliteOpenCodeCatalogDatabaseWorker().read);
   }
 
+  Future<OpenCodeCatalogDatabaseSnapshot> read({required String databasePath}) {
+    final worker = _worker;
+    return Isolate.run(() => worker(databasePath: databasePath));
+  }
+}
+
+class const _SqliteOpenCodeCatalogDatabaseWorker() {
   OpenCodeCatalogDatabaseSnapshot read({required String databasePath}) {
     Database? database;
     try {
-      database = _opener(path: databasePath);
+      database = sqlite3.open(databasePath, mode: OpenMode.readOnly);
       database.execute("BEGIN");
       _validateSchema(database: database);
       _validateSandboxJson(database: database);

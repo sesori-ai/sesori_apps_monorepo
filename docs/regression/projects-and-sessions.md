@@ -60,8 +60,10 @@ state.
   Complete discovery includes real global roots stored in ancestor directories;
   unlike the old project-list API, it does not exclude them from their best matching
   project family.
-  The connection is read-only, uses the live database and WAL normally (never
-  immutable mode or checkpointing), and performs no migration or mutation. Missing,
+  The complete read-only transaction runs in a short-lived worker isolate so the
+  bridge isolate remains responsive to cancellation and bounded force-stop while
+  native SQLite finishes. The connection uses the live database and WAL normally
+  (never immutable mode or checkpointing), and performs no migration or mutation. Missing,
   unreadable, malformed, incompatible, or unidentifiable data fails closed to the
   existing live server import before any partial catalog publication. Explicit
   `OPENCODE_DB` paths and `OPENCODE_DISABLE_CHANNEL_DB` are honored. Ordinary

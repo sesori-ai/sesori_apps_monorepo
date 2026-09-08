@@ -871,6 +871,31 @@ void main() {
       expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNull);
     });
 
+    test("runtime cancellation before enumeration emits exactly one terminal cancelled event", () async {
+      final runtime = _RuntimeCancelledBeforeEnumeration();
+      final repository = CatalogImportRepository(
+        runtime: runtime,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+
+      final statuses = await repository
+          .importCatalog(
+            pluginId: "snapshot",
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: true,
+            ),
+          )
+          .toList();
+
+      expect(statuses, [isA<CatalogImportCancelled>()]);
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+      expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNull);
+    });
+
     test("consumer cancellation at committing releases the import stream without publication", () async {
       final projectPath = "${directory.path}/cancel-committing";
       final plugin = _NativeImportPlugin(
@@ -1032,6 +1057,21 @@ void main() {
       expect(await repository.getHydrationCompletion(pluginId: plugin.id), isNull);
     });
   });
+}
+
+class _RuntimeCancelledBeforeEnumeration() extends TestPluginRuntime {
+  this : super(plugins: const {}, eligiblePluginIds: const {"snapshot"});
+
+  @override
+  Set<String> get startAllowedPluginIds => const {"snapshot"};
+
+  @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) async* {}
 }
 
 class _PreEnumerationCancellationRuntime() extends TestPluginRuntime {
