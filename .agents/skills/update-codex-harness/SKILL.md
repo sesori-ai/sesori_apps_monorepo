@@ -24,6 +24,16 @@ root; stop and report a missing handoff if absent. Use the current Codex manifes
 as the asset-layout authority: older instructions may describe obsolete bare
 CLI archives. Do not substitute those for canonical package archives.
 
+## Normal release-check policy
+
+Target refreshes use normal release checks: the official stable release,
+verified hashes for all managed archives, isolated current-host install/version/
+protocol smoke checks, and focused package tests/analyzer. Do not require
+source-to-binary attestations, reproducible builds, or a multi-platform live
+probe matrix. Missing optional provenance evidence is a reporting limitation,
+not a blocker or a reason to ask for an exception on each update. Keep the
+compatibility minimum unchanged unless the user explicitly approves raising it.
+
 ## Scope and invariants
 
 Read `bridge/AGENTS.md` before production edits. Inspect:
@@ -103,18 +113,12 @@ Preserve these invariants:
    downloading. Re-resolve both tags before using a diff and immediately before
    approval; require exact equality. A moved, missing, or ambiguous tag requires
    stopping and restarting the audit. Use recorded SHAs, not tags, afterward.
-5. Verify source-to-artifact provenance for every managed archive. Inspect the
-   designated release workflow and published provenance at the recorded SHA.
-   Accept an attestation only after a trusted verifier cryptographically checks
-   it, enforcing an allowlisted issuer, exact `openai/codex` repository and
-   designated release-workflow identity, audited commit, and artifact digest.
-   Matching unverified fields or a self-signed statement are insufficient.
-   Otherwise reproduce every archive from the recorded SHA in a disposable
-   container/VM/restricted account with no secrets or sensitive mounts and
-   tightly constrained outbound access; compare normalized contents and digest.
-   If neither path is available, mark provenance unverified and pinning blocked.
-   A GitHub digest, platform code signature, or benign probe alone does not prove
-   that the audited source produced the archive.
+5. Inspect release-workflow and packaging changes as part of the source audit.
+   Provenance attestations or reproducible-build evidence may be recorded when
+   already available, but are not required for a normal target refresh. Do not
+   start a separate rebuild/provenance project or block pinning because that
+   evidence is absent. Report checksum integrity separately from source-to-binary
+   provenance; a checksum or smoke test does not prove the latter.
 
 ## Phase 2 — Audit the aggregate release diff
 
@@ -200,7 +204,7 @@ unknown events appropriately, permit legitimately omitted new fields, and retain
 existing behavior. Do not add version branches merely because shapes differ.
 For genuinely incompatible semantics, evaluate a narrow interface with two
 version-specific implementations inside the plugin. Select only from validated
-runtime version/provenance or an explicitly verified handshake identity, never
+runtime version or an explicitly verified handshake identity, never
 an incidental event or an assumed PATH binary version. State branch retirement
 and minimum version. Never weaken approval or sandbox semantics to accommodate
 an older runtime.
@@ -216,8 +220,8 @@ the host result. Record the tested asset and digest, OS/architecture, disposable
 boundary, production extraction/placement, exact version, stdio handshake, and
 WebSocket handshake results. Both current-host transports must be checked.
 
-1. Establish a current-host disposable VM/container/restricted OS account before
-   parsing archive contents. No sensitive mounts; block outbound network access
+1. Establish a current-host native OS sandbox or disposable VM/container/restricted
+   OS account before parsing archive contents. No sensitive mounts; block outbound network access
    (local loopback may be allowed for WebSocket probes). Temporary HOME or
    environment filtering alone is not a sandbox. If no boundary is available,
    do not inspect, extract, or execute the host archive; report the current-host
@@ -317,11 +321,11 @@ WebSocket handshake results. Both current-host transports must be checked.
    capability gates, and required helpers. Schema generation inside the same
    boundary can supplement probes, not replace live protocol checks.
 
-Skipped or failed provenance, current-host extraction, version, or required
-current-host transport checks block the target refresh. Missing install/launch
+Skipped or failed current-host extraction, version, or required transport checks
+block the target refresh. Missing install/launch
 results for other platforms do not block it. Optional platform checks may be
 added for a concrete release change or regression; report any observed failure.
-All six archive digests and source-to-artifact verification remain required.
+All six archive digests remain required; source-to-binary provenance is optional.
 Never mix old digests with a new shared release URL. Continue source-only audit
 and report useful findings even when pinning is blocked; label them unprobed.
 
@@ -332,7 +336,7 @@ Before editing target or protocol code report:
 - old target, candidate stable version/date, npm agreement, unchanged minimum;
 - recorded old/new SHAs, tag recheck, six asset names/sizes/digests, explicitly
   separating published metadata, checksum-list agreement, and downloaded hashes;
-- source-to-artifact evidence or blocker; complete diff size/coverage;
+- complete diff size/coverage; any optional provenance evidence, clearly labeled;
 - high/medium findings with immutable links and actual app-server visibility;
 - current-host OS/architecture, extraction, version, stdio and WebSocket results;
   list other platforms as untested unless optionally checked;
@@ -340,9 +344,10 @@ Before editing target or protocol code report:
 - tolerant-path versus justified version-selected implementation strategy and
   compatibility retirement thresholds.
 
-Ask approval for proposed production scope only after stating blockers.
-Approval does not turn missing verification into passing evidence. A requested
-skill-only documentation PR may proceed while production changes stay gated.
+An explicit request to update the target approves the version-only bump; do not
+ask for that approval again or request an exception for optional provenance.
+Ask before adding capabilities or raising the minimum. Report failures of the
+required normal checks; approval does not turn them into passing evidence.
 Do not raise the minimum implicitly. If separately approved, remove obsolete
 compatibility branches, tests and docs below the new floor rather than retaining
 internal shims. Apply repository architecture-review rules only to approved
@@ -350,9 +355,9 @@ architecture-bearing production work, not this skill or a target-only edit.
 
 ## Phase 5 — Implement only after approval and passing gates
 
-Require all six archive digests, source-to-artifact verification, successful
-current-host install/version/transport probes, and user approval. Other
-platforms do not require installation or launch probes; their untested status
+Require all six archive digests, successful current-host install/version/transport
+probes, and user approval for the scope. Source-to-binary provenance is optional.
+Other platforms do not require installation or launch probes; their untested status
 does not block the complete six-asset target update.
 
 1. Update `CodexRuntimeManifest.targetVersion`, six matching digests, and
@@ -402,8 +407,9 @@ changed. Do not repeat unchanged passing commands. For skill/docs-only changes,
 validate frontmatter, referenced local paths, protocol examples, Markdown and
 diff hygiene; do not run Dart/Flutter suites.
 
-Keep the requested skill/documentation change in its own PR, separate from
-runtime/protocol implementation. Commit and push when ready, using real multiline
+Include directly related workflow clarifications with a target bump when the
+user requests the same PR; otherwise keep independently requested skill work
+separate. Commit and push when ready, using real multiline
 Markdown via `--body-file`/stdin with `## Complexity`, `## What`, `## Why`,
 `## Risk and test focus`, `## Expected result`, and `## Verification`. Use the
 repository's implementation-complexity emoji prefix and series title convention
@@ -412,5 +418,5 @@ work. Load `monitor-pr` and start `pr_monitor` immediately after opening a PR;
 never enable auto-merge or invent polling loops if monitoring is unavailable.
 
 Final report: old/new target, unchanged minimum, six digest statuses,
-adopted/deferred findings, provenance/probe blockers, tests, PR link, remaining
-upstream/platform risks. An audit stopped at approval is not an implemented bump.
+adopted/deferred findings, normal-check failures or optional evidence gaps,
+tests, PR link, and remaining upstream/platform risks. An audit stopped at approval is not an implemented bump.
