@@ -783,7 +783,6 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
   bool _transcriptionFailedOnce = false;
 
   bool get _canSend =>
-      (_issues.isNotEmpty || _text.text.trim().isNotEmpty) &&
       _submission != _SubmissionStage.submitting &&
       _voice != _VoiceStage.recording &&
       _voice != _VoiceStage.transcribing;
@@ -1177,7 +1176,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
               : const SizedBox.shrink(),
         ),
         _FeedbackActionTransition(
-          child: !transcriptReady && (_issues.isNotEmpty || keyboardMode)
+          child: !transcriptReady
               ? Padding(
                   padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm),
                   child: _ComposerButton(

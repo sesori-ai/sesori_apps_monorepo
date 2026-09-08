@@ -47,9 +47,10 @@ or feedback backend is needed. A real software keyboard is used for typing.
 | Select 4 or 5 stars | Wait for the rating sheet to close completely, then request Apple's native rating prompt through StoreKit. |
 | Tap any star | Bounce only the tapped star without a circular press highlight, then advance after it settles. Reduced motion keeps the selection feedback without movement. |
 | Tap Not now, Cancel, the scrim, or swipe the sheet down | Dismiss without submission; reopening starts a fresh draft. |
+| Send after selecting 1, 2, or 3 stars | Send is immediately available beside the keyboard button; no issue or text is required. |
 | Select one or several issues | Toggle selection; category-only feedback can be submitted. |
 | Switch to keyboard | Edit multiline text; show the annotated blue focus ring. |
-| Hold the voice area, then release | Show the existing Prego waveform, simulated transcription, then sample text. Send replaces the keyboard button inside the voice pill. Tap the transcript to edit it. |
+| Hold the voice area, then release | Show the existing Prego waveform, simulated transcription, then sample text. Send is disabled during recording/transcription, then becomes the only trailing button inside the voice pill. Tap the transcript to edit it. |
 | Hold to talk more | Preserve the current transcript while recording/transcribing, then append the next sample. Send remains the single trailing action. |
 | Tap the voice area twice | Accessible preview shortcut: start, then finish the simulated recording. |
 | Submit feedback | Show loading, close the sheet, and show the Figma confirmation toast. No content leaves the preview. |
@@ -171,7 +172,10 @@ dart analyze
 
 Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 
-- Twenty-three focused widget tests pass: all five rating branches, category-only
+- The 38 feedback flow, star, motion, and tuning tests pass, including rating-only
+  submission for 1–3 stars, stable Send/keyboard positions during issue toggles,
+  and disabled Send while recording/transcribing.
+- Focused widget tests cover: all five rating branches, rating-only and category-only
   private submission, dismiss/reopen, draft-preserving retry, editable simulated
   transcription without automatic submission, and a 320 × 568 viewport with
   1.5× text and keyboard insets. Native-channel tests verify exactly one request
@@ -180,7 +184,7 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
   Three animation checks cover the tapped-star bounce, a second tap during the
   transition, and both reduced-motion accessibility settings.
   Nine additional motion checks cover the sheet handoff, chip press feedback,
-  action movement and reversal, stationary typing, voice transitions, and
+  stable composer actions during issue toggles, stationary typing, voice transitions, and
   reduced-motion behavior including preservation of an open draft and immediate
   dismissal, microphone denial, and transcription retry.
   Input checks also cover the voice-first state, keyboard-to-Send replacement,
