@@ -44,4 +44,4 @@ new/load/resume response advertises the account catalog.
 - `acp_session_config_repository_test.dart`: repository through actual ACP API/stdio framing with a fake process checks
   exact standard mode parameters, correlated completion, and backend rejection propagation.
 - Owning Antigravity and ACP analyzers and focused tests are the automated proof boundary. Real account catalogs,
-  native OAuth and cross-target runtime evidence remain pending plan/regression gates.
+  native OAuth and cross-target runtime behavior remain unverified.

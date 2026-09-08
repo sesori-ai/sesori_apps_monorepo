@@ -113,6 +113,10 @@ in disposable state. Native Linux/Windows installation, real personal OAuth, ful
 flows and the final cumulative L1–L5 matrix remain unverified.
 Missing test infrastructure is a blocked result, not a pass.
 
+The implementation plan was retired under the owner's
+[explicitly accepted verification reduction](../.plan/completed/antigravity-harness/PLAN.md).
+The recorded gaps remain unverified; retirement is not a full L5 sign-off.
+
 - [Capability matrix and per-harness login support](HARNESS_CAPABILITIES.md)
 - [Architecture and ownership](ARCHITECTURE.md#antigravity-boundaries)
 - [Runtime activation and setup](regression/antigravity-descriptor-and-setup.md)

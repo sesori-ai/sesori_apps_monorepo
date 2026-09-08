@@ -32,8 +32,8 @@ published archives: macOS arm64, Linux x64/arm64, and Windows x64/arm64. Google 
 managed installation is unavailable there. Every archive keeps the server and local harness as siblings, uses a
 conservative two-minute bound for each archive listing/extraction command, and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
-managed-pipeline correctness has run on macOS arm64; Linux and Windows correctness remains unexecuted until the final
-cross-target verification step. Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
+managed-pipeline correctness has run on macOS arm64; Linux and Windows native correctness remains unverified.
+Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
 
