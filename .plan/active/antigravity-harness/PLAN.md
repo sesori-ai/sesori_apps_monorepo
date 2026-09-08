@@ -1079,10 +1079,12 @@ Release matrix:
 
 Per-target packaged checks (all five supported hosts):
 
-- setup before install, explicit install start/progress, archive hash verification, pair extraction/permissions, exact
-  initialize validation, activation, restart selection, clean shutdown, shutdown-triggered install abort/recovery,
-  failed update retaining the prior active runtime, and uninstall/cleanup behavior supported by shared runtime code;
-- no automatic download, no cross-plugin impact, and privacy-safe logs/errors;
+- setup with no managed installation, explicit first-install start/progress, archive hash verification, pair
+  extraction/permissions, exact initialize validation, activation, restart selection, clean shutdown,
+  shutdown-triggered install abort/recovery, and uninstall/cleanup behavior supported by shared runtime code;
+- no automatic first download when no managed installation exists; separately, bridge-start upgrades of existing
+  managed installations and failed pre-placement updates retaining supported prior runtimes;
+- no cross-plugin impact and privacy-safe logs/errors;
 - at least a smoke `session/new -> prompt -> cancel/complete -> resume/load` on the target. Full account/UI scenarios
   may use the representative hosts below, but package/process claims must execute on every advertised target.
 
