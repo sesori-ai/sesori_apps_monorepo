@@ -1328,10 +1328,17 @@ class _RecordingPreviewState() extends State<_RecordingPreview> {
   @override
   Widget build(BuildContext context) => Padding(
     padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: PregoVoiceWaveform(
-      amplitudeStream: _samples,
-      barColor: context.prego.colors.textPrimary,
-      dotColor: context.prego.colors.textQuaternary,
+    child: ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+        stops: [0, 0.08, 0.92, 1],
+      ).createShader(bounds),
+      child: PregoVoiceWaveform(
+        amplitudeStream: _samples,
+        barColor: context.prego.colors.textPrimary,
+        dotColor: context.prego.colors.textQuaternary,
+      ),
     ),
   );
 }
