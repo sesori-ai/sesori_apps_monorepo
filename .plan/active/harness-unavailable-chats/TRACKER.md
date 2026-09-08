@@ -4,7 +4,7 @@ Authority: [PLAN.md](PLAN.md). Six sequential PRs; implementation has not starte
 
 | Step | Complexity | Deliverable | Status |
 |---|---|---|---|
-| 1/6 | 🌱 | Plan unavailable chat recovery | Plan ready for PR; review findings addressed |
+| 1/6 | 🌱 | Plan unavailable chat recovery | [PR #1366](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1366) open; review findings addressed |
 | 2/6 | ⚙️ | Identify pre-dispatch harness refusals | Not started |
 | 3/6 | ⚙️ | Gate chat actions and retain unsent input | Not started |
 | 4/6 | ⚙️ | Explain unavailable chats on both surfaces | Not started |
