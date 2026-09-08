@@ -1,5 +1,11 @@
 # VM Setup Guide: OpenCode + Sesori Bridge
 
+This guide's backend and resource examples are for OpenCode. For Antigravity on
+Linux x64/arm64, see the [Antigravity guide](ANTIGRAVITY.md): install Info-ZIP
+`unzip` before managed runtime installation, and use a current connected client
+for personal Google login and remote loopback return. The bridge needs no local
+browser; these OpenCode resource estimates are not Antigravity sizing claims.
+
 ## 1. Create a fresh Linux VM
 
 - Recommended: Debian or Ubuntu

@@ -431,7 +431,8 @@ owned-process exit; and restart.
 
 ## Sources
 
-- [Antigravity local runtime activation](antigravity-descriptor-and-setup.md),
+- [Antigravity operator guidance](../ANTIGRAVITY.md),
+  [official runtime activation](antigravity-descriptor-and-setup.md),
   [isolated profile](antigravity-isolated-profiles.md), and
   [personal authentication](antigravity-personal-authentication.md) contracts.
 - Shared host/process boundary coverage: `bridge_host_json_store_test.dart`,

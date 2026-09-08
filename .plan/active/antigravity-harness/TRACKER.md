@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.c merged; Step 10.d open for review
-- **Base:** synced with main `4fdd433392eabde75f1d800b649337206f057421` after Step 10.c merge
-- **Current branch:** `antigravity-harness-step-10d-managed-install`
+- **Status:** Steps 1–10.d merged; Step 11 guidance ready for review
+- **Base:** synced with main `b10b71675ccbd610828ce69b0ce557d2606f091b` after Step 10.d merge
+- **Current branch:** `antigravity-harness-step-11-guidance`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -27,8 +27,9 @@
   report, 15/16 checks were complete with clean Cubic approval; Codex review was still running, so no 16/16 claim is made.
 - **Merged PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c); terminal report
   had 15/16 checks complete, with clean Cubic approval and no actionable Codex feedback.
-- **Open PR:** [#1386](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1386) (Step 10.d).
-- **Next action:** monitor Step 10.d; begin Step 11 guidance locally.
+- **Merged PR:** [#1386](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1386) (Step 10.d), with 19/19 checks
+  passing at merge, Cubic approval and all review feedback handled. Final head `f9fa90695f` had 888 changed lines.
+- **Next action:** publish Step 11; prepare only Step 12's cumulative verification locally.
 
 ## Fixed PR Series
 
@@ -51,7 +52,7 @@
 - [x] Step 10.a/12 — `🌿 [antigravity-harness] feat(runtime): require archive command budgets [step 10.a/12]`
 - [x] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
 - [x] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): validate official managed candidates [step 10.c/12]`
-- [ ] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
+- [x] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
 - [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
 
@@ -491,6 +492,24 @@
   host macOS ZipInfo help succeeded, not a native Linux installation claim. No unchanged client suites were rerun.
 - User declined additional recovery machinery for the rare externally supplied PATH pair that passes inert filename
   inspection but fails runtime validation. Preserve existing inspection/lifecycle semantics rather than expanding this PR.
+
+## Step 11 Checklist
+
+- [x] Sync to merged Step 10.d; retain upstream work without including it in this PR's base-to-head diff.
+- [x] Update both root `README.md` and `bridge/README.md` with official pair/pin, supported hosts, managed/manual
+  installation, current-client personal login, supervised defaults, retained history and honest verification limits.
+- [x] Add `docs/ANTIGRAVITY.md` as the consolidated operator guide; link getting-started/headless guides without
+  relabelling OpenCode's resource estimates as Antigravity requirements. Reconcile the architecture dependency graph
+  and ownership prose with the already-implemented runtime installer, authentication, recovery and shared presentation.
+- [x] Audit both shells' settings/new-session composition, shared metadata-driven chooser and `PregoBrandLogo` fallback.
+  Both consume shared views: descriptor-aware surfaces show `Antigravity`; ID-only surfaces retain `antigravity`/plug.
+  This is a source audit, not packaged UI execution. No provider-specific UI, asset, analytics or production code added.
+- [x] Audit all ten named regression contracts: setup/lifecycle, installation, projects/sessions, creation/options, turns,
+  history/recovery, questions/permissions, tools/files, attachments/images and archiving/deletion. Preserve their already
+  documented behavior and pending native/authenticated coverage; reconcile operator links and Linux prerequisite prose.
+- [x] Validate local Markdown links/anchors, release pin/pair names, whitespace and the complete 1,500-line diff cap.
+  Validation is documentation-only; no Dart/Flutter suites or architecture reviewers run for this non-production step.
+- [ ] Publish Step 11 and start its monitor. Step 12 remains required; no plan retirement or L5 pass is claimed.
 
 ## Architecture Reviews
 

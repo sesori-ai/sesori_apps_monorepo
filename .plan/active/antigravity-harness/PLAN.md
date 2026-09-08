@@ -3,11 +3,11 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.c merged, Step 10.d in review
+- **Status:** active; Steps 1–10.d merged, Step 11 guidance ready for review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
-  8.a/8.b/8.c, and 10.a/10.b/10.c
+  8.a/8.b/8.c, and 10.a/10.b/10.c/10.d
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
@@ -1003,7 +1003,8 @@ The requirements below apply across those slices; partitioning does not remove a
 - Narrowly document the install contract's distinction between a bounded, noninteractive staging validator and a live
   plugin start: no process is registered/exposed, and all validator cwd/state/files remain inside managed staging.
 - Extend descriptor precedence to explicit -> valid PATH -> already-installed managed. Advertise install only without
-  an explicit override and on one of the five supported targets; install is always explicit.
+  an explicit override and on one of the five supported targets; first installation is explicit, while existing managed
+  installations may upgrade on bridge start.
 - Add required `archiveCommandTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor`
   input, and update every existing asset/caller explicitly. Apply it to both traversal preflight listing and extraction,
   replacing the fixed 30-second/two-minute limits. Give Antigravity assets conservative bounded command timeouts;

@@ -7,7 +7,7 @@
 <h1 align="center">Run your AI coding agents from your phone.</h1>
 
 <p align="center">
-  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://github.com/github/copilot-cli" target="_blank" rel="noopener">GitHub Copilot CLI</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
+  Sesori is the mobile cockpit for your AI coding sessions — <a href="https://opencode.ai" target="_blank" rel="noopener">OpenCode</a>, <a href="https://github.com/openai/codex" target="_blank" rel="noopener">OpenAI Codex CLI</a>, <a href="https://github.com/github/copilot-cli" target="_blank" rel="noopener">GitHub Copilot CLI</a>, <a href="https://antigravity.google" target="_blank" rel="noopener">Google Antigravity</a>, <a href="https://cursor.com" target="_blank" rel="noopener">Cursor</a>, <a href="https://claude.com" target="_blank" rel="noopener">Claude Code</a>, <a href="https://github.com/NousResearch/hermes-agent" target="_blank" rel="noopener">Hermes Agent</a>, <a href="https://github.com/badlogic/pi-mono" target="_blank" rel="noopener">Pi</a>, and <a href="https://github.com/can1357/oh-my-pi" target="_blank" rel="noopener">Oh My Pi</a>.<br/>
   Leave your laptop. Take the session.
 </p>
 
@@ -144,6 +144,7 @@ Your laptop and phone perform an ephemeral X25519 key exchange, then encrypt eve
 | [OpenCode](https://opencode.ai) | Deep native integration with a bridge-managed runtime. |
 | [OpenAI Codex CLI](https://github.com/openai/codex) | Native integration over Codex's local protocol. |
 | [GitHub Copilot CLI](https://github.com/github/copilot-cli) | ACP-based integration with managed installation of official CLI releases. |
+| [Google Antigravity](https://antigravity.google) | Official ACP runtime pair, managed installation and personal Google browser login. |
 | [Cursor](https://cursor.com) | ACP-based integration. |
 | [Claude Code](https://claude.com) | Native stream-json integration. |
 | [Hermes Agent](https://github.com/NousResearch/hermes-agent) | ACP-based integration with Nous Research's coding agent. |
@@ -169,6 +170,27 @@ Every integration ships enabled by default — pick your assistant when you star
   organization policy are still required.
 - **Questions:** Copilot CLI does not currently forward `ask_user` interactions
   over ACP, so Sesori does not claim question support for this harness.
+
+</details>
+
+<details>
+<summary><strong>Google Antigravity notes</strong></summary>
+
+- **Runtime and license:** uses Google's proprietary official ACP pair, pinned to registry package `1.0.0` /
+  `agy_acp_server_20260818_01_RC01`. Review [Google's terms](https://antigravity.google/terms) and
+  [documentation](https://antigravity.google/docs/) before downloading or authenticating.
+- **Hosts:** macOS arm64, Linux x64/arm64 and Windows x64/arm64. macOS x64 is unsupported, even with an explicit path.
+  Linux managed installation requires Info-ZIP `unzip`.
+- **Setup:** choose Install in Antigravity's harness detail after reviewing its guidance, or provide the official matching
+  server/harness siblings locally. `--antigravity-bin <path>` is authoritative and disables managed installation.
+- **Login:** personal Google OAuth from a current mobile/desktop client, separate from Sesori account login.
+  For a remote bridge, paste the browser's final loopback return URL into the active Sesori authentication sheet.
+  There is no CLI login fallback; credentials live in an isolated bridge-side profile.
+- **Sessions:** supervised `default` mode only, no persistent approvals. Before a real session supplies model choices,
+  a new session in a fresh process uses the account default. Local deletion does not erase Google's retained history.
+- **Evidence:** macOS arm64 initialize-only/managed installation is verified; real OAuth, authenticated sessions and
+  Linux/Windows native correctness remain unverified. See the [Antigravity guide](docs/ANTIGRAVITY.md) for setup,
+  images/history behavior, safety boundaries and verification limits.
 
 </details>
 

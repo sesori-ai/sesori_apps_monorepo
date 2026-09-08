@@ -35,6 +35,8 @@ bridge start when Sesori already manages an older version.
   [Antigravity documentation](https://antigravity.google/docs/) before explicitly choosing Install. A configured
   `--antigravity-bin` remains authoritative and removes the managed action. In the client, the overview download icon
   opens harness detail without issuing Install; detail presents setup guidance before its explicit installation button.
+  Linux Antigravity installation requires Info-ZIP/ZipInfo, checked before download-client creation; missing or incompatible
+  tooling reports package-installation guidance without staging writes. See [operator setup](../ANTIGRAVITY.md).
   Artifacts are checksum-verified, and no partial binary or package is adopted.
 - Every downloaded candidate is validated before placement or sentinel creation. The shared installer first completes
   checksum verification, archive traversal/symlink checks, extraction and executable hardening, then invokes the
