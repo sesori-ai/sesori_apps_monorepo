@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -41,6 +42,29 @@ class _ThrowingCommandExecutor({required final Object error}) implements Command
     Duration? timeout,
   }) async {
     throw error;
+  }
+}
+
+/// Models command durations without waiting minutes or spawning a process.
+class _BudgetCommandExecutor({required final List<Duration> durations, required final String stagingPath})
+    implements CommandExecutor {
+  final List<Duration?> observedTimeouts = [];
+
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async {
+    final duration = durations[observedTimeouts.length];
+    observedTimeouts.add(timeout);
+    if (timeout == null || duration > timeout) {
+      File(p.join(stagingPath, "partial")).writeAsStringSync("partial extraction");
+      throw TimeoutException("simulated archive command exceeded its deadline", timeout);
+    }
+    return const CommandResult(exitCode: 0, stdout: "runtime\n", stderr: "");
   }
 }
 
@@ -88,6 +112,7 @@ void main() {
         archivePath: archive,
         stagingPath: stagingPath,
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: const Duration(minutes: 2),
       );
 
       expect(result.succeeded, isTrue);
@@ -106,6 +131,7 @@ void main() {
         archivePath: archive,
         stagingPath: stagingPath,
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: const Duration(minutes: 2),
       );
 
       expect(result.succeeded, isFalse);
@@ -135,6 +161,7 @@ void main() {
         archivePath: archive,
         stagingPath: stagingPath,
         format: ArchiveFormat.zip,
+        archiveCommandTimeout: const Duration(minutes: 2),
       );
 
       expect(result.succeeded, isTrue);
@@ -142,6 +169,42 @@ void main() {
       expect(File(p.join(stagingPath, "lib", "a.txt")).readAsStringSync(), "A");
     });
   });
+
+  for (final format in ArchiveFormat.values) {
+    test("${format.name} forwards its budget to slow archive commands", () async {
+      final durations = format == ArchiveFormat.zip && Platform.isWindows
+          ? const [Duration(seconds: 150)]
+          : const [Duration(seconds: 45), Duration(seconds: 150)];
+      final commands = _BudgetCommandExecutor(durations: durations, stagingPath: stagingPath);
+      final result = await ArchiveExtractor(commandExecutor: commands).extract(
+        archivePath: p.join(tempDir.path, "large${format.fileExtension}"),
+        stagingPath: stagingPath,
+        format: format,
+        archiveCommandTimeout: const Duration(minutes: 3),
+      );
+      expect(result.succeeded, isTrue);
+      expect(commands.observedTimeouts, List.filled(durations.length, const Duration(minutes: 3)));
+    });
+  }
+
+  for (final failedCommand in [0, 1]) {
+    test("timeout at archive command $failedCommand fails and cleans staging", () async {
+      final commands = _BudgetCommandExecutor(
+        durations: [for (var i = 0; i < 2; i++) i == failedCommand ? const Duration(seconds: 2) : Duration.zero],
+        stagingPath: stagingPath,
+      );
+      final result = await ArchiveExtractor(commandExecutor: commands).extract(
+        archivePath: p.join(tempDir.path, "payload.tar.gz"),
+        stagingPath: stagingPath,
+        format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: const Duration(seconds: 1),
+      );
+      expect(result.succeeded, isFalse);
+      expect(result.failureReason, contains("TimeoutException"));
+      expect(commands.observedTimeouts, hasLength(failedCommand + 1));
+      expect(Directory(stagingPath).existsSync(), isFalse);
+    });
+  }
 
   group("command failures", () {
     test("converts a thrown command-execution error into a structured failure", () async {
@@ -155,6 +218,7 @@ void main() {
         archivePath: p.join(tempDir.path, "missing.tar.gz"),
         stagingPath: stagingPath,
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: const Duration(minutes: 2),
       );
 
       expect(result.succeeded, isFalse);

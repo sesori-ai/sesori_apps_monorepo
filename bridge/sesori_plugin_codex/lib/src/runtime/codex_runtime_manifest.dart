@@ -43,6 +43,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "codex-package-aarch64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "bfae69c7bb7a3fbe68161f2ca9328839c7e6eea053a8871186eb6edbb1346870",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -50,6 +51,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "codex-package-x86_64-apple-darwin.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "9ac9245ea244629a9ba4db3315f0cdaebb05182b790ee34271a5060875d836e1",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -59,6 +61,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "codex-package-aarch64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "580db3c7411f5852b550876f185c30b61b674e01b948fd5030f2cd7a30db110a",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -66,6 +69,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "codex-package-x86_64-unknown-linux-musl.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "8c790500af2ba6e74ce4948fe26c651ac1f77f6dbb005b47c8d26ff711146262",
         archiveBinaryName: "bin/codex",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -75,6 +79,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "codex-package-aarch64-pc-windows-msvc.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "0258ac84ebf8fdc6d8e1f4b0541d55a703f3d8996debca157a013cf753134c54",
         archiveBinaryName: "bin/codex.exe",
         layout: RuntimeArchiveLayout.packageDirectory,
@@ -82,6 +87,7 @@ class const CodexRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "codex-package-x86_64-pc-windows-msvc.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "cc09f725b8ed133b76a2882fda750b3f1672b10701e8172c9680b5ab79b861ff",
         archiveBinaryName: "bin/codex.exe",
         layout: RuntimeArchiveLayout.packageDirectory,

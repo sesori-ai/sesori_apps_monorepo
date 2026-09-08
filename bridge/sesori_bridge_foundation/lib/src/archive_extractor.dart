@@ -10,7 +10,10 @@ import "command_executor.dart";
 /// caller rather than inferred from the host OS, because publishers ship
 /// different formats per platform (e.g. OpenCode ships `.zip` on macOS but
 /// `.tar.gz` on Linux).
-enum ArchiveFormat() { tarGz, zip }
+enum ArchiveFormat() {
+  tarGz,
+  zip,
+}
 
 extension ArchiveFormatX on ArchiveFormat {
   /// The download filename suffix for this format, so the on-disk archive carries
@@ -47,14 +50,11 @@ class ArchiveExtractionResult {
 /// afterwards. Published runtime payloads contain only regular files and
 /// directories, so either is a sign of tampering — extraction fails closed.
 class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
-
-  static const Duration _listTimeout = Duration(seconds: 30);
-  static const Duration _extractTimeout = Duration(minutes: 2);
-
   Future<ArchiveExtractionResult> extract({
     required String archivePath,
     required String stagingPath,
     required ArchiveFormat format,
+    required Duration archiveCommandTimeout,
   }) async {
     final Directory stagingDir = Directory(stagingPath);
     if (stagingDir.existsSync()) {
@@ -70,10 +70,23 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     final ArchiveExtractionResult extracted;
     try {
       extracted = await switch (format) {
-        ArchiveFormat.tarGz => _extractTarGz(archivePath: archivePath, stagingPath: stagingPath),
-        ArchiveFormat.zip => Platform.isWindows
-            ? _extractZipWindows(archivePath: archivePath, stagingPath: stagingPath)
-            : _extractZipPosix(archivePath: archivePath, stagingPath: stagingPath),
+        ArchiveFormat.tarGz => _extractTarGz(
+          archivePath: archivePath,
+          stagingPath: stagingPath,
+          archiveCommandTimeout: archiveCommandTimeout,
+        ),
+        ArchiveFormat.zip =>
+          Platform.isWindows
+              ? _extractZipWindows(
+                  archivePath: archivePath,
+                  stagingPath: stagingPath,
+                  archiveCommandTimeout: archiveCommandTimeout,
+                )
+              : _extractZipPosix(
+                  archivePath: archivePath,
+                  stagingPath: stagingPath,
+                  archiveCommandTimeout: archiveCommandTimeout,
+                ),
       };
     } on Object catch (error, stackTrace) {
       final String reason = "extraction command failed to run: ${error.toString()}";
@@ -101,13 +114,19 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
   Future<ArchiveExtractionResult> _extractTarGz({
     required String archivePath,
     required String stagingPath,
+    required Duration archiveCommandTimeout,
   }) async {
     // Defence-in-depth over tar's own refusal of absolute/`..` members: list the
     // archive and reject any member that would resolve outside the staging dir
     // before writing anything.
-    final CommandResult listing = await _commandExecutor.run("tar", ["-tzf", archivePath], timeout: _listTimeout);
+    final CommandResult listing = await _commandExecutor.run("tar", [
+      "-tzf",
+      archivePath,
+    ], timeout: archiveCommandTimeout);
     if (listing.exitCode != 0) {
-      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "tar -tzf", result: listing));
+      return ArchiveExtractionResult.failure(
+        reason: _toolFailure(tool: "tar -tzf", result: listing),
+      );
     }
     final String? escapeReason = _firstEscapingMember(stagingPath: stagingPath, listing: listing.stdout);
     if (escapeReason != null) {
@@ -117,10 +136,12 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     final CommandResult result = await _commandExecutor.run(
       "tar",
       ["-xzf", archivePath, "-C", stagingPath],
-      timeout: _extractTimeout,
+      timeout: archiveCommandTimeout,
     );
     if (result.exitCode != 0) {
-      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "tar -xzf", result: result));
+      return ArchiveExtractionResult.failure(
+        reason: _toolFailure(tool: "tar -xzf", result: result),
+      );
     }
     return const ArchiveExtractionResult.success();
   }
@@ -128,12 +149,18 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
   Future<ArchiveExtractionResult> _extractZipPosix({
     required String archivePath,
     required String stagingPath,
+    required Duration archiveCommandTimeout,
   }) async {
     // `unzip -Z1` lists member names one per line (zipinfo mode); reject any that
     // would escape before extracting.
-    final CommandResult listing = await _commandExecutor.run("unzip", ["-Z1", archivePath], timeout: _listTimeout);
+    final CommandResult listing = await _commandExecutor.run("unzip", [
+      "-Z1",
+      archivePath,
+    ], timeout: archiveCommandTimeout);
     if (listing.exitCode != 0) {
-      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "unzip -Z1", result: listing));
+      return ArchiveExtractionResult.failure(
+        reason: _toolFailure(tool: "unzip -Z1", result: listing),
+      );
     }
     final String? escapeReason = _firstEscapingMember(stagingPath: stagingPath, listing: listing.stdout);
     if (escapeReason != null) {
@@ -143,10 +170,12 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
     final CommandResult result = await _commandExecutor.run(
       "unzip",
       ["-o", "-q", archivePath, "-d", stagingPath],
-      timeout: _extractTimeout,
+      timeout: archiveCommandTimeout,
     );
     if (result.exitCode != 0) {
-      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "unzip", result: result));
+      return ArchiveExtractionResult.failure(
+        reason: _toolFailure(tool: "unzip", result: result),
+      );
     }
     return const ArchiveExtractionResult.success();
   }
@@ -154,6 +183,7 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
   Future<ArchiveExtractionResult> _extractZipWindows({
     required String archivePath,
     required String stagingPath,
+    required Duration archiveCommandTimeout,
   }) async {
     // Expand-Archive uses .NET's ZipFile, which rejects path-traversal members.
     final String psArchive = archivePath.replaceAll("'", "''");
@@ -165,10 +195,12 @@ class ArchiveExtractor({required final CommandExecutor _commandExecutor}) {
         "-Command",
         "\$ProgressPreference = 'SilentlyContinue'; Expand-Archive -LiteralPath '$psArchive' -DestinationPath '$psStaging' -Force",
       ],
-      timeout: _extractTimeout,
+      timeout: archiveCommandTimeout,
     );
     if (result.exitCode != 0) {
-      return ArchiveExtractionResult.failure(reason: _toolFailure(tool: "powershell Expand-Archive", result: result));
+      return ArchiveExtractionResult.failure(
+        reason: _toolFailure(tool: "powershell Expand-Archive", result: result),
+      );
     }
     return const ArchiveExtractionResult.success();
   }

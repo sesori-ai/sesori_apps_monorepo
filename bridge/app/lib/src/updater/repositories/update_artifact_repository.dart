@@ -91,6 +91,7 @@ class UpdateArtifactRepository({
       archivePath: archivePath,
       stagingPath: stagingPath,
       format: _archiveFormat,
+      archiveCommandTimeout: const Duration(minutes: 2),
     );
     if (!result.succeeded) {
       // The caller maps a false result onto a generic UpdateResult that drops

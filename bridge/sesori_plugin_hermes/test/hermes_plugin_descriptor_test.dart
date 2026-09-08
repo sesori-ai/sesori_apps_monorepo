@@ -498,7 +498,7 @@ void main() {
       expect(provider.defaultModelID, "opencode-go:deepseek-v4-flash");
       expect(
         provider.models.map((model) => model.id),
-        ["opencode-go:deepseek-v4-flash", "opencode-go:gpt-5"],
+        ["opencode-go:gpt-5", "opencode-go:deepseek-v4-flash"],
       );
 
       expect(processes.spawnedExecutables, [
