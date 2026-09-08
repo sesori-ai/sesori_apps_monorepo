@@ -2885,7 +2885,7 @@ void main() {
       expect(childSession.parentID, "root-1");
       expect(childSession.title, "Raman");
       expect(childSession.projectID, "/work/other");
-      expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": true});
+      expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": false});
       await Future<void>.delayed(Duration.zero);
       final inlineTask = events
           .whereType<BridgeSseMessagePartUpdated>()

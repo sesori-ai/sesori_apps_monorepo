@@ -8,12 +8,11 @@
 - **Plan date:** 2026-09-02
 - **Base:** `main` at `6e9028c4c6`
 - **Delivery:** one open PR at a time, following current repository rules.
-  Remaining Codex PRs use `<emoji> [claude-inline-subtasks] <description>
-  [step x/6]`: metadata and child sessions are merged steps 1/6 and 2/6;
-  typed child-prompt parsing, tiles, scoped stop, and coverage are steps 3/6
-  through 6/6. Historical merged titles remain unchanged. User-authorized
-  packaging split only; approved behavior and architecture are unchanged. Progress is tracked in `TRACKER.md` "Harness
-  Follow-Ups". The DeepSeek phone handoff is recorded in
+  Codex now has seven steps: merged metadata and child-session work remain
+  steps 1/7 and 2/7; merged PR #1387 remains historical preparation at its
+  original title; causal cleanup is step 4/7, tiles 5/7, scoped stop 6/7, and
+  coverage 7/7. Historical PR titles are unchanged. Progress is tracked in
+  `TRACKER.md` "Harness Follow-Ups". The DeepSeek phone handoff is recorded in
   `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
 ## Goal
@@ -240,13 +239,13 @@ confirmation, no child session or partial stop) and gets that subset.
   status, and the `subtask` part
   (`messageID` = the activity item id, `childSessionID` = `agentThreadId`,
   description from `agentPath` or the resolved nickname, `taskState` running)
-  renders once the prompt is known, because the part requires one and the
-  activity item carries none: the child's first `userMessage` item under the
-  child thread id supplies it, and when the child streams no such item the
-  `thread/read` result is used only after the exact child `turn/started` id
-  matches a typed turn. Forked reads contain copied parent turns, so no
-  heuristic first/last-turn fallback is allowed and missing turn provenance
-  remains no fallback. The child's own `turn/completed` completes it, a
+  renders from child-owned rollout input when a valid plaintext `NEW_TASK`
+  payload exists. On the normal encrypted 0.153.4 path, it uses only the exact
+  nonblank `message` from the `spawn_agent` call whose call id matches the
+  activity id. This user-approved fallback is delegated task text, not a parent
+  `user_message`; parent history, task names, child order, and timing are never
+  prompt provenance. `thread/read(includeTurns: false)` remains metadata-only.
+  The child's own `turn/completed` completes it, a
   child `turn/interrupt` cancels it, and `thread/closed` cancels it only while
   it is pending or running; a prior completed, failed, interrupted, or errored
   terminal state wins over the later close. A child turn failure errors it,
@@ -284,15 +283,22 @@ confirmation, no child session or partial stop) and gets that subset.
 
 | Step | Emoji | Description | Scope |
 |---|---|---|---|
-| 1/6 | 🌿 | `codex: parse sub-agent thread and item metadata` | Merged historical title unchanged; DTO fields, collab/activity parser and enums, fixtures from the probe |
-| 2/6 | ⚙️ | `codex: sub-agent threads become child sessions` | Merged historical title unchanged; repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
-| 3/6 | ⚙️ | `codex: parse typed child prompts from thread reads` | `thread/read` includes turn ids/items/content; Layer-2 caches text prompts by turn id for exact child-lifecycle selection, with generated serializers and focused inherited-history/unknown-variant tests. Preparatory packaging only; no tile behavior |
-| 4/6 | 🚧 | `codex: inline subtask tiles for spawned agents` | service-coordinated tracker, mapper cases, cancel on close/disconnect, call-id replacement of the generic spawn card in rollout-tail and full-history replay, child-rollout terminal join |
-| 5/6 | ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
-| 6/6 | 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
+| 1/7 | 🌿 | `codex: parse sub-agent thread and item metadata` | Merged historical title unchanged; DTO fields, collab/activity parser and enums, fixtures from the probe |
+| 2/7 | ⚙️ | `codex: sub-agent threads become child sessions` | Merged historical title unchanged; repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
+| 3/7 | ⚙️ | `codex: parse typed child prompts from thread reads [step 3/6]` | PR #1387 merged under this historical title; its prompt cache was preparation only and is superseded by verified 0.153.4 rollout input |
+| 4/7 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | Restore metadata-only `thread/read`; remove unused turn/item/content DTOs, cache, and synthetic tests |
+| 5/7 | 🚧 | `codex: inline subtask tiles for spawned agents [step 5/7]` | service-coordinated tracker, current persisted activity/input facts, exact-call prompt provenance, call-id replacement, and initial-turn terminal join |
+| 6/7 | ⚙️ | `codex: scoped stop for sub-agent threads [step 6/7]` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
+| 7/7 | 🌱 | `docs: record Codex sub-agent coverage [step 7/7]` | matrix footnote ³ resolved, regression docs |
 
-### Probe results (0.148.0, 2026-09-02, details in `followups/codex-probe.md`)
+### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 
+- Current 0.153.4 rollouts persist activity as
+  `event_msg/item_completed/item/SubAgentActivity`; its item id equals the
+  matching `spawn_agent.call_id`. Normal child input is an encrypted
+  `response_item/agent_message` after `inter_agent_communication_metadata`,
+  while `thread/read` exposes no initial child user item. Existing rollout
+  tails observe the append; no watcher or timer is added.
 - Children never emit `thread/started`; a child first appears as
   `thread/status/changed` followed by the parent's `subAgentActivity started`
   (`agentThreadId`, `agentPath`). No `spawnAgent` collab item was emitted, only
