@@ -2,7 +2,6 @@ package com.sesori.app
 
 import android.Manifest
 import android.content.Intent
-import android.content.pm.ApplicationInfo
 import android.content.pm.PackageManager
 import android.graphics.Color
 import android.net.Uri
@@ -15,6 +14,7 @@ import android.view.WindowManager
 import android.widget.FrameLayout
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.core.view.WindowCompat
+import com.google.android.play.core.review.ReviewManagerFactory
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
@@ -33,12 +33,14 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
             ),
         )
         // Local feedback playbook only; unavailable in profile and release builds.
-        if (applicationInfo.flags and ApplicationInfo.FLAG_DEBUGGABLE != 0) {
+        if (BuildConfig.BUILD_TYPE == "debug") {
             MethodChannel(
                 flutterEngine.dartExecutor.binaryMessenger,
                 "com.sesori.app/feedback_preview",
             ).setMethodCallHandler { call, result ->
-                if (call.method != "requestMicrophoneAccess") {
+                if (call.method == "requestReview") {
+                    requestPreviewReview(result = result)
+                } else if (call.method != "requestMicrophoneAccess") {
                     result.notImplemented()
                 } else if (checkSelfPermission(Manifest.permission.RECORD_AUDIO) == PackageManager.PERMISSION_GRANTED) {
                     // True means permission was already granted before this gesture.
@@ -48,6 +50,32 @@ class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
                 } else {
                     previewMicrophoneResult = result
                     requestPermissions(arrayOf(Manifest.permission.RECORD_AUDIO), PREVIEW_MICROPHONE_REQUEST_CODE)
+                }
+            }
+        }
+    }
+
+    private fun requestPreviewReview(result: MethodChannel.Result) {
+        val manager = ReviewManagerFactory.create(this)
+        manager.requestReviewFlow().addOnCompleteListener { request ->
+            if (!request.isSuccessful) {
+                result.error(
+                    "review_request_failed",
+                    "Google Play could not prepare the review flow.",
+                    request.exception?.stackTraceToString(),
+                )
+                return@addOnCompleteListener
+            }
+            manager.launchReviewFlow(this, request.result).addOnCompleteListener { flow ->
+                if (flow.isSuccessful) {
+                    // Completion does not report whether a prompt appeared or a rating was sent.
+                    result.success(null)
+                } else {
+                    result.error(
+                        "review_launch_failed",
+                        "Google Play could not open the review flow.",
+                        flow.exception?.stackTraceToString(),
+                    )
                 }
             }
         }

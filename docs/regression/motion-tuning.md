@@ -16,9 +16,13 @@ announcements retain the precision declared by each parameter step. The floating
 panel stays within the screen safe area, including landscape side insets and
 the home indicator, while accommodating the keyboard.
 
-The feedback star bounce defaults to 470 ms, with a subtle 0.99 dip and a 1.18
-peak before settling. Only the chosen star scales; the selected range fills
-immediately, and reduced-motion settings preserve the fill without scaling.
+The feedback celebration target replays the Yes button and layered hero on one
+timeline. Its default duration is 1.5 seconds: preserve the opening 1.2 seconds
+of the Figma sequence and shorten its quiet tail to 300 ms. The normal flow then
+closes the sheet in 200 ms before requesting native review. Both reduced-motion
+flags skip the celebration or finish it promptly if changed mid-flight.
+Could be better enters private feedback immediately; whole-flow tuning replay
+uses this branch and never opens native review.
 
 The feedback result target replays the shared top toast with its standard
 motion and automatic dismissal. It is labeled replay only and exposes no

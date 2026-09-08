@@ -5,7 +5,7 @@ import "package:sesori_motion_tuning/sesori_motion_tuning.dart";
 enum FeedbackMotionScene() {
   sheetOpen,
   sheetClose,
-  stars,
+  celebration,
   step,
   composer,
   issues,
@@ -34,13 +34,13 @@ const feedbackSheetCloseDuration = MotionDuration(
   max: Duration(milliseconds: 2000),
 );
 
-const feedbackStarDuration = MotionDuration(
-  id: "feedback.stars.duration",
-  label: "Bounce duration",
-  source: "$_source · _Stars / _FeedbackSheet",
-  initialValue: Duration(milliseconds: 470),
+const feedbackCelebrationDuration = MotionDuration(
+  id: "feedback.celebration.duration",
+  label: "Celebration duration",
+  source: "$_source · _FeedbackSheet / feedback_rating_motion.dart",
+  initialValue: Duration(milliseconds: 1500),
   min: Duration.zero,
-  max: Duration(milliseconds: 2000),
+  max: Duration(milliseconds: 4000),
 );
 
 const feedbackContentDuration = MotionDuration(
@@ -102,20 +102,6 @@ const feedbackSheetReverseCurve = MotionCurve(
   initialValue: MotionEasing.smooth,
 );
 
-const feedbackStarCurve = MotionCurve(
-  id: "feedback.stars.curve",
-  label: "Dip and final easing",
-  source: "$_source · _tapScale · dip and final stage",
-  initialValue: MotionEasing.easeOutCubic,
-);
-
-const feedbackStarSettleCurve = MotionCurve(
-  id: "feedback.stars.settleCurve",
-  label: "Pop and settling easing",
-  source: "$_source · _tapScale · middle stages",
-  initialValue: MotionEasing.easeInOutCubic,
-);
-
 const feedbackContentCurve = MotionCurve(
   id: "feedback.content.curve",
   label: "Content easing · all feedback content transitions",
@@ -128,36 +114,6 @@ const feedbackControlCurve = MotionCurve(
   label: "Control easing · composer, actions, issue pills, presses",
   source: "$_source · _feedbackEaseOut",
   initialValue: MotionEasing.smooth,
-);
-
-const feedbackStarDip = MotionNumber(
-  id: "feedback.stars.dip",
-  label: "Dip scale",
-  source: "$_source · _tapScale",
-  initialValue: 0.99,
-  min: 0.7,
-  max: 1,
-  step: 0.01,
-);
-
-const feedbackStarPeak = MotionNumber(
-  id: "feedback.stars.peak",
-  label: "Peak scale",
-  source: "$_source · _tapScale",
-  initialValue: 1.18,
-  min: 1,
-  max: 1.4,
-  step: 0.01,
-);
-
-const feedbackStarSettle = MotionNumber(
-  id: "feedback.stars.settle",
-  label: "Settling scale",
-  source: "$_source · _tapScale",
-  initialValue: 0.98,
-  min: 0.85,
-  max: 1.1,
-  step: 0.01,
 );
 
 const feedbackContentOffset = MotionNumber(
@@ -214,20 +170,13 @@ const feedbackMotionTargets = <MotionTarget>[
     parameters: [feedbackSheetCloseDuration, feedbackSheetReverseCurve],
   ),
   MotionTarget(
-    id: "stars",
-    label: "Rating stars · Tap bounce",
-    parameters: [
-      feedbackStarDuration,
-      feedbackStarDip,
-      feedbackStarPeak,
-      feedbackStarSettle,
-      feedbackStarCurve,
-      feedbackStarSettleCurve,
-    ],
+    id: "celebration",
+    label: "Yes, love it! · Button and hero",
+    parameters: [feedbackCelebrationDuration],
   ),
   MotionTarget(
     id: "step",
-    label: "Rating → Written feedback · Transition",
+    label: "Could be better → Written feedback · Transition",
     parameters: [feedbackContentDuration, feedbackContentReverseDuration, feedbackContentOffset, feedbackContentCurve],
   ),
   MotionTarget(
@@ -281,7 +230,6 @@ const feedbackMotionTargets = <MotionTarget>[
     parameters: [
       feedbackSheetOpenDuration,
       feedbackSheetCloseDuration,
-      feedbackStarDuration,
       feedbackContentDuration,
       feedbackContentReverseDuration,
       feedbackControlDuration,

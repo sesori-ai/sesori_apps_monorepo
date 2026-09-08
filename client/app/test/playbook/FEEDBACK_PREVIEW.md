@@ -1,8 +1,9 @@
 # Feedback UI preview
 
-An interactive Flutter prototype of the [Figma feedback flow](https://www.figma.com/design/NILKXLD9cwuWHhLnGqPqeJ/Sesori?node-id=4616-40748).
+An interactive Flutter prototype of the [Figma feedback flow](https://www.figma.com/design/NILKXLD9cwuWHhLnGqPqeJ/Sesori?node-id=5527-8368).
 This is a design and engineering handoff. Voice and private submission are
-simulated; 4–5 stars requests Apple's actual native rating UI in iOS debug builds.
+simulated. **Yes, love it!** plays the coordinated Figma celebration, then
+requests the platform's native review UI in iOS/Android debug builds.
 
 ## Simulator screenshots
 
@@ -12,11 +13,11 @@ Captured from the preview on an iPhone 17 Pro simulator running iOS 26.5:
 | --- | --- | --- |
 | ![Rating sheet](feedback_preview/rating-dark.png) | ![Private feedback with the iOS keyboard](feedback_preview/keyboard-dark.png) | ![Apple StoreKit rating prompt](feedback_preview/native-ios.png) |
 
-Updated star component, including captured frames during the selected-star bounce:
+The updated entry uses **Yes, love it!** and **Could be better**.
 
-| Rating · light | Selected · dark | Selected · light |
-| --- | --- | --- |
-| ![Light rating sheet](feedback_preview/rating-light.png) | ![Three selected stars](feedback_preview/rating-selected-dark.png) | ![Two selected stars](feedback_preview/rating-selected-light.png) |
+| Rating · light | Celebration and native handoff |
+| --- | --- |
+| ![Light rating sheet](feedback_preview/rating-light.png) | [Watch the iOS preview](feedback_preview/rating-celebration.mp4) |
 
 Feedback input corrected to [Figma `5035:11030`](https://www.figma.com/design/NILKXLD9cwuWHhLnGqPqeJ/Sesori?node-id=5035-11030):
 
@@ -45,11 +46,11 @@ permission / settings** scenario opens real iOS/Android permission or settings U
 
 | Action | Expected preview behavior |
 | --- | --- |
-| Select 1, 2, or 3 stars | Open private feedback with issue choices and voice/keyboard input. |
-| Select 4 or 5 stars | Wait for the rating sheet to close completely, then request Apple's native rating prompt through StoreKit. |
-| Tap any star | Bounce only the tapped star without a circular press highlight, then advance after it settles. Reduced motion keeps the selection feedback without movement. |
-| Tap Not now, Cancel, the scrim, or swipe the sheet down | Dismiss without submission; reopening starts a fresh draft. |
-| Send after selecting 1, 2, or 3 stars | Send is immediately available beside the keyboard button; no issue or text is required. |
+| Tap Yes, love it! | Start the button and hero together. Preserve the opening 1.2 seconds, shorten the quiet tail to 300 ms, then close the sheet in 200 ms before requesting native review: approximately 1.7 seconds in total. The OS controls any further presentation delay. |
+| Tap Could be better | Open the existing private feedback flow immediately, with issue choices and voice/keyboard input. |
+| Tap either choice repeatedly during celebration | Keep the original action; request native review once after the sheet is fully removed. |
+| Close, tap the scrim, or swipe the sheet down | Dismiss without submission or a pending review request; reopening starts fresh. |
+| Send after choosing Could be better | Send is immediately available beside the keyboard button; no issue or text is required. |
 | Select one or several issues | Toggle selection; category-only feedback can be submitted. |
 | Switch to keyboard | Edit multiline text; show the annotated blue focus ring. Keep sheet content above the keyboard while extending the sheet background behind its rounded corners. |
 | Hold the voice area, then release | Show the existing Prego waveform, shimmering `Transcribing…` label (static with reduced motion), then sample text. Send is disabled during recording/transcription, then becomes the only trailing button inside the voice pill. Tap the transcript to edit it. |
@@ -60,7 +61,8 @@ permission / settings** scenario opens real iOS/Android permission or settings U
 | Select Microphone permission / settings | Open native permission/settings UI in iOS/Android debug builds. Already-authorized access continues the first gesture; returning from native UI requires a fresh gesture. Restricted iOS access stays in the preview. A retryable Android denial returns to the preview; Settings opens only when Android no longer offers another permission prompt. |
 | Select Transcription fails once | Show the shared top error toast, preserve the draft and issue choices, and allow a fresh recording or keyboard input. |
 | Drag a held recording toward Cancel, then release | Show the red cancellation state and discard only that recording. Drag back before releasing to continue transcription; the direct Cancel recording action also retains the existing draft. |
-| Open the preview outside an iOS debug build | The native-rating request reports that it is available in the iOS debug preview; no custom review dialog is substituted. |
+| Enable Reduce Motion before or during celebration | Skip or finish the celebration promptly and request native review after closing. |
+| Open the preview outside an iOS/Android debug build | The native-rating request reports that the native hook is unavailable; no custom review dialog is substituted. |
 
 Check dark/light themes, larger text, a narrow phone, keyboard appearance and
 dismissal, category wrapping, long feedback, cancellation during a simulated
@@ -87,17 +89,20 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
   using the foreground `UIWindowScene`, after the Dart sheet's `completed`
   future resolves. It uses `AppStore.requestReview(in:)` on iOS 16+ and
   `SKStoreReviewController.requestReview(in:)` on the app's supported iOS 15.
-  There are no new dependencies. Release builds exclude this hook, and the
+  Release builds exclude this hook, and the
   normal product entry point does not call it. The same debug channel handles
-  `requestMicrophoneAccess`; Android registers that permission handler only in
-  debug builds. Permission/settings UI is real, while audio capture remains
+  `requestMicrophoneAccess`. Android registers both preview handlers only when
+  `BuildConfig.BUILD_TYPE == "debug"`, excluding Flutter profile builds too.
+  Android uses Google Play Review 2.0.2 to request and launch the native flow.
+  Completion does not establish that the OS displayed a prompt or accepted a rating.
+  Permission/settings UI is real, while audio capture remains
   simulated. Late permission completion cannot begin a released or dismissed
   recording.
   The Runner Debug build configuration explicitly enables Swift's `DEBUG`
   compilation condition so the preview hook is available in simulator builds.
 - Prego supplies the themes, icons, solid/glass buttons, composer decoration,
   waveform, scaffold, and success toast. The grabber-only sheet, issue pills,
-  and stars are private prototype widgets.
+  and animated rating artwork are private prototype widgets.
 - The input follows Figma `5035:11030`: voice is the initial mode; a transcript
   reveals an editor with 20px top and 34px bottom corners, a 6px inset, an 8px
   text/footer gap, and a separate 56px-tall voice pill with one 44px Send action.
@@ -105,16 +110,19 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
   trailing clearance. Borders do not add to these content insets. Tapping text
   enters the keyboard variant (`5037:13617`), with 26px bottom corners,
   microphone/Send controls, and the annotated focus ring outside the border.
-- The 44 × 44 star artwork comes from Figma component `5488:1669` (default
-  `5488:1668`, selected `5488:1670`). Its exported SVG paths use Prego's
-  `bgSurface1`, `borderSecondary`, and `fgWarningSecondary` tokens so the
-  neutral default and gold selection follow both themes. The selected border
-  retains Figma's 30% black stroke. `flutter_svg` does not render the default
-  variant's subtle 4% inner-shadow filter; its shape, fill, and border render.
-- The exact artwork was exported from Figma node `4954:13069` at 3× resolution
-  (1110 × 570). `assets/images/feedback_preview_hero.png` is included by the
-  app's existing image-asset declaration; this adds approximately 376 KiB to
-  that bundle even when the preview entry point is not used.
+- The layered hero comes from Figma `5528:30768`: two 3× raster exports
+  preserve the static background/phone treatments, while eight small SVGs keep
+  the doodles and hearts sharp. Total new artwork is approximately 833 KiB.
+  Assets use the app's existing image declaration and remain bundled even when
+  the preview entry point is not used.
+- `feedback_rating_motion.dart` translates the ten animated nodes' 31 tracks,
+  including Figma's sampled spring easing. The button and hero share one
+  controller and one timeline; the button adds no second platform press spring.
+  Static artwork stays outside per-frame builders, image filters are baked, and
+  animation uses transforms, opacity, button color and one bounded glow shader.
+  The white/pink button retains a subtle outline in light mode. Figma and
+  Impeller differ slightly in the early soft-light glow; source blend settings
+  and keyframes are preserved. Physical-device frame performance is unmeasured.
 - The Figma label `Notifications don’t arirve` is preserved intentionally.
   Confirm the correction to `Notifications don’t arrive` before production.
 - Figma comment #151 asks for voice and quick issue choices; both are included.
@@ -124,8 +132,12 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
 
 ## Motion behavior
 
-The selected-star-only 280 ms bounce and its no-splash treatment are preserved.
-The remaining flow now uses coordinated motion:
+The positive response preserves Figma's immediate button color/rotation/scale
+and the main heart celebration. The approved timing refinement keeps the first
+1.2 seconds at the authored pace and compresses only the remaining 800 ms into
+300 ms. With the 200 ms sheet exit, native review is requested after about
+1.7 seconds at normal speed. Both reduced-motion signals skip the celebration,
+including when enabled during playback. The other flow motion remains:
 
 - Sheet: 250 ms entrance with `Cubic(0.32, 0.72, 0, 1)`, and a 200 ms
   fast-start exit using the flipped `Cubic(0.23, 1, 0.32, 1)`.
@@ -165,12 +177,13 @@ Production work still needs:
    recording cleanup, editable transcription, and real-device validation.
 3. The agreed prompting rule (proposed: two minutes of foreground use, then a
    quiet return to the task list), cooldown persistence, and manual entry.
-4. A production native-review adapter and platform testing. The current iOS
-   hook is debug-only; Android is not implemented or exercised. Keep Apple’s
-   actual UI and wait for sheet dismissal. OS suppression is not a failed review.
+4. A production native-review adapter and platform testing. Both current hooks
+   are debug-only. Apple’s prompt has been exercised; Android compilation and
+   Play-distributed device testing remain unverified. Wait for full sheet
+   dismissal; OS suppression is not a failed review.
 5. Store-policy resolution for the requested positive-rating-only native
-   prompt. The UI prototype preserves the user's selected 1–3/private and
-   4–5/native split; this is not an assertion of store compliance. See
+   prompt. The UI prototype preserves the requested Yes/native and
+   Could be better/private split; this is not an assertion of store compliance. See
    [Google's guidance](https://developer.android.com/guide/playcore/in-app-review)
    and [Apple's guidelines](https://developer.apple.com/app-store/review/guidelines/#app-store-reviews).
 6. Production localization, relevant regression documentation, and required
@@ -180,33 +193,24 @@ Production work still needs:
 
 ```sh
 # From client/app
-flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_star_animation_test.dart test/playbook/feedback_motion_test.dart test/playbook/feedback_motion_tuning_test.dart test/playbook/feedback_voice_states_test.dart
+flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_celebration_test.dart test/playbook/feedback_motion_test.dart test/playbook/feedback_motion_tuning_test.dart test/playbook/feedback_voice_states_test.dart
 dart analyze
 ```
 
 Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 
-- All 55 combined feedback flow, star, motion, tuning, and voice-state tests
-  pass, including shared top-toast replay and automatic dismissal, 320 px
-  native-review routing, draft-preserving cancellation, and mocked iOS/Android
-  permission recovery. The toast target is replay only;
-  its motion remains owned by the shared presenter.
-- Focused widget tests cover: all five rating branches, rating-only and category-only
-  private submission, dismiss/reopen, draft-preserving retry, editable simulated
-  transcription without automatic submission, stable Send/keyboard positions
-  during issue toggles, disabled Send while recording/transcribing, and a 320 × 568 viewport with
-  1.5× text and keyboard insets. Native-channel tests verify exactly one request
-  for 4/5 stars after full sheet removal, none for 1–3, and explicit handling
-  of missing-plugin/platform failures.
-  Three animation checks cover the tapped-star bounce, a second tap during the
-  transition, and both reduced-motion accessibility settings.
-  Nine additional motion checks cover the sheet handoff, chip press feedback,
-  stable composer actions during issue toggles, stationary typing, voice transitions, and
-  reduced-motion behavior including preservation of an open draft and immediate
-  dismissal, microphone denial, and transcription retry.
-  Input checks also cover the voice-first state, keyboard-to-Send replacement,
-  measured Figma insets/radii, tap-to-edit, and appending a second transcription
-  without losing the existing draft or submitting automatically.
+- All 57 combined flow, celebration, motion, tuning and voice-state tests pass.
+  The positive route shares one timeline, preserves the opening pace, locks both
+  choices, and requests native review once after 1.5 seconds of celebration and
+  complete sheet removal. Closing mid-celebration cancels the request.
+- Both reduced-motion flags work initially and during celebration. The private
+  route supports category-only or empty feedback, draft-preserving retry,
+  simulated transcription, cancellation, and tap-to-edit. A 320 × 568 viewport
+  with 1.5× text and keyboard insets remains usable. Native-channel failures and
+  mocked iOS/Android microphone-permission recovery retain explicit outcomes.
+- Motion tuning replays the coordinated celebration with an editable duration;
+  whole-flow replay enters private feedback and never requests native review.
+  Existing voice, shared toast, shimmer and composer checks remain covered.
 - The confirmation integration check verifies placement below the top navigation
   and automatic removal after the three-second reading interval. Twenty shared
   popup tests pass, covering entry/exit, an interrupted entrance, close/swipe,
@@ -216,7 +220,10 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
   and the owning module analyzer. See `docs/regression/prego-button-interactions.md`.
 - The app analyzer passes. Formatting and the final playbook analyzer pass.
 - The iOS simulator build passes, including the Swift StoreKit hook.
-- Manual simulator coverage: dark/light rating sheets, private issue selection,
+- Latest simulator coverage includes the shortened celebration through Apple’s
+  actual native prompt, both entry choices, dark/light sheets, and the private
+  editor with its software keyboard. The updated recording is linked above.
+- Earlier manual simulator coverage: private issue selection,
   typing with the software keyboard, focus ring and keyboard avoidance,
   simulated recording/transcription, private success toast, category-preserving
   submission failure and retry, and Apple's actual native rating prompt.
@@ -224,10 +231,10 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
   entry, recording/transcribing, dark/light transcript with one Send action,
   tap-to-edit with the software keyboard and focus ring, actual text edits,
   and transcript-only submission through the replacement Send action.
-- Star, issue, and composer actions expose single labeled accessibility
+- Rating choices, issue, and composer actions expose single labeled accessibility
   controls. Full VoiceOver navigation remains a team review item.
 
 StoreKit presentation was exercised in an iOS debug build. Android native
 compilation and device permission dialogs remain unverified locally. Real audio
-capture/transcription, Play Review, backend delivery, and production
+capture/transcription, Play Review device presentation, backend delivery, and production
 prompt/cooldown behavior remain production follow-up work.

@@ -54,21 +54,20 @@ void main() {
     (tester) async {
       await _launch(tester: tester);
       final sheet = tester.element(find.byType(BottomSheet));
-      await tester.tap(find.byKey(const ValueKey("rating-2")));
+      await tester.tap(find.byKey(const ValueKey("feedback-improve")));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 470));
       await tester.pump(const Duration(milliseconds: 50));
 
-      expect(find.text("How’s Sesori working for you?"), findsOneWidget);
+      expect(find.text("Are you enjoying Sesori?"), findsOneWidget);
       expect(find.text("What should we improve?"), findsOneWidget);
       expect(tester.element(find.byType(BottomSheet)), same(sheet));
-      expect(find.byKey(const ValueKey("rating-2")).hitTestable(), findsNothing);
+      expect(find.byKey(const ValueKey("feedback-improve")).hitTestable(), findsNothing);
       final fades = tester.widgetList<FadeTransition>(
         find.ancestor(of: find.text("What should we improve?"), matching: find.byType(FadeTransition)),
       );
       expect(fades.any((fade) => fade.opacity.value > 0 && fade.opacity.value < 1), isTrue);
       await tester.pumpAndSettle();
-      expect(find.text("How’s Sesori working for you?"), findsNothing);
+      expect(find.text("Are you enjoying Sesori?"), findsNothing);
       expect(tester.takeException(), isNull);
     },
   );
@@ -194,7 +193,7 @@ void main() {
         final route = ModalRoute.of(tester.element(find.byType(BottomSheet)));
         expect(route?.transitionDuration, Duration.zero);
         expect(route?.reverseTransitionDuration, Duration.zero);
-        await _rate(tester: tester);
+        await _improve(tester: tester);
         final chip = find.text("Hard to navigate");
         final hold = await tester.startGesture(tester.getCenter(chip));
         await tester.pump();
@@ -317,19 +316,18 @@ Future<void> _launch({required WidgetTester tester}) async {
 
 Future<void> _openPrivate({required WidgetTester tester}) async {
   await _launch(tester: tester);
-  await _rate(tester: tester);
+  await _improve(tester: tester);
 }
 
-Future<void> _rate({required WidgetTester tester}) async {
-  await tester.tap(find.byKey(const ValueKey("rating-2")));
+Future<void> _improve({required WidgetTester tester}) async {
+  await tester.tap(find.byKey(const ValueKey("feedback-improve")));
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 490));
   await tester.pumpAndSettle();
 }
 
 Future<void> _openScenario({required WidgetTester tester, required FeedbackPreviewScenario scenario}) async {
   await _launch(tester: tester);
-  await tester.tap(find.text("Not now"));
+  await tester.tap(find.byKey(const ValueKey("feedback-close")));
   await tester.pumpAndSettle();
   await tester.tap(find.byType(DropdownButtonFormField<FeedbackPreviewScenario>));
   await tester.pumpAndSettle();
@@ -337,7 +335,7 @@ Future<void> _openScenario({required WidgetTester tester, required FeedbackPrevi
   await tester.pumpAndSettle();
   await tester.tap(find.text("Open feedback"));
   await tester.pumpAndSettle();
-  await _rate(tester: tester);
+  await _improve(tester: tester);
 }
 
 Finder _control({required String label}) =>

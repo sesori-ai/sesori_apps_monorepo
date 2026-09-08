@@ -24,26 +24,48 @@ void main() {
         TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.setMockMethodCallHandler(nativeReview, null),
   );
 
-  testWidgets("long star timing stays aligned with step advancement", (tester) async {
+  testWidgets("celebration replay uses its edited duration and stays inside the preview", (tester) async {
     await _open(tester: tester);
     _replay(
       tester: tester,
-      scene: FeedbackMotionScene.step,
+      scene: FeedbackMotionScene.celebration,
       values: const MotionSnapshot()
           .withInput(parameter: feedbackSheetOpenDuration, input: 0)
-          .withInput(parameter: feedbackStarDuration, input: 1000),
+          .withInput(parameter: feedbackCelebrationDuration, input: 4000),
     );
     await tester.pump();
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 600));
-    expect(find.text("What should we improve?"), findsNothing);
-    expect(find.byKey(const ValueKey("rating-3")), findsOneWidget);
-    await tester.pump(const Duration(milliseconds: 416));
+    final began = tester.binding.clock.now();
     await tester.pumpAndSettle();
-    expect(find.text("What should we improve?"), findsOneWidget);
+    expect(tester.binding.clock.now().difference(began), greaterThanOrEqualTo(const Duration(milliseconds: 3900)));
+    expect(find.byKey(const ValueKey("feedback-love")), findsOneWidget);
+    expect(find.text("What should we improve?"), findsNothing);
     expect(nativeRequests, 0);
     expect(tester.takeException(), isNull);
   });
+
+  for (final scene in [FeedbackMotionScene.step, FeedbackMotionScene.flow]) {
+    testWidgets("${scene.name} enters private feedback without waiting for celebration", (tester) async {
+      await _open(tester: tester);
+      _replay(
+        tester: tester,
+        scene: scene,
+        values: const MotionSnapshot()
+            .withInput(parameter: feedbackSheetOpenDuration, input: 0)
+            .withInput(parameter: feedbackCelebrationDuration, input: 4000),
+      );
+      await tester.pump();
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      expect(find.text("What should we improve?"), findsOneWidget);
+      expect(find.byKey(const ValueKey("feedback-love")), findsNothing);
+      expect(nativeRequests, 0);
+      expect(tester.takeException(), isNull);
+      await tester.pumpWidget(const SizedBox.shrink());
+      await tester.pump(const Duration(seconds: 5));
+    });
+  }
 
   for (final scene in FeedbackMotionScene.values) {
     testWidgets("${scene.name} replays safely with instant sheet transitions", (tester) async {
@@ -64,10 +86,10 @@ void main() {
         sawResultToast = sawResultToast || find.text("Feedback sent. Thank you!").evaluate().isNotEmpty;
       }
       switch (scene) {
-        case FeedbackMotionScene.sheetOpen || FeedbackMotionScene.stars:
-          expect(find.byKey(const ValueKey("rating-3")), findsOneWidget);
+        case FeedbackMotionScene.sheetOpen || FeedbackMotionScene.celebration:
+          expect(find.byKey(const ValueKey("feedback-love")), findsOneWidget);
         case FeedbackMotionScene.sheetClose:
-          expect(find.byKey(const ValueKey("rating-3")), findsNothing);
+          expect(find.byKey(const ValueKey("feedback-love")), findsNothing);
         case FeedbackMotionScene.step || FeedbackMotionScene.issues:
           expect(find.text("What should we improve?"), findsOneWidget);
         case FeedbackMotionScene.composer || FeedbackMotionScene.voice:
@@ -110,45 +132,41 @@ void main() {
     _replay(tester: tester, scene: FeedbackMotionScene.flow, values: instantSheet);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
-    _replay(tester: tester, scene: FeedbackMotionScene.stars, values: instantSheet);
+    _replay(tester: tester, scene: FeedbackMotionScene.celebration, values: instantSheet);
     await tester.pump();
     for (var frame = 0; frame < 40; frame++) {
       await tester.pump(const Duration(milliseconds: 100));
     }
-    expect(find.byKey(const ValueKey("rating-3")), findsOneWidget);
+    expect(find.byKey(const ValueKey("feedback-love")), findsOneWidget);
     expect(find.text("Feedback sent. Thank you!"), findsNothing);
     expect(nativeRequests, 0);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("manual high rating also skips native requests in tuning mode", (tester) async {
+  testWidgets("manual Yes also skips native requests in tuning mode", (tester) async {
     await _open(tester: tester);
-    await tester.tap(find.byKey(const ValueKey("rating-5")));
+    await tester.tap(find.byKey(const ValueKey("feedback-love")));
     await tester.pumpAndSettle();
     expect(find.text("Native rating skipped during motion preview."), findsOneWidget);
     expect(nativeRequests, 0);
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("reduced motion keeps the selected star stationary during replay", (tester) async {
+  testWidgets("reduced motion completes celebration replay without a timed animation", (tester) async {
     tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
     addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
     await _open(tester: tester);
     _replay(
       tester: tester,
-      scene: FeedbackMotionScene.stars,
-      values: const MotionSnapshot().withInput(parameter: feedbackStarPeak, input: 1.4),
+      scene: FeedbackMotionScene.celebration,
+      values: const MotionSnapshot()
+          .withInput(parameter: feedbackSheetOpenDuration, input: 0)
+          .withInput(parameter: feedbackCelebrationDuration, input: 4000),
     );
-    await tester.pump();
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 150));
-    final transform = tester.widget<Transform>(
-      find.descendant(
-        of: find.byKey(const ValueKey("rating-3")),
-        matching: find.byType(Transform),
-      ),
-    );
-    expect(transform.transform.entry(0, 0), 1);
+    final began = tester.binding.clock.now();
+    await tester.pumpAndSettle();
+    expect(tester.binding.clock.now().difference(began), lessThan(const Duration(milliseconds: 500)));
+    expect(find.byKey(const ValueKey("feedback-love")), findsOneWidget);
     expect(nativeRequests, 0);
     expect(tester.takeException(), isNull);
   });

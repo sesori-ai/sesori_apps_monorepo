@@ -230,7 +230,7 @@ Future<void> _open({required WidgetTester tester, bool permissionScenario = fals
     tester: tester,
     finder: find.ancestor(of: find.text("Open feedback"), matching: find.byType(PregoButtonsSolid)),
   );
-  await _tap(tester: tester, finder: find.byKey(const ValueKey("rating-2")));
+  await _tap(tester: tester, finder: find.byKey(const ValueKey("feedback-improve")));
 }
 
 Future<void> _prepareDraft({required WidgetTester tester}) async {

@@ -26,35 +26,33 @@ void main() {
 
   tearDown(() => binding.defaultBinaryMessenger.setMockMethodCallHandler(nativeReviewChannel, null));
 
-  for (final rating in [1, 2, 3]) {
-    testWidgets(
-      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-      "$rating stars stays private through rating-only submission",
-      (tester) async {
-        await _launch(tester: tester);
-        await _open(tester: tester);
-        await _rate(tester: tester, rating: rating);
+  testWidgets(
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    "Could be better stays private through submission without a written comment",
+    (tester) async {
+      await _launch(tester: tester);
+      await _open(tester: tester);
+      await _improve(tester: tester);
 
-        expect(find.text("What should we improve?"), findsOneWidget);
-        expect(nativeRequests, isEmpty);
-        expect(find.byKey(const ValueKey("feedback-text")), findsNothing);
-        expect(_control(label: "Send feedback"), findsOneWidget);
-        expect(tester.widget<Semantics>(_control(label: "Send feedback")).properties.enabled, isTrue);
+      expect(find.text("What should we improve?"), findsOneWidget);
+      expect(nativeRequests, isEmpty);
+      expect(find.byKey(const ValueKey("feedback-text")), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
+      expect(tester.widget<Semantics>(_control(label: "Send feedback")).properties.enabled, isTrue);
 
-        await _tap(
-          tester: tester,
-          finder: _control(label: "Send feedback"),
-        );
-        await tester.pump(const Duration(milliseconds: 900));
-        await tester.pumpAndSettle();
+      await _tap(
+        tester: tester,
+        finder: _control(label: "Send feedback"),
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      await tester.pumpAndSettle();
 
-        expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
-        expect(find.text("What should we improve?"), findsNothing);
-        expect(nativeRequests, isEmpty);
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
+      expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+      expect(find.text("What should we improve?"), findsNothing);
+      expect(nativeRequests, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
@@ -62,7 +60,7 @@ void main() {
     (tester) async {
       await _launch(tester: tester);
       await _open(tester: tester);
-      await _rate(tester: tester, rating: 2);
+      await _improve(tester: tester);
       await _tap(tester: tester, finder: find.text("Hard to navigate"));
       await _tap(
         tester: tester,
@@ -76,28 +74,36 @@ void main() {
     },
   );
 
-  for (final rating in [4, 5]) {
-    testWidgets(
-      variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-      "$rating stars requests native review once after the feedback sheet is removed on a narrow screen",
-      (tester) async {
-        await _launch(tester: tester, size: const Size(320, 568));
-        await _open(tester: tester);
-        expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
-        await _rate(tester: tester, rating: rating);
+  testWidgets(
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    "Yes requests native review only after the feedback sheet is removed on a narrow screen",
+    (tester) async {
+      await _launch(tester: tester, size: const Size(320, 568));
+      await _open(tester: tester);
+      expect(find.text("Are you enjoying Sesori?"), findsOneWidget);
+      expect(find.text("Yes, love it!"), findsOneWidget);
+      expect(find.text("Could be better"), findsOneWidget);
+      final semantics = tester.ensureSemantics();
+      try {
+        await tester.pump();
+        expect(find.bySemanticsLabel("Close feedback"), findsOneWidget);
+      } finally {
+        semantics.dispose();
+      }
+      expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
+      await _love(tester: tester);
 
-        expect(nativeRequests, hasLength(1));
-        expect(nativeRequests.single.method, "requestReview");
-        expect(nativeRequests.single.arguments, isNull);
-        expect(sheetsPresentDuringNativeRequest, [false]);
-        expect(find.byType(BottomSheet, skipOffstage: false), findsNothing);
-        expect(find.byType(Dialog), findsNothing);
-        expect(find.text("What should we improve?"), findsNothing);
-        expect(find.text("Feedback sent. Thank you!"), findsNothing);
-        expect(tester.takeException(), isNull);
-      },
-    );
-  }
+      expect(nativeRequests, hasLength(1));
+      expect(nativeRequests.single.method, "requestReview");
+      expect(nativeRequests.single.arguments, isNull);
+      expect(sheetsPresentDuringNativeRequest, [false]);
+      expect(find.byType(BottomSheet, skipOffstage: false), findsNothing);
+      expect(find.byType(Dialog), findsNothing);
+      expect(find.text("What should we improve?"), findsNothing);
+      expect(find.text("Feedback sent. Thank you!"), findsNothing);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
@@ -108,7 +114,7 @@ void main() {
       addTearDown(tester.view.resetPadding);
       await tester.pumpAndSettle();
       await _open(tester: tester);
-      await _rate(tester: tester, rating: 2);
+      await _improve(tester: tester);
       await _tap(tester: tester, finder: find.text("Hard to navigate"));
       await _tap(
         tester: tester,
@@ -133,7 +139,7 @@ void main() {
   );
 
   for (final failure in <({Exception error, String notice})>[
-    (error: MissingPluginException(), notice: "Native rating is available in the iOS debug preview."),
+    (error: MissingPluginException(), notice: "Native rating is available in the iOS and Android debug preview."),
     (
       error: PlatformException(code: "native_review_unavailable"),
       notice: "Couldn’t open native rating. Please try again.",
@@ -148,7 +154,7 @@ void main() {
         nativeFailure = failure.error;
         await _launch(tester: tester);
         await _open(tester: tester);
-        await _rate(tester: tester, rating: 5);
+        await _love(tester: tester);
 
         expect(nativeRequests, hasLength(1));
         expect(nativeRequests.single.method, "requestReview");
@@ -163,22 +169,22 @@ void main() {
 
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-    "Not now and Cancel dismiss, and reopening starts with a fresh rating",
+    "Close and Cancel dismiss, and reopening starts with fresh choices",
     (tester) async {
       await _launch(tester: tester);
       await _open(tester: tester);
-      await _tap(tester: tester, finder: find.text("Not now"));
-      expect(find.text("How’s Sesori working for you?"), findsNothing);
+      await _tap(tester: tester, finder: find.byKey(const ValueKey("feedback-close")));
+      expect(find.text("Are you enjoying Sesori?"), findsNothing);
 
       await _open(tester: tester);
-      await _rate(tester: tester, rating: 2);
+      await _improve(tester: tester);
       await _tap(tester: tester, finder: find.text("Connection drops"));
       await _tap(tester: tester, finder: find.text("Cancel"));
       expect(find.text("What should we improve?"), findsNothing);
 
       await _open(tester: tester);
-      expect(find.text("How’s Sesori working for you?"), findsOneWidget);
-      await _rate(tester: tester, rating: 1);
+      expect(find.text("Are you enjoying Sesori?"), findsOneWidget);
+      await _improve(tester: tester);
       expect(_control(label: "Send feedback"), findsOneWidget);
       expect(find.text("Feedback sent. Thank you!"), findsNothing);
       expect(nativeRequests, isEmpty);
@@ -194,7 +200,7 @@ void main() {
       await _launch(tester: tester);
       await _scenario(tester: tester, scenario: FeedbackPreviewScenario.submissionRetry);
       await _open(tester: tester);
-      await _rate(tester: tester, rating: 3);
+      await _improve(tester: tester);
       await _tap(
         tester: tester,
         finder: _control(label: "Use keyboard"),
@@ -227,7 +233,7 @@ void main() {
     (tester) async {
       await _launch(tester: tester, size: const Size(402, 874));
       await _open(tester: tester);
-      await _rate(tester: tester, rating: 2);
+      await _improve(tester: tester);
       final voice = find.byKey(const ValueKey("feedback-voice"));
       final pill = find.byKey(const ValueKey("feedback-voice-pill"));
       final composer = find.byKey(const ValueKey("feedback-composer"));
@@ -302,7 +308,7 @@ void main() {
       await tester.pumpAndSettle();
       await _open(tester: tester);
       expect(tester.takeException(), isNull);
-      await _rate(tester: tester, rating: 3);
+      await _improve(tester: tester);
       await _tap(
         tester: tester,
         finder: _control(label: "Use keyboard"),
@@ -356,10 +362,12 @@ Future<void> _open({required WidgetTester tester}) async {
   await _tap(tester: tester, finder: button);
 }
 
-Future<void> _rate({required WidgetTester tester, required int rating}) async {
-  await _tap(tester: tester, finder: find.byKey(ValueKey("rating-$rating")));
-  await tester.pump(const Duration(milliseconds: 200));
-  await tester.pumpAndSettle();
+Future<void> _improve({required WidgetTester tester}) async {
+  await _tap(tester: tester, finder: find.byKey(const ValueKey("feedback-improve")));
+}
+
+Future<void> _love({required WidgetTester tester}) async {
+  await _tap(tester: tester, finder: find.byKey(const ValueKey("feedback-love")));
 }
 
 Future<void> _scenario({required WidgetTester tester, required FeedbackPreviewScenario scenario}) async {
@@ -369,7 +377,8 @@ Future<void> _scenario({required WidgetTester tester, required FeedbackPreviewSc
 
 Future<void> _tap({required WidgetTester tester, required Finder finder}) async {
   await tester.pump();
-  await tester.ensureVisible(finder);
+  await Scrollable.ensureVisible(tester.element(finder), alignment: 0.5);
+  await tester.pumpAndSettle();
   await tester.tap(finder);
   await tester.pumpAndSettle();
 }

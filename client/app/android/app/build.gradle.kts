@@ -77,6 +77,7 @@ android {
     ndkVersion = flutter.ndkVersion
 
     buildFeatures {
+        buildConfig = true
         resValues = true
     }
 
@@ -140,6 +141,9 @@ dependencies {
     implementation("androidx.core:core-splashscreen:1.2.0")
     implementation("androidx.constraintlayout:constraintlayout:2.2.1")
     implementation("androidx.activity:activity-ktx:1.13.0")
+
+    // Native feedback-preview review handoff; its MethodChannel is registered only in debug.
+    implementation("com.google.android.play:review:2.0.2")
 }
 
 // Fail fast if the signing properties file for the requested build type is missing.

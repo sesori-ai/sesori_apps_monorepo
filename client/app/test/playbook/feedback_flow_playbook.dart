@@ -1,12 +1,11 @@
-// Local feedback prototype. Voice and submission are simulated; 4–5 stars
-// requests Apple's native rating UI through an iOS debug-only channel.
+// Local feedback prototype. Voice and submission are simulated; the positive
+// choice requests native iOS/Android rating through a debug-only channel.
 // The microphone-permission scenario opens real iOS/Android permissions/settings.
 import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
-import "package:flutter_svg/flutter_svg.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_motion_tuning/sesori_motion_tuning.dart";
@@ -15,6 +14,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "feedback_motion_spec.dart";
+import "feedback_rating_motion.dart";
 
 void main() => runApp(const FeedbackFlowPlaybook(openOnLaunch: true));
 
@@ -28,6 +28,12 @@ enum FeedbackPreviewScenario({required final String label}) {
 enum _PreviewOutcome() {
   privateFeedback,
   nativeReview,
+}
+
+enum _FeedbackStage() {
+  choosing,
+  celebrating,
+  privateFeedback,
 }
 
 enum _InputMode() {
@@ -193,7 +199,9 @@ class _PreviewLauncherState()
         try {
           await const MethodChannel("com.sesori.app/feedback_preview").invokeMethod<void>("requestReview");
         } on MissingPluginException {
-          if (mounted) popupAlertPresenter.show(title: "Native rating is available in the iOS debug preview.");
+          if (mounted) {
+            popupAlertPresenter.show(title: "Native rating is available in the iOS and Android debug preview.");
+          }
         } on PlatformException {
           if (mounted) popupAlertPresenter.show(title: "Couldn’t open native rating. Please try again.");
         }
@@ -236,7 +244,7 @@ class _PreviewLauncherState()
               Text(
                 FeedbackMotionScope.maybeOf(context: context) != null
                     ? "Voice and feedback submission are simulated. Native rating is skipped while tuning motion."
-                    : "Voice and feedback submission are simulated. 4–5 stars opens Apple’s native rating prompt in iOS debug builds.",
+                    : "Voice and feedback submission are simulated. Yes, love it! requests native rating in iOS and Android debug builds.",
                 style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
               ),
               const SizedBox(height: 8),
@@ -268,7 +276,7 @@ class _PreviewLauncherState()
               const SizedBox(height: 14),
               Text(
                 FeedbackMotionScope.maybeOf(context: context) == null
-                    ? "Try 1–3 stars for private feedback, or 4–5 stars for Apple’s native rating prompt. "
+                    ? "Try Could be better for private feedback, or Yes, love it! for native rating. "
                           "Dismiss to change the scenario or theme."
                     : "Motion preview uses simulated feedback and skips native rating. "
                           "Dismiss to change the scenario or theme.",
@@ -454,33 +462,46 @@ class const _FeedbackSheet({super.key, required final FeedbackPreviewScenario sc
   State<_FeedbackSheet> createState() => _FeedbackSheetState();
 }
 
-class _FeedbackSheetState() extends State<_FeedbackSheet> with WidgetsBindingObserver {
-  int? _rating;
-  bool _choosingRating = false;
+class _FeedbackSheetState() extends State<_FeedbackSheet> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  _FeedbackStage _stage = _FeedbackStage.choosing;
+  late final AnimationController _celebration = AnimationController(vsync: this);
+  // Keep the first 1.2s of Figma's 2s sequence at its authored pace. Only the
+  // quiet tail is compressed into 300ms, leaving 200ms for sheet closure.
+  late final Animation<double> _celebrationTimeline = _celebration.drive(
+    TweenSequence([
+      TweenSequenceItem(tween: Tween<double>(begin: 0, end: 0.6), weight: 80),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.6, end: 1), weight: 20),
+    ]),
+  );
   final _privateFeedbackKey = GlobalKey<_PrivateFeedbackStepState>();
 
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _celebration.addStatusListener(_celebrationStatusChanged);
   }
 
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
     final scene = FeedbackMotionScope.maybeOf(context: context)?.scene;
-    if (_rating == null &&
+    if (_stage == _FeedbackStage.choosing &&
         (scene == FeedbackMotionScene.composer ||
             scene == FeedbackMotionScene.issues ||
             scene == FeedbackMotionScene.voice)) {
-      _rating = 3;
+      _stage = _FeedbackStage.privateFeedback;
     }
+    _celebration.duration = FeedbackMotionScope.valuesOf(context: context)
+        .duration(parameter: feedbackCelebrationDuration);
   }
 
   void _replayMotion() {
     switch (FeedbackMotionScope.maybeOf(context: context)?.scene) {
-      case FeedbackMotionScene.stars || FeedbackMotionScene.step || FeedbackMotionScene.flow:
-        unawaited(_chooseRating(rating: 3));
+      case FeedbackMotionScene.celebration:
+        _chooseLove();
+      case FeedbackMotionScene.step || FeedbackMotionScene.flow:
+        _chooseImprove();
       case FeedbackMotionScene.composer || FeedbackMotionScene.issues || FeedbackMotionScene.voice:
         _privateFeedbackKey.currentState?._replayMotion();
       case FeedbackMotionScene.sheetClose:
@@ -493,40 +514,63 @@ class _FeedbackSheetState() extends State<_FeedbackSheet> with WidgetsBindingObs
   }
 
   @override
-  void didChangeAccessibilityFeatures() => setState(() {});
+  void didChangeAccessibilityFeatures() {
+    setState(() {});
+    // MediaQuery has not rebuilt yet when this platform callback arrives.
+    final features = View.of(context).platformDispatcher.accessibilityFeatures;
+    if ((features.disableAnimations || features.reduceMotion) && _celebration.isAnimating) {
+      // Finish this same request when Reduce Motion is enabled mid-flight.
+      _celebration.value = 1;
+    }
+  }
 
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _celebration.dispose();
     super.dispose();
   }
 
-  Future<void> _chooseRating({required int rating}) async {
-    if (_choosingRating) return;
-    setState(() {
-      _rating = rating;
-      _choosingRating = true;
-    });
-    await Future<void>.delayed(
-      prefersReducedMotion(context)
-          ? const Duration(milliseconds: 100)
-          : FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackStarDuration),
-    );
-    if (!mounted || FeedbackMotionScope.maybeOf(context: context)?.scene == FeedbackMotionScene.stars) return;
-    if (rating >= 4) {
-      Navigator.of(context).pop(_PreviewOutcome.nativeReview);
+  void _chooseImprove() {
+    if (_stage != _FeedbackStage.choosing) return;
+    setState(() => _stage = _FeedbackStage.privateFeedback);
+  }
+
+  void _chooseLove() {
+    if (_stage != _FeedbackStage.choosing) return;
+    setState(() => _stage = _FeedbackStage.celebrating);
+    if (prefersReducedMotion(context)) {
+      _finishCelebration();
     } else {
-      setState(() => _choosingRating = false);
+      _celebration.forward();
     }
+  }
+
+  void _celebrationStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.completed) _finishCelebration();
+  }
+
+  void _finishCelebration() {
+    // A swipe, barrier tap, or close can finish before this controller does.
+    if (!mounted ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        FeedbackMotionScope.maybeOf(context: context)?.scene == FeedbackMotionScene.celebration) {
+      return;
+    }
+    Navigator.of(context).pop(_PreviewOutcome.nativeReview);
   }
 
   @override
   Widget build(BuildContext context) {
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
-    final ratingStep = _rating == null || _choosingRating;
+    final ratingStep = _stage != _FeedbackStage.privateFeedback;
     final reducedMotion = prefersReducedMotion(context);
     final step = ratingStep
-        ? _RatingStep(selected: _rating, onChoose: _chooseRating)
+        ? _RatingStep(
+            animation: reducedMotion ? const AlwaysStoppedAnimation(0) : _celebrationTimeline,
+            onLove: _stage == _FeedbackStage.choosing ? _chooseLove : null,
+            onImprove: _stage == _FeedbackStage.choosing ? _chooseImprove : null,
+          )
         : _PrivateFeedbackStep(key: _privateFeedbackKey, scenario: widget.scenario);
     final content = feedbackMotionRegion(
       context: context,
@@ -592,154 +636,76 @@ class _FeedbackSheetState() extends State<_FeedbackSheet> with WidgetsBindingObs
 }
 
 class const _RatingStep({
-  required final int? selected,
-  required final void Function({required int rating}) onChoose,
+  required final Animation<double> animation,
+  required final VoidCallback? onLove,
+  required final VoidCallback? onImprove,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        ClipRRect(
-          borderRadius: BorderRadius.circular(21),
-          child: Image.asset("assets/images/feedback_preview_hero.png", width: double.infinity, fit: BoxFit.cover),
-        ),
-        const SizedBox(height: 18),
-        Text("How’s Sesori working for you?", textAlign: TextAlign.center, style: prego.textTheme.textXl.medium),
-        const SizedBox(height: 4),
-        Text(
-          "Your rating helps us make it better.",
-          textAlign: TextAlign.center,
-          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-        ),
-        const SizedBox(height: 36),
-        _Stars(selected: selected, onChoose: onChoose),
-        const SizedBox(height: 22),
-        _DismissButton(
-          label: "Not now",
-          onPressed: () => Navigator.of(context).pop(),
-        ),
-      ],
-    );
-  }
-}
-
-class const _Stars({
-  required final int? selected,
-  required final void Function({required int rating}) onChoose,
-}) extends StatelessWidget {
-  // A rating is accepted once before advancing: dip, pop, then softly settle.
-  static TweenSequence<double> _tapScale({required MotionSnapshot values}) => TweenSequence<double>([
-    TweenSequenceItem(
-      tween: Tween(
-        begin: 1.0,
-        end: values.number(parameter: feedbackStarDip),
-      ).chain(CurveTween(curve: values.easing(parameter: feedbackStarCurve).curve)),
-      weight: 16,
-    ),
-    TweenSequenceItem(
-      tween: Tween(
-        begin: values.number(parameter: feedbackStarDip),
-        end: values.number(parameter: feedbackStarPeak),
-      ).chain(CurveTween(curve: values.easing(parameter: feedbackStarSettleCurve).curve)),
-      weight: 34,
-    ),
-    TweenSequenceItem(
-      tween: Tween(
-        begin: values.number(parameter: feedbackStarPeak),
-        end: values.number(parameter: feedbackStarSettle),
-      ).chain(CurveTween(curve: values.easing(parameter: feedbackStarSettleCurve).curve)),
-      weight: 32,
-    ),
-    TweenSequenceItem(
-      tween: Tween(
-        begin: values.number(parameter: feedbackStarSettle),
-        end: 1.0,
-      ).chain(CurveTween(curve: values.easing(parameter: feedbackStarCurve).curve)),
-      weight: 18,
-    ),
-  ]);
-
-  @override
-  Widget build(BuildContext context) {
-    final tapScale = _tapScale(values: FeedbackMotionScope.valuesOf(context: context));
     return feedbackMotionRegion(
       context: context,
-      scene: FeedbackMotionScene.stars,
-      child: Row(
+      scene: FeedbackMotionScene.celebration,
+      child: Column(
         mainAxisSize: MainAxisSize.min,
         children: [
-          for (var rating = 1; rating <= 5; rating++) ...[
-            if (rating > 1) const SizedBox(width: 8),
-            Semantics(
-              label: "$rating ${rating == 1 ? 'star' : 'stars'}",
-              button: true,
-              selected: selected == rating,
-              excludeSemantics: true,
-              onTap: () => onChoose(rating: rating),
-              child: SizedBox.square(
-                dimension: 44,
+          Stack(
+            children: [
+              FeedbackRatingHero(animation: animation),
+              Positioned(
+                right: -2,
+                top: -1,
                 child: IconButton(
-                  key: ValueKey("rating-$rating"),
-                  padding: EdgeInsets.zero,
-                  style: ButtonStyle(
-                    splashFactory: NoSplash.splashFactory,
-                    overlayColor: WidgetStateProperty.resolveWith(
-                      (states) => states.contains(WidgetState.pressed) ? Colors.transparent : null,
-                    ),
+                  key: const ValueKey("feedback-close"),
+                  constraints: const BoxConstraints.tightFor(width: 52, height: 52),
+                  icon: Icon(
+                    TablerRegular.x,
+                    size: 20,
+                    color: prego.colors.textTertiary,
+                    semanticLabel: "Close feedback",
                   ),
-                  onPressed: () => onChoose(rating: rating),
-                  icon: TweenAnimationBuilder<double>(
-                    tween: Tween(begin: 0, end: selected == rating ? 1 : 0),
-                    duration: prefersReducedMotion(context)
-                        ? Duration.zero
-                        : FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackStarDuration),
-                    builder: (context, progress, child) => Transform.scale(
-                      scale: prefersReducedMotion(context) ? 1 : tapScale.transform(progress),
-                      child: child,
-                    ),
-                    child: SvgPicture.asset(
-                      selected != null && rating <= selected!
-                          ? "assets/images/feedback_star_selected.svg"
-                          : "assets/images/feedback_star_default.svg",
-                      width: 44,
-                      height: 44,
-                      excludeFromSemantics: true,
-                      colorMapper: _StarColorMapper(
-                        fill: selected != null && rating <= selected!
-                            ? context.prego.colors.fgWarningSecondary
-                            : context.prego.colors.bgSurface1,
-                        stroke: selected != null && rating <= selected!
-                            ? Colors.black
-                            : context.prego.colors.borderSecondary,
-                      ),
-                    ),
-                  ),
+                  onPressed: () => Navigator.of(context).pop(),
                 ),
               ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 67),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Text(
+                "Are you enjoying Sesori?",
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textXl.medium,
+              ),
             ),
-          ],
+          ),
+          FeedbackLoveButton(animation: animation, onPressed: onLove),
+          const SizedBox(height: 12),
+          TextButton(
+            key: const ValueKey("feedback-improve"),
+            onPressed: onImprove,
+            // This Figma instance uses bgSurface4; the shared secondary
+            // button's bgSecondary belongs to other existing screens.
+            style: TextButton.styleFrom(
+              backgroundColor: prego.colors.bgSurface4,
+              disabledBackgroundColor: prego.colors.bgSurface4,
+              foregroundColor: prego.colors.textSecondary,
+              disabledForegroundColor: prego.colors.textSecondary,
+              textStyle: prego.textTheme.textMd.bold,
+              minimumSize: const Size(double.infinity, 52),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: StadiumBorder(side: BorderSide(color: prego.colors.borderSecondary)),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text("Could be better"),
+          ),
+          const SizedBox(height: 12),
         ],
       ),
     );
   }
-}
-
-// Preserve the exported Figma paths while resolving their semantic theme colors.
-class const _StarColorMapper({required final Color fill, required final Color stroke}) extends ColorMapper {
-  @override
-  Color substitute(String? id, String elementName, String attributeName, Color color) => switch (attributeName) {
-    "fill" => fill,
-    "stroke" => stroke,
-    _ => color,
-  };
-
-  @override
-  bool operator ==(Object other) => other is _StarColorMapper && fill == other.fill && stroke == other.stroke;
-
-  @override
-  int get hashCode => Object.hash(fill, stroke);
 }
 
 class const _PrivateFeedbackStep({super.key, required final FeedbackPreviewScenario scenario}) extends StatefulWidget {
@@ -793,7 +759,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
         unawaited(_replayVoice());
       case FeedbackMotionScene.sheetOpen ||
           FeedbackMotionScene.sheetClose ||
-          FeedbackMotionScene.stars ||
+          FeedbackMotionScene.celebration ||
           FeedbackMotionScene.step ||
           FeedbackMotionScene.notice ||
           FeedbackMotionScene.flow ||
