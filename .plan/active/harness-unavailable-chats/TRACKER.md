@@ -1,30 +1,27 @@
-# Harness-unavailable chats tracker
+# Unavailable chat input-gating tracker
 
-Authority: [PLAN.md](PLAN.md). Six sequential PRs; implementation has not started.
+Authority: [PLAN.md](PLAN.md). User-approved scope: **input gating only**.
+No queue recovery, submission retention, attachment storage or bridge protocol work.
 
 | Step | Complexity | Deliverable | Status |
 |---|---|---|---|
-| 1/6 | 🌱 | Plan unavailable chat recovery | [PR #1366](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1366) open; review findings addressed |
-| 2/6 | ⚙️ | Identify pre-dispatch harness refusals | Not started |
-| 3/6 | ⚙️ | Gate chat actions and retain unsent input | Not started |
-| 4/6 | ⚙️ | Explain unavailable chats on both surfaces | Not started |
-| 5/6 | 🌿 | Document unavailable chat guarantees | Not started |
-| 6/6 | 🌿 | Verify recovery and retire plan | Not started |
+| 1/4 | 🌱 | Plan read-only unavailable chats | [PR #1366](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1366) open |
+| 2/4 | ⚙️ | Gate unavailable chats on both clients | Not started |
+| 3/4 | 🌿 | Reconcile chat availability regressions | Not started |
+| 4/4 | 🌿 | Verify read-only chats and retire plan | Not started |
 
-Use the exact PR titles in PLAN.md. Step 6 requires the recorded targeted L4
-matrix to pass and an EVIDENCE.md summary before retirement. Missing accounts,
-devices or live harness coverage keeps the plan active unless the user explicitly
-accepts a matrix reduction in PLAN.md.
+The earlier six-step proposal was replaced before implementation after the user
+explicitly rejected queue-recovery scope. Use the four exact titles in PLAN.md.
+Implementation requires the user's implementation request.
 
-## Decisions and evidence
+## Evidence and review
 
-- User requests planning, not implementation.
-- Scope: all registered harnesses; shared mobile and desktop chat surfaces.
-- Root gap confirmed in code: no harness-status gate in chat; generic send
-  errors requeue; composer clears on void callback; local queue is cubit-owned.
-- No live reproduction or product-code tests have been run for this plan PR.
-- Initial review rejected the plan as underspecified. Clarification review
-  passed its pre-review gate, then identified concrete architecture findings.
-  Applied valid corrections without a third review; bounded exclusions and the
-  exact review outcome are recorded in PLAN.md. No approved verdict is claimed.
-- No implementation or live verification has started.
+- Confirmed prevention gap: chat actions do not consume harness management state.
+- Earlier architecture review findings relevant to the smaller scope are applied:
+  sole state coordinator, metadata-first loading and shared cubit composition.
+- Recovery-related PR findings are superseded by the explicit user decision;
+  no approved architecture verdict is claimed for the revised plan.
+- No product-code changes, live reproduction, or Dart/Flutter suites run.
+- Retirement requires the recorded targeted L4 matrix, privacy-safe EVIDENCE.md
+  and cleanup. Partial/Blocked/Fail keeps the plan active unless the user accepts
+  a matrix reduction explicitly in PLAN.md.
