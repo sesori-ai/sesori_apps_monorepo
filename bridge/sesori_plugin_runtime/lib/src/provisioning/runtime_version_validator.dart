@@ -93,10 +93,26 @@ class RuntimeVersionValidator({
       workingDirectory: context.workingDirectory,
     );
     _throwIfAborted(context: context);
-    return switch (outcome) {
-      RuntimeProbeReady(:final version) => version.compareTo(_manifest.bundledVersion) == 0,
-      RuntimeProbeFailure() => false,
-    };
+    switch (outcome) {
+      case RuntimeProbeReady(:final version):
+        final matches = version.compareTo(_manifest.bundledVersion) == 0;
+        if (!matches) {
+          Log.w(
+            "[${_manifest.runtimeId}] candidate '${context.executablePath}' reported '${version.toString()}'; "
+            "expected '${_manifest.bundledVersion.toString()}'",
+          );
+        }
+        return matches;
+      case RuntimeProbeMissing(:final innerError, :final stackTrace):
+        Log.w(
+          "[${_manifest.runtimeId}] candidate '${context.executablePath}' could not be launched",
+          innerError,
+          stackTrace,
+        );
+        return false;
+      case RuntimeProbeFailure():
+        return false;
+    }
   }
 
   /// Returns only the parsed version for callers that do not need failure

@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.a merged; Step 10.b implemented locally
+- **Status:** Steps 1–10.a merged; Step 10.b architecture-approved, publication prepared
 - **Base:** synced with main `57e9ecf33e000612fc04a00d4fa0f7757366f427` after Step 10.a merge
 - **Current branch:** `antigravity-harness-step-10b-candidate-validation`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -23,8 +23,8 @@
   [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c),
   [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9),
   [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a)
-- **Open PR:** none; parent owns Step 10.b architecture assessment and publication.
-- **Next action:** assess and publish the committed Step 10.b checkpoint; Step 10.c remains unstarted.
+- **Open PR:** Step 10.b publication prepared.
+- **Next action:** publish and monitor Step 10.b; begin only Step 10.c locally.
 
 ## Fixed PR Series
 
@@ -411,6 +411,11 @@
 - [x] Pinned Dart 3.13.2 verification: all 195 non-hidden tests across the runtime package's 19 suites pass; runtime,
   OpenCode, Codex, Cursor, DeepSeek, Copilot, OMP and Pi analyzers are clean with fatal infos. Counts use successful
   JSON `testDone` records keyed by suite/test IDs; logs are retained under `/tmp/antigravity-step10b-*`.
+- [x] First foreground architecture review `d9e0453b` approved complete `57e9ecf33e` → `1cc96e98ff`: all 21 files,
+  581 additions + 111 deletions = 692 lines, no findings. Keep this immutable review distinct from publication metadata.
+- [x] Final localized diagnostics retain candidate launch errors/stacks and actual/expected version mismatches before
+  returning a rejected candidate. Sixteen overlapping validator tests pass and owning analysis is clean; these are
+  not additional unique cases on top of the initial 195. No architecture boundary changed in this follow-up.
 - [ ] Step 10.c official Antigravity artifacts, manifest, initialize-only validator and descriptor install capability
   remain unstarted.
 
