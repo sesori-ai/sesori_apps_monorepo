@@ -250,8 +250,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   retained within groups; empty groups disappear. Installing entries belong to Not installed;
   genuinely disabled entries belong to Disabled; only ready dormant/starting/active entries
   are Enabled. Degraded remains attention even though its separate scan capability is routable.
-- Harness names open details, switches send actual enable/disable intent, and the separate
-  download target immediately starts an advertised install. Switches retain the bridge's
+- Harness names and the separate download target open details without starting installation;
+  setup guidance stays visible before the explicit detail installation button. Switches send
+  actual enable/disable intent and retain the bridge's
   known enabled preference while blocked by setup or another operation; unknown runtime
   has no inferred switch. A pending toggle replaces only that harness's switch with an
   in-place indicator in the same 64×44 slot; the list stays visible and other mutations

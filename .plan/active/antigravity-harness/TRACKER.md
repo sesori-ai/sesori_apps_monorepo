@@ -481,6 +481,9 @@
   Current focused evidence: 12 descriptor tests + 50 client settings tests pass; Antigravity and shared UI analyzers clean.
   This overlaps earlier evidence, not 62 additional unique cases. Documentation now states retained supported-runtime
   protection, permits existing managed upgrades, and attributes coverage/slices accurately.
+- [x] CI follow-up: update the two stale shared-UI expectations for overview navigation and visible hints;
+  all 19 shared settings-view tests pass. Reconcile the later lifecycle-document requirement with the same flow.
+  Production code is unchanged; prior passing analyzers and mobile-shell tests were not rerun.
 
 ## Architecture Reviews
 
