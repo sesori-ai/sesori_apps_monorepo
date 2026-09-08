@@ -80,6 +80,33 @@ void main() {
     expect(hairlines, hasLength(1));
   });
 
+  testWidgets("card tone, divider omission and minimum height are opt-in", (tester) async {
+    await tester.pumpWidget(
+      _harness(
+        PregoGroupedRows(
+          color: PregoDesignSystem.light.colors.bgSurface2,
+          showDividers: false,
+          children: const [
+            PregoGroupedRow(title: Text("Alpha"), minHeight: 68),
+            PregoGroupedRow(title: Text("Beta"), minHeight: 68),
+          ],
+        ),
+      ),
+    );
+    expect(
+      tester.widget<Material>(find.ancestor(of: find.text("Alpha"), matching: find.byType(Material)).first).color,
+      PregoDesignSystem.light.colors.bgSurface2,
+    );
+    expect(
+      tester
+          .widgetList<ColoredBox>(find.byType(ColoredBox))
+          .where((box) => box.color == PregoDesignSystem.light.colors.borderSecondary),
+      isEmpty,
+    );
+    expect(tester.getSize(find.widgetWithText(Container, "Alpha")).height, 68);
+    expect(tester.getSize(find.widgetWithText(Container, "Beta")).height, 68);
+  });
+
   testWidgets("keyed rows retain state when reordered", (tester) async {
     const alphaKey = ValueKey("alpha");
     const betaKey = ValueKey("beta");

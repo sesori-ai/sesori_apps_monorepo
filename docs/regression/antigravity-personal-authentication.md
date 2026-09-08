@@ -56,7 +56,9 @@ inspect ambient credentials/token contents to validate these foundations.
 - `antigravity_authentication_service_test.dart`: authorization and continuation attack tables, rejection before HTTP,
   valid Google issuer, response-status context, and expired-budget rejection.
 - `antigravity_loopback_client_test.dart`: fake HTTP verifies exact GET, DIRECT, disabled redirects, awaited closure
-  on timeout/abort and suppression of late sends; a local synthetic HTTP server proves dispatched requests settle
+  on timeout/abort and suppression of late sends, including a timer that wins while the finer-precision monotonic
+  budget is still positive. The selected failure fences late connection completion; cleanup retains the original
+  failure/stack. A local synthetic HTTP server proves dispatched requests settle
   through real forced client closure. No Google endpoint is contacted.
 - `antigravity_profile_service_test.dart`: executor timeout identity, no mutation after aborted preflight, and awaited
   atomic write before rejecting late success, in addition to the isolated-profile coverage.

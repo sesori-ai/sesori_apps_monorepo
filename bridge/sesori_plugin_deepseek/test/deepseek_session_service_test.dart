@@ -1,6 +1,7 @@
 import "package:acp_plugin/acp_plugin.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
 import "package:deepseek_plugin/deepseek_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -35,6 +36,7 @@ void main() {
         api: DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
       ),
       childSessions: tracker,
+      minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
     );
     const persisted = PluginSession(
       id: "persisted-child",

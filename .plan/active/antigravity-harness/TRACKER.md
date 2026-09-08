@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1-5 and 6.a–6.c merged; Step 6.d open for review
-- **Base:** synced with main `f1403fbb35` after Step 6.c merge
-- **Current branch:** `antigravity-harness-step-6d-authentication-operation`
+- **Status:** Steps 1–8.b merged; Step 8.c open for review
+- **Base:** synced with main `b13d197d517adeb51810e05011b300b31a20b014` after Step 8.b merge
+- **Current branch:** `antigravity-harness-step-8c-descriptor-and-setup`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -13,9 +13,15 @@
   [#1291](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1291) (Step 5),
   [#1347](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1347) (Step 6.a),
   [#1348](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1348) (Step 6.b),
-  [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c)
-- **Open PR:** [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d)
-- **Next action:** monitor Step 6.d through merge; begin Step 7 locally
+  [#1350](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1350) (Step 6.c),
+  [#1351](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1351) (Step 6.d),
+  [#1353](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1353) (Step 7.a),
+  [#1354](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1354) (Step 7.b),
+  [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
+  [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
+  [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b)
+- **Open PR:** [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c).
+- **Next action:** monitor Step 8.c; begin only Step 9 locally.
 
 ## Fixed PR Series
 
@@ -27,9 +33,13 @@
 - [x] Step 6.a/12 — `🚧 [antigravity-harness] feat(bridge): add isolated process and scoped store support [step 6.a/12]`
 - [x] Step 6.b/12 — `🚧 [antigravity-harness] feat(antigravity): prepare isolated authentication profiles [step 6.b/12]`
 - [x] Step 6.c/12 — `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
-- [ ] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
-- [ ] Step 7/12 — `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
-- [ ] Step 8/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
+- [x] Step 6.d/12 — `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
+- [x] Step 7.a/12 — `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
+- [x] Step 7.b/12 — `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
+- [x] Step 7.c/12 — `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
+- [x] Step 8.a/12 — `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
+- [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
+- [ ] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
 - [ ] Step 10/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
@@ -158,6 +168,172 @@
 - Post-sync verification: 78 Antigravity tests, 8 focused lifecycle tests, and both relevant analyses pass.
 - Post-sync code-head cap: `git diff --numstat f1403fbb35 d5812b3550` totals 997 + 35 = 1,032 changed lines.
 - No real OAuth, ambient credential/token access, database/history changes, Step 7 work, or active harness registration.
+
+## Step 7.a Checklist
+
+- [x] Obtain explicit user approval for 7.a/7.b/7.c partition, retaining twelve top-level steps and per-PR line caps.
+- [x] Map grouped model config through generated DTOs to immutable catalog values; validate before tracker mutation.
+- [x] Expose honest partial/no-model options before a real session catalog; never create scratch persistent sessions.
+- [x] Add standard typed ACP set_mode through API/repository; select exact validated model then default mode.
+- [x] Focused validation: 10 catalog/options tests and 11 ACP config/API tests pass; both owning analyses are clean.
+- [x] Independent architecture review approved all 19 files at immutable checkpoint `0e002cdebe`.
+- [x] Step 6.d merged; synchronize before Step 7.a publication.
+- Post-sync validation: 10 options tests and 11 ACP tests pass; both owning-package analyses remain clean.
+- Post-sync code-head cap: `git diff --numstat 2f2f376836 778535c8f4` totals 848 + 19 = 867 changed lines.
+- Final predecessor fix `54f0dbf51d` received independent architecture approval. Its pinned cap against `2f2f376836`
+  is 1,008 additions + 21 deletions = 1,029 lines, including corrected catalog capture/reset and selection verification.
+- Permissions/questions and update normalization remain 7.b/7.c; no descriptor, registration or capability claim.
+
+## Step 7.b Checklist
+
+- [x] Normalize permission requests/options with generated DTOs before service policy; serialize typed wire outcomes.
+- [x] Keep all resolution dispatch in a connection-scoped interaction repository, reached only through its service.
+- [x] Classify single-choice interaction requests, preserve advertised labels/IDs, and reject duplicates without repair.
+- [x] Filter always/unknown/warning-bearing choices; never invent an absent choice or silently grant approval.
+- [x] Reuse neutral pending lifecycle for one-shot replies, wrong-kind handling, session cancellation and disposal.
+- [x] Initial code checkpoint `ef2c890284`: all 10 interaction tests and owning-package analysis passed.
+- [x] Merge the reviewed predecessor fixes; update regression documentation/index and the explicit Step 8 registry seam.
+- Final owning-package analysis is clean. Interaction production logic/tests are unchanged from their passing checkpoint;
+  only the mapper definition comment changed. The unchanged 10-test command was not redundantly rerun.
+- [x] First actual independent implementation review approved all 17 changed files at `97eda29b57`, with no findings.
+- Reviewed immutable scope: `54f0dbf51d` → `97eda29b57`; 1,146 additions + 9 deletions = 1,155 changed lines.
+- Publication checkpoint: `git diff --numstat daa782057c 164a7112ab` totals 1,154 + 12 = 1,166 lines, including
+  the tracker's own diff. The +11 net scope difference is tracker synchronization/review-status documentation;
+  `git diff 97eda29b57 164a7112ab -- bridge/sesori_plugin_antigravity` is empty.
+- Later CI fix `cbc72324a7` fences late callback connection completion after an early timer; all four loopback tests
+  and owning analysis pass. Review fixes add useful decoder evidence and honest permission tool-kind display.
+- Final review checkpoint `80b7402f64`: all 12 interaction tests and owning analysis pass; second/final independent
+  architecture review approved. Net diff against `daa782057c` is 1,340 lines. Step 7.c retains these reviewed fixes.
+- [x] PR #1354 merged with 16/16 CI checks passing. Step 7.c stays on its assigned reviewed-fix base until the parent
+  synchronizes after sole-writer completion; no concurrent branch switch or merge is performed by the worker.
+- [x] Predecessor #1353 merged; synchronized with main `daa782057c`. Conflict resolution retained the reviewed 7.b
+  additions. Antigravity/ACP/interface production and tests plus the lockfile are unchanged from the reviewed inputs;
+  no unchanged passing suite was rerun. Parent owns publication.
+- The neutral registry is intentionally not yet wired into `AcpPlugin`; Step 8 replaces its hard-coded stock registry
+  return-type seam without dummy responders or inherited raw permission policy. No 7.c, registration, database,
+  credential/OAuth/history access or active capability claim is included here.
+
+## Step 7.c Checklist
+
+- [x] Shared live/replay session-update hook defaults to identity; all collector consumers updated explicitly.
+- [x] Generated DTOs normalize pinned native aliases, canonical command/output fields and typed text content.
+- [x] Preserve ACP status independently from process exit; reserve an explicit exit note inside the shared display cap.
+- [x] Bound raw JSON and remove redundant image bytes without damaging supported standard image content/metadata.
+- [x] All 21 Antigravity normalization tests, 54 ACP replay/tool/history tests and 13 DeepSeek history/time tests pass.
+- [x] Owning Antigravity/ACP and changed DeepSeek analyses are clean with fatal infos; DTO generation and formatting run.
+- [x] Add indexed live/replay regression document; no credential, database, history mutation or active capability claim.
+- [x] First actual independent review approved all 16 changed files at `19e24a4e36` against `80b7402f64`: 1,156
+  additions + 12 deletions = 1,168 lines, including generated/tests/docs. Earlier incomplete checkpoints were uncounted.
+- [x] Synced with main `b43758e1b3`, preserving the reviewed inputs and removing a duplicate method introduced by
+  automatic merge. At publication, relevant package source/tests and lockfile matched the reviewed checkpoint exactly.
+- Publication cap `b43758e1b3` → `586e787da6` is 1,158 + 12 = 1,170 lines. The +2 versus the earlier review scope
+  is tracker status/synchronization documentation only; the removed duplicate method was a merge artifact, not a
+  deletion from the reviewed implementation.
+- Localized PR review fixes preserve formatted-only output, differing text, direct images and malformed-entry
+  degradation. All 21 normalization tests and owning analysis pass; shared ownership/contracts are unchanged.
+- Exact review base is `80b7402f6443b810b49b429410667138cd099b09`, not either pre-fix predecessor head. The plugin
+  remains unregistered; Step 8 composes the provider normalizer override. No registry/residency/metadata seam lands here.
+
+## Step 8.a Checklist
+
+- [x] Partition reviewed Step 8 into recovery/seams (900–1,350) then composition (950–1,350), full estimate 1,850–2,700.
+- All further necessary PR splits are pre-approved; never ask again. Keep twelve top-level steps, the full 1,500-line
+  per-PR cap and one-open/immediate-successor-local sequencing.
+- [x] Metadata Storage → Repository → Service, bounded read-only decoding and typed registration batch.
+- [x] Neutral ACP registry, bulk-directory, residency preference and live/replay output-policy seams.
+- [x] Focused validation: 20 Antigravity, 69 ACP, 13 Cursor and 11 DeepSeek tests pass (113 total); all four owning
+  package analyzers are clean with fatal infos. New tests cover metadata and non-stock registry/residency/output seams.
+- [x] Indexed regression documentation; source DTO generated normally without manual generated edits.
+- [x] First independent architecture review approved all 30 files at `c39ce10bd3` against `635ec52ee1`: 886 additions
+  + 47 deletions = 933 lines, including generated/tests/docs. No findings.
+- [x] Integrated predecessor output fixes through `2b6342653e`; owning Antigravity analysis remains clean.
+- [x] PR #1357 merged with 16/16 CI. Synced with main `dfe7913e67`; only documentation conflicted and relevant
+  package source/tests plus lockfile remain unchanged by this synchronization. No unchanged passing suites rerun.
+- [x] Parent published Step 8.a as PR #1359 and started its monitor.
+- [x] Review fixes: keep recovered fallbacks below DB/live attribution in either arrival order and forget them on
+  deletion; decline ambiguous Antigravity permissions with cancelled outcomes; retain safe generated-cast diagnostics.
+  All 32 ACP recovery/project and 20 Antigravity metadata/interaction tests pass; both owning analyzers are clean.
+- [x] Second/final architecture review approved: reviewer `8baf4e17`, all 29 files, no findings;
+  `dfe7913e672a27de2c4ec39ed897b0df7272a895` → `14169bd6e3ed9307d9e49e2c04a4ff3f1ece427e`, 988 lines.
+- [x] PR #1359 merged with 16/16 CI. Plugin composition is 8.b; descriptor/setup is 8.c; activation is Step 9.
+
+## Step 8.b Checklist
+
+- [x] Approved 8.b/8.c partition recorded; no descriptor/setup, registry/CLI activation or managed install here.
+- [x] Required plugin/interaction/output composition over prepared inputs; per-call configuration repository,
+  metadata fallback below DB/live bindings, resume-first residency and load-only replay.
+- [x] Prefix-gated output (56 bytes before ordinary NDJSON passthrough), bounded private lines, immutable byte
+  views, typed initialization mapping, original reset/error source stacks, and no new cleanup owner.
+- [x] Fake composed lifecycle, long history/two sessions, active cancel/delete/questions, crash/reset/reconnect,
+  interruption, late spawn, privacy and image-bearing JSON evidence; indexed regression documentation.
+- [x] Fresh JSON-reporter evidence: 11 `antigravity_plugin` + 13 `antigravity_session_options_service` +
+  2 `antigravity_output_composer` = 26 Antigravity tests. The plugin's nine declarations instantiate eleven tests
+  through two two-value parameterizations. The prior output-composer count of ten was incorrect; combined coverage
+  with the previously passing 35 ACP + 14 transport cases is 75, not 83.
+  Reproduce with `dart test --reporter=json` on those three `test/*_test.dart` files in the Antigravity package.
+  All 26 pass, including explicit-model recovery after reset; owning analysis is clean.
+- Full local net cap against `14169bd6e3`: 1,284 additions + 81 deletions = 1,365 lines across 23 files,
+  including tests/docs/planning at that initial immutable checkpoint.
+- [x] First actual architecture review approved all 23 files at `4394b735a6` against `14169bd6e3` (1,365 lines),
+  reviewer `b65aeff7`, no findings. Earlier incomplete-input reviews are not counted.
+- [x] Synced with main `6959375add`; only documentation conflicted. Source/tests are unchanged from the reviewed
+  checkpoint, so unchanged passing suites were not rerun.
+- [x] Parent published Step 8.b as PR #1360 and started its monitor; only Step 8.c may proceed locally.
+- Review fixes validate model IDs before admission when a catalog is known; after reset, residency restores the
+  catalog before strict dispatch validation. Metadata recovery runs once per cold live connection, not enumeration.
+  Message model/provider stamping remains required in 8.c before activation, preserving the full 1,500-line cap.
+- Corrected immutable measurement: base `6959375addc700c00b0206204bbfc00ea6b3ca88` → head
+  `ad011a4f2d05c82162b328c1c45fd82e5f6582d3`: 1,350 additions + 92 deletions = 1,442 lines across 23 files.
+  This includes the tracker and every file as of that head. The 77-line increase over 1,365 is three publication-doc
+  lines plus 74 review-fix lines; main synchronization itself changed no count. `66d8186601` adds two approval lines
+  (1,444 total). Later changes have separately measured PR-body totals; these immutable measurements are not rewritten.
+- [x] Second/final architecture review approved all 23 files at `ad011a4f2d` against `6959375add` (1,442 lines),
+  reviewer `58f4d8a5`, no findings. All seven delivered GitHub threads have prefixed disposition replies.
+- Descriptor exit supervision, inert setup/profile inspection and complete host/auth composition are 8.c.
+  Real OAuth, native/cross-target operation, bridge import/tombstone end-to-end and L5 Full remain later gates.
+  No Google history mutation, ambient credentials or active harness inventory were introduced.
+
+## Step 8.c Checklist
+
+- [x] Added the unregistered descriptor and complete host/runtime/auth roots over the existing composers and lifecycle.
+- [x] Setup inspection is static and unversioned: exact explicit/PATH/future-managed sibling presence plus isolated token
+  presence only, without writes, token reads, browser preparation, process spawning, probing or authentication.
+- [x] Preparation, exact probe and live startup share the sanitized isolated environment, disable parent inheritance,
+  reuse the plugin-root `HostJsonStore`, permit personal OAuth only and invoke the backend-neutral browser no-op.
+- [x] Shared ACP configuration state stamps Antigravity model/provider metadata in live and replay messages. New sessions
+  establish defaults; load/resume do not. Reset clears catalog/configuration together before real residency restores it.
+- [x] Known-catalog pre-queue validation and strict post-residency dispatch validation preserve the Step 8.b cold-reset
+  correction; successful acknowledged selections update only the named session.
+- [x] Existing lifecycle exit supervision resets/reconnects and re-arms without another manager; abort and shutdown await
+  cleanup. Install, bridge registry/CLI activation and real OAuth remain later gates.
+- [x] Fresh JSON-reporter evidence: 7 descriptor + 14 options + 11 composed plugin = 32 primary Step 8.c tests; the
+  separately included profile suite has 17 tests, for 49 non-loading tests total. All pass on integrated inputs.
+  Counts use suite/test IDs and successful `testDone` entries with source lines, not compact reporter filenames.
+- [x] Owning Antigravity analysis and the complete package test command pass. Test totals are not inferred from compact
+  reporter filenames. Indexed regression documentation records behavior, failure signals and remaining L5 gates.
+- Pre-review cap against exact base `c13843000d1532debef0efca5192aaf50fc761c3`: 1,039 additions + 38 deletions =
+  1,077 changed lines across 22 files.
+- [x] First actual architecture review approved all 22 files at `53296324b2954c706d95ab2d492cd5518ab08a1a`
+  against `c13843000d1532debef0efca5192aaf50fc761c3`: 1,039 additions + 38 deletions = 1,077 lines.
+  Reviewer `293fcc78`, no findings. Prior incomplete-input blocks `de058330` and `1c53fd03` are not attempts.
+- [x] Synced with main `b13d197d517`; merge resolutions retain the reviewed Antigravity/shared owning source/tests
+  unchanged. Unrelated upstream DeepSeek updates remain outside this PR's diff. No unchanged passing suites rerun.
+- [x] Per user request, capability matrix documents login initiation versus local setup for every registered harness,
+  plus Antigravity's explicitly unregistered browser-return implementation; detection/install are not login. The
+  contract reference uses the exact `InteractivePluginAuthenticationDescriptor.authenticate` symbol.
+- [x] PR feedback corrections preserve exact opaque model IDs through the shared tracker and composed live/replay
+  attribution, while blank values remain absent. Provisioning timeouts now log their original timeout/stack and settle
+  as non-fatal `ProvisionFailed`; explicit aborts still propagate. Callback HTTP construction is required and production
+  deliberately passes `HttpClient.new`, so tests cannot fall through to a real loopback client.
+- [x] Static inspection logs recovered PATH storage causes/stacks before inert managed fallback. Ordinary PATH absence
+  and pair rejection remain normal candidate resolution, matching `resolve()` rather than manufacturing failures.
+- Correction verification: 46 Antigravity tests across descriptor, runtime, options and composed plugin suites plus 3
+  focused ACP tracker/mapper tests pass. Counts use JSON suite/test IDs and non-hidden successful `testDone` records;
+  both owning package analyzers pass with fatal infos. Final cap/review head is recorded in the immutable review scope.
+- [x] Second/final actual architecture review approved `b13d197d517` → `cd16aa3a96`: all 26 files, 1,339 additions +
+  57 deletions = 1,396 changed lines. Reviewer `2bb17500`, no findings. The worker's post-commit provider disconnection
+  lost only result delivery; preserved verification/artifacts were used without rerunning unchanged passing commands.
+  First approval at `53296324b2` remains recorded; incomplete-input blocks and the never-launched reviewer are not attempts.
 
 ## Architecture Reviews
 

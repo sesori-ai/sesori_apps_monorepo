@@ -5,6 +5,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
 import "package:deepseek_plugin/deepseek_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -73,6 +74,7 @@ void main() {
       deepSeekSessionService: DeepSeekSessionService(
         repository: const DeepSeekSessionRepository(api: api),
         childSessions: childSessionTracker,
+        minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
       ),
       deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
         repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),
@@ -88,7 +90,7 @@ void main() {
         agentDisplayName: "DeepSeek",
       ),
     );
-    final built = plugin.buildApprovalRegistry(client);
+    final built = plugin.buildApprovalRegistry(client: client);
     expect(built, isA<DeepSeekApprovalRegistry>());
     await built.dispose();
     await plugin.dispose();
@@ -227,6 +229,88 @@ void main() {
     expect(registry.pendingForSession(sessionId: "session-1"), isEmpty);
     expect(registry.pendingForSession(sessionId: "session-2"), hasLength(1));
     expect(fake.written.single["error"], {"code": -32603, "message": "aborted"});
+  });
+  test("ordered input cancellation removes old input but preserves a later reused question ID", () async {
+    registry.attach(stream: client.serverRequests);
+    <Map<String, dynamic>>[
+      {
+        "jsonrpc": "2.0",
+        "id": 31,
+        "method": DeepSeekAcpApi.askUserQuestionMethod,
+        "params": {
+          "sessionId": "session-1",
+          "questions": [
+            {"id": "reused", "text": "Old question"},
+          ],
+        },
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": 32,
+        "method": DeepSeekAcpApi.inputCancelMethod,
+        "params": {"sessionId": "session-1"},
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": 33,
+        "method": DeepSeekAcpApi.askUserQuestionMethod,
+        "params": {
+          "sessionId": "session-1",
+          "questions": [
+            {"id": "reused", "text": "New question"},
+          ],
+        },
+      },
+    ].forEach(fake.emit);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      await registry.replyQuestion(
+        requestId: "request-1",
+        answers: const [
+          ["stale"],
+        ],
+      ),
+      isFalse,
+    );
+    expect(registry.pendingForSession(sessionId: "session-1"), hasLength(1));
+    expect(fake.written.map((frame) => frame["id"]), [31, 32]);
+    expect(fake.written.first["error"], {"code": -32603, "message": "aborted"});
+    expect(fake.written.last["result"], isEmpty);
+    expect(
+      await registry.replyQuestion(
+        requestId: "request-2",
+        answers: const [
+          ["current"],
+        ],
+      ),
+      isTrue,
+    );
+    expect(fake.written.last["id"], 33);
+  });
+  test("malformed input cancellation leaves pending input intact", () {
+    registry.handleExtensionRequest(
+      questionRequest(34, const {
+        "sessionId": "session-1",
+        "questions": [
+          {"id": "question", "text": "Still pending"},
+        ],
+      }),
+    );
+
+    registry.handleExtensionRequest(
+      const AcpServerRequest(
+        id: 35,
+        method: DeepSeekAcpApi.inputCancelMethod,
+        params: {"sessionId": "  "},
+      ),
+    );
+
+    expect(fake.written.single["error"], {
+      "code": -32602,
+      "message": "Invalid DeepSeek input cancellation request",
+    });
+    expect(registry.pendingForSession(sessionId: "session-1"), hasLength(1));
   });
   test("plan review exposes fixed options and rejects custom input", () async {
     registry.handleExtensionRequest(

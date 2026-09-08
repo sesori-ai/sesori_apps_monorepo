@@ -76,6 +76,9 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   String? lastSendCommandAgent;
   ({String providerID, String modelID})? lastSendCommandModel;
   String? lastAbortSessionId;
+  bool? lastAbortUseAtomicStop;
+  Set<String>? lastAbortKnownSubAgentSessionIds;
+  PluginAbortResult abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   String? lastReplyQuestionId;
   String? lastReplySessionId;
   List<List<String>>? lastReplyAnswers;
@@ -287,9 +290,13 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     lastAbortSessionId = sessionId;
-    return const PluginAbortAccepted(workKept: false);
+    lastAbortUseAtomicStop = useAtomicStop;
+    lastAbortKnownSubAgentSessionIds = knownSubAgentSessionIds;
+    return abortResult;
   }
 
   @override

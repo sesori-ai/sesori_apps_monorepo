@@ -48,6 +48,9 @@ class FakeAcpProcess() implements AcpProcessHandle {
     _stdout.add(utf8.encode("${jsonEncode(message)}\n"));
   }
 
+  /// Pushes raw diagnostic text through the actual stderr stream.
+  void emitStderr({required String text}) => _stderr.add(utf8.encode(text));
+
   /// Completes the process with [code], simulating an early exit.
   void exit(int code) {
     if (!_exit.isCompleted) _exit.complete(code);

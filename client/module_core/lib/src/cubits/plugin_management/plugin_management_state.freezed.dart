@@ -2085,17 +2085,17 @@ $ApiErrorCopyWith<$Res> get error {
 
 
 class PluginManagementReady implements PluginManagementState {
-  const PluginManagementReady({required this.response, required this.refresh, required this.action, required this.authentication, required  Map<String, PluginInstallProgress> installs, required  Set<String> scanningPluginIds, required  Map<String, CatalogRescanStartResult> scanRejections, required this.scanOutcome}): _installs = installs,_scanningPluginIds = scanningPluginIds,_scanRejections = scanRejections;
+  const PluginManagementReady({required this.response, required this.refresh, required this.action, required this.authentication, required  Map<String, PluginInstallState> installs, required  Set<String> scanningPluginIds, required  Map<String, CatalogRescanStartResult> scanRejections, required this.scanOutcome}): _installs = installs,_scanningPluginIds = scanningPluginIds,_scanRejections = scanRejections;
   
 
  final  PluginManagementResponse response;
  final  PluginManagementRefreshState refresh;
  final  PluginManagementActionState action;
  final  PluginAuthenticationPresentationState authentication;
-/// In-flight managed runtime installs, keyed by plugin id.
- final  Map<String, PluginInstallProgress> _installs;
-/// In-flight managed runtime installs, keyed by plugin id.
- Map<String, PluginInstallProgress> get installs {
+/// In-progress installs and retained terminal failures, keyed by plugin id.
+ final  Map<String, PluginInstallState> _installs;
+/// In-progress installs and retained terminal failures, keyed by plugin id.
+ Map<String, PluginInstallState> get installs {
   if (_installs is EqualUnmodifiableMapView) return _installs;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_installs);
@@ -2163,7 +2163,7 @@ abstract mixin class $PluginManagementReadyCopyWith<$Res> implements $PluginMana
   factory $PluginManagementReadyCopyWith(PluginManagementReady value, $Res Function(PluginManagementReady) _then) = _$PluginManagementReadyCopyWithImpl;
 @useResult
 $Res call({
- PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallProgress> installs, Set<String> scanningPluginIds, Map<String, CatalogRescanStartResult> scanRejections, CatalogRescanOutcome? scanOutcome
+ PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallState> installs, Set<String> scanningPluginIds, Map<String, CatalogRescanStartResult> scanRejections, CatalogRescanOutcome? scanOutcome
 });
 
 
@@ -2187,7 +2187,7 @@ as PluginManagementResponse,refresh: null == refresh ? _self.refresh : refresh /
 as PluginManagementRefreshState,action: null == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
 as PluginManagementActionState,authentication: null == authentication ? _self.authentication : authentication // ignore: cast_nullable_to_non_nullable
 as PluginAuthenticationPresentationState,installs: null == installs ? _self._installs : installs // ignore: cast_nullable_to_non_nullable
-as Map<String, PluginInstallProgress>,scanningPluginIds: null == scanningPluginIds ? _self._scanningPluginIds : scanningPluginIds // ignore: cast_nullable_to_non_nullable
+as Map<String, PluginInstallState>,scanningPluginIds: null == scanningPluginIds ? _self._scanningPluginIds : scanningPluginIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,scanRejections: null == scanRejections ? _self._scanRejections : scanRejections // ignore: cast_nullable_to_non_nullable
 as Map<String, CatalogRescanStartResult>,scanOutcome: freezed == scanOutcome ? _self.scanOutcome : scanOutcome // ignore: cast_nullable_to_non_nullable
 as CatalogRescanOutcome?,

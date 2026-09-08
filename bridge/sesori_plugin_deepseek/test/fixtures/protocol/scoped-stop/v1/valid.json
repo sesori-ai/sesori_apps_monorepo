@@ -1,0 +1,39 @@
+[
+  {
+    "definition": "sessionStopRequest",
+    "value": {
+      "kind": "session",
+      "sessionId": "root"
+    }
+  },
+  {
+    "definition": "sessionStopRequest",
+    "value": {
+      "kind": "child",
+      "sessionId": "root",
+      "childSessionId": "child"
+    }
+  },
+  {
+    "definition": "sessionStopResponse",
+    "value": {
+      "workKept": false
+    }
+  },
+  {
+    "definition": "sessionStopResponse",
+    "value": {
+      "workKept": true
+    }
+  },
+  {
+    "definition": "inputCancelRequest",
+    "value": {
+      "sessionId": "child"
+    }
+  },
+  {
+    "definition": "inputCancelResponse",
+    "value": {}
+  }
+]

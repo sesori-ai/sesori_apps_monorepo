@@ -637,6 +637,8 @@ class OpenCodePlugin._({
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) => _call(() => _service.abortSession(sessionId: sessionId, subAgents: subAgents));
 
   Future<void> _abortSession({required String sessionId}) => _call(() => _service.abortRoot(sessionId: sessionId));

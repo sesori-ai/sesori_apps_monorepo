@@ -43,7 +43,11 @@ void main() {
       addTearDown(startedSubscription.cancel);
       addTearDown(subscription.cancel);
 
-      final abortFuture = service.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop);
+      final abortFuture = service.abortSession(
+        sessionId: "session-1",
+        subAgents: SessionAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+      );
       await abortStarted.future;
 
       expect(startedSessionIds, equals(["session-1"]));
@@ -71,7 +75,7 @@ void main() {
       addTearDown(failedSubscription.cancel);
 
       await expectLater(
-        service.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop),
+        service.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.stop, useAtomicStop: false),
         throwsA(isA<StateError>()),
       );
 
@@ -90,7 +94,7 @@ void main() {
       addTearDown(failedSubscription.cancel);
 
       await expectLater(
-        service.abortSession(sessionId: "missing", subAgents: SessionAbortSubAgentPolicy.stop),
+        service.abortSession(sessionId: "missing", subAgents: SessionAbortSubAgentPolicy.stop, useAtomicStop: false),
         throwsStateError,
       );
 
@@ -109,9 +113,10 @@ class _FakeSessionRepository() implements SessionRepository {
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
   }) async {
     await onAbort?.call(sessionId: sessionId);
-    return const SessionAborted(workKept: false);
+    return const SessionAborted(workKept: false, subAgentsHandled: false);
   }
 
   @override

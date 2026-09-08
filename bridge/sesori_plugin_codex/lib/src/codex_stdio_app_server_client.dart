@@ -79,6 +79,7 @@ class CodexStdioAppServerClient({
     } on Object {
       await _transport.reset(
         reason: StateError("Codex stdio initialization failed"),
+        stackTrace: null,
         gracefulTimeout: _shutdownTimeout,
       );
       rethrow;

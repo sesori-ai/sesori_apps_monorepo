@@ -188,14 +188,18 @@ void main() {
     expect(store.contents, contains("oauth-personal"));
   });
 
-  test("inspection is inert and only token presence is an auth hint", () {
-    final profile = service(target: mac, executable: "/bridge", prefix: []);
-    expect(profile.inspectAuthentication(), AntigravityAuthenticationHint.authenticationRequired);
+  test("read-only inspection is separate from profile preparation and never reads token contents", () {
+    final inspection = AntigravityProfileInspectionService(
+      repository: AntigravityProfileInspectionRepository(
+        storage: const AntigravityProfileInspectionStorage(),
+      ),
+    );
+    expect(inspection.inspect(geminiHome: home), AntigravityAuthenticationHint.authenticationRequired);
     expect(temp.listSync(), isEmpty);
     final token = File(p.join(home, "antigravity-acp", "acp_token.json"));
     token.parent.createSync(recursive: true);
     token.writeAsStringSync("deliberately not token JSON");
-    expect(profile.inspectAuthentication(), AntigravityAuthenticationHint.tokenPresent);
+    expect(inspection.inspect(geminiHome: home), AntigravityAuthenticationHint.tokenPresent);
     expect(events, isEmpty);
     expect(store.contents, isNull);
   });

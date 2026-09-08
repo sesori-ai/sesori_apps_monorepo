@@ -17,6 +17,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
+import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -28,6 +29,10 @@ import "../../helpers/voice_test_helpers.dart";
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
+
+class _MockPluginManagementService() extends Mock implements PluginManagementService;
+
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 class MockPluginRepository() extends Mock implements PluginRepository;
 
@@ -149,6 +154,7 @@ Future<void> closeHarnessMenu(WidgetTester tester) async {
 }
 
 Widget _buildApp({
+  bool useHarnessFlow = false,
   ThemeMode themeMode = ThemeMode.light,
   SessionListState sessionListState = const SessionListState.loaded(
     sessions: [],
@@ -172,10 +178,13 @@ Widget _buildApp({
           ),
         ],
       ),
-      GoRoute(
-        path: "/settings/harnesses",
-        builder: (context, state) => const Material(child: Text("harnesses-settings")),
-      ),
+      if (useHarnessFlow)
+        buildHarnessSettingsRoute()
+      else
+        GoRoute(
+          path: "/settings/harnesses",
+          builder: (context, state) => const Material(child: Text("harnesses-settings")),
+        ),
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
@@ -1003,6 +1012,73 @@ void main() {
 
     expect(find.text("harnesses-settings"), findsOneWidget);
   });
+
+  for (final closeFromDetail in [false, true]) {
+    testWidgets("harness modal X retains the same New Session and draft (detail: $closeFromDetail)", (tester) async {
+      final service = _MockPluginManagementService();
+      when(service.onDispose).thenAnswer((_) async {});
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        const PluginManagementLoadResult.supported(
+          response: PluginManagementResponse(
+            snapshotToken: "navigation-test",
+            bridgeId: "bridge-1",
+            defaultPluginId: "test-harness",
+            defaultIdleTimeoutMins: 10,
+            plugins: [],
+          ),
+          refreshError: null,
+        ),
+      );
+      when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
+      final installs = BehaviorSubject<Map<String, PluginInstallState>>.seeded(const {});
+      addTearDown(installs.close);
+      when(() => service.installStates).thenAnswer((_) => installs.stream);
+      when(() => service.authenticationTerminal)
+          .thenAnswer((_) => const Stream<PluginAuthenticationTerminalUpdate>.empty());
+      GetIt.instance.registerSingleton<PluginManagementService>(service);
+      GetIt.instance.registerSingleton<UrlLauncher>(_MockUrlLauncher());
+      addTearDown(snapshots.close);
+      await tester.pumpWidget(_buildApp(useHarnessFlow: true));
+      await tester.pumpAndSettle();
+      await enterTypingMode(tester);
+      await tester.enterText(find.byType(EditableText), "half-written idea");
+      await tester.pump();
+      final opener = tester.element(find.byType(NewSessionScreen));
+      final composer = tester.element(find.byType(PromptInput));
+      final newSessionCubit = composer.read<NewSessionCubit>();
+      await openHarnessMenu(tester);
+      await tester.tap(find.byKey(const Key("new_session_harness_settings")));
+      await tester.pumpAndSettle();
+      final overview = tester.element(find.byType(HarnessesSettingsView));
+      final harnessCubit = overview.read<PluginManagementCubit>();
+      if (closeFromDetail) {
+        unawaited(
+          overview.pushRoute(
+            const AppRoute.settingsHarnessDetail(
+              pluginId: "removed",
+              presentation: HarnessSettingsPresentation.modal,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(),
+          same(harnessCubit),
+        );
+      }
+      await tester.tap(find.bySemanticsLabel("Close settings"));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(NewSessionScreen)), same(opener));
+      expect(tester.element(find.byType(PromptInput)), same(composer));
+      expect(tester.element(find.byType(PromptInput)).read<NewSessionCubit>(), same(newSessionCubit));
+      expect(newSessionCubit.composerDraft, ComposerDraft.typed(text: "half-written idea"));
+      expect(find.text("half-written idea"), findsOneWidget);
+      // Stream cancellation completes outside the widget-test clock.
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      expect(harnessCubit.isClosed, isTrue);
+      expect(snapshots.hasListener, isFalse);
+    });
+  }
 
   testWidgets("keeps the harness settings icon layout-safe on hover", (tester) async {
     final semantics = tester.ensureSemantics();

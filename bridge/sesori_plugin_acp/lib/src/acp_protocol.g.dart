@@ -6,6 +6,12 @@ part of 'acp_protocol.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+Map<String, dynamic> _$AcpSetModeParamsToJson(_AcpSetModeParams instance) =>
+    <String, dynamic>{
+      'sessionId': instance.sessionId,
+      'modeId': instance.modeId,
+    };
+
 _AcpSessionInfo _$AcpSessionInfoFromJson(Map json) => _AcpSessionInfo(
   sessionId: json['sessionId'] as String? ?? "",
   cwd: json['cwd'] as String?,

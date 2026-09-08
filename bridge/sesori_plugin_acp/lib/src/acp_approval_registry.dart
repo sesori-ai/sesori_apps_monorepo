@@ -1,5 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "acp_pending_registry.dart";
 import "acp_protocol.dart";
 import "acp_stdio_client.dart";
 import "repositories/mappers/acp_elicitation_mapper.dart";
@@ -13,7 +14,10 @@ typedef AcpErrorResponder = void Function(Object id, int code, String message);
 typedef AcpQuestionReplyBuilder = Object? Function(List<List<String>> answers);
 typedef AcpQuestionResolutionBuilder = Object? Function(AcpQuestionResolution resolution);
 
-enum AcpQuestionResolution() { declined, cancelled }
+enum AcpQuestionResolution() {
+  declined,
+  cancelled,
+}
 
 sealed class const _AcpPendingPayload({required final Object acpId});
 
@@ -120,7 +124,7 @@ class AcpApprovalRegistry({
   /// Resolves the session a server request belongs to when the request itself
   /// omits one. Some agents send blocking requests with no `sessionId`.
   final String? Function()? _activeSessionResolver,
-}) extends PendingPermissionRegistry<AcpServerRequest, _AcpPendingPayload> {
+}) extends AcpPendingRegistry<_AcpPendingPayload> {
   this
     : super(
         logContext: "[acp]",
@@ -146,12 +150,10 @@ class AcpApprovalRegistry({
     );
   }
 
-  /// Routes one server request received by the owning plugin.
-  void handleServerRequest({required AcpServerRequest request}) => handleRequest(request);
-
   /// Rejects a request whose tool-call id matches more than one live session.
   /// No active-turn fallback is safe because it could present and approve the
   /// request under the wrong source context.
+  @override
   void rejectAmbiguousServerRequest({required AcpServerRequest request}) {
     Log.w("[acp] server request has ambiguous tool-call session attribution; cancelling");
     switch (request.method) {

@@ -12,6 +12,50 @@ part of 'acp_protocol.dart';
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // dart format off
 T _$identity<T>(T value) => value;
+/// @nodoc
+mixin _$AcpSetModeParams {
+
+ String get sessionId; String get modeId;
+
+  /// Serializes this AcpSetModeParams to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable(createFactory: false)
+
+class _AcpSetModeParams implements AcpSetModeParams {
+  const _AcpSetModeParams({required this.sessionId, required this.modeId});
+  
+
+@override final  String sessionId;
+@override final  String modeId;
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$AcpSetModeParamsToJson(this, );
+}
+
+
+
+
+
+}
+
+
+
+
 
 /// @nodoc
 mixin _$AcpSessionInfo {

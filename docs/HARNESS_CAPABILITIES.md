@@ -6,7 +6,8 @@ a deliberate, visible state rather than an accident. Update it whenever a
 capability lands for some harnesses but not others, or a harness limitation is
 verified or lifted.
 
-Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registry.dart`.
+Main matrix columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registry.dart`.
+The login table additionally identifies the unregistered Antigravity implementation explicitly.
 
 ## Legend
 
@@ -33,6 +34,21 @@ platform with no pinned asset, or attached to an externally managed server
 The upgrade only replaces a runtime Sesori already manages. A machine with no
 managed version directory keeps the explicit Install action; it never downloads
 a runtime the user has not asked for.
+
+### Harness settings contract limitations (verified 2026-09-07)
+
+These gaps apply to every registered harness through the current management wire seam
+(`shared/sesori_shared/lib/src/models/sesori/plugin_management.dart` and install-progress SSE).
+They do not claim that a harness's native CLI could never implement an equivalent feature.
+
+| Capability through the current management seam | Status |
+|---|---|
+| Client-controlled automatic-update preference | 🚫 Not supported: no preference or command; existing bridge-start managed upgrades are unchanged. |
+| Pause/stop/cancel a managed installation | 🚫 Not supported: no command or stopped outcome; these UI controls remain hidden. |
+| Distinct update-required setup status | 🚫 Not supported: unavailable is broader and cannot truthfully be relabelled update-required. |
+| Enabled preference when runtime is unknown | 🚫 Not supported: unknown does not prove disabled; clients omit the switch. |
+| Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
+| Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
 
 ## Option pickers
 
@@ -81,6 +97,43 @@ The marks above cover setup inspection only. A plugin that raises
 `authenticationRequired` and blocks further starts; the ⬜ plugins do not do
 that either.
 
+## Login initiation
+
+Login is separate from detecting a logged-out backend or installing its runtime.
+This table records the current **Sesori-initiated harness/provider login action**,
+not login to the Sesori account. "Not implemented" means no such Sesori action;
+it does not claim an unprobed upstream ACP/RPC login API is supported or unsupported.
+
+| Harness | Login initiated from Sesori | Current local alternative/setup |
+|---|---|---|
+| Claude | Not implemented | `claude auth login` on the bridge machine. |
+| OpenCode | Not implemented | Local `opencode auth login` or provider configuration. |
+| Codex | Implemented: ChatGPT device-code login | Local Codex login/configuration remains an alternative. |
+| Copilot | Not implemented | `copilot login` on the bridge machine. |
+| Cursor | Not implemented | Local Cursor CLI login, or `CURSOR_API_KEY`. |
+| Hermes | Not implemented | Configure the provider/model through `hermes setup` or `hermes model`. |
+| Pi | Not implemented | Run `pi` locally and use `/login`, or configure supported provider credentials. |
+| OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
+| DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
+| Grok | Not implemented | `grok login` on the bridge machine. |
+| Antigravity (unregistered) | Internal only: Google browser-return | No supported local fallback. |
+
+Among registered plugins, only Codex currently implements
+`InteractivePluginAuthenticationDescriptor.authenticate`; its action uses the existing
+Sesori device-code UI. That is not a general API-key entry form or a claim of
+support for every Codex authentication method.
+
+The unregistered Antigravity descriptor implements the browser-return action:
+a current phone/desktop client opens Google's authorization page and returns
+the callback through Sesori. It permits personal Google OAuth only, suppresses
+the bridge host's browser, and uses the same isolated profile for login and
+live sessions. Activation remains Step 9; ambient Google login is not imported.
+
+Local login/configuration must apply to the profile/environment used by that
+bridge's harness. Provider keys and local/free models may make a backend usable
+without an OAuth login. Setup detection above does **not** imply that Sesori
+can initiate login, and managed installation does **not** authenticate a harness.
+
 ## Command limitations
 
 Pi 0.84.4 advertises its bundled `/llama` command over RPC, but the handler
@@ -109,6 +162,8 @@ background sub-agents together with the running main turn.
 ² OpenCode's task tool cancels a foreground child when its root is aborted
 (verified on 1.18.25); background children survive, and the tracker cannot tell
 the two apart, so the option is not offered.
+Atomic subtree completion acknowledgment is **not implemented** for OpenCode;
+its observed-child snapshot retains legacy client fanout.
 
 ³ Codex (codex-cli 0.148.0, `multi_agent` stable, probed 2026-09-02): a child
 announces itself through the parent's `subAgentActivity started`
@@ -148,18 +203,11 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.3 over dsh 0.1.1-rc.2 is the managed target
-and minimum accepted runtime. The consumer requires extension protocol v2 and
-implements live/replayed correlated tiles and child transcripts/catalogs.
-Replay retains direct-parent tile identities and ordered ordinary-content runs
-without changing live child state. Scoped stop is implemented: main-only stop
-requires all running children to be background. Foreground children stop through
-parent cancellation; background children use direct-parent-authorized interrupt.
-Directly stopping a non-cancellable child leaves it running rather than widening
-to its parent/siblings. Busy state follows lifecycle, not interrupt acceptance.
-Stop currently uses the request-time child snapshot; late-announced children can
-remain running. Closing that window is a required successor to #1346, before
-final DeepSeek feature E2E coverage.
+⁹ DeepSeek's published adapter 0.1.4 over dsh 0.1.1-rc.2 is the managed target
+and minimum accepted runtime. ACP uses native subtree stop for the named scope
+and every independently resident descendant root, while ordered input cancel,
+exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
+Released clients retain their own child fanout; final phone/desktop E2E remains outstanding.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as

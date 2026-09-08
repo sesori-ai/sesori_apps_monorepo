@@ -3,10 +3,10 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–5 and 6.a–6.c merged, Step 6.d in review
+- **Status:** active; Steps 1–6 merged, Step 7.a in review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
-- **Delivery:** twelve ordered top-level steps; Step 6 uses ordered 6.a/6.b/6.c/6.d PRs as approved by the user
+- **Delivery:** twelve ordered top-level steps; approved ordered slices are 6.a/6.b/6.c/6.d and 7.a/7.b/7.c
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
@@ -133,8 +133,8 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   cannot carry the agent's prompt-injection warning, so exposing persistent approval would discard material safety
   context. Record this limitation in `docs/HARNESS_CAPABILITIES.md`.
 - Convert valid `interaction_` permission requests into one single-choice Sesori question. Preserve opaque option IDs
-  through an internal label-to-ID map, disambiguate duplicate labels, reject malformed/ambiguous answers, and never
-  leave an invisible pending request.
+  through an internal label-to-ID map; preserve advertised labels and reject duplicate/ambiguous choices rather than
+  renumbering them. Reject malformed/ambiguous answers and never leave an invisible pending request.
 - Keep ACP client filesystem and terminal capabilities disabled. The official local harness owns its tools and emits
   permission/tool updates; no new bridge filesystem server is introduced.
 - Use the agent's isolated `.meta` records read-only for session enumeration and cold-start `sessionId -> cwd`
@@ -290,6 +290,9 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityCatalogTracker` | `trackers/antigravity_catalog_tracker.dart` | tracker |
 | `AntigravityAuthenticationOperation` | `authentication/antigravity_authentication_operation.dart` | consumer |
 | `AntigravityAuthenticationComposer` | `runtime/antigravity_authentication_composer.dart` | composition |
+| `AntigravityPluginComposer` | `runtime/antigravity_plugin_composer.dart` | composition |
+| `AntigravityOutputComposer` | `runtime/antigravity_output_composer.dart` | composition |
+| `AntigravityEventMapper` | `antigravity_event_mapper.dart` | mapper |
 | `AntigravityApprovalRegistry` | `antigravity_approval_registry.dart` | consumer |
 | `AntigravityPlugin` | `antigravity_plugin.dart` | consumer |
 | `AntigravityPluginDescriptor` | `runtime/antigravity_plugin_descriptor.dart` | composition |
@@ -301,29 +304,32 @@ pair, `PluginHost`, timeout, cwd, or prepared profile are domain inputs, not hid
 | `AntigravityLaunchSpecBuilder` | none | descriptor | none |
 | `AntigravityProfileStorage` | host JSON store, command executor, platform target | descriptor | files/permissions |
 | `AntigravityRuntimeStorage` | none | descriptor | filesystem/PATH boundary |
-| `AntigravitySessionMetadataStorage` | none | descriptor | filesystem boundary only |
+| `AntigravitySessionMetadataStorage` | none | plugin composer | filesystem boundary only |
 | `AntigravityLoopbackClient` | HTTP client | descriptor | one HTTP client lease |
 | `AntigravityAcpApi` | process factory | descriptor | one scratch ACP lease |
 | `AntigravityProfileRepository` | profile storage | descriptor | none |
 | `AntigravityRuntimeRepository` | runtime storage, ACP API, launch builder | descriptor | none |
 | `AntigravityAuthenticationRepository` | ACP API, loopback client, authorization mapper | descriptor | none |
 | `AntigravityInteractionRepository` | live ACP client | interaction composer | none |
-| `AntigravitySessionMetadataRepository` | metadata storage | descriptor | none |
+| `AntigravitySessionMetadataRepository` | metadata storage | plugin composer | none |
 | `AntigravityAuthorizationMapper` | auth-line limits | descriptor | none |
 | `AntigravityProtocolMapper` | ACP content limits | descriptor | none |
 | `AntigravityProfileService` | profile repository | descriptor | none |
 | `AntigravityRuntimeService` | runtime repository | descriptor | none |
 | `AntigravitySetupService` | runtime service, profile service | descriptor | none |
 | `AntigravityAuthenticationService` | auth repository | descriptor | none |
-| `AntigravitySessionOptionsService` | mapper, tracker, ACP config repo | options composer | none |
+| `AntigravitySessionOptionsService` | mapper, tracker; live config repo required per `applyForPrompt` | plugin composer | none |
 | `AntigravityInteractionService` | protocol mapper, interaction repository | interaction composer | none |
-| `AntigravitySessionMetadataService` | metadata repository | descriptor | none |
+| `AntigravitySessionMetadataService` | metadata repository | plugin composer | none |
 | `AntigravityRuntimeVersionValidator` | runtime service | descriptor | none |
-| `AntigravityCatalogTracker` | none | descriptor | last-good immutable catalog |
-| `AntigravityAuthenticationComposer` | none; `compose` requires host process/store, dedicated HTTP client, and launch/attempt inputs | descriptor in Step 9 | stateless; constructs per-attempt peers |
+| `AntigravityCatalogTracker` | none | plugin composer | last-good immutable catalog |
+| `AntigravityAuthenticationComposer` | none; `compose` requires host process/store, dedicated HTTP client, and launch/attempt inputs | descriptor in Step 8.c | stateless; constructs per-attempt peers |
 | `AntigravityAuthenticationOperation` | profile/runtime/auth services | authentication composer | one auth attempt |
-| `AntigravityApprovalRegistry` | pending stores, interaction service | interaction composer | pending lifecycle |
-| `AntigravityPlugin` | launch/ACP/mapping/recovery peers, options composer | descriptor | live ACP processes |
+| `AntigravityApprovalRegistry` | interaction service, event sink, ID generator | interaction composer | neutral pending lifecycle |
+| `AntigravityPlugin` | launch/ACP/mapping/recovery peers, options service, interaction/output composers | plugin composer | existing ACP lifecycle |
+| `AntigravityPluginComposer` | none; `compose` requires validated pair, prepared profile, process factory, cwd | descriptor | stateless peer construction |
+| `AntigravityOutputComposer` | authorization/stderr mappers | plugin composer | fresh per-process interception policies |
+| `AntigravityEventMapper` | configuration/child trackers, protocol mapper | plugin composer | existing ACP presentation state |
 | `AntigravityPluginDescriptor` | none | bridge registry | lifecycle composition root |
 
 For authentication attempts, the descriptor delegates construction of the listed profile/runtime/ACP/auth peers to
@@ -599,10 +605,16 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
    - `🚧 [antigravity-harness] feat(antigravity): add personal authentication boundaries and policy [step 6.c/12]`
    - `🚧 [antigravity-harness] feat(antigravity): compose personal browser authentication [step 6.d/12]`
    - The slices below preserve layered ownership, personal OAuth, callback safety, cancellation, and deterministic tests.
-7. `🚧 [antigravity-harness] feat(antigravity): map ACP options and interactions [step 7/12]`
+7. Ordered slices:
+   - `🚧 [antigravity-harness] feat(antigravity): map model catalogs and session options [step 7.a/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): handle questions and permission replies [step 7.b/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): normalize live and replay updates [step 7.c/12]`
    - Add partial pre-catalog options, later exact model selection, fixed default mode, question conversion,
      persistent-approval filtering, bounded tool normalization, and live/replay hooks with direct collaborator tests.
-8. `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8/12]`
+8. Ordered slices (full estimate 1,850–2,700 lines):
+   - `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
+   - `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
    - Create the unregistered `AntigravityPlugin` and descriptor, compose typed metadata Storage/Repository/Service
      recovery, load/resume/history, turn lanes, options wiring, commands, crash/reconnect,
      tombstone-compatible deletion, and conformance tests.
@@ -816,33 +828,60 @@ documented invariant, they update that document immediately. Step 11 is final re
 
 ### Step 7/12: Options, questions, permissions, and updates
 
+The user approved three ordered slices after the complete scope was estimated at 2,010–2,900 net lines. Each PR
+remains capped at 1,500 lines including tests/generated/docs; twelve top-level steps are unchanged. Only the immediate
+successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b questions/permissions/reply ownership, and
+7.c shared live/replay hooks and provider update normalization. No slice registers an active Antigravity plugin.
+
+#### Step 7.a: Model catalogs and session options
+
 - Extend Layer-2 `AntigravityProtocolMapper` to map raw grouped `configOptions` into a typed catalog with exact
   IDs/names/current value. `AntigravitySessionOptionsService` validates the mapped catalog before replacing the
   tracker's last-good snapshot; neither the plugin hook nor tracker reads raw ACP maps. Before new/load/resume returns
   the first catalog, expose partial options with one primary agent and no models; the first new session uses the account
-  default. Do not create a scratch Google session. After capture, expose every valid advertised model.
+  default. Do not create a scratch Google session. After capture, expose every valid advertised model. Capture origin
+  distinguishes `newSession` from `existingSession`: only the former establishes the new-session default; load/resume
+  and configuration responses retain it only while still advertised. An unknown default remains null.
 - Extend Layer-1 `AcpAgentApi` and Layer-2 `AcpSessionConfigRepository` with standard `session/set_mode`. Add
   `AntigravitySessionOptionsService(required protocolMapper, required catalogTracker, required configRepository)`;
   it captures only mapped catalogs, validates the model, performs exact selection, then sends `default` as one
-  operation. Test it directly with fakes in this step; defer plugin/descriptor wiring to Step 8. Any write failure
-  prevents later dispatch.
-- Add a narrow shared ACP session-update normalizer hook used identically by live events and `AcpReplayCollector`; every
-  existing plugin gets identity behavior. The Layer-2 mapper converts Antigravity command/output/image keys into bounded
-  normalized fields, strips duplicate inline image bytes after retaining supported metadata, and preserves nonzero exit
-  separately from protocol/tool failure.
+  operation. Verify a returned catalog applied the requested model before accepting it or sending mode. Reject missing
+  explicit models with `PluginStaleOptionsException` for refresh-and-retry. Test directly with fakes in this step;
+  defer plugin/descriptor wiring to Step 8. Any write failure prevents later dispatch.
+#### Step 7.b: Questions and permission replies
+
 - Map raw permission requests into typed options before policy. A connection-scoped
   `AntigravityInteractionRepository` wraps the live ACP reply boundary. `AntigravityInteractionService` classifies valid
   `interaction_` questions, owns unique label-to-ID mapping, malformed-answer rejection, safe option filtering, and
   typed reply dispatch through that repository without inventing absent choices.
 - Keep `AntigravityApprovalRegistry` focused on pending lifecycle and delegation to the interaction service; it neither
-  parses provider maps, decides permission policy, nor sends directly through the ACP client.
-- Cover raw-to-typed catalog/permission mapping, fresh/restarted partial discovery, first-session account default,
-  post-new/load/resume visibility, grouped/empty/stale models, failed selection/mode, duplicate labels/IDs, reject-kind
-  choices, prompt-injection warning filtering, malformed requests, bounded payloads, and live/replay equality.
+  parses provider maps, decides permission policy, nor sends directly through the ACP client. Reuse the neutral
+  `PendingPermissionRegistry` directly; do not inherit stock ACP raw-policy/direct-responder ownership. Duplicate safe
+  question labels fail observably without renumbering. Step 7.b tests this independent connection-scoped composition;
+  the shared ACP integration seam remains in Step 8.
+#### Step 7.c: Live and replay updates
+
+- Add a narrow shared ACP session-update normalizer hook used identically by live events and `AcpReplayCollector`; every
+  existing plugin gets identity behavior. The Layer-2 mapper converts Antigravity command/output/image keys into bounded
+  normalized fields, strips duplicate inline image bytes after retaining supported metadata, and preserves nonzero exit
+  separately from protocol/tool failure. `AcpEventMapper.normalizeSessionUpdate` is the identity-by-default hook;
+  standard and direct-history collectors receive the same live mapper function. Step 8 supplies Antigravity's override.
+  Retain valid standard image content for the existing bounded attachment mapper; strip only redundant provider raw
+  bytes. Reserve a labelled nonzero-exit note inside the existing 500-character display limit so it survives live/replay,
+  while native fields retain their 8,000-character bound. Neither status nor shared tool-state contracts change.
+- Across the slices, cover catalog validation/last-good retention, grouped/empty/stale models, failed selection/mode,
+  duplicate labels/IDs, safe reject-kind choices, prompt-injection warning filtering, malformed requests, bounded
+  payloads, and live/replay equality. Plugin/descriptor integration remains Step 8.
 
 ### Step 8/12: Persistent ACP plugin composition
 
-- Create the unregistered `AntigravityPlugin` and `AntigravityPluginDescriptor`; registration waits for Step 9.
+The original two-part estimate was 1,850–2,700 lines. Integration discovery required 8.c; the completed slices are
+8.a at 988 changed lines and 8.b at 1,459. Step 8.c remains within the 1,500-line cap; the old combined estimate is retired.
+Further dependency-ordered splits are pre-approved. Retain twelve top-level steps, the 1,500-line cap per PR, and one
+open PR plus its immediate local successor. This partitions requirements; it does not remove them.
+
+#### Step 8.a: Recovery foundations and neutral ACP seams (estimated 900–1,350 lines)
+
 - Add the smallest shared protected directory-registration seam. `AntigravitySessionMetadataStorage` alone lists
   bounded `.meta` files in the isolated conversations directory and decodes each through a typed generated DTO. It
   never reads SQLite or brain content.
@@ -850,16 +889,61 @@ documented invariant, they update that document immediately. Step 11 is final re
   `AntigravitySessionMetadataService` owns bounded scan, validation, deduplication, and privacy-safe malformed-entry
   skips, then returns one typed registration batch. The plugin consumes only that service and hands its batch to the
   shared protected bulk-registration seam; ordinary reads remain DB-only and scans run only for import/cold recovery.
-- In the descriptor composition root, build process-lifetime trackers, mappers, metadata repository/service, process
-  factory, and other peers. The options composer combines a live `AcpSessionConfigRepository`, mapper, and tracker.
-  A separate interaction composer wraps the live ACP client in `AntigravityInteractionRepository`, passes it plus the
-  mapper to `AntigravityInteractionService`, and builds the approval registry from that service. The plugin invokes
-  composers but constructs no peers.
+- Generalize `buildApprovalRegistry` and the retained registry to `AcpPendingRegistry`, a neutral
+  `PendingPermissionRegistry` subclass with attribution routing and no responder/policy. Stock ACP and Antigravity
+  extend this seam; preserve existing request attribution and pending lifecycle while admitting the plugin-owned
+  service/repository reply path. Do not use dummy raw responders or unused stock policy as an adapter. Update
+  shared consumers in lockstep and test integration here, not in the unregistered 7.b slice.
 - Add a backend-neutral protected ACP residency-preference hook whose default preserves today's load-first behavior.
   Antigravity selects resume-first for live residency, with availability fallback owned by shared ACP; history replay
   continues to use load. Cover unchanged existing plugins plus Antigravity load/resume fallback.
-- Cover new/load/resume, bridge restart directory recovery, long replay, two sessions, active cancel/delete, question
-  cleanup, process crash/reconnect, stale auth, tombstone-compatible re-import, and idempotent dispose with ACP fakes.
+- Thread a fresh per-process output-interceptor policy through live and replay client creation, retaining
+  `AcpStdioClient` as the existing pre-log interception/cleanup owner. Other harnesses keep default behavior.
+- Test metadata bounds/malformed records/UUID-cwd mapping, registration authority, neutral registry attribution and
+  cancellation, load-first/resume-first capability combinations, and live/replay interceptor wiring. No concrete
+  Antigravity plugin or descriptor is introduced here; scans are not added to ordinary reads.
+
+#### Step 8.b: Persistent plugin composition (integration-corrected estimate 1,440–1,500 lines)
+
+The original combined 8.b estimate grew to 1,650–2,050 lines. The approved split moves descriptor/setup into 8.c;
+integration corrections remain within the 1,500-line cap without reducing meaningful tests.
+
+- Create the unregistered `AntigravityPlugin` through `AntigravityPluginComposer`, consuming an already-validated
+  pair, prepared isolated profile, supplied process factory and cwd. The root constructs trackers, mappers,
+  metadata peers and options service. The plugin constructs no peers or parallel lifecycle owner.
+- ACP creates clients lazily: inject mapper/tracker into the process-lifetime options service, then require the
+  actual live `AcpSessionConfigRepository` on each `applyForPrompt` call. No options composer or dummy repository.
+  Validate known-catalog model IDs before queue admission. After reset, residency restores an unknown catalog;
+  strict dispatch validation still precedes model/mode/prompt writes. Preserve exact writes and default mode.
+- The interaction composer builds connection-scoped Repository → Service → neutral registry over the actual
+  client. Wire metadata import/cold recovery, resume-first availability, and identical live/replay normalization.
+- Output composition supplies fresh policies to existing ACP cleanup owners. An optional backend-neutral prefix
+  classifier passes nonmatching NDJSON through after 56 bytes; plugin-owned matching isolates bounded auth lines.
+  Never buffer an entire supported image line just to classify an authorization prefix. Default interception stays
+  whole-line; use immutable byte views rather than boxed copies for callbacks.
+- Map only initialization failures, preserving identity by default and the original interception wrapper as cause.
+  Keep caught stack traces through existing transport reset and the live cached authentication-failure record;
+  replay uses the same initialization hook. Ordinary tool/protocol failures are not authentication failures.
+- Cover new/load/resume, cold metadata recovery and DB precedence, long replay/two sessions, active cancel/delete,
+  question cleanup, crash/reset/reconnect, stale auth/privacy/source stack, global interruption and late-spawn
+  cleanup with ACP fakes. Google files remain untouched; existing bridge tombstones still own reimport exclusion.
+
+#### Step 8.c: Descriptor and setup composition (implementation remains within the 1,500-line cap)
+
+- Add the unregistered descriptor and full host/runtime/auth composition; reuse the per-attempt authentication
+  composer and the same plugin-root `HostJsonStore` for authentication and live preparation.
+- Inject the shared ACP configuration tracker into Antigravity options capture so new-session defaults and loaded
+  session overrides stamp live/replayed messages; existing-session capture must not redefine the default. Clear catalog
+  and configuration state together on connection reset, then let real residency restore the selected session.
+- Add narrow read-only selected-profile-path inspection: Storage/Repository own I/O and normalization, Service
+  owns readiness hints. Remove superseded unused token-presence helpers rather than retaining dummy writers,
+  nullable stores or parallel inspection paths. Preparation keeps its existing typed atomic writer.
+- Keep inspection inert and unversioned until an exact probe runs. Preparation/probing/start use the sanitized
+  environment, personal-OAuth allowlist and browser suppression. The existing descriptor lifecycle exit watch invokes
+  `resetConnectionAfterExit`; no extra manager or implicit login. Test setup, host composition, abort and lifecycle
+  supervision here.
+- Begin 8.c only after 8.b publication. Registration/CLI inventory remain Step 9; native OAuth/cross-target and
+  final L5 Full evidence remain explicit later gates, not claims made by the fake composition tests.
 
 ### Step 9/12: Local descriptor and activation
 

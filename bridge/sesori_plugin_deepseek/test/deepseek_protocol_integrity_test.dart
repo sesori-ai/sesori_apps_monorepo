@@ -30,4 +30,24 @@ void main() {
       }
     });
   }
+
+  test("vendored scoped-stop v1 files match the published adapter source", () async {
+    final directory = Directory("test/fixtures/protocol/scoped-stop/v1");
+    final manifest = jsonDecode(
+      await File("${directory.path}/source_manifest.json").readAsString(),
+    ) as Map<String, dynamic>;
+
+    expect(manifest["repository"], "sesori-ai/sesori-deepseek-acp");
+    expect(manifest["commit"], "e2ea207f2108d694cc72499375ad80d57107b8a3");
+    final expected = (manifest["files"] as Map).cast<String, String>();
+    expect(expected.keys.toSet(), {
+      "deepseek-acp.schema.json",
+      "valid.json",
+      "invalid.json",
+    });
+    for (final file in expected.entries) {
+      final bytes = await File("${directory.path}/${file.key}").readAsBytes();
+      expect(sha256.convert(bytes).toString(), file.value, reason: file.key);
+    }
+  });
 }
