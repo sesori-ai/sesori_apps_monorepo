@@ -998,7 +998,8 @@ integration corrections remain within the 1,500-line cap without reducing meanin
 
 ### Step 11/12: Complete guidance and reconcile regression documents
 
-- Complete README and architecture/operator docs with the final official pair/release, manual and managed setup,
+- Update root `README.md` and `bridge/README.md`, plus architecture/operator docs, with the final official pair/release,
+  manual and managed setup,
   five-target support, macOS x64 gap, personal OAuth/remote callback, isolated profile, supervised mode, fresh-process
   first-session default-model behavior, later model/session/history/attachment behavior, retained Google history, and
   terms links already surfaced at activation.
