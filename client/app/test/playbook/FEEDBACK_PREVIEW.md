@@ -36,8 +36,10 @@ flutter run -d <ios-simulator-id> -t test/playbook/feedback_flow_playbook.dart
 
 The preview opens directly into the rating sheet. Dismiss it to access the
 scenario selector and the sun/moon theme button, then tap **Open feedback** to
-restart. No sign-in, bridge, connected coding harness, microphone permission,
-or feedback backend is needed. A real software keyboard is used for typing.
+restart. No sign-in, bridge, connected coding harness, or feedback backend is
+needed. A real software keyboard is used for typing. Ordinary voice scenarios
+are simulated without microphone access; the explicitly selected **Microphone
+permission / settings** scenario opens real iOS/Android permission or settings UI.
 
 ## What to try
 
@@ -55,8 +57,9 @@ or feedback backend is needed. A real software keyboard is used for typing.
 | Tap the voice area twice | Accessible preview shortcut: start, then finish the simulated recording. |
 | Submit feedback | Show loading, close the sheet, and show the Figma confirmation toast. No content leaves the preview. |
 | Select Submission fails once | First submission preserves the draft and shows Retry; retry succeeds. |
-| Select Microphone permission denied | Show the permission error with a working keyboard alternative. No OS permission dialog is requested. |
-| Select Transcription fails once | First transcription fails; Retry transcription inserts sample text. |
+| Select Microphone permission / settings | Open native permission/settings UI in iOS/Android debug builds. Already-authorized access continues the first gesture; returning from native UI requires a fresh gesture. Restricted iOS access stays in the preview. |
+| Select Transcription fails once | Show the shared top error toast, preserve the draft and issue choices, and allow a fresh recording or keyboard input. |
+| Drag a held recording toward Cancel, then release | Show the red cancellation state and discard only that recording. Drag back before releasing to continue transcription; the direct Cancel recording action also retains the existing draft. |
 | Open the preview outside an iOS debug build | The native-rating request reports that it is available in the iOS debug preview; no custom review dialog is substituted. |
 
 Check dark/light themes, larger text, a narrow phone, keyboard appearance and
@@ -85,7 +88,11 @@ dismisses automatically after three seconds. Close or swipe up to dismiss sooner
   future resolves. It uses `AppStore.requestReview(in:)` on iOS 16+ and
   `SKStoreReviewController.requestReview(in:)` on the app's supported iOS 15.
   There are no new dependencies. Release builds exclude this hook, and the
-  normal product entry point does not call it.
+  normal product entry point does not call it. The same debug channel handles
+  `requestMicrophoneAccess`; Android registers that permission handler only in
+  debug builds. Permission/settings UI is real, while audio capture remains
+  simulated. Late permission completion cannot begin a released or dismissed
+  recording.
   The Runner Debug build configuration explicitly enables Swift's `DEBUG`
   compilation condition so the preview hook is available in simulator builds.
 - Prego supplies the themes, icons, solid/glass buttons, composer decoration,
@@ -173,14 +180,16 @@ Production work still needs:
 
 ```sh
 # From client/app
-flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_star_animation_test.dart test/playbook/feedback_motion_test.dart
+flutter test test/playbook/feedback_flow_playbook_test.dart test/playbook/feedback_star_animation_test.dart test/playbook/feedback_motion_test.dart test/playbook/feedback_motion_tuning_test.dart test/playbook/feedback_voice_states_test.dart
 dart analyze
 ```
 
 Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 
-- All 40 feedback flow, star, motion, and tuning tests pass, including shared
-  top-toast replay and automatic dismissal. The toast target is replay only;
+- All 55 combined feedback flow, star, motion, tuning, and voice-state tests
+  pass, including shared top-toast replay and automatic dismissal, 320 px
+  native-review routing, draft-preserving cancellation, and mocked iOS/Android
+  permission recovery. The toast target is replay only;
   its motion remains owned by the shared presenter.
 - Focused widget tests cover: all five rating branches, rating-only and category-only
   private submission, dismiss/reopen, draft-preserving retry, editable simulated
@@ -218,7 +227,7 @@ Verified locally on 2026-09-08 with Flutter 3.47.2 / Dart 3.13.2:
 - Star, issue, and composer actions expose single labeled accessibility
   controls. Full VoiceOver navigation remains a team review item.
 
-The current request intentionally limits verification to the local UI and iOS
-simulator. StoreKit presentation is exercised in a debug build. Play Review,
-Android, microphone, backend delivery, and production prompt/cooldown behavior
-are not exercised by this handoff.
+StoreKit presentation was exercised in an iOS debug build. Android native
+compilation and device permission dialogs remain unverified locally. Real audio
+capture/transcription, Play Review, backend delivery, and production
+prompt/cooldown behavior remain production follow-up work.
