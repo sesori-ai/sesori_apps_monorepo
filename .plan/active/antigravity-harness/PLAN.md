@@ -3,11 +3,11 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.c merged, Step 10.d in review
+- **Status:** active; Steps 1–10.d merged, Step 11 guidance ready for review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
-  8.a/8.b/8.c, and 10.a/10.b/10.c
+  8.a/8.b/8.c, and 10.a/10.b/10.c/10.d
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
@@ -143,9 +143,9 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   SQLite conversation contents or mutate private history files.
 - Local deletion remains a Sesori tombstone plus standard close when advertised. It does not delete Google's
   conversation/profile files; Git/database behavior and UI must describe this honestly.
-- Managed installation is explicit user action, never startup download or background update. Download directly from
-  `dl.google.com`, verify independently computed immutable SHA-256 digests, preserve the pair together, then run the
-  exact ACP identity probe before activation.
+- First managed installation requires explicit user action; existing Sesori-managed installations may upgrade on
+  bridge start. Download directly from `dl.google.com`, verify independently computed immutable SHA-256 digests,
+  preserve the pair together, then run the exact ACP identity probe before activation.
 - Show that the runtime is proprietary and link Google's current terms/docs in setup/product documentation. Sesori
   does not interpret entitlement or copy credentials; the user chooses whether to install and authenticate.
 - No Antigravity-specific analytics. Existing generic authoritative session/auth/install outcomes are sufficient, and
@@ -533,8 +533,8 @@ New persistent mutable state:
 - Google-owned isolated profile under the plugin state root: typed `settings.json` written by Sesori, then token,
   conversation databases, metadata, and brain files written by the official agent. This is required for explicit
   authentication and recovery without touching a user's unrelated Google profile.
-- Managed runtime package directory and existing shared runtime activation metadata after Step 10. No automatic install
-  or update.
+- Managed runtime package directory and existing shared runtime activation metadata after Step 10. First installation
+  is explicit; existing managed installations may upgrade on bridge start.
 - Existing bridge session/project/tombstone tables only. No schema, migration, duplicated session sidecar, or persisted
   auth continuation.
 
@@ -1003,7 +1003,8 @@ The requirements below apply across those slices; partitioning does not remove a
 - Narrowly document the install contract's distinction between a bounded, noninteractive staging validator and a live
   plugin start: no process is registered/exposed, and all validator cwd/state/files remain inside managed staging.
 - Extend descriptor precedence to explicit -> valid PATH -> already-installed managed. Advertise install only without
-  an explicit override and on one of the five supported targets; install is always explicit.
+  an explicit override and on one of the five supported targets; first installation is explicit, while existing managed
+  installations may upgrade on bridge start.
 - Add required `archiveCommandTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor`
   input, and update every existing asset/caller explicitly. Apply it to both traversal preflight listing and extraction,
   replacing the fixed 30-second/two-minute limits. Give Antigravity assets conservative bounded command timeouts;
@@ -1078,10 +1079,12 @@ Release matrix:
 
 Per-target packaged checks (all five supported hosts):
 
-- setup before install, explicit install start/progress, archive hash verification, pair extraction/permissions, exact
-  initialize validation, activation, restart selection, clean shutdown, shutdown-triggered install abort/recovery,
-  failed update retaining the prior active runtime, and uninstall/cleanup behavior supported by shared runtime code;
-- no automatic download, no cross-plugin impact, and privacy-safe logs/errors;
+- setup with no managed installation, explicit first-install start/progress, archive hash verification, pair
+  extraction/permissions, exact initialize validation, activation, restart selection, clean shutdown,
+  shutdown-triggered install abort/recovery, and uninstall/cleanup behavior supported by shared runtime code;
+- no automatic first download when no managed installation exists; separately, bridge-start upgrades of existing
+  managed installations and failed pre-placement updates retaining supported prior runtimes;
+- no cross-plugin impact and privacy-safe logs/errors;
 - at least a smoke `session/new -> prompt -> cancel/complete -> resume/load` on the target. Full account/UI scenarios
   may use the representative hosts below, but package/process claims must execute on every advertised target.
 

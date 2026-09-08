@@ -2,6 +2,12 @@
 
 Go from zero to your first remote OpenCode session in a few minutes.
 
+This walkthrough uses OpenCode, not a mandatory backend for Sesori. To use
+Google's official Antigravity ACP runtime instead, follow the
+[Antigravity guide](ANTIGRAVITY.md) for supported hosts, managed/manual setup and
+personal Google login from a current client. Sesori account pairing below is
+separate from that harness login.
+
 ## What you need
 
 - A laptop or desktop where you can run terminal commands.

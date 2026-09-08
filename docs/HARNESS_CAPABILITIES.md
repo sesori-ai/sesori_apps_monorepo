@@ -33,7 +33,9 @@ managed installation is unavailable there. Every archive keeps the server and lo
 conservative two-minute bound for each archive listing/extraction command, and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
 managed-pipeline correctness has run on macOS arm64; Linux and Windows correctness remains unexecuted until the final
-cross-target verification step.
+cross-target verification step. Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
+The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
+retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
 
 Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
 user-installed CLI from PATH or an explicit binary option, so there is nothing

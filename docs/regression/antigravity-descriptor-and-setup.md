@@ -4,7 +4,8 @@
 
 Registered local and managed-runtime support. Antigravity appears through the existing generic plugin inventory under
 its plugin-owned opaque ID. This activation adds no database/wire migration or analytics event and its verification
-performs no real OAuth or Google history access.
+performs no real OAuth or Google history access. For user/operator instructions and the consolidated supported-runtime
+contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
 
 - Setup inspection is inert. It checks only the official sibling runtime filenames and isolated token-file presence; it
   does not create files, read token contents, spawn/probe a process, prepare a browser command or authenticate.
