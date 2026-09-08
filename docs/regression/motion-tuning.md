@@ -29,6 +29,8 @@ The feedback voice preview supports holding to record, releasing to transcribe,
 and dragging onto the red X to cancel. Cancellation preserves existing text and
 selected issues. The destructive gradient and flattened waveform follow the
 finger, and moving away restores recording. The X also supports a direct tap.
+The `Transcribing…` label immediately uses the shared Prego shimmer while keeping
+the voice label typography and color. Reduced motion leaves the label static.
 Transcription failure displays the shared top error toast, then returns to the
 composer for a fresh recording or keyboard input without changing the draft.
 

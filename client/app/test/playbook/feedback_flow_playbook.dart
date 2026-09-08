@@ -1217,7 +1217,12 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
                               "Microphone access…",
                               style: prego.textTheme.textMd.regular,
                             ),
-                            _VoiceStage.transcribing => Text("Transcribing…", style: voiceLabelStyle),
+                            _VoiceStage.transcribing => PregoShimmer(
+                              appearDelay: Duration.zero,
+                              highlightColor: prego.colors.textPlaceholderSubtle,
+                              semanticLabel: "Transcribing…",
+                              child: Text("Transcribing…", style: voiceLabelStyle),
+                            ),
                             _ => Padding(
                               // Balance the trailing 44px Send action, as in Figma.
                               padding: EdgeInsetsDirectional.only(start: transcriptReady ? 44 : 0),

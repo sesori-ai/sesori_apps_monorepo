@@ -52,7 +52,7 @@ permission / settings** scenario opens real iOS/Android permission or settings U
 | Send after selecting 1, 2, or 3 stars | Send is immediately available beside the keyboard button; no issue or text is required. |
 | Select one or several issues | Toggle selection; category-only feedback can be submitted. |
 | Switch to keyboard | Edit multiline text; show the annotated blue focus ring. |
-| Hold the voice area, then release | Show the existing Prego waveform, simulated transcription, then sample text. Send is disabled during recording/transcription, then becomes the only trailing button inside the voice pill. Tap the transcript to edit it. |
+| Hold the voice area, then release | Show the existing Prego waveform, shimmering `Transcribing…` label (static with reduced motion), then sample text. Send is disabled during recording/transcription, then becomes the only trailing button inside the voice pill. Tap the transcript to edit it. |
 | Hold to talk more | Preserve the current transcript while recording/transcribing, then append the next sample. Send remains the single trailing action. |
 | Tap the voice area twice | Accessible preview shortcut: start, then finish the simulated recording. |
 | Submit feedback | Show loading, close the sheet, and show the Figma confirmation toast. No content leaves the preview. |

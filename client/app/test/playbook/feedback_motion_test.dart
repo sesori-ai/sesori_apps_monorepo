@@ -150,6 +150,10 @@ void main() {
       await hold.up();
       await tester.pump();
       expect(find.text("Transcribing…"), findsOneWidget);
+      final shimmer = find.ancestor(of: find.text("Transcribing…"), matching: find.byType(PregoShimmer));
+      expect(shimmer, findsOneWidget);
+      expect(tester.widget<PregoShimmer>(shimmer).appearDelay, Duration.zero);
+      expect(find.descendant(of: shimmer, matching: find.byType(ShaderMask)), findsOneWidget);
       await tester.pump(const Duration(milliseconds: 950));
       await tester.pumpAndSettle();
       expect(find.byType(PregoVoiceWaveform), findsNothing);
@@ -182,7 +186,7 @@ void main() {
   ]) {
     testWidgets(
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-      "$features suppresses sheet travel and press scaling without losing feedback",
+      "$features suppresses sheet travel, press scaling, and transcription shimmer without losing feedback",
       (tester) async {
         tester.platformDispatcher.accessibilityFeaturesTestValue = features;
         addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
@@ -200,6 +204,17 @@ void main() {
         await tester.pumpAndSettle();
         expect(tester.widget<Semantics>(_control(label: "Hard to navigate")).properties.checked, isTrue);
         expect(_control(label: "Send feedback"), findsOneWidget);
+        final recording = await tester.startGesture(tester.getCenter(find.byKey(const ValueKey("feedback-voice"))));
+        await tester.pump(const Duration(milliseconds: 600));
+        await recording.up();
+        await tester.pump();
+        expect(find.text("Transcribing…"), findsOneWidget);
+        final shimmer = find.ancestor(of: find.text("Transcribing…"), matching: find.byType(PregoShimmer));
+        expect(shimmer, findsOneWidget);
+        expect(find.descendant(of: shimmer, matching: find.byType(ShaderMask)), findsNothing);
+        await tester.pump(const Duration(milliseconds: 950));
+        await tester.pumpAndSettle();
+        expect(tester.widget<TextField>(find.byKey(const ValueKey("feedback-text"))).controller!.text, isNotEmpty);
         expect(tester.takeException(), isNull);
       },
     );
