@@ -1,7 +1,7 @@
 # DeepSeek scoped-stop replacement
 
 PR #1356 is closed without merge; its source is preserved at `58bbe71384a7d5f71b00cad3e573995e4fbb587a`.
-Replacement step 4/5 merged as #1363 at `b13d197d51`; step 5/5 is implemented locally pending review and user-owned E2E.
+Replacement step 4/5 merged as #1363 at `b13d197d51`; step 5/5 is in review as #1370, with user-owned E2E still outstanding.
 Each replacement targets at most 1,500 changed lines including generated code, tests, fixtures, and documentation.
 The adapter checkout is read-only evidence: v0.1.4 is already released, with no new native release planned.
 

@@ -2314,7 +2314,7 @@ class SessionDetailCubit(
       _clearLocalPromptQueue();
 
       // Prefer post-stop status truth, but retain the request snapshot when an
-      // abort-driven reload temporarily replaces the loaded detail state.
+      // concurrent reload temporarily replaces the loaded detail state.
       final current = state;
       final childStatuses = current is SessionDetailLoaded ? current.childStatuses : requestChildStatuses;
       if (subAgents != SessionAbortSubAgentPolicy.keep && !subAgentsHandled) {

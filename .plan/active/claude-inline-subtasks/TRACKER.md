@@ -179,7 +179,7 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Adapter #17 merged at `5eecdf68a3` |
 | [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
-| [ ] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Implemented locally; final phone/desktop E2E remains user-owned |
+| [ ] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) in review; final phone/desktop E2E remains user-owned |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
