@@ -64,8 +64,9 @@ Preserve these invariants:
   Public upstream source paths and immutable links are useful evidence.
 - Keep Codex concepts inside its plugin; never hand-edit generated Dart files.
 - Use the caller's dedicated worktree. Do not create another worktree or checkout
-  when prohibited. Source-only Git objects and scratch audit files may live in
-  the existing worktree; never execute upstream build code there.
+  when prohibited. Use a temporary bare object store under the existing worktree
+  for upstream source, never Sesori's shared Git database or shallow metadata.
+  Never execute upstream build code there.
 
 ## Phase 1 — Establish the candidate
 
@@ -125,27 +126,36 @@ compare-file lists; a 300-file response is not a complete inventory. An absent
 patch is not proof of an unchanged surface.
 
 If completeness cannot be established, obtain exact source-only objects and
-use a complete Git diff. When another checkout is forbidden, this can run in
-this worktree without changing HEAD, index, branch refs, or working files:
+use a complete Git diff. Create a disposable bare object store under the current
+worktree, not another checkout or working directory. Keep every upstream Git
+command bound to that store: `--no-write-fetch-head` alone does not isolate
+objects or `.git/shallow` from Sesori's shared repository. Stop on any command
+failure and retain partial evidence until the interruption is recorded.
 
 ```bash
 # Set these to the recorded full 40-hex SHAs; never substitute mutable tags.
-git fetch --no-tags --no-write-fetch-head --depth=1 https://github.com/openai/codex.git "$old_commit_sha"
-git fetch --no-tags --no-write-fetch-head --depth=1 https://github.com/openai/codex.git "$new_commit_sha"
-git cat-file -e "$old_commit_sha^{commit}"
-git cat-file -e "$new_commit_sha^{commit}"
-git diff --name-status "$old_commit_sha" "$new_commit_sha"
-git diff --stat "$old_commit_sha" "$new_commit_sha"
-git diff --no-ext-diff --no-textconv "$old_commit_sha" "$new_commit_sha" -- > codex-release.patch
+set -e
+audit_git_dir="$(mktemp -d "$PWD/.codex-audit-git.XXXXXX")"
+git init --bare "$audit_git_dir"
+audit_git() { git --git-dir="$audit_git_dir" "$@"; }
+audit_git fetch --no-tags --no-write-fetch-head --depth=1 https://github.com/openai/codex.git "$old_commit_sha"
+audit_git fetch --no-tags --no-write-fetch-head --depth=1 https://github.com/openai/codex.git "$new_commit_sha"
+audit_git cat-file -e "$old_commit_sha^{commit}"
+audit_git cat-file -e "$new_commit_sha^{commit}"
+audit_git diff --name-status "$old_commit_sha" "$new_commit_sha"
+audit_git diff --stat "$old_commit_sha" "$new_commit_sha"
+audit_git diff --no-ext-diff --no-textconv "$old_commit_sha" "$new_commit_sha" -- > "$audit_git_dir/release.patch"
 ```
 
-Use a fresh, non-colliding scratch filename for the patch. Retain it until all
-changed paths have been inspected, or record interruption/incompleteness; do
-not delete it in an early EXIT trap. Inspect every changed area, including
-release workflows, package builders, dependencies, schemas, and launch wrappers.
-Use `git show <recordedSha>:<path>` for source without checking it out. Summarize
-large patches in code; do not dump raw JSON or full patches into conversation.
-Clean up only scratch files created by this audit after consuming them.
+Retain the store and patch until all changed paths have been inspected, or record
+interruption/incompleteness; do not delete them in an early EXIT trap. Inspect
+every changed area, including release workflows, package builders, dependencies,
+schemas, and launch wrappers. Use
+`git --git-dir="$audit_git_dir" show <recordedSha>:<path>` for source without
+checking it out. Summarize large patches in code; do not dump raw JSON or full
+patches into conversation. After consuming the evidence, explicitly remove only
+this audit's temporary store with `rm -rf -- "$audit_git_dir"`; never clean,
+prune, or rewrite Sesori's shared Git metadata as part of this recipe.
 
 For nontrivial delegated reasoning, inspect available agents/models and prefer
 registered `openai-codex/gpt-5.6-luna` with maximum thinking when selectable.
