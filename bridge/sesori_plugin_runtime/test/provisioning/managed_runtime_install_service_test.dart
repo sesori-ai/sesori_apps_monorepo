@@ -112,6 +112,7 @@ class const _FakeArchiveExtractor() implements ArchiveExtractor {
     required String archivePath,
     required String stagingPath,
     required ArchiveFormat format,
+    required Duration archiveCommandTimeout,
   }) async {
     Directory(stagingPath).createSync(recursive: true);
     File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");

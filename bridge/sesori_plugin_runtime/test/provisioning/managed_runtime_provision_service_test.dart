@@ -10,6 +10,7 @@ class const _StubManifest() implements RuntimeManifest {
   static const RuntimeAsset _asset = ArchiveRuntimeAsset(
     assetName: "opencode-test.zip",
     format: ArchiveFormat.zip,
+    archiveCommandTimeout: Duration(minutes: 2),
     sha256: "abc123",
     archiveBinaryName: "opencode",
     layout: RuntimeArchiveLayout.singleBinary,

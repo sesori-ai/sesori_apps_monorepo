@@ -3,9 +3,9 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.c merged; Step 9 open for review
-- **Base:** synced with main `20a1580688055dffc07d70e0c23ab27c95fa00c9` after Step 8.c merge
-- **Current branch:** `antigravity-harness-step-9-activation`
+- **Status:** Steps 1–9 merged; Step 10.a open for review
+- **Base:** synced with main `28998e2f736c96eded48d6b604bce7c589d86863` after Step 9 merge
+- **Current branch:** `antigravity-harness-step-10a-archive-budgets`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -20,9 +20,10 @@
   [#1357](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1357) (Step 7.c),
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b),
-  [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c)
-- **Open PR:** [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9).
-- **Next action:** monitor Step 9; begin only Step 10 locally.
+  [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c),
+  [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9)
+- **Open PR:** [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a).
+- **Next action:** monitor Step 10.a; begin only Step 10.b locally.
 
 ## Fixed PR Series
 
@@ -42,7 +43,9 @@
 - [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
 - [x] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
 - [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
-- [ ] Step 10/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10/12]`
+- [ ] Step 10.a/12 — `⚙️ [antigravity-harness] feat(runtime): declare archive command budgets [step 10.a/12]`
+- [ ] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
+- [ ] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.c/12]`
 - [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
 - [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
 
@@ -368,6 +371,30 @@
   service to report unavailable without a filename exception. Nine descriptor tests pass, including inert macOS x64
   inspection with/without an explicit path; owning analysis is clean. Index ordering, source indentation, plan status
   and platform guidance are corrected. This is a localized logic/docs fix, not an architectural expansion.
+
+## Step 10.a Checklist
+
+- [x] Split Step 10 under standing approval: archive budgets, isolated candidate validation, then official managed pair
+  integration. Only 10.a is being implemented; later slices retain every original requirement and the 1,500-line cap.
+- [x] Add required `ArchiveRuntimeAsset.archiveCommandTimeout` and extractor input, applying it to archive listing and
+  extraction. Update all 34 current platform assets, fixture assets, extractor doubles and the self-update caller.
+- [x] Existing archives/self-update explicitly keep a two-minute per-command budget. Listing no longer has a separate
+  fixed 30-second bound. No Antigravity managed asset, installation action or native timing claim is introduced.
+- [x] Add deterministic simulated slow-command/timeout-cleanup coverage and selected-asset forwarding assertions;
+  preserve real tar/zip/symlink tests and update both relevant regression documents.
+- [x] Focused JSON-counted tests pass: foundation archive 8; runtime install 12 + managed install 14 + provision 10;
+  app updater 6 + registry 4 = 54 executed tests across six suites. Foundation/runtime/app analyzers and all six changed
+  manifest-file analyzers pass with fatal infos; formatting and whitespace checks pass. No dependencies were installed.
+- [x] First foreground architecture review approved `635df576103511dffb18a41624d2599ff5d7e7b9` →
+  `3f4f00d81335e5b34042e5d1b1a923189960f2a6`: all 18 files, 222 additions + 26 deletions = 248 changed lines.
+  Reviewer run `caa5bebe`, no findings. User explicitly approved foreground execution after background bootstrap failed;
+  no earlier Step 10 review launched. Keep the immutable reviewed count distinct from publication metadata.
+- [x] Integrated Step 9's unsupported-target/docs correction at `5c68c5b3a0`; archive-budget production/tests remain
+  unchanged from their approved checkpoint. The corrected predecessor has its own passing descriptor evidence.
+- [x] Step 11 explicitly names root `README.md` and `bridge/README.md`, per user request.
+- [x] Step 9 merged with 16/16 checks; synchronized main `28998e2f73`. All reviewed bridge files remain byte-identical.
+  Main also changed app/plugin stop contracts, so reran the 10 app updater/registry tests and app analysis: all pass.
+  This overlaps the initial 54-test scope; unchanged archive tests were not rerun. Publication counts include metadata.
 
 ## Architecture Reviews
 

@@ -42,6 +42,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "opencode-darwin-arm64.zip",
         format: ArchiveFormat.zip,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "0026326bd77a3277ab3726be237410b19389f7829e8bb3c82dfaf9044162067c",
         archiveBinaryName: "opencode",
         layout: RuntimeArchiveLayout.singleBinary,
@@ -49,6 +50,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "opencode-darwin-x64.zip",
         format: ArchiveFormat.zip,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "ee495d7c30263c2cecb81a4558a9c4d29ac7b27c1df822e9d344a69cb56a75c3",
         archiveBinaryName: "opencode",
         layout: RuntimeArchiveLayout.singleBinary,
@@ -58,6 +60,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "opencode-linux-arm64.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "506f98a1f618551f1f6fc5dcf591f824bef9d6819d40b27928ad7febcb7c363b",
         archiveBinaryName: "opencode",
         layout: RuntimeArchiveLayout.singleBinary,
@@ -65,6 +68,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "opencode-linux-x64.tar.gz",
         format: ArchiveFormat.tarGz,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "7bb35487c55f9957f5d91ae60be6fa49fc8f74629c210c1719ed75fdbf7e2bd9",
         archiveBinaryName: "opencode",
         layout: RuntimeArchiveLayout.singleBinary,
@@ -74,6 +78,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
       PlatformArch.arm64: ArchiveRuntimeAsset(
         assetName: "opencode-windows-arm64.zip",
         format: ArchiveFormat.zip,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "2e74619988a54f76837370862c0761c6595a1224ce4cd6da588975e1396a33a7",
         archiveBinaryName: "opencode.exe",
         layout: RuntimeArchiveLayout.singleBinary,
@@ -81,6 +86,7 @@ class const OpenCodeRuntimeManifest() extends RuntimeManifest {
       PlatformArch.x64: ArchiveRuntimeAsset(
         assetName: "opencode-windows-x64.zip",
         format: ArchiveFormat.zip,
+        archiveCommandTimeout: Duration(minutes: 2),
         sha256: "4381328bf6d611996c33d98daef27e89d274cb8391709fa1e36723f1d2899877",
         archiveBinaryName: "opencode.exe",
         layout: RuntimeArchiveLayout.singleBinary,

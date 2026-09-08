@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–8.c merged, Step 9 in review, Step 10 pending
+- **Status:** active; Steps 1–9 merged, Step 10.a in review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices are 6.a/6.b/6.c/6.d and 7.a/7.b/7.c
@@ -968,6 +968,22 @@ integration corrections remain within the 1,500-line cap without reducing meanin
 
 ### Step 10/12: Managed runtime installation
 
+The shared archive contract, isolated validation seam and provider installation together are estimated at
+1,650–2,850 changed lines. Use the standing split approval, retaining twelve top-level steps and the 1,500-line
+full-diff cap per PR. Keep only the immediate successor local:
+
+- **10.a — Archive command budgets (estimated 250–450 lines):** required asset/extractor command budgets,
+  every current manifest/caller updated explicitly, focused forwarding/slow-command/timeout tests, and runtime/self-update
+  regression contracts. Existing archive extraction retains two minutes; listing now uses the same declared budget.
+  No Antigravity installation is exposed, no official artifact budgets or native timing claims are made yet.
+- **10.b — Isolated candidate validation (estimated 600–1,000 lines):** the required shared pre-placement seam,
+  explicit current-caller adapters, disposable owner-only staging/cached validation context and failure/shutdown cleanup.
+- **10.c — Official managed pair integration (estimated 800–1,400 lines):** independently verified public artifacts,
+  manifest/Antigravity validator/descriptor composition, install disclosure, target budgets and failure/rollback coverage.
+  Further splits remain pre-approved if the measured complete scope needs them; native infrastructure gaps stay explicit.
+
+The requirements below apply across those slices; partitioning does not remove any of them:
+
 - Independently download all five registry archives; recompute SHA-256, archive size, member names/sizes, and compare
   against the registry/T3 evidence. Record only immutable public artifact facts; do not trust copied third-party hashes.
 - Add `AntigravityRuntimeManifest` using package-directory layout so the server and harness remain siblings. Map the
@@ -998,7 +1014,8 @@ integration corrections remain within the 1,500-line cap without reducing meanin
 
 ### Step 11/12: Complete guidance and reconcile regression documents
 
-- Complete README and architecture/operator docs with the final official pair/release, manual and managed setup,
+- Update root `README.md` and `bridge/README.md`, plus architecture/operator docs, with the final official pair/release,
+  manual and managed setup,
   five-target support, macOS x64 gap, personal OAuth/remote callback, isolated profile, supervised mode, fresh-process
   first-session default-model behavior, later model/session/history/attachment behavior, retained Google history, and
   terms links already surfaced at activation.
