@@ -20,9 +20,6 @@ class AntigravityProfileStorage({
 }) {
   String get acpDirectory => p.join(geminiHome, "antigravity-acp");
 
-  // Do not read the file: even malformed/expired tokens are only a setup hint.
-  bool tokenExists() => File(p.join(acpDirectory, "acp_token.json")).existsSync();
-
   Future<void> prepareDirectories({
     required AntigravityAuthenticationBudget budget,
     required Map<String, String> environment,

@@ -10,8 +10,6 @@ import "../storage/models/antigravity_profile_settings_dto.dart";
 class AntigravityProfileRepository({required final AntigravityProfileStorage _storage}) {
   String get geminiHome => _storage.geminiHome;
 
-  bool hasToken() => _storage.tokenExists();
-
   Future<void> preparePersonalOauth({
     required AntigravityAuthenticationBudget budget,
     required Map<String, String> environment,
