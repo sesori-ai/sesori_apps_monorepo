@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:acp_plugin/acp_testing.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
+import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
@@ -33,7 +34,7 @@ class _Store({required final _Store? parent}) implements HostJsonStore {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _HelperProcess() implements SpawnedProcess {
+class _HelperProcess({required final int status}) implements SpawnedProcess {
   @override
   int get pid => 1;
   @override
@@ -41,7 +42,7 @@ class _HelperProcess() implements SpawnedProcess {
   @override
   Stream<List<int>> get stderr => const Stream.empty();
   @override
-  Future<int> get exitCode async => 0;
+  Future<int> get exitCode async => status;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -125,7 +126,7 @@ class _Processes({
         includeParentEnvironment: includeParentEnvironment,
       ),
     );
-    if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess();
+    if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess(status: 0);
     final agent = _AgentProcess(
       initialize: initialize,
       respondToInitialize: respondToInitialize,
@@ -159,6 +160,29 @@ class _Processes({
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _ZipProcesses({required final Future<SpawnedProcess> Function() preflight}) implements HostProcessService {
+  int calls = 0;
+
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) {
+    calls++;
+    expect(executable, "unzip");
+    expect(arguments, ["-Z", "-h"]);
+    expect(environment, {"PATH": "/synthetic/bin"});
+    return preflight();
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Host({
   @override required final PluginConfig config,
   @override required final String stateDirectory,
@@ -183,6 +207,19 @@ class _Http() implements HttpClient {
   void close({bool force = false}) => closed = true;
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _DownloadHttp({required final Object failure}) extends http.BaseClient {
+  bool closed = false;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) => Future.error(failure);
+
+  @override
+  void close() {
+    closed = true;
+    super.close();
+  }
 }
 
 Map<String, dynamic> _initialize() =>
@@ -236,6 +273,7 @@ void main() {
         browserPrefixArguments: const [],
         launchDirectory: "/synthetic/worktree",
         callbackHttpClientFactory: http == null ? unexpectedHttpClient : () => http,
+        runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
         operationTimeout: timeout,
         connectBudget: const Duration(seconds: 2),
       );
@@ -286,6 +324,7 @@ void main() {
     final candidate = AntigravityPluginDescriptor(
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
       callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
     );
     for (final server in [null, pair.server]) {
       final status = await candidate.inspectSetup(
@@ -327,7 +366,7 @@ void main() {
 
   test("managed pair is the inert fallback after PATH", () async {
     final managedDirectory = Directory(
-      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.agentVersion),
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
     )..createSync(recursive: true);
     _writePair(directory: managedDirectory);
     expect(
@@ -340,6 +379,204 @@ void main() {
       isA<PluginSetupAuthenticationRequired>(),
     );
     expect(processes.launches, isEmpty);
+  });
+
+  test("managed install is advertised only for supported targets without an explicit override", () async {
+    final candidate = descriptor(http: null);
+    expect(
+      candidate.managementCapabilities(config: config(server: null)),
+      contains(PluginControlCapability.install),
+    );
+    expect(
+      candidate.managementCapabilities(config: config(server: pair.server)),
+      isNot(contains(PluginControlCapability.install)),
+    );
+    final missing = await candidate.inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: state.path,
+    );
+    expect(missing, isA<PluginSetupRuntimeMissing>());
+    expect(
+      (missing as PluginSetupRuntimeMissing).actionHint,
+      allOf(
+        contains("proprietary"),
+        contains("https://antigravity.google/terms"),
+        contains("https://antigravity.google/docs/"),
+      ),
+    );
+
+    final superseded = Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0"))
+      ..createSync(recursive: true);
+    expect(candidate.needsManagedRuntimeUpgrade(config: config(server: null), stateDirectory: state.path), isTrue);
+    expect(
+      candidate.needsManagedRuntimeUpgrade(
+        config: config(server: pair.server),
+        stateDirectory: state.path,
+      ),
+      isFalse,
+    );
+    superseded.deleteSync(recursive: true);
+
+    final unsupported = AntigravityPluginDescriptor(
+      target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
+      callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
+    );
+    expect(
+      unsupported.managementCapabilities(config: config(server: null)),
+      isNot(contains(PluginControlCapability.install)),
+    );
+  });
+
+  test("invalid managed pair retains both disclosure URLs before installation", () async {
+    final managed = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    final invalidPair = _writePair(directory: managed);
+    File(invalidPair.harness).deleteSync();
+    Directory(invalidPair.harness).createSync();
+    final status = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: state.path,
+    );
+    expect(status, isA<PluginSetupUnavailable>());
+    expect(
+      (status as PluginSetupUnavailable).actionHint,
+      allOf(
+        contains("proprietary"),
+        contains("https://antigravity.google/terms"),
+        contains("https://antigravity.google/docs/"),
+      ),
+    );
+    expect(processes.launches, isEmpty);
+    expect(store.scopes, isEmpty);
+  });
+
+  test("explicit override prevents download and managed download failures stay plugin-local", () async {
+    final blocked = await descriptor(http: null)
+        .installRuntime(
+          config: config(server: pair.server),
+          processes: processes,
+          environment: const {},
+          stateDirectory: state.path,
+          startAborted: StartAbortSignal.never,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+    expect(blocked.single, isA<ProvisionFailed>());
+    expect(processes.launches, isEmpty);
+
+    final download = _DownloadHttp(failure: http.ClientException("synthetic download failure"));
+    final candidate = AntigravityPluginDescriptor(
+      target: _target,
+      callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () => download,
+    );
+    final progress = await candidate
+        .installRuntime(
+          config: config(server: null),
+          processes: processes,
+          environment: const {"PATH": "/usr/bin:/bin"},
+          stateDirectory: state.path,
+          startAborted: StartAbortSignal.never,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+    expect(progress.first, isA<ProvisionResolving>());
+    expect(progress.last, isA<ProvisionFailed>());
+    expect((progress.last as ProvisionFailed).message, isNot(contains(state.path)));
+    expect(download.closed, isTrue);
+  });
+
+  for (final failure in [
+    (name: "missing", run: () async => throw const ProcessException("unzip", ["-Z", "-h"], "not found")),
+    (name: "no ZipInfo", run: () async => _HelperProcess(status: 2)),
+    (name: "timeout", run: () async => throw TimeoutException("synthetic extractor timeout")),
+  ]) {
+    test("Linux extractor ${failure.name} fails before download or state writes", () async {
+      final zip = _ZipProcesses(preflight: failure.run);
+      final candidate = AntigravityPluginDescriptor(
+        target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
+        callbackHttpClientFactory: unexpectedHttpClient,
+        runtimeDownloadHttpClientFactory: () => throw StateError("Download must not be created"),
+      );
+      final progress = await candidate
+          .installRuntime(
+            config: config(server: null),
+            processes: zip,
+            environment: const {"PATH": "/synthetic/bin"},
+            stateDirectory: state.path,
+            startAborted: StartAbortSignal.never,
+            runtimeInUse: RuntimeInUseSignal.never,
+          )
+          .toList();
+      expect((progress.single as ProvisionFailed).message, contains("Info-ZIP unzip with ZipInfo"));
+      expect(zip.calls, 1);
+      expect(state.listSync(), isEmpty);
+    });
+  }
+
+  for (final abortBefore in [true, false]) {
+    test("Linux install observes abort ${abortBefore ? 'before' : 'after'} extractor preflight", () async {
+      final abort = StartAbortController();
+      if (abortBefore) abort.abort();
+      final zip = _ZipProcesses(
+        preflight: () async {
+          abort.abort();
+          return _HelperProcess(status: 0);
+        },
+      );
+      final candidate = AntigravityPluginDescriptor(
+        target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
+        callbackHttpClientFactory: unexpectedHttpClient,
+        runtimeDownloadHttpClientFactory: () => throw StateError("Download must not be created"),
+      );
+      await expectLater(
+        candidate
+            .installRuntime(
+              config: config(server: null),
+              processes: zip,
+              environment: const {"PATH": "/synthetic/bin"},
+              stateDirectory: state.path,
+              startAborted: abort.signal,
+              runtimeInUse: RuntimeInUseSignal.never,
+            )
+            .toList(),
+        throwsA(isA<PluginStartAbortedException>()),
+      );
+      expect(zip.calls, abortBefore ? 0 : 1);
+      expect(state.listSync(), isEmpty);
+    });
+  }
+
+  test("Linux extractor success precedes download-client creation", () async {
+    final zip = _ZipProcesses(preflight: () async => _HelperProcess(status: 0));
+    final download = _DownloadHttp(failure: http.ClientException("synthetic download failure"));
+    final candidate = AntigravityPluginDescriptor(
+      target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
+      callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () {
+        expect(zip.calls, 1);
+        return download;
+      },
+    );
+    final progress = await candidate
+        .installRuntime(
+          config: config(server: null),
+          processes: zip,
+          environment: const {"PATH": "/synthetic/bin"},
+          stateDirectory: state.path,
+          startAborted: StartAbortSignal.never,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+    expect(progress.first, isA<ProvisionResolving>());
+    expect(progress.last, isA<ProvisionFailed>());
+    expect(download.closed, isTrue);
   });
 
   test("prepare, probe and live process share the isolated environment and existing lifecycle owner", () async {
@@ -395,6 +632,7 @@ void main() {
       target: _target,
       launchDirectory: "/synthetic/worktree",
       callbackHttpClientFactory: () => http,
+      runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
       operationTimeout: const Duration(seconds: 2),
       connectBudget: const Duration(seconds: 2),
     );

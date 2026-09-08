@@ -33,6 +33,7 @@ export "src/runtime/antigravity_interaction_composer.dart";
 export "src/runtime/antigravity_output_composer.dart";
 export "src/runtime/antigravity_plugin_composer.dart";
 export "src/runtime/antigravity_plugin_descriptor.dart";
+export "src/runtime/antigravity_runtime_manifest.dart";
 export "src/runtime/antigravity_runtime_version_validator.dart";
 export "src/services/antigravity_authentication_service.dart";
 export "src/services/antigravity_interaction_service.dart";
