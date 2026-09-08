@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–8.c merged; Step 9 open for review; Step 10.a implemented locally, review pending
+- **Status:** Steps 1–8.c merged; Step 9 open for review; Step 10.a architecture-approved locally
 - **Base:** Step 10.a exact predecessor head `635df576103511dffb18a41624d2599ff5d7e7b9`
 - **Current branch:** `antigravity-harness-step-10a-archive-budgets`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -22,7 +22,7 @@
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b),
   [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c)
 - **Open PR:** [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9).
-- **Next action:** monitor Step 9; finish and review only Step 10.a locally before publication.
+- **Next action:** monitor Step 9; synchronize and publish reviewed Step 10.a only after Step 9 merges.
 
 ## Fixed PR Series
 
@@ -380,8 +380,10 @@
 - [x] Focused JSON-counted tests pass: foundation archive 8; runtime install 12 + managed install 14 + provision 10;
   app updater 6 + registry 4 = 54 executed tests across six suites. Foundation/runtime/app analyzers and all six changed
   manifest-file analyzers pass with fatal infos; formatting and whitespace checks pass. No dependencies were installed.
-- [ ] First complete architecture review over the committed Step 10.a scope. User explicitly approved foreground
-  execution after background bootstrap failed; no earlier Step 10 review launched.
+- [x] First foreground architecture review approved `635df576103511dffb18a41624d2599ff5d7e7b9` →
+  `3f4f00d81335e5b34042e5d1b1a923189960f2a6`: all 18 files, 222 additions + 26 deletions = 248 changed lines.
+  Reviewer run `caa5bebe`, no findings. User explicitly approved foreground execution after background bootstrap failed;
+  no earlier Step 10 review launched. Keep the immutable reviewed count distinct from publication metadata.
 - [x] Step 11 explicitly names root `README.md` and `bridge/README.md`, per user request.
 
 ## Architecture Reviews
