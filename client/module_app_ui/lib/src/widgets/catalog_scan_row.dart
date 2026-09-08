@@ -8,14 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 import "../l10n/app_localizations.dart";
-
-/// How long the row takes to grow in or fold away.
-const Duration _revealDuration = Duration(milliseconds: 260);
-const Curve _revealEaseOut = Cubic(0.23, 1, 0.32, 1);
-// A compact optical entrance: close enough to full size that text stays stable,
-// with just enough blur to connect the card to the pull without looking glassy.
-const double _entranceScaleFrom = 0.97;
-const double _entranceBlurSigma = 2;
+import "catalog_scan_row_motion.dart";
 
 /// The catalog scan reported as one quiet row above a list.
 ///
@@ -27,6 +20,8 @@ const double _entranceBlurSigma = 2;
 /// shove the list down again when the first progress event lands.
 class const CatalogScanRow({
   super.key,
+
+  required final CatalogScanRowMotion _motion,
 
   /// The scan to report, read from the hosting list's own state so the row
   /// re-renders with the list rather than subscribing separately.
@@ -55,26 +50,26 @@ class const CatalogScanRow({
 class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderStateMixin, WidgetsBindingObserver {
   late final AnimationController _reveal = AnimationController(
     vsync: this,
-    duration: _revealDuration,
+    duration: widget._motion.entranceDuration,
     // A scan already running when this mounts is not news: the list is being
     // revisited mid-run, so the row is simply there rather than arriving.
     value: _hasContent ? 1 : 0,
   );
   late final CurvedAnimation _curve = CurvedAnimation(
     parent: _reveal,
-    curve: _revealEaseOut,
+    curve: widget._motion.entranceCurve,
     // The flipped strong ease-out makes the visible exit snap first and settle
     // softly while the controller itself runs backwards.
-    reverseCurve: const FlippedCurve(_revealEaseOut),
+    reverseCurve: FlippedCurve(widget._motion.collapseCurve),
   );
   late final AnimationController _entrance = AnimationController(
     vsync: this,
-    duration: _revealDuration,
+    duration: widget._motion.entranceDuration,
     value: _hasContent ? 1 : 0,
   );
   late final CurvedAnimation _entranceCurve = CurvedAnimation(
     parent: _entrance,
-    curve: _revealEaseOut,
+    curve: widget._motion.entranceCurve,
   );
 
   /// The last content worth showing, kept while the row folds away.
@@ -107,6 +102,10 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   @override
   void didUpdateWidget(CatalogScanRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _curve
+      ..curve = widget._motion.entranceCurve
+      ..reverseCurve = FlippedCurve(widget._motion.collapseCurve);
+    _entranceCurve.curve = widget._motion.entranceCurve;
     final reducedMotion = _syncReducedMotionPreference();
     final hadContent = oldWidget._scan is! CatalogRescanIdle;
     if (_hasContent) {
@@ -131,7 +130,10 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   /// enabled during its short run.
   bool _syncReducedMotionPreference() {
     final reducedMotion = prefersReducedMotion(context);
-    _reveal.duration = reducedMotion ? Duration.zero : _revealDuration;
+    _reveal
+      ..duration = reducedMotion ? Duration.zero : widget._motion.entranceDuration
+      ..reverseDuration = reducedMotion ? Duration.zero : widget._motion.collapseDuration;
+    _entrance.duration = reducedMotion ? Duration.zero : widget._motion.entranceDuration;
     if (reducedMotion) {
       if (_reveal.isAnimating) _reveal.value = _hasContent ? 1 : 0;
       if (_entrance.isAnimating) _entrance.value = 1;
@@ -186,8 +188,8 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
           animation: _entrance,
           builder: (context, child) {
             final progress = _entranceCurve.value;
-            final scale = _entranceScaleFrom + (1 - _entranceScaleFrom) * progress;
-            final blurSigma = _entranceBlurSigma * (1 - progress);
+            final scale = widget._motion.entranceScaleFrom + (1 - widget._motion.entranceScaleFrom) * progress;
+            final blurSigma = widget._motion.entranceBlurSigma * (1 - progress);
             final filteredChild = blurSigma <= 0
                 ? child
                 : ImageFiltered(

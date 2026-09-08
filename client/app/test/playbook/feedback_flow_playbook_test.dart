@@ -29,7 +29,7 @@ void main() {
   for (final rating in [1, 2, 3]) {
     testWidgets(
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-      "$rating stars stays private through category-only submission",
+      "$rating stars stays private through rating-only submission",
       (tester) async {
         await _launch(tester: tester);
         await _open(tester: tester);
@@ -38,9 +38,9 @@ void main() {
         expect(find.text("What should we improve?"), findsOneWidget);
         expect(nativeRequests, isEmpty);
         expect(find.byKey(const ValueKey("feedback-text")), findsNothing);
-        expect(_control(label: "Send feedback"), findsNothing);
+        expect(_control(label: "Send feedback"), findsOneWidget);
+        expect(tester.widget<Semantics>(_control(label: "Send feedback")).properties.enabled, isTrue);
 
-        await _tap(tester: tester, finder: find.text("Hard to navigate"));
         await _tap(
           tester: tester,
           finder: _control(label: "Send feedback"),
@@ -55,6 +55,26 @@ void main() {
       },
     );
   }
+
+  testWidgets(
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+    "category-only feedback can still be submitted",
+    (tester) async {
+      await _launch(tester: tester);
+      await _open(tester: tester);
+      await _rate(tester: tester, rating: 2);
+      await _tap(tester: tester, finder: find.text("Hard to navigate"));
+      await _tap(
+        tester: tester,
+        finder: _control(label: "Send feedback"),
+      );
+      await tester.pump(const Duration(milliseconds: 900));
+      await tester.pumpAndSettle();
+      expect(find.text("Feedback sent. Thank you!"), findsOneWidget);
+      expect(nativeRequests, isEmpty);
+      expect(tester.takeException(), isNull);
+    },
+  );
 
   for (final rating in [4, 5]) {
     testWidgets(
@@ -159,7 +179,7 @@ void main() {
       await _open(tester: tester);
       expect(find.text("How’s Sesori working for you?"), findsOneWidget);
       await _rate(tester: tester, rating: 1);
-      expect(_control(label: "Send feedback"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
       expect(find.text("Feedback sent. Thank you!"), findsNothing);
       expect(nativeRequests, isEmpty);
       expect(tester.takeException(), isNull);
@@ -213,15 +233,17 @@ void main() {
       final composer = find.byKey(const ValueKey("feedback-composer"));
       expect(find.byKey(const ValueKey("feedback-text")), findsNothing);
       expect(_control(label: "Use keyboard"), findsOneWidget);
-      expect(_control(label: "Send feedback"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
       expect(tester.getSize(pill), const Size(370, 56));
       await tester.ensureVisible(voice);
       final hold = await tester.startGesture(tester.getCenter(voice));
       await tester.pump(const Duration(milliseconds: 600));
+      expect(tester.widget<Semantics>(_control(label: "Send feedback")).properties.enabled, isFalse);
       await hold.up();
       await tester.pump();
       expect(find.text("Transcribing…"), findsOneWidget);
-      expect(_control(label: "Send feedback"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
+      expect(tester.widget<Semantics>(_control(label: "Send feedback")).properties.enabled, isFalse);
       await tester.pump(const Duration(milliseconds: 950));
       await tester.pumpAndSettle();
 

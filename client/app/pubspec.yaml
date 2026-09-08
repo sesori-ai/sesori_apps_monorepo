@@ -81,6 +81,8 @@ dependencies:
   flutter_keyboard_visibility: ^7.0.1
 
 dev_dependencies:
+  sesori_motion_tuning:
+    path: ../motion_tuning
   cryptography: ^2.9.0
   flutter_test:
     sdk: flutter

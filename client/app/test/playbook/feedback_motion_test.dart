@@ -74,7 +74,7 @@ void main() {
 
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-    "chip press responds before release and send reveals without a jump",
+    "chip press responds before release while composer actions stay in place",
     (tester) async {
       await _openPrivate(tester: tester);
       final chip = find.text("Hard to navigate");
@@ -85,18 +85,16 @@ void main() {
       await tester.pump(const Duration(milliseconds: 80));
       final press = tester.widget<AnimatedScale>(find.ancestor(of: chip, matching: find.byType(AnimatedScale)));
       expect(press.scale, 0.97);
-      expect(_control(label: "Send feedback"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
       await hold.up();
       await tester.pump();
       expect(tester.getCenter(keyboard).dx, closeTo(initialX, 0.01));
       await tester.pump(const Duration(milliseconds: 40));
-      final movingX = tester.getCenter(keyboard).dx;
+      expect(tester.getCenter(keyboard).dx, closeTo(initialX, 0.01));
       await tester.pumpAndSettle();
-      final finalX = tester.getCenter(keyboard).dx;
-      expect(movingX, lessThan(initialX));
-      expect(movingX, greaterThan(finalX));
+      expect(tester.getCenter(keyboard).dx, closeTo(initialX, 0.01));
 
-      // Reversing twice during the reveal must leave one usable action.
+      // Repeated issue toggles must keep the same single Send action.
       await tester.tap(chip);
       await tester.pump(const Duration(milliseconds: 30));
       await tester.tap(chip);
@@ -104,7 +102,7 @@ void main() {
       expect(_control(label: "Send feedback"), findsOneWidget);
       await tester.tap(chip);
       await tester.pumpAndSettle();
-      expect(_control(label: "Send feedback"), findsNothing);
+      expect(_control(label: "Send feedback"), findsOneWidget);
       expect(tester.getCenter(keyboard).dx, closeTo(initialX, 0.01));
       expect(tester.takeException(), isNull);
     },
