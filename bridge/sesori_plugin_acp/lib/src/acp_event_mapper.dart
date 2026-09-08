@@ -10,9 +10,10 @@ import "repositories/trackers/acp_child_session_tracker.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
-/// Pure envelope normalization shared by live mapping and history replay.
+/// Adapter-owned command extraction shared by live mapping and history replay.
 typedef AcpShellCommandResolver = String? Function({required Map<String, dynamic> update});
 
+/// Pure envelope normalization shared by live mapping and history replay.
 typedef AcpSessionUpdateNormalizer = Map<String, dynamic> Function({required Map<String, dynamic> params});
 
 sealed class const AcpToolCallSessionLookup();

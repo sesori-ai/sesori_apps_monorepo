@@ -200,6 +200,8 @@ shell command with long output.
   Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.
 - `bridge/app/tool/benchmarks/tool_projection_payload_size.dart` reproducibly
   reports synthetic serialized UTF-8 bytes before/after projection. It states
-  source/starting-HEAD baselines and deliberately excludes envelopes, attachment
-  bytes, compression, encryption and latency. Subtask payload growth restores
+  source/starting-HEAD baselines, separates typical already-bounded text from
+  oversized stress inputs, and deliberately excludes envelopes, attachment bytes,
+  compression, encryption and latency. Already-bounded shell results do not gain
+  further output savings from the common bound. Subtask payload growth restores
   intended outcome information; it is not a regression in ordinary-tool trimming.

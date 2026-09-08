@@ -68,19 +68,19 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
   ToolState toShared({required bool retainSummary}) {
-    final boundedShellCommand = _boundedToolText(shellCommand);
+    final boundedShellCommand = _boundedToolText(text: shellCommand);
     final isShellCommand = boundedShellCommand != null;
     return ToolState(
       status: status.toShared(),
-      title: retainSummary ? _boundedToolText(title) : boundedShellCommand,
+      title: retainSummary ? _boundedToolText(text: title) : boundedShellCommand,
       shellCommand: boundedShellCommand,
-      output: isShellCommand || retainSummary ? _boundedToolText(output) : null,
-      error: isShellCommand || retainSummary ? _boundedToolText(error) : null,
+      output: isShellCommand || retainSummary ? _boundedToolText(text: output) : null,
+      error: isShellCommand || retainSummary ? _boundedToolText(text: error) : null,
       attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
     );
   }
 
-  static String? _boundedToolText(String? text) =>
+  static String? _boundedToolText({required String? text}) =>
       text == null ? null : String.fromCharCodes(text.runes.take(maxToolOutputLength));
 }
 
