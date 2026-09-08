@@ -188,8 +188,7 @@ class const _HarnessControlCard({
                     title: loc.harnessesActivityLabel,
                     value: Text(_workStatus(context: context, state: plugin.workState)),
                   ),
-                if (actionHint != null && !(showInstall && plugin.setup.state == PluginSetupState.runtimeMissing))
-                  PregoGroupedRow(title: Text(actionHint)),
+                if (actionHint != null) PregoGroupedRow(title: Text(actionHint)),
                 if (showExternal)
                   PregoGroupedRow(
                     key: Key("harness_management_external_$pluginId"),

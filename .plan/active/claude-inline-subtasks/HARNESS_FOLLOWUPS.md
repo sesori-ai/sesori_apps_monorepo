@@ -7,10 +7,14 @@
   and Cursor, merge, then moved back)
 - **Plan date:** 2026-09-02
 - **Base:** `main` at `6e9028c4c6`
-- **Delivery:** PRs titled `<emoji> [claude-inline-subtasks] <description>` with
-  no step counters. The four harness chains run in parallel; within a
-  chain PRs stack. E2E testing happens after each PR merges, not before.
-  Progress is tracked in `TRACKER.md` "Harness Follow-Ups".
+- **Delivery:** one open PR at a time, following current repository rules.
+  Remaining Codex PRs use `<emoji> [claude-inline-subtasks] <description>
+  [step x/6]`: metadata and child sessions are merged steps 1/6 and 2/6;
+  typed child-prompt parsing, tiles, scoped stop, and coverage are steps 3/6
+  through 6/6. Historical merged titles remain unchanged. User-authorized
+  packaging split only; approved behavior and architecture are unchanged. Progress is tracked in `TRACKER.md` "Harness
+  Follow-Ups". The DeepSeek phone handoff is recorded in
+  `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
 ## Goal
 
@@ -239,8 +243,10 @@ confirmation, no child session or partial stop) and gets that subset.
   renders once the prompt is known, because the part requires one and the
   activity item carries none: the child's first `userMessage` item under the
   child thread id supplies it, and when the child streams no such item the
-  `thread/read` result (the child's turns) is used instead; the tile PR
-  verifies which source 0.148.0 provides. The child's own `turn/completed` completes it, a
+  `thread/read` result is used only after the exact child `turn/started` id
+  matches a typed turn. Forked reads contain copied parent turns, so no
+  heuristic first/last-turn fallback is allowed and missing turn provenance
+  remains no fallback. The child's own `turn/completed` completes it, a
   child `turn/interrupt` cancels it, and `thread/closed` cancels it only while
   it is pending or running; a prior completed, failed, interrupted, or errored
   terminal state wins over the later close. A child turn failure errors it,
@@ -276,13 +282,14 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### PRs
 
-| Emoji | Description | Scope |
-|---|---|---|
-| 🌿 | `codex: parse sub-agent thread and item metadata` | DTO fields, collab/activity parser and enums, fixtures from the probe |
-| ⚙️ | `codex: sub-agent threads become child sessions` | repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
-| 🚧 | `codex: inline subtask tiles for spawned agents` | service-coordinated tracker, mapper cases, cancel on close/disconnect, call-id replacement of the generic spawn card in rollout-tail and full-history replay, child-rollout terminal join |
-| ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
-| 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
+| Step | Emoji | Description | Scope |
+|---|---|---|---|
+| 1/6 | 🌿 | `codex: parse sub-agent thread and item metadata` | Merged historical title unchanged; DTO fields, collab/activity parser and enums, fixtures from the probe |
+| 2/6 | ⚙️ | `codex: sub-agent threads become child sessions` | Merged historical title unchanged; repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
+| 3/6 | ⚙️ | `codex: parse typed child prompts from thread reads` | `thread/read` includes turn ids/items/content; Layer-2 caches text prompts by turn id for exact child-lifecycle selection, with generated serializers and focused inherited-history/unknown-variant tests. Preparatory packaging only; no tile behavior |
+| 4/6 | 🚧 | `codex: inline subtask tiles for spawned agents` | service-coordinated tracker, mapper cases, cancel on close/disconnect, call-id replacement of the generic spawn card in rollout-tail and full-history replay, child-rollout terminal join |
+| 5/6 | ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
+| 6/6 | 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
 
 ### Probe results (0.148.0, 2026-09-02, details in `followups/codex-probe.md`)
 

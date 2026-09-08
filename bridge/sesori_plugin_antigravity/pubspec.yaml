@@ -10,6 +10,7 @@ dependencies:
   acp_plugin:
     path: ../sesori_plugin_acp
   freezed_annotation: ^3.1.0
+  http: ^1.6.0
   json_annotation: ^4.12.0
   path: ^1.9.1
   sesori_bridge_foundation:

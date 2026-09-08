@@ -28,6 +28,38 @@ sealed class CodexThreadEnvelopeDto with _$CodexThreadEnvelopeDto {
 }
 
 @Freezed(fromJson: true, toJson: false)
+sealed class CodexThreadTurnDto with _$CodexThreadTurnDto {
+  const factory({
+    required String? id,
+    @JsonKey(defaultValue: <CodexThreadItemDto>[]) required List<CodexThreadItemDto> items,
+  }) = _CodexThreadTurnDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexThreadTurnDtoFromJson(json);
+}
+
+@Freezed(unionKey: "type", fallbackUnion: "unknown", fromJson: true, toJson: false)
+sealed class CodexThreadItemDto with _$CodexThreadItemDto {
+  @FreezedUnionValue("userMessage")
+  const factory userMessage({
+    @JsonKey(defaultValue: <CodexThreadContentDto>[]) required List<CodexThreadContentDto> content,
+  }) = CodexThreadUserMessageItemDto;
+
+  const factory unknown() = CodexThreadUnknownItemDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexThreadItemDtoFromJson(json);
+}
+
+@Freezed(unionKey: "type", fallbackUnion: "unknown", fromJson: true, toJson: false)
+sealed class CodexThreadContentDto with _$CodexThreadContentDto {
+  @FreezedUnionValue("text")
+  const factory text({required String text}) = CodexThreadTextContentDto;
+
+  const factory unknown() = CodexThreadUnknownContentDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CodexThreadContentDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false)
 sealed class CodexThreadDto with _$CodexThreadDto {
   const factory({
     required String? id,
@@ -40,6 +72,7 @@ sealed class CodexThreadDto with _$CodexThreadDto {
     required String? agentNickname,
     required String? agentRole,
     @JsonKey(unknownEnumValue: CodexThreadSource.unknown) required CodexThreadSource? threadSource,
+    @JsonKey(defaultValue: <CodexThreadTurnDto>[]) required List<CodexThreadTurnDto> turns,
   }) = _CodexThreadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);

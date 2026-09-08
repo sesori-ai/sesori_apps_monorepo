@@ -814,10 +814,11 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("install is offered for a missing runtime and streams its phases", (tester) async {
+  testWidgets("overview opens install guidance before a missing runtime can be installed", (tester) async {
     _useTallSurface(tester);
+    const guidance = "Review runtime terms at https://example.test/terms and docs at https://example.test/docs.";
     final plugin = _managed.copyWith(
-      setup: _managed.setup.copyWith(state: PluginSetupState.runtimeMissing, actionHint: null),
+      setup: _managed.setup.copyWith(state: PluginSetupState.runtimeMissing, actionHint: guidance),
       runtimeState: PluginRuntimeState.blocked,
       managementCapabilities: {..._managed.managementCapabilities, PluginManagementCapability.install},
     );
@@ -836,14 +837,22 @@ void main() {
     expect(find.byType(HarnessSettingsDetailView), findsNothing);
 
     await _openRow(tester, "harness_management_install_future-harness");
+    expect(find.byType(HarnessSettingsDetailView), findsOneWidget);
+    expect(find.text(guidance), findsOneWidget);
+    verifyNever(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.install(),
+      ),
+    );
+
+    await _openRow(tester, "harness_management_install_future-harness");
     verify(
       () => service.command(
         pluginId: "future-harness",
         request: const PluginLifecycleCommandRequest.install(),
       ),
     ).called(1);
-
-    await _showDetail(tester, "future-harness");
 
     // The service marks the install in flight from the tap; the streamed
     // phases are what the user sees. Two pumps: one delivers the stream event
@@ -886,6 +895,42 @@ void main() {
     await tester.pump();
     await tester.pump();
     expect(find.text("Installing…"), findsOneWidget);
+  });
+
+  testWidgets("direct detail keeps invalid-runtime guidance visible before install", (tester) async {
+    _useTallSurface(tester);
+    const guidance = "The local pair is invalid. Review https://example.test/terms and https://example.test/docs.";
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(
+          plugins: [
+            _managed.copyWith(
+              setup: _managed.setup.copyWith(state: PluginSetupState.unavailable, actionHint: guidance),
+              runtimeState: PluginRuntimeState.blocked,
+              managementCapabilities: {..._managed.managementCapabilities, PluginManagementCapability.install},
+            ),
+          ],
+        ),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpWidget(_app());
+    await tester.pumpAndSettle();
+    await _showDetail(tester, "future-harness");
+    expect(find.text(guidance), findsOneWidget);
+    verifyNever(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.install(),
+      ),
+    );
+    await _openRow(tester, "harness_management_install_future-harness");
+    verify(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.install(),
+      ),
+    ).called(1);
   });
 
   testWidgets("install is hidden without the capability and when the runtime is ready", (tester) async {

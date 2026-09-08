@@ -313,6 +313,22 @@ Missing infrastructure is not a pass. Any reduction to this matrix requires
 explicit user acceptance recorded here; otherwise the plan stays active.
 Planning/docs-only changes need no Dart/Flutter test run.
 
+### Accepted final-matrix reduction — 2026-09-08
+
+After reviewing the completed evidence, the user explicitly accepted both
+remaining infrastructure-limited reductions:
+
+- no live macOS desktop unavailable-to-usable journey, because another Sesori
+  desktop process could not be disturbed and approved GUI automation tooling
+  was unavailable;
+- no distinct iOS pending-transcription availability transition, because the
+  simulator produced no usable recording payload with which to hold that phase.
+
+These rows remain recorded as **Blocked** in [EVIDENCE.md](EVIDENCE.md), not as
+passes. Automated desktop Settings routing, iOS active-recording coverage, and
+all other applicable automated/live rows pass. With the two named reductions
+accepted, the reduced final matrix is complete and the plan may retire.
+
 ## Review and scope decisions
 
 Two architecture reviews of the earlier broader draft identified ownership and
@@ -325,5 +341,8 @@ attachment memory). The user chose **input gating only**, superseding all recove
 storage, typed admission responses, asynchronous handoff and queue changes. Those
 are removed, not deferred implementation requirements. No third architecture
 review is needed merely to approve applied findings; implementation receives its
-own scoped review. Implementation and focused automated verification landed in PR #1375. Live
-client/bridge reproduction remains the final retirement step.
+own scoped review. Implementation and focused automated verification landed in PR #1375. The
+step-4 live matrix is recorded in [EVIDENCE.md](EVIDENCE.md): available mobile,
+bridge and multi-client rows pass, while macOS desktop and distinct
+pending-transcription rows remain honestly blocked. The user explicitly accepted
+those two reductions, so the plan is retired with no other matrix reduction.
