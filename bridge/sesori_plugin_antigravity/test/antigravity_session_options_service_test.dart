@@ -356,6 +356,8 @@ void main() {
       source: AntigravityCatalogSource.newSession,
       result: _catalog(id: " chosen "),
     );
+    expect(configuration.processDefaults.modelId, " chosen ");
+    expect(configuration.snapshotForSession(sessionId: "session").modelId, " chosen ");
     repository.modelGate = Completer<void>();
     repository.response = _catalog(id: " chosen ");
     final apply = service.applyForPrompt(configRepository: repository, sessionId: "session-2", modelId: " chosen ");
@@ -364,6 +366,7 @@ void main() {
     await apply;
     expect(repository.writes.last, (session: "session-2", config: "mode", value: "default"));
     expect(tracker.snapshot!.currentModelId, " chosen ");
+    expect(configuration.snapshotForSession(sessionId: "session-2").modelId, " chosen ");
   });
 
   test("successful selection without an optional returned catalog still stamps the session", () async {

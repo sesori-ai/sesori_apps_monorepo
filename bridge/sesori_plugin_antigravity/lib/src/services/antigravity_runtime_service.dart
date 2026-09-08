@@ -32,6 +32,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
         managedServerPath == null) {
       return pathCandidate;
     }
+    _logPathInspectionFailure(candidate: pathCandidate);
     return _runtimeRepository.inspectPair(
       source: AntigravityRuntimeSource.managed,
       serverPath: managedServerPath,
@@ -195,6 +196,18 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
         closesSessions: snapshot.closesSessions,
       ),
     );
+  }
+
+  void _logPathInspectionFailure({required AntigravityRuntimeCandidateResult candidate}) {
+    switch (candidate) {
+      case AntigravityRuntimeCandidateStorageFailed(:final cause, :final stackTrace):
+        Log.w("[antigravity] PATH runtime inspection failed", cause, stackTrace);
+      case AntigravityRuntimeCandidateFound() ||
+          AntigravityRuntimeCandidateMissing() ||
+          AntigravityRuntimeCandidateRejected() ||
+          AntigravityRuntimeCandidateUnsupported():
+        return;
+    }
   }
 
   void _logPathBoundaryFailure({required AntigravityRuntimeResolution resolution}) {

@@ -875,9 +875,10 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
 
 ### Step 8/12: Persistent ACP plugin composition
 
-The original 8.a/8.b estimate was 1,850–2,700 lines. Integration discovery required 8.c; the reconciled total is
-3,130–3,390 (8.a actual 988, 8.b integration-corrected estimate 1,440–1,500, 8.c estimated 700–900). Further dependency-ordered splits are pre-approved. Retain twelve top-level steps, the 1,500-line cap per
-PR, and one open PR plus its immediate local successor. This partitions requirements; it does not remove them.
+The original two-part estimate was 1,850–2,700 lines. Integration discovery required 8.c; the completed slices are
+8.a at 988 changed lines and 8.b at 1,459. Step 8.c remains within the 1,500-line cap; the old combined estimate is retired.
+Further dependency-ordered splits are pre-approved. Retain twelve top-level steps, the 1,500-line cap per PR, and one
+open PR plus its immediate local successor. This partitions requirements; it does not remove them.
 
 #### Step 8.a: Recovery foundations and neutral ACP seams (estimated 900–1,350 lines)
 

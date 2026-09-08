@@ -109,8 +109,8 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | Grok | Not implemented | `grok login` on the bridge machine. |
 | Antigravity | Implemented: personal Google browser OAuth | No supported local fallback; a current client is required. |
 
-Codex implements `PluginAuthenticationDescriptor.authenticate` through the
-existing Sesori device-code UI. Antigravity implements the browser-return action:
+Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
+Codex uses the existing Sesori device-code UI; Antigravity implements the browser-return action:
 a current phone/desktop client opens Google's authorization page and returns
 the callback through Sesori. It permits personal Google OAuth only, suppresses
 the bridge host's browser, and uses the same isolated profile for login and live
