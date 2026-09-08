@@ -58,6 +58,8 @@ mobile/desktop consumers using `CatalogScanRowMotion.standard`.
   part of the current settings.
 - Tuning controls become covered by a modal sheet or unreachable above the
   keyboard; expanding the panel changes the preview's available layout size.
+- Composer action reveals clip the native button's pressed scale or shadow
+  against a rectangular boundary inside the voice-input surface.
 - Ordinary scan-row defaults change, reduced motion is lost, or controllers
   continue after the widget is removed.
 - Production entrypoints import the toolkit or expose its controls.
