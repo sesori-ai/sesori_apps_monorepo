@@ -14,9 +14,11 @@ idle suspension, the management snapshot, and lifecycle commands.
   reload it. Disabled, authentication-required, missing-runtime, unavailable,
   stopping, uninspected, unknown and missing-harness states block interaction. Ready
   setup with dormant, starting, active or degraded runtime remains routable.
-- An unverified initial check blocks input with Retry; a first check failure remains
-  blocked and keeps its original error for local diagnosis. Retained refresh errors
-  show a warning without changing the last established decision. An older public
+- Only an authentication-required block offers Recheck. It requests fresh management
+  evidence when authentication may have been restored elsewhere; it does not authenticate.
+  Disabled and every other blocked reason omit that action. A first check failure
+  remains blocked and keeps its original error for local diagnosis. Retained refresh
+  errors show a warning without changing the last established decision. An older public
   bridge without management support keeps interaction available with an upgrade
   warning; a request failure is never treated as endpoint absence.
 - Disconnect preserves an established block. Reconnect requires fresh connected

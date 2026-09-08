@@ -250,6 +250,7 @@ void main() {
     ).thenReturn(null);
     when(cubit.clearComposerDraft).thenReturn(null);
     when(cubit.reportVoiceTranscriptionCompleted).thenReturn(null);
+    when(cubit.recheckHarnessAvailability).thenAnswer((_) async {});
 
     maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
@@ -852,19 +853,22 @@ void main() {
         findsWidgets,
       );
       final settingsAction = tester.getRect(find.byKey(const Key("session_harness_settings")));
-      final retryAction = tester.getRect(find.byKey(const Key("session_harness_retry")));
-      expect(retryAction.center.dy, settingsAction.center.dy);
+      final recheckAction = tester.getRect(find.byKey(const Key("session_harness_recheck")));
+      expect(find.text("Recheck"), findsOneWidget);
+      expect(recheckAction.center.dy, settingsAction.center.dy);
       if (!cold) {
         await tester.tap(find.widgetWithText(TextButton, "Cancel"));
         verify(() => cubit.cancelQueuedMessage(0)).called(1);
       }
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      verify(cubit.recheckHarnessAvailability).called(1);
       await tester.tap(find.byKey(const Key("session_harness_settings")));
       expect(settingsOpened, 1);
       expect(tester.takeException(), isNull);
     });
   }
 
-  testWidgets("content restoration failure offers retry rather than harness setup", (tester) async {
+  testWidgets("content restoration failure explains route recovery without actions", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       interaction: const SessionInteractionState.blocked(
         reason: SessionInteractionBlockedReason.contentLoadFailed,
@@ -877,13 +881,39 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
     expect(
-      find.text("The harness is available, but chat content or options could not be loaded. Retry to continue."),
+      find.text(
+        "The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.",
+      ),
       findsOneWidget,
     );
     expect(find.byKey(const Key("session_harness_settings")), findsNothing);
-    expect(find.byKey(const Key("session_harness_retry")), findsOneWidget);
+    expect(find.byKey(const Key("session_harness_recheck")), findsNothing);
     expect(find.byType(PromptInput), findsNothing);
   });
+
+  for (final reason in SessionInteractionBlockedReason.values) {
+    if (reason == SessionInteractionBlockedReason.authenticationRequired ||
+        reason == SessionInteractionBlockedReason.contentLoadFailed) {
+      continue;
+    }
+    testWidgets("$reason omits Recheck", (tester) async {
+      when(() => cubit.state).thenReturn(
+        SessionDetailState.harnessUnavailable(
+          session: testSession(),
+          interaction: SessionInteractionState.blocked(
+            reason: reason,
+            displayName: "Harness",
+            actionHint: null,
+            refreshError: null,
+          ),
+        ),
+      );
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key("session_harness_recheck")), findsNothing);
+    });
+  }
 
   testWidgets("harness block closes an open question without answering", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();
