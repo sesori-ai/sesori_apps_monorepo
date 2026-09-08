@@ -542,12 +542,12 @@ class _FeedbackSheetState() extends State<_FeedbackSheet> with WidgetsBindingObs
       child: feedbackMotionRegion(
         context: context,
         scene: FeedbackMotionScene.sheetClose,
-        child: Padding(
-          padding: EdgeInsets.only(bottom: keyboard),
-          child: Material(
-            color: context.prego.colors.bgSurface2,
-            borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x8l)),
-            clipBehavior: Clip.antiAlias,
+        child: Material(
+          color: context.prego.colors.bgSurface2,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x8l)),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboard),
             child: SingleChildScrollView(
               keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
               child: Column(

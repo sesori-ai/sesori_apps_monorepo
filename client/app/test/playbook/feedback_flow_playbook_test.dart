@@ -310,6 +310,17 @@ void main() {
       tester.view.viewInsets = const FakeViewPadding(bottom: 240);
       addTearDown(tester.view.resetViewInsets);
       await tester.pumpAndSettle();
+      final sheetSurface = find
+          .ancestor(
+            of: find.text("What should we improve?"),
+            matching: find.byType(Material),
+          )
+          .first;
+      // Keep the surface behind the keyboard's transparent rounded corners,
+      // while the scrollable content still ends above the keyboard.
+      expect(tester.getBottomRight(sheetSurface).dy, 568);
+      final sheetContent = find.descendant(of: sheetSurface, matching: find.byType(SingleChildScrollView)).first;
+      expect(tester.getBottomRight(sheetContent).dy, 568 - 240);
       await tester.enterText(find.byKey(const ValueKey("feedback-text")), "Please make the navigation clearer.");
       await tester.pumpAndSettle();
       expect(tester.takeException(), isNull);

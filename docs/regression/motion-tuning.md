@@ -31,6 +31,8 @@ selected issues. The destructive gradient and flattened waveform follow the
 finger, and moving away restores recording. The X also supports a direct tap.
 The `Transcribing…` label immediately uses the shared Prego shimmer while keeping
 the voice label typography and color. Reduced motion leaves the label static.
+With the keyboard open, sheet content stays above it and the sheet background
+continues behind its rounded corners without exposing the modal backdrop.
 Transcription failure displays the shared top error toast, then returns to the
 composer for a fresh recording or keyboard input without changing the draft.
 
