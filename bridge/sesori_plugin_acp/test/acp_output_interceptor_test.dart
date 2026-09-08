@@ -96,6 +96,110 @@ void main() {
     expect(await interceptor.intercept(bytes: const Stream.empty()).toList(), isEmpty);
   });
 
+  test("prefix gate preserves every split and EOF while classifying only matching lines", () async {
+    final bytes = utf8.encode("short\nprivate secret\r\nordinary €\npri");
+    for (var split = 0; split <= bytes.length; split++) {
+      final consumed = <String>[];
+      final gate = AcpOutputInterceptor(
+        maxLineBytes: 32,
+        prefix: AcpOutputPrefix(length: 8, matches: ({required prefix}) => utf8.decode(prefix) == "private "),
+        consumeLine: ({required line}) {
+          consumed.add(utf8.decode(line));
+          return true;
+        },
+      );
+      final output = await gate
+          .intercept(
+            bytes: Stream.fromIterable([
+              bytes.sublist(0, split),
+              bytes.sublist(split),
+            ]),
+          )
+          .expand((chunk) => chunk)
+          .toList();
+      expect(output, utf8.encode("short\nordinary €\npri"));
+      expect(consumed, ["private secret\r\n"]);
+    }
+  });
+
+  test("nonmatching lines stream before newline without applying the private-line limit", () async {
+    final input = StreamController<List<int>>();
+    var received = 0;
+    var classifications = 0;
+    final gate = AcpOutputInterceptor(
+      maxLineBytes: 16,
+      prefix: AcpOutputPrefix(
+        length: 2,
+        matches: ({required prefix}) {
+          classifications++;
+          return false;
+        },
+      ),
+      consumeLine: ({required line}) => throw StateError("nonmatching line must never be retained"),
+    );
+    final subscription = gate.intercept(bytes: input.stream).listen((chunk) => received += chunk.length);
+    final chunk = List<int>.filled(65536, 65);
+    // More than the supported individual image byte budget, without a newline.
+    for (var i = 0; i < 400; i++) {
+      input.add(chunk);
+    }
+    await Future<void>.delayed(Duration.zero);
+    expect(received, 400 * chunk.length);
+    expect(classifications, 1);
+    await subscription.cancel();
+    await input.close();
+  });
+
+  test("prefix matching lines still fail closed on overflow and wrap classifier errors", () async {
+    for (final fails in [false, true]) {
+      final cause = StateError("private secret");
+      final gate = AcpOutputInterceptor(
+        maxLineBytes: 8,
+        prefix: AcpOutputPrefix(
+          length: 2,
+          matches: ({required prefix}) {
+            if (fails) throw cause;
+            return true;
+          },
+        ),
+        consumeLine: ({required line}) => fail("oversized private line must not reach callback"),
+      );
+      await expectLater(
+        gate
+            .intercept(
+              bytes: Stream.fromIterable([
+                [65],
+                List.filled(16, 65),
+              ]),
+            )
+            .toList(),
+        throwsA(
+          isA<AcpOutputInterceptionException>()
+              .having((e) => e.cause, "cause", fails ? same(cause) : isNull)
+              .having((e) => e.toString(), "presentation", isNot(contains("secret"))),
+        ),
+      );
+    }
+  });
+
+  test("prefix buffering and passthrough both forward cancellation immediately", () async {
+    for (final prefixMatches in [true, false]) {
+      var cancelled = false;
+      final input = StreamController<List<int>>(onCancel: () => cancelled = true);
+      final gate = AcpOutputInterceptor(
+        maxLineBytes: 16,
+        prefix: AcpOutputPrefix(length: 2, matches: ({required prefix}) => prefixMatches),
+        consumeLine: ({required line}) => fail("cancelled line must never be delivered"),
+      );
+      final subscription = gate.intercept(bytes: input.stream).listen((_) {});
+      input.add([65, 65, 65]);
+      await Future<void>.delayed(Duration.zero);
+      await subscription.cancel();
+      expect(cancelled, isTrue);
+      await input.close();
+    }
+  });
+
   test("AcpStdioClient intercepts raw stdout/stderr before decoding and logging", () async {
     final logs = BufferingStdout();
     final previous = Log.level;

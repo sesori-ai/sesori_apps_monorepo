@@ -100,7 +100,7 @@ void main() {
   test("superseded attach reaps late process", () async {
     final client = _client(reapTimeout: const Duration(seconds: 1));
     final token = client.beginAttach();
-    await client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
     final late = _FakeProcess(autoExitOnForce: false);
     final attach = client.attach(token: token, process: late);
     var completed = false;
@@ -116,7 +116,7 @@ void main() {
   test("old generation stdout and exit cannot affect replacement", () async {
     final first = _FakeProcess(autoExitOnClose: false);
     final fixture = _Fixture(candidate: first);
-    await fixture.client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
     final second = _FakeProcess();
     await fixture.client.attach(token: fixture.client.beginAttach(), process: second);
     final pending = fixture.client.request(id: 2, frame: {"id": 2}, timeout: const Duration(seconds: 1));
@@ -127,11 +127,30 @@ void main() {
     await fixture.dispose();
   });
 
+  test("reset preserves a caught stack or captures the explicit-reset stack", () async {
+    for (final original in [null, StackTrace.fromString("synthetic original source")]) {
+      final fixture = _Fixture();
+      final reason = StateError("reset reason");
+      final request = fixture.client.request(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1));
+      final checked = request.then<void>(
+        (_) => fail("reset must fail pending"),
+        onError: (Object error, StackTrace stack) {
+          expect(error, same(reason));
+          expect(stack.toString(), original == null ? contains("NdjsonProcessClient._teardown") : original.toString());
+        },
+      );
+      await _pump();
+      await fixture.client.reset(reason: reason, stackTrace: original, gracefulTimeout: Duration.zero);
+      await checked;
+      await fixture.dispose();
+    }
+  });
+
   test("reset keeps notifications open and dispose closes them", () async {
     final fixture = _Fixture();
     var done = false;
     fixture.client.notifications.listen((_) {}, onDone: () => done = true);
-    await fixture.client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
     expect(done, isFalse);
     await fixture.client.dispose(reason: StateError("done"), gracefulTimeout: Duration.zero);
     expect(done, isTrue);
@@ -141,7 +160,7 @@ void main() {
     final fixture = _Fixture();
     final exit = fixture.client.exit;
 
-    await fixture.client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
 
     expect(await exit.timeout(const Duration(seconds: 1)), 0);
     await fixture.dispose();

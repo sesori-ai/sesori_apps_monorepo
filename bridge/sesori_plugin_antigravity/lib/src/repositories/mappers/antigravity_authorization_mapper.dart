@@ -6,11 +6,16 @@ import "../../models/antigravity_authentication.dart";
 class const AntigravityAuthorizationMapper() {
   static const prefix = "Open the following link to authenticate the ACP server: ";
 
-  Uri? parseLine({required List<int> line}) {
-    if (line.length < prefix.length) return null;
-    for (var index = 0; index < prefix.length; index++) {
-      if (line[index] != prefix.codeUnitAt(index)) return null;
+  bool matchesPrefix({required List<int> prefix}) {
+    if (prefix.length < AntigravityAuthorizationMapper.prefix.length) return false;
+    for (var index = 0; index < AntigravityAuthorizationMapper.prefix.length; index++) {
+      if (prefix[index] != AntigravityAuthorizationMapper.prefix.codeUnitAt(index)) return false;
     }
+    return true;
+  }
+
+  Uri? parseLine({required List<int> line}) {
+    if (!matchesPrefix(prefix: line)) return null;
     try {
       final text = utf8.decode(line.sublist(prefix.length)).replaceFirst(RegExp(r"\r?\n$"), "");
       if (text.isEmpty || text.length > 16384 || RegExp(r"\s").hasMatch(text)) {

@@ -115,7 +115,7 @@ abstract class AcpPlugin({
 
   AcpStdioClient? _client;
   Future<bool>? _connectFuture;
-  PluginAuthenticationRequiredException? _authenticationFailure;
+  ({PluginAuthenticationRequiredException error, StackTrace stackTrace})? _authenticationFailure;
   StreamSubscription<AcpNotification>? _notificationSubscription;
   StreamSubscription<AcpServerRequest>? _serverRequestSubscription;
   AcpPendingRegistry<Object>? _approvalRegistry;
@@ -350,9 +350,16 @@ abstract class AcpPlugin({
   /// connections without mutating live process state.
   void validateInitializeResult(AcpInitializeResult result) {}
 
+  /// Translate only initialization failures; ordinary turn failures never use this hook.
+  // ignore: no_slop_linter/prefer_specific_type, initialization errors retain their original typed identity
+  Object mapInitializationFailure({required Object error}) => error;
+
   /// Captures initialize-owned state only for the live connection. Replay uses
   /// a separate process and must not replace live process defaults.
   void captureLiveInitializeResult(AcpInitializeResult result) {}
+
+  /// Bounded cold-connection recovery before the live process is advertised.
+  Future<void> recoverSessionDirectories() => Future<void>.value();
 
   /// Additional privacy-safe events for a prompt failure. The generic session
   /// error is always emitted separately.
@@ -371,7 +378,7 @@ abstract class AcpPlugin({
 
   // --- Protected accessors for subclasses ---
 
-  String? get authenticationFailureActionHint => _authenticationFailure?.actionHint;
+  String? get authenticationFailureActionHint => _authenticationFailure?.error.actionHint;
 
   AcpStdioClient? get client => _client;
   AcpInitializeResult? get initializeResult => _initResult;
@@ -584,15 +591,16 @@ abstract class AcpPlugin({
         );
         final initResult = await _initialize(client);
         captureLiveInitializeResult(initResult);
+        await recoverSessionDirectories();
         _initResult = initResult;
         _syncWorkState();
         if (!_connected.isClosed) _connected.add(null);
         return true;
-      } catch (error) {
+      } catch (error, stackTrace) {
         await _commandListener?.dispose();
         _commandListener = null;
         if (error is PluginAuthenticationRequiredException) {
-          _authenticationFailure = error;
+          _authenticationFailure = (error: error, stackTrace: stackTrace);
           if (!_authenticationFailures.isClosed) _authenticationFailures.add(authenticationFailureActionHint);
         }
         _workState.set(PluginWorkState.unknown);
@@ -601,7 +609,7 @@ abstract class AcpPlugin({
           _client = null;
           _connectFuture = null;
         }
-        return await Future<bool>.error(error);
+        return await Future<bool>.error(error, stackTrace);
       }
     }();
     _connectFuture = future.catchError((Object _) => false);
@@ -616,22 +624,28 @@ abstract class AcpPlugin({
   /// capabilities). A non-v1 negotiation fails the handshake (degrading the
   /// plugin) rather than driving the agent with a protocol it rejected.
   Future<AcpInitializeResult> _initialize(AcpStdioClient client) async {
-    final result = await AcpAgentApi(client: client).initialize(
-      formElicitation: supportsFormElicitation,
-      capabilityMeta: initializeCapabilityMeta,
-      authMethodId: authMethodId,
-      authMethodAllowlist: authMethodAllowlist,
-      timeout: AcpAgentApi.defaultRequestTimeout,
-    );
-    validateInitializeResult(result);
-    return result;
+    try {
+      final result = await AcpAgentApi(client: client).initialize(
+        formElicitation: supportsFormElicitation,
+        capabilityMeta: initializeCapabilityMeta,
+        authMethodId: authMethodId,
+        authMethodAllowlist: authMethodAllowlist,
+        timeout: AcpAgentApi.defaultRequestTimeout,
+      );
+      validateInitializeResult(result);
+      return result;
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(mapInitializationFailure(error: error), stackTrace);
+    }
   }
 
   Future<AcpStdioClient> _connectedClient() async {
     final ok = await ensureConnected();
     final client = _client;
     if (!ok || client == null) {
-      if (_authenticationFailure case final failure?) throw failure;
+      if (_authenticationFailure case final failure?) {
+        Error.throwWithStackTrace(failure.error, failure.stackTrace);
+      }
       throw StateError("$id agent is not connected");
     }
     return client;

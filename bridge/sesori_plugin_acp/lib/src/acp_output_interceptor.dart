@@ -11,12 +11,29 @@ typedef AcpOutputInterceptors = ({AcpOutputInterceptor? stdout, AcpOutputInterce
 /// or include it in errors; provider parsing belongs to the owning repository.
 class const AcpOutputInterceptor({
   required final int maxLineBytes,
+  final AcpOutputPrefix? prefix,
   required final bool Function({required List<int> line}) consumeLine,
 }) {
+  this : assert(prefix == null || (prefix.length > 0 && prefix.length <= maxLineBytes));
+
   Stream<List<int>> intercept({required Stream<List<int>> bytes}) => Stream.eventTransformed(
     bytes,
     (sink) => _AcpOutputSink(sink: sink, interceptor: this),
   );
+}
+
+/// Opt-in classification before whole-line buffering. Nonmatching lines stream
+/// through unchanged; only matching lines are subject to [AcpOutputInterceptor.maxLineBytes].
+/// The caller owns matching policy. The prefix must fit inside the line budget.
+class const AcpOutputPrefix({
+  required final int length,
+  required final bool Function({required List<int> prefix}) matches,
+});
+
+enum _AcpOutputLineState() {
+  classifying,
+  intercepting,
+  forwarding,
 }
 
 /// Each subscription owns its partial line. Unlike an async generator waiting
@@ -25,6 +42,9 @@ class _AcpOutputSink({required final EventSink<List<int>> sink, required final A
     implements EventSink<List<int>> {
   final BytesBuilder _pending = BytesBuilder(copy: false);
   bool _failed = false;
+  _AcpOutputLineState _lineState = interceptor.prefix == null
+      ? _AcpOutputLineState.intercepting
+      : _AcpOutputLineState.classifying;
 
   @override
   void add(List<int> chunk) {
@@ -46,17 +66,44 @@ class _AcpOutputSink({required final EventSink<List<int>> sink, required final A
   }
 
   void _append({required List<int> chunk, required int start, required int end}) {
-    if (_pending.length + end - start > interceptor.maxLineBytes) {
+    var offset = start;
+    final prefix = interceptor.prefix;
+    if (prefix != null && _lineState == _AcpOutputLineState.classifying) {
+      final prefixEnd = offset + (prefix.length - _pending.length);
+      final takeUntil = prefixEnd < end ? prefixEnd : end;
+      if (takeUntil > offset) _pending.add(chunk.sublist(offset, takeUntil));
+      offset = takeUntil;
+      if (_pending.length < prefix.length) return;
+      try {
+        _lineState = prefix.matches(prefix: _pending.toBytes().asUnmodifiableView())
+            ? _AcpOutputLineState.intercepting
+            : _AcpOutputLineState.forwarding;
+      } on Object catch (error, stackTrace) {
+        Error.throwWithStackTrace(AcpOutputInterceptionException(cause: error), stackTrace);
+      }
+      if (_lineState == _AcpOutputLineState.forwarding) sink.add(_pending.takeBytes());
+    }
+    if (_lineState == _AcpOutputLineState.forwarding) {
+      if (end > offset) sink.add(offset == 0 && end == chunk.length ? chunk : chunk.sublist(offset, end));
+      return;
+    }
+    if (_pending.length + end - offset > interceptor.maxLineBytes) {
       throw const AcpOutputInterceptionException(cause: null);
     }
-    if (end > start) _pending.add(chunk.sublist(start, end));
+    if (end > offset) _pending.add(chunk.sublist(offset, end));
   }
 
   void _emit() {
     final line = _pending.takeBytes();
+    final passthrough = _lineState != _AcpOutputLineState.intercepting;
+    _lineState = interceptor.prefix == null ? _AcpOutputLineState.intercepting : _AcpOutputLineState.classifying;
+    if (passthrough) {
+      if (line.isNotEmpty) sink.add(line);
+      return;
+    }
     final bool consumed;
     try {
-      consumed = interceptor.consumeLine(line: List<int>.unmodifiable(line));
+      consumed = interceptor.consumeLine(line: line.asUnmodifiableView());
     } on Object catch (error, stackTrace) {
       Error.throwWithStackTrace(AcpOutputInterceptionException(cause: error), stackTrace);
     }
