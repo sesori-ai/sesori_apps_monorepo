@@ -341,7 +341,7 @@ class CodexEventMapper({
       info: _assistantMessage(itemId: tool.canonicalId, threadId: threadId, time: tool.time),
     ),
     BridgeSseMessagePartUpdated(
-      part: const CodexToolPartMapper().map(sessionId: threadId, tool: tool, children: children),
+      part: const CodexToolPartMapper().map(sessionId: threadId, tool: tool),
     ),
   ];
 

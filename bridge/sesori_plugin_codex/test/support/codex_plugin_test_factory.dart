@@ -39,23 +39,25 @@ CodexPlugin createInjectedCodexPlugin({
     configReader: configReader,
   );
   final resolvedToolOutcomeRepository = toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository();
+  final messageRepository = CodexMessageRepository(
+    rolloutApi: rolloutApi,
+    rolloutToolMapper: rolloutToolMapper,
+    userContentMapper: userContentMapper,
+  );
   return CodexPlugin.composed(
     serverUrl: serverUrl,
     capabilityToken: null,
     clientFactory: clientFactory,
     sessionService: CodexSessionService(
       catalogRepository: catalogRepository,
-      messageRepository: CodexMessageRepository(
-        rolloutApi: rolloutApi,
-        rolloutToolMapper: rolloutToolMapper,
-        userContentMapper: userContentMapper,
-      ),
+      messageRepository: messageRepository,
       metadataRepository: metadataRepository,
       toolOutcomeRepository: resolvedToolOutcomeRepository,
       subAgentTracker: CodexSubAgentTracker(),
       sessionMapper: const CodexSessionMapper(),
       launchDirectory: projectCwd,
     ),
+    messageRepository: messageRepository,
     eventMapper: CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: projectCwd,

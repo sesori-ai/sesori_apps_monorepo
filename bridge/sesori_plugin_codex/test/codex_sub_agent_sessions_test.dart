@@ -279,6 +279,7 @@ void main() {
       final announcement = await service.handleSubAgentStarted(
         childThreadId: "child-1",
         parentThreadId: "root-1",
+        callId: "call-1",
         parentDirectory: "/repo/parent",
         agentPath: "/root/sleeper",
         status: const PluginSessionStatus.idle(),
@@ -302,6 +303,7 @@ void main() {
         await service.handleSubAgentStarted(
           childThreadId: "child-1",
           parentThreadId: "root-1",
+          callId: "call-1",
           parentDirectory: "/repo/parent",
           agentPath: "/root/sleeper",
           status: const PluginSessionStatus.busy(),
@@ -324,6 +326,7 @@ void main() {
       final announcement = await service.handleSubAgentStarted(
         childThreadId: "child-1",
         parentThreadId: "root-1",
+        callId: "call-1",
         parentDirectory: "/repo/parent",
         agentPath: "/root/sleeper",
         status: const PluginSessionStatus.idle(),
@@ -347,6 +350,7 @@ void main() {
       final announcement = service.handleSubAgentStarted(
         childThreadId: "child-1",
         parentThreadId: "root-1",
+        callId: "call-1",
         parentDirectory: "/repo/app",
         agentPath: "worker",
         status: const PluginSessionStatus.idle(),
@@ -363,6 +367,7 @@ void main() {
         await service.handleSubAgentStarted(
           childThreadId: "child-1",
           parentThreadId: "root-1",
+          callId: "call-1",
           parentDirectory: "/repo/app",
           agentPath: "worker",
           status: const PluginSessionStatus.busy(),
@@ -381,6 +386,7 @@ void main() {
       final announcement = service.handleSubAgentStarted(
         childThreadId: "child-1",
         parentThreadId: "root-1",
+        callId: "call-1",
         parentDirectory: "/repo/app",
         agentPath: "worker",
         status: const PluginSessionStatus.idle(),
@@ -450,6 +456,7 @@ void main() {
       final announcement = await service.handleSubAgentStarted(
         childThreadId: "child-1",
         parentThreadId: "root-1",
+        callId: "call-1",
         parentDirectory: "/repo/app",
         agentPath: "worker",
         status: const PluginSessionStatus.idle(),
@@ -460,6 +467,7 @@ void main() {
         await service.handleSubAgentStarted(
           childThreadId: "child-1",
           parentThreadId: "root-1",
+          callId: "call-1",
           parentDirectory: "/repo/app",
           agentPath: "worker",
           status: const PluginSessionStatus.busy(),

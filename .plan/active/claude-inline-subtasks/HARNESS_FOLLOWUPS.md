@@ -10,7 +10,7 @@
 - **Delivery:** one open PR at a time, following current repository rules.
   Codex now has nine steps: merged metadata, child-session, historical prompt
   preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
-  step 5/9, replay tiles 6/9, live lifecycle tiles 7/9, scoped stop 8/9, and
+  step 5/9, integrated tiles 6/9, lifecycle coverage 7/9, scoped stop 8/9, and
   coverage 9/9. Historical PR titles are unchanged. Progress is tracked in
   `TRACKER.md` "Harness Follow-Ups". The DeepSeek phone handoff is recorded in
   `followups/deepseek-phone-qa.md`; desktop remains deferred.
@@ -288,8 +288,8 @@ confirmation, no child session or partial stop) and gets that subset.
 | 3/9 | ⚙️ | `codex: parse typed child prompts from thread reads [step 3/6]` | PR #1387 merged under this historical title; preparation superseded by 0.153.4 evidence |
 | 4/9 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | PR #1396 merged at `7f6fb8cb50`; metadata-only `thread/read`, no discarded cache |
 | 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | Local predecessor `claude-inline-subtasks-codex-native-facts-step5`; typed DTOs and repository facts only, no tile activation |
-| 6/9 | ⚙️ | `codex: replay inline subtask tiles [step 6/9]` | Local successor; exact-call replay replacement and initial-turn result |
-| 7/9 | 🚧 | `codex: wire live subtask lifecycle tiles [step 7/9]` | Local successor; existing-tail live wiring, lifecycle, busy accounting, and docs |
+| 6/9 | 🚧 | `codex: integrate live and replay subtask tiles [step 6/9]` | Local branch `claude-inline-subtasks-codex-replay-tiles-step6`; exact-call replacement, existing-tail wiring, lifecycle, and busy accounting |
+| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Local successor; plugin write-path regressions and current-state docs |
 | 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
 | 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | matrix closure after live plugin QA |
 
