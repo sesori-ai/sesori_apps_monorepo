@@ -4,7 +4,7 @@
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
 - **Status:** Steps 1–8.c merged; Step 9 open for review; Step 10.a architecture-approved locally
-- **Base:** Step 10.a exact predecessor head `635df576103511dffb18a41624d2599ff5d7e7b9`
+- **Base:** Step 10.a current predecessor head `5c68c5b3a04ee284e72606a95be5e804dfa13939`
 - **Current branch:** `antigravity-harness-step-10a-archive-budgets`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
@@ -388,6 +388,8 @@
   `3f4f00d81335e5b34042e5d1b1a923189960f2a6`: all 18 files, 222 additions + 26 deletions = 248 changed lines.
   Reviewer run `caa5bebe`, no findings. User explicitly approved foreground execution after background bootstrap failed;
   no earlier Step 10 review launched. Keep the immutable reviewed count distinct from publication metadata.
+- [x] Integrated Step 9's unsupported-target/docs correction at `5c68c5b3a0`; archive-budget production/tests remain
+  unchanged from their approved checkpoint. The corrected predecessor has its own passing descriptor evidence.
 - [x] Step 11 explicitly names root `README.md` and `bridge/README.md`, per user request.
 
 ## Architecture Reviews
