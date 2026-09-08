@@ -103,8 +103,17 @@ final class NdjsonProcessClient({
     _process = process;
     _exit = Completer<int>();
     final exit = _exit;
-    unawaited(process.stdin.done.catchError((Object _) {}));
     final generation = token.generation;
+    unawaited(
+      process.stdin.done.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          if (generation != _generation) return;
+          Log.w("[$_logTag] stdin stream error", error, stackTrace);
+          _failPending(error: error, stackTrace: stackTrace);
+        },
+      ),
+    );
     _stdoutSubscription = process.stdoutLines.listen(
       (line) {
         if (generation == _generation) _handleLine(line: line);
@@ -190,27 +199,20 @@ final class NdjsonProcessClient({
     required Duration timeout,
     required NdjsonActivityMatcher? activityMatcher,
   }) async {
-    final process = _requireProcess();
+    _requireProcess();
     final pending = _PendingResponse(
       completer: Completer<JsonObject>(),
       timeout: timeout,
       activityMatcher: activityMatcher,
     );
+    final response = pending.completer.future;
+    response.ignore();
     _pending[id] = pending;
     _armTimeout(id: id, pending: pending);
     try {
+      // IOSink.add admits bytes synchronously to its FIFO controller. A per-frame
+      // flush binds the sink until I/O drains and makes concurrent adds throw.
       sendFrame(frame: frame);
-    } on Object catch (error, stackTrace) {
-      final failed = _removePending(id);
-      if (failed != null && !failed.completer.isCompleted) {
-        failed.completer.completeError(error, stackTrace);
-      }
-      rethrow;
-    }
-    final response = pending.completer.future;
-    response.ignore();
-    try {
-      await process.stdin.flush();
     } on Object catch (error, stackTrace) {
       final failed = _removePending(id);
       if (failed != null && !failed.completer.isCompleted) {
