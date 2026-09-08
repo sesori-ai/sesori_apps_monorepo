@@ -264,10 +264,16 @@ idle suspension, the management snapshot, and lifecycle commands.
   across refresh and overview/detail navigation. Same-harness commands, overrides, installs
   and authentication cannot conflict locally; a global timeout update excludes pending
   harness actions/confirmations in both directions. Independent results never erase a peer's
-  feedback, and dismissals apply only to the displayed attempt.
+  feedback, and dismissals apply only to the displayed attempt. Local authentication
+  ownership releases on terminal progress even if reconciliation fails and retained
+  metadata still reports in-progress; that metadata never proves success or blocks retry.
+  Remote conflicts and uncertain retries remain explicit failures. An owned retained
+  challenge can reopen, except while a global action is pending. Retained installation
+  or authentication alone does not prevent editing the global idle-timeout setting.
 - Force conflicts can auto-open only on an uncovered flow. Additional conflicts retain a
-  named Review action on their harness; Review opens the existing confirmation without
-  sending force. No stacked dialogs or automatic queue: confirmation and cancellation
+  named Review action on their harness, within a single grouped surface on both overview
+  and detail; Review opens the existing confirmation without sending force. No stacked
+  dialogs or automatic queue: confirmation and cancellation
   require the exact current attempt, and loading, identity replacement, unsupported/failure
   reset and close fence old completions and sheet callbacks.
 - Running means reported busy session work, not merely an active runtime. Idle or stopped

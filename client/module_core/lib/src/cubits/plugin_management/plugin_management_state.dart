@@ -211,12 +211,10 @@ extension PluginManagementReadyActions on PluginManagementReady {
       (harnessActions[pluginId]?.blocksControls ?? false) ||
       harnessActivityBlocked(pluginId: pluginId);
 
+  // Local owners reserve the target. Management metadata can remain inProgress
+  // after a terminal event and failed refresh; remote conflicts belong to the bridge.
   bool harnessActivityBlocked({required String pluginId}) =>
-      installs[pluginId] is PluginInstallInProgress ||
-      authenticationPluginId == pluginId ||
-      response.plugins.any(
-        (plugin) => plugin.setup.id == pluginId && plugin.authenticationState == PluginAuthenticationState.inProgress,
-      );
+      installs[pluginId] is PluginInstallInProgress || authenticationPluginId == pluginId;
 
   String? get authenticationPluginId => switch (authentication) {
     PluginAuthenticationPresentationStarting(:final pluginId) ||

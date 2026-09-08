@@ -44,12 +44,14 @@ class const HarnessSettingsDetailView({
                   _HarnessActionFeedback(
                     state: state,
                     target: PluginManagementActionTarget.harness(pluginId: pluginId),
+                    groupForceReview: true,
                   ),
                 if (plugin != null && state is PluginManagementReady)
                   _HarnessControlCard(
                     plugin: plugin,
                     action: state.harnessActions[pluginId] ?? const PluginManagementActionState.idle(),
                     blocked: state.harnessControlsBlocked(pluginId: pluginId),
+                    globalActionBlocked: state.globalAction.blocksControls,
                     authentication: state.authentication,
                     install: state.installs[pluginId],
                     scanning: state.scanningPluginIds.contains(pluginId),
@@ -75,6 +77,7 @@ class const _HarnessControlCard({
   required final PluginManagementMetadata plugin,
   required final PluginManagementActionState action,
   required final bool blocked,
+  required final bool globalActionBlocked,
   required final PluginAuthenticationPresentationState authentication,
 
   /// This harness' in-flight installation or retained failure.
@@ -209,7 +212,9 @@ class const _HarnessControlCard({
                     // a retained challenge after uncertain cancellation; every other
                     // row stays disabled until that flow settles.
                     onTap:
-                        (blocked && !authenticationForThisHarness) ||
+                        globalActionBlocked ||
+                            action.blocksControls ||
+                            (blocked && !authenticationForThisHarness) ||
                             authenticationStarting ||
                             (authenticationActive && !authenticationForThisHarness)
                         ? null

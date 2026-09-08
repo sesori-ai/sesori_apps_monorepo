@@ -186,6 +186,77 @@ void main() {
     );
   });
 
+  for (final progress in [
+    const PluginAuthenticationProgress.completed(),
+    const PluginAuthenticationProgress.cancelled(),
+    const PluginAuthenticationProgress.failed(message: "Login failed"),
+  ]) {
+    test("terminal $progress releases retry despite stale metadata and failed refresh", () async {
+      final plugin = _conflict([]).current;
+      final initial = _response.copyWith(plugins: [plugin]);
+      snapshots.add(PluginManagementLoadResult.supported(response: initial, refreshError: null));
+      await _settle();
+      authenticationChallenges.add({
+        "one": PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        ),
+      });
+      await cubit.startAuthentication(pluginId: "one");
+      final stale = initial.copyWith(
+        plugins: [plugin.copyWith(authenticationState: PluginAuthenticationState.inProgress)],
+      );
+      snapshots.add(PluginManagementLoadResult.supported(response: stale, refreshError: null));
+      await _settle();
+      expect((cubit.state as PluginManagementReady).harnessControlsBlocked(pluginId: "one"), isTrue);
+      authenticationTerminal.add((pluginId: "one", progress: progress));
+      final refreshError = ApiError.generic();
+      snapshots.add(PluginManagementLoadResult.supported(response: stale, refreshError: refreshError));
+      await _settle();
+      final ready = cubit.state as PluginManagementReady;
+      expect(ready.response, same(stale));
+      expect(ready.refresh, PluginManagementRefreshState.failed(error: refreshError));
+      expect(ready.harnessControlsBlocked(pluginId: "one"), isFalse);
+      if (progress is PluginAuthenticationFailedProgress) {
+        expect(ready.authentication, isA<PluginAuthenticationPresentationFailed>());
+        cubit.dismissAuthentication();
+      } else {
+        expect(ready.authentication, isA<PluginAuthenticationPresentationIdle>());
+      }
+      // Admission is not success: a still-busy bridge can reject the retry.
+      final conflict = PluginAuthenticationConflict(
+        pluginId: "one",
+        reasons: const [PluginAuthenticationConflictReason.inFlight],
+        current: stale.plugins.single,
+      );
+      when(() => service.startAuthentication(pluginId: "one")).thenAnswer(
+        (_) async => PluginAuthenticationStartResult.failed(
+          failure: PluginAuthenticationFailure.conflict(conflict: conflict),
+        ),
+      );
+      await cubit.startAuthentication(pluginId: "one");
+      verify(() => service.startAuthentication(pluginId: "one")).called(2);
+      expect(
+        (cubit.state as PluginManagementReady).authentication,
+        PluginAuthenticationPresentationState.failed(
+          pluginId: "one",
+          error: PluginAuthenticationPresentationError.conflict(conflict: conflict),
+        ),
+      );
+      when(() => service.startAuthentication(pluginId: "one")).thenAnswer(
+        (_) async => const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()),
+      );
+      await cubit.startAuthentication(pluginId: "one");
+      expect(
+        (cubit.state as PluginManagementReady).authentication,
+        const PluginAuthenticationPresentationState.failed(
+          pluginId: "one",
+          error: PluginAuthenticationPresentationError.uncertain(),
+        ),
+      );
+    });
+  }
+
   test("authentication maps a thrown browser launch and allows retry", () async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     authenticationChallenges.add({

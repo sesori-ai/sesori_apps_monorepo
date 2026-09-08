@@ -517,6 +517,102 @@ void main() {
     });
   }
 
+  for (final detail in [false, true]) {
+    testWidgets("retained force Review has one grouped surface without divider; detail=$detail", (tester) async {
+      phone(tester: tester);
+      publish(plugins: [_ready]);
+      const conflict = PluginLifecycleConflict(
+        pluginId: "ready",
+        reasons: [PluginLifecycleConflictReason.busy],
+        current: _ready,
+      );
+      when(
+        () => service.command(
+          pluginId: "ready",
+          request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+        ),
+      ).thenAnswer((_) async => const PluginManagementMutationResult.conflict(conflict: conflict));
+      when(() => service.assessForce(conflict: conflict, action: PluginManagementForceAction.disable)).thenReturn(
+        const PluginManagementForceAssessment.requiresConfirmation(
+          request: PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+        ),
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(Duration.zero);
+        await cubit.disable(pluginId: "ready");
+      });
+      await tester.pumpWidget(app(detailId: detail ? "ready" : null));
+      await tester.pumpAndSettle();
+      final review = find.byKey(const Key("harness_management_force_review_ready"));
+      expect(review, findsOneWidget);
+      expect(find.ancestor(of: review, matching: find.byType(PregoGroupedRows)), findsOneWidget);
+      expect(find.descendant(of: review, matching: find.byType(ColoredBox)), findsNothing);
+      verifyNever(
+        () => service.command(
+          pluginId: "ready",
+          request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+        ),
+      );
+    });
+  }
+
+  for (final uncertainCancel in [false, true]) {
+    testWidgets("owned challenge reopens except during global timeout; uncertainCancel=$uncertainCancel", (
+      tester,
+    ) async {
+      phone(tester: tester);
+      publish(
+        plugins: [
+          _ready.copyWith(
+            setup: _ready.setup.copyWith(state: PluginSetupState.authenticationRequired),
+            managementCapabilities: {..._ready.managementCapabilities, PluginManagementCapability.authentication},
+          ),
+        ],
+      );
+      final challenge = PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      );
+      final challenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded({"ready": challenge});
+      addTearDown(challenges.close);
+      when(() => service.authenticationChallenges).thenAnswer((_) => challenges.stream);
+      when(() => service.startAuthentication(pluginId: "ready"))
+          .thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: challenge));
+      when(() => service.cancelAuthentication(pluginId: "ready")).thenAnswer(
+        (_) async => const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()),
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(Duration.zero);
+        await cubit.startAuthentication(pluginId: "ready");
+        if (uncertainCancel) await cubit.cancelAuthentication();
+      });
+      await tester.pumpWidget(app(detailId: "ready"));
+      await tester.pumpAndSettle();
+      final row = find.byKey(const Key("harness_authentication_ready"));
+      expect(tester.widget<PregoGroupedRow>(row).onTap, isNotNull);
+      const input = PluginManagementIdleTimeoutInput.noTimeout();
+      const request = PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0);
+      final pending = Completer<PluginManagementMutationResult>();
+      when(() => service.planApplyAllIdleTimeout(input: input)).thenReturn(
+        const PluginManagementCommandPlan.request(request: request),
+      );
+      when(() => service.updateIdleTimeout(request: request)).thenAnswer((_) => pending.future);
+      final updating = cubit.applyIdleTimeoutToAll(input: input);
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      expect((cubit.state as PluginManagementReady).globalAction, isA<PluginManagementActionInProgress>());
+      expect(tester.widget<PregoGroupedRow>(row).onTap, isNull);
+      pending.complete(const PluginManagementMutationResult.uncertain());
+      await updating;
+      await tester.pumpAndSettle();
+      expect(tester.widget<PregoGroupedRow>(row).onTap, isNotNull);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("harness_authentication_code")), findsOneWidget);
+      verify(() => service.startAuthentication(pluginId: "ready")).called(1);
+    });
+  }
+
   testWidgets("global timeout shows progress only for its own all-harness update", (tester) async {
     phone(tester: tester);
     publish(plugins: [_ready]);

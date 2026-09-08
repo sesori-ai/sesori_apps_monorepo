@@ -157,6 +157,7 @@ class const _ReadyView({
                           _HarnessActionFeedback(
                             state: state,
                             target: PluginManagementActionTarget.harness(pluginId: plugin.setup.id),
+                            groupForceReview: false,
                           ),
                         ],
                       ),
@@ -276,7 +277,11 @@ class const _HarnessErrors({required final PluginManagementReady state}) extends
           ),
           const SizedBox(height: PregoSpacing.xl),
         ],
-        _HarnessActionFeedback(state: state, target: const PluginManagementActionTarget.allHarnesses()),
+        _HarnessActionFeedback(
+          state: state,
+          target: const PluginManagementActionTarget.allHarnesses(),
+          groupForceReview: false,
+        ),
         if (state.authentication case final PluginAuthenticationPresentationFailed failure) ...[
           _MessageRow(
             key: const Key("harness_authentication_error"),
@@ -321,14 +326,15 @@ class const _MessageRow({
 class const _HarnessActionFeedback({
   required final PluginManagementReady state,
   required final PluginManagementActionTarget target,
+  required final bool groupForceReview,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final action = state.actionFor(target: target);
     final cubit = context.read<PluginManagementCubit>();
-    return switch (action) {
+    final feedback = switch (action) {
       PluginManagementActionFailed() => Padding(
-        padding: const EdgeInsets.only(bottom: PregoSpacing.md),
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
         child: _MessageRow(
           key: Key(
             "harness_management_action_error_${switch (target) {
@@ -358,5 +364,11 @@ class const _HarnessActionFeedback({
       ),
       PluginManagementActionIdle() || PluginManagementActionInProgress() => const SizedBox.shrink(),
     };
+    return groupForceReview && action is PluginManagementActionForceConfirmationRequired
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+            child: PregoGroupedRows(color: context.prego.colors.bgSurface2, children: [feedback]),
+          )
+        : feedback;
   }
 }
