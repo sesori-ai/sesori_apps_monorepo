@@ -16,7 +16,15 @@ public final class ThemePregoPlugin: NSObject, FlutterPlugin {
       withId: NativeActivityIndicatorPlatformViewFactory.viewType
     )
     registrar.register(
-      NativeAiLoaderPlatformViewFactory(),
+      NativeAiLoaderPlatformViewFactory(
+        messenger: {
+          #if os(iOS)
+            registrar.messenger()
+          #else
+            registrar.messenger
+          #endif
+        }()
+      ),
       withId: NativeAiLoaderPlatformViewFactory.viewType
     )
   }
@@ -62,95 +70,106 @@ private struct ActivityIndicatorCreationParams {
   }
 }
 
-/// The three keyframe colours and phase offset the Dart sparkle sends when
-/// it creates a native twinkle view.
+/// Theme colours, initial state, and phase supplied by the Flutter decoration.
 private struct AiLoaderCreationParams {
   let solid: CGColor
   let outline: CGColor
-  let faded: CGColor
   let phase: Double
+  let loading: Bool
 
   init?(from args: Any?) {
     guard
       let dictionary = args as? [String: Any],
       let solid = dictionary["solid"] as? NSNumber,
       let outline = dictionary["outline"] as? NSNumber,
-      let faded = dictionary["faded"] as? NSNumber,
-      let phase = dictionary["phase"] as? NSNumber
+      let phase = dictionary["phase"] as? NSNumber,
+      let loading = dictionary["loading"] as? Bool
     else { return nil }
     self.solid = ColorComponents(fromARGB: solid.int64Value).cgColor
     self.outline = ColorComponents(fromARGB: outline.int64Value).cgColor
-    self.faded = ColorComponents(fromARGB: faded.int64Value).cgColor
     self.phase = phase.doubleValue
+    self.loading = loading
   }
 }
 
-/// The AI sparkle's geometry and twinkle, mirroring `PregoAiLoader`'s
-/// painter.
-///
-/// The keyframes — solid brand, hollow outline at 0.4, faded solid at 0.7,
-/// back to solid — and the 1.4s period must stay in step with the Dart
-/// fallback painter. The path is the painter's Tabler `sparkle-2` outline
-/// with its arcs pre-converted to cubic Béziers (CGPath has no SVG-style
-/// endpoint-parameterised arc).
+/// Mirrors the Flutter painter: a 14px Tabler sparkle inside Figma's 20px
+/// frame. Core Animation owns every animation frame on Apple platforms.
 private enum AiLoaderSparkle {
-  static let viewBox: CGFloat = 24
-  static let period: CFTimeInterval = 1.4
+  static let viewBox: CGFloat = 20
+  static let period: CFTimeInterval = 2
+  static let completionDuration: CFTimeInterval = 0.7
+  static let clear = ColorComponents(fromARGB: 0x00b2d1ff).cgColor
+  static let completionHighlight = ColorComponents(fromARGB: 0xffb2d1ff).cgColor
+  static let colourTiming = CAMediaTimingFunction(controlPoints: 0.5, 0, 0.5, 1)
 
   static func makeShapeLayer(params: AiLoaderCreationParams) -> CAShapeLayer {
     let layer = CAShapeLayer()
     layer.bounds = CGRect(x: 0, y: 0, width: viewBox, height: viewBox)
     layer.path = path()
-    layer.lineWidth = 2
+    layer.lineWidth = 7.0 / 6.0
     layer.lineJoin = .round
     layer.lineCap = .round
-    // The base (non-animated) values are the resting solid keyframe: the
-    // same frame the Dart painter shows when the loop is off. The running
-    // twinkle overrides them in the presentation layer only.
-    layer.fillColor = params.solid
-    layer.strokeColor = params.solid
+    layer.fillColor = params.loading ? clear : params.solid
+    layer.strokeColor = params.loading ? params.outline : params.solid
+    if params.loading {
+      layer.setValue(params.phase * .pi * 2, forKeyPath: "transform.rotation.z")
+    }
     return layer
   }
 
-  /// The infinitely repeating twinkle, animated entirely by the render
-  /// server: once added, the app process schedules no frames for it.
-  static func twinkle(params: AiLoaderCreationParams) -> CAAnimationGroup {
-    let keyTimes: [NSNumber] = [0, 0.4, 0.7, 1]
+  /// Capture the displayed angle and colours before replacing animations, so
+  /// finishing and a rapid restart never jump to a different visual frame.
+  static func animate(layer: CAShapeLayer, params: AiLoaderCreationParams, loading: Bool) {
+    let displayed = layer.presentation() ?? layer
+    let angle = (displayed.value(forKeyPath: "transform.rotation.z") as? NSNumber)?.doubleValue ?? 0
+    let fill = displayed.fillColor ?? clear
+    let stroke = displayed.strokeColor ?? params.outline
+    let quarterTurn = Double.pi / 2
+    let target = loading ? angle : ceil((angle + 0.593) / quarterTurn) * quarterTurn
 
-    let fill = CAKeyframeAnimation(keyPath: "fillColor")
-    // The fill hollows out towards the outline keyframe and refills towards
-    // the faded one; encoding the opacity into the colour's alpha lets one
-    // linear colour interpolation carry both.
-    fill.values = [
-      params.solid,
-      params.outline.copy(alpha: 0) ?? params.outline,
-      params.faded,
-      params.solid,
-    ]
-    fill.keyTimes = keyTimes
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    layer.removeAllAnimations()
+    layer.setValue(target, forKeyPath: "transform.rotation.z")
+    layer.fillColor = loading ? clear : params.solid
+    layer.strokeColor = loading ? params.outline : params.solid
 
-    let stroke = CAKeyframeAnimation(keyPath: "strokeColor")
-    stroke.values = [params.solid, params.outline, params.faded, params.solid]
-    stroke.keyTimes = keyTimes
-
-    let scale = CAKeyframeAnimation(keyPath: "transform.scale")
-    scale.values = [1, 0.86, 0.92, 1]
-    scale.keyTimes = keyTimes
-
-    let group = CAAnimationGroup()
-    group.animations = [fill, stroke, scale]
-    // A group's duration does NOT propagate to its children; an unset child
-    // duration falls back to the 0.25s CATransaction default, which would end
-    // each keyframe pass almost immediately and leave the sparkle solid for
-    // the rest of every repeat.
-    for animation in group.animations ?? [] {
-      animation.duration = period
+    let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
+    rotation.fromValue = angle
+    rotation.toValue = loading ? angle + .pi * 2 : target
+    rotation.duration = loading ? period : completionDuration
+    rotation.timingFunction = loading
+      ? CAMediaTimingFunction(name: .linear)
+      : CAMediaTimingFunction(controlPoints: 0.45, 1.45, 0.833, 1.368)
+    if loading {
+      rotation.repeatCount = .infinity
     }
-    group.duration = period
-    group.repeatCount = .infinity
-    // Staggers list rows apart, matching the Dart painter's phase offset.
-    group.timeOffset = params.phase * period
-    return group
+    layer.add(rotation, forKey: loading ? "loading" : "completion")
+
+    let fillAnimation = CAKeyframeAnimation(keyPath: "fillColor")
+    fillAnimation.values = loading ? [fill, clear] : [fill, completionHighlight, params.solid]
+    fillAnimation.keyTimes = loading ? [0, 1] : [0, 0.5, 1]
+    fillAnimation.timingFunctions = loading ? [colourTiming] : [colourTiming, colourTiming]
+    fillAnimation.duration = loading ? 0.15 : completionDuration
+    layer.add(fillAnimation, forKey: "fill")
+
+    let strokeAnimation = CABasicAnimation(keyPath: "strokeColor")
+    strokeAnimation.fromValue = stroke
+    strokeAnimation.toValue = loading ? params.outline : params.solid
+    strokeAnimation.duration = loading ? 0.15 : completionDuration
+    strokeAnimation.timingFunction = colourTiming
+    layer.add(strokeAnimation, forKey: "stroke")
+    CATransaction.commit()
+  }
+
+  static func showStatic(layer: CAShapeLayer, params: AiLoaderCreationParams, loading: Bool) {
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    layer.removeAllAnimations()
+    layer.transform = CATransform3DIdentity
+    layer.fillColor = loading ? clear : params.solid
+    layer.strokeColor = loading ? params.outline : params.solid
+    CATransaction.commit()
   }
 
   private static func path() -> CGPath {
@@ -201,7 +220,8 @@ private enum AiLoaderSparkle {
       to: CGPoint(x: 12, y: 3),
       control1: CGPoint(x: 11.289, y: 3.232), control2: CGPoint(x: 11.625, y: 3.001))
     path.closeSubpath()
-    return path
+    var transform = CGAffineTransform(a: 7.0 / 12.0, b: 0, c: 0, d: 7.0 / 12.0, tx: 3, ty: 3.4)
+    return path.copy(using: &transform)!
   }
 }
 
@@ -308,6 +328,12 @@ private enum AiLoaderSparkle {
 
   private final class NativeAiLoaderPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
     static let viewType = "sesori/native-ai-loader"
+    private let messenger: FlutterBinaryMessenger
+
+    init(messenger: FlutterBinaryMessenger) {
+      self.messenger = messenger
+      super.init()
+    }
 
     func createArgsCodec() -> FlutterMessageCodec & NSObjectProtocol {
       FlutterStandardMessageCodec.sharedInstance()
@@ -321,7 +347,7 @@ private enum AiLoaderSparkle {
       guard let params = AiLoaderCreationParams(from: args) else {
         preconditionFailure("Invalid native AI loader creation arguments")
       }
-      return NativeAiLoaderPlatformView(frame: frame, params: params)
+      return NativeAiLoaderPlatformView(frame: frame, params: params, messenger: messenger, viewId: viewId)
     }
   }
 
@@ -329,9 +355,13 @@ private enum AiLoaderSparkle {
     private let params: AiLoaderCreationParams
     private let fitLayer = CALayer()
     private let sparkleLayer: CAShapeLayer
+    private let channel: FlutterMethodChannel
+    private var loading: Bool
 
-    init(frame: CGRect, params: AiLoaderCreationParams) {
+    init(frame: CGRect, params: AiLoaderCreationParams, messenger: FlutterBinaryMessenger, viewId: Int64) {
       self.params = params
+      loading = params.loading
+      channel = FlutterMethodChannel(name: "sesori/native-ai-loader/\(viewId)", binaryMessenger: messenger)
       sparkleLayer = AiLoaderSparkle.makeShapeLayer(params: params)
       super.init(frame: frame)
 
@@ -341,27 +371,51 @@ private enum AiLoaderSparkle {
       accessibilityElementsHidden = true
       fitLayer.bounds = CGRect(
         x: 0, y: 0, width: AiLoaderSparkle.viewBox, height: AiLoaderSparkle.viewBox)
-      sparkleLayer.position = CGPoint(
-        x: AiLoaderSparkle.viewBox / 2, y: AiLoaderSparkle.viewBox / 2)
+      // Keep Figma's baseline offset outside rotation so every quarter-turn
+      // rests on the same footprint as an initially idle sparkle.
+      sparkleLayer.anchorPoint = CGPoint(x: 0.5, y: 0.52)
+      sparkleLayer.position = CGPoint(x: 10, y: 10.4)
       fitLayer.addSublayer(sparkleLayer)
       layer.addSublayer(fitLayer)
+
+      channel.setMethodCallHandler { [weak self] call, result in
+        guard call.method == "setLoading" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        guard let loading = call.arguments as? Bool else {
+          result(FlutterError(
+            code: "invalid_arguments",
+            message: "Expected a Boolean loading argument for native AI loader view \(viewId)",
+            details: call.arguments
+          ))
+          return
+        }
+        self?.setLoading(loading: loading)
+        result(nil)
+      }
 
       let notificationCenter = NotificationCenter.default
       notificationCenter.addObserver(
         self,
-        selector: #selector(twinkleConditionsDidChange),
+        selector: #selector(animationConditionsDidChange),
         name: UIAccessibility.reduceMotionStatusDidChangeNotification,
         object: nil
       )
-      // UIKit strips CAAnimations when the app backgrounds; the repeating
-      // twinkle has to be re-added on return.
+      // UIKit strips animations on backgrounding. Resume only loading when
+      // the app returns; idle must never replay its completion transition.
       notificationCenter.addObserver(
         self,
-        selector: #selector(twinkleConditionsDidChange),
+        selector: #selector(animationConditionsDidChange),
         name: UIApplication.didBecomeActiveNotification,
         object: nil
       )
-      updateAnimationState()
+      notificationCenter.addObserver(
+        self,
+        selector: #selector(animationConditionsDidChange),
+        name: UIApplication.didEnterBackgroundNotification,
+        object: nil
+      )
     }
 
     required init?(coder: NSCoder) {
@@ -369,6 +423,7 @@ private enum AiLoaderSparkle {
     }
 
     deinit {
+      channel.setMethodCallHandler(nil)
       NotificationCenter.default.removeObserver(self)
     }
 
@@ -396,19 +451,30 @@ private enum AiLoaderSparkle {
       updateAnimationState()
     }
 
-    @objc private func twinkleConditionsDidChange() {
+    @objc private func animationConditionsDidChange() {
       updateAnimationState()
     }
 
-    private func updateAnimationState() {
-      if window != nil && !UIAccessibility.isReduceMotionEnabled {
-        if sparkleLayer.animation(forKey: "twinkle") == nil {
-          sparkleLayer.add(AiLoaderSparkle.twinkle(params: params), forKey: "twinkle")
-        }
+    private var canAnimate: Bool {
+      window != nil && UIApplication.shared.applicationState == .active
+        && !UIAccessibility.isReduceMotionEnabled
+    }
+
+    private func setLoading(loading: Bool) {
+      guard self.loading != loading else { return }
+      self.loading = loading
+      if canAnimate {
+        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: loading)
       } else {
-        // The base layer values are the resting solid keyframe, so removing
-        // the animation is itself the static reduced-motion frame.
-        sparkleLayer.removeAnimation(forKey: "twinkle")
+        AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
+      }
+    }
+
+    private func updateAnimationState() {
+      if !canAnimate {
+        AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
+      } else if loading && sparkleLayer.animation(forKey: "loading") == nil {
+        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: true)
       }
     }
   }
@@ -531,6 +597,12 @@ private enum AiLoaderSparkle {
 
   private final class NativeAiLoaderPlatformViewFactory: NSObject, FlutterPlatformViewFactory {
     static let viewType = "sesori/native-ai-loader"
+    private let messenger: FlutterBinaryMessenger
+
+    init(messenger: FlutterBinaryMessenger) {
+      self.messenger = messenger
+      super.init()
+    }
 
     func createArgsCodec() -> (FlutterMessageCodec & NSObjectProtocol)? {
       FlutterStandardMessageCodec.sharedInstance()
@@ -540,7 +612,7 @@ private enum AiLoaderSparkle {
       guard let params = AiLoaderCreationParams(from: args) else {
         preconditionFailure("Invalid native AI loader creation arguments")
       }
-      return NativeAiLoaderView(params: params)
+      return NativeAiLoaderView(params: params, messenger: messenger, viewId: viewId)
     }
   }
 
@@ -548,9 +620,15 @@ private enum AiLoaderSparkle {
     private let params: AiLoaderCreationParams
     private let fitLayer = CALayer()
     private let sparkleLayer: CAShapeLayer
+    private let channel: FlutterMethodChannel
+    private var loading: Bool
 
-    init(params: AiLoaderCreationParams) {
+    override var isFlipped: Bool { true }
+
+    init(params: AiLoaderCreationParams, messenger: FlutterBinaryMessenger, viewId: Int64) {
       self.params = params
+      loading = params.loading
+      channel = FlutterMethodChannel(name: "sesori/native-ai-loader/\(viewId)", binaryMessenger: messenger)
       sparkleLayer = AiLoaderSparkle.makeShapeLayer(params: params)
       super.init(frame: .zero)
 
@@ -560,10 +638,29 @@ private enum AiLoaderSparkle {
       wantsLayer = true
       fitLayer.bounds = CGRect(
         x: 0, y: 0, width: AiLoaderSparkle.viewBox, height: AiLoaderSparkle.viewBox)
-      sparkleLayer.position = CGPoint(
-        x: AiLoaderSparkle.viewBox / 2, y: AiLoaderSparkle.viewBox / 2)
+      // Keep Figma's baseline offset outside rotation so every quarter-turn
+      // rests on the same footprint as an initially idle sparkle.
+      sparkleLayer.anchorPoint = CGPoint(x: 0.5, y: 0.52)
+      sparkleLayer.position = CGPoint(x: 10, y: 10.4)
       fitLayer.addSublayer(sparkleLayer)
       layer?.addSublayer(fitLayer)
+
+      channel.setMethodCallHandler { [weak self] call, result in
+        guard call.method == "setLoading" else {
+          result(FlutterMethodNotImplemented)
+          return
+        }
+        guard let loading = call.arguments as? Bool else {
+          result(FlutterError(
+            code: "invalid_arguments",
+            message: "Expected a Boolean loading argument for native AI loader view \(viewId)",
+            details: call.arguments
+          ))
+          return
+        }
+        self?.setLoading(loading: loading)
+        result(nil)
+      }
 
       NSWorkspace.shared.notificationCenter.addObserver(
         self,
@@ -571,7 +668,6 @@ private enum AiLoaderSparkle {
         name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
         object: nil
       )
-      updateAnimationState()
     }
 
     required init?(coder: NSCoder) {
@@ -579,6 +675,7 @@ private enum AiLoaderSparkle {
     }
 
     deinit {
+      channel.setMethodCallHandler(nil)
       NSWorkspace.shared.notificationCenter.removeObserver(
         self,
         name: NSWorkspace.accessibilityDisplayOptionsDidChangeNotification,
@@ -610,15 +707,25 @@ private enum AiLoaderSparkle {
       updateAnimationState()
     }
 
-    private func updateAnimationState() {
-      if window != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion {
-        if sparkleLayer.animation(forKey: "twinkle") == nil {
-          sparkleLayer.add(AiLoaderSparkle.twinkle(params: params), forKey: "twinkle")
-        }
+    private var canAnimate: Bool {
+      window != nil && !NSWorkspace.shared.accessibilityDisplayShouldReduceMotion
+    }
+
+    private func setLoading(loading: Bool) {
+      guard self.loading != loading else { return }
+      self.loading = loading
+      if canAnimate {
+        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: loading)
       } else {
-        // The base layer values are the resting solid keyframe, so removing
-        // the animation is itself the static reduced-motion frame.
-        sparkleLayer.removeAnimation(forKey: "twinkle")
+        AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
+      }
+    }
+
+    private func updateAnimationState() {
+      if !canAnimate {
+        AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
+      } else if loading && sparkleLayer.animation(forKey: "loading") == nil {
+        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: true)
       }
     }
   }

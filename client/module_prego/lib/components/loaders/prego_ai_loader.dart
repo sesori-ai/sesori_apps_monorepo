@@ -1,5 +1,8 @@
-/// The AI activity indicator: a sparkle that twinkles while an agent works.
+/// The thread activity sparkle: rotating outline → settled unread fill.
 library;
+
+import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter/foundation.dart";
 import "package:flutter/rendering.dart";
@@ -12,69 +15,36 @@ import "../../utils/lerp_utils.dart";
 
 /// How the sparkle's interior is painted.
 enum PregoAiLoaderFillMode() {
-  /// Follow the designed solid → outline → faded-solid twinkle keyframes.
+  /// Hollow while working; fills once when work finishes.
   keyframed,
 
-  /// Keep the exact Tabler `sparkle-2` path hollow at every frame.
+  /// A hollow mark, including when a parent owns its animation.
   outline,
 }
 
-/// A sparkle marking AI activity, twinkling while [animate] is set.
+/// Figma's `Icon AI Loader` (2506:20093): a 14px glyph in a 20px slot.
 ///
-/// The loop runs through three designed keyframes — solid brand, hollow
-/// outline, faded solid — shrinking slightly as it hollows out, so it reads as
-/// a pulse rather than a spinner. With [animate] false it rests on the first of
-/// them, a solid brand sparkle: the same still frame the platform's
-/// reduced-motion preference forces, so a caller can use it as a static "has
-/// activity" mark without a second widget.
+/// [animate] means the agent is working: a hollow sparkle turns once every
+/// two seconds. Changing it to false eases the current rotation into place
+/// and fills the sparkle blue, once. Mounting an already-unread row renders
+/// the solid mark immediately. A new turn interrupts the settle in place.
 ///
-/// On iOS and macOS the twinkle is a native platform view animated by the
-/// render server, so a screen of working sessions schedules no Flutter frames.
-/// Android deliberately keeps the Flutter painter: hybrid-composition platform
-/// views in scrolling list rows wreck Android scroll performance (measured
-/// on-device, 2026-08-31) even though they improve idle battery. Every static
-/// state uses the painter too.
-///
-/// The sparkle is decorative — it always accompanies a label that carries the
-/// meaning, so it is excluded from semantics.
+/// Apple platforms keep the loop and settle in Core Animation; other platforms
+/// repaint only this isolated primitive. Reduced motion preserves the hollow
+/// working / solid unread distinction without rotation. The containing row
+/// supplies the status semantics; this mark is decorative.
 class const PregoAiLoader({
   super.key,
-
-  /// Side of the square the sparkle is painted into. Defaults to the 16px the
-  /// design uses inline with a text-sm label.
-  final double size = 16,
-
-  /// Whether the sparkle twinkles. When false it rests on the solid keyframe.
+  final double size = 20,
   final bool animate = true,
-
-  /// Whether the sparkle follows its fill keyframes or stays outlined.
-  ///
-  /// The outline mode is useful when a parent owns the motion, such as a
-  /// spinner that rotates the Figma icon without changing its drawing style.
   final PregoAiLoaderFillMode fillMode = .keyframed,
 
-  /// Overrides the sparkle colour for every keyframe.
-  ///
-  /// The default follows the designed brand/outline/disabled colour sequence.
-  /// Components that choreograph the sparkle themselves can instead pass one
-  /// semantic colour and set [animate] to false, then transform the static
-  /// mark from their own shared timeline.
+  /// Overrides both states, for a caller-owned timeline such as Deep Scan.
   final Color? color,
 
-  /// Fraction of the loop [0, 1) this sparkle starts at.
-  ///
-  /// Several sparkles built in the same frame would otherwise twinkle in
-  /// lockstep — a list of running projects reads as one flickering block
-  /// rather than several independently working agents. Callers pass a value
-  /// derived from something stable about the row, so a given row's phase
-  /// survives a rebuild. Ignored while the sparkle is at rest, which always
-  /// shows the solid keyframe.
+  /// Initial fraction of a rotation, stable per row across rebuilds.
   final double phase = 0,
 }) extends StatefulWidget {
-  /// A [phase] derived from [seed], for staggering a list of sparkles.
-  ///
-  /// Rows pass something stable about themselves (their id), so each row keeps
-  /// its offset across rebuilds while different rows twinkle out of step.
   static double phaseFor(String seed) => (seed.hashCode % 100) / 100;
 
   @override
@@ -83,174 +53,193 @@ class const PregoAiLoader({
 
 class _PregoAiLoaderState()
     extends State<PregoAiLoader>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   static const _nativeViewType = "sesori/native-ai-loader";
+  static const _period = Duration(seconds: 2);
 
-  /// One full twinkle. Slow enough to read as breathing rather than blinking.
-  /// The native renderer hardcodes the same period.
-  static const Duration _period = Duration(milliseconds: 1400);
+  // The Figma example contains several seconds of loading and a long idle
+  // hold. Only the finish is a UI transition: preserve its fill and rotational
+  // overshoot in 700ms, without delaying the actual thread state or input.
+  // Keep these values in step with AiLoaderSparkle in the Darwin renderer.
+  static const _settleDuration = Duration(milliseconds: 700);
+  static const _resumeDuration = Duration(milliseconds: 150);
+  static const _settleCurve = Cubic(0.45, 1.45, 0.833, 1.368);
 
-  /// Whether this platform has a native twinkle renderer registered by the
-  /// theme_prego plugin. iOS and macOS: on Android the sparkle sits in
-  /// scrolling list rows, where per-row platform views cost far more in scroll
-  /// jank than they save in idle battery.
-  static bool get _nativeTwinkleSupported {
-    if (kIsWeb) return false;
-    return switch (defaultTargetPlatform) {
-      TargetPlatform.iOS || TargetPlatform.macOS => true,
-      TargetPlatform.android || TargetPlatform.fuchsia || TargetPlatform.linux || TargetPlatform.windows => false,
-    };
-  }
+  late final _rotation = AnimationController.unbounded(
+    vsync: this,
+    value: widget.animate ? widget.phase * 2 * math.pi : 0,
+  );
+  late final _fill = AnimationController(vsync: this, value: 1);
+  late ({Color fill, Color stroke}) _fillOrigin = (
+    fill: const Color(0x00B2D1FF),
+    stroke: context.prego.colors.textPrimary,
+  );
+  MethodChannel? _nativeChannel;
 
-  bool get _usesNativeTwinkle => _nativeTwinkleSupported && widget.fillMode == .keyframed && widget.color == null;
+  bool get _usesNativeRenderer =>
+      !kIsWeb &&
+      (defaultTargetPlatform == TargetPlatform.iOS || defaultTargetPlatform == TargetPlatform.macOS) &&
+      widget.fillMode == .keyframed &&
+      widget.color == null;
 
-  /// Constructed unstarted: whether it may run depends on [MediaQuery], which
-  /// cannot be read until `didChangeDependencies`.
-  late final AnimationController _loop = AnimationController(vsync: this, duration: _period);
-
-  /// The Flutter loop only ever animates where no native renderer exists: on
-  /// native platforms every animated frame is the platform view's, and the
-  /// painter is only built for static states — a repeating controller there
-  /// would schedule the very frames the native view exists to avoid.
   @override
-  bool get motionEnabled => widget.animate && !_usesNativeTwinkle;
+  bool get motionEnabled => !_usesNativeRenderer && TickerMode.valuesOf(context).enabled;
 
   @override
   void startMotion() {
-    if (!_loop.isAnimating) _loop.repeat();
+    if (widget.animate) {
+      if (!_rotation.isAnimating) {
+        _rotation.repeat(min: _rotation.value, max: _rotation.value + 2 * math.pi, period: _period);
+      }
+    } else if (_fill.value < 1 && !_rotation.isAnimating) {
+      const quarterTurn = math.pi / 2;
+      final target = ((_rotation.value + 0.593) / quarterTurn).ceil() * quarterTurn;
+      _rotation.animateTo(target, duration: _settleDuration, curve: _settleCurve);
+    }
+    if (_fill.value < 1 && !_fill.isAnimating) {
+      _fill.animateTo(1, duration: widget.animate ? _resumeDuration : _settleDuration);
+    }
   }
 
   @override
   void stopMotion() {
-    if (_loop.isAnimating) _loop.stop();
-    // Rest on the solid keyframe rather than wherever the loop was cut.
-    _loop.value = 0;
+    _rotation.stop();
+    _rotation.value = 0;
+    _fill.stop();
+    _fill.value = 1;
   }
 
   @override
   void didUpdateWidget(PregoAiLoader oldWidget) {
     super.didUpdateWidget(oldWidget);
-    if (oldWidget.animate != widget.animate ||
-        oldWidget.fillMode != widget.fillMode ||
-        oldWidget.color != widget.color) {
+    if (oldWidget.animate != widget.animate) {
+      // Capture colours as well as rotation. Reversing the finishing timeline
+      // would flash the pale-blue highlight again when a new turn starts.
+      final colors = context.prego.colors;
+      _fillOrigin = _AiLoaderPainter.colorsAt(
+        progress: _fill.value,
+        loading: oldWidget.animate,
+        origin: _fillOrigin,
+        solid: widget.color ?? colors.textPrimaryOnBrand,
+        outline: widget.color ?? colors.textPrimary,
+        bloom: widget.color ?? const Color(0xFFB2D1FF),
+      );
+      _rotation.stop();
+      _fill.stop();
+      _fill.value = 0;
       syncMotion();
+      if (_usesNativeRenderer && !prefersReducedMotion(context) && TickerMode.valuesOf(context).enabled) {
+        unawaited(_updateNativeLoading());
+      }
+    } else if (oldWidget.fillMode != widget.fillMode || oldWidget.color != widget.color) {
+      stopMotion();
+      syncMotion();
+    }
+  }
+
+  // ignore: no_slop_linter/prefer_required_named_parameters, platform-view callback signature
+  void _nativeViewCreated(int id) {
+    _nativeChannel = MethodChannel("$_nativeViewType/$id");
+    // The row may have finished while the platform was creating its view.
+    unawaited(_updateNativeLoading());
+  }
+
+  Future<void> _updateNativeLoading() async {
+    try {
+      await _nativeChannel?.invokeMethod<void>("setLoading", widget.animate);
+    } on Object catch (error, stackTrace) {
+      FlutterError.reportError(
+        FlutterErrorDetails(
+          exception: error,
+          stack: stackTrace,
+          library: "theme_prego",
+          context: ErrorDescription("updating native AI loader state"),
+        ),
+      );
     }
   }
 
   @override
   void dispose() {
-    _loop.dispose();
+    _rotation.dispose();
+    _fill.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
+    final native = _usesNativeRenderer && !prefersReducedMotion(context) && TickerMode.valuesOf(context).enabled;
     return ExcludeSemantics(
-      // The loop repaints this sparkle every frame; without a boundary of its
-      // own it would repaint whatever layer it was composited into — the whole
-      // list row. CustomPaint adds no boundary itself.
       child: RepaintBoundary(
-        child: _twinkle(context: context, colors: colors),
+        child: native
+            ? _nativeSparkle(colors: colors)
+            : CustomPaint(
+                size: Size.square(widget.size),
+                painter: _AiLoaderPainter(
+                  rotation: _rotation,
+                  fill: _fill,
+                  loading: widget.animate,
+                  origin: _fillOrigin,
+                  fillMode: widget.fillMode,
+                  solid: widget.color ?? colors.textPrimaryOnBrand,
+                  outline: widget.color ?? colors.textPrimary,
+                  bloom: widget.color ?? const Color(0xFFB2D1FF),
+                ),
+              ),
       ),
     );
   }
 
-  Widget _twinkle({required BuildContext context, required PregoColors colors}) {
-    final twinkling = widget.animate && !prefersReducedMotion(context) && TickerMode.valuesOf(context).enabled;
-    if (twinkling && _usesNativeTwinkle) {
-      final nativeView = _nativeTwinkle(colors: colors);
-      if (nativeView != null) {
-        return SizedBox.square(dimension: widget.size, child: nativeView);
-      }
-    }
-
-    return CustomPaint(
-      size: Size.square(widget.size),
-      painter: _AiLoaderPainter(
-        repaint: _loop,
-        // A resting sparkle always shows the solid keyframe, so the phase
-        // offset only applies while the loop runs.
-        phase: motionAllowed ? widget.phase : 0,
-        fillMode: widget.fillMode,
-        solid: widget.color ?? colors.textPrimaryOnBrand,
-        outline: widget.color ?? colors.textPrimary,
-        faded: widget.color ?? colors.textDisabled,
-      ),
-    );
-  }
-
-  Widget? _nativeTwinkle({required PregoColors colors}) {
-    if (!_nativeTwinkleSupported) return null;
-
-    final params = <String, num>{
+  Widget _nativeSparkle({required PregoColors colors}) {
+    final params = <String, Object>{
       "solid": colors.textPrimaryOnBrand.toARGB32(),
       "outline": colors.textPrimary.toARGB32(),
-      "faded": colors.textDisabled.toARGB32(),
       "phase": widget.phase,
+      "loading": widget.animate,
     };
     final nativeView = defaultTargetPlatform == TargetPlatform.iOS
         ? UiKitView(
             viewType: _nativeViewType,
             creationParams: params,
             creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _nativeViewCreated,
             hitTestBehavior: PlatformViewHitTestBehavior.transparent,
           )
         : AppKitView(
             viewType: _nativeViewType,
             creationParams: params,
             creationParamsCodec: const StandardMessageCodec(),
+            onPlatformViewCreated: _nativeViewCreated,
             hitTestBehavior: PlatformViewHitTestBehavior.transparent,
           );
-    // Native views consume creationParams only at creation, so a keyframe
-    // colour change (a theme switch while a sparkle is visible) must recreate
-    // the view. The phase participates for the same reason.
-    return KeyedSubtree(
-      key: ValueKey(Object.hash(params["solid"], params["outline"], params["faded"], widget.phase)),
-      child: nativeView,
+    return SizedBox.square(
+      dimension: widget.size,
+      // State and phase must not replace the renderer at completion. Colours
+      // are creation-time data, so a theme change does create the new palette.
+      child: KeyedSubtree(
+        key: ValueKey(Object.hash(params["solid"], params["outline"])),
+        child: nativeView,
+      ),
     );
   }
 }
 
-/// Paints the sparkle at the keyframe [repaint] currently sits on.
-///
-/// Driven by `repaint:` rather than an [AnimatedBuilder]: the render object
-/// listens to the animation and repaints, without rebuilding an element sixty
-/// times a second. The cost is that [shouldRepaint] is only consulted when the
-/// widget rebuilds, so it must compare everything *except* the animation.
+/// Paint-only animation: neither the row nor this widget rebuilds per frame.
 class _AiLoaderPainter({
-  required Animation<double> repaint,
-  required final double phase,
+  required final Animation<double> rotation,
+  required final Animation<double> fill,
+  required final bool loading,
+  required final ({Color fill, Color stroke}) origin,
   required final PregoAiLoaderFillMode fillMode,
-
-  /// The three designed keyframes: a solid brand sparkle, a hollow outline, and
-  /// a faded solid one.
   required final Color solid,
   required final Color outline,
-  required final Color faded,
+  required final Color bloom,
 }) extends CustomPainter {
-  this : super(repaint: repaint);
+  this : super(repaint: Listenable.merge([rotation, fill]));
 
-  final Animation<double> _progress = repaint;
-
-  /// The sparkle's coordinate space, from the source icon.
-  static const double _viewBox = 24;
-
-  /// Stroke width in [_viewBox] units. The canvas is scaled rather than the
-  /// path, so this scales down with the geometry (1.33px at a 16px sparkle).
-  static const double _strokeWidth = 2;
-
-  /// Tabler's `sparkle-2` outline (MIT), a single path in a 24x24 box.
-  ///
-  /// It is a stroke *centreline*, so filling it alone yields a silhouette inset
-  /// by half a stroke. The solid keyframes therefore paint the fill *and* the
-  /// stroke in one colour — the stroke outsets the fill back to the true solid
-  /// shape — and the outline keyframe just drops the fill away. Interpolating
-  /// the fill's alpha instead of switching paint styles keeps the sparkle the
-  /// same size across the whole loop.
-  ///
-  /// The native iOS/macOS renderer embeds this same geometry with the arcs
-  /// pre-converted to cubics; a change here must be mirrored there.
+  // The existing Tabler sparkle-2 centreline matches the Figma font glyph.
+  // Fill + stroke preserves the same outer silhouette in both states.
   static final Path _sparkle = Path()
     ..moveTo(12, 3)
     ..cubicTo(12.375, 3, 12.711, 3.231, 12.846, 3.581)
@@ -272,82 +261,73 @@ class _AiLoaderPainter({
     ..arcToPoint(const Offset(12, 3), radius: const Radius.circular(0.91))
     ..close();
 
-  /// Where each keyframe sits in the loop. The solid brand sparkle holds for
-  /// the back third, so the twinkle has a rest rather than reading as a strobe.
-  static const double _outlineAt = 0.4;
-  static const double _fadedAt = 0.7;
+  static ({Color fill, Color stroke}) colorsAt({
+    required double progress,
+    required bool loading,
+    required ({Color fill, Color stroke}) origin,
+    required Color solid,
+    required Color outline,
+    required Color bloom,
+  }) {
+    const ease = Cubic(0.5, 0, 0.5, 1);
+    final t = ease.transform(progress);
+    if (loading) {
+      return (
+        fill: lerpColorNonNull(origin.fill, bloom.withValues(alpha: 0), t),
+        stroke: lerpColorNonNull(origin.stroke, outline, t),
+      );
+    }
+    return (
+      fill: progress < 0.5
+          ? lerpColorNonNull(origin.fill, bloom, ease.transform(progress * 2))
+          : lerpColorNonNull(bloom, solid, ease.transform((progress - 0.5) * 2)),
+      stroke: lerpColorNonNull(origin.stroke, solid, t),
+    );
+  }
 
   @override
   void paint(Canvas canvas, Size size) {
-    final t = (_progress.value + phase) % 1.0;
-    final (color, keyframedFillOpacity, scale) = _keyframe(t);
-    final fillOpacity = fillMode == .outline ? 0.0 : keyframedFillOpacity;
+    final colors = fillMode == .outline
+        ? (fill: outline.withValues(alpha: 0), stroke: outline)
+        : colorsAt(
+            progress: fill.value,
+            loading: loading,
+            origin: origin,
+            solid: solid,
+            outline: outline,
+            bloom: bloom,
+          );
 
     canvas.save();
-    // Pulse about the sparkle's centre, then map the source box onto the paint
-    // area. Scaling the canvas (not the path) carries the stroke width with it
-    // and keeps the path allocation-free.
-    final centre = Offset(size.width / 2, size.height / 2);
-    canvas.translate(centre.dx, centre.dy);
-    canvas.scale(scale);
-    canvas.translate(-centre.dx, -centre.dy);
-    canvas.scale(size.shortestSide / _viewBox);
-
-    canvas.drawPath(
-      _sparkle,
-      Paint()
-        ..style = PaintingStyle.fill
-        ..color = color.withValues(alpha: color.a * fillOpacity),
-    );
+    canvas.scale(size.shortestSide / 20);
+    canvas.translate(10, 10.4);
+    canvas.rotate(rotation.value);
+    canvas.translate(-10, -10.4);
+    // Figma uses a 14px Tabler font in a 20px line box. The exported glyph's
+    // baseline puts its centre at (10, 10.4), rather than (10, 10).
+    canvas.translate(3, 3.4);
+    canvas.scale(14 / 24);
+    canvas.drawPath(_sparkle, Paint()..color = colors.fill);
     canvas.drawPath(
       _sparkle,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = _strokeWidth
+        ..strokeWidth = 2
         ..strokeJoin = StrokeJoin.round
         ..strokeCap = StrokeCap.round
-        ..color = color,
+        ..color = colors.stroke,
     );
     canvas.restore();
   }
 
-  /// The colour, fill opacity and scale of the sparkle at [t] in the loop:
-  /// solid brand at full size, hollowing out and shrinking to the outline, then
-  /// filling back in as a faded sparkle before returning to brand.
-  ///
-  /// The native iOS/macOS renderer implements these same keyframes; a change
-  /// here must be mirrored there.
-  (Color, double, double) _keyframe(double t) {
-    if (t < _outlineAt) {
-      final p = t / _outlineAt;
-      return (
-        lerpColorNonNull(solid, outline, p),
-        1 - p,
-        lerpDoubleNonNull(1.0, 0.86, p),
-      );
-    }
-    if (t < _fadedAt) {
-      final p = (t - _outlineAt) / (_fadedAt - _outlineAt);
-      return (
-        lerpColorNonNull(outline, faded, p),
-        p,
-        lerpDoubleNonNull(0.86, 0.92, p),
-      );
-    }
-    final p = (t - _fadedAt) / (1 - _fadedAt);
-    return (
-      lerpColorNonNull(faded, solid, p),
-      1,
-      lerpDoubleNonNull(0.92, 1.0, p),
-    );
-  }
-
   @override
-  bool shouldRepaint(_AiLoaderPainter oldDelegate) {
-    return oldDelegate.phase != phase ||
-        oldDelegate.fillMode != fillMode ||
-        oldDelegate.solid != solid ||
-        oldDelegate.outline != outline ||
-        oldDelegate.faded != faded;
-  }
+  bool shouldRepaint(_AiLoaderPainter oldDelegate) =>
+      oldDelegate.rotation != rotation ||
+      oldDelegate.fill != fill ||
+      oldDelegate.loading != loading ||
+      oldDelegate.origin != origin ||
+      oldDelegate.fillMode != fillMode ||
+      oldDelegate.solid != solid ||
+      oldDelegate.outline != outline ||
+      oldDelegate.bloom != bloom;
 }
