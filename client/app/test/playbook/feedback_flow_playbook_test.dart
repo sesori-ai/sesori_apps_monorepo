@@ -238,7 +238,9 @@ void main() {
       await tester.ensureVisible(voice);
       final hold = await tester.startGesture(tester.getCenter(voice));
       await tester.pump(const Duration(milliseconds: 600));
-      expect(tester.widget<Semantics>(_control(label: "Send feedback")).properties.enabled, isFalse);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(_control(label: "Send feedback"), findsNothing);
+      expect(_control(label: "Cancel recording"), findsOneWidget);
       await hold.up();
       await tester.pump();
       expect(find.text("Transcribing…"), findsOneWidget);

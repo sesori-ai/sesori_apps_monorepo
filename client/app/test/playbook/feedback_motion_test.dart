@@ -1,4 +1,5 @@
 import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -232,15 +233,23 @@ void main() {
 
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-    "microphone denial reveals the keyboard alternative and keeps selected issues",
+    "microphone denial requests native settings and keeps selected issues",
     (tester) async {
+      const channel = MethodChannel("com.sesori.app/feedback_preview");
+      final requests = <String>[];
+      tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+        requests.add(call.method);
+        return false;
+      });
+      addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
       await _openScenario(tester: tester, scenario: FeedbackPreviewScenario.microphoneDenied);
       await tester.tap(find.text("Connection drops"));
       await tester.pumpAndSettle();
       await tester.tap(_control(label: "Hold to talk to give feedback"));
       await tester.pumpAndSettle();
-      expect(find.text("Microphone access is off. You can type your feedback instead."), findsOneWidget);
-      await tester.tap(find.text("Use keyboard"));
+      expect(requests, ["requestMicrophoneAccess"]);
+      expect(find.textContaining("Microphone access is off"), findsNothing);
+      await tester.tap(_control(label: "Use keyboard"));
       await tester.pumpAndSettle();
       expect(find.byKey(const ValueKey("feedback-text")), findsOneWidget);
       expect(tester.widget<Semantics>(_control(label: "Connection drops")).properties.checked, isTrue);
@@ -250,7 +259,7 @@ void main() {
 
   testWidgets(
     variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-    "transcription failure retires into an editable draft on retry",
+    "transcription failure shows an auto-dismissed top toast and accepts a fresh recording",
     (tester) async {
       await _openScenario(tester: tester, scenario: FeedbackPreviewScenario.transcriptionRetry);
       await tester.tap(_control(label: "Hold to talk to give feedback"));
@@ -260,12 +269,21 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 950));
       await tester.pumpAndSettle();
-      expect(find.text("Couldn’t transcribe that. Try again or use the keyboard."), findsOneWidget);
-      await tester.tap(find.text("Retry transcription"));
+      final toast = find.byType(PregoPopupAlertsNotifications);
+      expect(find.text("Couldn’t transcribe that. Please try again."), findsOneWidget);
+      expect(tester.getBottomRight(toast).dy, lessThan(tester.getTopLeft(find.byType(BottomSheet)).dy));
+      expect(find.text("Retry transcription"), findsNothing);
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pumpAndSettle();
+      expect(toast, findsNothing);
+      await tester.tap(_control(label: "Hold to talk to give feedback"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 400));
+      await tester.tap(_control(label: "Finish recording"));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 950));
       await tester.pumpAndSettle();
-      expect(find.text("Couldn’t transcribe that. Try again or use the keyboard."), findsNothing);
+      expect(find.text("Couldn’t transcribe that. Please try again."), findsNothing);
       expect(find.byKey(const ValueKey("feedback-text")), findsOneWidget);
       expect(find.text("Feedback sent. Thank you!"), findsNothing);
       expect(tester.takeException(), isNull);

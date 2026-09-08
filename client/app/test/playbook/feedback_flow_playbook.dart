@@ -1,8 +1,10 @@
 // Local feedback prototype. Voice and submission are simulated; 4–5 stars
 // requests Apple's native rating UI through an iOS debug-only channel.
+// The microphone-permission scenario opens real iOS/Android permissions/settings.
 import "dart:async";
 import "dart:math" as math;
 
+import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:material_ui/material_ui.dart";
@@ -19,7 +21,7 @@ void main() => runApp(const FeedbackFlowPlaybook(openOnLaunch: true));
 enum FeedbackPreviewScenario({required final String label}) {
   success(label: "Successful feedback"),
   submissionRetry(label: "Submission fails once"),
-  microphoneDenied(label: "Microphone permission denied"),
+  microphoneDenied(label: "Microphone permission / settings"),
   transcriptionRetry(label: "Transcription fails once"),
 }
 
@@ -35,10 +37,11 @@ enum _InputMode() {
 
 enum _VoiceStage() {
   idle,
+  requestingPermission,
+  awaitingPermissionAfterRelease,
   recording,
+  cancelling,
   transcribing,
-  denied,
-  failed,
 }
 
 enum _SubmissionStage() {
@@ -234,6 +237,11 @@ class _PreviewLauncherState()
                 FeedbackMotionScope.maybeOf(context: context) != null
                     ? "Voice and feedback submission are simulated. Native rating is skipped while tuning motion."
                     : "Voice and feedback submission are simulated. 4–5 stars opens Apple’s native rating prompt in iOS debug builds.",
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "The microphone permission scenario opens real iOS or Android permission/settings screens.",
                 style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
               ),
               const SizedBox(height: 24),
@@ -744,6 +752,8 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
   final _focus = FocusNode();
   final _issues = <String>{};
   final _issuePressKey = GlobalKey<_FeedbackPressState>();
+  final _cancelRecordingKey = GlobalKey();
+  final _cancelProgress = ValueNotifier<double>(0);
   _InputMode _mode = _InputMode.voice;
   _VoiceStage _voice = _VoiceStage.idle;
   _SubmissionStage _submission = _SubmissionStage.editing;
@@ -752,8 +762,13 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
 
   bool get _canSend =>
       _submission != _SubmissionStage.submitting &&
+      _voice != _VoiceStage.requestingPermission &&
+      _voice != _VoiceStage.awaitingPermissionAfterRelease &&
       _voice != _VoiceStage.recording &&
+      _voice != _VoiceStage.cancelling &&
       _voice != _VoiceStage.transcribing;
+
+  bool get _recording => _voice == _VoiceStage.recording || _voice == _VoiceStage.cancelling;
 
   @override
   void initState() {
@@ -788,7 +803,8 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
   }
 
   Future<void> _replayVoice() async {
-    _startRecording();
+    // Replay stays local even when the permission-denied scenario is selected.
+    setState(() => _voice = _VoiceStage.recording);
     await Future<void>.delayed(
       FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlDuration),
     );
@@ -819,6 +835,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
     _focus.removeListener(_refresh);
     _text.dispose();
     _focus.dispose();
+    _cancelProgress.dispose();
     super.dispose();
   }
 
@@ -830,25 +847,86 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
     _focus.requestFocus();
   }
 
-  void _startRecording() {
-    if (_submission == _SubmissionStage.submitting || _voice == _VoiceStage.transcribing) return;
+  Future<void> _startRecording() async {
+    if (!_canSend) return;
     _focus.unfocus();
+    if (widget.scenario == FeedbackPreviewScenario.microphoneDenied) {
+      setState(() => _voice = _VoiceStage.requestingPermission);
+      try {
+        // True means access was already authorized, so no OS UI interrupted
+        // this gesture. Any permission/settings round trip returns false.
+        final canContinue =
+            await const MethodChannel("com.sesori.app/feedback_preview")
+                .invokeMethod<bool>("requestMicrophoneAccess") ??
+            false;
+        if (!mounted) return;
+        if (!canContinue || _voice == _VoiceStage.awaitingPermissionAfterRelease) {
+          setState(() => _voice = _VoiceStage.idle);
+          return;
+        }
+      } on MissingPluginException {
+        if (mounted) {
+          _showVoiceError(message: "Microphone settings are available in the iOS and Android debug preview.");
+          setState(() => _voice = _VoiceStage.idle);
+        }
+        return;
+      } on PlatformException {
+        if (mounted) {
+          _showVoiceError(message: "Couldn’t open microphone settings. Please try again.");
+          setState(() => _voice = _VoiceStage.idle);
+        }
+        return;
+      }
+    }
+    _cancelProgress.value = 0;
     setState(() {
       _mode = _InputMode.voice;
-      _voice = widget.scenario == FeedbackPreviewScenario.microphoneDenied ? _VoiceStage.denied : _VoiceStage.recording;
+      _voice = _VoiceStage.recording;
     });
   }
 
+  void _cancelRecording() {
+    _cancelProgress.value = 0;
+    setState(() => _voice = _VoiceStage.idle);
+  }
+
+  void _dragRecording({required Offset position}) {
+    if (!_recording) return;
+    final target = _cancelRecordingKey.currentContext?.findRenderObject();
+    if (target is! RenderBox) return;
+    final distance = (position - target.localToGlobal(target.size.center(Offset.zero))).distance;
+    _cancelProgress.value = (1 - (distance - 44) / (170 - 44)).clamp(0.0, 1.0);
+    final next = _cancelProgress.value == 1 ? _VoiceStage.cancelling : _VoiceStage.recording;
+    if (_voice != next) setState(() => _voice = next);
+  }
+
+  void _finishRecording() {
+    if (_voice == _VoiceStage.requestingPermission) {
+      setState(() => _voice = _VoiceStage.awaitingPermissionAfterRelease);
+    } else if (_voice == _VoiceStage.cancelling) {
+      _cancelRecording();
+    } else {
+      unawaited(_transcribe());
+    }
+  }
+
+  void _showVoiceError({required String message}) => PregoPopupAlertPresenter.of(context).show(
+    title: message,
+    variant: PregoPopupAlertsNotificationsVariant.error,
+  );
+
   Future<void> _transcribe() async {
-    if (_voice != _VoiceStage.recording && _voice != _VoiceStage.failed) return;
+    if (_voice != _VoiceStage.recording) return;
+    _cancelProgress.value = 0;
     setState(() => _voice = _VoiceStage.transcribing);
     await Future<void>.delayed(const Duration(milliseconds: 900));
     if (!mounted || _voice != _VoiceStage.transcribing) return;
     if (widget.scenario == FeedbackPreviewScenario.transcriptionRetry && !_transcriptionFailedOnce) {
       setState(() {
         _transcriptionFailedOnce = true;
-        _voice = _VoiceStage.failed;
+        _voice = _VoiceStage.idle;
       });
+      _showVoiceError(message: "Couldn’t transcribe that. Please try again.");
       return;
     }
     setState(() => _voice = _VoiceStage.idle);
@@ -906,32 +984,28 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
           ),
         ),
         const SizedBox(height: 18),
+        _FeedbackContentTransition(
+          child: _recording
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: PregoSpacing.x3l),
+                  child: Text(
+                    _voice == _VoiceStage.cancelling ? "Release to cancel" : "Release to transcribe",
+                    textAlign: TextAlign.center,
+                    style: prego.textTheme.textMd.regular.copyWith(
+                      color: _voice == _VoiceStage.cancelling
+                          ? prego.colors.textErrorPrimary
+                          : prego.colors.textPrimary,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
         _buildComposer(context: context),
         _FeedbackContentTransition(
           child: Column(
-            key: ValueKey((
-              _voice == _VoiceStage.denied,
-              _voice == _VoiceStage.failed,
-              _submission == _SubmissionStage.failed,
-            )),
+            key: ValueKey(_submission == _SubmissionStage.failed),
             mainAxisSize: MainAxisSize.min,
             children: [
-              if (_voice == _VoiceStage.denied) ...[
-                const SizedBox(height: 12),
-                _InlineMessage(
-                  message: "Microphone access is off. You can type your feedback instead.",
-                  action: "Use keyboard",
-                  onAction: _typeFeedback,
-                ),
-              ],
-              if (_voice == _VoiceStage.failed) ...[
-                const SizedBox(height: 12),
-                _InlineMessage(
-                  message: "Couldn’t transcribe that. Try again or use the keyboard.",
-                  action: "Retry transcription",
-                  onAction: _transcribe,
-                ),
-              ],
               if (_submission == _SubmissionStage.failed) ...[
                 const SizedBox(height: 12),
                 _InlineMessage(
@@ -1043,7 +1117,31 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
                       style: PregoComposerSurfaceStyle.subtle,
                       borderRadius: BorderRadius.circular(PregoRadius.full),
                     ).copyWith(boxShadow: const []),
-                    child: Padding(padding: const EdgeInsets.all(PregoSpacing.sm), child: controls),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: ValueListenableBuilder<double>(
+                              valueListenable: _cancelProgress,
+                              builder: (context, progress, child) => Opacity(opacity: progress, child: child),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(PregoRadius.full),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      prego.colors.bgDestructivePressedAlt.withValues(alpha: 0.5),
+                                      prego.colors.bgDestructivePressedAlt.withValues(alpha: 0),
+                                    ],
+                                    stops: const [0, 0.28],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(padding: const EdgeInsets.all(PregoSpacing.sm), child: controls),
+                      ],
+                    ),
                   ),
               ],
             ),
@@ -1055,30 +1153,55 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
 
   Widget _buildComposerControls({required BuildContext context}) {
     final prego = context.prego;
+    final voiceLabelStyle = prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary);
     final hasText = _text.text.isNotEmpty;
     final keyboardMode = _mode == _InputMode.keyboard;
     final busy = _submission == _SubmissionStage.submitting;
-    final voiceBusy = _voice == _VoiceStage.recording || _voice == _VoiceStage.transcribing;
-    final transcriptReady = hasText && !keyboardMode;
+    final voiceBusy =
+        _recording ||
+        _voice == _VoiceStage.transcribing ||
+        _voice == _VoiceStage.requestingPermission ||
+        _voice == _VoiceStage.awaitingPermissionAfterRelease;
+    final transcriptReady = hasText && !keyboardMode && !_recording;
     return Row(
       children: [
+        _FeedbackActionTransition(
+          child: _recording
+              ? Padding(
+                  padding: const EdgeInsetsDirectional.only(end: PregoSpacing.md),
+                  child: Semantics(
+                    label: "Cancel recording",
+                    button: true,
+                    child: PregoButtonsSolid.iconOnly(
+                      key: _cancelRecordingKey,
+                      leadingIcon: TablerRegular.x,
+                      hierarchy: PregoButtonsSolidHierarchy.primary,
+                      size: PregoButtonsSolidSize.lg,
+                      type: PregoButtonsSolidType.destructive,
+                      onPressed: _cancelRecording,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
         if (!keyboardMode)
           Expanded(
             child: Semantics(
               button: true,
-              label: _voice == _VoiceStage.recording
+              label: _recording
                   ? "Finish recording"
                   : hasText
                   ? "Hold to talk more"
                   : "Hold to talk to give feedback",
               excludeSemantics: true,
-              onTap: busy ? null : () => _voice == _VoiceStage.recording ? _transcribe() : _startRecording(),
+              onTap: busy ? null : () => _recording ? _finishRecording() : _startRecording(),
               child: GestureDetector(
                 key: const ValueKey("feedback-voice"),
                 behavior: HitTestBehavior.opaque,
-                onTap: busy ? null : () => _voice == _VoiceStage.recording ? _transcribe() : _startRecording(),
+                onTap: busy ? null : () => _recording ? _finishRecording() : _startRecording(),
                 onLongPressStart: busy ? null : (_) => _startRecording(),
-                onLongPressEnd: busy ? null : (_) => _transcribe(),
+                onLongPressMoveUpdate: busy ? null : (details) => _dragRecording(position: details.globalPosition),
+                onLongPressEnd: busy ? null : (_) => _finishRecording(),
                 child: _FeedbackPress(
                   enabled: !busy && _voice != _VoiceStage.transcribing,
                   child: SizedBox(
@@ -1086,10 +1209,15 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
                     child: Center(
                       child: _FeedbackContentTransition(
                         child: KeyedSubtree(
-                          key: ValueKey((_voice, hasText)),
+                          key: ValueKey((_recording ? _VoiceStage.recording : _voice, hasText)),
                           child: switch (_voice) {
-                            _VoiceStage.recording => const _RecordingPreview(),
-                            _VoiceStage.transcribing => Text("Transcribing…", style: prego.textTheme.textSm.regular),
+                            _VoiceStage.recording ||
+                            _VoiceStage.cancelling => _RecordingPreview(flattenProgress: _cancelProgress),
+                            _VoiceStage.requestingPermission || _VoiceStage.awaitingPermissionAfterRelease => Text(
+                              "Microphone access…",
+                              style: prego.textTheme.textMd.regular,
+                            ),
+                            _VoiceStage.transcribing => Text("Transcribing…", style: voiceLabelStyle),
                             _ => Padding(
                               // Balance the trailing 44px Send action, as in Figma.
                               padding: EdgeInsetsDirectional.only(start: transcriptReady ? 44 : 0),
@@ -1097,7 +1225,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
                                 hasText ? "Hold to talk more" : "Hold to talk to give feedback",
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+                                style: voiceLabelStyle,
                               ),
                             ),
                           },
@@ -1144,7 +1272,7 @@ class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
               : const SizedBox.shrink(),
         ),
         _FeedbackActionTransition(
-          child: !transcriptReady
+          child: !transcriptReady && !_recording
               ? Padding(
                   padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm),
                   child: _ComposerButton(
@@ -1313,7 +1441,7 @@ class const _InlineMessage({
   );
 }
 
-class const _RecordingPreview() extends StatefulWidget {
+class const _RecordingPreview({required final ValueListenable<double> flattenProgress}) extends StatefulWidget {
   @override
   State<_RecordingPreview> createState() => _RecordingPreviewState();
 }
@@ -1326,11 +1454,19 @@ class _RecordingPreviewState() extends State<_RecordingPreview> {
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.symmetric(horizontal: 12),
-    child: PregoVoiceWaveform(
-      amplitudeStream: _samples,
-      barColor: context.prego.colors.textPrimary,
-      dotColor: context.prego.colors.textQuaternary,
+    padding: const EdgeInsetsDirectional.only(end: PregoSpacing.sm),
+    child: ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+        stops: [0, 0.08, 0.92, 1],
+      ).createShader(bounds),
+      child: PregoVoiceWaveform(
+        amplitudeStream: _samples,
+        barColor: context.prego.colors.textPrimary,
+        dotColor: context.prego.colors.fgQuaternary,
+        flattenProgress: widget.flattenProgress,
+      ),
     ),
   );
 }

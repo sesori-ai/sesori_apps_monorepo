@@ -1,6 +1,7 @@
 import Flutter
 import UIKit
 #if DEBUG
+import AVFoundation
 import StoreKit
 #endif
 
@@ -29,6 +30,26 @@ import StoreKit
       name: "com.sesori.app/feedback_preview",
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
     ).setMethodCallHandler { call, result in
+      if call.method == "requestMicrophoneAccess" {
+        // True means already authorized; native UI requires a fresh gesture.
+        switch AVCaptureDevice.authorizationStatus(for: .audio) {
+        case .authorized:
+          result(true)
+        case .notDetermined:
+          AVCaptureDevice.requestAccess(for: .audio) { _ in
+            DispatchQueue.main.async { result(false) }
+          }
+        case .denied:
+          UIApplication.shared.open(URL(string: UIApplication.openSettingsURLString)!) { _ in
+            result(false)
+          }
+        case .restricted:
+          result(false)
+        @unknown default:
+          result(false)
+        }
+        return
+      }
       guard call.method == "requestReview" else {
         result(FlutterMethodNotImplemented)
         return
