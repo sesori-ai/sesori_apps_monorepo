@@ -9,9 +9,9 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the original Claude series is complete; harness follow-ups remain active
-- **Next action:** publish local Codex native-facts predecessor
-  `claude-inline-subtasks-codex-native-facts-step5` (step 5/9), then stacked
-  integrated-tile step 6/9 and lifecycle-coverage step 7/9. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
+- **Next action:** finalize current Codex live/replay integration (step 6/9)
+  after native-facts PR #1398 merged at `d801d722f2`; actual-plugin QA follows
+  in the next workflow stage, then preserved lifecycle coverage step 7/9. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
   historical preparation superseded by the verified 0.153.4 rollout seam. DeepSeek #1363,
   #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
   stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
@@ -168,9 +168,9 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | #1273/#1280 merged; historical title unchanged (now step 2/9) |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | #1387 merged; historical title unchanged (now step 3/9) |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | #1396 merged at `7f6fb8cb50`; no tile code |
-| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | Local predecessor complete; no tile capability activated |
-| [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay subtask tiles [step 6/9]` | Local branch `claude-inline-subtasks-codex-replay-tiles-step6`; package tests pass |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Stacked local successor; live plugin QA remains separate |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | [PR #1398](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1398) merged at `d801d722f2`; no tile capability activated |
+| [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | Current local integration; full live/replay production, focused tests, and `session-turns` behavior docs; actual-plugin QA is next-stage work |
+| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Preserved local successor `e33c33caa4`; write-path coverage and remaining capability/regression docs only |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Not started |
 | [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Live plugin QA outstanding |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
@@ -743,7 +743,7 @@ corrected independent-scope stop and pending/later-input checks passed.
 The user deferred desktop and requested progression to Codex after phone checks;
 managed-runtime automation remains separately owned.
 
-Codex seven-step correction (user-authorized): merged PR #1387 keeps its
+Codex correction (now nine steps after automatic size-based splitting): #1387 keeps its
 historical `[step 3/6]` title but is superseded preparation. Current 0.153.4
 persists started activity as `event_msg/item_completed/item/SubAgentActivity`;
 its item id exactly matches `spawn_agent.call_id`. Normal child input appends as
@@ -757,14 +757,15 @@ unrelated parent `user_message`, copied parent history, task-name/order/timing
 match, or envelope header. Valid child-owned plaintext `NEW_TASK` input may
 replace that fallback for the initial delegated turn.
 
-Step 4/7 therefore removes only obsolete #1387 machinery: turn/item/content
+Merged cleanup #1396 (historical step 4/7, now 4/9) removed obsolete #1387 machinery: turn/item/content
 thread DTOs, `includeTurns: true`, prompt cache/lookups/cleanup, and synthetic
 prompt-cache tests. Parent/source/nickname metadata remains. Workspace codegen,
 focused metadata/write-path/service tests, the complete Codex package suite,
-and `dart analyze --fatal-infos` pass. Corrected tiles are step 5/7; scoped stop
-is 6/7; coverage is 7/7. Rejected tile work remains at
+and `dart analyze --fatal-infos` passed. Native facts are step 5/9, full
+live/replay integration 6/9, lifecycle coverage 7/9, scoped stop 8/9, and final
+coverage 9/9. Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-step4-integrated` (`c6aa29a8ce`), while
 `claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and
 `claude-inline-subtasks-codex-tiles-successor-ready` (`8a2952f318`) remain
 untouched. No runtime pin, native source, client/shared contract, database, or
-stop behavior changes in cleanup step 4/7.
+stop behavior changed in cleanup #1396.

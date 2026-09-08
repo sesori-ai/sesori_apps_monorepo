@@ -20,10 +20,11 @@
   Both slices merged (#1363, #1370). Agent-run phone QA found the transport
   crash fixed by #1379; requested phone stop/input checks then passed. See
   `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice. Codex
-  now uses a user-authorized seven-step sequence: merged PR #1387 is historical
-  preparation superseded by the verified 0.153.4 rollout-input seam; causal
-  cleanup is step 4/7, tiles step 5/7, scoped stop step 6/7, and coverage step
-  7/7. Overall harness plan remains active.
+  now uses nine steps after automatic size-based splitting: #1387 remains
+  historical preparation, and cleanup #1396 is merged. Native facts are step
+  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9,
+  lifecycle coverage 7/9, scoped stop 8/9, and final coverage 9/9. Historical merged PR titles
+  remain unchanged. Overall harness plan remains active.
 
 ## Goal
 

@@ -190,7 +190,7 @@ account-level rejection without changing the descriptor's capability claim.
 - Markdown inline image URLs use the platform network image loader for HTTP and
   HTTPS and do not pass through the guarded attachment loader; they are not
   covered by the remote-attachment guarantee.
-- Antigravity native prompt-image acceptance and Google-generated image behavior remain pending L5 evidence; account or
+- Antigravity native prompt-image acceptance and Google-generated image behavior remain unverified; account or
   model rejection must stay visible and does not justify reading path-only provider output.
 - Copilot does not negotiate its descriptor's attachment support against the
   initialized CLI capability. Image acceptance can vary by selected model and

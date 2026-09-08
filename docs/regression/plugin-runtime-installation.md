@@ -181,7 +181,7 @@ download, verification, or placement. Use a disposable data directory.
   validates the exact ACP runtime identity `agy_acp_server_20260818_01_RC01`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
-  Linux arm64, Windows x64 and Windows arm64 native correctness remains unexecuted until cross-target verification.
+  Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.
 - The upgrade replaces only a runtime Sesori already manages; a harness that has never
   been installed through Sesori still needs the explicit Install action. A user who runs
   a PATH install and also has a stale managed directory downloads one target they do not

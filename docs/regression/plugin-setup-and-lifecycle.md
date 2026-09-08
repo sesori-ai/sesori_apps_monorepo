@@ -405,7 +405,7 @@ owned-process exit; and restart.
 
 - The harness set comes from the current registry; unregistered in-development harnesses are out of scope.
   Antigravity managed installation is implemented. Native Linux/Windows correctness and real OAuth evidence remain
-  pending final cross-target gates; current native managed-pipeline evidence is macOS arm64 only.
+  unverified; current native managed-pipeline evidence is macOS arm64 only.
 - DeepSeek is registered and enabled by default. Its official theme-independent
   brand-blue artwork, local provider setup guidance, and managed install controls
   follow the same backend-neutral registry and client surfaces as every other harness.

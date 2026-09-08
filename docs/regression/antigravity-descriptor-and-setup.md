@@ -71,4 +71,4 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
 - **L5 Full:** the managed macOS arm64 pipeline has run against the cached independently rehashed official archive in
   disposable state, preserving both siblings and completing isolated initialize-only validation/cleanup before result.
   Native Linux/Windows managed installs, real personal OAuth, cross-target launch/permissions, bridge import and
-  tombstone behavior remain pending gates. Automated registration/composition evidence does not replace them.
+  tombstone behavior remain unverified. Automated registration/composition evidence does not replace them.

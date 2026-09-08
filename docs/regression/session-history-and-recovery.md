@@ -281,7 +281,7 @@ rules where supported.
 - Client session-detail refresh triggers are still under diagnosis; only the
   diagnostic logging is in place and any refresh correction is unfinished.
 - Antigravity's native personal-authenticated history, cold bridge restart, retained-history import/tombstone behavior,
-  and cross-target pairs remain pending L5 gates.
+  and cross-target pairs remain unverified.
 - Grok's sub-agent tile and child catalog are live/persisted lifecycle views;
   reconstructing the inline tile and child transcript from `session/load` is the
   separate planned child-history step, so the capability matrix remains open.

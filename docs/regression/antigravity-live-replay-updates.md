@@ -58,4 +58,4 @@ credential access or history mutation.
 - `acp_session_loader_test.dart`, `acp_tool_content_integration_test.dart`, and `acp_history_replay_test.dart` exercise
   standard identity behavior and production replay; DeepSeek history/time tests cover its direct collector path.
 - Owning ACP/Antigravity and changed DeepSeek analyses are the static boundary. Authenticated native sessions, real
-  Google-generated images and final L5 Full remain pending integration gates.
+  Google-generated images and the full L5 integration matrix remain unverified.
