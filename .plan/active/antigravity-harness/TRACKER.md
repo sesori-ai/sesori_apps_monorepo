@@ -330,8 +330,10 @@
 - Correction verification: 46 Antigravity tests across descriptor, runtime, options and composed plugin suites plus 3
   focused ACP tracker/mapper tests pass. Counts use JSON suite/test IDs and non-hidden successful `testDone` records;
   both owning package analyzers pass with fatal infos. Final cap/review head is recorded in the immutable review scope.
-- Second/final actual architecture review is pending over the complete base-to-head correction artifact. The prior first
-  actual review remains the approval at `53296324b2`; incomplete-input blocks remain uncounted.
+- [x] Second/final actual architecture review approved `b13d197d517` → `cd16aa3a96`: all 26 files, 1,339 additions +
+  57 deletions = 1,396 changed lines. Reviewer `2bb17500`, no findings. The worker's post-commit provider disconnection
+  lost only result delivery; preserved verification/artifacts were used without rerunning unchanged passing commands.
+  First approval at `53296324b2` remains recorded; incomplete-input blocks and the never-launched reviewer are not attempts.
 
 ## Architecture Reviews
 
