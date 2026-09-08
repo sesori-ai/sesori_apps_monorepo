@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../repositories/models/plugin_management_result.dart";
 import "../../services/models/catalog_rescan_state.dart";
+import "../../services/models/plugin_install_state.dart";
 import "../../services/plugin_management_service.dart";
 
 part "plugin_management_state.freezed.dart";
@@ -170,8 +171,8 @@ sealed class PluginManagementState with _$PluginManagementState {
     required PluginManagementActionState action,
     required PluginAuthenticationPresentationState authentication,
 
-    /// In-flight managed runtime installs, keyed by plugin id.
-    required Map<String, PluginInstallProgress> installs,
+    /// In-progress installs and retained terminal failures, keyed by plugin id.
+    required Map<String, PluginInstallState> installs,
 
     /// Harnesses with a catalog scan in flight, whether this screen started it
     /// or the lists did. Their scan action is not offered again while it runs.

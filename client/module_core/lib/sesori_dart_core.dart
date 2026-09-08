@@ -183,6 +183,7 @@ export "src/services/models/catalog_rescan_state.dart";
 export "src/services/models/new_session_backend_scope.dart";
 export "src/services/models/new_session_options_source.dart";
 export "src/services/models/new_session_selection_intent.dart";
+export "src/services/models/plugin_install_state.dart";
 export "src/services/models/product_analytics_state.dart";
 export "src/services/models/session_activity_info.dart";
 export "src/services/new_session_options_service.dart";

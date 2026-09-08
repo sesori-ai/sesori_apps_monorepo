@@ -287,23 +287,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           onLogoutCompleted: _goDesktopHome,
         ),
       ),
-      GoRoute(
-        path: AppRouteDef.settingsHarnesses.path,
-        builder: (BuildContext context, GoRouterState state) {
-          final route = switch (AppRoute.fromDef(
-            def: AppRouteDef.settingsHarnesses,
-            pathParams: state.pathParameters,
-            queryParams: state.uri.queryParameters,
-          )) {
-            final AppRouteSettingsHarnesses route => route,
-            final route => throw StateError("Route ${route.def.name} is not a harness-settings route"),
-          };
-          return DesktopHarnessesSettingsScreen(
-            presentation: route.presentation,
-            onClose: () => _popRoute(context: context),
-          );
-        },
-      ),
+      buildDesktopHarnessSettingsRoute(),
     ],
   ),
 ];
@@ -430,4 +414,71 @@ void _popRoute({required BuildContext context}) {
     return;
   }
   _goDesktopHome();
+}
+
+/// Harness-only navigator and provider shared by overview and URL detail pages.
+@visibleForTesting
+ShellRoute buildDesktopHarnessSettingsRoute() {
+  final navigatorKey = GlobalKey<NavigatorState>();
+  void close({required BuildContext context}) {
+    // The nested Navigator's context belongs to the stable outer flow page.
+    final flowContext = navigatorKey.currentContext ?? (throw StateError("Harness flow is not mounted"));
+    final flowRoute = ModalRoute.of(flowContext) ?? (throw StateError("Harness flow has no owning route"));
+    final outerNavigator = flowRoute.navigator ?? (throw StateError("Harness flow has no navigator"));
+    // Remove owned pageless sheets first, without touching the opener.
+    outerNavigator.popUntil((route) => route == flowRoute);
+    if (flowRoute.isFirst) {
+      _goRoute(context: context, route: const AppRoute.projects());
+    } else {
+      outerNavigator.pop();
+    }
+  }
+
+  return ShellRoute(
+    navigatorKey: navigatorKey,
+    pageBuilder: (context, state, child) {
+      final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
+      final content = DesktopHarnessesSettingsScreen(child: child);
+      return presentation == HarnessSettingsPresentation.modal
+          ? MaterialPage<void>(key: state.pageKey, fullscreenDialog: true, child: content)
+          : MaterialPage<void>(key: state.pageKey, child: content);
+    },
+    routes: [
+      GoRoute(
+        path: AppRouteDef.settingsHarnesses.path,
+        builder: (context, state) {
+          final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
+              .presentation;
+          return HarnessesSettingsView(
+            presentation: presentation,
+            connectionBanner: null,
+            onClose: () => close(context: context),
+            onBack: () => close(context: context),
+            onOpenHarness: ({required pluginId}) => _pushRoute(
+              context: context,
+              route: AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation),
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ":$pluginIdPathParam",
+            builder: (context, state) {
+              final route = AppRouteSettingsHarnessDetail.fromParams(
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              );
+              return HarnessSettingsDetailView(
+                pluginId: route.pluginId,
+                presentation: route.presentation,
+                connectionBanner: null,
+                onBack: () => context.pop(),
+                onClose: () => close(context: context),
+              );
+            },
+          ),
+        ],
+      ),
+    ],
+  );
 }

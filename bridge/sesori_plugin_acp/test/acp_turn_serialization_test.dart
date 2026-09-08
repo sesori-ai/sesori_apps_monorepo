@@ -478,7 +478,12 @@ void main() {
       await pump();
       expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
 
-      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       flush.complete();
       for (var i = 0; i < 20 && !fake.written.any((frame) => frame["id"] == 92); i++) {
         await pump();
@@ -1158,7 +1163,12 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
       await sendPrompt(sessionId, "queued");
 
-      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       expect(
         frames("session/cancel"),
         hasLength(2),
@@ -1302,7 +1312,12 @@ void main() {
       for (var i = 0; i < 5; i++) {
         await pump();
       }
-      await gated.abortSession(sessionId: "s1", subAgents: PluginAbortSubAgentPolicy.stop);
+      await gated.abortSession(
+        sessionId: "s1",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       gate.complete();
       for (var i = 0; i < 10; i++) {
         await pump();

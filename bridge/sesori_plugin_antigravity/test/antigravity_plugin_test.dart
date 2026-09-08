@@ -503,7 +503,12 @@ void main() {
       _question(process: process, session: first.id, id: "cancel");
       _question(process: process, session: second.id, id: "delete");
       await _settle();
-      await h.plugin.abortSession(sessionId: first.id, subAgents: PluginAbortSubAgentPolicy.stop);
+      await h.plugin.abortSession(
+        sessionId: first.id,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       expect(await h.plugin.getPendingQuestions(sessionId: first.id), isEmpty);
       expect(await h.plugin.getPendingQuestions(sessionId: second.id), hasLength(1));
       expect(process.held, hasLength(1));

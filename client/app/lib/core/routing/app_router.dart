@@ -34,7 +34,6 @@ const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
 const _settingsNotificationsRouteSegment = "notifications";
-const _settingsHarnessesRouteSegment = "harnesses";
 const _settingsProfileRouteSegment = "profile";
 
 extension AppRouteToGoRoute on AppRouteDef {
@@ -102,7 +101,8 @@ extension on AppRoute {
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
-      AppRouteSettingsHarnesses(:final presentation) => HarnessesSettingsScreen(presentation: presentation),
+      AppRouteSettingsHarnesses() ||
+      AppRouteSettingsHarnessDetail() => throw StateError("Harness pages belong to their flow shell"),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
@@ -366,43 +366,12 @@ List<RouteBase> _buildAppRoutes({
         ),
       ],
     ),
+    buildHarnessSettingsRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [
         GoRoute(
           path: _settingsNotificationsRouteSegment,
           builder: (context, state) => AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
-        ),
-        GoRoute(
-          path: _settingsHarnessesRouteSegment,
-          // Harness settings are reached from two places, and the route says
-          // which one. From the settings list they are the next page of that
-          // stack, so they push in like every other settings page. From the
-          // new-session harness menu they are a detour from an unrelated
-          // screen, so they rise as a modal and close back onto it.
-          //
-          // The modal is a CupertinoPage for the same reason settings itself
-          // uses one: only the Cupertino route honours `fullscreenDialog` on
-          // Android too. Choosing per presentation requires a pageBuilder, so
-          // the pushed branch spells out the MaterialPage that go_router would
-          // otherwise supply, keeping the platform's push transition.
-          pageBuilder: (context, state) {
-            final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
-            final child = route.screen;
-            return switch (route.presentation) {
-              HarnessSettingsPresentation.modal => CupertinoPage<void>(
-                key: state.pageKey,
-                fullscreenDialog: true,
-                child: child,
-              ),
-              HarnessSettingsPresentation.pushed => MaterialPage<void>(
-                key: state.pageKey,
-                name: state.name ?? state.path,
-                arguments: <String, String>{...state.pathParameters, ...state.uri.queryParameters},
-                restorationId: state.pageKey.value,
-                child: child,
-              ),
-            };
-          },
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,
@@ -462,3 +431,69 @@ final appRouter = GoRouter(
   },
   routes: buildAppRoutes(),
 );
+
+/// Harness-only navigator and provider shared by overview and URL detail pages.
+@visibleForTesting
+ShellRoute buildHarnessSettingsRoute() {
+  final navigatorKey = GlobalKey<NavigatorState>();
+  void close({required BuildContext context}) {
+    // The nested Navigator's context belongs to the stable outer flow page.
+    final flowContext = navigatorKey.currentContext ?? (throw StateError("Harness flow is not mounted"));
+    final flowRoute = ModalRoute.of(flowContext) ?? (throw StateError("Harness flow has no owning route"));
+    final outerNavigator = flowRoute.navigator ?? (throw StateError("Harness flow has no navigator"));
+    // Remove owned pageless sheets first, without touching the opener.
+    outerNavigator.popUntil((route) => route == flowRoute);
+    if (flowRoute.isFirst) {
+      context.goRoute(const AppRoute.projects());
+    } else {
+      outerNavigator.pop();
+    }
+  }
+
+  return ShellRoute(
+    navigatorKey: navigatorKey,
+    pageBuilder: (context, state, child) {
+      final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
+      final content = HarnessesSettingsScreen(child: child);
+      return presentation == HarnessSettingsPresentation.modal
+          ? CupertinoPage<void>(key: state.pageKey, fullscreenDialog: true, child: content)
+          : MaterialPage<void>(key: state.pageKey, child: content);
+    },
+    routes: [
+      GoRoute(
+        path: AppRouteDef.settingsHarnesses.path,
+        builder: (context, state) {
+          final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
+              .presentation;
+          return HarnessesSettingsView(
+            presentation: presentation,
+            connectionBanner: ConnectionBanner.maybeFor(context),
+            onClose: () => close(context: context),
+            onBack: () => close(context: context),
+            onOpenHarness: ({required pluginId}) => context.pushRoute(
+              AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation),
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ":$pluginIdPathParam",
+            builder: (context, state) {
+              final route = AppRouteSettingsHarnessDetail.fromParams(
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              );
+              return HarnessSettingsDetailView(
+                pluginId: route.pluginId,
+                presentation: route.presentation,
+                connectionBanner: ConnectionBanner.maybeFor(context),
+                onBack: () => context.pop(),
+                onClose: () => close(context: context),
+              );
+            },
+          ),
+        ],
+      ),
+    ],
+  );
+}
