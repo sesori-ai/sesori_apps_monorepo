@@ -32,9 +32,9 @@ abstract final class const CatalogStrengthOrder() {
   static final RegExp _number = RegExp(r"\d+");
   static final RegExp _bracketSuffix = RegExp(r"\[[^\]]*\]");
 
-  /// [variants] strongest first: `ultra`, `max`, `xhigh`, `high`, `medium`
-  /// (or `mid`), `low`, `minimal`, then `off`/`none`. Unknown names keep their
-  /// given order after the known ones.
+  /// [variants] strongest first: `ultra`, `max` (or `highest`), `xhigh`,
+  /// `high`, `medium` (or `mid`), `low`, `minimal` (or `min`), then
+  /// `off`/`none`. Unknown names keep their given order after the known ones.
   static List<String> variants(Iterable<String> variants) {
     final ranked = variants.indexed.toList()
       ..sort((a, b) {
@@ -102,8 +102,12 @@ abstract final class const CatalogStrengthOrder() {
       return (vendor: _Vendor.openAi, generation: version.first, tier: tier, version: version);
     }
     if (_anthropicFamily.firstMatch(bare) case final match?) {
+      // An eight-digit run is the `YYYYMMDD` release suffix API ids carry
+      // (`claude-sonnet-4-20250514`), never a version part; including it would
+      // rank that snapshot above `claude-sonnet-4-6`.
       final version = [
-        for (final number in _number.allMatches(bare)) int.parse(bare.substring(number.start, number.end)),
+        for (final number in _number.allMatches(bare))
+          if (number.end - number.start != 8) int.parse(bare.substring(number.start, number.end)),
       ];
       return (
         vendor: _Vendor.anthropic,

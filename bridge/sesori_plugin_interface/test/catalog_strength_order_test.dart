@@ -63,6 +63,17 @@ void main() {
       );
     });
 
+    test("ignores the YYYYMMDD release suffix on Anthropic API ids", () {
+      expect(order(["claude-sonnet-4-20250514", "claude-sonnet-4-6"]), [
+        "claude-sonnet-4-6",
+        "claude-sonnet-4-20250514",
+      ]);
+      expect(order(["claude-opus-4-20250514", "claude-opus-4-1-20250805"]), [
+        "claude-opus-4-1-20250805",
+        "claude-opus-4-20250514",
+      ]);
+    });
+
     test("matches a family only as a whole word", () {
       expect(order(["custom-sonnetlike", "claude-sonnet-4-6", "opusish"]), [
         "claude-sonnet-4-6",
