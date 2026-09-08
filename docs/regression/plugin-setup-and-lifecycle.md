@@ -71,12 +71,14 @@ idle suspension, the management snapshot, and lifecycle commands.
   of settings, credentials, providers, and skills but its session root is never
   scanned. Session, attachment, query, and spill mutations stay below plugin
   state, and session-local model/reasoning writes never modify user settings.
-- Antigravity is a local-only ACP v1 harness over Google's official proprietary runtime pair. An explicit
-  `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH is checked.
-  Setup inspection is static and inert, reports personal-auth readiness from token-file presence without reading it,
-  and advertises current-client browser login only when required. It never imports ambient credentials, starts a
-  process, opens a browser, or offers managed installation. Preparation, exact identity/version probing, login and live
-  start use the same isolated profile/environment with parent inheritance disabled.
+- Antigravity is an ACP v1 harness over Google's official proprietary runtime pair. An explicit
+  `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH then the
+  installed managed pair are checked. Setup inspection is static and inert, reports personal-auth readiness from
+  token-file presence without reading it, and advertises current-client browser login only when required. It never
+  imports ambient credentials, starts a process, opens a browser or downloads a runtime. Managed Install is explicit,
+  limited to Google's five published targets, absent with an override, and preceded by Google terms/documentation
+  guidance. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
+  with parent inheritance disabled.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`
   authoritative, otherwise prefers a compatible PATH release (`>=1.0.78`) over
@@ -367,8 +369,8 @@ owned-process exit; and restart.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
   being logged, failed, or restarted as an unexpected crash.
 - Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, launches ACP,
-  opens a browser, falls through from an explicit pair, or advertises managed install; registration changes the
-  OpenCode preferred default or adds a shared `Harness` enum case.
+  opens a browser, falls through from an explicit pair, downloads automatically, or offers managed install with an
+  override/on macOS x64; registration changes the OpenCode preferred default or adds a shared `Harness` enum case.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
   PATH release, offers install with an explicit path or on an unsupported
@@ -385,8 +387,9 @@ owned-process exit; and restart.
 
 ## Known Limitations
 
-- The harness set comes from the current registry; unregistered in-development harnesses
-  are out of scope. Antigravity managed installation and native cross-target/OAuth evidence remain pending gates.
+- The harness set comes from the current registry; unregistered in-development harnesses are out of scope.
+  Antigravity managed installation is implemented. Native Linux/Windows correctness and real OAuth evidence remain
+  pending final cross-target gates; current native managed-pipeline evidence is macOS arm64 only.
 - DeepSeek is registered and enabled by default. Its official theme-independent
   brand-blue artwork, local provider setup guidance, and managed install controls
   follow the same backend-neutral registry and client surfaces as every other harness.

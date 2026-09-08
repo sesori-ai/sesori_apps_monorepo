@@ -3,7 +3,7 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.c merged, Step 10.d next
+- **Status:** active; Steps 1–10.c merged, Step 10.d implemented locally
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
@@ -1097,9 +1097,9 @@ Feature matrix:
     in logs, SSE replay, or persisted state.
   - Boundary: automated, live Google service on representative macOS arm64 and Linux x64 hosts, iOS and desktop E2E.
 - **`plugin-runtime-installation.md`**
-  - Evidence: five independently pinned digests, target-sized archive-command budgets, successful huge-package
+  - Evidence: five independently pinned digests, conservative bounded archive-command budgets, successful huge-package
     traversal preflight and extraction, sibling preservation, validation-before-activation, shutdown abort/recovery,
-    rollback, cleanup, and macOS x64 gap.
+    pre-placement prior-runtime retention, cleanup, and macOS x64 gap.
   - Boundary: automated plus packaged execution on every listed host target.
 - **`projects-and-sessions.md`**
   - Evidence: isolated-profile metadata import, DB-only ordinary reads, canonical cwd attribution, malformed metadata
@@ -1143,9 +1143,10 @@ Feature matrix:
 - **Terms/proprietary distribution:** the registry intentionally publishes Google binaries for ACP clients, while
   Google separately controls account eligibility and terms. Fetch only from the official registry URLs after explicit
   action, link current terms, and avoid legal promises or community wrappers.
-- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Replace fixed listing and
-  extraction limits with one required per-asset command budget, then verify successful traversal preflight/extraction,
-  shutdown abort, disk/timeout failure, prior-runtime rollback, and cleanup without duplicating the shared installer.
+- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Use one conservative,
+  bounded per-asset command budget for listing and extraction, then verify traversal preflight/extraction, shutdown
+  abort, disk/timeout failure, pre-placement prior-runtime retention, and cleanup without duplicating the shared
+  installer.
 - **Pair drift:** server and local harness must match. Resolve/place/lease them as one directory, then validate both
   before activation.
 - **OAuth callback security:** a pasted URL is attacker-controlled input containing a short-lived code. Pure-Dart

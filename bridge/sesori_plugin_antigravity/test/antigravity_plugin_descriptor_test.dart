@@ -4,6 +4,7 @@ import "dart:io";
 
 import "package:acp_plugin/acp_testing.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
+import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
@@ -185,6 +186,19 @@ class _Http() implements HttpClient {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class _DownloadHttp({required final Object failure}) extends http.BaseClient {
+  bool closed = false;
+
+  @override
+  Future<http.StreamedResponse> send(http.BaseRequest request) => Future.error(failure);
+
+  @override
+  void close() {
+    closed = true;
+    super.close();
+  }
+}
+
 Map<String, dynamic> _initialize() =>
     jsonDecode(File("test/fixtures/official_initialize_1_0_0.json").readAsStringSync()) as Map<String, dynamic>;
 
@@ -236,6 +250,7 @@ void main() {
         browserPrefixArguments: const [],
         launchDirectory: "/synthetic/worktree",
         callbackHttpClientFactory: http == null ? unexpectedHttpClient : () => http,
+        runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
         operationTimeout: timeout,
         connectBudget: const Duration(seconds: 2),
       );
@@ -286,6 +301,7 @@ void main() {
     final candidate = AntigravityPluginDescriptor(
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
       callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
     );
     for (final server in [null, pair.server]) {
       final status = await candidate.inspectSetup(
@@ -327,7 +343,7 @@ void main() {
 
   test("managed pair is the inert fallback after PATH", () async {
     final managedDirectory = Directory(
-      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.agentVersion),
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
     )..createSync(recursive: true);
     _writePair(directory: managedDirectory);
     expect(
@@ -340,6 +356,87 @@ void main() {
       isA<PluginSetupAuthenticationRequired>(),
     );
     expect(processes.launches, isEmpty);
+  });
+
+  test("managed install is advertised only for supported targets without an explicit override", () async {
+    final candidate = descriptor(http: null);
+    expect(
+      candidate.managementCapabilities(config: config(server: null)),
+      contains(PluginControlCapability.install),
+    );
+    expect(
+      candidate.managementCapabilities(config: config(server: pair.server)),
+      isNot(contains(PluginControlCapability.install)),
+    );
+    final missing = await candidate.inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: state.path,
+    );
+    expect(missing, isA<PluginSetupRuntimeMissing>());
+    expect(
+      (missing as PluginSetupRuntimeMissing).actionHint,
+      allOf(contains("proprietary"), contains("https://antigravity.google/terms")),
+    );
+
+    final superseded = Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0"))
+      ..createSync(recursive: true);
+    expect(candidate.needsManagedRuntimeUpgrade(config: config(server: null), stateDirectory: state.path), isTrue);
+    expect(
+      candidate.needsManagedRuntimeUpgrade(
+        config: config(server: pair.server),
+        stateDirectory: state.path,
+      ),
+      isFalse,
+    );
+    superseded.deleteSync(recursive: true);
+
+    final unsupported = AntigravityPluginDescriptor(
+      target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
+      callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
+    );
+    expect(
+      unsupported.managementCapabilities(config: config(server: null)),
+      isNot(contains(PluginControlCapability.install)),
+    );
+  });
+
+  test("explicit override prevents download and managed download failures stay plugin-local", () async {
+    final blocked = await descriptor(http: null)
+        .installRuntime(
+          config: config(server: pair.server),
+          processes: processes,
+          environment: const {},
+          stateDirectory: state.path,
+          startAborted: StartAbortSignal.never,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+    expect(blocked.single, isA<ProvisionFailed>());
+    expect(processes.launches, isEmpty);
+
+    final download = _DownloadHttp(failure: http.ClientException("synthetic download failure"));
+    final candidate = AntigravityPluginDescriptor(
+      target: _target,
+      callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () => download,
+    );
+    final progress = await candidate
+        .installRuntime(
+          config: config(server: null),
+          processes: processes,
+          environment: const {"PATH": "/usr/bin:/bin"},
+          stateDirectory: state.path,
+          startAborted: StartAbortSignal.never,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+    expect(progress.first, isA<ProvisionResolving>());
+    expect(progress.last, isA<ProvisionFailed>());
+    expect((progress.last as ProvisionFailed).message, isNot(contains(state.path)));
+    expect(download.closed, isTrue);
   });
 
   test("prepare, probe and live process share the isolated environment and existing lifecycle owner", () async {
@@ -395,6 +492,7 @@ void main() {
       target: _target,
       launchDirectory: "/synthetic/worktree",
       callbackHttpClientFactory: () => http,
+      runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
       operationTimeout: const Duration(seconds: 2),
       connectBudget: const Duration(seconds: 2),
     );

@@ -22,15 +22,19 @@ not been verified, so the sub-agent table makes no claim about it.
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Sesori-managed runtime installed on request | 🚫 | ✅ | ⬜ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
-| Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ⬜ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Sesori-managed runtime installed on request | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
 
-Antigravity currently resolves only a user-supplied official runtime pair from
-PATH or `--antigravity-bin`; managed installation is not exposed yet. Sesori pins
-independently rehashed facts for all five Google archives and has an isolated
-initialize-only candidate validator; manifest and Install integration remain
-pending. The planned integration uses conservative bounded archive-command
-timeouts while retaining integrity checks and isolated candidate validation.
+Antigravity can explicitly download Google's proprietary official runtime pair directly from `dl.google.com`. Before
+choosing Install, review [Google's terms](https://antigravity.google/terms) and
+[Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies the five
+published archives: macOS arm64, Linux x64/arm64, and Windows x64/arm64. Google publishes no macOS x64 archive, so
+managed installation is unavailable there. Every archive keeps the server and local harness as siblings, uses a
+conservative two-minute bound for each archive listing/extraction command, and must pass the isolated initialize-only
+identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
+managed-pipeline correctness has run on macOS arm64; Linux and Windows correctness remains unexecuted until the final
+cross-target verification step.
+
 Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
 user-installed CLI from PATH or an explicit binary option, so there is nothing
 for Sesori to install or upgrade. The upgrade follows the install capability

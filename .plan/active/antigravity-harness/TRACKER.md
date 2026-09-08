@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.c merged; Step 10.d next
+- **Status:** Steps 1–10.c merged; Step 10.d implemented and verified locally
 - **Base:** synced with main `4fdd433392eabde75f1d800b649337206f057421` after Step 10.c merge
 - **Current branch:** `antigravity-harness-step-10d-managed-install`
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
@@ -28,7 +28,7 @@
 - **Merged PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c); terminal report
   had 15/16 checks complete, with clean Cubic approval and no actionable Codex feedback.
 - **Open PR:** none.
-- **Next action:** implement Step 10.d with conservative bounded archive-command timeouts.
+- **Next action:** parent-owned independent architecture review and publication for Step 10.d.
 
 ## Fixed PR Series
 
@@ -448,8 +448,36 @@
 - [x] Initial focused tests: profile 17 + release 3 + runtime service 13 + validator 4 = 37; owning analyzer clean.
   After main's ACP/NDJSON lifecycle changes, reran the 17 runtime-service/validator cases and owning analysis: passed.
   This overlaps the initial 37, not 54 unique cases. Reviewed production files remain unchanged after synchronization.
-- [ ] Add the manifest, descriptor integration/disclosure, conservative command budgets and install rollback/failure
-  tests, then update the managed-runtime capability rows. Unexecuted native correctness coverage remains explicit.
+- [x] Add the manifest, descriptor integration/disclosure, conservative command budgets and focused install-failure
+  tests, retain shared rollback coverage, then update the managed-runtime capability rows. Unexecuted native correctness
+  coverage remains explicit.
+
+## Step 10.d Checklist
+
+- [x] Added `AntigravityRuntimeManifest` from the already pinned five official release artifacts. Every asset is a ZIP
+  package directory with a conservative two-minute per listing/extraction command budget; no host timing evidence or
+  benchmark gate is introduced. Managed directories use registry package version `1.0.0`, while candidate validation
+  separately requires runtime identity `agy_acp_server_20260818_01_RC01`.
+- [x] Composed the shared managed installer/cleaner with the existing initialize-only
+  `AntigravityRuntimeVersionValidator`. The descriptor keeps explicit -> valid PATH -> installed managed precedence,
+  advertises Install only on Google's five targets without `--antigravity-bin`, and closes its required download client.
+- [x] Added pre-action proprietary Google download disclosure with terms/documentation links. Updated the capability,
+  runtime-installation, setup/lifecycle and Antigravity descriptor regression contracts without advancing the Step 11
+  root/bridge README reconciliation.
+- [x] Focused pinned-Dart verification passes: 34 non-hidden Antigravity tests across five suites and 4 app registry
+  tests, counted from successful JSON `testDone` records with suite/test IDs. Antigravity and app analyzers are clean
+  with fatal infos. One initial app registry run failed because its fixture omitted the now-read `bin` option; the
+  fixture was corrected and its four tests plus app analysis pass.
+- [x] Foreground native macOS arm64 managed-pipeline smoke reused the independently rehashed cached official archive in
+  disposable state. It downloaded through the descriptor, verified/extracted the package, preserved the server/harness
+  siblings, ran exactly one false-inheritance initialize-only validation, removed validation cwd/state and staging,
+  and returned the `1.0.0` managed server. No OAuth, authentication, session or real user profile was used.
+- [x] Native Linux x64/arm64 and Windows x64/arm64 correctness remains unexecuted and is not claimed. Shared automated
+  tests continue to own integrity, traversal/symlink, candidate-before-placement, abort, cleanup and prior-runtime
+  retention coverage. Same-pinned-directory placement itself is not claimed to roll back after rename.
+- Pre-review cap against `4fdd433392eabde75f1d800b649337206f057421`: 483 additions + 97 deletions = 580
+  changed lines across 14 files, including the committed user plan correction.
+- [ ] Parent-owned independent architecture implementation review, push, PR and monitor.
 
 ## Architecture Reviews
 
