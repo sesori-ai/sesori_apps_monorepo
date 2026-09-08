@@ -79,6 +79,48 @@ void main() {
       ]);
     });
 
+    test("ranks Anthropic and OpenAI models by strength ahead of newest-first, keeps the first variant as default", () {
+      final response = ConfigProvidersResponse.fromJson(
+        _providersJson(<String, dynamic>{
+          "sonnet": _modelJson(
+            id: "anthropic/claude-sonnet-4-6",
+            name: "Sonnet 4.6",
+            variants: <String, dynamic>{"low": <String, dynamic>{}, "high": <String, dynamic>{}},
+            family: "claude-sonnet",
+            status: "active",
+            releaseDate: "2026-03-01",
+          ),
+          "kimi": _modelJson(
+            id: "moonshotai/kimi-k2.6",
+            name: "Kimi K2.6",
+            variants: const <String, dynamic>{},
+            family: "kimi",
+            status: "active",
+            releaseDate: "2026-04-01",
+          ),
+          "opus": _modelJson(
+            id: "anthropic/claude-opus-4-5",
+            name: "Opus 4.5",
+            variants: const <String, dynamic>{},
+            family: "claude-opus",
+            status: "active",
+            releaseDate: "2025-11-01",
+          ),
+        }),
+      );
+
+      final mapped = mapProviderResponse(response: response);
+
+      final models = mapped.providers.single.models;
+      expect(models.map((model) => model.id), [
+        "anthropic/claude-opus-4-5",
+        "anthropic/claude-sonnet-4-6",
+        "moonshotai/kimi-k2.6",
+      ]);
+      expect(models[1].variants, ["high", "low"]);
+      expect(models[1].defaultVariant, "low");
+    });
+
     test("preserves synthetic model IDs and treats alpha/beta statuses as available", () {
       final response = ConfigProvidersResponse.fromJson(
         _providersJson(<String, dynamic>{
@@ -109,7 +151,7 @@ void main() {
       expect(provider.models, hasLength(2));
       final alphaModel = provider.models.firstWhere((model) => model.id == "openai/gpt-4.1-alpha");
       expect(alphaModel.isAvailable, isTrue);
-      expect(alphaModel.variants, equals(["low", "high"]));
+      expect(alphaModel.variants, equals(["high", "low"]));
       final betaModel = provider.models.firstWhere((model) => model.id == "openai/gpt-4.1-mini");
       expect(betaModel.isAvailable, isTrue);
       expect(betaModel.variants, equals(["medium"]));
@@ -154,7 +196,7 @@ void main() {
 
       final mapped = mapProviderResponse(response: response);
 
-      expect(mapped.providers.single.models.single.variants, equals(["low", "high"]));
+      expect(mapped.providers.single.models.single.variants, equals(["high", "low"]));
     });
 
     group("releaseDate parsing", () {

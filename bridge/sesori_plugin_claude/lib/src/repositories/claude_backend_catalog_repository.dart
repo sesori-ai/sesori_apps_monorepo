@@ -40,20 +40,12 @@ final class const ClaudeBackendCatalogRepository() {
   static const String _defaultModelIdPrefix = "opus";
   static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
 
-  /// Model families strongest first, as the picker lists them. The CLI's own
-  /// order is kept within a family and for families not listed here, which
-  /// follow the known ones.
-  static const List<String> _familiesByStrength = ["fable", "opus", "sonnet", "haiku"];
-
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
-    final unranked = [
-      for (final model in dto.models) ?_model(model),
-    ];
-    final models = [
-      for (final family in _familiesByStrength) ...unranked.where((model) => model.id.startsWith(family)),
-      ...unranked.where((model) => !_familiesByStrength.any(model.id.startsWith)),
-    ];
+    final models = CatalogStrengthOrder.models(
+      [for (final model in dto.models) ?_model(model)],
+      idOf: (model) => model.id,
+    );
     final defaultModel =
         models.where((model) => model.id.startsWith(_defaultModelIdPrefix)).firstOrNull ?? models.firstOrNull;
     final agentModel = defaultModel == null
@@ -104,15 +96,10 @@ final class const ClaudeBackendCatalogRepository() {
     if (id == null || id.isEmpty || id == _cliDefaultModelId) return null;
     final displayName = dto.displayName?.trim();
     final resolvedModel = dto.resolvedModel?.trim();
-    final supported = {
-      for (final raw in dto.supportedEffortLevels) ?ClaudeEffortLevel.tryParse(raw),
-    };
-    // Strongest first, as the picker lists them.
     final variants = dto.supportsEffort ?? false
-        ? [
-            for (final level in ClaudeEffortLevel.values.reversed)
-              if (supported.contains(level)) level.wireValue,
-          ]
+        ? CatalogStrengthOrder.variants({
+            for (final raw in dto.supportedEffortLevels) ?ClaudeEffortLevel.tryParse(raw)?.wireValue,
+          })
         : <String>[];
     return PluginModel(
       id: id,

@@ -56,7 +56,8 @@ void main() {
     final provider = options.providers.providers.single;
     expect([provider.id, provider.defaultModelID], [providerId, selectionId]);
     expect(provider.models.single, isA<PluginModel>().having((model) => model.id, "id", selectionId));
-    expect(provider.models.single.variants, ["low", "high"]);
+    expect(provider.models.single.variants, ["high", "low"]);
+    expect(provider.models.single.defaultVariant, "low");
     expect(options.commands.single.name, "inspect");
     expect(mapper.map(catalog(failures: const [])).completeness, PluginSessionOptionsCompleteness.complete);
   });

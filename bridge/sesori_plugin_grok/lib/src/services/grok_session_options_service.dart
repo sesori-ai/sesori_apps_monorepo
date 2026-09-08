@@ -239,17 +239,21 @@ class GrokSessionOptionsService({
                   id: _pluginId,
                   name: _displayName,
                   authType: PluginProviderAuthType.unknown,
-                  models: [
-                    for (final model in catalog.models)
-                      PluginModel(
-                        id: model.id,
-                        name: model.name,
-                        variants: model.reasoningEfforts,
-                        family: null,
-                        isAvailable: true,
-                        releaseDate: null,
-                      ),
-                  ],
+                  models: CatalogStrengthOrder.models(
+                    [
+                      for (final model in catalog.models)
+                        PluginModel(
+                          id: model.id,
+                          name: model.name,
+                          variants: model.reasoningEfforts,
+                          defaultVariant: model.defaultReasoningEffort,
+                          family: null,
+                          isAvailable: true,
+                          releaseDate: null,
+                        ),
+                    ],
+                    idOf: (model) => model.id,
+                  ),
                   defaultModelID: defaultModel?.id,
                 ),
               ],

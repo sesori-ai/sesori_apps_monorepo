@@ -6,8 +6,7 @@ a deliberate, visible state rather than an accident. Update it whenever a
 capability lands for some harnesses but not others, or a harness limitation is
 verified or lifted.
 
-Main matrix columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registry.dart`.
-The login table additionally identifies the unregistered Antigravity implementation explicitly.
+Columns are the plugins registered in `bridge/app/lib/src/runtime/plugin_registry.dart`.
 
 ## Legend
 
@@ -39,12 +38,13 @@ a runtime the user has not asked for.
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Models and effort variants listed strongest first, default declared separately | ✅ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Effort variants listed strongest first, default declared separately | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
+| Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
 
-The picker shows each plugin's declared order. OpenCode ranks models newest
-release first, which is the best signal its catalog offers. Other plugins
-still declare variants default-first (the client falls back to the first
-listed variant when no default is declared) and models in plugin-defined order.
+The picker shows each plugin's declared order. Every plugin ranks through the
+shared `CatalogStrengthOrder`; models of other vendors keep the plugin's own
+order after the ranked ones (OpenCode newest release first, others backend
+order).
 
 ## Codex question input
 
@@ -81,43 +81,6 @@ The marks above cover setup inspection only. A plugin that raises
 `PluginAuthenticationRequiredException` while running still moves the slot to
 `authenticationRequired` and blocks further starts; the ⬜ plugins do not do
 that either.
-
-## Login initiation
-
-Login is separate from detecting a logged-out backend or installing its runtime.
-This table records the current **Sesori-initiated harness/provider login action**,
-not login to the Sesori account. "Not implemented" means no such Sesori action;
-it does not claim an unprobed upstream ACP/RPC login API is supported or unsupported.
-
-| Harness | Login initiated from Sesori | Current local alternative/setup |
-|---|---|---|
-| Claude | Not implemented | `claude auth login` on the bridge machine. |
-| OpenCode | Not implemented | Local `opencode auth login` or provider configuration. |
-| Codex | Implemented: ChatGPT device-code login | Local Codex login/configuration remains an alternative. |
-| Copilot | Not implemented | `copilot login` on the bridge machine. |
-| Cursor | Not implemented | Local Cursor CLI login, or `CURSOR_API_KEY`. |
-| Hermes | Not implemented | Configure the provider/model through `hermes setup` or `hermes model`. |
-| Pi | Not implemented | Run `pi` locally and use `/login`, or configure supported provider credentials. |
-| OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
-| DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
-| Grok | Not implemented | `grok login` on the bridge machine. |
-| Antigravity (unregistered) | Internal only: Google browser-return | No supported local fallback. |
-
-Among registered plugins, only Codex currently implements
-`InteractivePluginAuthenticationDescriptor.authenticate`; its action uses the existing
-Sesori device-code UI. That is not a general API-key entry form or a claim of
-support for every Codex authentication method.
-
-The unregistered Antigravity descriptor implements the browser-return action:
-a current phone/desktop client opens Google's authorization page and returns
-the callback through Sesori. It permits personal Google OAuth only, suppresses
-the bridge host's browser, and uses the same isolated profile for login and
-live sessions. Activation remains Step 9; ambient Google login is not imported.
-
-Local login/configuration must apply to the profile/environment used by that
-bridge's harness. Provider keys and local/free models may make a backend usable
-without an OAuth login. Setup detection above does **not** imply that Sesori
-can initiate login, and managed installation does **not** authenticate a harness.
 
 ## Command limitations
 
@@ -241,3 +204,9 @@ ahead of a model list that is identical either way, so the authentication line
 is the signal and the listing itself is not one. Only that line downgrades
 setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
+
+¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
+ACP seam, so there is nothing to order.
+
+¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
+its models keep DeepSeek's catalog order; its efforts are ordered.

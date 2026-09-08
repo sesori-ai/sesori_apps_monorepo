@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart" show AcpInitializeResult, AcpNewSessionResult;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show CatalogStrengthOrder;
 
 import "../api/grok_acp_api.dart";
 import "../api/models/grok_protocol_dto.dart";
@@ -71,8 +72,6 @@ class GrokCatalogRepository({required final GrokAcpApi _api}) {
       values.add(value);
       if (option.isDefault) defaultValue ??= value;
     }
-    final defaultIndex = defaultValue == null ? -1 : values.indexOf(defaultValue);
-    if (defaultIndex > 0) values.insert(0, values.removeAt(defaultIndex));
-    return (values: List.unmodifiable(values), defaultValue: defaultValue);
+    return (values: CatalogStrengthOrder.variants(values), defaultValue: defaultValue);
   }
 }

@@ -398,8 +398,8 @@ void main() {
       expect(provider.defaultModelID, "gpt-5.4");
       // Effort levels are per-model variants, default effort first. Sibling
       // models get a provisional copy so the first providers response is complete.
-      expect(provider.models.first.variants, ["medium", "low", "high"]);
-      expect(provider.models.last.variants, ["medium", "low", "high"]);
+      expect(provider.models.first.variants, ["high", "medium", "low"]);
+      expect(provider.models.last.variants, ["high", "medium", "low"]);
 
       final agents = await plugin.getAgents(projectId: "/repo");
       expect(agents.map((a) => a.name), ["Agent", "Plan", "Ask"]);
@@ -1166,7 +1166,7 @@ void main() {
       capture(modelCatalog("gpt-5.4", includeMode: false), fromNewSession: true);
       capture(catalogResult(), fromNewSession: false);
       final full = await providersAfterWarmup();
-      expect(full.providers.single.models.first.variants, ["medium", "low", "high"]);
+      expect(full.providers.single.models.first.variants, ["high", "medium", "low"]);
     });
 
     test("a grouped model catalog surfaces every nested model", () async {
@@ -1425,11 +1425,11 @@ void main() {
       final agents = await plugin.getAgents(projectId: cwd);
       stop();
 
-      expect(providers.providers.single.models.map((model) => model.id), ["default", "gpt-5.6-sol"]);
+      expect(providers.providers.single.models.map((model) => model.id), ["gpt-5.6-sol", "default"]);
       expect(providers.providers.single.defaultModelID, "default");
       expect(
         providers.providers.single.models.last.variants,
-        ["medium", "none", "low", "high"],
+        ["high", "medium", "low", "none"],
       );
       expect(agents.map((agent) => agent.name), ["Agent", "Plan", "Ask"]);
       expect(
@@ -1472,7 +1472,7 @@ void main() {
         reason: "every model shows the provisional effort scale so the pill renders",
       );
       // Default effort first, then the rest — the provisional scale from s-old.
-      expect(models.first.variants, ["medium", "low", "high"]);
+      expect(models.first.variants, ["high", "medium", "low"]);
     });
 
     test("returns empty variants (no hang, no throwaway session) when no session is reasoning", () async {

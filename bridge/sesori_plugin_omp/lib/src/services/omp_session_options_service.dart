@@ -233,17 +233,22 @@ class OmpSessionOptionsService({
           id: entry.key,
           name: entry.key,
           authType: PluginProviderAuthType.unknown,
-          models: [
-            for (final model in entry.value)
-              PluginModel(
-                id: model.value,
-                name: model.name,
-                variants: catalog.thinkingByModel[model.value]?.variants ?? const [],
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
+          models: CatalogStrengthOrder.models(
+            [
+              for (final model in entry.value)
+                PluginModel(
+                  id: model.value,
+                  name: model.name,
+                  // Strongest first; OMP's first-listed level stays the default.
+                  variants: CatalogStrengthOrder.variants(catalog.thinkingByModel[model.value]?.variants ?? const []),
+                  defaultVariant: catalog.thinkingByModel[model.value]?.variants.firstOrNull,
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
+            ],
+            idOf: (model) => model.id,
+          ),
           defaultModelID: entry.key == defaultProvider ? catalog.defaultModelValue : entry.value.first.value,
         ),
     ];

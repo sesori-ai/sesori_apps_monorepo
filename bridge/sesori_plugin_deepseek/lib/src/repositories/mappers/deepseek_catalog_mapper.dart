@@ -17,11 +17,12 @@ class const DeepSeekCatalogMapper() {
                 PluginModel(
                   id: model.id,
                   name: model.name,
-                  variants: [
-                    ?model.defaultReasoningEffort,
-                    for (final effort in model.reasoningEfforts)
-                      if (effort != model.defaultReasoningEffort) effort,
-                  ],
+                  // Strongest first; model ids are opaque, so models keep
+                  // DeepSeek's order.
+                  variants: CatalogStrengthOrder.variants(model.reasoningEfforts),
+                  defaultVariant: model.reasoningEfforts.contains(model.defaultReasoningEffort)
+                      ? model.defaultReasoningEffort
+                      : null,
                   family: null,
                   isAvailable: true,
                   releaseDate: null,
