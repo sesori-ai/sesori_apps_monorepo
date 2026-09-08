@@ -14,7 +14,7 @@ class const CodexToolPartMapper() {
     final state = PluginToolState(
       status: tool.status,
       title: tool.title,
-      shellCommand: tool.tool == "shell" ? tool.title : null,
+      shellCommand: tool.shellCommand,
       output: tool.output,
       error: tool.status == PluginToolStatus.error ? tool.output : null,
       attachments: tool.attachments,

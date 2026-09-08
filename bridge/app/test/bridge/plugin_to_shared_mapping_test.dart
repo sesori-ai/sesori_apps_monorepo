@@ -147,7 +147,7 @@ void main() {
         attachments: [],
       );
 
-      final json = state.toShared().toJson();
+      final json = state.toShared(retainSummary: false).toJson();
 
       expect(json["status"], equals("cancelled"));
       expect(
@@ -219,6 +219,60 @@ void main() {
   });
 
   group("PluginToolStateMapping.toShared()", () {
+    for (final status in [PluginToolStatus.completed, PluginToolStatus.error]) {
+      test("bounds subtask $status summaries without stripping child lifecycle", () {
+        final text = "😀" * (maxToolOutputLength + 3);
+        final part = PluginMessagePart.subtask(
+          id: "task",
+          sessionID: "s",
+          messageID: "m",
+          prompt: "prompt",
+          description: "description",
+          agent: "agent",
+          childSessionID: "child",
+          taskState: PluginToolState(
+            status: status,
+            title: text,
+            shellCommand: null,
+            output: text,
+            error: status == PluginToolStatus.error ? text : null,
+            attachments: const [PluginMessageAttachment.metadata(mime: "image/png", filename: "image.png")],
+          ),
+        ).toShared(sessionId: "stable") as MessagePartSubtask;
+        expect(part.childSessionID, "child");
+        expect(part.prompt, "prompt");
+        expect(part.description, "description");
+        expect(part.agent, "agent");
+        expect(part.taskState!.status, status.toShared());
+        expect(part.taskState!.title, "😀" * maxToolOutputLength);
+        expect(part.taskState!.output, "😀" * maxToolOutputLength);
+        expect(part.taskState!.error, status == PluginToolStatus.error ? "😀" * maxToolOutputLength : null);
+        expect(part.taskState!.attachments, hasLength(1));
+      });
+    }
+    test("bounds command output and error at the common wire projection with legacy title alias", () {
+      final text = "😀" * (maxToolOutputLength + 3);
+      final state = PluginMessagePart.tool(
+        id: "t",
+        sessionID: "s",
+        messageID: "m",
+        tool: "shell",
+        state: PluginToolState(
+          status: PluginToolStatus.error,
+          title: "display",
+          shellCommand: text,
+          output: text,
+          error: text,
+          attachments: const [],
+        ),
+      ).toShared(sessionId: "s") as MessagePartTool;
+      expect(state.state.output, "😀" * maxToolOutputLength);
+      expect(state.state.error, "😀" * maxToolOutputLength);
+      expect(state.state.shellCommand, "😀" * maxToolOutputLength);
+      final legacy = state.state.toJson()..remove("shellCommand");
+      expect(ToolState.fromJson(legacy).title, state.state.shellCommand);
+      expect(ToolState.fromJson(legacy).shellCommand, isNull);
+    });
     test("strips non-shell title and output while preserving status and attachments", () {
       const state = PluginToolState(
         status: PluginToolStatus.completed,
@@ -231,7 +285,7 @@ void main() {
         ],
       );
 
-      final shared = state.toShared();
+      final shared = state.toShared(retainSummary: false);
 
       expect(shared.status, equals(ToolStatus.completed));
       expect(shared.title, isNull);
@@ -254,7 +308,7 @@ void main() {
         attachments: [],
       );
 
-      final shared = state.toShared();
+      final shared = state.toShared(retainSummary: false);
 
       expect(shared.title, equals("git status --short"));
       expect(shared.shellCommand, equals("git status --short"));
@@ -271,7 +325,7 @@ void main() {
         output: "done",
         error: null,
         attachments: const [],
-      ).toShared();
+      ).toShared(retainSummary: false);
 
       expect(shared.shellCommand?.runes.length, maxToolOutputLength);
       expect(shared.title, shared.shellCommand);
@@ -288,7 +342,7 @@ void main() {
         attachments: [],
       );
 
-      final json = state.toShared().toJson();
+      final json = state.toShared(retainSummary: false).toJson();
 
       expect(json["status"], equals("running"));
       expect(ToolState.fromJson(json).status, equals(ToolStatus.running));

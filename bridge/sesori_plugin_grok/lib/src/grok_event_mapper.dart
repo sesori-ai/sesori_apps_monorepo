@@ -43,6 +43,21 @@ class GrokEventMapper({
   }
 
   @override
+  String? shellCommandForToolUpdate({required Map<String, dynamic> update}) {
+    final meta = update["_meta"];
+    final input = update["rawInput"];
+    if (meta is! Map<String, dynamic> || input is! Map<String, dynamic>) return null;
+    try {
+      if (GrokToolCallMetaDto.fromJson(meta).tool?.name != "run_terminal_command") return null;
+      final command = GrokTerminalInputDto.fromJson(input).command?.trim();
+      return command == null || command.isEmpty ? null : command;
+    } on Object catch (error, stackTrace) {
+      Log.w("[grok] malformed terminal command; retaining ordinary tool handling", error, stackTrace);
+      return null;
+    }
+  }
+
+  @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
     if (notification.method != sessionNotificationMethod && notification.method != sessionUpdateMethod) {
       return super.mapExtension(notification);

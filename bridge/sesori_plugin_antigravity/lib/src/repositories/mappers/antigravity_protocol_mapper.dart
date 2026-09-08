@@ -117,6 +117,10 @@ class const AntigravityProtocolMapper() {
     };
   }
 
+  /// Reads only the canonical native command produced by normalization.
+  String? shellCommandForToolUpdate({required Map<String, dynamic> update}) =>
+      _label(text: _nativeFields(raw: update["rawInput"])?.command);
+
   AntigravityNativeToolFieldsDto? _nativeFields({required Object? raw}) {
     if (raw is! Map<String, dynamic>) return null;
     try {

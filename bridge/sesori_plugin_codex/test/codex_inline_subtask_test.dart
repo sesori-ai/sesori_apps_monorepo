@@ -49,6 +49,7 @@ void main() {
         tool: "shell",
         presentation: const CodexOrdinaryToolPresentation(),
         title: "echo hello",
+        shellCommand: "echo hello",
         status: PluginToolStatus.completed,
         output: "hello",
         time: null,

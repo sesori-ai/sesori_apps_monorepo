@@ -612,6 +612,7 @@ PluginToolState _liveState({required List<BridgeSseEvent> events}) =>
 
 AcpReplayCollector _collector() => AcpReplayCollector(
   sessionUpdateNormalizer: null,
+  shellCommandResolver: null,
   sessionId: "s1",
   agentId: "ACP",
   initialUserMessageId: null,

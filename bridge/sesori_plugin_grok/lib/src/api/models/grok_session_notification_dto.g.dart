@@ -74,3 +74,6 @@ _GrokToolIdentityDto _$GrokToolIdentityDtoFromJson(Map json) =>
       name: json['name'] as String?,
       kind: json['kind'] as String?,
     );
+
+_GrokTerminalInputDto _$GrokTerminalInputDtoFromJson(Map json) =>
+    _GrokTerminalInputDto(command: json['command'] as String?);

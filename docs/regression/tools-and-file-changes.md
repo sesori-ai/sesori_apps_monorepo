@@ -12,7 +12,7 @@ sub-agent parts, plus the signal that a tool changed files.
   contract: stable identity, tool name, lifecycle status (pending, running,
   completed, error, plus a forward-compatible unknown), and attachments. Shell
   tools additionally carry the explicit command and its bounded output or error.
-  Non-shell titles, output snippets, and errors stop at the bridge remapping
+  Ordinary non-shell tool titles, output snippets, and errors stop at the bridge remapping
   boundary and never enter chat history or live client events.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
@@ -21,8 +21,23 @@ sub-agent parts, plus the signal that a tool changed files.
   non-null compatibility defaults: empty text/name details, retry attempt zero,
   an unknown file attachment, and pending tool state. Current peers serialize
   those non-null values.
-- Shell-command output is bounded to the shared limit and truncated by runes,
-  so a character is never split; the rule is identical live and on replay.
+- Shell commands, output and errors are bounded to the shared limit and truncated
+  by runes at the common bridge projection, so a character is never split; the
+  rule is identical live and on replay. The command remains the released title
+  alias for older clients; old title-only payloads still decode.
+- Subtasks retain bounded title/outcome/error summaries, status, attachments and
+  child-session IDs; ordinary non-shell tool stripping never applies to them.
+- Codex code-mode JavaScript is not itself a shell command. Only verified
+  `exec_command` input, literal single-invocation code-mode command evidence or
+  correlated `commandExecution` data retains shell results. Quoted/commented fake
+  invocations and generic shell-like tool names do not classify as commands.
+- ACP command authority is adapter-owned, not inferred from execute kind, title,
+  or arbitrary content. Antigravity's native alias normalizer and Grok's exact
+  terminal-tool metadata feed the same live/replay command merge. Output-only
+  and failed deltas preserve commands; reordered initial calls cannot overwrite
+  newer evidence. Antigravity exit-only updates retain output and nonzero exit
+  annotations do not change the adapter's existing ACP status semantics.
+  See `docs/HARNESS_CAPABILITIES.md` for unverified command-source gaps.
 - Backend vocabulary stays in the owning plugin. Attachments use client-safe
   sources: local paths never cross, unsafe URLs degrade to metadata.
 - A tool that mutates the workspace emits a per-session file-change signal once
@@ -159,3 +174,19 @@ permission-gated mutation and one repeated terminal update.
   `bridge/sesori_plugin_claude/test/claude_subtask_lifecycle_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
   `.plan/completed/attachment-references`, `.plan/active/claude-inline-subtasks`
+
+## Focused automated verification
+
+- `bridge/app/test/bridge/{plugin_to_shared_mapping,acp_tool_projection,codex_tool_projection,backend_tool_projection}_test.dart`
+  exercises backend-shaped positive/negative classification, successful and failed
+  live/history states, subtask outcomes/IDs, multibyte bounds, released title
+  decoding and attachments. ACP cases include partial/reordered updates and
+  Antigravity alias/exit-only behavior.
+- Owning Claude content/history/tracker, Pi history/dispatcher, OpenCode part
+  mapper, Codex rollout/tracker/history, ACP replay/content, Grok adapter,
+  Antigravity normalizer and DeepSeek replay/time tests guard backend semantics.
+- `bridge/app/tool/benchmarks/tool_projection_payload_size.dart` reproducibly
+  reports synthetic serialized UTF-8 bytes before/after projection. It states
+  source/starting-HEAD baselines and deliberately excludes envelopes, attachment
+  bytes, compression, encryption and latency. Subtask payload growth restores
+  intended outcome information; it is not a regression in ordinary-tool trimming.

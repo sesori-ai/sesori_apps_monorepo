@@ -84,6 +84,7 @@ void main() {
         )..beginTurn(sessionId: "s1", messageId: null);
         final collector = AcpReplayCollector(
           sessionUpdateNormalizer: null,
+          shellCommandResolver: null,
           sessionId: "s1",
           agentId: "ACP",
           initialUserMessageId: null,
@@ -131,6 +132,7 @@ void main() {
           final collector =
               AcpReplayCollector(
                   sessionUpdateNormalizer: null,
+                  shellCommandResolver: null,
                   sessionId: "s1",
                   agentId: "Cursor",
                   initialUserMessageId: "s1-initial-user",
@@ -176,6 +178,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -237,6 +240,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -275,6 +279,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -315,6 +320,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -361,6 +367,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -396,6 +403,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -422,6 +430,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -456,6 +465,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -497,6 +507,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -524,6 +535,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -551,6 +563,7 @@ void main() {
     test("a non-string session update discriminator is ignored", () {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
+        shellCommandResolver: null,
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
@@ -570,6 +583,7 @@ void main() {
     test("malformed replay chunks share warning state without creating a message", () {
       final collector = AcpReplayCollector(
         sessionUpdateNormalizer: null,
+        shellCommandResolver: null,
         sessionId: "s1",
         agentId: "Cursor",
         initialUserMessageId: null,
@@ -599,6 +613,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -712,6 +727,7 @@ void main() {
         final collector =
             AcpReplayCollector(
                 sessionUpdateNormalizer: null,
+                shellCommandResolver: null,
                 sessionId: "s1",
                 agentId: "Cursor",
                 initialUserMessageId: null,
@@ -767,6 +783,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -809,6 +826,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -841,6 +859,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -873,6 +892,7 @@ void main() {
       final collector =
           AcpReplayCollector(
               sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
               sessionId: "s1",
               agentId: "Cursor",
               initialUserMessageId: null,
@@ -919,6 +939,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -950,6 +971,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -972,6 +994,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -1007,6 +1030,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -1033,6 +1057,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "Cursor",
             initialUserMessageId: null,
@@ -1055,6 +1080,7 @@ void main() {
       final collector =
           AcpReplayCollector(
             sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
             sessionId: "s1",
             agentId: "ACP",
             initialUserMessageId: null,

@@ -11,6 +11,8 @@ import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
 /// Pure envelope normalization shared by live mapping and history replay.
+typedef AcpShellCommandResolver = String? Function({required Map<String, dynamic> update});
+
 typedef AcpSessionUpdateNormalizer = Map<String, dynamic> Function({required Map<String, dynamic> params});
 
 sealed class const AcpToolCallSessionLookup();
@@ -88,6 +90,10 @@ class AcpEventMapper({
   /// Identity for standard ACP. Harness overrides delegate to their Layer-2 mapper.
   /// Replay invokes the same hook before retaining any tool content.
   Map<String, dynamic> normalizeSessionUpdate({required Map<String, dynamic> params}) => params;
+
+  /// Adapter-authoritative command from an already-normalized tool update.
+  /// Standard ACP titles, execute kinds and arbitrary inputs are not authority.
+  String? shellCommandForToolUpdate({required Map<String, dynamic> update}) => null;
 
   /// Backend extension time for a message-bearing ACP notification.
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) => null;
@@ -1032,6 +1038,7 @@ class AcpEventMapper({
       // throwing and aborting the notification.
       tool: useCallTool ? _contentMapper.toolName(update: update) : prior.tool,
       title: prior?.title ?? (update["title"] is String ? update["title"] as String? : null),
+      shellCommand: prior?.shellCommand ?? shellCommandForToolUpdate(update: update),
       status: prior?.hasExplicitStatus ?? false ? prior!.status : mappedStatus ?? PluginToolStatus.pending,
       contentTracker: contentTracker,
       isFileMutation:
@@ -1105,6 +1112,7 @@ class AcpEventMapper({
           ? _contentMapper.toolName(update: update)
           : (prior?.tool ?? _contentMapper.toolName(update: update)),
       title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
+      shellCommand: shellCommandForToolUpdate(update: update) ?? prior?.shellCommand,
       status: mappedStatus ?? prior?.status ?? PluginToolStatus.pending,
       contentTracker: contentTracker,
       isFileMutation:
@@ -1198,7 +1206,7 @@ class AcpEventMapper({
         state: PluginToolState(
           status: state.status,
           title: state.title,
-          shellCommand: null,
+          shellCommand: state.shellCommand,
           output: content.output,
           error: state.status == PluginToolStatus.error ? content.output : null,
           attachments: content.attachments,
@@ -1392,6 +1400,7 @@ class _TextPartAccumulator({
 /// The last-rendered state of one live tool call, so a partial
 /// `tool_call_update` merges onto it instead of replacing it.
 class _LiveTool({
+  required final String? shellCommand,
   required final String tool,
   required final String? title,
   required final PluginToolStatus status,

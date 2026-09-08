@@ -67,19 +67,21 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
 
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
-  ToolState toShared() {
-    final command = shellCommand;
-    final boundedShellCommand = command == null ? null : String.fromCharCodes(command.runes.take(maxToolOutputLength));
+  ToolState toShared({required bool retainSummary}) {
+    final boundedShellCommand = _boundedToolText(shellCommand);
     final isShellCommand = boundedShellCommand != null;
     return ToolState(
       status: status.toShared(),
-      title: boundedShellCommand,
+      title: retainSummary ? _boundedToolText(title) : boundedShellCommand,
       shellCommand: boundedShellCommand,
-      output: isShellCommand ? output : null,
-      error: isShellCommand ? error : null,
+      output: isShellCommand || retainSummary ? _boundedToolText(output) : null,
+      error: isShellCommand || retainSummary ? _boundedToolText(error) : null,
       attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
     );
   }
+
+  static String? _boundedToolText(String? text) =>
+      text == null ? null : String.fromCharCodes(text.runes.take(maxToolOutputLength));
 }
 
 /// Maps a plugin-interface [PluginQuestionInfo] to the shared [QuestionInfo]
@@ -115,7 +117,7 @@ extension PluginMessagePartMapping on PluginMessagePart {
       sessionID: sessionId,
       messageID: messageID,
       tool: tool ?? "",
-      state: state.toShared(),
+      state: state.toShared(retainSummary: false),
     ),
     PluginMessagePartSubtask(
       :final id,
@@ -133,7 +135,7 @@ extension PluginMessagePartMapping on PluginMessagePart {
         prompt: prompt,
         description: description,
         agent: agent,
-        taskState: taskState?.toShared(),
+        taskState: taskState?.toShared(retainSummary: true),
         // Carried through as the plugin reported it. The live path translates
         // it in `SessionEventMapper`; the history path in `SessionRepository`.
         childSessionID: childSessionID,
