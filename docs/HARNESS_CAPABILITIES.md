@@ -57,17 +57,15 @@ They do not claim that a harness's native CLI could never implement an equivalen
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Strongest-first models/effort; separate default | ✅ | ⬜ | ⬜ | ✅ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ | ⬜ |
+| Effort variants listed strongest first, default declared separately | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
+| Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
 
-The picker shows each plugin's declared order. OpenCode ranks models newest
-release first, which is the best signal its catalog offers. Antigravity preserves
-the account-advertised order and has no Sesori effort variants; its ⬜ records
-only the absence of Sesori-defined ranking, not verified upstream ranking
-metadata. Before the first real session catalog in a process, it exposes no
-model choice and uses the
-account default. Other plugins still declare variants default-first (the client
-falls back to the first listed variant when no default is declared) and models
-in plugin-defined order.
+The picker shows each plugin's declared order. Every plugin ranks through the
+shared `CatalogStrengthOrder`; models of other vendors keep the plugin's own
+order after the ranked ones (OpenCode newest release first, others backend
+order). Antigravity's account-advertised order is what remains for its
+unranked models, and before the first real session catalog in a process it
+exposes no model choice and uses the account default.
 
 ## Codex question input
 
@@ -270,3 +268,10 @@ ahead of a model list that is identical either way, so the authentication line
 is the signal and the listing itself is not one. Only that line downgrades
 setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
+
+¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
+ACP seam, and Antigravity has no Sesori effort variants, so for both there is
+nothing to order.
+
+¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
+its models keep DeepSeek's catalog order; its efforts are ordered.

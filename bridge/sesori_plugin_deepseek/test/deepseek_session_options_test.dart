@@ -34,6 +34,37 @@ void main() {
         failures: failures,
       );
 
+  test("a model without a declared default keeps its first-listed effort as the default", () {
+    final options = mapper.map(
+      const DeepSeekCatalogResponseDto(
+        agent: DeepSeekAgentDto(id: "deepseek", name: "DeepSeek", primary: true),
+        providers: [
+          DeepSeekProviderDto(
+            id: providerId,
+            name: "Synthetic Provider",
+            models: [
+              DeepSeekModelDto(
+                id: selectionId,
+                upstreamModelId: "model/alpha-α",
+                name: "Synthetic Model",
+                reasoningEfforts: ["low", "high"],
+                defaultReasoningEffort: null,
+                supportsImages: true,
+              ),
+            ],
+          ),
+        ],
+        defaultSelectionId: selectionId,
+        commands: [],
+        failures: [],
+      ),
+    );
+
+    final model = options.providers.providers.single.models.single;
+    expect(model.variants, ["high", "low"]);
+    expect(model.defaultVariant, "low");
+  });
+
   test("catalog mapping preserves opaque selections, variants, defaults, and commands", () {
     final options = mapper.map(
       catalog(
@@ -56,7 +87,8 @@ void main() {
     final provider = options.providers.providers.single;
     expect([provider.id, provider.defaultModelID], [providerId, selectionId]);
     expect(provider.models.single, isA<PluginModel>().having((model) => model.id, "id", selectionId));
-    expect(provider.models.single.variants, ["low", "high"]);
+    expect(provider.models.single.variants, ["high", "low"]);
+    expect(provider.models.single.defaultVariant, "low");
     expect(options.commands.single.name, "inspect");
     expect(mapper.map(catalog(failures: const [])).completeness, PluginSessionOptionsCompleteness.complete);
   });

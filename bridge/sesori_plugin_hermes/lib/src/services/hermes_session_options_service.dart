@@ -232,17 +232,20 @@ class HermesSessionOptionsService({
           id: entry.key,
           name: providerNames[entry.key] ?? entry.key,
           authType: PluginProviderAuthType.unknown,
-          models: [
-            for (final model in entry.value)
-              PluginModel(
-                id: model.value,
-                name: model.name,
-                variants: const [],
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
+          models: CatalogStrengthOrder.models(
+            [
+              for (final model in entry.value)
+                PluginModel(
+                  id: model.value,
+                  name: model.name,
+                  variants: const [],
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
+            ],
+            idOf: (model) => model.id,
+          ),
           defaultModelID: current?.providerId == entry.key ? current?.value : null,
         ),
     ];
