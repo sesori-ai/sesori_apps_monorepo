@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** completed under explicitly accepted reduced verification; Steps 1–11 merged, Step 12 retirement ready for PR
+- **Status:** completed under explicitly accepted reduced verification; Steps 1–11 merged,
+  Step 12 retirement [PR #1397](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1397) open for review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,

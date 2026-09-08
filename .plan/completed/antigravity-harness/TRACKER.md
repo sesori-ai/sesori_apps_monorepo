@@ -6,6 +6,7 @@
 - **Status:** completed under explicitly accepted reduced verification; Step 12 retirement ready for review
 - **Base:** synced with main `51faa03f6ee40ad5fb30ca78779c558f5f4f7f17` after Step 11 merge
 - **Current branch:** `antigravity-harness-step-12-verification`
+- **Open PR:** [#1397](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1397) (final Step 12 retirement).
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -34,7 +35,7 @@
 - **Owner decision:** accepted reduced verification and retirement after the remaining native/authenticated/client and
   cumulative catalog gaps were presented. The exact waiver is recorded in `PLAN.md`; [EVIDENCE.md](EVIDENCE.md) retains
   every Partial/Blocked/Not run result. This is not a full L5 pass.
-- **Next action:** publish and monitor the final Step 12 retirement PR.
+- **Next action:** monitor final PR #1397 through human review; no successor implementation step remains.
 
 ## Fixed PR Series
 
@@ -59,7 +60,7 @@
 - [x] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): validate official managed candidates [step 10.c/12]`
 - [x] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
 - [x] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
-- [ ] Step 12/12 — `🌱 [antigravity-harness] docs: retire plan with accepted verification limits [step 12/12]`
+- [x] Step 12/12 — `🌱 [antigravity-harness] docs: retire plan with accepted verification limits [step 12/12]`
 
 ## Step 1 Checklist
 
@@ -537,7 +538,7 @@
 - [x] Owner selected “Accept reduced verification and retire” after the passing subset and remaining gaps were explained.
   Record the named reduction in `PLAN.md` and preserve all results in `EVIDENCE.md`; no unexecuted check becomes a pass.
 - [x] Move the plan/tracker/evidence to `.plan/completed/antigravity-harness/` under that explicit acceptance.
-- [ ] Publish and monitor the final documentation-only Step 12 PR; no further implementation step remains.
+- [x] Publish final documentation-only PR #1397 and start its monitor; no further implementation step remains.
 
 ## Architecture Reviews
 
