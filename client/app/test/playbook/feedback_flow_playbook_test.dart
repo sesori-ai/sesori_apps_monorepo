@@ -79,9 +79,9 @@ void main() {
   for (final rating in [4, 5]) {
     testWidgets(
       variant: TargetPlatformVariant.only(TargetPlatform.iOS),
-      "$rating stars requests native review once after the feedback sheet is removed",
+      "$rating stars requests native review once after the feedback sheet is removed on a narrow screen",
       (tester) async {
-        await _launch(tester: tester);
+        await _launch(tester: tester, size: const Size(320, 568));
         await _open(tester: tester);
         expect(find.byType(BottomSheet, skipOffstage: false), findsOneWidget);
         await _rate(tester: tester, rating: rating);

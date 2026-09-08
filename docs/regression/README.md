@@ -167,6 +167,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Plugin runtime installation](plugin-runtime-installation.md)
 - [Plugin setup and lifecycle](plugin-setup-and-lifecycle.md)
 - [Popup alerts](popup-alerts.md)
+- [Prego button interactions](prego-button-interactions.md)
 - [Projects and sessions](projects-and-sessions.md)
 - [Provider route conformance](provider-route-conformance.md)
 - [Pull request monitoring](pull-request-monitoring.md)

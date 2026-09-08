@@ -23,6 +23,92 @@ const _hidden = MotionTarget(id: "hidden", label: "Hidden transition", parameter
 const _outer = MotionTarget(id: "outer", label: "Outer transition", parameters: []);
 
 void main() {
+  for (final (step, initial, formatted) in [
+    (0.005, 0.015, "0.015"),
+    (0.25, 0.75, "0.75"),
+    (1.0, 3.0, "3"),
+    (0.0000001, 0.0000003, "0.0000003"),
+  ]) {
+    testWidgets("numeric field and slider preserve precision for step $step", (tester) async {
+      final parameter = MotionNumber(
+        id: "number",
+        label: "Amount",
+        source: "Test animation",
+        initialValue: initial,
+        min: 0,
+        max: step * 10,
+        step: step,
+      );
+      final target = MotionTarget(id: "number", label: "Number animation", parameters: [parameter]);
+      final runs = <MotionSnapshot>[];
+      await tester.pumpWidget(
+        MotionTuningHost(
+          fixtureId: "precision",
+          targets: [target],
+          onReplay: ({required target, required values}) => runs.add(values),
+          child: MaterialApp(
+            theme: buildPregoThemeData(brightness: Brightness.light),
+            builder: (context, child) => MotionTuningOverlay(child: child ?? const SizedBox.shrink()),
+            home: const Scaffold(),
+          ),
+        ),
+      );
+      await tester.tap(find.byTooltip("Expand motion controls"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Choose an animation"));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text("Number animation"));
+      await tester.pumpAndSettle();
+      expect(tester.widget<EditableText>(find.byType(EditableText)).controller.text, formatted);
+      final slider = tester.widget<Slider>(find.byType(Slider));
+      expect(slider.semanticFormatterCallback!(initial), formatted);
+      await tester.enterText(find.byType(TextFormField), formatted);
+      await tester.tap(find.byTooltip("Replay animation"));
+      await tester.pump();
+      expect(runs.single.number(parameter: parameter), initial);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  for (final (size, padding) in [
+    (const Size(320, 568), const FakeViewPadding(left: 8, top: 24, right: 12, bottom: 34)),
+    (const Size(568, 320), const FakeViewPadding(left: 44, right: 34, bottom: 21)),
+  ]) {
+    testWidgets("dragged and expanded controls respect safe areas in $size", (tester) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = padding;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      addTearDown(tester.view.resetPadding);
+      await _pump(
+        tester: tester,
+        overlapping: false,
+        textScale: 1,
+        onPress: () {},
+        onReplay: ({required target, required values}) {},
+      );
+      final panel = find.ancestor(of: find.text("Motion"), matching: find.byType(Material)).first;
+      for (final expanded in [false, true]) {
+        if (expanded) {
+          await tester.tap(find.byTooltip("Expand motion controls"));
+          await tester.pumpAndSettle();
+        }
+        await tester.drag(find.text("Motion"), const Offset(1000, 1000));
+        await tester.pumpAndSettle();
+        final bottomRight = tester.getRect(panel);
+        expect(bottomRight.right, lessThanOrEqualTo(size.width - padding.right - 12));
+        expect(bottomRight.bottom, lessThanOrEqualTo(size.height - padding.bottom - 12));
+        await tester.drag(find.text("Motion"), const Offset(-2000, -2000));
+        await tester.pumpAndSettle();
+        final topLeft = tester.getRect(panel);
+        expect(topLeft.left, greaterThanOrEqualTo(padding.left + 12));
+        expect(topLeft.top, greaterThanOrEqualTo(padding.top + 12));
+        expect(tester.takeException(), isNull);
+      }
+    });
+  }
+
   testWidgets("global speed slows unconnected tickers and restores normal without editing values", (tester) async {
     addTearDown(() => timeDilation = 1);
     final runs = <MotionSnapshot>[];

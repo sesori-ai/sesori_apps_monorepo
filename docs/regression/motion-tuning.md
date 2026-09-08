@@ -11,7 +11,10 @@ Selection highlights a connected region without triggering its action. A
 manifest list also exposes hidden transitions; overlapping regions require a
 choice. Typed controls edit a draft snapshot. Replay captures one immutable
 snapshot for the animation and its related timing. Original comparison and
-target reset leave unrelated draft values intact.
+target reset leave unrelated draft values intact. Numeric fields and slider
+announcements retain the precision declared by each parameter step. The floating
+panel stays within the screen safe area, including landscape side insets and
+the home indicator, while accommodating the keyboard.
 
 The feedback star bounce defaults to 470 ms, with a subtle 0.99 dip and a 1.18
 peak before settling. Only the chosen star scales; the selected range fills
@@ -92,8 +95,9 @@ mobile/desktop consumers using `CatalogScanRowMotion.standard`.
   using a different duration than its visible animation.
 - Editing one target changes values outside its explicitly labeled shared group, or rejected paste changes
   part of the current settings.
-- Tuning controls become covered by a modal sheet or unreachable above the
-  keyboard; expanding the panel changes the preview's available layout size.
+- Tuning controls become covered by a modal sheet, home indicator, landscape
+  cutout, or keyboard; expanding the panel changes the preview's available layout size.
+- Numeric fields or slider announcements round away a parameter's declared step precision.
 - Composer action reveals clip the native button's pressed scale or shadow
   against a rectangular boundary inside the voice-input surface.
 - Cancelling a recording starts transcription, deletes an existing draft, or

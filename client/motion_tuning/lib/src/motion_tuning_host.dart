@@ -251,15 +251,18 @@ class _MotionTuningOverlayState() extends State<MotionTuningOverlay> {
     return Overlay.wrap(
       child: LayoutBuilder(
         builder: (context, constraints) {
-          final width = (constraints.maxWidth - 24).clamp(0.0, 340.0);
-          final availableHeight = (constraints.maxHeight - media.padding.top - media.viewInsets.bottom - 24).clamp(
+          final minLeft = media.padding.left + 12;
+          final minTop = media.padding.top + 12;
+          final bottomInset = media.padding.bottom + media.viewInsets.bottom;
+          final width = (constraints.maxWidth - media.padding.horizontal - 24).clamp(0.0, 340.0);
+          final availableHeight = (constraints.maxHeight - media.padding.top - bottomInset - 24).clamp(
             0.0,
             520.0,
           );
           final panelHeight = host._expanded ? availableHeight : 52.0;
-          final maxLeft = (constraints.maxWidth - width - 12).clamp(12.0, double.infinity);
-          final maxTop = (constraints.maxHeight - media.viewInsets.bottom - panelHeight - 12).clamp(
-            media.padding.top + 12,
+          final maxLeft = (constraints.maxWidth - media.padding.right - width - 12).clamp(minLeft, double.infinity);
+          final maxTop = (constraints.maxHeight - bottomInset - panelHeight - 12).clamp(
+            minTop,
             double.infinity,
           );
           return Stack(
@@ -274,8 +277,8 @@ class _MotionTuningOverlayState() extends State<MotionTuningOverlay> {
                   ),
                 ),
               Positioned(
-                left: host._position.dx.clamp(12.0, maxLeft),
-                top: host._position.dy.clamp(media.padding.top + 12, maxTop),
+                left: host._position.dx.clamp(minLeft, maxLeft),
+                top: host._position.dy.clamp(minTop, maxTop),
                 width: width,
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: panelHeight),
@@ -494,30 +497,38 @@ class const _ParameterControl({
     required double current,
     required String unit,
     required bool integer,
-  }) => Row(
-    children: [
-      Expanded(
-        child: Slider(
-          value: current,
-          min: min,
-          max: max,
-          divisions: ((max - min) / step).round(),
-          semanticFormatterCallback: (value) => "${value.toStringAsFixed(integer ? 0 : 2)} $unit",
-          onChanged: (next) => onChanged(input: integer ? next.round() : next),
+  }) {
+    final stepParts = step.toString().split("e");
+    final fraction = stepParts.first.split(".");
+    final exponent = stepParts.length == 2 ? int.parse(stepParts.last) : 0;
+    final decimalPlaces = fraction.length == 2 ? fraction.last.replaceFirst(RegExp(r"0+$"), "").length : 0;
+    final precision = integer ? 0 : (decimalPlaces - exponent).clamp(0, 20);
+    return Row(
+      children: [
+        Expanded(
+          child: Slider(
+            value: current,
+            min: min,
+            max: max,
+            divisions: ((max - min) / step).round(),
+            semanticFormatterCallback: (value) => "${value.toStringAsFixed(precision)} $unit".trim(),
+            onChanged: (next) => onChanged(input: integer ? next.round() : next),
+          ),
         ),
-      ),
-      SizedBox(
-        width: 76,
-        child: _NumericInput(
-          key: ValueKey(parameter.id),
-          current: current,
-          unit: unit,
-          integer: integer,
-          onChanged: onChanged,
+        SizedBox(
+          width: 76,
+          child: _NumericInput(
+            key: ValueKey(parameter.id),
+            current: current,
+            unit: unit,
+            integer: integer,
+            precision: precision,
+            onChanged: onChanged,
+          ),
         ),
-      ),
-    ],
-  );
+      ],
+    );
+  }
 }
 
 // iOS number pads have no submit key. Update the draft while typing, keeping
@@ -527,6 +538,7 @@ class const _NumericInput({
   required final double current,
   required final String unit,
   required final bool integer,
+  required final int precision,
   required final void Function({required Object input}) onChanged,
 }) extends StatefulWidget {
   @override
@@ -537,7 +549,7 @@ class _NumericInputState() extends State<_NumericInput> {
   late final _text = TextEditingController(text: _formatted);
   final _focus = FocusNode();
 
-  String get _formatted => widget.current.toStringAsFixed(widget.integer ? 0 : 2);
+  String get _formatted => widget.current.toStringAsFixed(widget.precision);
 
   @override
   void didUpdateWidget(_NumericInput oldWidget) {
