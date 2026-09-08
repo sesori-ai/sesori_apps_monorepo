@@ -55,7 +55,7 @@ void main() {
       final sheet = tester.element(find.byType(BottomSheet));
       await tester.tap(find.byKey(const ValueKey("rating-2")));
       await tester.pump();
-      await tester.pump(const Duration(milliseconds: 280));
+      await tester.pump(const Duration(milliseconds: 470));
       await tester.pump(const Duration(milliseconds: 50));
 
       expect(find.text("How’s Sesori working for you?"), findsOneWidget);
@@ -290,7 +290,7 @@ Future<void> _openPrivate({required WidgetTester tester}) async {
 Future<void> _rate({required WidgetTester tester}) async {
   await tester.tap(find.byKey(const ValueKey("rating-2")));
   await tester.pump();
-  await tester.pump(const Duration(milliseconds: 300));
+  await tester.pump(const Duration(milliseconds: 490));
   await tester.pumpAndSettle();
 }
 

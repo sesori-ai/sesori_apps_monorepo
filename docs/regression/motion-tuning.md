@@ -13,6 +13,10 @@ choice. Typed controls edit a draft snapshot. Replay captures one immutable
 snapshot for the animation and its related timing. Original comparison and
 target reset leave unrelated draft values intact.
 
+The feedback star bounce defaults to 470 ms, with a subtle 0.99 dip and a 1.18
+peak before settling. Only the chosen star scales; the selected range fills
+immediately, and reduced-motion settings preserve the fill without scaling.
+
 The feedback result target replays the shared top toast with its standard
 motion and automatic dismissal. It is labeled replay only and exposes no
 target-specific tuning controls. Whole-flow replay uses that same presenter;
