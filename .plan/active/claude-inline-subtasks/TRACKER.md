@@ -740,18 +740,27 @@ The user deferred desktop and requested progression to Codex after phone checks;
 managed-runtime automation remains separately owned.
 
 Codex delivery split (user-authorized): complete typed-prompt + tile source is
-preserved on local branch `claude-inline-subtasks-codex-tiles-successor` before
-extracting review scope, then rebased without reset as the review-ready local
-branch `claude-inline-subtasks-codex-tiles-successor-ready` atop step 3/6. Full-source Codex `dart analyze --fatal-infos`, focused
-live/replay/terminal tests, and the owning package test suite passed. Step 3/6
-contains typed `thread/read` prompt parsing/codegen only; step 4/6 retains exact
-call-id replacement, service-owned lifecycle, child terminal joins, and cleanup
-without design changes. Review this branch only against `origin/main`; do not
-include the preserved successor in the preparatory PR.
+preserved unchanged on local branch
+`claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and the
+review-ready snapshot remains on
+`claude-inline-subtasks-codex-tiles-successor-ready` (`8a2952f318`). Those
+snapshots predate the step 3/6 provenance correction and must be integrated
+later without losing their tile work. Full-source successor Codex
+`dart analyze --fatal-infos`, focused live/replay/terminal tests, and the owning
+package test suite passed before extraction. Step 3/6 contains typed
+`thread/read` prompt parsing/codegen only; step 4/6 retains exact call-id
+replacement, service-owned lifecycle, child terminal joins, and cleanup without
+design changes. Review this branch only against `origin/main`; do not include
+preserved successor source in the preparatory PR.
 
-Codex step 3/6 verification: generated Freezed/JSON sources from typed inputs;
-`dart analyze --fatal-infos` and the complete `sesori_plugin_codex` test suite
-passed on the isolated preparatory tree. Diff is 792 changed lines before this
-verification note (+758/-34 including the one existing integration expectation),
-well below the 1,500-line review target. No tile lifecycle, stop policy, runtime
-pin, native adapter, client, shared contract, or database behavior changes.
+Codex step 3/6 correction: `thread/read` now parses turn ids and caches typed
+`text` prompts by turn id. `initialUserPrompt` requires the child lifecycle's
+exact, nullable `turnId`; null or unmatched provenance returns null instead of
+choosing copied parent history. The step 4/6 integration must resolve this cache
+when the existing `turn/started` owner observes the child turn id, while keeping
+live child-message prompt selection first and this read result as fallback.
+Unsupported rollout-only `input_text` decodes through the unknown content
+variant. Generated Freezed/JSON sources, the focused eight-test metadata suite,
+`dart analyze --fatal-infos`, and the complete `sesori_plugin_codex` test suite
+pass. No tile lifecycle, stop policy, runtime pin, native adapter, client,
+shared contract, or database behavior changes.

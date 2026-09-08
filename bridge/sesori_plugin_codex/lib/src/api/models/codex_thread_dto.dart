@@ -30,6 +30,7 @@ sealed class CodexThreadEnvelopeDto with _$CodexThreadEnvelopeDto {
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexThreadTurnDto with _$CodexThreadTurnDto {
   const factory({
+    required String? id,
     @JsonKey(defaultValue: <CodexThreadItemDto>[]) required List<CodexThreadItemDto> items,
   }) = _CodexThreadTurnDto;
 
@@ -52,9 +53,6 @@ sealed class CodexThreadItemDto with _$CodexThreadItemDto {
 sealed class CodexThreadContentDto with _$CodexThreadContentDto {
   @FreezedUnionValue("text")
   const factory text({required String text}) = CodexThreadTextContentDto;
-
-  @FreezedUnionValue("input_text")
-  const factory inputText({required String text}) = CodexThreadInputTextContentDto;
 
   const factory unknown() = CodexThreadUnknownContentDto;
 

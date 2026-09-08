@@ -178,7 +178,7 @@ $CodexThreadDtoCopyWith<$Res>? get thread {
 /// @nodoc
 mixin _$CodexThreadTurnDto {
 
-@JsonKey(defaultValue: <CodexThreadItemDto>[]) List<CodexThreadItemDto> get items;
+ String? get id;@JsonKey(defaultValue: <CodexThreadItemDto>[]) List<CodexThreadItemDto> get items;
 /// Create a copy of CodexThreadTurnDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -189,16 +189,16 @@ $CodexThreadTurnDtoCopyWith<CodexThreadTurnDto> get copyWith => _$CodexThreadTur
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadTurnDto&&const DeepCollectionEquality().equals(other.items, items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadTurnDto&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other.items, items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items));
+int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(items));
 
 @override
 String toString() {
-  return 'CodexThreadTurnDto(items: $items)';
+  return 'CodexThreadTurnDto(id: $id, items: $items)';
 }
 
 
@@ -209,7 +209,7 @@ abstract mixin class $CodexThreadTurnDtoCopyWith<$Res>  {
   factory $CodexThreadTurnDtoCopyWith(CodexThreadTurnDto value, $Res Function(CodexThreadTurnDto) _then) = _$CodexThreadTurnDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(defaultValue: <CodexThreadItemDto>[]) List<CodexThreadItemDto> items
+ String? id,@JsonKey(defaultValue: <CodexThreadItemDto>[]) List<CodexThreadItemDto> items
 });
 
 
@@ -226,9 +226,10 @@ class _$CodexThreadTurnDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadTurnDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? items = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? items = null,}) {
   return _then(CodexThreadTurnDto(
-items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
+id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,items: null == items ? _self.items : items // ignore: cast_nullable_to_non_nullable
 as List<CodexThreadItemDto>,
   ));
 }
@@ -241,9 +242,10 @@ as List<CodexThreadItemDto>,
 @JsonSerializable(createToJson: false)
 
 class _CodexThreadTurnDto implements CodexThreadTurnDto {
-  const _CodexThreadTurnDto({@JsonKey(defaultValue: <CodexThreadItemDto>[]) required  List<CodexThreadItemDto> items}): _items = items;
+  const _CodexThreadTurnDto({required this.id, @JsonKey(defaultValue: <CodexThreadItemDto>[]) required  List<CodexThreadItemDto> items}): _items = items;
   factory _CodexThreadTurnDto.fromJson(Map<String, dynamic> json) => _$CodexThreadTurnDtoFromJson(json);
 
+@override final  String? id;
  final  List<CodexThreadItemDto> _items;
 @override@JsonKey(defaultValue: <CodexThreadItemDto>[]) List<CodexThreadItemDto> get items {
   if (_items is EqualUnmodifiableListView) return _items;
@@ -262,16 +264,16 @@ _$CodexThreadTurnDtoCopyWith<_CodexThreadTurnDto> get copyWith => __$CodexThread
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadTurnDto&&const DeepCollectionEquality().equals(other._items, _items));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadTurnDto&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other._items, _items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items));
+int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_items));
 
 @override
 String toString() {
-  return 'CodexThreadTurnDto(items: $items)';
+  return 'CodexThreadTurnDto(id: $id, items: $items)';
 }
 
 
@@ -282,7 +284,7 @@ abstract mixin class _$CodexThreadTurnDtoCopyWith<$Res> implements $CodexThreadT
   factory _$CodexThreadTurnDtoCopyWith(_CodexThreadTurnDto value, $Res Function(_CodexThreadTurnDto) _then) = __$CodexThreadTurnDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(defaultValue: <CodexThreadItemDto>[]) List<CodexThreadItemDto> items
+ String? id,@JsonKey(defaultValue: <CodexThreadItemDto>[]) List<CodexThreadItemDto> items
 });
 
 
@@ -299,9 +301,10 @@ class __$CodexThreadTurnDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadTurnDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? items = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? items = null,}) {
   return _then(_CodexThreadTurnDto(
-items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
+id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
+as String?,items: null == items ? _self._items : items // ignore: cast_nullable_to_non_nullable
 as List<CodexThreadItemDto>,
   ));
 }
@@ -477,10 +480,6 @@ CodexThreadContentDto _$CodexThreadContentDtoFromJson(
           return CodexThreadTextContentDto.fromJson(
             json
           );
-                case 'input_text':
-          return CodexThreadInputTextContentDto.fromJson(
-            json
-          );
         
           default:
             return CodexThreadUnknownContentDto.fromJson(
@@ -583,76 +582,6 @@ class _$CodexThreadTextContentDtoCopyWithImpl<$Res>
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? text = null,}) {
   return _then(CodexThreadTextContentDto(
-text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
-}
-
-/// @nodoc
-@JsonSerializable(createToJson: false)
-
-class CodexThreadInputTextContentDto implements CodexThreadContentDto {
-  const CodexThreadInputTextContentDto({required this.text,  String? $type}): $type = $type ?? 'input_text';
-  factory CodexThreadInputTextContentDto.fromJson(Map<String, dynamic> json) => _$CodexThreadInputTextContentDtoFromJson(json);
-
- final  String text;
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-/// Create a copy of CodexThreadContentDto
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$CodexThreadInputTextContentDtoCopyWith<CodexThreadInputTextContentDto> get copyWith => _$CodexThreadInputTextContentDtoCopyWithImpl<CodexThreadInputTextContentDto>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadInputTextContentDto&&(identical(other.text, text) || other.text == text));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,text);
-
-@override
-String toString() {
-  return 'CodexThreadContentDto.inputText(text: $text)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $CodexThreadInputTextContentDtoCopyWith<$Res> implements $CodexThreadContentDtoCopyWith<$Res> {
-  factory $CodexThreadInputTextContentDtoCopyWith(CodexThreadInputTextContentDto value, $Res Function(CodexThreadInputTextContentDto) _then) = _$CodexThreadInputTextContentDtoCopyWithImpl;
-@useResult
-$Res call({
- String text
-});
-
-
-
-
-}
-/// @nodoc
-class _$CodexThreadInputTextContentDtoCopyWithImpl<$Res>
-    implements $CodexThreadInputTextContentDtoCopyWith<$Res> {
-  _$CodexThreadInputTextContentDtoCopyWithImpl(this._self, this._then);
-
-  final CodexThreadInputTextContentDto _self;
-  final $Res Function(CodexThreadInputTextContentDto) _then;
-
-/// Create a copy of CodexThreadContentDto
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? text = null,}) {
-  return _then(CodexThreadInputTextContentDto(
 text: null == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String,
   ));

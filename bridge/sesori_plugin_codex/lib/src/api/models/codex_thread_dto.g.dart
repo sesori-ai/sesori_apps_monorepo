@@ -20,6 +20,7 @@ _CodexThreadEnvelopeDto _$CodexThreadEnvelopeDtoFromJson(Map json) =>
 
 _CodexThreadTurnDto _$CodexThreadTurnDtoFromJson(Map json) =>
     _CodexThreadTurnDto(
+      id: json['id'] as String?,
       items:
           (json['items'] as List<dynamic>?)
               ?.map(
@@ -54,13 +55,6 @@ CodexThreadTextContentDto _$CodexThreadTextContentDtoFromJson(Map json) =>
       text: json['text'] as String,
       $type: json['type'] as String?,
     );
-
-CodexThreadInputTextContentDto _$CodexThreadInputTextContentDtoFromJson(
-  Map json,
-) => CodexThreadInputTextContentDto(
-  text: json['text'] as String,
-  $type: json['type'] as String?,
-);
 
 CodexThreadUnknownContentDto _$CodexThreadUnknownContentDtoFromJson(Map json) =>
     CodexThreadUnknownContentDto($type: json['type'] as String?);
