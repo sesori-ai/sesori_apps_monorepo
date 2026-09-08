@@ -38,7 +38,7 @@ const feedbackStarDuration = MotionDuration(
   id: "feedback.stars.duration",
   label: "Bounce duration",
   source: "$_source · _Stars / _FeedbackSheet",
-  initialValue: Duration(milliseconds: 280),
+  initialValue: Duration(milliseconds: 470),
   min: Duration.zero,
   max: Duration(milliseconds: 2000),
 );
@@ -134,7 +134,7 @@ const feedbackStarDip = MotionNumber(
   id: "feedback.stars.dip",
   label: "Dip scale",
   source: "$_source · _tapScale",
-  initialValue: 0.88,
+  initialValue: 0.99,
   min: 0.7,
   max: 1,
   step: 0.01,

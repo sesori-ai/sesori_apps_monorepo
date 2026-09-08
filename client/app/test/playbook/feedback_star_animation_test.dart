@@ -18,8 +18,8 @@ void main() {
 
     await tester.tap(star);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 40));
-    expect(_scale(tester: tester, rating: 3), lessThan(0.95));
+    await tester.pump(const Duration(milliseconds: 75));
+    expect(_scale(tester: tester, rating: 3), closeTo(0.99, 0.001));
     for (var rating = 1; rating <= 5; rating++) {
       expect(
         _starAsset(tester: tester, rating: rating),
@@ -32,16 +32,16 @@ void main() {
 
     // A second tap during the bounce must not change the accepted rating.
     await tester.tap(find.byKey(const ValueKey("rating-5")));
-    await tester.pump(const Duration(milliseconds: 100));
-    expect(_scale(tester: tester, rating: 3), greaterThan(1.15));
+    await tester.pump(const Duration(milliseconds: 160));
+    expect(_scale(tester: tester, rating: 3), closeTo(1.18, 0.001));
     expect(_scale(tester: tester, rating: 5), 1);
     expect(find.text("What should we improve?"), findsNothing);
 
-    await tester.pump(const Duration(milliseconds: 120));
+    await tester.pump(const Duration(milliseconds: 205));
     expect(_scale(tester: tester, rating: 3), closeTo(1, 0.02));
     expect(find.text("How’s Sesori working for you?"), findsOneWidget);
 
-    await tester.pump(const Duration(milliseconds: 40));
+    await tester.pump(const Duration(milliseconds: 50));
     await tester.pumpAndSettle();
     expect(find.text("What should we improve?"), findsOneWidget);
     expect(tester.takeException(), isNull);
