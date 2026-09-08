@@ -19,8 +19,10 @@
   v0.1.4 native contract/input cancellation; step 5/5 completes ACP-owned stop.
   Both slices merged (#1363, #1370). Agent-run phone QA found the transport
   crash fixed by #1379; requested phone stop/input checks then passed. See
-  `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice;
-  Codex inline tiles are next, without retiring the overall harness plan.
+  `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice. Codex
+  now uses a user-authorized six-step packaging sequence: typed child-prompt
+  parsing is step 3/6 and inline tiles step 4/6, with approved behavior and
+  architecture unchanged. Overall harness plan remains active.
 
 ## Goal
 

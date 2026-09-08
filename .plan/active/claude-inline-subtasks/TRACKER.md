@@ -9,7 +9,9 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the original Claude series is complete; harness follow-ups remain active
-- **Next action:** Codex inline subtask tiles (step 3/5). DeepSeek #1363,
+- **Next action:** Codex typed child-prompt parsing (step 3/6), followed by
+  inline subtask tiles (step 4/6). This is a user-authorized packaging split;
+  approved behavior and architecture are unchanged. DeepSeek #1363,
   #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
   stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
   remains deferred by user choice; the overall plan remains active.
@@ -161,11 +163,12 @@ post-merge E2E gates are unchanged.
 | Done | Harness | Description | State |
 |---|---|---|---|
 | [x] | all | `🌱 [claude-inline-subtasks] docs: plan Codex, Grok Build, DeepSeek, and Cursor sub-agent follow-ups` | [PR #1260](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1260) merged |
-| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged |
-| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) merged; lifecycle hardening [PR #1280](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1280) merged |
-| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents` | Not started |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads` | Not started |
-| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage` | Not started |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: parse sub-agent thread and item metadata` | [PR #1263](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1263) merged; historical title unchanged (step 1/6) |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | [PR #1273](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1273) merged; lifecycle hardening [PR #1280](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1280) merged; historical title unchanged (step 2/6) |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | Implemented on `claude-inline-subtasks-codex-tiles`; preparatory parsing/codegen only |
+| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: inline subtask tiles for spawned agents [step 4/6]` | Full checkpoint preserved on local branch `claude-inline-subtasks-codex-tiles-successor`; review-ready successor on `claude-inline-subtasks-codex-tiles-successor-ready`; neither published |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 5/6]` | Not started |
+| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 6/6]` | Not started |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
 | [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
@@ -735,3 +738,20 @@ corrected independent-scope stop and pending/later-input checks passed.
 `followups/deepseek-phone-qa.md` records the bounded evidence and follow-ups.
 The user deferred desktop and requested progression to Codex after phone checks;
 managed-runtime automation remains separately owned.
+
+Codex delivery split (user-authorized): complete typed-prompt + tile source is
+preserved on local branch `claude-inline-subtasks-codex-tiles-successor` before
+extracting review scope, then rebased without reset as the review-ready local
+branch `claude-inline-subtasks-codex-tiles-successor-ready` atop step 3/6. Full-source Codex `dart analyze --fatal-infos`, focused
+live/replay/terminal tests, and the owning package test suite passed. Step 3/6
+contains typed `thread/read` prompt parsing/codegen only; step 4/6 retains exact
+call-id replacement, service-owned lifecycle, child terminal joins, and cleanup
+without design changes. Review this branch only against `origin/main`; do not
+include the preserved successor in the preparatory PR.
+
+Codex step 3/6 verification: generated Freezed/JSON sources from typed inputs;
+`dart analyze --fatal-infos` and the complete `sesori_plugin_codex` test suite
+passed on the isolated preparatory tree. Diff is 792 changed lines before this
+verification note (+758/-34 including the one existing integration expectation),
+well below the 1,500-line review target. No tile lifecycle, stop policy, runtime
+pin, native adapter, client, shared contract, or database behavior changes.

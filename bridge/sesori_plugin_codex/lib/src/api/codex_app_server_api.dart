@@ -83,7 +83,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
   }) async {
     final result = await _client.request(
       method: "thread/read",
-      params: {"threadId": threadId, "includeTurns": false},
+      params: {"threadId": threadId, "includeTurns": true},
     );
     return _decodeResponse(result: result, operation: "thread/read");
   }

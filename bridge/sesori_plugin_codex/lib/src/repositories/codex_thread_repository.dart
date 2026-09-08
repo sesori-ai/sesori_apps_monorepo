@@ -38,6 +38,7 @@ final class const _CodexPromptAttachmentException({required final String message
 
 /// Layer-2 normalization and domain mapping for Codex app-server threads.
 class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
+  final Map<String, String> _initialPromptByThread = {};
   static const _supportedImageMimes = {
     "image/bmp",
     "image/gif",
@@ -70,7 +71,27 @@ class CodexThreadRepository({required final CodexAppServerApi _appServerApi}) {
       operation: "thread/read",
       request: () => _appServerApi.readThread(threadId: threadId),
     );
+    final prompt = _initialUserPrompt(thread: dto.thread);
+    if (prompt != null) _initialPromptByThread[threadId] = prompt;
     return _mapRequired(dto: dto, operation: "thread/read");
+  }
+
+  String? initialUserPrompt({required String threadId}) => _initialPromptByThread[threadId];
+
+  String? _initialUserPrompt({required CodexThreadDto? thread}) {
+    if (thread == null) return null;
+    for (final turn in thread.turns) {
+      for (final item in turn.items) {
+        if (item case CodexThreadUserMessageItemDto(:final content)) {
+          final prompt = [
+            for (final part in content)
+              if (part case CodexThreadTextContentDto(:final text) || CodexThreadInputTextContentDto(:final text)) text,
+          ].join();
+          if (prompt.trim().isNotEmpty) return prompt;
+        }
+      }
+    }
+    return null;
   }
 
   Future<CodexThreadRecord> resumeThread({required String threadId}) async {

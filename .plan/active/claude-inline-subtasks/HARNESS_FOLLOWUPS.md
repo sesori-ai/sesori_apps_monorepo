@@ -9,9 +9,10 @@
 - **Base:** `main` at `6e9028c4c6`
 - **Delivery:** one open PR at a time, following current repository rules.
   Remaining Codex PRs use `<emoji> [claude-inline-subtasks] <description>
-  [step x/5]`: metadata and child sessions are merged steps 1/5 and 2/5;
-  tiles, scoped stop, and coverage are steps 3/5 through 5/5. Historical merged
-  titles remain unchanged. Progress is tracked in `TRACKER.md` "Harness
+  [step x/6]`: metadata and child sessions are merged steps 1/6 and 2/6;
+  typed child-prompt parsing, tiles, scoped stop, and coverage are steps 3/6
+  through 6/6. Historical merged titles remain unchanged. User-authorized
+  packaging split only; approved behavior and architecture are unchanged. Progress is tracked in `TRACKER.md` "Harness
   Follow-Ups". The DeepSeek phone handoff is recorded in
   `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
@@ -279,13 +280,14 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### PRs
 
-| Emoji | Description | Scope |
-|---|---|---|
-| 🌿 | `codex: parse sub-agent thread and item metadata` | DTO fields, collab/activity parser and enums, fixtures from the probe |
-| ⚙️ | `codex: sub-agent threads become child sessions` | repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
-| 🚧 | `codex: inline subtask tiles for spawned agents` | service-coordinated tracker, mapper cases, cancel on close/disconnect, call-id replacement of the generic spawn card in rollout-tail and full-history replay, child-rollout terminal join |
-| ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
-| 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
+| Step | Emoji | Description | Scope |
+|---|---|---|---|
+| 1/6 | 🌿 | `codex: parse sub-agent thread and item metadata` | Merged historical title unchanged; DTO fields, collab/activity parser and enums, fixtures from the probe |
+| 2/6 | ⚙️ | `codex: sub-agent threads become child sessions` | Merged historical title unchanged; repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
+| 3/6 | ⚙️ | `codex: parse typed child prompts from thread reads` | `thread/read` includes turns; typed turn/item/content DTOs and Layer-2 first-user-prompt extraction, with generated serializers and focused tests. Preparatory packaging only; no tile behavior |
+| 4/6 | 🚧 | `codex: inline subtask tiles for spawned agents` | service-coordinated tracker, mapper cases, cancel on close/disconnect, call-id replacement of the generic spawn card in rollout-tail and full-history replay, child-rollout terminal join |
+| 5/6 | ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
+| 6/6 | 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
 
 ### Probe results (0.148.0, 2026-09-02, details in `followups/codex-probe.md`)
 

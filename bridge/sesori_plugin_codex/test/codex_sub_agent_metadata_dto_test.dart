@@ -1,5 +1,8 @@
+import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
 import "package:codex_plugin/src/api/models/codex_thread_dto.dart";
+import "package:codex_plugin/src/codex_app_server_client.dart";
+import "package:codex_plugin/src/repositories/codex_thread_repository.dart";
 import "package:test/test.dart";
 
 // Fixtures mirror codex-cli 0.148.0 captures recorded in
@@ -20,12 +23,38 @@ void main() {
         "updatedAt": 1788356444,
         "status": {"type": "active", "activeFlags": <String>[]},
         "canAcceptDirectInput": false,
+        "turns": [
+          {
+            "items": [
+              {
+                "type": "userMessage",
+                "content": [
+                  {"type": "text", "text": "Inspect child lifecycle."},
+                ],
+              },
+            ],
+          },
+        ],
       });
 
       expect(thread.parentThreadId, "parent-1");
       expect(thread.agentNickname, "Raman");
       expect(thread.agentRole, isNull);
       expect(thread.threadSource, isNull);
+      final userItem = thread.turns.single.items.single as CodexThreadUserMessageItemDto;
+      expect((userItem.content.single as CodexThreadTextContentDto).text, "Inspect child lifecycle.");
+    });
+
+    test("thread/read requests turns and retains first typed user prompt", () async {
+      final transport = _ThreadReadTransport();
+      final repository = CodexThreadRepository(
+        appServerApi: CodexAppServerApi(client: transport),
+      );
+
+      await repository.readThread(threadId: "child-1");
+
+      expect(transport.params, {"threadId": "child-1", "includeTurns": true});
+      expect(repository.initialUserPrompt(threadId: "child-1"), "Inspect child lifecycle.");
     });
 
     test("decodes known thread sources and falls back to unknown", () {
@@ -111,4 +140,39 @@ void main() {
       expect(drifted.threadSource, CodexRolloutThreadSource.unknown);
     });
   });
+}
+
+final class _ThreadReadTransport() implements CodexAppServerTransport {
+  Map<String, dynamic>? params;
+
+  @override
+  Stream<CodexServerNotification> get notifications => const Stream.empty();
+
+  @override
+  Future<dynamic> request({
+    required String method,
+    Object? params,
+    Duration timeout = const Duration(seconds: 30),
+  }) async {
+    expect(method, "thread/read");
+    this.params = (params! as Map).cast<String, dynamic>();
+    return {
+      "thread": {
+        "id": "child-1",
+        "parentThreadId": "parent-1",
+        "turns": [
+          {
+            "items": [
+              {
+                "type": "userMessage",
+                "content": [
+                  {"type": "text", "text": "Inspect child lifecycle."},
+                ],
+              },
+            ],
+          },
+        ],
+      },
+    };
+  }
 }
