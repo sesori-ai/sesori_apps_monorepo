@@ -323,7 +323,7 @@ void main() {
               before: null,
             ),
           ).thenAnswer((_) async => saved);
-          await cubit.retryHarnessAvailability();
+          await cubit.recheckHarnessAvailability();
         } else {
           snapshots.add(management(blocked: false));
         }
