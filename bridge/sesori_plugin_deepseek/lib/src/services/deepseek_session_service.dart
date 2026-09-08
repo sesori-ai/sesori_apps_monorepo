@@ -19,6 +19,11 @@ class const DeepSeekSessionService({
     }
   }
 
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => repository.stopScopedTree(client: client, target: target);
+
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
     required String sessionId,

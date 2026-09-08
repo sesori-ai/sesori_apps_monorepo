@@ -16,7 +16,10 @@ sealed class const PluginAbortResult();
 /// The stop was performed. [workKept] is true only when resident work (running
 /// sub-agents) was deliberately left alive, so the caller knows the session
 /// will still finish something later.
-final class const PluginAbortAccepted({required final bool workKept}) extends PluginAbortResult;
+final class const PluginAbortAccepted({
+  required final bool workKept,
+  required final bool subAgentsHandled,
+}) extends PluginAbortResult;
 
 /// A `confirm` stop refused because sub-agents are running.
 final class const PluginAbortRejectedSubAgentsRunning({

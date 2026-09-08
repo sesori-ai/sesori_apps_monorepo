@@ -2301,17 +2301,25 @@ class SessionDetailCubit(
   /// children are real sessions keep today's stop-everything behavior.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
     try {
+      final requestChildStatuses = switch (state) {
+        SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
+        SessionDetailLoading() || SessionDetailFailed() => const <String, SessionStatus>{},
+      };
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      if (root case ErrorResponse(:final error)) throw error;
+      final subAgentsHandled = switch (root) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw error,
+      };
       _clearLocalPromptQueue();
 
-      // Read state after the await: an abort-driven status or transcript event
-      // may have landed meanwhile and must not be overwritten by a stale copy.
+      // Prefer post-stop status truth, but retain the request snapshot when an
+      // concurrent reload temporarily replaces the loaded detail state.
       final current = state;
-      if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
+      final childStatuses = current is SessionDetailLoaded ? current.childStatuses : requestChildStatuses;
+      if (subAgents != SessionAbortSubAgentPolicy.keep && !subAgentsHandled) {
         final results = await Future.wait([
-          for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
+          for (final MapEntry(key: childId, value: status) in childStatuses.entries)
             if (status is SessionStatusBusy || status is SessionStatusRetry)
               _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
         ]);

@@ -15,6 +15,7 @@ _AbortSessionRequest _$AbortSessionRequestFromJson(Map json) =>
             json['subAgents'],
           ) ??
           SessionAbortSubAgentPolicy.stop,
+      useAtomicStop: json['useAtomicStop'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$AbortSessionRequestToJson(
@@ -22,6 +23,7 @@ Map<String, dynamic> _$AbortSessionRequestToJson(
 ) => <String, dynamic>{
   'sessionId': instance.sessionId,
   'subAgents': _$SessionAbortSubAgentPolicyEnumMap[instance.subAgents]!,
+  'useAtomicStop': instance.useAtomicStop,
 };
 
 const _$SessionAbortSubAgentPolicyEnumMap = {
@@ -29,6 +31,15 @@ const _$SessionAbortSubAgentPolicyEnumMap = {
   SessionAbortSubAgentPolicy.keep: 'keep',
   SessionAbortSubAgentPolicy.stop: 'stop',
 };
+
+_SessionAbortResponse _$SessionAbortResponseFromJson(Map json) =>
+    _SessionAbortResponse(
+      subAgentsHandled: json['subAgentsHandled'] as bool? ?? false,
+    );
+
+Map<String, dynamic> _$SessionAbortResponseToJson(
+  _SessionAbortResponse instance,
+) => <String, dynamic>{'subAgentsHandled': instance.subAgentsHandled};
 
 _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>
     _SessionAbortRejection(
