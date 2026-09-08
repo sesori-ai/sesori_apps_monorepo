@@ -875,9 +875,10 @@ successor is developed locally. 7.a owns catalogs/options/set_mode, 7.b question
 
 ### Step 8/12: Persistent ACP plugin composition
 
-The original 8.a/8.b estimate was 1,850–2,700 lines. Integration discovery required 8.c; the reconciled total is
-3,130–3,390 (8.a actual 988, 8.b integration-corrected estimate 1,440–1,500, 8.c estimated 700–900). Further dependency-ordered splits are pre-approved. Retain twelve top-level steps, the 1,500-line cap per
-PR, and one open PR plus its immediate local successor. This partitions requirements; it does not remove them.
+The original two-part estimate was 1,850–2,700 lines. Integration discovery required 8.c; the completed slices are
+8.a at 988 changed lines and 8.b at 1,459. Step 8.c remains within the 1,500-line cap; the old combined estimate is retired.
+Further dependency-ordered splits are pre-approved. Retain twelve top-level steps, the 1,500-line cap per PR, and one
+open PR plus its immediate local successor. This partitions requirements; it does not remove them.
 
 #### Step 8.a: Recovery foundations and neutral ACP seams (estimated 900–1,350 lines)
 
@@ -927,18 +928,20 @@ integration corrections remain within the 1,500-line cap without reducing meanin
   question cleanup, crash/reset/reconnect, stale auth/privacy/source stack, global interruption and late-spawn
   cleanup with ACP fakes. Google files remain untouched; existing bridge tombstones still own reimport exclusion.
 
-#### Step 8.c: Descriptor and setup composition (estimated 700–900 lines)
+#### Step 8.c: Descriptor and setup composition (implementation remains within the 1,500-line cap)
 
 - Add the unregistered descriptor and full host/runtime/auth composition; reuse the per-attempt authentication
   composer and the same plugin-root `HostJsonStore` for authentication and live preparation.
 - Inject the shared ACP configuration tracker into Antigravity options capture so new-session defaults and loaded
-  session overrides stamp live/replayed messages; existing-session capture must not redefine the default.
+  session overrides stamp live/replayed messages; existing-session capture must not redefine the default. Clear catalog
+  and configuration state together on connection reset, then let real residency restore the selected session.
 - Add narrow read-only selected-profile-path inspection: Storage/Repository own I/O and normalization, Service
   owns readiness hints. Remove superseded unused token-presence helpers rather than retaining dummy writers,
   nullable stores or parallel inspection paths. Preparation keeps its existing typed atomic writer.
-- Keep inspection inert. Preparation/probing/start use the sanitized environment, personal-OAuth allowlist and
-  browser suppression. The existing descriptor lifecycle exit watch invokes `resetConnectionAfterExit`; no
-  extra manager or implicit login. Test setup, host composition, abort and lifecycle supervision here.
+- Keep inspection inert and unversioned until an exact probe runs. Preparation/probing/start use the sanitized
+  environment, personal-OAuth allowlist and browser suppression. The existing descriptor lifecycle exit watch invokes
+  `resetConnectionAfterExit`; no extra manager or implicit login. Test setup, host composition, abort and lifecycle
+  supervision here.
 - Begin 8.c only after 8.b publication. Registration/CLI inventory remain Step 9; native OAuth/cross-target and
   final L5 Full evidence remain explicit later gates, not claims made by the fake composition tests.
 

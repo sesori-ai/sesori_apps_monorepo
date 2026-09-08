@@ -1454,7 +1454,7 @@ void main() {
           subAgents: any(named: "subAgents"),
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(null),
+        (_) async => ApiResponse.success(false),
       );
       final cubit = await createLoadedCubit();
       await cubit.sendMessage(text: "parked", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
@@ -1763,7 +1763,7 @@ void main() {
           subAgents: any(named: "subAgents"),
         ),
       ).thenAnswer(
-        (_) async => ApiResponse.success(null),
+        (_) async => ApiResponse.success(false),
       );
       final sendCompleter = Completer<ApiResponse<void>>();
       when(

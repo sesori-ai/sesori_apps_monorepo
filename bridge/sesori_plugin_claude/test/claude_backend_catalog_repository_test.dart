@@ -85,23 +85,29 @@ void main() {
       expect(model.defaultVariant, isNull);
     });
 
-    test("maps API model names back to picker ids, exactly or by bare name", () {
+    test("maps resolved and short API model names back to picker ids", () {
       final catalog = repository.map(
         handshake: {
           "models": [
             {"value": "default", "resolvedModel": "claude-opus-5[1m]"},
             {"value": "opus[1m]", "resolvedModel": "claude-opus-5[1m]"},
-            {"value": "fable", "resolvedModel": "claude-fable-5-1"},
+            {"value": "claude-fable-5-1[1m]", "resolvedModel": "claude-fable-5-1"},
             {"value": "haiku"},
           ],
         },
       );
 
-      expect(catalog.catalogModelId(apiModel: "claude-fable-5-1"), "fable");
+      expect(catalog.providers.providers.single.models.map((model) => model.id), [
+        "claude-fable-5-1[1m]",
+        "opus[1m]",
+        "haiku",
+      ]);
+      expect(catalog.catalogModelId(apiModel: "claude-fable-5-1"), "claude-fable-5-1[1m]");
+      expect(catalog.catalogModelId(apiModel: "fable[1m]"), "claude-fable-5-1[1m]");
       expect(catalog.catalogModelId(apiModel: "claude-opus-5[1m]"), "opus[1m]");
       expect(catalog.catalogModelId(apiModel: "claude-opus-5"), "opus[1m]");
+      expect(catalog.catalogModelId(apiModel: "opus[1m]"), "opus[1m]");
       expect(catalog.catalogModelId(apiModel: "claude-haiku-5"), isNull);
-      expect(catalog.catalogModelId(apiModel: "opus[1m]"), isNull);
     });
 
     test("filters malformed entries and falls back to the first model", () {

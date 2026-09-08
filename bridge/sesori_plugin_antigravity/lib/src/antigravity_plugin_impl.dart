@@ -8,7 +8,6 @@ import "runtime/antigravity_interaction_composer.dart";
 import "runtime/antigravity_output_composer.dart";
 import "services/antigravity_session_metadata_service.dart";
 import "services/antigravity_session_options_service.dart";
-import "trackers/antigravity_catalog_tracker.dart";
 
 /// Persistent ACP plugin. All processes, turns and pending input stay
 /// owned by the existing ACP lifecycle; the composition root injects all peers.
@@ -21,7 +20,6 @@ class AntigravityPlugin({
   required super.sessionOptionsService,
   required super.processFactory,
   required final AntigravitySessionOptionsService _options,
-  required final AntigravityCatalogTracker _catalog,
   required final AntigravitySessionMetadataService _metadata,
   required final String _geminiHome,
   required final AntigravityInteractionComposer _interactions,
@@ -45,13 +43,17 @@ class AntigravityPlugin({
   AcpPendingRegistry<Object> buildApprovalRegistry({required AcpStdioClient client}) =>
       _interactions.compose(client: client, emit: emitActivityEvent);
   @override
-  void onConnectionReset() => _catalog.clear();
+  void onConnectionReset() => _options.resetConnection();
   @override
-  void captureSessionConfig(AcpNewSessionResult result, {required String? sessionId, required bool fromNewSession}) =>
-      _options.capture(
-        result: result,
-        source: fromNewSession ? AntigravityCatalogSource.newSession : AntigravityCatalogSource.existingSession,
-      );
+  void captureSessionConfig(AcpNewSessionResult result, {required String? sessionId, required bool fromNewSession}) {
+    final capturedSessionId = sessionId ?? result.sessionId;
+    if (capturedSessionId.isEmpty) throw StateError("Antigravity session configuration has no session ID");
+    _options.capture(
+      result: result,
+      sessionId: capturedSessionId,
+      source: fromNewSession ? AntigravityCatalogSource.newSession : AntigravityCatalogSource.existingSession,
+    );
+  }
 
   @override
   Future<void> validateTurnSelection({

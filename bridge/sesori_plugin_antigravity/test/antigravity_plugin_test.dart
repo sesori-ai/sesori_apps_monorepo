@@ -38,6 +38,8 @@ class _Process() implements AcpProcessHandle {
   _Auth auth = _Auth.personal;
   bool resume = true;
   bool holdPrompts = false;
+  String defaultModelId = "default";
+  String otherModelId = "other";
   int created = 0;
   int kills = 0;
   bool outTapped = false;
@@ -113,7 +115,12 @@ class _Process() implements AcpProcessHandle {
       case "session/new":
         reply(
           request: frame,
-          result: _catalog(session: "new-${++created}", current: "default"),
+          result: _catalog(
+            session: "new-${++created}",
+            current: defaultModelId,
+            defaultModelId: defaultModelId,
+            otherModelId: otherModelId,
+          ),
         );
       case "session/list":
         reply(request: frame, result: {"sessions": <Object?>[]});
@@ -129,7 +136,12 @@ class _Process() implements AcpProcessHandle {
         }
         reply(
           request: frame,
-          result: _catalog(session: params["sessionId"] as String, current: "other"),
+          result: _catalog(
+            session: params["sessionId"] as String,
+            current: otherModelId,
+            defaultModelId: defaultModelId,
+            otherModelId: otherModelId,
+          ),
         );
       case "session/set_config_option":
       case "session/set_mode":
@@ -163,7 +175,12 @@ class _Process() implements AcpProcessHandle {
   }
 }
 
-Map<String, dynamic> _catalog({required String session, required String current}) => {
+Map<String, dynamic> _catalog({
+  required String session,
+  required String current,
+  required String defaultModelId,
+  required String otherModelId,
+}) => {
   "sessionId": session,
   "configOptions": [
     {
@@ -171,8 +188,8 @@ Map<String, dynamic> _catalog({required String session, required String current}
       "type": "select",
       "currentValue": current,
       "options": [
-        {"value": "default", "name": "Default"},
-        {"value": "other", "name": "Other"},
+        {"value": defaultModelId, "name": "Default"},
+        {"value": otherModelId, "name": "Other"},
       ],
     },
   ],
@@ -300,9 +317,73 @@ void main() {
         .toList();
     expect((writes.last["params"] as Map)["modeId"], "default");
     expect((writes[writes.length - 2]["params"] as Map)["value"], "other");
+    process.emit(
+      frame: {
+        "method": "session/update",
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "selected output"},
+          },
+        },
+      },
+    );
+    await _settle();
+    final assistant = h.events.whereType<BridgeSseMessageUpdated>().last.info as PluginMessageAssistant;
+    expect((assistant.modelID, assistant.providerID), ("other", AntigravityIdentity.pluginId));
     expect(h.specs.single.includeParentEnvironment, isFalse);
     expect(h.specs.single.environment["GEMINI_CLI_HOME"], h.directory.path);
     expect(process.created, 1, reason: "No scratch discovery session");
+  });
+
+  test("whitespace-bearing model IDs remain exact in fresh, selected, live and replay attribution", () async {
+    final live = _Process()
+      ..defaultModelId = " fresh default "
+      ..otherModelId = " acknowledged selection ";
+    final replay = _Process()
+      ..defaultModelId = live.defaultModelId
+      ..otherModelId = live.otherModelId;
+    final h = await _harness(processes: [live, replay]);
+    await h.start();
+    final session = await h.create();
+
+    void emitLiveAssistant({required String text}) => live.emit(
+      frame: {
+        "method": "session/update",
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": text},
+          },
+        },
+      },
+    );
+
+    emitLiveAssistant(text: "fresh");
+    await _settle();
+    var assistant = h.events.whereType<BridgeSseMessageUpdated>().last.info as PluginMessageAssistant;
+    expect(assistant.modelID, " fresh default ");
+
+    await h.send(
+      session: session.id,
+      model: (providerID: AntigravityIdentity.pluginId, modelID: " acknowledged selection "),
+    );
+    await live.frame(method: "session/prompt");
+    emitLiveAssistant(text: "selected");
+    await _settle();
+    assistant = h.events.whereType<BridgeSseMessageUpdated>().last.info as PluginMessageAssistant;
+    expect(assistant.modelID, " acknowledged selection ");
+
+    replay.updates.add({
+      "sessionUpdate": "agent_message_chunk",
+      "content": {"type": "text", "text": "replayed"},
+    });
+    final history = await h.plugin.getSessionMessages(session.id);
+    final replayed = history.where((message) => message.info is PluginMessageAssistant).single.info;
+    expect((replayed as PluginMessageAssistant).modelID, " acknowledged selection ");
+    expect(replayed.providerID, AntigravityIdentity.pluginId);
   });
 
   for (final resume in [true, false]) {
@@ -382,6 +463,9 @@ void main() {
     final before = h.events.whereType<BridgeSseMessagePartUpdated>().length;
     final history = await h.plugin.getSessionMessages(second.id);
     expect(history.length, 121);
+    final replayAssistant =
+        history.where((message) => message.info is PluginMessageAssistant).first.info as PluginMessageAssistant;
+    expect((replayAssistant.modelID, replayAssistant.providerID), ("other", AntigravityIdentity.pluginId));
     expect(history.last.parts.last.state, liveTool.state);
     expect(h.events.whereType<BridgeSseMessagePartUpdated>().length, before);
     expect((await h.plugin.getProviders(projectId: "/launch")).providers.single.defaultModelID, "default");
@@ -419,7 +503,12 @@ void main() {
       _question(process: process, session: first.id, id: "cancel");
       _question(process: process, session: second.id, id: "delete");
       await _settle();
-      await h.plugin.abortSession(sessionId: first.id, subAgents: PluginAbortSubAgentPolicy.stop);
+      await h.plugin.abortSession(
+        sessionId: first.id,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       expect(await h.plugin.getPendingQuestions(sessionId: first.id), isEmpty);
       expect(await h.plugin.getPendingQuestions(sessionId: second.id), hasLength(1));
       expect(process.held, hasLength(1));

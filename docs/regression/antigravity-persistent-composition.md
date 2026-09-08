@@ -11,7 +11,7 @@ No database/wire migration, analytics event, managed installation, OAuth attempt
 - Fresh options expose one primary agent and no models. Real new sessions establish the picker default; load/resume
   do not redefine it. Explicit models are checked before admission when the catalog is known. After reset, real
   residency restores the catalog; strict dispatch validation still precedes model/mode/prompt writes. Every turn uses
-  mode `default`. Reset clears picker state. Message model/provider stamping follows in 8.c before activation.
+  mode `default`. Reset clears picker state. Step 8.c now composes model/provider stamping while activation remains later.
 - Metadata recovery runs once per new live connection before it is advertised, not during ordinary enumeration or DB
   catalog reads. Imports consume those warmed hints. DB/live bindings override recovery regardless of arrival order. Live residency prefers advertised resume, otherwise load; replay always uses load.
 - Cancellation/deletion settle the target's pending input without altering other sessions. Local deletion never removes
@@ -41,5 +41,5 @@ secret log output, auth gates accumulating image lines, or deletion touching Goo
   `antigravity_output_composer_test.dart` covers all auth-line splits and large valid image-bearing JSON;
   `acp_output_interceptor_test.dart` covers EOF/CRLF/UTF-8, bounded matched lines, cancellation and 25MiB streaming
   before newline. `ndjson_process_client_test.dart` verifies caught-stack and explicit-reset-stack behavior.
-- **L5 Full:** native supported targets, real authorized authentication, descriptor host supervision and bridge import/
-  tombstone end-to-end remain later gates. Missing infrastructure is Blocked, not replaced by these synthetic tests.
+- **L5 Full:** native supported targets, real authorized authentication and bridge import/tombstone end-to-end remain
+  later gates. Missing infrastructure is Blocked, not replaced by these synthetic tests.

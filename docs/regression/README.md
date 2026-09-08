@@ -147,6 +147,7 @@ failed, or unexecuted required coverage keeps the plan active.
 
 - [Account and onboarding](account-and-onboarding.md)
 - [Analytics](analytics.md)
+- [Antigravity descriptor and setup composition](antigravity-descriptor-and-setup.md)
 - [Antigravity isolated profiles](antigravity-isolated-profiles.md)
 - [Antigravity live and replay updates](antigravity-live-replay-updates.md)
 - [Antigravity model catalogs and session options](antigravity-session-options.md)

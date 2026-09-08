@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/foundation/models/product_analytics/product
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
+import "package:sesori_dart_core/src/services/models/plugin_install_state.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -83,8 +84,10 @@ void main() {
         intent: const PluginAuthenticationContinuationIntent.pasted(rawInput: redirect),
       );
       final first = submit();
-      expect((await submit() as PluginAuthenticationContinuationRejected).reason,
-          PluginAuthenticationContinuationRejection.alreadySubmitted);
+      expect(
+        (await submit() as PluginAuthenticationContinuationRejected).reason,
+        PluginAuthenticationContinuationRejection.alreadySubmitted,
+      );
       final terminals = <PluginAuthenticationTerminalUpdate>[];
       service.authenticationTerminal.listen(terminals.add);
       connection.emitAuthenticationProgress(
@@ -907,20 +910,28 @@ void main() {
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 30);
       await _pump();
       expect(
-        service.installProgress.value,
-        const {"codex": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 30)},
+        service.installStates.value,
+        const {
+          "codex": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 30),
+          ),
+        },
       );
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.extracting);
       await _pump();
       expect(
-        service.installProgress.value,
-        const {"codex": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null)},
+        service.installStates.value,
+        const {
+          "codex": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+          ),
+        },
       );
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
       await _pump();
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       // The terminal outcome does not itself refresh; the bridge's snapshot
       // invalidation does, exactly as for any other management change.
       expect(repository.loadCalls, 1);
@@ -928,6 +939,104 @@ void main() {
       // report — otherwise the metric would count surfaces, not installs.
       expect(reportedEvents, isEmpty);
     });
+
+    test("failed installs replay, survive missing snapshots, recover, and reset on disconnect", () async {
+      final missing = _conflict([]).current
+          .copyWith(setup: _conflict([]).current.setup.copyWith(state: PluginSetupState.runtimeMissing));
+      final ready = missing.copyWith(setup: missing.setup.copyWith(state: PluginSetupState.ready));
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "two").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "three").copyWith(plugins: [ready])));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect((await service.installStates.first)["one"], const PluginInstallState.failed());
+      final emittedStates = <Map<String, PluginInstallState>>[];
+      final subscription = service.installStates.listen(emittedStates.add);
+      addTearDown(subscription.cancel);
+      await _pump();
+      emittedStates.clear();
+
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value["one"], const PluginInstallState.failed());
+      expect(emittedStates, isEmpty, reason: "An unchanged snapshot is not an install-state update.");
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(emittedStates, [<String, PluginInstallState>{}], reason: "Ready recovery publishes the cleared failure.");
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.downloading, percent: 10);
+      await _pump();
+      expect(service.installStates.value["one"], isA<PluginInstallInProgress>());
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      connection.emitStatus(const ConnectionStatus.disconnected());
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(reportedEvents, isEmpty);
+    });
+
+    for (final response in [
+      _success(_response(token: "accepted")),
+      const PluginManagementMutationResult.uncertain(),
+      PluginManagementMutationResult.failure(error: ApiError.generic()),
+    ]) {
+      for (final terminal in [PluginInstallPhase.failed, PluginInstallPhase.completed]) {
+        test("early $terminal survives ${response.runtimeType} and retry clears failure", () async {
+          final mutation = Completer<PluginManagementMutationResult>();
+          final repository = _FakePluginRepository()
+            ..queueLoad(_supported(_response(token: "one")))
+            ..queueMutation(mutation.future)
+            ..queueMutation(const PluginManagementMutationResult.uncertain())
+            ..queueLoad(_supported(_response(token: "two")))
+            ..queueLoad(_supported(_response(token: "three")));
+          final connection = _FakeConnectionService(initialStatus: _connected);
+          final service = PluginManagementService(
+            pluginRepository: repository,
+            connectionService: connection,
+            productAnalyticsService: analytics,
+          );
+          addTearDown(() async {
+            await service.onDispose();
+            await connection.dispose();
+          });
+          await _waitFor(() => service.snapshots.hasValue);
+          final command = service.command(pluginId: "codex", request: const PluginLifecycleCommandRequest.install());
+          connection.emitInstallProgress(pluginId: "codex", phase: terminal);
+          await _pump();
+          if (terminal == PluginInstallPhase.failed) {
+            expect(service.installStates.value["codex"], const PluginInstallState.failed());
+          }
+          mutation.complete(response);
+          await command;
+          await _pump();
+          expect(
+            service.installStates.value["codex"],
+            terminal == PluginInstallPhase.failed ? const PluginInstallState.failed() : null,
+          );
+          expect(reportedEvents.single.parameters, {"outcome": terminal.name});
+          if (terminal == PluginInstallPhase.failed) {
+            final retry = service.command(pluginId: "codex", request: const PluginLifecycleCommandRequest.install());
+            expect(service.installStates.value["codex"], isA<PluginInstallInProgress>());
+            await retry;
+            expect(reportedEvents, hasLength(1));
+          }
+        });
+      }
+    }
 
     test("reports the outcome only for an install this app started", () async {
       final repository = _FakePluginRepository()
@@ -990,7 +1099,7 @@ void main() {
       );
       // The row is busy from the tap, before any progress event arrives.
       await _pump();
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       // A cached install can finish inside the request round trip.
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
@@ -1002,7 +1111,7 @@ void main() {
       await _pump();
 
       expect(reportedEvents.single.parameters, {"outcome": "completed"});
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
     });
 
     test("the row stays busy from acceptance until the first progress event", () async {
@@ -1029,18 +1138,20 @@ void main() {
 
       // Accepted, but the bridge has not reported a phase yet: the harness must
       // still read as installing so the row cannot be tapped again.
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
       await _pump();
       expect(
-        service.installProgress.value["codex"],
-        const PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 5),
+        service.installStates.value["codex"],
+        const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 5),
+        ),
       );
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
       await _pump();
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
     });
 
     test("a reconnect during an unresolved install command leaves no busy row", () async {
@@ -1066,18 +1177,18 @@ void main() {
         request: const PluginLifecycleCommandRequest.install(),
       );
       await _pump();
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       connection.emitStatus(const ConnectionStatus.disconnected());
       await _pump();
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
 
       // The orphaned command resolving later must not resurrect the row.
       mutation.complete(_success(_response(token: "one")));
       await command;
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       expect(reportedEvents, isEmpty);
     });
 
@@ -1106,12 +1217,12 @@ void main() {
 
       // The command may still have reached the bridge, so Install must not
       // become tappable and start a second download.
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       expect(reportedEvents.single.parameters, {"outcome": "completed"});
     });
 
@@ -1146,7 +1257,7 @@ void main() {
       await command;
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       expect(reportedEvents.single.parameters, {"outcome": "completed"});
     });
 
@@ -1174,7 +1285,7 @@ void main() {
 
       // A rejected command must also release the busy row, or Install could
       // never be retried.
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
 
       // The bridge never accepted it, so a later install of the same harness
       // (started elsewhere) is not this app's outcome.
@@ -1203,12 +1314,12 @@ void main() {
       await _waitFor(() => service.snapshots.hasValue);
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 10);
       await _pump();
-      expect(service.installProgress.value, isNotEmpty);
+      expect(service.installStates.value, isNotEmpty);
 
       connection.emitStatus(const ConnectionStatus.disconnected());
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
     });
   });
 }

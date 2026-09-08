@@ -209,6 +209,15 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return parseSubagentInterruptResponse(_json(raw, method: subagentInterruptMethod)).result;
   }
 
+  Future<DeepSeekSessionStopResponseDto> stopSession({
+    required AcpStdioClient client,
+    required DeepSeekSessionStopRequestDto request,
+  }) async {
+    _validateSessionStopRequest(request: request);
+    final raw = await client.request(method: sessionStopMethod, params: request.toJson());
+    return parseSessionStopResponse(_json(raw, method: sessionStopMethod));
+  }
+
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekSessionStopRequestDto parseSessionStopRequest(Map<String, dynamic> json) {
     final request = DeepSeekSessionStopRequestDto.fromJson(json);

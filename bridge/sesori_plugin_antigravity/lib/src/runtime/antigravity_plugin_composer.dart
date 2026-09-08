@@ -54,8 +54,11 @@ class const AntigravityPluginComposer() {
         pluginId: AntigravityIdentity.pluginId,
         agentDisplayName: AntigravityIdentity.displayName,
       ),
-      options: AntigravitySessionOptionsService(protocolMapper: protocol, catalogTracker: catalog),
-      catalog: catalog,
+      options: AntigravitySessionOptionsService(
+        protocolMapper: protocol,
+        catalogTracker: catalog,
+        configurationTracker: configuration,
+      ),
       metadata: AntigravitySessionMetadataService(
         repository: AntigravitySessionMetadataRepository(storage: const AntigravitySessionMetadataStorage()),
       ),

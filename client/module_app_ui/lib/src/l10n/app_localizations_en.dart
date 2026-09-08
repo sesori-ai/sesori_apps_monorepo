@@ -327,20 +327,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
 
   @override
-  String get harnessManagementDefaultsSection => 'Bridge Default';
+  String get harnessManagementDefaultsSection => 'Global harness settings';
 
   @override
   String get harnessManagementDefaultTimeout => 'Default idle timeout';
 
   @override
-  String get harnessManagementDefaultTimeoutDescription =>
-      'Apply this timeout to every harness that supports idle-timeout control.';
+  String get harnessManagementDefaultTimeoutDescription => 'Apply to all harnesses and replace individual overrides.';
 
   @override
   String get harnessManagementEnabled => 'Enabled';
 
   @override
-  String get harnessManagementRefreshSetup => 'Refresh setup';
+  String get harnessManagementRefreshSetup => 'Check setup';
 
   @override
   String get harnessManagementInstall => 'Install runtime';
@@ -370,7 +369,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementInstallInProgress => 'Installing…';
 
   @override
-  String get harnessManagementRestart => 'Restart';
+  String get harnessManagementRestart => 'Restart harness';
 
   @override
   String get harnessManagementIdleTimeout => 'Idle timeout';
@@ -2044,7 +2043,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementScan => 'Scan for sessions';
 
   @override
-  String get harnessManagementScanDescription => 'Import projects and sessions this harness has on disk';
+  String get harnessManagementScanDescription =>
+      'Find sessions created or moved outside Sesori and reload their latest messages.';
 
   @override
   String get harnessManagementScanNotReady => 'This harness cannot be scanned right now';
@@ -2057,4 +2057,97 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogScanDismiss => 'Dismiss';
+
+  @override
+  String get harnessManagementRefreshSetupDescription => 'Recheck installation, sign-in and runtime status.';
+
+  @override
+  String harnessManagementRestartDescription(String name) {
+    return 'Restart $name. Active sessions need your confirmation.';
+  }
+
+  @override
+  String get harnessManagementIdleTimeoutDescription =>
+      'Stop this harness after the selected time without an active session.';
+
+  @override
+  String get harnessesNeedsAttention => 'Needs attention';
+
+  @override
+  String get harnessesNotInstalled => 'Not installed';
+
+  @override
+  String get harnessesStatusSetupSection => 'Status & setup';
+
+  @override
+  String get harnessesActionsSection => 'Actions';
+
+  @override
+  String get harnessesAutomationSection => 'Automation';
+
+  @override
+  String get harnessesStatusLabel => 'Status';
+
+  @override
+  String get harnessesVersionLabel => 'Version';
+
+  @override
+  String get harnessesActivityLabel => 'Activity';
+
+  @override
+  String get harnessesInstallingStatus => 'Installing';
+
+  @override
+  String harnessesInstallTitle(String name) {
+    return 'Install $name';
+  }
+
+  @override
+  String harnessesInstallingTitle(String name) {
+    return 'Installing $name';
+  }
+
+  @override
+  String get harnessesInstallDescription => 'Install this harness on your connected computer to use it in Sesori.';
+
+  @override
+  String get harnessesStartInstallation => 'Start installation';
+
+  @override
+  String get harnessesRestartInstallation => 'Restart installation';
+
+  @override
+  String get harnessesInstallationFailed => 'Installation failed';
+
+  @override
+  String get harnessesInstallationFailedDescription => 'Start the installation again when you’re ready.';
+
+  @override
+  String harnessesEnabledLabel(String name) {
+    return '$name enabled';
+  }
+
+  @override
+  String harnessesUpdatingLabel(String name) {
+    return 'Updating $name';
+  }
+
+  @override
+  String harnessesForceRestartTitle(String name) {
+    return 'Restart $name?';
+  }
+
+  @override
+  String harnessesForceRestartDescription(String name) {
+    return '$name may be active in a session. Force restarting can interrupt active work.';
+  }
+
+  @override
+  String get harnessesForceRestartAction => 'Force restart';
+
+  @override
+  String get harnessesStatusIdle => 'Idle';
+
+  @override
+  String get harnessesStatusRunning => 'Running';
 }

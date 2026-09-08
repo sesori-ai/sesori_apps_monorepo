@@ -11,6 +11,35 @@ import "../repositories/antigravity_runtime_repository.dart";
 
 /// Owns Antigravity runtime precedence, exact contract policy, and sequencing.
 class AntigravityRuntimeService({required final AntigravityRuntimeRepository _runtimeRepository}) {
+  /// Selects an existing pair without spawning or probing it. Explicit paths
+  /// remain authoritative; PATH precedes the managed installation.
+  AntigravityRuntimeCandidateResult inspect({
+    required String? explicitServerPath,
+    required String? managedServerPath,
+    required Map<String, String> pathEnvironment,
+    required PlatformTarget target,
+  }) {
+    if (explicitServerPath != null) {
+      return _runtimeRepository.inspectPair(
+        source: AntigravityRuntimeSource.explicit,
+        serverPath: explicitServerPath,
+        target: target,
+      );
+    }
+    final pathCandidate = _runtimeRepository.inspectPath(environment: pathEnvironment, target: target);
+    if (pathCandidate is AntigravityRuntimeCandidateFound ||
+        pathCandidate is AntigravityRuntimeCandidateUnsupported ||
+        managedServerPath == null) {
+      return pathCandidate;
+    }
+    _logPathInspectionFailure(candidate: pathCandidate);
+    return _runtimeRepository.inspectPair(
+      source: AntigravityRuntimeSource.managed,
+      serverPath: managedServerPath,
+      target: target,
+    );
+  }
+
   Future<AntigravityRuntimeResolution> resolve({
     required String? explicitServerPath,
     required String? managedServerPath,
@@ -167,6 +196,18 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
         closesSessions: snapshot.closesSessions,
       ),
     );
+  }
+
+  void _logPathInspectionFailure({required AntigravityRuntimeCandidateResult candidate}) {
+    switch (candidate) {
+      case AntigravityRuntimeCandidateStorageFailed(:final cause, :final stackTrace):
+        Log.w("[antigravity] PATH runtime inspection failed", cause, stackTrace);
+      case AntigravityRuntimeCandidateFound() ||
+          AntigravityRuntimeCandidateMissing() ||
+          AntigravityRuntimeCandidateRejected() ||
+          AntigravityRuntimeCandidateUnsupported():
+        return;
+    }
   }
 
   void _logPathBoundaryFailure({required AntigravityRuntimeResolution resolution}) {

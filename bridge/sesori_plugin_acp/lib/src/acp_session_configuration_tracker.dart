@@ -36,7 +36,7 @@ class AcpSessionConfigurationTracker() {
     required String? providerId,
     required String? variantId,
   }) {
-    _defaultModelId = _useful(value: modelId);
+    _defaultModelId = _opaqueId(value: modelId);
     _defaultProviderId = _useful(value: providerId);
     _defaultVariantId = _useful(value: variantId);
   }
@@ -46,7 +46,7 @@ class AcpSessionConfigurationTracker() {
     required String? modelId,
     required String? providerId,
   }) {
-    final resolvedModelId = _useful(value: modelId);
+    final resolvedModelId = _opaqueId(value: modelId);
     if (resolvedModelId == null) {
       _sessionModelIds.remove(sessionId);
     } else {
@@ -85,6 +85,8 @@ class AcpSessionConfigurationTracker() {
     _sessionProviderIds.clear();
     _sessionVariantIds.clear();
   }
+
+  String? _opaqueId({required String? value}) => value == null || value.trim().isEmpty ? null : value;
 
   String? _useful({required String? value}) {
     final trimmed = value?.trim();

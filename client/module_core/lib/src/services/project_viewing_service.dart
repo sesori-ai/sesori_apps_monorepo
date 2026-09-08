@@ -272,6 +272,7 @@ class ProjectViewingService({
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
       AppRouteDef.settingsHarnesses ||
+      AppRouteDef.settingsHarnessDetail ||
       AppRouteDef.settingsProfile ||
       null => null,
     };

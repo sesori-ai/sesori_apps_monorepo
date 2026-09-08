@@ -9,11 +9,28 @@ import "../trackers/antigravity_catalog_tracker.dart";
 class AntigravitySessionOptionsService({
   required final AntigravityProtocolMapper _protocolMapper,
   required final AntigravityCatalogTracker _catalogTracker,
+  required final AcpSessionConfigurationTracker _configurationTracker,
 }) {
   /// Called only with real new/load/resume or configuration responses, never a scratch session.
-  void capture({required AcpNewSessionResult result, required AntigravityCatalogSource source}) {
+  void capture({
+    required AcpNewSessionResult result,
+    required String sessionId,
+    required AntigravityCatalogSource source,
+  }) {
     final catalog = _validatedCatalog(result: result);
-    if (catalog != null) _store(catalog: catalog, source: source);
+    if (catalog == null) return;
+    _store(catalog: catalog, source: source);
+    if (source == AntigravityCatalogSource.newSession) {
+      _configurationTracker.setProcessDefaults(
+        modelId: catalog.currentModelId,
+        providerId: AntigravityIdentity.pluginId,
+      );
+    }
+    _configurationTracker.setSessionOverride(
+      sessionId: sessionId,
+      modelId: catalog.currentModelId,
+      providerId: AntigravityIdentity.pluginId,
+    );
   }
 
   AntigravityModelCatalog? _validatedCatalog({required AcpNewSessionResult result}) {
@@ -39,6 +56,11 @@ class AntigravitySessionOptionsService({
       catalog: catalog,
       newSessionDefaultModelId: catalog.models.any((model) => model.id == defaultId) ? defaultId : null,
     );
+  }
+
+  void resetConnection() {
+    _catalogTracker.clear();
+    _configurationTracker.clear();
   }
 
   PluginSessionOptions getSessionOptions() {
@@ -126,6 +148,11 @@ class AntigravitySessionOptionsService({
           _store(catalog: updated, source: AntigravityCatalogSource.existingSession);
         }
       }
+      _configurationTracker.setSessionOverride(
+        sessionId: sessionId,
+        modelId: modelId,
+        providerId: AntigravityIdentity.pluginId,
+      );
     }
     await configRepository.setMode(sessionId: sessionId, modeId: AntigravitySessionMode.defaultMode.id);
   }

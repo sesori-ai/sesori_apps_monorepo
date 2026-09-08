@@ -588,7 +588,8 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
-  }) async => const SessionAborted(workKept: false);
+    required bool useAtomicStop,
+  }) async => const SessionAborted(workKept: false, subAgentsHandled: false);
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
@@ -1090,9 +1091,18 @@ class FakeSessionRepository({
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
   }) async {
-    await _plugin.abortSession(sessionId: sessionId, subAgents: subAgents.toPlugin());
-    return const SessionAborted(workKept: false);
+    final result = await _plugin.abortSession(
+      sessionId: sessionId,
+      subAgents: subAgents.toPlugin(),
+      useAtomicStop: useAtomicStop,
+      knownSubAgentSessionIds: const {},
+    );
+    return SessionAborted(
+      workKept: result is PluginAbortAccepted && result.workKept,
+      subAgentsHandled: result is PluginAbortAccepted && result.subAgentsHandled,
+    );
   }
 
   @override
