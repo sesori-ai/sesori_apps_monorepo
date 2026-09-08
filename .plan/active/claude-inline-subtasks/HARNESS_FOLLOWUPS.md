@@ -532,11 +532,9 @@ confirmation, no child session or partial stop) and gets that subset.
   descendant subtree and leaves process-scoped tombstones against late frames;
   existing disconnect, process-exit, and disposal cleanup owns cancellation and
   releases those tombstones after the old event source drains.
-- User-directed release change (2026-09-05): publish adapter 0.1.3 before
-  slice 4 merges, using an exact pushed live-consumer commit for conformance.
-  Slice 4 removes v1 compatibility and must pin the managed target and minimum
-  accepted version to 0.1.3 using verified published checksums before it is ready.
-  Replay remains slice 5; scoped interrupt consumption remains a later PR.
+- Adapter 0.1.4 owns atomic subtree cancellation and emits ordered
+  `deepseek/input/cancel`. The bridge consumes its frozen additive contract in
+  step 4/5, then moves full stop policy to existing ACP ownership in step 5/5.
 
 ### PRs
 
@@ -545,43 +543,32 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | ⚙️ | `sessions: sub-agent lifecycle notifications and child transcripts` | Merged PR #13 (`0a85fb2`): lifecycle, descendant transcripts, bindings, and protocol v2 |
 | adapter | ⚙️ | `sessions: per-child interrupt; release v0.1.3` | Merged PR #14 (`1f839c3`): interrupt contract and package version; release completed through PR #16 |
 | adapter | 🌿 | `protocol: carry sub-agent prompts for tile replay` | Merged PR #15 (`d7a4847`): required normalized prompt in live and replay metadata |
-| monorepo | ⚙️ | DeepSeek consumer replacement steps 1–5 below | Replaces oversized PR #1293; slice 4 also pins runtime 0.1.3 |
+| monorepo | ⚙️ | Completed live/replay consumer steps 1–5 below | Merged #1298/#1301/#1304/#1306/#1317; distinct from the native-stop series |
 | adapter | 🌱 | `release: prepare v0.1.3 for the live consumer` | PR #16 merged at `3976bcd`; v0.1.3 published with all six package/checksum checks passing |
-| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | PR #1346: typed interrupt and shared opt-in policy; request-time child snapshot with documented late-launch limitation |
-| monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 2/2]` | Required successor after #1346 merges; close the late-launch stop window before final DeepSeek E2E |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | #1346 merged at `2cc1485d7c`; historical title retained |
+| adapter | 🚧 | `[claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | #17 merged at `5eecdf68a3`; historical title retained |
+| adapter | 🌱 | `release: prepare v0.1.4 for atomic-stop consumer` | #18 merged at `e2ea207f21`; v0.1.4 and six archives verified |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | Frozen native corpus, ordered input cancel, initialize floor, target and digests; no stop-policy change |
+| monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Replace direct-child fanout with complete native authority at the existing ACP owner |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 
-### Scoped-stop successor (user-approved split)
+### Scoped-stop replacement
 
-The user chose a separate successor to #1346 for the late-launch stop race.
-This two-PR scoped-stop subseries does not replace the existing final regression
-reconciliation, E2E matrix, or retirement gates. Finish it before DeepSeek E2E,
-then continue Codex.
+The [replacement design](followups/deepseek-stop-replacement.md) fixes both slices' ownership and compatibility flow.
+PR #1356 closed without merge; its former step 4/4 is superseded. Step 4/5
+lands only the verified native contract/input consumer and keeps current scoped
+stop behavior. Step 5/5 will use one ACP-owned operation, native atomic authority,
+and no residual-ID handshake or new long-lived state. Final phone/desktop E2E
+remains user-owned; finish DeepSeek before Codex. Automatic managed-runtime upgrade
+machinery remains outside this series.
 
-Evidence is a reachable I/O interleaving, not yet a live reproduction: native
-`#notifySubagent` queues lifecycle output, while `#interruptSubagent` acknowledges
-before cancellation settles. A child launched between the bridge snapshot and
-backend cancellation can survive, remain visibly busy, and continue work. A second
-snapshot alone cannot cover announcements still queued behind the response.
+### Completed live/replay consumer series (historical)
 
-Step 2 must first establish a concrete, architecture-reviewed lifecycle design.
-Reuse existing prompt settlement and child-tracker facts; justify each new mutable
-piece, with no new persistence or speculative protocol fields. Target a few hundred
-changed lines including tests, remaining under the ~1,500-line soft cap. Cover late
-root and nested launches, named-child scope, non-cancellable work, failure/teardown,
-and new user turns not inheriting old stop intent. Do not broaden cancellation to
-parents or siblings or fabricate terminal state. Remove the temporary limitation
-from `docs/regression/session-turns.md` once that behavior is verified; keep final
-phone/desktop E2E outstanding until its existing matrix passes.
-
-### Consumer replacement series
-
-PR #1293 reached 5,431 changed lines and is superseded at the user's request.
-Preserve its complete implementation at `948de715804c7120623f7ff379112f4d65c6adde`
-on `claude-inline-subtasks-deepseek-tiles`; extract the following five slices in
-order, with one open PR at a time. Do not rewrite or force-push the archived
-branch. Count additions plus deletions, including tests, fixtures, codegen, and
-plan updates, before publishing each slice. Target about 1,500 lines per PR.
+PR #1293 was replaced by merged PRs #1298, #1301, #1304, #1306, and #1317.
+The original slice boundaries below use their historical 1/5–5/5 numbering;
+these are not the current native-stop steps 4/5 (#1363) and 5/5.
+The complete source remains at `948de715804c7120623f7ff379112f4d65c6adde`
+on `claude-inline-subtasks-deepseek-tiles`; do not rewrite or force-push it.
 
 This replaces only the existing consumer step, not the completed original
 8-step series or its remaining harness follow-ups. The plan already landed;

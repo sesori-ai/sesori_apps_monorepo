@@ -45,6 +45,39 @@ const _$DeepSeekSubagentInterruptResultEnumMap = {
   DeepSeekSubagentInterruptResult.unknown: 'unknown',
 };
 
+DeepSeekSessionStopResponseDto _$DeepSeekSessionStopResponseDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const ['workKept']);
+  return DeepSeekSessionStopResponseDto(workKept: json['workKept'] as bool);
+}
+
+Map<String, dynamic> _$DeepSeekSessionStopResponseDtoToJson(
+  DeepSeekSessionStopResponseDto instance,
+) => <String, dynamic>{'workKept': instance.workKept};
+
+DeepSeekInputCancelRequestDto _$DeepSeekInputCancelRequestDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const ['sessionId']);
+  return DeepSeekInputCancelRequestDto(sessionId: json['sessionId'] as String);
+}
+
+Map<String, dynamic> _$DeepSeekInputCancelRequestDtoToJson(
+  DeepSeekInputCancelRequestDto instance,
+) => <String, dynamic>{'sessionId': instance.sessionId};
+
+DeepSeekInputCancelResponseDto _$DeepSeekInputCancelResponseDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const []);
+  return DeepSeekInputCancelResponseDto();
+}
+
+Map<String, dynamic> _$DeepSeekInputCancelResponseDtoToJson(
+  DeepSeekInputCancelResponseDto instance,
+) => <String, dynamic>{};
+
 DeepSeekInitializeMetadataDto _$DeepSeekInitializeMetadataDtoFromJson(
   Map json,
 ) => DeepSeekInitializeMetadataDto(
@@ -570,4 +603,36 @@ Map<String, dynamic> _$DeepSeekWarningStatusDtoToJson(
   'sessionId': instance.sessionId,
   'message': instance.message,
   'kind': instance.kind,
+};
+
+DeepSeekSessionStopSessionRequestDto
+_$DeepSeekSessionStopSessionRequestDtoFromJson(Map json) {
+  $checkKeys(json, allowedKeys: const ['sessionId', 'kind']);
+  return DeepSeekSessionStopSessionRequestDto(
+    sessionId: json['sessionId'] as String,
+    $type: json['kind'] as String?,
+  );
+}
+
+Map<String, dynamic> _$DeepSeekSessionStopSessionRequestDtoToJson(
+  DeepSeekSessionStopSessionRequestDto instance,
+) => <String, dynamic>{'sessionId': instance.sessionId, 'kind': instance.$type};
+
+DeepSeekSessionStopChildRequestDto _$DeepSeekSessionStopChildRequestDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const ['sessionId', 'childSessionId', 'kind']);
+  return DeepSeekSessionStopChildRequestDto(
+    sessionId: json['sessionId'] as String,
+    childSessionId: json['childSessionId'] as String,
+    $type: json['kind'] as String?,
+  );
+}
+
+Map<String, dynamic> _$DeepSeekSessionStopChildRequestDtoToJson(
+  DeepSeekSessionStopChildRequestDto instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'childSessionId': instance.childSessionId,
+  'kind': instance.$type,
 };

@@ -114,20 +114,13 @@ defaults and queued client sends coherent.
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
-- DeepSeek 0.1.3 supports side-effect-free `confirm` rejection and child-only
-  `keep`. A running main turn can be kept separate only when all running children
-  are background; unsupported `keep` rejects before cancelling prompts or input.
-  `stop` cancels standard prompts and interrupts delegated children using each
-  child's direct parent. Foreground children stop through their parent; stopping
-  a non-cancellable child directly does not widen to its parent or siblings and
-  reports retained work. An opened child's new user prompt uses standard cancel.
-  Neither accepted nor unknown-child interrupt responses fabricate terminal
-  tiles/idle state. Whole-plugin interruption waits for authoritative lifecycle;
-  transport failure preserves its original error and logs parent/child context.
-  Stop currently targets children known at request time: a child announced while
-  cancellation is in flight can continue running, remains visible as busy, and
-  can be stopped again. Closing that late-launch window is a required follow-up.
-  Other ACP harnesses retain their existing policy until they opt in.
+- DeepSeek 0.1.4 supports side-effect-free `confirm` rejection and child-only
+  `keep`. The bridge validates the native adapter floor and handles ordered
+  `deepseek/input/cancel`: input admitted before cancellation is rejected, while
+  later input survives even when question IDs are reused or prompt output was
+  buffered behind an unfinished stdin flush. Scoped stop otherwise retains the
+  existing direct-parent interrupt behavior until replacement step 5/5 consumes
+  native atomic subtree authority. Other ACP harnesses remain unchanged.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the
   turn's requested model and thinking level on Pi's command line so

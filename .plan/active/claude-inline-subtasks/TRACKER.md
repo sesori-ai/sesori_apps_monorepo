@@ -9,11 +9,9 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the series is retired
-- **Next action:** finish review of DeepSeek scoped-stop step 1/2 (#1346), then
-  after human merge deliver required step 2/2 for in-flight child launches.
-  Complete DeepSeek E2E only after both steps, then continue Codex. All five
-  replacement consumer slices merged; remaining harness and retirement gates stay
-  required.
+- **Next action:** deliver replacement step 4/5 (native input/contract), then
+  step 5/5 (complete ACP-owned stop). PR #1356 closed without merge. Complete
+  user-owned DeepSeek phone/desktop E2E before Codex.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -177,8 +175,11 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
 | [x] | DeepSeek | Consumer replacement steps 1–5 | #1298, #1301, #1304, #1306, #1317 merged; oversized #1293 replaced |
 | [x] | DeepSeek (adapter) | `🌱 release: prepare v0.1.3 for the live consumer` | [Adapter #16](https://github.com/sesori-ai/sesori-deepseek-acp/pull/16) merged at `3976bcd`; v0.1.3 published and six assets verified |
-| [ ] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346): review pending; request-time snapshot limitation documented |
-| [ ] | DeepSeek | `🚧 [claude-inline-subtasks] DeepSeek stop covers in-flight child launches [step 2/2]` | Required after #1346 merges and before DeepSeek E2E; concrete lifecycle design/review and implementation pending |
+| [x] | DeepSeek | `⚙️ [claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | [#1346](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1346) merged at `2cc1485d7c`; title retained historically |
+| [x] | DeepSeek (adapter) | `🚧 [claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | Adapter #17 merged at `5eecdf68a3` |
+| [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
+| [ ] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) in review; replaces the contract/pin portion of closed #1356 |
+| [ ] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Pending #1363; completes native authority consumption |
 | [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
@@ -599,7 +600,10 @@ completed; `dart analyze --fatal-infos` and 87 tests passed in
 `sesori_plugin_grok`; `git diff --check` passed; protocol-v1 fixture bytes and
 the DeepSeek runtime manifest remained unchanged.
 
-### PR #1293 replacement delivery
+### Completed live/replay consumer delivery (PR #1293 replacement)
+
+The historical 1/5–5/5 slices here all merged; they are separate from the current
+native-stop steps 4/5 (#1363) and 5/5 above. Published historical titles stay unchanged.
 
 User correction: the 5,431-line consumer PR exceeded the approximately
 1,500-line review target. Its branch and review fixes remain preserved; the
@@ -722,13 +726,9 @@ interrupt response fields while retaining required/known-result checks; analysis
 and 104 tests pass. Named foreground children now correctly reject main-only stop
 even when all descendants are background; background named-child keep remains
 supported. ACP analysis + 312 tests and DeepSeek analysis + 106 tests pass.
-The user chose a separate successor for the in-flight late-child stop window.
-PR #1346 is scoped-stop step 1/2 with the request-time snapshot limitation documented.
-- [ ] After #1346 merges, deliver scoped-stop step 2/2: close late root/nested child
-  launches with bounded lifecycle ownership, then remove the documented limitation.
-  Establish and review the concrete design before implementation; do not start the
-  successor before human merge. Final DeepSeek E2E follows, then Codex.
-Merged actual `origin/main` in `a341dd144`, preserving upstream's required launch
-setting in the extracted DeepSeek test builder. ACP analysis + 323 tests and
-DeepSeek analysis + 106 tests pass after the merge.
-Managed runtime upgrades remain separately owned.
+Replacement delivery (2026-09-06): PR #1356 closed without merge. Step 4/5
+lands only the frozen v0.1.4 contract, ordered input cancellation, runtime pin,
+and initialize-version boundary. Step 5/5 will replace the existing direct-child
+policy with complete ACP-owned native stop. Until then scoped-stop behavior is
+unchanged. Final phone/desktop E2E is user-owned, then Codex; managed-runtime
+automation remains separately owned.

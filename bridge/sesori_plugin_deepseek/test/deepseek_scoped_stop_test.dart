@@ -237,7 +237,7 @@ class _StopHarness() {
         "_meta": {
           "sesori.ai/deepseek": {
             "extensionProtocolVersion": 2,
-            "adapterVersion": "0.1.3",
+            "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
             "harnessVersion": "0.1.1-rc.2",
             "persistenceOwner": "sesori",
           },

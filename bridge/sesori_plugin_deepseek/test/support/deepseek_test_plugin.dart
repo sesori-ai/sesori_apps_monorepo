@@ -2,6 +2,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
 import "package:deepseek_plugin/deepseek_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
 DeepSeekPlugin buildDeepSeekTestPlugin({required FakeAcpProcess fake}) {
   final configurationTracker = AcpSessionConfigurationTracker();
@@ -40,6 +41,7 @@ DeepSeekPlugin buildDeepSeekTestPlugin({required FakeAcpProcess fake}) {
     deepSeekSessionService: DeepSeekSessionService(
       repository: const DeepSeekSessionRepository(api: api),
       childSessions: childSessionTracker,
+      minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
     ),
     deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
       repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),

@@ -46,6 +46,41 @@ void main() {
     });
   }
 
+  group("scoped stop v1", () {
+    final fixtureDirectory = Directory("test/fixtures/protocol/scoped-stop/v1");
+    const definitions = {
+      "sessionStopRequest",
+      "sessionStopResponse",
+      "inputCancelRequest",
+      "inputCancelResponse",
+    };
+
+    test("valid fixtures decode and encode through typed DTOs", () async {
+      final corpus = jsonDecode(await File("${fixtureDirectory.path}/valid.json").readAsString()) as List;
+      final consumed = <String>{};
+      for (final fixture in corpus.cast<Map<String, dynamic>>()) {
+        final definition = fixture["definition"] as String;
+        final value = (fixture["value"] as Map).cast<String, dynamic>();
+        consumed.add(definition);
+        expect(_decodeScopedStop(api: api, definition: definition, value: value), isA<Map<String, dynamic>>());
+      }
+      expect(consumed, definitions);
+    });
+
+    test("invalid fixtures are rejected", () async {
+      final corpus = jsonDecode(await File("${fixtureDirectory.path}/invalid.json").readAsString()) as List;
+      for (final fixture in corpus.cast<Map<String, dynamic>>()) {
+        final definition = fixture["definition"] as String;
+        final value = (fixture["value"] as Map).cast<String, dynamic>();
+        expect(
+          () => _decodeScopedStop(api: api, definition: definition, value: value),
+          throwsA(anything),
+          reason: definition,
+        );
+      }
+    });
+  });
+
   test("catalog rejects bounded collection and entry violations", () async {
     final corpus = jsonDecode(await File("test/fixtures/protocol/v2/valid.json").readAsString()) as List;
     Map<String, dynamic> fixture(String definition) =>
@@ -318,6 +353,18 @@ Map<String, dynamic> _decode({
   "subagentInterruptRequest" => api.parseSubagentInterruptRequest(value).toJson(),
   "subagentInterruptResponse" => api.parseSubagentInterruptResponse(value).toJson(),
   _ => throw StateError("Unknown fixture definition $definition"),
+};
+
+Map<String, dynamic> _decodeScopedStop({
+  required DeepSeekAcpApi api,
+  required String definition,
+  required Map<String, dynamic> value,
+}) => switch (definition) {
+  "sessionStopRequest" => api.parseSessionStopRequest(value).toJson(),
+  "sessionStopResponse" => api.parseSessionStopResponse(value).toJson(),
+  "inputCancelRequest" => api.parseInputCancelRequest(value).toJson(),
+  "inputCancelResponse" => api.parseInputCancelResponse(value).toJson(),
+  _ => throw StateError("Unknown scoped-stop fixture definition $definition"),
 };
 
 Map<String, dynamic> _catalogRequest(Map<String, dynamic> value) {
