@@ -8,6 +8,15 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 ## Required Behavior
 
+- Existing chat interaction consumes the shared management snapshot, not a separate
+  poller. Disabled, authentication-required, missing-runtime, unavailable, stopping,
+  uninspected, unknown and missing-harness states block interaction. Ready setup with
+  dormant, starting, active or degraded runtime remains routable.
+- An unverified initial check blocks input with Retry; retained refresh errors show
+  a warning without changing the last established decision. An older bridge without
+  management support keeps interaction available with an upgrade warning. Reconnect
+  refreshes management and session prerequisites before restoring blocked input.
+
 - Registration is inert: it contributes CLI options and listing presence but starts
   nothing, and all registered harnesses appear in the snapshots. Setup inspection never
   installs, logs in, or starts a backend, reporting a bounded state and action hint

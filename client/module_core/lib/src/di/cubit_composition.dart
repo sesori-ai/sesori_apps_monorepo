@@ -18,11 +18,13 @@ import "../services/loaded_state_analytics_reporter.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
+import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_list_service.dart";
 import "../services/project_viewing_service.dart";
 import "../services/registered_bridges_service.dart";
 import "../services/session_detail_load_service.dart";
+import "../services/session_interaction_calculator.dart";
 import "../services/session_list_service.dart";
 import "../services/session_unseen_tracker.dart";
 import "../services/session_viewing_service.dart";
@@ -43,6 +45,8 @@ SessionDetailCubit createSessionDetailCubit({
   return SessionDetailCubit(
     locator<ConnectionService>(),
     loadService: locator<SessionDetailLoadService>(),
+    pluginManagementService: locator<PluginManagementService>(),
+    interactionCalculator: locator<SessionInteractionCalculator>(),
     promptDispatcher: locator<SessionRepository>(),
     permissionRepository: locator<PermissionRepository>(),
     sessionViewingService: locator<SessionViewingService>(),

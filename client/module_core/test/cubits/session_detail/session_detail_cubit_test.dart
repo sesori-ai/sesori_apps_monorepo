@@ -13,19 +13,24 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../services/session_interaction_calculator_test.dart" show managementFixture;
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
 
@@ -74,7 +79,6 @@ void main() {
       );
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
-        projectRepository: mockProjectRepository,
         pluginRepository: mockPluginRepository,
         connectionService: mockConnectionService,
       );
@@ -132,8 +136,11 @@ void main() {
       SessionViewingService? sessionViewingService,
       ProjectViewingService? projectViewingService,
       LifecycleSource? lifecycleSource,
+      PluginManagementService? pluginManagementService,
     }) => SessionDetailCubit(
       mockConnectionService,
+      pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
+      interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
@@ -153,6 +160,107 @@ void main() {
       await globalEvents.close();
       await connectionStatus.close();
     });
+
+    for (final initialBlocked in [true, false]) {
+      test("harness gate blocks input and restores interaction (cold: $initialBlocked)", () async {
+        PluginManagementLoadResult management({required bool blocked}) => managementFixture(
+          pluginId: "plugin-1",
+          setup: blocked ? PluginSetupState.authenticationRequired : PluginSetupState.ready,
+          runtime: blocked ? PluginRuntimeState.blocked : PluginRuntimeState.dormant,
+        );
+        final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(management(blocked: initialBlocked));
+        addTearDown(snapshots.close);
+        final service = MockPluginManagementService();
+        when(() => service.snapshots).thenAnswer((_) => snapshots);
+        when(service.refresh).thenAnswer((_) async {});
+        final cubit = buildCubit(pluginManagementService: service);
+        addTearDown(cubit.close);
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) =>
+              initialBlocked ? state is SessionDetailHarnessUnavailable : state is SessionDetailLoaded,
+          description: "initial harness state",
+        );
+        final before = cubit.state;
+        if (initialBlocked) {
+          verifyNever(
+            () => mockSessionService.getMessages(
+              sessionId: any(named: "sessionId"),
+              limit: any(named: "limit"),
+              before: any(named: "before"),
+            ),
+          );
+        } else {
+          snapshots.add(management(blocked: true));
+          await awaitState(
+            cubit: cubit,
+            predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+            description: "live block",
+          );
+          expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
+        }
+        await cubit.sendMessage(
+          text: "must not send",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        expect(await cubit.replyToQuestion(requestId: "question", sessionId: sessionId, answers: const []), isFalse);
+        expect(
+          await cubit.replyToPermission(requestId: "permission", sessionId: sessionId, reply: PermissionReply.once),
+          isFalse,
+        );
+        verifyNever(
+          () => mockPermissionRepository.replyToPermission(
+            requestId: any(named: "requestId"),
+            sessionId: any(named: "sessionId"),
+            reply: any(named: "reply"),
+          ),
+        );
+        if (cubit.state case SessionDetailLoaded(:final queuedMessages)) expect(queuedMessages, isEmpty);
+        if (!initialBlocked) {
+          final saved = await mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: SessionDetailLoadService.initialPageSize,
+            before: null,
+          );
+          when(
+            () => mockSessionService.getMessages(
+              sessionId: sessionId,
+              limit: SessionDetailLoadService.initialPageSize,
+              before: null,
+            ),
+          ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+          snapshots.add(management(blocked: false));
+          await awaitState(
+            cubit: cubit,
+            predicate: (state) =>
+                state is SessionDetailLoaded &&
+                state.interaction is SessionInteractionBlocked &&
+                (state.interaction as SessionInteractionBlocked).reason ==
+                    SessionInteractionBlockedReason.statusCheckFailed,
+            description: "recovery refresh failure",
+          );
+          expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
+          when(
+            () => mockSessionService.getMessages(
+              sessionId: sessionId,
+              limit: SessionDetailLoadService.initialPageSize,
+              before: null,
+            ),
+          ).thenAnswer((_) async => saved);
+          await cubit.retryHarnessAvailability();
+        } else {
+          snapshots.add(management(blocked: false));
+        }
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract && !state.isRefreshing,
+          description: "available without reopening",
+        );
+        expect((cubit.state as SessionDetailLoaded).interaction, isA<SessionInteractionAvailable>());
+      });
+    }
 
     blocTest<SessionDetailCubit, SessionDetailState>(
       "initial load success emits SessionDetailLoaded",
@@ -808,6 +916,8 @@ void main() {
     test("clearNotifications is a no-op when the shell has no notification integration", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
+        pluginManagementService: stubbedPluginManagementService(),
+        interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,

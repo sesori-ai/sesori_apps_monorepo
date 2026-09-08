@@ -69,6 +69,7 @@ Future<void> showImageAttachmentViewer({
       canShareImages: presentation.canShareImages,
       openExternalLink: presentation.openExternalLink,
       openSession: presentation.openSession,
+      openHarnessSettings: presentation.openHarnessSettings,
       child: switch (image) {
         LoadedMessageImage() => ImageAttachmentViewer(
           image: image,

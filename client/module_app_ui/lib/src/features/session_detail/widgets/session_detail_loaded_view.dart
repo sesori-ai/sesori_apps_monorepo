@@ -33,8 +33,8 @@ class SessionDetailLoadedView extends StatefulWidget {
     required this.state,
     required this.onShowPendingQuestions,
     required this.onShowPendingPermissions,
-  }) : readOnly = true,
-       bottomControls = null;
+    required this.bottomControls,
+  }) : readOnly = true;
 
   const new interactive({
     super.key,
@@ -159,7 +159,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
               // where the composer used to be, and drop the pending banners —
               // an archived session's requests can never be answered.
               if (state.isArchived) const SessionDetailArchivedNotice(),
-              if (!state.isArchived && state.pendingQuestions.isNotEmpty)
+              if (!widget.readOnly && !state.isArchived && state.pendingQuestions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.help_outline,
                   backgroundColor: context.prego.colors.bgBrandPrimary,
@@ -167,7 +167,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                   label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
                   onTap: widget.onShowPendingQuestions,
                 ),
-              if (!state.isArchived && state.pendingPermissions.isNotEmpty)
+              if (!widget.readOnly && !state.isArchived && state.pendingPermissions.isNotEmpty)
                 SessionDetailPendingBanner(
                   icon: Icons.shield_outlined,
                   backgroundColor: context.prego.colors.bgSuccessPrimary,

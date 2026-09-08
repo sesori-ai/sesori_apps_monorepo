@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
+import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
@@ -34,6 +35,7 @@ const _activeAnalyticsState = ProductAnalyticsState(
 );
 
 const _emptyState = SessionDetailState.loaded(
+  interaction: SessionInteractionState.available(refreshError: null),
   messages: [
     MessageWithParts(
       info: Message.user(
@@ -72,6 +74,7 @@ const _emptyState = SessionDetailState.loaded(
 );
 
 const _nonEmptyState = SessionDetailState.loaded(
+  interaction: SessionInteractionState.available(refreshError: null),
   messages: [],
   olderMessagesCursor: null,
   streamingText: {},

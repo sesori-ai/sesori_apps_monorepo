@@ -91,6 +91,12 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en')];
 
+  /// No description provided for @sessionDetailHarnessLegacyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your bridge to check harness availability.'**
+  String get sessionDetailHarnessLegacyWarning;
+
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
@@ -2964,6 +2970,90 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This session is archived and read-only.'**
   String get sessionDetailArchivedNotice;
+
+  /// No description provided for @sessionDetailHarnessFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'This harness'**
+  String get sessionDetailHarnessFallbackName;
+
+  /// No description provided for @sessionDetailHarnessDisabledReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is disabled.'**
+  String sessionDetailHarnessDisabledReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessAuthenticationReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to {harnessName} to continue.'**
+  String sessionDetailHarnessAuthenticationReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessRuntimeMissingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is not installed or cannot be used.'**
+  String sessionDetailHarnessRuntimeMissingReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessUnavailableReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is unavailable.'**
+  String sessionDetailHarnessUnavailableReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessStoppingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is stopping.'**
+  String sessionDetailHarnessStoppingReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessNotInspectedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} has not been checked yet.'**
+  String sessionDetailHarnessNotInspectedReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessUnknownReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} reported an unknown status.'**
+  String sessionDetailHarnessUnknownReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessMissingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'This session’s harness is not available on the connected bridge.'**
+  String get sessionDetailHarnessMissingReason;
+
+  /// No description provided for @sessionDetailHarnessCheckFailedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t check whether this session’s harness is available.'**
+  String get sessionDetailHarnessCheckFailedReason;
+
+  /// No description provided for @sessionDetailHarnessCheckingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking whether this session’s harness is available…'**
+  String get sessionDetailHarnessCheckingReason;
+
+  /// No description provided for @sessionDetailHarnessHistoryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat history cannot be loaded until the harness is available.'**
+  String get sessionDetailHarnessHistoryUnavailable;
+
+  /// No description provided for @sessionDetailHarnessRefreshWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness status could not be refreshed. The last known status is shown.'**
+  String get sessionDetailHarnessRefreshWarning;
+
+  /// No description provided for @sessionDetailOpenHarnessSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Harness Settings'**
+  String get sessionDetailOpenHarnessSettings;
 
   /// No description provided for @sessionListArchiveConfirmTitle.
   ///

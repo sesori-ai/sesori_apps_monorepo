@@ -10,6 +10,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get sessionDetailHarnessLegacyWarning => 'Update your bridge to check harness availability.';
+
+  @override
   String get appTitle => 'Sesori Mobile';
 
   @override
@@ -1594,6 +1597,63 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
+
+  @override
+  String get sessionDetailHarnessFallbackName => 'This harness';
+
+  @override
+  String sessionDetailHarnessDisabledReason(String harnessName) {
+    return '$harnessName is disabled.';
+  }
+
+  @override
+  String sessionDetailHarnessAuthenticationReason(String harnessName) {
+    return 'Sign in to $harnessName to continue.';
+  }
+
+  @override
+  String sessionDetailHarnessRuntimeMissingReason(String harnessName) {
+    return '$harnessName is not installed or cannot be used.';
+  }
+
+  @override
+  String sessionDetailHarnessUnavailableReason(String harnessName) {
+    return '$harnessName is unavailable.';
+  }
+
+  @override
+  String sessionDetailHarnessStoppingReason(String harnessName) {
+    return '$harnessName is stopping.';
+  }
+
+  @override
+  String sessionDetailHarnessNotInspectedReason(String harnessName) {
+    return '$harnessName has not been checked yet.';
+  }
+
+  @override
+  String sessionDetailHarnessUnknownReason(String harnessName) {
+    return '$harnessName reported an unknown status.';
+  }
+
+  @override
+  String get sessionDetailHarnessMissingReason => 'This session’s harness is not available on the connected bridge.';
+
+  @override
+  String get sessionDetailHarnessCheckFailedReason => 'Couldn’t check whether this session’s harness is available.';
+
+  @override
+  String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';
+
+  @override
+  String get sessionDetailHarnessHistoryUnavailable => 'Chat history cannot be loaded until the harness is available.';
+
+  @override
+  String get sessionDetailHarnessRefreshWarning =>
+      'Harness status could not be refreshed. The last known status is shown.';
+
+  @override
+  String get sessionDetailOpenHarnessSettings => 'Open Harness Settings';
 
   @override
   String get sessionListArchiveConfirmTitle => 'Archive session?';

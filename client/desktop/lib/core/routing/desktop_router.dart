@@ -219,6 +219,12 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                             sessionId: route.sessionId,
                           ),
                         ),
+                        onOpenHarnessSettings: () => _pushRoute(
+                          context: context,
+                          route: const AppRoute.settingsHarnesses(
+                            presentation: HarnessSettingsPresentation.modal,
+                          ),
+                        ),
                         onOpenSession:
                             ({
                               required projectId,

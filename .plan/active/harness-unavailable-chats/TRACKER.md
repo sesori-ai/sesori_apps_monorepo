@@ -5,14 +5,15 @@ No queue recovery, submission retention, attachment storage or bridge protocol w
 
 | Step | Complexity | Deliverable | Status |
 |---|---|---|---|
-| 1/4 | 🌱 | Plan read-only unavailable chats | [PR #1366](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1366) open |
-| 2/4 | ⚙️ | Gate unavailable chats on both clients | Not started |
+| 1/4 | 🌱 | Plan read-only unavailable chats | [PR #1366](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1366) merged |
+| 2/4 | ⚙️ | Gate unavailable chats on both clients | Implemented and verified; preparing implementation PR |
 | 3/4 | 🌿 | Reconcile chat availability regressions | Not started |
 | 4/4 | 🌿 | Verify read-only chats and retire plan | Not started |
 
 The earlier six-step proposal was replaced before implementation after the user
 explicitly rejected queue-recovery scope. Use the four exact titles in PLAN.md.
-Implementation requires the user's implementation request.
+The user authorized implementation and, after background runner failures,
+authorized direct execution without subagents. No dependencies may be installed.
 
 ## Evidence and review
 
@@ -21,7 +22,32 @@ Implementation requires the user's implementation request.
   sole state coordinator, metadata-first loading and shared cubit composition.
 - Recovery-related PR findings are superseded by the explicit user decision;
   no approved architecture verdict is claimed for the revised plan.
-- No product-code changes, live reproduction, or Dart/Flutter suites run.
+- The user approved the roughly 1,750-line step-2 cap exception, including
+  generated code, tests and docs, without changing scope or the four-step total.
+- Shared interaction projection, metadata-first loading, mutation guards,
+  notice/dialog gating and both shell settings callbacks implemented. No bridge,
+  database, protocol or queue-recovery changes.
+- Focused verification: 457 distinct passing tests (276 core, 123 mobile,
+  56 shared UI, 2 desktop). Final targeted recovery cases also pass after covering
+  a failed content refresh followed by Retry. All four owning analyzers are clean;
+  formatting and `git diff --check` pass.
+- Commands: cached Dart 3.13.2 test runner with
+  `--packages=../.dart_tool/package_config.json` from `client/module_core`, covering
+  `test/cubits/session_detail`, load-service/calculator suites, state defaults and
+  the session-activity analytics listener. Flutter 3.47.2 `test --no-pub` covered
+  mobile session body/title/child navigation and adaptive route matrix; shared UI
+  assistant card/file part/reasoning modal; desktop session detail.
+- Freezed/DI generated through the cached build_runner entry point and existing
+  package config, without package resolution. Localization: `flutter gen-l10n`.
+  Analyzer command: `dart analyze --format machine` in each owning module.
+- Test failures fixed: reload loading-state assumptions, obsolete metadata/catalog
+  fallback expectations, management mock disposal and renamed mock invocation
+  arguments. No remaining observed test failures.
+- Architecture self-assessment: existing management owner and refresh fencing are
+  reused; the cubit alone coordinates availability; presentation stays shared and
+  shells supply navigation. Independent architecture review is unavailable due to
+  background runner failures; no subagent approval is claimed.
+- No live device/bridge reproduction yet. L4 evidence and cleanup remain pending.
 - Retirement requires the recorded targeted L4 matrix, privacy-safe EVIDENCE.md
   and cleanup. Partial/Blocked/Fail keeps the plan active unless the user accepts
   a matrix reduction explicitly in PLAN.md.

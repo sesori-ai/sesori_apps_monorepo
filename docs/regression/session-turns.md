@@ -8,6 +8,19 @@ defaults and queued client sends coherent.
 
 ## Required Behavior
 
+- Existing chats on mobile and desktop become read-only when harness management
+  reports an unusable harness. The shared notice explains the reason, opens Harness
+  Settings and offers Retry. Composer, voice/attachment entry, prompt selections,
+  stop/cancel actions and question/permission replies cannot mutate the session.
+  Open response dialogs close without answering when availability changes.
+- Resolve catalog metadata before plugin-backed history. A cold blocked chat shows
+  an explicit history-unavailable shell; a live block preserves the rendered
+  transcript. Restored eligibility reloads content/options before enabling input,
+  without reopening the route. Failed restoration stays read-only with Retry.
+  Existing archive and route read-only restrictions remain authoritative.
+- Pending local sends stop draining while blocked; existing queue behavior otherwise
+  stays unchanged. Availability gating adds no failed-send recovery or retention.
+
 - A prompt send targets one session with optional agent, model, and variant.
   Prompt and slash-command sends complete on acceptance — durably enqueued by
   the plugin or taken by the backend — never on run completion, so no client
