@@ -37,12 +37,13 @@ class AntigravityRuntimeRepository({
     required AntigravityRuntimeSource source,
     required AntigravityRuntimePair pair,
     required Map<String, String> environment,
+    required String? workingDirectory,
     required Duration timeout,
     required StartAbortSignal abortSignal,
   }) async {
     try {
       final dto = await _acpApi.initializeOnly(
-        launchSpec: _launchSpecBuilder.build(pair: pair, cwd: null, environment: environment),
+        launchSpec: _launchSpecBuilder.build(pair: pair, cwd: workingDirectory, environment: environment),
         timeout: timeout,
         abortSignal: abortSignal,
       );

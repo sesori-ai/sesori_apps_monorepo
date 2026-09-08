@@ -1,5 +1,6 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 
+import "../builders/antigravity_environment_builder.dart";
 import "../foundation/antigravity_authentication_budget.dart";
 import "../models/antigravity_profile.dart";
 import "../repositories/antigravity_profile_repository.dart";
@@ -13,8 +14,6 @@ class AntigravityProfileService({
 }) {
   final List<String> _browserPrefixArguments = List.unmodifiable(browserPrefixArguments);
   static const browserPreflightUrl = "https://example.invalid/sesori-browser-preflight";
-  static const _removedPrefixes = ["GOOGLE_", "GEMINI_", "GCLOUD_", "CLOUDSDK_", "AGY_", "ANTIGRAVITY_", "PYTHON"];
-  static const _removedKeys = {"BROWSER", "ELECTRON_RUN_AS_NODE", "GCP_PROJECT", "GCP_LOCATION"};
 
   Future<AntigravityPreparedProfile> prepare({
     required Map<String, String> hostEnvironment,
@@ -38,16 +37,11 @@ class AntigravityProfileService({
       );
     }
     final command = [...invocation.map((argument) => _quote(argument: argument)), "'%s'"].join(" ");
-    final environment = <String, String>{
-      for (final entry in hostEnvironment.entries)
-        if (!_removedKeys.contains(entry.key.toUpperCase()) &&
-            !_removedPrefixes.any(entry.key.toUpperCase().startsWith))
-          entry.key: entry.value,
-      "GEMINI_HOME": _repository.geminiHome,
-      "AGY_ACP_FORCE_FILE_STORAGE": "1",
-      "BROWSER": command,
-      "PYTHONUNBUFFERED": "1",
-    };
+    final environment = const AntigravityEnvironmentBuilder().build(
+      hostEnvironment: hostEnvironment,
+      geminiHome: _repository.geminiHome,
+      additions: {"BROWSER": command, "PYTHONUNBUFFERED": "1"},
+    );
     final preflight = await _repository.inspectBrowserCommand(
       budget: budget,
       executable: _browserExecutable,
