@@ -1,12 +1,14 @@
 import "package:sesori_dart_core/src/cubits/project_list/project_list_state.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
+import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   test("SessionDetailLoaded.isRefreshing defaults to false", () {
     const state = SessionDetailState.loaded(
+      interaction: SessionInteractionState.available(refreshError: null),
       messages: [],
       olderMessagesCursor: null,
       streamingText: {},
@@ -36,7 +38,9 @@ void main() {
     expect(loaded.isRefreshing, isFalse);
     expect(loaded.retryErrorMessage, isNull);
     expect(
-      loaded.copyWith(sessionStatus: const SessionStatus.retry(attempt: 1, message: "Provider overloaded", next: 2)).retryErrorMessage,
+      loaded
+          .copyWith(sessionStatus: const SessionStatus.retry(attempt: 1, message: "Provider overloaded", next: 2))
+          .retryErrorMessage,
       "Provider overloaded",
     );
   });

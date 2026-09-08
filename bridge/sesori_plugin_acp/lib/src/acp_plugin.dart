@@ -148,10 +148,9 @@ abstract class AcpPlugin({
   /// decisions live on this class — the state object only holds fields.
   final Map<String, _SessionTurnState> _turnStates = {};
 
-  /// Agent updates and server requests that raced the stdin flush for an
-  /// accepted existing-session prompt. The user message cannot publish before
-  /// the flush succeeds, so hold both until that message and any preceding tool
-  /// update have entered the event stream.
+  /// Agent updates and server requests that raced stdin admission for an
+  /// accepted existing-session prompt. Hold both until the admitted user
+  /// message and any preceding tool update have entered the event stream.
   final Map<String, List<AcpNotification>> _promptWriteNotifications = {};
   final Map<String, List<AcpServerRequest>> _promptWriteServerRequests = {};
   final Set<String> _cancelledPromptWriteSessions = {};

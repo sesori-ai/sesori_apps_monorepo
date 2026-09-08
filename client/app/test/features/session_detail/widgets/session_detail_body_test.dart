@@ -51,6 +51,7 @@ Widget _buildApp({
   ChatInputMode chatInputMode = ChatInputMode.voiceFirst,
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
+  VoidCallback? onOpenHarnessSettings,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -72,6 +73,7 @@ Widget _buildApp({
         builder: (context, state) => BlocProvider<SessionDetailCubit>.value(
           value: cubit,
           child: SessionDetailPresentationScope(
+            openHarnessSettings: onOpenHarnessSettings ?? () {},
             messageImageRepository: MockMessageImageRepository.new,
             imageSaver: MockImageSaver.new,
             imageClipboard: () => imageClipboard,
@@ -133,6 +135,7 @@ SessionDetailLoaded _loadedState({
 }) {
   final provider = testProviderListResponse().items.first;
   return SessionDetailLoaded(
+    interaction: const SessionInteractionState.available(refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
     streamingText: const {},
@@ -690,6 +693,7 @@ void main() {
   testWidgets("selecting a different variant updates the displayed variant", (tester) async {
     final initialState = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final updatedState = SessionDetailState.loaded(
+      interaction: const SessionInteractionState.available(refreshError: null),
       messages: const [],
       olderMessagesCursor: null,
       streamingText: const {},
@@ -807,6 +811,99 @@ void main() {
     expect(find.byType(PromptInput), findsNothing);
     verify(() => voiceTranscriptionService.invalidate(session: voiceSession)).called(1);
     verify(() => voiceTranscriptionService.close(session: voiceSession)).called(1);
+  });
+
+  const authRequired = SessionInteractionState.blocked(
+    reason: SessionInteractionBlockedReason.authenticationRequired,
+    displayName: "Claude Code",
+    actionHint: null,
+    refreshError: null,
+  );
+  for (final cold in [true, false]) {
+    testWidgets("unavailable harness has no input and opens settings (cold: $cold)", (tester) async {
+      final state = cold
+          ? SessionDetailState.harnessUnavailable(session: testSession(), interaction: authRequired)
+          : _loadedState(
+              pendingQuestions: const [_question],
+              pendingPermissions: const [_permission],
+            ).copyWith(
+              interaction: authRequired,
+              queuedMessages: const [
+                QueuedSessionSubmission.text(
+                  promptId: "local",
+                  text: "Local queued prompt",
+                  inputMode: ComposerInputMode.typed,
+                  attachments: [],
+                  agent: null,
+                  agentModel: null,
+                ),
+              ],
+            );
+      when(() => cubit.state).thenReturn(state);
+      var settingsOpened = 0;
+      await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptInput), findsNothing);
+      expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
+      expect(find.text("1 pending question"), findsNothing);
+      expect(find.text("1 permission request pending"), findsNothing);
+      expect(
+        find.byWidgetPredicate((widget) => widget is Semantics && (widget.properties.liveRegion ?? false)),
+        findsWidgets,
+      );
+      if (!cold) {
+        await tester.tap(find.widgetWithText(TextButton, "Cancel"));
+        verify(() => cubit.cancelQueuedMessage(0)).called(1);
+      }
+      await tester.tap(find.byKey(const Key("session_harness_settings")));
+      expect(settingsOpened, 1);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets("content restoration failure offers retry rather than harness setup", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      interaction: const SessionInteractionState.blocked(
+        reason: SessionInteractionBlockedReason.contentLoadFailed,
+        displayName: null,
+        actionHint: null,
+        refreshError: null,
+      ),
+    );
+    when(() => cubit.state).thenReturn(state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(
+      find.text("The harness is available, but chat content or options could not be loaded. Retry to continue."),
+      findsOneWidget,
+    );
+    expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+    expect(find.byKey(const Key("session_harness_retry")), findsOneWidget);
+    expect(find.byType(PromptInput), findsNothing);
+  });
+
+  testWidgets("harness block closes an open question without answering", (tester) async {
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(questions.close);
+    addTearDown(states.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.stream).thenAnswer((_) => states.stream);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    state = state.copyWith(pendingQuestions: const [_question]);
+    questions.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsOneWidget);
+    state = state.copyWith(interaction: authRequired);
+    states.add(state);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsNothing);
+    expect(state.pendingQuestions, const [_question]);
+    expect(find.byType(PromptInput), findsNothing);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("an archived session is read-only: no composer, no pending banners", (tester) async {

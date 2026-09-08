@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
@@ -43,9 +41,12 @@ void main() {
     await fake.close();
   });
 
-  test("prompt-write buffering preserves old input, cancel, later reused input order", () async {
-    final fake = _FlushControlledAcpProcess();
+  test("prompt admission preserves user message, old input, cancel, later reused input order", () async {
+    final fake = _PromptInputAcpProcess();
     final plugin = buildDeepSeekTestPlugin(fake: fake);
+    final events = <BridgeSseEvent>[];
+    final subscription = plugin.events.listen(events.add);
+    addTearDown(subscription.cancel);
 
     Future<Map<String, dynamic>> waitForFrame({required String method, int count = 1}) async {
       for (var attempt = 0; attempt < 200; attempt++) {
@@ -95,7 +96,40 @@ void main() {
       });
       await creating;
 
-      final flush = fake.holdNextFlush();
+      // Inject input as the prompt enters stdin, before dispatch yields to
+      // publish the accepted user message. Do not emulate a flush barrier.
+      fake.stdin.onPrompt = () {
+        <Map<String, dynamic>>[
+          {
+            "jsonrpc": "2.0",
+            "id": 81,
+            "method": DeepSeekAcpApi.askUserQuestionMethod,
+            "params": {
+              "sessionId": "session-1",
+              "questions": [
+                {"id": "reused", "text": "Old question"},
+              ],
+            },
+          },
+          {
+            "jsonrpc": "2.0",
+            "id": 82,
+            "method": DeepSeekAcpApi.inputCancelMethod,
+            "params": {"sessionId": "session-1"},
+          },
+          {
+            "jsonrpc": "2.0",
+            "id": 83,
+            "method": DeepSeekAcpApi.askUserQuestionMethod,
+            "params": {
+              "sessionId": "session-1",
+              "questions": [
+                {"id": "reused", "text": "New question"},
+              ],
+            },
+          },
+        ].forEach(fake.emit);
+      };
       await plugin.sendPrompt(
         sessionId: "session-1",
         promptId: "prompt-1",
@@ -105,46 +139,18 @@ void main() {
         model: null,
       );
       final prompt = await waitForFrame(method: AcpMethods.sessionPrompt);
-      <Map<String, dynamic>>[
-        {
-          "jsonrpc": "2.0",
-          "id": 81,
-          "method": DeepSeekAcpApi.askUserQuestionMethod,
-          "params": {
-            "sessionId": "session-1",
-            "questions": [
-              {"id": "reused", "text": "Old question"},
-            ],
-          },
-        },
-        {
-          "jsonrpc": "2.0",
-          "id": 82,
-          "method": DeepSeekAcpApi.inputCancelMethod,
-          "params": {"sessionId": "session-1"},
-        },
-        {
-          "jsonrpc": "2.0",
-          "id": 83,
-          "method": DeepSeekAcpApi.askUserQuestionMethod,
-          "params": {
-            "sessionId": "session-1",
-            "questions": [
-              {"id": "reused", "text": "New question"},
-            ],
-          },
-        },
-      ].forEach(fake.emit);
-      await Future<void>.delayed(Duration.zero);
-      expect(await plugin.getPendingQuestions(sessionId: "session-1"), isEmpty);
-
-      flush.complete();
       for (var attempt = 0; attempt < 20; attempt++) {
         if ((await plugin.getPendingQuestions(sessionId: "session-1")).isNotEmpty) break;
         await Future<void>.delayed(Duration.zero);
       }
       final pending = await plugin.getPendingQuestions(sessionId: "session-1");
       expect(pending.single.questions.single.question, "New question");
+      final userIndex = events.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info is PluginMessageUser,
+      );
+      final questionIndex = events.indexWhere((event) => event is BridgeSseQuestionAsked);
+      expect(userIndex, greaterThanOrEqualTo(0));
+      expect(questionIndex, greaterThan(userIndex));
       expect(fake.written.singleWhere((frame) => frame["id"] == 81)["error"], {
         "code": -32603,
         "message": "aborted",
@@ -265,31 +271,22 @@ void main() {
   });
 }
 
-class _FlushControlledAcpProcess() extends FakeAcpProcess {
-  final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
+class _PromptInputAcpProcess() extends FakeAcpProcess {
+  final _PromptInputIOSink _capturingStdin = _PromptInputIOSink();
 
   @override
-  _FlushControlledIOSink get stdin => _controlledStdin;
+  _PromptInputIOSink get stdin => _capturingStdin;
 
   @override
-  List<Map<String, dynamic>> get written => _controlledStdin.frames;
-
-  Completer<void> holdNextFlush() => _controlledStdin.holdNextFlush();
+  List<Map<String, dynamic>> get written => _capturingStdin.frames;
 }
 
-class _FlushControlledIOSink() extends CapturingIOSink {
-  Completer<void>? _nextFlush;
-
-  Completer<void> holdNextFlush() {
-    final gate = Completer<void>();
-    _nextFlush = gate;
-    return gate;
-  }
+class _PromptInputIOSink() extends CapturingIOSink {
+  void Function()? onPrompt;
 
   @override
-  Future<void> flush() {
-    final gate = _nextFlush;
-    _nextFlush = null;
-    return gate?.future ?? Future<void>.value();
+  void add(List<int> data) {
+    super.add(data);
+    if (frames.last["method"] == AcpMethods.sessionPrompt) onPrompt?.call();
   }
 }

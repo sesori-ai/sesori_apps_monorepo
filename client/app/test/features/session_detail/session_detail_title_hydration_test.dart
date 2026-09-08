@@ -15,7 +15,15 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 import "../../helpers/voice_test_helpers.dart";
 
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
+class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService {
+  this {
+    when(() => loadMetadata(sessionId: any(named: "sessionId"))).thenAnswer(
+      (invocation) async => SessionDetailMetadataLoadResult.found(
+        session: testSession(id: invocation.namedArguments[#sessionId] as String),
+      ),
+    );
+  }
+}
 
 class MockSessionRepository() extends Mock implements SessionRepository;
 
@@ -142,6 +150,8 @@ void _registerDependencies({
 
   getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
+  getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
+  getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
   getIt.registerSingleton<SessionViewingService>(sessionViewingService);
@@ -218,13 +228,13 @@ void main() {
 
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResult());
     when(
       () => loadService.reload(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResult());
@@ -253,7 +263,7 @@ void main() {
     final loadCompleter = Completer<SessionDetailLoadResult>();
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) => loadCompleter.future);
@@ -275,7 +285,7 @@ void main() {
   testWidgets("shows carried title on failed load and keeps retry wired to reload", (tester) async {
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => const SessionDetailLoadResult.failed(error: Object(), stackTrace: null));
@@ -291,7 +301,7 @@ void main() {
 
     verify(
       () => loadService.reload(
-        sessionId: "session-1",
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).called(1);
@@ -300,7 +310,7 @@ void main() {
   testWidgets("canonical title overrides the carried route title", (tester) async {
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
@@ -315,7 +325,7 @@ void main() {
   testWidgets("later SSE title update still overrides the currently loaded title", (tester) async {
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
@@ -345,7 +355,7 @@ void main() {
     final loadCompleter = Completer<SessionDetailLoadResult>();
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) => loadCompleter.future);
