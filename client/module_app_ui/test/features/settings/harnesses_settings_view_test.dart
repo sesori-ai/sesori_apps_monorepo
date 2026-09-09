@@ -156,6 +156,31 @@ void main() {
     }
   }
 
+  testWidgets("stopping harness sits in the disabled group and keeps its status", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _plugin(id: "stopping", runtime: PluginRuntimeState.stopping, setup: PluginSetupState.ready),
+        _ready,
+      ],
+    );
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final ids = tester
+        .widgetList<PregoGroupedRow>(find.byType(PregoGroupedRow))
+        .map((row) => row.key)
+        .whereType<Key>()
+        .toList();
+    expect(ids, [
+      const Key("harnesses_card_ready"),
+      const Key("harnesses_card_stopping"),
+      const Key("harness_management_default_timeout"),
+    ]);
+    expect(find.text("Needs attention"), findsNothing);
+    expect(find.text("Disabled"), findsOneWidget);
+    expect(find.text("Stopping"), findsOneWidget);
+  });
+
   testWidgets("a harness changing group animates out of the old section instead of jumping", (tester) async {
     phone(tester: tester);
     publish(plugins: [_ready]);
