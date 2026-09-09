@@ -12,7 +12,7 @@ class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
 
 void main() {
   for (final opener in ["/projects", "/projects/p1/sessions/s1"]) {
-    testWidgets("Default input Back returns Settings and X returns $opener", (tester) async {
+    testWidgets("Default input offers only Back to Settings above $opener", (tester) async {
       final cubit = ChatInputModeCubit(store: _MockChatInputModeStore(), initialMode: ChatInputMode.textFirst);
       addTearDown(cubit.close);
       final navigatorKey = GlobalKey<NavigatorState>();
@@ -63,13 +63,13 @@ void main() {
       await tester.tap(find.text("Open default input"));
       await tester.pumpAndSettle();
       expect(find.byType(DefaultInputSettingsView), findsOneWidget);
+      expect(find.byIcon(TablerRegular.x), findsNothing);
       await tester.tap(find.byIcon(TablerRegular.chevron_left));
       await tester.pumpAndSettle();
       expect(GoRouterState.of(tester.element(find.text("Open default input"))).uri.path, AppRouteDef.settings.path);
       expect(find.text("Open default input"), findsOneWidget);
-      await tester.tap(find.text("Open default input"));
-      await tester.pumpAndSettle();
-      await tester.tap(find.byIcon(TablerRegular.x));
+      expect(router.canPop(), isTrue);
+      router.pop();
       await tester.pumpAndSettle();
       expect(GoRouterState.of(tester.element(find.text("Open settings"))).uri.path, opener);
       expect(find.text("Open settings"), findsOneWidget);

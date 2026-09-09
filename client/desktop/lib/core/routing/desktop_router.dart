@@ -291,11 +291,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         path: AppRouteDef.settingsDefaultInput.path,
         builder: (context, state) => DefaultInputSettingsView(
           onBack: () => _popRouteOrGo(context: context, fallback: const AppRoute.settings()),
-          onClose: () {
-            // This page is pushed from Settings; close both pages to its opener.
-            _popRoute(context: context);
-            _popRoute(context: context);
-          },
         ),
       ),
       GoRoute(

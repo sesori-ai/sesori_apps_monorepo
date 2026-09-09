@@ -135,15 +135,18 @@ class const SettingsView({
                 ),
                 if (onOpenNotifications != null) ...[
                   const SizedBox(height: PregoSpacing.xl),
-                  PregoGroupedRows(
-                    children: [
-                      PregoGroupedRow(
-                        icon: TablerRegular.bell,
-                        title: Text(loc.settingsNotificationsTitle),
-                        trailing: const Icon(TablerRegular.chevron_right),
-                        onTap: onOpenNotifications,
-                      ),
-                    ],
+                  SettingsSection(
+                    title: loc.settingsSectionPreferences,
+                    child: PregoGroupedRows(
+                      children: [
+                        PregoGroupedRow(
+                          icon: TablerRegular.bell,
+                          title: Text(loc.settingsNotificationsTitle),
+                          trailing: const Icon(TablerRegular.chevron_right),
+                          onTap: onOpenNotifications,
+                        ),
+                      ],
+                    ),
                   ),
                 ],
                 if (additionalSettings != null) ...[

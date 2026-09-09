@@ -21,14 +21,14 @@ void main() {
   });
   tearDown(() => cubit.close());
 
-  Widget app({required Brightness brightness, required VoidCallback onBack, required VoidCallback onClose}) {
+  Widget app({required Brightness brightness, required VoidCallback onBack}) {
     return BlocProvider.value(
       value: cubit,
       child: MaterialApp(
         theme: buildPregoThemeData(brightness: brightness),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: DefaultInputSettingsView(onBack: onBack, onClose: onClose),
+        home: DefaultInputSettingsView(onBack: onBack),
       ),
     );
   }
@@ -38,7 +38,7 @@ void main() {
       tester.view.physicalSize = const Size(402, 874);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      await tester.pumpWidget(app(brightness: brightness, onBack: () {}, onClose: () {}));
+      await tester.pumpWidget(app(brightness: brightness, onBack: () {}));
       await tester.pumpAndSettle();
       final colors = tester.element(find.byType(ChatInputModePicker)).prego.colors;
       for (final mode in ChatInputMode.values) {
@@ -75,7 +75,7 @@ void main() {
   }
 
   testWidgets("selection persists, external changes react, and options expose exclusive semantics", (tester) async {
-    await tester.pumpWidget(app(brightness: Brightness.dark, onBack: () {}, onClose: () {}));
+    await tester.pumpWidget(app(brightness: Brightness.dark, onBack: () {}));
     await tester.pumpAndSettle();
     final semantics = tester.ensureSemantics();
 
@@ -108,23 +108,22 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets("Back and Close dispatch independently with readable accessibility text", (tester) async {
+  testWidgets("Back is the only navigation action with readable accessibility text", (tester) async {
     tester.view.physicalSize = const Size(320, 874);
     tester.view.devicePixelRatio = 1;
     tester.platformDispatcher.textScaleFactorTestValue = 2.0;
     addTearDown(tester.view.reset);
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     var backs = 0;
-    var closes = 0;
-    await tester.pumpWidget(app(brightness: Brightness.dark, onBack: () => backs++, onClose: () => closes++));
+    await tester.pumpWidget(app(brightness: Brightness.dark, onBack: () => backs++));
     await tester.pumpAndSettle();
     expect(find.text("Choose how you default talk to Sesori."), findsOneWidget);
     expect(find.text("Voice"), findsOneWidget);
     expect(find.text("Text"), findsOneWidget);
+    expect(find.byIcon(TablerRegular.x), findsNothing);
+    expect(find.bySemanticsLabel("Close settings"), findsNothing);
     await tester.tap(find.byIcon(TablerRegular.chevron_left));
-    await tester.tap(find.byIcon(TablerRegular.x));
     expect(backs, 1);
-    expect(closes, 1);
     expect(tester.takeException(), isNull);
   });
   testWidgets("picker labels wrap without overflow at maximum accessibility text", (tester) async {

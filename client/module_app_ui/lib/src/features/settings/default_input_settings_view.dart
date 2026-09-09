@@ -8,7 +8,6 @@ import "widgets/chat_input_mode_picker.dart";
 class const DefaultInputSettingsView({
   super.key,
   required final VoidCallback onBack,
-  required final VoidCallback onClose,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -19,13 +18,6 @@ class const DefaultInputSettingsView({
       titleMode: PregoTopNavigationTitleMode.inline,
       automaticallyImplyLeading: false,
       onBack: onBack,
-      actions: [
-        PregoButtonsIconGlass(
-          icon: TablerRegular.x,
-          semanticLabel: loc.settingsClose,
-          onPressed: onClose,
-        ),
-      ],
       slivers: [
         SliverPadding(
           padding: EdgeInsetsDirectional.fromSTEB(

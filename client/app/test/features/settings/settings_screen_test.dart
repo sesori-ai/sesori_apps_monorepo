@@ -66,6 +66,10 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
         ),
       ),
       GoRoute(
+        path: "/settings/notifications",
+        builder: (context, state) => const Scaffold(body: Text("notifications-route")),
+      ),
+      GoRoute(
         path: "/settings/default-input",
         builder: (context, state) => const Scaffold(body: Text("default-input-route")),
       ),
@@ -250,6 +254,33 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("harnesses-route"), findsOneWidget);
+  });
+
+  testWidgets("Preferences groups Notifications between Sessions and Appearance and preserves navigation", (
+    tester,
+  ) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Preferences"), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text("Default input")).dy,
+      lessThan(tester.getTopLeft(find.text("Preferences")).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text("Preferences")).dy,
+      lessThan(tester.getTopLeft(find.text("Notifications")).dy),
+    );
+    expect(
+      tester.getTopLeft(find.text("Notifications")).dy,
+      lessThan(tester.getTopLeft(find.text("Appearance")).dy),
+    );
+
+    await tester.tap(find.text("Notifications"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("notifications-route"), findsOneWidget);
   });
 
   testWidgets("shows the bridge-committed pull request refresh interval", (tester) async {

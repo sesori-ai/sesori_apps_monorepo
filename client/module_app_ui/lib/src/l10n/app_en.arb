@@ -369,6 +369,7 @@
     "description": "Theme option that follows the device appearance setting"
   },
   "settingsSectionSessions": "Sessions",
+  "settingsSectionPreferences": "Preferences",
   "settingsDefaultInputDescription": "Choose how you default talk to Sesori.",
   "settingsDefaultInputTitle": "Default input",
   "@settingsDefaultInputTitle": {

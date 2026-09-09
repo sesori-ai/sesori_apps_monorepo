@@ -1363,6 +1363,12 @@ abstract class AppLocalizations {
   /// **'Sessions'**
   String get settingsSectionSessions;
 
+  /// No description provided for @settingsSectionPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get settingsSectionPreferences;
+
   /// No description provided for @settingsDefaultInputDescription.
   ///
   /// In en, this message translates to:

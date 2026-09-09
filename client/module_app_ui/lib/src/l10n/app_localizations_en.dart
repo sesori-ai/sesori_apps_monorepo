@@ -695,6 +695,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSectionSessions => 'Sessions';
 
   @override
+  String get settingsSectionPreferences => 'Preferences';
+
+  @override
   String get settingsDefaultInputDescription => 'Choose how you default talk to Sesori.';
 
   @override

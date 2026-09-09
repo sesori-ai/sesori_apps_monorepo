@@ -6,13 +6,6 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 class const DefaultInputSettingsScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return DefaultInputSettingsView(
-      onBack: () => context.pop(),
-      onClose: () {
-        // This page is pushed from Settings; close both pages to its opener.
-        context.pop();
-        context.pop();
-      },
-    );
+    return DefaultInputSettingsView(onBack: () => context.pop());
   }
 }
