@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
@@ -37,8 +35,11 @@ class const SessionDetailScreen({
           ),
         ),
       ],
-      child: _SessionActivityAnalyticsOwner(
-        auditView: auditView,
+      child: SessionDetailActivityOwner(
+        routeSource: getIt<RouteSource>(),
+        lifecycleSource: getIt<LifecycleSource>(),
+        productAnalyticsService: getIt<ProductAnalyticsService>(),
+        expectedDetailRoute: auditView ? AppRouteDef.archivedSessionDetail : AppRouteDef.sessionDetail,
         child: _MobileSessionDetailBody(
           auditView: auditView,
           onBack: onBack,
@@ -138,59 +139,4 @@ class const _MobileSessionDetailBody({
       ),
     );
   }
-}
-
-class const _SessionActivityAnalyticsOwner({
-  required final bool auditView,
-  required final Widget child,
-}) extends StatefulWidget {
-  @override
-  State<_SessionActivityAnalyticsOwner> createState() => _SessionActivityAnalyticsOwnerState();
-}
-
-class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
-  SessionActivityAnalyticsListener? _listener;
-  StreamSubscription<AppRouteDef?>? _routeSubscription;
-  bool? _wasRouteVisible;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    _routeSubscription ??= getIt<RouteSource>().currentRouteStream.listen((_) => _updateRouteVisibility());
-    _updateRouteVisibility();
-  }
-
-  void _updateRouteVisibility() {
-    // The root archive modal covers a live detail without changing the nested
-    // pane route's isCurrent flag. Covered content must not mark new output seen.
-    final topRoute = getIt<RouteSource>().currentRoute;
-    final archiveIsOpen = topRoute == AppRouteDef.archivedSessions || topRoute == AppRouteDef.archivedSessionDetail;
-    final isRouteVisible = (ModalRoute.of(context)?.isCurrent ?? false) && (widget.auditView || !archiveIsOpen);
-    if (_wasRouteVisible != isRouteVisible) {
-      context.read<SessionDetailCubit>().setRouteVisible(isVisible: isRouteVisible);
-    }
-    _wasRouteVisible = isRouteVisible;
-    final listener = _listener;
-    if (listener == null) {
-      _listener = SessionActivityAnalyticsListener(
-        sessionDetailCubit: context.read<SessionDetailCubit>(),
-        lifecycleSource: getIt<LifecycleSource>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
-        initialRouteVisible: isRouteVisible,
-      );
-    } else {
-      listener.setRouteVisible(isVisible: isRouteVisible);
-    }
-  }
-
-  @override
-  void dispose() {
-    final listener = _listener;
-    if (listener != null) unawaited(listener.dispose());
-    unawaited(_routeSubscription?.cancel());
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }

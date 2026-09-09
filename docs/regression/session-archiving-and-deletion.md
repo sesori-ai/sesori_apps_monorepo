@@ -84,6 +84,14 @@ entirely along with its transcript and, optionally, its worktree.
   stays unread; closing the modal reasserts the retained loaded detail. Incoming
   questions, permissions and notices from the covered detail do not interrupt
   archive browsing.
+- Mobile and desktop detail activity share one visibility rule: the top route
+  must match the expected normal or archived detail kind and the nearest detail
+  page must be current. A pushed same-kind child, root Settings/Harness settings,
+  archive flow, or diffs suppresses the retained detail's viewed declaration and
+  activity analytics. Late loads and refreshes while covered do not mark output
+  seen. Returning reasserts only a loaded retained detail, preserving its draft;
+  app background/resume handling remains owned by the existing cubit and analytics
+  listener. Disposing the detail releases the owner's route and analytics listeners.
 - Deletion completed in the archive flow returns to its archive list only when
   the currently open audit record matches both project and session. Stale or
   unrelated completions leave navigation unchanged; X still restores the opener.
@@ -128,6 +136,9 @@ restart before explicit re-import.
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
 - Opening or closing an audit record consumes the underlying live project's
   claim, preventing its declaration from returning when the opener is visible.
+- A covered detail marks late output seen, reports activity, or presents a
+  question, permission or notice over another page; child Back or cover dismissal
+  loses the retained detail/draft or fails to restore its loaded viewed state.
 
 - An archived session accepts a prohibited non-deletion mutation, or becomes
   unarchived by any path.
@@ -185,4 +196,6 @@ Bridge session lifecycle, deletion, archived-validator, and mutation dispatch
 services; chat-history export and purge; archived-record completeness model;
 worktree service; shared cleanup rejection model; OMP cleanup service; shared
 ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity composed deletion tests; Grok package deletion
-tests; client list/detail surfaces.
+tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
+mobile `session_detail_activity_navigation_test` and
+`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`.
