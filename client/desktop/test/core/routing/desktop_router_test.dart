@@ -10,6 +10,7 @@ import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_scre
 void main() {
   test("settings destination matching includes its child routes", () {
     expect(isDesktopSettingsPath(path: AppRouteDef.settings.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.settingsDefaultInput.path), isTrue);
     expect(isDesktopSettingsPath(path: AppRouteDef.settingsProfile.path), isTrue);
     expect(isDesktopSettingsPath(path: AppRouteDef.settingsHarnesses.path), isTrue);
     expect(isDesktopSettingsPath(path: AppRouteDef.projects.path), isFalse);

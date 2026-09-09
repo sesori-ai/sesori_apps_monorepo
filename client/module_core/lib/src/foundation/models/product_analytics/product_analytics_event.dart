@@ -28,6 +28,7 @@ enum AnalyticsScreen({required final String wireValue}) {
   login(wireValue: "login"),
   projects(wireValue: "projects"),
   settings(wireValue: "settings"),
+  settingsDefaultInput(wireValue: "settings_default_input"),
   settingsNotifications(wireValue: "settings_notifications"),
   settingsProfile(wireValue: "settings_profile"),
   sessions(wireValue: "sessions"),

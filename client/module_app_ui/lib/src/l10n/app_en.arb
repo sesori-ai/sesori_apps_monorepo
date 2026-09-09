@@ -368,6 +368,9 @@
   "@settingsAppearanceSystem": {
     "description": "Theme option that follows the device appearance setting"
   },
+  "settingsSectionSessions": "Sessions",
+  "settingsSectionPreferences": "Preferences",
+  "settingsDefaultInputDescription": "Choose how you default talk to Sesori.",
   "settingsDefaultInputTitle": "Default input",
   "@settingsDefaultInputTitle": {
     "description": "Settings entry and page title for choosing the default session composer input"

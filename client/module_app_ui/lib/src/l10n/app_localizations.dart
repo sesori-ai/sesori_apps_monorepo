@@ -1357,6 +1357,24 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
+  /// No description provided for @settingsSectionSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get settingsSectionSessions;
+
+  /// No description provided for @settingsSectionPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get settingsSectionPreferences;
+
+  /// No description provided for @settingsDefaultInputDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how you default talk to Sesori.'**
+  String get settingsDefaultInputDescription;
+
   /// Settings entry and page title for choosing the default session composer input
   ///
   /// In en, this message translates to:
