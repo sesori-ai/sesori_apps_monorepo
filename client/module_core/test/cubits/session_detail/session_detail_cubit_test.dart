@@ -378,6 +378,48 @@ void main() {
       );
     });
 
+    test("a block racing a reload keeps the rendered transcript instead of the unavailable shell", () async {
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+      );
+      addTearDown(snapshots.close);
+      final management = MockPluginManagementService();
+      when(() => management.snapshots).thenAnswer((_) => snapshots);
+      when(management.refresh).thenAnswer((_) async {});
+      final cubit = buildCubit(pluginManagementService: management);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      final before = cubit.state as SessionDetailLoaded;
+
+      // The block lands after metadata resolves, and the content request then
+      // fails because serving it would need the backfill the block prevents.
+      final metadata = Completer<ApiResponse<Session>>();
+      final saved = await mockSessionRepository.getSession(sessionId: sessionId);
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      final reloading = cubit.reload();
+      snapshots.add(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      metadata.complete(saved);
+      await reloading;
+
+      final after = cubit.state;
+      expect(after, isA<SessionDetailLoaded>());
+      expect((after as SessionDetailLoaded).messages, before.messages);
+      expect(after.interaction.canInteract, isFalse);
+    });
+
     test("metadata refresh failure preserves the loaded transcript and buffered events", () async {
       final cubit = buildCubit();
       addTearDown(cubit.close);

@@ -368,7 +368,10 @@ class SessionDetailCubit(
             );
             if (becameAvailable) {
               _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
-            } else {
+            } else if (_interaction.canInteract) {
+              // A stale-options refresh captures through the plugin runtime.
+              // While blocked the options are unusable anyway, and restored
+              // eligibility already runs a strict refresh that reloads them.
               _refreshStaleOptions(snapshot: snapshot);
             }
             final effectiveProjectId = snapshot.projectId;
@@ -403,9 +406,6 @@ class SessionDetailCubit(
             return _SessionRefreshResult.waitingForConnection;
           case SessionDetailLoadResultFailed(:final error, :final stackTrace):
             _waitingForConnection = false;
-            _pendingSessionEvents.clear();
-            _pendingGlobalEvents.clear();
-            _deferredPartEvents.clear();
             // Serving stored history can still need a harness-backed backfill
             // when the bridge has no complete snapshot for this session. While
             // the harness is blocked that backfill cannot run, so report the
@@ -416,12 +416,23 @@ class SessionDetailCubit(
             // explains one.
             if (!_interaction.canInteract) {
               logw("Session detail load failed while the harness was blocked", error, stackTrace);
+              // A block racing a refresh must not blank an already-rendered
+              // transcript; only a session with nothing to keep falls back to
+              // the unavailable-history state.
+              if (previous is SessionDetailLoaded) {
+                emit(previous.copyWith(interaction: _interaction));
+                _drainPendingEvents();
+                _drainDeferredPartsForLoadedMessages();
+                return _SessionRefreshResult.applied;
+              }
+              _clearBufferedEvents();
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
               }
               emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
               return _SessionRefreshResult.applied;
             }
+            _clearBufferedEvents();
             if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
             loge("Session detail load failed", error, stackTrace);
             emit(
@@ -432,6 +443,12 @@ class SessionDetailCubit(
             return _SessionRefreshResult.failed;
         }
     }
+  }
+
+  void _clearBufferedEvents() {
+    _pendingSessionEvents.clear();
+    _pendingGlobalEvents.clear();
+    _deferredPartEvents.clear();
   }
 
   Future<void> reload() async {

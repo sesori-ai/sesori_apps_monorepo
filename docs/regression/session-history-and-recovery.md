@@ -22,12 +22,16 @@ reconnect or restart.
 - A blocked load never requires harness-owned options and never asks for them
   dynamically: option discovery is served through the bridge's may-activate path,
   so a blocked open reads options cache-only rather than stalling behind a start
-  attempt the block cannot complete. A load that ran blocked also never opens the
+  attempt the block cannot complete. That cache-only read declines both the
+  stale-options refresh and the legacy-bridge option fallback, which capture
+  through the runtime the same way. A load that ran blocked also never opens the
   composer on that degraded catalog: eligibility arriving mid-load keeps
   interaction blocked until a strict refresh applies complete options, and a
   failure is classified against the interaction as it stands when the load lands.
 - If a block arrives during reload, or metadata refresh fails, the loaded
-  transcript remains and buffered session/global/part events are applied. Paging
+  transcript remains and buffered session/global/part events are applied. That
+  holds when the block also fails the content request: only a session with no
+  rendered transcript to keep falls back to the unavailable-history state. Paging
   older messages is not gated on eligibility, because a rendered blocked transcript
   proves the store is synced and serves its own pages; a store that goes stale
   between pages fails that page and keeps the cursor for retry.
@@ -217,7 +221,9 @@ rules where supported.
   options were required, or reports an unsynced blocked read as a generic error
   instead of the block. A live block/reload race blanks messages, loses buffered
   events or turns a metadata refresh failure into a cold shell.
-- A blocked open waits on dynamic option discovery or lets it start the harness.
+- A blocked open waits on dynamic option discovery, a stale-options refresh, or
+  the legacy option fallback, or lets any of them start the harness. A block that
+  races a reload replaces the rendered transcript with the unavailable shell.
   A blocked load opens the composer on its degraded option catalog when eligibility
   arrives mid-load, or reports a mid-load eligibility change against the stale
   interaction the load began with. A resumed blocked chat stays undeclared and

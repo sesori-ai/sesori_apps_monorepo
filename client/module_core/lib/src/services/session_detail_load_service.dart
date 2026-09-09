@@ -281,6 +281,11 @@ class SessionDetailLoadService({
       case SessionOptionsRepositoryAvailable(:final catalog, :final isStale):
         return fromCatalog(catalog, areStale: isStale);
       case SessionOptionsRepositoryUnsupported():
+        // The legacy routes below capture through the plugin runtime, which may
+        // start the harness. A cache-only read exists precisely to avoid that,
+        // so it declines the fallback rather than trading one activation path
+        // for another.
+        if (mode == SessionOptionsRequestMode.cacheOnly) return unavailable;
         // COMPATIBILITY 2026-08-09 (v1.8.0): Published older bridges do not
         // expose /session/options. Remove this fallback with support for them.
         switch (await _repository.loadLegacySessionOptions(projectId: normalizedProjectId, pluginId: pluginId)) {
