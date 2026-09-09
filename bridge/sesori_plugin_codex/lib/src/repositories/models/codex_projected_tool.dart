@@ -17,12 +17,3 @@ final class CodexProjectedTool({
 sealed class const CodexToolPresentation();
 
 final class const CodexOrdinaryToolPresentation() extends CodexToolPresentation;
-
-/// Spawn input and its child identity, enriched when Codex announces the child.
-/// The spawn tool's completion is separate from that child's work lifecycle.
-final class const CodexSubtaskPresentation({
-  required final String? taskName,
-  required final String? prompt,
-  required final String agent,
-  required final String? childSessionId,
-}) extends CodexToolPresentation;

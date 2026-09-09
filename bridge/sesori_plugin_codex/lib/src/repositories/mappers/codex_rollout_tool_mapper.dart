@@ -358,21 +358,13 @@ class const CodexRolloutToolMapper({
     final usefulId = _usefulText(callId) ?? _usefulText(id);
     if (usefulId == null) return null;
     final usefulName = _usefulText(name) ?? "tool";
-    final arguments = usefulName == "spawn_agent" ? _tryDecodeToolArguments(raw: input) : null;
     final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input: input) : null;
     return CodexRolloutToolCall(
       id: usefulId,
       turnId: _usefulText(turnId),
       tool: fileChangePatch == null ? normalizeToolName(usefulName) : "edit",
       title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(patch: fileChangePatch),
-      presentation: usefulName == "spawn_agent"
-          ? CodexSubtaskPresentation(
-              taskName: _usefulText(arguments?.taskName),
-              prompt: _usefulText(arguments?.message),
-              agent: _usefulText(arguments?.agentType) ?? "codex",
-              childSessionId: null,
-            )
-          : const CodexOrdinaryToolPresentation(),
+      presentation: const CodexOrdinaryToolPresentation(),
     );
   }
 

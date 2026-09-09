@@ -190,16 +190,18 @@ its observed-child snapshot retains legacy client fanout.
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
 matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
-rollout and absent from `thread/read`. These are native probe findings.
-The table's tile checkmark covers existing live/replayed spawn-tool card
-projection with best-effort raw task-path child linkage; cards can remain
-unlinked. Exact-call tile correlation, nested activity replay, and plaintext
-`NEW_TASK` prompt projection are **not implemented** in Sesori yet.
-Sesori exposes child threads under their direct parent and keeps running
-descendants in root busy state. Metadata-only
-`thread/read(includeTurns: false)` retains parent and nickname enrichment. Raw task paths remain stable identity and are formatted
-for display. `turn/interrupt` works per child with its `turnId`, while parent
-interrupt leaves children running, so main-agent-only is supportable.
+rollout and absent from `thread/read`. Live/replayed tiles now join by exact
+parent-local call ID and use that spawn call's message for encrypted input;
+validated initial child plaintext `NEW_TASK` can override it. Missing activity
+leaves the generic tool card. Native-plugin QA verified forked/nonforked tiles,
+cold replay, busy-root handling, and disconnect cleanup. Direct app-server
+`turn/start` input to v2 sub-agents is **not supported** by Codex 0.153.4;
+differently-terminal resumed-child live QA remains unexecuted.
+Sesori exposes child threads under their direct parent. Metadata-only
+`thread/read(includeTurns: false)` retains parent and nickname enrichment.
+Raw task paths are formatted for display, not used for tile correlation.
+`turn/interrupt` works per child with its `turnId`, while parent interrupt
+leaves children running, so main-agent-only is supportable.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,

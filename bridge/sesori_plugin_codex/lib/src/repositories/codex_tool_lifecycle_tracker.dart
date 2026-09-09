@@ -5,7 +5,6 @@ import "../api/models/codex_correlatable_item_event_dto.dart";
 import "../api/models/codex_file_change_dto.dart";
 import "../api/models/codex_image_bearing_item_dto.dart";
 import "../api/models/codex_rollout_dto.dart";
-import "../api/models/codex_sub_agent_item_event_dto.dart";
 import "../codex_app_server_client.dart";
 import "../models/codex_replay_tool_disposition.dart";
 import "mappers/codex_rollout_tool_mapper.dart";
@@ -22,35 +21,6 @@ class CodexToolLifecycleTracker({
 }) {
   final Map<String, _ThreadToolLifecycle> _threads = {};
   final Map<String, Map<String, _TrackedTool>> _retainedCommandsByThread = {};
-
-  CodexProjectedTool observeSubAgentStarted({required CodexSubAgentActivity event}) {
-    final thread = _threads.putIfAbsent(event.threadId, _ThreadToolLifecycle.new);
-    final tool = thread.tools.putIfAbsent(
-      event.itemId,
-      () => _TrackedTool(
-        id: event.itemId,
-        tool: "spawn_agent",
-        presentation: CodexSubtaskPresentation(
-          taskName: event.agentPath,
-          prompt: null,
-          agent: "codex",
-          childSessionId: event.agentThreadId,
-        ),
-        title: null,
-        turnId: event.turnId,
-        chronologySegment: thread.chronologySegment,
-        isRolloutCall: true,
-      ),
-    );
-    final previous = tool.presentation;
-    tool.presentation = CodexSubtaskPresentation(
-      taskName: previous is CodexSubtaskPresentation ? previous.taskName ?? event.agentPath : event.agentPath,
-      prompt: previous is CodexSubtaskPresentation ? previous.prompt : null,
-      agent: previous is CodexSubtaskPresentation ? previous.agent : "codex",
-      childSessionId: event.agentThreadId,
-    );
-    return tool.snapshot();
-  }
 
   /// Applies one typed rollout record and returns complete canonical upserts.
   List<CodexProjectedTool> observeRolloutLine({
@@ -444,15 +414,6 @@ class CodexToolLifecycleTracker({
       );
       tool.time ??= time;
       tool.title ??= call.title;
-      if (call.presentation case final CodexSubtaskPresentation input) {
-        final previous = tool.presentation;
-        tool.presentation = CodexSubtaskPresentation(
-          taskName: input.taskName,
-          prompt: input.prompt,
-          agent: input.agent,
-          childSessionId: previous is CodexSubtaskPresentation ? previous.childSessionId : null,
-        );
-      }
       if (fileChangePatch != null) {
         tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(fileChangePatch);
         thread.codeModeFileCallIds.add(call.id);

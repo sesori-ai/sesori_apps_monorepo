@@ -79,16 +79,22 @@ defaults and queued client sends coherent.
   client user-message id in either case. The bridge keeps the authoritative
   active turn until its terminal event even when an older app server returns a
   separate submission id for the steering request.
-- Codex live and replayed spawn-tool records use the inline subtask card
-  projection on phone and desktop. Child linkage is best-effort: matching uses
-  the raw task path under the direct parent, not the formatted label; a card
-  can remain unlinked when no child matches. Linked cards open that child's
-  transcript and follow its session status; completing the spawn call or the
-  parent turn must not stop their spinner while the child runs. Readable child
-  nicknames and titles are preserved; raw path fallbacks such as
+- Codex spawn calls render as one inline subtask card in the direct parent's
+  chat and open the exact child transcript. Current persisted
+  `item_completed/SubAgentActivity` identity replaces the generic
+  `spawn_agent` card only by matching parent-local call id, so duplicate
+  descriptions and reversed activity order cannot cross-bind. Normal encrypted
+  child input keeps the exact matching spawn message; parent user history,
+  labels, timing, ordering, and envelope headers are never prompt provenance.
+  A complete child-owned plaintext `NEW_TASK` payload may replace that fallback
+  only for the initial child turn. That same initial turn owns the first
+  completed, failed, or cancelled terminal on live and replay paths; later
+  resumed input and terminals cannot rewrite the tile. Completing the spawn
+  call or parent turn does not stop its spinner while the child runs, and a
+  later close cannot overwrite a terminal result. Readable child nicknames and
+  titles are preserved; raw path fallbacks such as
   `/root/architecture_review_1271` display as `Architecture review · 1271`.
-  An interrupted launch that never creates a child retains its own terminal
-  tool status.
+  A missing/mismatched activity leaves the generic spawn tool card.
 - A Codex root remains effectively busy after its own turn completes while any
   tracked descendant turn is running. The root's idle status and completion
   signal are deferred and released exactly once after the last child settles;

@@ -9,6 +9,7 @@ import "../repositories/codex_catalog_repository.dart";
 class const CodexRolloutAppend({
   required final String sessionId,
   required final CodexRolloutLineDto line,
+  required final CodexRolloutLineDto? previousLine,
 });
 
 /// Streams complete records appended to rollouts for turns active in this
@@ -62,6 +63,7 @@ class CodexRolloutTailer({
       offset: position.offset,
       trailingBytes: position.trailingBytes,
       hasObservedAppend: false,
+      previousLine: null,
     );
     _timer ??= Timer.periodic(_pollInterval, (_) => drainAll());
   }
@@ -93,7 +95,14 @@ class CodexRolloutTailer({
         ..trailingBytes = chunk.trailingBytes
         ..hasObservedAppend = cursor.hasObservedAppend || observedAppend;
       for (final line in chunk.lines) {
-        _appends.add(CodexRolloutAppend(sessionId: sessionId, line: line));
+        _appends.add(
+          CodexRolloutAppend(
+            sessionId: sessionId,
+            line: line,
+            previousLine: cursor.previousLine,
+          ),
+        );
+        cursor.previousLine = line;
       }
     } on Object catch (error, stackTrace) {
       Log.w(
@@ -165,6 +174,7 @@ class _CodexRolloutCursor({
   required var int offset,
   required var List<int> trailingBytes,
   required var bool hasObservedAppend,
+  required var CodexRolloutLineDto? previousLine,
 }) {
   // COMPATIBILITY 2026-07-23 (Codex JSONL writer): a non-null path at EOF does
   // not prove the current turn is flushed; Codex may append its first bytes

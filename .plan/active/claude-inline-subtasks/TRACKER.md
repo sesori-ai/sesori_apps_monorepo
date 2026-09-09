@@ -9,8 +9,11 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the original Claude series is complete; harness follow-ups remain active
-- **Next action:** land native-facts PR #1398 (step 5/9), then the stacked
-  live/replay integration (6/9) and lifecycle coverage (7/9) slices. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
+- **Next action:** finalize Codex live/replay integration
+  [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399)
+  (step 6/9) after native-facts PR #1398 merged at `d801d722f2`;
+  actual-plugin QA passed its bounded cases, then preserved lifecycle coverage
+  step 7/9 follows. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
   historical preparation superseded by the verified 0.153.4 rollout seam. DeepSeek #1363,
   #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
   stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
@@ -167,11 +170,11 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: sub-agent threads become child sessions` | #1273/#1280 merged; historical title unchanged (now step 2/9) |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | #1387 merged; historical title unchanged (now step 3/9) |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | #1396 merged at `7f6fb8cb50`; no tile code |
-| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | [PR #1398](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1398) open; implemented, awaiting merge; no tile capability activated |
-| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | Stacked local successor; full live/replay production and focused tests |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Stacked local successor; write-path coverage and capability/regression docs only |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | [PR #1398](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1398) merged at `d801d722f2`; no tile capability activated |
+| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) open; full live/replay production, tests and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases, with explicit unexecuted coverage |
+| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Preserved local successor `e33c33caa4`; write-path coverage, remaining docs, and removal of test-only `CodexMessageRepository.readMessages` with caller migration |
 | [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Not started |
-| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Live plugin QA outstanding |
+| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Final matrix outstanding; bounded actual-plugin results in [QA handoff](followups/codex-plugin-qa.md) |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
 | [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |

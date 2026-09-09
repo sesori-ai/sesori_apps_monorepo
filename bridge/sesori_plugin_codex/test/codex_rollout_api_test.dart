@@ -1117,6 +1117,7 @@ void main() {
         ],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
+        childReplayDataById: const {},
       );
 
       expect(messages.map((message) => message.info.id), [
@@ -1141,9 +1142,8 @@ void main() {
         messages.singleWhere((message) => message.info.id == "call-kept").parts.single.state.output,
         "output kept",
       );
-      final subtask = messages.singleWhere((message) => message.info.id == "call-appended").parts.single;
-      expect(subtask, isA<PluginMessagePartSubtask>());
-      expect((subtask as PluginMessagePartSubtask).childSessionID, "child-1");
+      final spawn = messages.singleWhere((message) => message.info.id == "call-appended").parts.single;
+      expect(spawn, isA<PluginMessagePartTool>(), reason: "missing activity must keep the generic spawn card");
     });
 
     test("readMessages applies repeated rollback counts to surviving user turns", () {
@@ -1176,6 +1176,7 @@ void main() {
         children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
+        childReplayDataById: const {},
       );
 
       expect(messages.map((message) => message.info.id), [
