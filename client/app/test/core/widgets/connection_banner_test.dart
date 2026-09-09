@@ -165,6 +165,8 @@ void main() {
   testWidgets("bridge going offline slides the banner into the top nav and back out on recovery", (tester) async {
     final cubit = _MutableConnectionOverlayCubit();
     addTearDown(cubit.close);
+    await tester.binding.setSurfaceSize(const Size(440, 956));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
 
     await tester.pumpWidget(
       _app(
@@ -190,7 +192,18 @@ void main() {
 
     expect(find.text("Bridge disconnected"), findsOneWidget);
     final bannerHeight = tester.getSize(find.byType(ConnectionBanner)).height;
-    expect(bannerHeight, greaterThan(0));
+    expect(bannerHeight, 86); // 54px card + 16px outer spacing on each side.
+    final surface = find
+        .descendant(
+          of: find.byType(PregoInlineAlertsNotifications),
+          matching: find.byType(Material),
+        )
+        .first;
+    final card = tester.getRect(surface);
+    expect(card.left, 16);
+    expect(card.right, 424);
+    expect(card.top, restingBarTop + 16);
+    expect(card.bottom + 16, tester.getTopLeft(find.byType(GlassAppBar)).dy);
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, restingBarTop + bannerHeight);
 
     cubit.setOverlayState(const ConnectionOverlayState.hidden(connected: true));
