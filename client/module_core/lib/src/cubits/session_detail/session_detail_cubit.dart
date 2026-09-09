@@ -405,7 +405,11 @@ class SessionDetailCubit(
             // when the bridge has no complete snapshot for this session. While
             // the harness is blocked that backfill cannot run, so report the
             // block rather than a generic failure the user cannot act on.
-            if (!interactionAtLoad.canInteract) {
+            // Classified against the current interaction, not the one the load
+            // started with: eligibility that arrived meanwhile makes this an
+            // ordinary retryable failure, and a block that arrived meanwhile
+            // explains one.
+            if (!_interaction.canInteract) {
               logw("Session detail load failed while the harness was blocked", error, stackTrace);
               if (_projectViewClaim case final claim?) {
                 _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
