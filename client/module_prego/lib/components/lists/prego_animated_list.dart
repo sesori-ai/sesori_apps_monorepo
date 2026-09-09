@@ -26,6 +26,9 @@ class const PregoAnimatedList<T>({
     // AnimatedList-based twin if a caller ever needs a long or lazy list.
     return CustomScrollView(
       shrinkWrap: true,
+      // The page owns the primary scroll position; this list never scrolls and
+      // must not attach a second position to that controller.
+      primary: false,
       physics: const NeverScrollableScrollPhysics(),
       slivers: [
         PregoAnimatedSliverList<T>(items: items, itemKey: itemKey, itemBuilder: itemBuilder),
