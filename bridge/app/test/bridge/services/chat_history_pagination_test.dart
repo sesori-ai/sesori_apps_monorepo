@@ -1,3 +1,4 @@
+import "package:sesori_bridge/src/repositories/chat_history_repository.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -87,6 +88,30 @@ void main() {
       );
       expect(next.messages, isEmpty);
       expect(next.nextCursor, isNull);
+    });
+
+    test("the snapshot read pages identically to the plain read", () async {
+      // Store-only reads take the snapshot variant, so the two must not drift
+      // apart — particularly the part filtering, which depends on the page's
+      // own message ids.
+      final scope = testAttachmentStorageScope(sessionId: "ses_a");
+      for (final limit in [null, 1, 3]) {
+        final plain = await history.repository.getSessionMessages(
+          sessionId: "ses_a",
+          storageScope: scope,
+          limit: limit,
+        );
+        final snapshot = await history.repository.getSessionMessagesWithSyncState(
+          sessionId: "ses_a",
+          storageScope: scope,
+          limit: limit,
+          attachmentProjection: const InlineMessageAttachmentProjection(),
+        );
+
+        expect(snapshot.page.messages, plain.messages, reason: "limit $limit");
+        expect(snapshot.page.nextCursor, plain.nextCursor, reason: "limit $limit");
+        expect(snapshot.syncState, await history.repository.getSyncState(sessionId: "ses_a"));
+      }
     });
 
     test("an empty page never claims there is more", () async {

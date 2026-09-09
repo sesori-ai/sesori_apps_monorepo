@@ -19,7 +19,9 @@ reconnect or restart.
   still receives whatever transcript exists. A session for which the bridge
   holds no row reads as an empty transcript that the harness still owes. It
   also stays off the session write queue, so another reader's slow or failing
-  backfill can neither delay it nor fail it. Every other read keeps the
+  backfill can neither delay it nor fail it; its rows and its sync marker come
+  from one database snapshot instead, so a concurrent backfill or purge lands
+  wholly before or wholly after the page. Every other read keeps the
   backfilling behavior, and an older app or bridge on either side of the
   contract keeps it too.
 - Session detail resolves canonical catalog metadata before any plugin-backed
@@ -217,9 +219,10 @@ rules where supported.
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
 - A store-only read reaches the harness, waits on or fails with another reader's
-  backfill, fails instead of serving what the store holds, or misreports
-  freshness in either direction — a current store flagged as awaiting sync, or a
-  stale one served as complete.
+  backfill, fails instead of serving what the store holds, returns parts that
+  belong to a different transcript than its messages, or misreports freshness in
+  either direction — a current store flagged as awaiting sync, or a stale one
+  served as complete.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders

@@ -188,10 +188,9 @@ class ChatHistoryService({
   /// caller that cannot wake the harness, so queueing behind another read's
   /// in-flight backfill would make it wait on exactly the thing it opted out
   /// of, and a backfill that fails or stalls would take the stored transcript
-  /// down with it. The store's own backfill commits in one transaction, so an
-  /// unqueued read sees the state before it or after it, never a torn one, and
-  /// a marker flip that races the freshness check only mis-dates
-  /// `awaitingHarnessSync` for a single read — the next one corrects it.
+  /// down with it. Consistency comes from the database instead: the rows and
+  /// the sync marker are read in one snapshot, so a backfill or purge lands
+  /// wholly before or wholly after them.
   ///
   /// Dead open tool parts are not swept here for the same reason: the sweep is
   /// a queued write, and repairing a tool tile left spinning by a bridge death
@@ -227,16 +226,20 @@ class ChatHistoryService({
       if (archived != null) return _messagesPage(page: archived, replayedPromptDefaults: null);
     }
 
-    final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
-    final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
-    final page = await _chatHistoryRepository.getSessionMessages(
+    // One snapshot for the marker and the rows: outside the queue a backfill
+    // or purge could otherwise commit between them and hand back a page whose
+    // parts belong to a different transcript than its messages, or a freshness
+    // verdict describing neither.
+    final read = await _chatHistoryRepository.getSessionMessagesWithSyncState(
       sessionId: sessionId,
       storageScope: storageScope,
       limit: limit,
       before: before,
       attachmentProjection: attachmentProjection,
     );
-    return _messagesPage(page: page, replayedPromptDefaults: null, awaitingHarnessSync: !synced);
+    final state = read.syncState;
+    final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
+    return _messagesPage(page: read.page, replayedPromptDefaults: null, awaitingHarnessSync: !synced);
   }
 
   SessionMessagesPage _messagesPage({
