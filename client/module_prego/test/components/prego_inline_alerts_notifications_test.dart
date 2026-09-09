@@ -18,6 +18,13 @@ void main() {
       )
       .first;
 
+  Finder surface() => find
+      .descendant(
+        of: find.byType(PregoInlineAlertsNotifications),
+        matching: find.byType(DecoratedBox),
+      )
+      .first;
+
   for (final brightness in Brightness.values) {
     final design = brightness == Brightness.dark ? PregoDesignSystem.dark : PregoDesignSystem.light;
 
@@ -38,13 +45,17 @@ void main() {
         expect(bounds.right, 440 - PregoSpacing.xl);
         expect(bounds.top, PregoSpacing.xl);
         expect(tester.getRect(find.byType(PregoInlineAlertsNotifications)).bottom - bounds.bottom, PregoSpacing.xl);
-        final surface = tester.widget<Material>(card());
-        expect(surface.color, design.colors.bgSurface5);
-        expect(surface.clipBehavior, Clip.antiAlias);
-        final shape = surface.shape! as RoundedRectangleBorder;
-        expect(shape.borderRadius, BorderRadius.circular(PregoRadius.x2l));
-        expect(shape.side.color, design.colors.borderPrimary);
-        expect(shape.side.width, 1);
+        final material = tester.widget<Material>(card());
+        expect(material.type, MaterialType.transparency);
+        expect(material.clipBehavior, Clip.antiAlias);
+        expect(material.borderRadius, BorderRadius.circular(PregoRadius.x2l));
+        expect(material.shape, isNull);
+        final decoration = tester.widget<DecoratedBox>(surface()).decoration as BoxDecoration;
+        expect(decoration.borderRadius, BorderRadius.circular(PregoRadius.x2l));
+        expect(decoration.border, Border.all(color: design.colors.borderPrimary));
+        final gradient = decoration.gradient! as RadialGradient;
+        expect(gradient.colors.first, design.colors.bgSurface5);
+        expect(gradient.colors.every((color) => color.a == 1), isTrue);
         final title = tester.widget<Text>(find.text("Bridge disconnected"));
         expect(title.style?.color, design.colors.textPrimary);
         expect(title.style?.fontWeight, FontWeight.w500);
@@ -70,17 +81,15 @@ void main() {
       expect(icon.left - bounds.left, PregoSpacing.xl);
       expect(icon.top - bounds.top, PregoSpacing.xl);
       expect(tester.getTopLeft(find.text("Bridge disconnected")).dx - icon.right, PregoSpacing.sm);
-      final decoration =
-          tester
-                  .widget<DecoratedBox>(
-                    find.descendant(of: card(), matching: find.byType(DecoratedBox)).first,
-                  )
-                  .decoration
-              as BoxDecoration;
+      final decoration = tester.widget<DecoratedBox>(surface()).decoration as BoxDecoration;
+      // The rounded fill and border live outside the ink/content clip. Keeping
+      // the gradient inside Material reintroduces clipped-edge artifacts.
+      expect(find.descendant(of: card(), matching: surface()), findsNothing);
+      expect(tester.getRect(surface()), bounds);
       final gradient = decoration.gradient! as RadialGradient;
       expect(gradient.colors, [
-        design.colors.bgSurface5.withValues(alpha: 0.2),
-        design.colors.bgWarningSecondary.withValues(alpha: 0.2),
+        design.colors.bgSurface5,
+        Color.alphaBlend(design.colors.bgWarningSecondary.withValues(alpha: 0.2), design.colors.bgSurface5),
       ]);
       expect(gradient.stops, [0.6, 1.0]);
     });
