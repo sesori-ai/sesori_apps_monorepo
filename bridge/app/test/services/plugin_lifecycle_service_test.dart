@@ -1144,6 +1144,65 @@ void main() {
     expect(responseById["external"]?.hasIdleTimeoutOverride, isTrue);
   });
 
+  test("named refresh commands overlap and join only their own slot", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one", "two"]);
+    final gates = {"one": Completer<void>(), "two": Completer<void>()};
+    final repository = _GatedInspectionRepository(runtime: runtime, gates: gates);
+    final service =
+        PluginLifecycleService(
+          lifecycleRepository: repository,
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+          plugins: [
+            for (final id in gates.keys)
+              (
+                id: id,
+                displayName: id,
+                activationPolicy: PluginActivationPolicy.onDemand,
+                residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
+                managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
+              ),
+          ],
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupNotInspected(), "two": PluginSetupNotInspected()},
+        );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+    final one = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+    final two = service.command(pluginId: "two", request: const PluginLifecycleCommandRequest.refresh());
+    final joined = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+    expect(joined, same(one));
+    await _waitUntil(() => repository.inspected.length == 2);
+    expect(repository.inspected, ["one", "two"]);
+    expect(
+      () => service.command(
+        pluginId: "one",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      ),
+      throwsA(isA<PluginManagementConflictException>()),
+    );
+    gates["two"]!.complete();
+    final second = await two;
+    expect(
+      second.plugins.singleWhere((plugin) => plugin.setup.id == "two").setup.state,
+      PluginSetupState.ready,
+    );
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable()),
+      throwsA(isA<PluginManagementConflictException>()),
+    );
+    gates["one"]!.complete();
+    await one;
+    expect(service.managementSnapshot.plugins.every((plugin) => plugin.runtimeState.isEnabled), isTrue);
+  });
+
   test("idle timeout writes serialize and preserve unknown plugin settings", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
@@ -3194,4 +3253,20 @@ Future<void> _waitUntil(bool Function() predicate) async {
     await Future<void>.delayed(Duration.zero);
   }
   throw StateError("condition did not become true");
+}
+
+class _GatedInspectionRepository({required super.runtime, required final Map<String, Completer<void>> gates})
+    extends PluginLifecycleRepository {
+  final List<String> inspected = [];
+
+  @override
+  Future<Map<String, PluginSetupStatus>> inspect({
+    required Set<String> pluginIds,
+    required bool markUnselectedNotInspected,
+  }) async {
+    final id = pluginIds.single;
+    inspected.add(id);
+    await gates[id]!.future;
+    return await super.inspect(pluginIds: pluginIds, markUnselectedNotInspected: markUnselectedNotInspected);
+  }
 }

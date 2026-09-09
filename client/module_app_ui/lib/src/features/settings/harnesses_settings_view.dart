@@ -117,7 +117,7 @@ class const _ReadyView({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final response = state.response;
-    final timeoutBusy = switch (state.action) {
+    final timeoutBusy = switch (state.globalAction) {
       PluginManagementActionInProgress(target: PluginManagementActionTargetAllHarnesses()) => true,
       PluginManagementActionIdle() ||
       PluginManagementActionInProgress() ||
@@ -146,10 +146,20 @@ class const _ReadyView({
                 children: [
                   for (final plugin in response.plugins)
                     if (_group(plugin: plugin, install: state.installs[plugin.setup.id]) == group)
-                      _HarnessOverviewRow(
-                        plugin: plugin,
-                        state: state,
-                        onOpen: () => onOpenHarness(pluginId: plugin.setup.id),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
+                        children: [
+                          _HarnessOverviewRow(
+                            plugin: plugin,
+                            state: state,
+                            onOpen: () => onOpenHarness(pluginId: plugin.setup.id),
+                          ),
+                          _HarnessActionFeedback(
+                            state: state,
+                            target: PluginManagementActionTarget.harness(pluginId: plugin.setup.id),
+                            groupForceReview: false,
+                          ),
+                        ],
                       ),
                 ],
               ),
@@ -175,9 +185,7 @@ class const _ReadyView({
                             color: context.prego.colors.textTertiary,
                           ),
                         ),
-                  onTap: _controlsBlocked(state.action)
-                      ? null
-                      : () => _editDefaultTimeout(context: context, state: state),
+                  onTap: state.globalControlsBlocked ? null : () => _editDefaultTimeout(context: context, state: state),
                 ),
               ],
             ),
@@ -207,7 +215,12 @@ class const _HarnessOverviewRow({
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
-          _HarnessSwitch(plugin: plugin, action: state.action, install: install),
+          _HarnessSwitch(
+            plugin: plugin,
+            action: state.harnessActions[plugin.setup.id] ?? const PluginManagementActionState.idle(),
+            install: install,
+            blocked: state.harnessControlsBlocked(pluginId: plugin.setup.id),
+          ),
           if (install case PluginInstallInProgress(:final progress))
             SizedBox(
               width: 44,
@@ -232,7 +245,7 @@ class const _HarnessOverviewRow({
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               tooltip: context.loc.harnessesInstallTitle(plugin.setup.displayName),
               icon: const Icon(TablerRegular.download),
-              onPressed: _controlsBlocked(state.action) ? null : onOpen,
+              onPressed: state.harnessControlsBlocked(pluginId: plugin.setup.id) ? null : onOpen,
             )
           else
             const SizedBox(width: 44, height: 44, child: Icon(TablerRegular.chevron_right)),
@@ -262,19 +275,11 @@ class const _HarnessErrors({required final PluginManagementReady state}) extends
           ),
           const SizedBox(height: PregoSpacing.xl),
         ],
-        if (state.action case final PluginManagementActionFailed failure) ...[
-          KeyedSubtree(
-            key: const Key("harnesses_action_error"),
-            child: _MessageRow(
-              key: const Key("harness_management_action_error"),
-              title: loc.harnessManagementActionFailedTitle,
-              description: _actionErrorDescription(context: context, error: failure.error),
-              dismissLabel: loc.harnessManagementDismissActionError,
-              onDismiss: context.read<PluginManagementCubit>().dismissActionError,
-            ),
-          ),
-          const SizedBox(height: PregoSpacing.xl),
-        ],
+        _HarnessActionFeedback(
+          state: state,
+          target: const PluginManagementActionTarget.allHarnesses(),
+          groupForceReview: false,
+        ),
         if (state.authentication case final PluginAuthenticationPresentationFailed failure) ...[
           _MessageRow(
             key: const Key("harness_authentication_error"),
@@ -313,5 +318,55 @@ class const _MessageRow({
         ),
       ],
     );
+  }
+}
+
+class const _HarnessActionFeedback({
+  required final PluginManagementReady state,
+  required final PluginManagementActionTarget target,
+  required final bool groupForceReview,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final action = state.actionFor(target: target);
+    final cubit = context.read<PluginManagementCubit>();
+    final feedback = switch (action) {
+      PluginManagementActionFailed() => Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+        child: _MessageRow(
+          key: Key(
+            "harness_management_action_error_${switch (target) {
+              PluginManagementActionTargetHarness(:final pluginId) => pluginId,
+              PluginManagementActionTargetAllHarnesses() => 'all',
+            }}",
+          ),
+          title: context.loc.harnessManagementActionFailedTitle,
+          description: _actionErrorDescription(context: context, error: action.error),
+          dismissLabel: context.loc.harnessManagementDismissActionError,
+          onDismiss: () => cubit.dismissActionError(failure: action),
+        ),
+      ),
+      PluginManagementActionForceConfirmationRequired() => PregoGroupedRow(
+        key: Key("harness_management_force_review_${action.pluginId}"),
+        title: Text(
+          action.action == PluginManagementForceAction.disable
+              ? context.loc.harnessManagementForceDisableTitle(action.conflict.current.setup.displayName)
+              : context.loc.harnessesForceRestartTitle(action.conflict.current.setup.displayName),
+        ),
+        trailing: PregoButtonsSolid(
+          label: context.loc.harnessManagementReview,
+          hierarchy: PregoButtonsSolidHierarchy.tertiary,
+          size: PregoButtonsSolidSize.sm,
+          onPressed: () => unawaited(_showForceConfirmation(context: context, cubit: cubit, confirmation: action)),
+        ),
+      ),
+      PluginManagementActionIdle() || PluginManagementActionInProgress() => const SizedBox.shrink(),
+    };
+    return groupForceReview && action is PluginManagementActionForceConfirmationRequired
+        ? Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+            child: PregoGroupedRows(color: context.prego.colors.bgSurface2, children: [feedback]),
+          )
+        : feedback;
   }
 }
