@@ -9,7 +9,6 @@ import "../../../extensions/build_context_x.dart";
 class const SessionHarnessUnavailableNotice({
   super.key,
   required final SessionInteractionState interaction,
-  required final bool historyUnavailable,
   required final VoidCallback onOpenHarnessSettings,
   required final VoidCallback onRecheck,
 }) extends StatelessWidget {
@@ -40,7 +39,6 @@ class const SessionHarnessUnavailableNotice({
     };
     final details = [
       if (blocked?.actionHint case final hint? when hint.trim().isNotEmpty) hint,
-      if (historyUnavailable) loc.sessionDetailHarnessHistoryUnavailable,
       if (blocked?.refreshError != null && blocked?.reason != SessionInteractionBlockedReason.statusCheckFailed)
         loc.sessionDetailHarnessRefreshWarning,
     ].join("\n");

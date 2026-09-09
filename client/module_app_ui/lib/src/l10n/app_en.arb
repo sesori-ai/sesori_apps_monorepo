@@ -928,7 +928,6 @@
   "sessionDetailHarnessCheckFailedReason": "Couldn’t check whether this session’s harness is available.",
   "sessionDetailContentLoadFailedReason": "The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.",
   "sessionDetailHarnessCheckingReason": "Checking whether this session’s harness is available…",
-  "sessionDetailHarnessHistoryUnavailable": "Chat history cannot be loaded until the harness is available.",
   "sessionDetailHarnessRefreshWarning": "Harness status could not be refreshed. The last known status is shown.",
   "sessionDetailOpenHarnessSettings": "Open Harness Settings",
   "sessionListArchiveConfirmTitle": "Archive session?",

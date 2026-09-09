@@ -3073,12 +3073,6 @@ abstract class AppLocalizations {
   /// **'Checking whether this session’s harness is available…'**
   String get sessionDetailHarnessCheckingReason;
 
-  /// No description provided for @sessionDetailHarnessHistoryUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'Chat history cannot be loaded until the harness is available.'**
-  String get sessionDetailHarnessHistoryUnavailable;
-
   /// No description provided for @sessionDetailHarnessRefreshWarning.
   ///
   /// In en, this message translates to:

@@ -1666,9 +1666,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';
 
   @override
-  String get sessionDetailHarnessHistoryUnavailable => 'Chat history cannot be loaded until the harness is available.';
-
-  @override
   String get sessionDetailHarnessRefreshWarning =>
       'Harness status could not be refreshed. The last known status is shown.';
 

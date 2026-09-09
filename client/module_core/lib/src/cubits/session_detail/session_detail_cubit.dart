@@ -240,12 +240,6 @@ class SessionDetailCubit(
         } else {
           emit(current.copyWith(interaction: next));
         }
-      case SessionDetailHarnessUnavailable():
-        if (next.canInteract) {
-          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
-        } else {
-          emit(SessionDetailState.harnessUnavailable(session: session, interaction: next));
-        }
       case SessionDetailLoading() || SessionDetailFailed():
         break;
     }
@@ -256,7 +250,7 @@ class SessionDetailCubit(
     if (isClosed || !_interaction.canInteract) return;
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
-    } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
+    } else if (state is SessionDetailFailed) {
       await reload();
     }
   }
@@ -280,11 +274,12 @@ class SessionDetailCubit(
           when !isClosed && connectionGeneration == _connectionGeneration) {
         _sessionMetadata = session;
         _interaction = _calculateInteraction(session: session);
-        if (_interaction.canInteract) {
-          result = isReload
-              ? await _loadService.reload(session: session, projectId: _projectId)
-              : await _loadService.load(session: session, projectId: _projectId);
-        }
+        // The transcript lives in the bridge database, so a blocked harness
+        // only prevents sending — history still loads. A reload cannot require
+        // complete options in that case, because they come from the harness.
+        result = isReload && _interaction.canInteract
+            ? await _loadService.reload(session: session, projectId: _projectId)
+            : await _loadService.load(session: session, projectId: _projectId);
       }
     } finally {
       final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
@@ -332,26 +327,15 @@ class SessionDetailCubit(
           );
         }
         return _SessionRefreshResult.failed;
-      case SessionDetailMetadataFound(:final session):
-        if (result == null || !_interaction.canInteract) {
-          _waitingForConnection = false;
-          final current = state;
-          final retained = current is SessionDetailLoaded ? current : previous;
-          if (retained is SessionDetailLoaded) {
-            emit(retained.copyWith(interaction: _interaction));
-            _drainPendingEvents();
-            _drainDeferredPartsForLoadedMessages();
-          } else {
-            if (_projectViewClaim case final claim?) {
-              _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
-            }
-            emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
-          }
-          return _SessionRefreshResult.applied;
-        }
+      case SessionDetailMetadataFound():
+        break;
     }
 
     switch (result) {
+      // The content load is skipped only when the cubit closed or the
+      // connection generation moved, and both already returned above.
+      case null:
+        return _SessionRefreshResult.closed;
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
         _deferredPartEvents.discardForMessagesThrough(
@@ -420,9 +404,7 @@ class SessionDetailCubit(
     final cursor = current.olderMessagesCursor;
     // A refresh replaces the newest page, so a page requested against the
     // outgoing transcript could only splice unrelated history onto it.
-    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing || !current.interaction.canInteract) {
-      return;
-    }
+    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing) return;
 
     final generation = _transcriptGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -2498,9 +2480,7 @@ class SessionDetailCubit(
     try {
       final requestChildStatuses = switch (state) {
         SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
-        SessionDetailLoading() ||
-        SessionDetailHarnessUnavailable() ||
-        SessionDetailFailed() => const <String, SessionStatus>{},
+        SessionDetailLoading() || SessionDetailFailed() => const <String, SessionStatus>{},
       };
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);

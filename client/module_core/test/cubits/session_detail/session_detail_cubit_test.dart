@@ -181,18 +181,20 @@ void main() {
         await awaitState(
           cubit: cubit,
           predicate: (state) =>
-              initialBlocked ? state is SessionDetailHarnessUnavailable : state is SessionDetailLoaded,
+              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
           description: "initial harness state",
         );
         final before = cubit.state;
         if (initialBlocked) {
-          verifyNever(
+          // History comes from the bridge database, so a blocked harness still
+          // shows the transcript; only interaction is refused.
+          verify(
             () => mockSessionService.getMessages(
               sessionId: any(named: "sessionId"),
               limit: any(named: "limit"),
               before: any(named: "before"),
             ),
-          );
+          ).called(greaterThanOrEqualTo(1));
         } else {
           when(
             () => mockSessionService.sendMessage(

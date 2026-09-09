@@ -71,11 +71,6 @@ sealed class SessionDetailState with _$SessionDetailState {
     @Default([]) List<SessionVariant> availableVariants,
   }) = SessionDetailLoaded;
 
-  const factory harnessUnavailable({
-    required Session session,
-    required SessionInteractionState interaction,
-  }) = SessionDetailHarnessUnavailable;
-
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }
 
