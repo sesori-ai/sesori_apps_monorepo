@@ -645,9 +645,10 @@ void main() {
       aborted: StartAbortSignal.never,
     );
     expect(await operation.events.toList(), [isA<PluginAuthenticationCompleted>()]);
-    final expectedPrefix = Platform.packageConfig == null
-        ? const <String>[]
-        : ["--packages=${Uri.parse(Platform.packageConfig!).toFilePath()}", Platform.script.toFilePath()];
+    final expectedPrefix = [
+      if (Platform.packageConfig case final config?) "--packages=${Uri.parse(config).toFilePath()}",
+      Platform.script.toFilePath(),
+    ];
     expect(processes.launches.first.executable, Platform.resolvedExecutable);
     expect(processes.launches.first.arguments, [
       ...expectedPrefix,

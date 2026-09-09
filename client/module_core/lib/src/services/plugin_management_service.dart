@@ -723,7 +723,10 @@ class PluginManagementService({
         _activeBridgeId = response.bridgeId;
         final installs = Map<String, PluginInstallState>.from(_installStates.value);
         for (final plugin in response.plugins) {
-          if (plugin.setup.state == PluginSetupState.ready && installs[plugin.setup.id] is PluginInstallFailed) {
+          final runtimeInstalled =
+              plugin.setup.state == PluginSetupState.ready ||
+              plugin.setup.state == PluginSetupState.authenticationRequired;
+          if (runtimeInstalled && installs[plugin.setup.id] is PluginInstallFailed) {
             installs.remove(plugin.setup.id);
           }
         }

@@ -10,24 +10,27 @@ void main() {
     expect(BrowserNoop.matches(arguments: [BrowserNoop.argument]), isTrue);
   });
 
-  test('actual source entrypoint exits silently before config, DI or URL handling', () async {
-    final temp = Directory.systemTemp.createTempSync('browser-noop-test-');
-    addTearDown(() => temp.deleteSync(recursive: true));
-    final result = await Process.run(
-      Platform.resolvedExecutable,
-      [
-        '--packages=${File('../.dart_tool/package_config.json').absolute.path}',
-        File('bin/bridge.dart').absolute.path,
-        BrowserNoop.argument,
-        'https://example.invalid/synthetic?code=not-a-credential',
-        '--deliberately-invalid-option',
-      ],
-      environment: {'HOME': temp.path, 'USERPROFILE': temp.path},
-      workingDirectory: temp.path,
-    ).timeout(const Duration(seconds: 45));
-    expect(result.exitCode, 0);
-    expect(result.stdout, isEmpty);
-    expect(result.stderr, isEmpty);
-    expect(temp.listSync(), isEmpty);
-  });
+  for (final explicitPackages in [false, true]) {
+    test('actual source entrypoint exits silently with explicit packages: $explicitPackages', () async {
+      final temp = Directory.systemTemp.createTempSync('browser-noop-test-');
+      addTearDown(() => temp.deleteSync(recursive: true));
+      final result = await Process.run(
+        Platform.resolvedExecutable,
+        [
+          if (explicitPackages) '--packages=${File('../.dart_tool/package_config.json').absolute.path}',
+          File('bin/bridge.dart').absolute.path,
+          BrowserNoop.argument,
+          'https://example.invalid/synthetic?code=not-a-credential',
+          '--deliberately-invalid-option',
+        ],
+        environment: {'HOME': temp.path, 'USERPROFILE': temp.path},
+        includeParentEnvironment: false,
+        workingDirectory: temp.path,
+      ).timeout(const Duration(seconds: 45));
+      expect(result.exitCode, 0, reason: '${result.stdout}\n${result.stderr}');
+      expect(result.stdout, isEmpty);
+      expect(result.stderr, isEmpty);
+      expect(temp.listSync(), isEmpty);
+    });
+  }
 }

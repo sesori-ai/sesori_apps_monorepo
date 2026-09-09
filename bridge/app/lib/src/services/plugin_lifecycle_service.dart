@@ -671,18 +671,16 @@ class PluginLifecycleService({
                 );
               }
           }
-          // The binary is installed, but setup can still be blocked (most
-          // often authentication). Report completed only when the harness
-          // actually became usable; otherwise the phone would show success
-          // while the card stays blocked.
+          // Authentication is a separate setup step, not an installation
+          // failure. Keep the login-required card blocked without telling the
+          // client to reinstall a runtime that was successfully provisioned.
           final setup = _requireSetupById()[pluginId];
+          final installed = setup is PluginSetupReady || setup is PluginSetupAuthenticationRequired;
           _emitInstallProgress(
             pluginId: pluginId,
-            phase: setup is PluginSetupReady ? PluginInstallPhase.completed : PluginInstallPhase.failed,
+            phase: installed ? PluginInstallPhase.completed : PluginInstallPhase.failed,
             percent: null,
-            message: setup is PluginSetupReady
-                ? null
-                : "The runtime installed, but the harness still needs setup. Check its status.",
+            message: installed ? null : "The runtime installed, but the harness still needs setup. Check its status.",
           );
         case ProvisionFailed():
           // Descriptor failure text is not a trusted wire payload; the phone
