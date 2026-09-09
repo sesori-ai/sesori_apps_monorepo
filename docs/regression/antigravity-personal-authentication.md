@@ -9,9 +9,12 @@ credentials/token contents.
 ## Required behavior
 
 - Profile preparation, runtime probing and authentication share one monotonic budget and abort signal. Browser
-  preflight retains a five-second sub-limit; chmod uses the remaining budget. Check between mutations, await an
-  in-flight filesystem/atomic-store write, then reject cancellation or expired-budget success. No instant cancellation
-  of uninterruptible filesystem work is promised.
+  preflight and chmod use the remaining budget, including source-mode compilation before the helper reaches its
+  silent no-op. Check between mutations, await an in-flight filesystem/atomic-store write, then reject cancellation
+  or expired-budget success. Cancellation is checked before and after the bounded preflight; it does not immediately
+  interrupt the helper. No instant cancellation of uninterruptible filesystem work is promised.
+- The generic client login-start request allows two minutes for preparation and backend challenge creation rather
+  than the ordinary 30-second request timeout. Other plugin-management requests retain their existing deadlines.
 - Scratch authentication validates the negotiated ACP version and selects only an advertised `oauth-personal`
   method before sending authentication. Incompatible protocols or other-only methods fail without auth dispatch.
   It uses the prepared environment with no
@@ -59,8 +62,10 @@ credentials/token contents.
   budget is still positive. The selected failure fences late connection completion; cleanup retains the original
   failure/stack. A local synthetic HTTP server proves dispatched requests settle
   through real forced client closure. No Google endpoint is contacted.
-- `antigravity_profile_service_test.dart`: executor timeout identity, no mutation after aborted preflight, and awaited
-  atomic write before rejecting late success, in addition to the isolated-profile coverage.
+- `antigravity_profile_service_test.dart`: remaining-budget forwarding, executor timeout identity, no mutation after
+  aborted preflight, and awaited atomic write before rejecting late success, in addition to the isolated-profile coverage.
+- Client `plugin_api_test.dart`: the generic login-start request forwards its explicit two-minute timeout and retains
+  typed challenge/redirect/cancel contracts.
 - `antigravity_authentication_operation_test.dart`: shared environment/budget, one-shot continuation, same-host
   completion, runtime rejection, callback/authorization failure, timeout/process exit, cancellation while cleanup or
   callback work is in flight, and isolation from subsequent attempts.

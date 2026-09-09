@@ -3,6 +3,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/plugin_api.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -147,6 +148,7 @@ void main() {
         any(),
         body: any(named: "body"),
         fromJson: any(named: "fromJson"),
+        timeout: const Duration(minutes: 2),
       ),
     ).thenAnswer((invocation) async {
       final fromJson =
@@ -160,7 +162,11 @@ void main() {
       );
     });
     when(
-      () => client.post<SuccessEmptyResponse>(any(), body: any(named: "body"), fromJson: any(named: "fromJson")),
+      () => client.post<SuccessEmptyResponse>(
+        any(),
+        body: any(named: "body"),
+        fromJson: any(named: "fromJson"),
+      ),
     ).thenAnswer((_) async => ApiResponse.success(const SuccessEmptyResponse()));
     when(
       () => client.delete<SuccessEmptyResponse>(any(), fromJson: any(named: "fromJson")),
@@ -183,6 +189,7 @@ void main() {
         captureAny(),
         body: captureAny(named: "body"),
         fromJson: any(named: "fromJson"),
+        timeout: const Duration(minutes: 2),
       ),
     ).captured;
     expect(start[0], "/plugin/codex%2Fdev/authentication");

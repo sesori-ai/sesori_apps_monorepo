@@ -40,6 +40,9 @@ class PluginApi({required final RelayHttpApiClient _client}) {
       "/plugin/${Uri.encodeComponent(pluginId)}/authentication",
       body: const SuccessEmptyResponse().toJson(),
       fromJson: PluginAuthenticationChallengeResponse.fromJson,
+      // Preparing a source-mode bridge helper and starting the backend happen
+      // before the challenge; do not truncate the bridge's two-minute budget.
+      timeout: const Duration(minutes: 2),
     );
   }
 
