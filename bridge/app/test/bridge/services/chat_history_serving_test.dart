@@ -309,6 +309,32 @@ void main() {
       expect(repository.fetchCount, 1, reason: "staleness must not trigger a backfill for a store-only read");
     });
 
+    test("another reader's stalled, failing backfill neither delays nor fails it", () async {
+      final fetchGate = Completer<void>();
+      final repository = _FakeSessionRepository(transcript: const [], error: StateError("backend down"))
+        ..fetchGate = fetchGate.future;
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "live"),
+      );
+
+      // An ordinary read is mid-backfill and will fail once its fetch returns.
+      final ordinary = history.service.getSessionMessages(sessionId: "ses_a");
+      while (repository.fetchCount == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      // Completes while that fetch is still outstanding, so it cannot be
+      // waiting on the session queue the backfill holds.
+      final page = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+      expect(page.messages.map((message) => message.info.id), const ["live"]);
+      expect(page.awaitingHarnessSync, isTrue);
+
+      fetchGate.complete();
+      await expectLater(ordinary, throwsStateError, reason: "the ordinary read still reports its own failure");
+    });
+
     test("an unknown session reads as an empty transcript the harness still owes", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])..sessionKnown = false;
       final history = createTestChatHistory(sessionRepository: repository);

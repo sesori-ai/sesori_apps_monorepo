@@ -16,10 +16,12 @@ reconnect or restart.
 - A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
   It serves the store even when that store is behind the harness and reports
   that through `awaitingHarnessSync`, so a caller that cannot wake the harness
-  still receives whatever transcript exists. A session the bridge holds no row
-  for reads as an empty transcript the harness still owes. Every other read
-  keeps the backfilling behavior, and an older app or bridge on either side of
-  the contract keeps it too.
+  still receives whatever transcript exists. A session for which the bridge
+  holds no row reads as an empty transcript that the harness still owes. It
+  also stays off the session write queue, so another reader's slow or failing
+  backfill can neither delay it nor fail it. Every other read keeps the
+  backfilling behavior, and an older app or bridge on either side of the
+  contract keeps it too.
 - Session detail resolves canonical catalog metadata before any plugin-backed
   history request. If management then blocks the exact harness, a cold open shows
   metadata and an honest history-unavailable state without issuing the read or
@@ -214,9 +216,10 @@ rules where supported.
   successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
-- A store-only read reaches the harness, fails instead of serving what the store
-  holds, or misreports freshness in either direction — a current store flagged as
-  awaiting sync, or a stale one served as complete.
+- A store-only read reaches the harness, waits on or fails with another reader's
+  backfill, fails instead of serving what the store holds, or misreports
+  freshness in either direction — a current store flagged as awaiting sync, or a
+  stale one served as complete.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders
@@ -284,7 +287,9 @@ rules where supported.
   unavailable and cannot auto-start, that read fails. A store-only read avoids
   that at the cost of a possibly incomplete transcript, but no client asks for
   one yet, so the app still pauses pagination while management blocks the
-  harness.
+  harness. A store-only read also skips the open-tool-part sweep, because that
+  sweep is a queued write; a tool tile left spinning by an abrupt bridge death
+  stays that way until the next ordinary read.
 - An independently owned backend can outlive a bridge restart holding state an
   inactive runtime slot cannot see, so bridge inactivity and backend
   unavailability are not fully distinguished. Agent, provider, and command
