@@ -40,9 +40,9 @@ class PluginApi({required final RelayHttpApiClient _client}) {
       "/plugin/${Uri.encodeComponent(pluginId)}/authentication",
       body: const SuccessEmptyResponse().toJson(),
       fromJson: PluginAuthenticationChallengeResponse.fromJson,
-      // Preparing a source-mode bridge helper and starting the backend happen
-      // before the challenge; do not truncate the bridge's two-minute budget.
-      timeout: const Duration(minutes: 2),
+      // Preparation and backend startup can consume the two-minute operation
+      // budget. Leave relay headroom because this timer starts before the bridge's.
+      timeout: const Duration(minutes: 2, seconds: 30),
     );
   }
 

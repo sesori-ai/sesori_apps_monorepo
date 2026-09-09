@@ -148,7 +148,7 @@ void main() {
         any(),
         body: any(named: "body"),
         fromJson: any(named: "fromJson"),
-        timeout: const Duration(minutes: 2),
+        timeout: const Duration(minutes: 2, seconds: 30),
       ),
     ).thenAnswer((invocation) async {
       final fromJson =
@@ -189,7 +189,7 @@ void main() {
         captureAny(),
         body: captureAny(named: "body"),
         fromJson: any(named: "fromJson"),
-        timeout: const Duration(minutes: 2),
+        timeout: const Duration(minutes: 2, seconds: 30),
       ),
     ).captured;
     expect(start[0], "/plugin/codex%2Fdev/authentication");
