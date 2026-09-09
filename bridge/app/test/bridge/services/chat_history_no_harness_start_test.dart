@@ -95,12 +95,12 @@ void main() {
     // an ordinary read here would backfill.
     await history.service.captureMessage(
       sessionId: "ses_a",
-      message: Message.user(
+      message: const Message.user(
         promptId: null,
         id: "live",
         sessionID: "ses_a",
         agent: null,
-        time: const MessageTime(created: 1, completed: null),
+        time: MessageTime(created: 1, completed: null),
       ),
     );
 
