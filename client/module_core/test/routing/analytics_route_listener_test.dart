@@ -109,8 +109,10 @@ void main() {
       AppRouteDef.settingsHarnessDetail,
       AppRouteDef.settingsProfile,
       AppRouteDef.sessions,
+      AppRouteDef.archivedSessions,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
+      AppRouteDef.archivedSessionDetail,
       AppRouteDef.sessionDiffs,
     ];
     for (final route in sequence) {

@@ -52,6 +52,7 @@ Widget _buildApp({
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
+  VoidCallback? onClose,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -82,6 +83,7 @@ Widget _buildApp({
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             child: SessionDetailBody(
+              onClose: onClose,
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Session",
@@ -244,6 +246,7 @@ void main() {
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.isRouteVisible).thenReturn(true);
     when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(
       () => cubit.saveComposerDraft(draft: any(named: "draft")),
@@ -272,6 +275,23 @@ void main() {
   tearDown(() async {
     await GetIt.instance.reset();
   });
+
+  for (final auditState in [
+    const SessionDetailState.loading(),
+    const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
+  ]) {
+    testWidgets("audit Back and Close remain available in $auditState", (tester) async {
+      when(() => cubit.state).thenReturn(auditState);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: auditState);
+      var closed = false;
+      await tester.pumpWidget(_buildApp(cubit: cubit, onClose: () => closed = true));
+      await tester.pump();
+      expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
+      expect(find.bySemanticsLabel("Close archived sessions"), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+      expect(closed, isTrue);
+    });
+  }
 
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
     final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");
@@ -975,6 +995,40 @@ void main() {
       tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
       isTrue,
     );
+  });
+
+  testWidgets("covered current routes suppress questions, permissions and notices", (tester) async {
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    final permissions = StreamController<SesoriPermissionAsked>.broadcast();
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(questions.close);
+    addTearDown(permissions.close);
+    addTearDown(notices.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+    when(() => cubit.isRouteVisible).thenReturn(false);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final bodyContext = tester.element(find.byType(SessionDetailBody));
+    expect(ModalRoute.of(bodyContext)?.isCurrent, isTrue);
+
+    state = state.copyWith(pendingQuestions: const [_question], pendingPermissions: const [_permission]);
+    questions.add(_question);
+    permissions.add(_permission);
+    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsNothing);
+    expect(find.text("write_release_notes"), findsNothing);
+    expect(find.text("Prompt options changed. Updated settings and retrying your message."), findsNothing);
+
+    when(() => cubit.isRouteVisible).thenReturn(true);
+    questions.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsOneWidget);
   });
 
   testWidgets("shows an alert when stale prompt options are refreshed automatically", (tester) async {

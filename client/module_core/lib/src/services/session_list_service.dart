@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/project_repository.dart";
 import "models/session_activity_info.dart";
+import "models/session_list_filter.dart";
 import "models/session_list_item_state.dart";
 import "session_activity_calculator.dart";
 
@@ -30,7 +31,7 @@ class SessionListService({
 
   List<Session> visibleSessions({
     required Iterable<Session> sessions,
-    required bool showArchived,
+    required SessionListFilter filter,
     required Map<String, SessionActivityInfo> activityBySessionId,
     required Map<String, SessionListItemState> listStateBySessionId,
   }) {
@@ -40,7 +41,21 @@ class SessionListService({
         listState: listStateBySessionId[session.id],
       ),
     );
-    final visible = showArchived ? projected : projected.where((session) => session.time?.archived == null);
+    final visible = projected.where(
+      (session) => switch (filter) {
+        SessionListFilter.active => session.time?.archived == null,
+        SessionListFilter.all => true,
+        SessionListFilter.archived => session.time?.archived != null,
+      },
+    );
+    if (filter == SessionListFilter.archived) {
+      return visible.toList()..sort((a, b) {
+        final order = (b.time?.archived ?? (throw StateError("Archived projection requires archive time"))).compareTo(
+          a.time?.archived ?? (throw StateError("Archived projection requires archive time")),
+        );
+        return order != 0 ? order : a.id.compareTo(b.id);
+      });
+    }
     final running = <Session>[];
     final remaining = <Session>[];
     for (final session in visible) {

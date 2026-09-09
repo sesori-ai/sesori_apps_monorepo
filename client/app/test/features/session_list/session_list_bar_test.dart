@@ -46,6 +46,7 @@ void main() {
           home: BlocProvider<SessionListCubit>.value(
             value: cubit,
             child: SessionListScaffold(
+              onOpenArchived: cubit.toggleArchived,
               projectName: projectName,
               onBack: null,
               onNewSession: () {},

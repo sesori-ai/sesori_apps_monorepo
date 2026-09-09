@@ -98,6 +98,8 @@ extension on AppRoute {
   /// instance instead of decoding the URL a second time.
   Widget get screen {
     return switch (this) {
+      AppRouteArchivedSessions() ||
+      AppRouteArchivedSessionDetail() => throw StateError("Archive pages belong to their flow shell"),
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
@@ -123,6 +125,9 @@ extension on AppRoute {
         :final readOnly,
       ) =>
         SessionDetailScreen(
+          auditView: false,
+          onBack: null,
+          onClose: null,
           projectId: projectId,
           projectName: projectName,
           sessionId: sessionId,
@@ -250,6 +255,7 @@ List<RouteBase> _buildAppRoutes({
             final projectViewingService = getIt<ProjectViewingService>();
 
             return SessionListCubitProvider(
+              filter: SessionListFilter.active,
               key: ValueKey("session-list-cubit-$projectId"),
               projectId: projectId,
               child: SessionSplitShell(
@@ -328,6 +334,9 @@ List<RouteBase> _buildAppRoutes({
                       state: state,
                       pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId)),
                       child: SessionDetailScreen(
+                        auditView: false,
+                        onBack: null,
+                        onClose: null,
                         key: ValueKey("session-detail-${route.sessionId}"),
                         projectId: route.projectId,
                         projectName: route.projectName,
@@ -369,6 +378,7 @@ List<RouteBase> _buildAppRoutes({
         ),
       ],
     ),
+    buildArchivedSessionsRoute(),
     buildHarnessSettingsRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [
@@ -403,6 +413,8 @@ class const _SessionListPane({
     return KeyedSubtree(
       key: ValueKey("session-list-$projectId"),
       child: SessionListPanel(
+        onOpenArchived: () =>
+            context.pushRoute(AppRoute.archivedSessions(projectId: projectId, projectName: projectName)),
         projectName: projectName,
         selectedSessionId: selectedSessionId,
         // Use the root navigator from shell chrome; GoRouter pop would target
@@ -503,4 +515,104 @@ ShellRoute buildHarnessSettingsRoute() {
       ),
     ],
   );
+}
+
+/// A full-screen audit flow outside the adaptive live-session panes.
+@visibleForTesting
+ShellRoute buildArchivedSessionsRoute() {
+  final navigatorKey = GlobalKey<NavigatorState>();
+  void close({required BuildContext context}) {
+    final flowContext = navigatorKey.currentContext ?? (throw StateError("Archive flow is not mounted"));
+    final flowRoute = ModalRoute.of(flowContext) ?? (throw StateError("Archive flow has no owning route"));
+    final outerNavigator = flowRoute.navigator ?? (throw StateError("Archive flow has no navigator"));
+    outerNavigator.popUntil((route) => route == flowRoute);
+    if (flowRoute.isFirst) {
+      context.goRoute(const AppRoute.projects());
+    } else {
+      outerNavigator.pop();
+    }
+  }
+
+  return ShellRoute(
+    navigatorKey: navigatorKey,
+    pageBuilder: (context, state, child) => CupertinoPage<void>(
+      key: state.pageKey,
+      fullscreenDialog: true,
+      child: SessionListCubitProvider(
+        key: ValueKey("archive-list-${state.pathParameters[projectIdPathParam]}"),
+        projectId:
+            state.pathParameters[projectIdPathParam] ?? (throw StateError("Archive flow requires project identity")),
+        filter: SessionListFilter.archived,
+        child: child,
+      ),
+    ),
+    routes: [
+      GoRoute(
+        path: AppRouteDef.archivedSessions.path,
+        builder: (context, state) {
+          final route = AppRouteArchivedSessions.fromParams(
+            pathParams: state.pathParameters,
+            queryParams: state.uri.queryParameters,
+          );
+          return ArchivedSessionsView(
+            emptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
+            onClose: () => close(context: context),
+            onSessionTap: ({required session}) => context.pushRoute(
+              AppRoute.archivedSessionDetail(
+                projectId: route.projectId,
+                projectName: route.projectName,
+                sessionId: session.id,
+                sessionTitle: session.title,
+              ),
+            ),
+            actionDispatcher: SessionListActionDispatcher(
+              onSessionDeleted: ({required context, required sessionId}) =>
+                  closeDeletedArchivedSessionRoute(context: context, projectId: route.projectId, sessionId: sessionId),
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ":$sessionIdPathParam",
+            builder: (context, state) {
+              final route = AppRouteArchivedSessionDetail.fromParams(
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              );
+              return SessionDetailScreen(
+                key: ValueKey("archived-detail-${route.sessionId}"),
+                projectId: route.projectId,
+                projectName: route.projectName,
+                sessionId: route.sessionId,
+                sessionTitle: route.sessionTitle,
+                readOnly: true,
+                auditView: true,
+                onBack: context.pop,
+                onClose: () => close(context: context),
+              );
+            },
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// A stale deletion must not move a different audit record or the live opener.
+void closeDeletedArchivedSessionRoute({
+  required BuildContext context,
+  required String projectId,
+  required String sessionId,
+}) {
+  // ignore: no_slop_linter/avoid_raw_go_router, current location identity check before typed navigation
+  final state = GoRouter.of(context).state;
+  if (state.fullPath != AppRouteDef.archivedSessionDetail.path) return;
+  final route = AppRouteArchivedSessionDetail.fromParams(
+    pathParams: state.pathParameters,
+    queryParams: state.uri.queryParameters,
+  );
+  if (route.projectId != projectId || route.sessionId != sessionId) return;
+  // Pop only the archive navigator; go() would discard the modal's opener.
+  // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
+  Navigator.of(context).popUntil((route) => route.isFirst);
 }

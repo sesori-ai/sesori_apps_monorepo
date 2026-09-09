@@ -75,6 +75,7 @@ void main() {
 
     cubit = SessionDetailCubit(
       connectionService,
+      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,

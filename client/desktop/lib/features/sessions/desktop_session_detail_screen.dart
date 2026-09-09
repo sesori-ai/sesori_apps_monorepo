@@ -25,7 +25,8 @@ class const DesktopSessionDetailScreen({
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createSessionDetailCubit(locator: getIt, sessionId: sessionId, projectId: projectId),
+      create: (_) =>
+          createSessionDetailCubit(claimProjectView: true, locator: getIt, sessionId: sessionId, projectId: projectId),
       child: DesktopComposerPresentationScope(
         child: _SessionActivityAnalyticsOwner(
           child: DesktopSessionDetailView(
@@ -77,6 +78,7 @@ class const DesktopSessionDetailView({
       openSession: onOpenSession,
       openHarnessSettings: onOpenHarnessSettings,
       child: SessionDetailBody(
+        onClose: null,
         projectId: projectId,
         sessionId: sessionId,
         sessionTitle: sessionTitle,
@@ -142,6 +144,8 @@ class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyt
 
   bool get _isCoveredBySettings {
     return switch (_topRoute) {
+      AppRouteDef.archivedSessions ||
+      AppRouteDef.archivedSessionDetail ||
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
       AppRouteDef.settingsDefaultInput ||

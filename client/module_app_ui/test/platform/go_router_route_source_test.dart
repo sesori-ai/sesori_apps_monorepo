@@ -159,6 +159,8 @@ void main() {
       AppRouteDef.settingsHarnessDetail: "/settings/harnesses/codex",
       AppRouteDef.settingsProfile: "/settings/profile",
       AppRouteDef.sessions: "/projects/p1/sessions",
+      AppRouteDef.archivedSessions: "/projects/p1/archived-sessions",
+      AppRouteDef.archivedSessionDetail: "/projects/p1/archived-sessions/s1",
       AppRouteDef.newSession: "/projects/p1/sessions/new",
       AppRouteDef.sessionDetail: "/projects/p1/sessions/s1",
       AppRouteDef.sessionDiffs: "/projects/p1/sessions/s1/diffs",
