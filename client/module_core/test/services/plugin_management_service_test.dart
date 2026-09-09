@@ -1225,6 +1225,37 @@ void main() {
       expect(reportedEvents, isEmpty);
     });
 
+    test("authentication-required setup clears a stale install failure without starting login", () async {
+      final missing = _conflict([]).current
+          .copyWith(setup: _conflict([]).current.setup.copyWith(state: PluginSetupState.runtimeMissing));
+      final loginRequired = missing.copyWith(
+        setup: missing.setup.copyWith(state: PluginSetupState.authenticationRequired),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "two").copyWith(plugins: [loginRequired])));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect(service.installStates.value["one"], const PluginInstallState.failed());
+
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(service.authenticationChallenges.value, isEmpty);
+      expect(reportedEvents, isEmpty);
+    });
+
     test("failed installs replay, survive missing snapshots, recover, and reset on disconnect", () async {
       final missing = _conflict([]).current
           .copyWith(setup: _conflict([]).current.setup.copyWith(state: PluginSetupState.runtimeMissing));

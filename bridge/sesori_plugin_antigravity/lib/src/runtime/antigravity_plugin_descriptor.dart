@@ -112,11 +112,16 @@ class const AntigravityPluginDescriptor({
     }
     final packageConfig = Platform.packageConfig;
     final packageConfigPath = packageConfig == null ? null : Uri.parse(packageConfig).toFilePath();
+    // Package discovery may be implicit in Dart-hosted source/snapshot runs.
+    // Native bundles use their invoked executable as the script, including
+    // relative/PATH invocations; do not compare with the resolved symlink path.
+    final executableScript = Uri.base.resolveUri(Uri.file(Platform.executable));
     return (
       executable: Platform.resolvedExecutable,
-      arguments: packageConfigPath == null
-          ? const []
-          : List.unmodifiable(["--packages=$packageConfigPath", Platform.script.toFilePath()]),
+      arguments: List.unmodifiable([
+        if (packageConfigPath != null) "--packages=$packageConfigPath",
+        if (Platform.script != executableScript) Platform.script.toFilePath(),
+      ]),
     );
   }
 

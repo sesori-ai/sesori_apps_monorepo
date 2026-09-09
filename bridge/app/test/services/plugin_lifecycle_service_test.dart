@@ -1994,7 +1994,7 @@ void main() {
     expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
   });
 
-  test("an installed runtime that is still setup-blocked does not report completed", () async {
+  test("an installed runtime needing login reports completed without starting the harness", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Log in"),
       inspectionGate: null,
@@ -2020,9 +2020,12 @@ void main() {
 
     expect(progress.map((update) => update.phase).toList(), const [
       PluginInstallPhase.finalizing,
-      PluginInstallPhase.failed,
+      PluginInstallPhase.completed,
     ]);
+    expect(progress.last.message, isNull);
     expect(repository.startCalls, isZero);
+    expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.authenticationRequired);
+    expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.blocked);
   });
 
   test("a duplicate install joins and a different command conflicts while installing", () async {

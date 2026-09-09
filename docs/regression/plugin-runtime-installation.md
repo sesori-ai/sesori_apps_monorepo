@@ -62,9 +62,10 @@ bridge start when Sesori already manages an older version.
   progress reports phases with an optional download percentage. Completion re-inspects setup;
   a setup snapshot alone is not evidence of a historical installation failure.
 - Success then implies enable: the harness is persisted enabled, setup is re-inspected,
-  and the post-install enable phase starts it when ready. A still-blocked setup is
-  reported honestly, and failure text sent to the client is sanitized while paths and
-  command output stay in the log.
+  and the post-install enable phase starts it when ready. Authentication-required after successful provisioning reports
+  installation completed, while setup remains blocked and offers login; it is not a reason to reinstall. Other unresolved
+  runtime/setup failures remain failures. Failure text sent to the client is sanitized while paths and command output
+  stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
 - A bridge start upgrades every eligible harness that still has a Sesori-managed version
@@ -102,7 +103,8 @@ bridge start when Sesori already manages an older version.
 - Failed terminal SSE is retained in connection-scoped client memory and replayed across
   overview/detail navigation and cubit recreation. Retry starts immediately and clears it;
   observed progress from another surface replaces it. An unchanged missing/unavailable
-  snapshot preserves failure; a newly applied ready snapshot or completed SSE clears it.
+  snapshot preserves failure; a newly applied ready or authentication-required snapshot, or completed SSE, clears it.
+  Login-required reconciliation removes stale installation failure without starting authentication or claiming readiness.
   Connection/bridge invalidation clears all retained installation state.
 - Failure detail offers Restart installation where install remains eligible. Status still
   follows actual setup: a missing runtime is Not installed, unavailable remains Unavailable,
