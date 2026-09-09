@@ -52,13 +52,13 @@ class AntigravityProfileStorage({
     required List<String> arguments,
     required Map<String, String> environment,
   }) {
-    final remaining = budget.remaining;
-    const preflightLimit = Duration(seconds: 5);
+    // Source-mode helpers compile the bridge before reaching the silent no-op.
+    // Keep them within the operation deadline, not a native-startup-sized cap.
     return _commands.run(
       executable,
       arguments,
       environment: environment,
-      timeout: remaining < preflightLimit ? remaining : preflightLimit,
+      timeout: budget.remaining,
     );
   }
 }
