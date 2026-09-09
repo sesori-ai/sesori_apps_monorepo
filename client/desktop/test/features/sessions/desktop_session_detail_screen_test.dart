@@ -124,6 +124,7 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
 void main() {
   testWidgets("desktop renders the transcript and text-first composer", (tester) async {
     final cubit = _MockSessionDetailCubit();
+    when(() => cubit.isRouteVisible).thenReturn(true);
     final state = _loadedState();
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -232,6 +233,7 @@ void main() {
 
   testWidgets("desktop delegates Back and child-session navigation", (tester) async {
     final cubit = _MockSessionDetailCubit();
+    when(() => cubit.isRouteVisible).thenReturn(true);
     final state = _loadedState();
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);

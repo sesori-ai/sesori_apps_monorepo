@@ -373,7 +373,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   void _scheduleModal(VoidCallback action) =>
       Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
 
-  bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent ?? false;
+  bool get _isCurrentPage =>
+      context.read<SessionDetailCubit>().isRouteVisible && (ModalRoute.of(context)?.isCurrent ?? false);
 
   Widget _buildHarnessNotice({required SessionInteractionState interaction, required bool historyUnavailable}) {
     return SessionHarnessUnavailableNotice(

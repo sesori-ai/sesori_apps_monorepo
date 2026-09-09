@@ -81,7 +81,9 @@ entirely along with its transcript and, optionally, its worktree.
   exit to projects. Audit cubits never replace the opener's live-project claims;
   the covered project's declaration is suspended until the opener is visible.
   A covered live detail also stops declaring its session viewed, so new output
-  stays unread; closing the modal reasserts the retained loaded detail.
+  stays unread; closing the modal reasserts the retained loaded detail. Incoming
+  questions, permissions and notices from the covered detail do not interrupt
+  archive browsing.
 - Deletion completed in the archive flow returns to its archive list only when
   the currently open audit record matches both project and session. Stale or
   unrelated completions leave navigation unchanged; X still restores the opener.

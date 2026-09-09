@@ -144,7 +144,7 @@ void main() {
       ).called(1);
     });
 
-    test("initial tracker replay leaves the cubit loading until REST completes", () async {
+    test("tracker replay and archive toggle leave loading intact until REST completes", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       final response = Completer<ApiResponse<SessionListResponse>>();
       when(
@@ -158,13 +158,14 @@ void main() {
       addTearDown(cubit.close);
       await Future<void>.delayed(Duration.zero);
 
+      cubit.toggleArchived();
       expect(cubit.state, isA<SessionListLoading>());
 
       response.complete(ApiResponse.success(const SessionListResponse(items: [])));
       await cubit.stream.firstWhere((state) => state is SessionListLoaded);
     });
 
-    test("failed initial list render marks its project claim failed", () async {
+    test("failed initial list render marks its claim failed and archive toggle preserves failure", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
       when(
         () => mockProjectRepository.listSessions(
@@ -175,6 +176,8 @@ void main() {
       final cubit = buildCubit();
 
       await cubit.stream.firstWhere((state) => state is SessionListFailed);
+      cubit.toggleArchived();
+      expect(cubit.state, isA<SessionListFailed>());
       verify(() => mockProjectViewingService.beginListClaim(projectId: projectId)).called(1);
       verify(
         () => mockProjectViewingService.markClaimFailed(claim: any(named: "claim")),

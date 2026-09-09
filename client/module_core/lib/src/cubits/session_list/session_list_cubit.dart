@@ -562,6 +562,7 @@ class SessionListCubit({
   SessionListFilter _filter = initialFilter;
 
   void toggleArchived() {
+    if (state is! SessionListLoaded) return;
     _filter = _filter == SessionListFilter.active ? SessionListFilter.all : SessionListFilter.active;
     _emitFiltered();
   }

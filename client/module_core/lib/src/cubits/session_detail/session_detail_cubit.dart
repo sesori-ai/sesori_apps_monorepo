@@ -2205,6 +2205,9 @@ class SessionDetailCubit(
     }
   }
 
+  /// Shell-reported visibility also gates transient UI above a nested navigator.
+  bool get isRouteVisible => _routeVisible;
+
   /// Updates whether this detail route is currently visible to the user.
   ///
   /// A root-level route can cover the nested session navigator without
