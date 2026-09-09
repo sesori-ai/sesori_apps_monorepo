@@ -269,6 +269,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   retained within groups; empty groups disappear. Installing entries belong to Not installed;
   genuinely disabled entries belong to Disabled; only ready dormant/starting/active entries
   are Enabled. Degraded remains attention even though its separate scan capability is routable.
+  A stopping harness belongs to Disabled — where a toggled-off harness settles — and keeps its
+  `Stopping` status there instead of jumping through Needs attention while it drains.
 - Harness names and the separate download target open details without starting installation;
   setup guidance stays visible before the explicit detail installation button. Switches send
   actual enable/disable intent and retain the bridge's
