@@ -1717,6 +1717,30 @@ void main() {
       expect(savedEmailUser.providerUsername, "testuser");
     });
 
+    test("rejects a malformed success body without persisting tokens", () async {
+      when(
+        () => mockHttpClient.post(
+          Uri.parse("$authBaseUrl/auth/email"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => http.Response('{"accessToken": "only-a-token"', 200));
+
+      await expectLater(
+        () => authManager.loginWithEmail(email: "test@example.com", password: "correct-password"),
+        throwsA(
+          isA<Exception>().having((e) => e.toString(), "toString", startsWith("Failed to parse auth response")),
+        ),
+      );
+      verifyNever(
+        () => mockTokenStorage.saveTokens(
+          accessToken: any(named: "accessToken"),
+          refreshToken: any(named: "refreshToken"),
+        ),
+      );
+      expect(authManager.currentState, const AuthState.initial());
+    });
+
     test("throws on 401 invalid credentials", () async {
       when(
         () => mockHttpClient.post(

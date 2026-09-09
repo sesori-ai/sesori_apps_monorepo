@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/models/bridge_config.dart";
 import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/routing/bridge_restart_dispatcher.dart";
 import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
+import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel, ServerClock;
@@ -28,9 +29,9 @@ import "routing/routing_test_helpers.dart";
 
 void main() {
   group("OrchestratorSession bridge registration", () {
-    test("startup registration failure fails startup and lifecycle without connecting to the relay", () async {
+    test("non-retryable startup registration failure fails without connecting to the relay", () async {
       final repository = FakeBridgeRegistrationRepository()
-        ..registerError = BridgeRegistrationException(statusCode: 500, body: "boom");
+        ..registerError = BridgeRegistrationException(statusCode: 400, body: "boom");
       final harness = await _RegistrationHarness.start(repository: repository);
       addTearDown(harness.close);
 
@@ -39,6 +40,18 @@ void main() {
 
       expect(repository.registeredBridgeIds, equals([null]));
       expect(harness.relayServer.connectedClientCount, equals(0));
+    });
+
+    test("offline startup waits without connecting and can be cancelled promptly", () async {
+      final repository = FakeBridgeRegistrationRepository()..registerError = const SocketException("offline");
+      final harness = await _RegistrationHarness.start(repository: repository);
+      addTearDown(harness.close);
+      await _waitFor(() => repository.registeredBridgeIds.isNotEmpty, reason: "first registration attempt");
+      expect(harness.relayServer.connectedClientCount, 0);
+      await harness.session.cancel().timeout(const Duration(seconds: 2));
+      expect(await harness.startFuture, OrchestratorSessionStartResult.cancelled);
+      await harness.runFuture;
+      expect(repository.registeredBridgeIds, [null]);
     });
 
     test("registers before the initial connect and sends the bridge id in the auth message", () async {
@@ -545,6 +558,7 @@ class _RegistrationHarness._({
         yolo: false,
       ),
       client: relayClient,
+      pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
       pluginLifecycleService: lifecycleService,
       pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
       bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -562,6 +576,7 @@ class _RegistrationHarness._({
       restartService: restartService,
       filesystemAccessOk: true,
       statusNotifier: null,
+      startupRetryService: BridgeStartupRetryService(),
       reconnectBackoff: backoffPolicy,
     );
 

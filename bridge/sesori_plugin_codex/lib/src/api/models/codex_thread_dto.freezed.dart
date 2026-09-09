@@ -178,7 +178,7 @@ $CodexThreadDtoCopyWith<$Res>? get thread {
 /// @nodoc
 mixin _$CodexThreadDto {
 
- String? get id; String? get name; String? get cwd; num? get createdAt; num? get updatedAt; String? get modelProvider;
+ String? get id; String? get name; String? get cwd; num? get createdAt; num? get updatedAt; String? get modelProvider; String? get parentThreadId; String? get agentNickname; String? get agentRole;@JsonKey(unknownEnumValue: CodexThreadSource.unknown) CodexThreadSource? get threadSource;
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -189,16 +189,16 @@ $CodexThreadDtoCopyWith<CodexThreadDto> get copyWith => _$CodexThreadDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentRole, agentRole) || other.agentRole == agentRole)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider);
+int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider,parentThreadId,agentNickname,agentRole,threadSource);
 
 @override
 String toString() {
-  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider)';
+  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider, parentThreadId: $parentThreadId, agentNickname: $agentNickname, agentRole: $agentRole, threadSource: $threadSource)';
 }
 
 
@@ -209,7 +209,7 @@ abstract mixin class $CodexThreadDtoCopyWith<$Res>  {
   factory $CodexThreadDtoCopyWith(CodexThreadDto value, $Res Function(CodexThreadDto) _then) = _$CodexThreadDtoCopyWithImpl;
 @useResult
 $Res call({
- String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider
+ String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider, String? parentThreadId, String? agentNickname, String? agentRole,@JsonKey(unknownEnumValue: CodexThreadSource.unknown) CodexThreadSource? threadSource
 });
 
 
@@ -226,7 +226,7 @@ class _$CodexThreadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,Object? parentThreadId = freezed,Object? agentNickname = freezed,Object? agentRole = freezed,Object? threadSource = freezed,}) {
   return _then(CodexThreadDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -234,7 +234,11 @@ as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non
 as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as num?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as num?,modelProvider: freezed == modelProvider ? _self.modelProvider : modelProvider // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,parentThreadId: freezed == parentThreadId ? _self.parentThreadId : parentThreadId // ignore: cast_nullable_to_non_nullable
+as String?,agentNickname: freezed == agentNickname ? _self.agentNickname : agentNickname // ignore: cast_nullable_to_non_nullable
+as String?,agentRole: freezed == agentRole ? _self.agentRole : agentRole // ignore: cast_nullable_to_non_nullable
+as String?,threadSource: freezed == threadSource ? _self.threadSource : threadSource // ignore: cast_nullable_to_non_nullable
+as CodexThreadSource?,
   ));
 }
 
@@ -246,7 +250,7 @@ as String?,
 @JsonSerializable(createToJson: false)
 
 class _CodexThreadDto implements CodexThreadDto {
-  const _CodexThreadDto({required this.id, required this.name, required this.cwd, required this.createdAt, required this.updatedAt, required this.modelProvider});
+  const _CodexThreadDto({required this.id, required this.name, required this.cwd, required this.createdAt, required this.updatedAt, required this.modelProvider, required this.parentThreadId, required this.agentNickname, required this.agentRole, @JsonKey(unknownEnumValue: CodexThreadSource.unknown) required this.threadSource});
   factory _CodexThreadDto.fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);
 
 @override final  String? id;
@@ -255,6 +259,10 @@ class _CodexThreadDto implements CodexThreadDto {
 @override final  num? createdAt;
 @override final  num? updatedAt;
 @override final  String? modelProvider;
+@override final  String? parentThreadId;
+@override final  String? agentNickname;
+@override final  String? agentRole;
+@override@JsonKey(unknownEnumValue: CodexThreadSource.unknown) final  CodexThreadSource? threadSource;
 
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
@@ -266,16 +274,16 @@ _$CodexThreadDtoCopyWith<_CodexThreadDto> get copyWith => __$CodexThreadDtoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentRole, agentRole) || other.agentRole == agentRole)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider);
+int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider,parentThreadId,agentNickname,agentRole,threadSource);
 
 @override
 String toString() {
-  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider)';
+  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider, parentThreadId: $parentThreadId, agentNickname: $agentNickname, agentRole: $agentRole, threadSource: $threadSource)';
 }
 
 
@@ -286,7 +294,7 @@ abstract mixin class _$CodexThreadDtoCopyWith<$Res> implements $CodexThreadDtoCo
   factory _$CodexThreadDtoCopyWith(_CodexThreadDto value, $Res Function(_CodexThreadDto) _then) = __$CodexThreadDtoCopyWithImpl;
 @override @useResult
 $Res call({
- String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider
+ String? id, String? name, String? cwd, num? createdAt, num? updatedAt, String? modelProvider, String? parentThreadId, String? agentNickname, String? agentRole,@JsonKey(unknownEnumValue: CodexThreadSource.unknown) CodexThreadSource? threadSource
 });
 
 
@@ -303,7 +311,7 @@ class __$CodexThreadDtoCopyWithImpl<$Res>
 
 /// Create a copy of CodexThreadDto
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = freezed,Object? name = freezed,Object? cwd = freezed,Object? createdAt = freezed,Object? updatedAt = freezed,Object? modelProvider = freezed,Object? parentThreadId = freezed,Object? agentNickname = freezed,Object? agentRole = freezed,Object? threadSource = freezed,}) {
   return _then(_CodexThreadDto(
 id: freezed == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String?,name: freezed == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
@@ -311,7 +319,11 @@ as String?,cwd: freezed == cwd ? _self.cwd : cwd // ignore: cast_nullable_to_non
 as String?,createdAt: freezed == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
 as num?,updatedAt: freezed == updatedAt ? _self.updatedAt : updatedAt // ignore: cast_nullable_to_non_nullable
 as num?,modelProvider: freezed == modelProvider ? _self.modelProvider : modelProvider // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,parentThreadId: freezed == parentThreadId ? _self.parentThreadId : parentThreadId // ignore: cast_nullable_to_non_nullable
+as String?,agentNickname: freezed == agentNickname ? _self.agentNickname : agentNickname // ignore: cast_nullable_to_non_nullable
+as String?,agentRole: freezed == agentRole ? _self.agentRole : agentRole // ignore: cast_nullable_to_non_nullable
+as String?,threadSource: freezed == threadSource ? _self.threadSource : threadSource // ignore: cast_nullable_to_non_nullable
+as CodexThreadSource?,
   ));
 }
 

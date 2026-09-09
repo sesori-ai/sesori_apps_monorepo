@@ -27,7 +27,6 @@ class const SessionOptionsCacheEntry({
   required final SessionOptionsCacheKey key,
   required final int revision,
   required final DateTime capturedAt,
-  required final PluginSessionOptionsCompleteness completeness,
   required final SessionOptionsResponse response,
 });
 
@@ -46,10 +45,14 @@ final class const SessionOptionsCaptureFailed() extends SessionOptionsCaptureRes
 
 final class const SessionOptionsCaptureInactive() extends SessionOptionsCaptureResult;
 
+/// A stored row whose catalog payload no longer decodes.
+///
+/// The row itself always reads: its only enum column is the scope the lookup
+/// filters on, so [revision] identifies exactly which row to discard.
 final class const SessionOptionsCacheDecodingException({
   required final Object cause,
   required final StackTrace causeStackTrace,
-  required final int? revision,
+  required final int revision,
 }) implements Exception {
   @override
   String toString() => "SessionOptionsCacheDecodingException: invalid persisted session options cache";
@@ -76,6 +79,13 @@ class SessionOptionsRepository({
     return session?.projectId;
   }
 
+  Future<List<String>> listCachedProjectIds({
+    required String pluginId,
+    required DateTime notBefore,
+  }) {
+    return _cacheDao.getCachedProjectIds(pluginId: pluginId, notBefore: notBefore);
+  }
+
   bool isPluginActive({required String pluginId}) => _runtime.activePluginIds.contains(pluginId);
 
   bool isCurrentGeneration({required String pluginId, required int generation}) {
@@ -83,23 +93,11 @@ class SessionOptionsRepository({
   }
 
   Future<SessionOptionsCacheEntry?> read({required SessionOptionsCacheKey key}) async {
-    final SessionOptionsCacheTableData? row;
-    try {
-      row = await _cacheDao.getRow(
-        pluginId: key.pluginId,
-        scope: key.scope,
-        ownerId: key.ownerId,
-      );
-    } on Object catch (error, stackTrace) {
-      if (error is ArgumentError) {
-        throw SessionOptionsCacheDecodingException(
-          cause: error,
-          causeStackTrace: stackTrace,
-          revision: null,
-        );
-      }
-      rethrow;
-    }
+    final row = await _cacheDao.getRow(
+      pluginId: key.pluginId,
+      scope: key.scope,
+      ownerId: key.ownerId,
+    );
     if (row == null) return null;
 
     try {
@@ -246,7 +244,6 @@ class SessionOptionsRepository({
       key: key,
       revision: row.revision,
       capturedAt: DateTime.fromMillisecondsSinceEpoch(row.capturedAt, isUtc: true),
-      completeness: row.completeness,
       response: SessionOptionsResponse(
         agents: Agents.fromJson(jsonDecodeMap(row.agentsJson)),
         providers: ProviderListResponse.fromJson(jsonDecodeMap(row.providersJson)),
@@ -269,7 +266,6 @@ class SessionOptionsRepository({
       capturedProjectPath: capturedProjectPath,
       revision: entry.revision,
       capturedAt: entry.capturedAt.millisecondsSinceEpoch,
-      completeness: entry.completeness,
       agentsJson: jsonEncode(entry.response.agents.toJson()),
       providersJson: jsonEncode(entry.response.providers.toJson()),
       commandsJson: jsonEncode(entry.response.commands.toJson()),

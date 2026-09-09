@@ -3,6 +3,7 @@ import "package:injectable/injectable.dart";
 import "../api/desktop_instance_api.dart";
 import "../api/desktop_instance_storage.dart";
 import "../foundation/bridge_process_desired_state.dart";
+import "../foundation/desktop_attention_preference.dart";
 import "../foundation/platform/window_host.dart";
 
 /// Layer-2 aggregate over instance coordination and persisted desktop state.
@@ -28,4 +29,9 @@ class DesktopInstanceRepository._create({
   Future<WindowBounds?> readWindowBounds() => _storage.readWindowBounds();
 
   Future<void> writeWindowBounds({required WindowBounds bounds}) => _storage.writeWindowBounds(bounds: bounds);
+
+  Future<DesktopAttentionPreference> readAttentionPreference() => _storage.readAttentionPreference();
+
+  Future<void> writeAttentionPreference({required DesktopAttentionPreference preference}) =>
+      _storage.writeAttentionPreference(preference: preference);
 }

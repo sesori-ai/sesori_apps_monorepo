@@ -10,6 +10,7 @@ class const _StubManifest() implements RuntimeManifest {
   static const RuntimeAsset _asset = ArchiveRuntimeAsset(
     assetName: "opencode-test.zip",
     format: ArchiveFormat.zip,
+    archiveCommandTimeout: Duration(minutes: 2),
     sha256: "abc123",
     archiveBinaryName: "opencode",
     layout: RuntimeArchiveLayout.singleBinary,
@@ -40,6 +41,9 @@ class const _StubManifest() implements RuntimeManifest {
   RuntimeVersion? parseVersion({required String value}) => SemanticRuntimeVersion.tryParse(value: value);
 
   @override
+  RuntimeVersion? parseInstalledVersion({required String value}) => parseVersion(value: value);
+
+  @override
   RuntimeAsset? assetFor({required PlatformTarget target}) => _asset;
 
   @override
@@ -53,8 +57,8 @@ class const _StubManifest() implements RuntimeManifest {
       "https://github.com/$repository/releases/download/$tag/${asset.assetName}";
 
   @override
-  String managedBinaryPath({required String stateDirectory}) {
-    return p.join(stateDirectory, runtimeId, bundledVersion.toString(), binaryFileName);
+  String managedBinaryPath({required String stateDirectory, required RuntimeVersion version}) {
+    return p.join(stateDirectory, runtimeId, version.raw, binaryFileName);
   }
 }
 
@@ -65,6 +69,9 @@ class _FakeValidator({
   final void Function(String executable)? onDetect,
 }) implements RuntimeVersionValidator {
   final List<String> detectedExecutables = [];
+
+  @override
+  Future<bool> validate({required RuntimeCandidateValidationContext context}) => Future<bool>.value(false);
 
   @override
   Future<RuntimeProbeOutcome> probe({
@@ -113,8 +120,21 @@ class const _FakeHost({
 }
 
 void main() {
-  const stateDirectory = "/state";
-  final managedBinaryPath = p.join(stateDirectory, "opencode", "1.17.9", "opencode");
+  late Directory stateDir;
+
+  setUp(() async {
+    stateDir = await Directory.systemTemp.createTemp("managed-provision");
+  });
+
+  tearDown(() async {
+    if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+  });
+
+  String managedBinaryPathFor(String version) => p.join(stateDir.path, "opencode", version, "opencode");
+
+  void installedVersionDir(String version) {
+    Directory(p.join(stateDir.path, "opencode", version)).createSync(recursive: true);
+  }
 
   Future<List<RuntimeProvisionProgress>> resolve({
     required RuntimeVersion? pathVersion,
@@ -131,12 +151,13 @@ void main() {
               managedVersion: managedVersion,
               candidateVersions: candidateVersions,
             ),
+            inventory: const ManagedRuntimeInventory(manifest: _StubManifest()),
           ),
           fallbackExecutableCandidates: fallbackCandidates,
         )
         .provision(
           host: _FakeHost(
-            stateDirectory: stateDirectory,
+            stateDirectory: stateDir.path,
             abortSignal: StartAbortSignal.never,
           ),
           explicitExecutablePath: null,
@@ -161,7 +182,7 @@ void main() {
       managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
     );
 
-    expect((events.last as ProvisionReady).binaryPath, managedBinaryPath);
+    expect((events.last as ProvisionReady).binaryPath, managedBinaryPathFor("1.17.9"));
     expect(events.whereType<ProvisionNotice>(), isEmpty);
   });
 
@@ -172,7 +193,7 @@ void main() {
     );
 
     expect(events.whereType<ProvisionNotice>(), hasLength(1));
-    expect((events.last as ProvisionReady).binaryPath, managedBinaryPath);
+    expect((events.last as ProvisionReady).binaryPath, managedBinaryPathFor("1.17.9"));
   });
 
   test("uses a sufficiently recent fallback candidate when PATH is absent", () async {
@@ -200,17 +221,31 @@ void main() {
       },
     );
 
-    expect((events.last as ProvisionReady).binaryPath, managedBinaryPath);
+    expect((events.last as ProvisionReady).binaryPath, managedBinaryPathFor("1.17.9"));
   });
 
-  test("does not accept a managed runtime with a different version", () async {
+  test("does not accept a managed runtime below the minimum", () async {
     final events = await resolve(
       pathVersion: null,
-      managedVersion: SemanticRuntimeVersion.parse(value: "1.0.0"),
+      managedVersion: SemanticRuntimeVersion.parse(value: "0.9.0"),
     );
 
     expect(events.last, isA<ProvisionFailed>());
     expect((events.last as ProvisionFailed).message, contains("Install OpenCode locally"));
+  });
+
+  test("names the selected managed version when falling back from an outdated PATH runtime", () async {
+    installedVersionDir("1.5.0");
+    final events = await resolve(
+      pathVersion: SemanticRuntimeVersion.parse(value: "0.9.0"),
+      managedVersion: SemanticRuntimeVersion.parse(value: "1.5.0"),
+      candidateVersions: {managedBinaryPathFor("1.17.9"): null},
+    );
+
+    expect((events.last as ProvisionReady).binaryPath, managedBinaryPathFor("1.5.0"));
+    final notice = events.whereType<ProvisionNotice>().single;
+    expect(notice.message, contains("managed OpenCode 1.5.0"));
+    expect(notice.message, isNot(contains("1.17.9")));
   });
 
   test("never installs when no existing runtime is usable", () async {
@@ -230,10 +265,11 @@ void main() {
           selectionService: ManagedRuntimeSelectionService(
             manifest: const _StubManifest(),
             versionValidator: validator,
+            inventory: const ManagedRuntimeInventory(manifest: _StubManifest()),
           ),
           fallbackExecutableCandidates: const [],
         ).provision(
-          host: _FakeHost(stateDirectory: stateDirectory, abortSignal: abort.signal),
+          host: _FakeHost(stateDirectory: stateDir.path, abortSignal: abort.signal),
           explicitExecutablePath: null,
         );
 
@@ -256,10 +292,11 @@ void main() {
           selectionService: ManagedRuntimeSelectionService(
             manifest: const _StubManifest(),
             versionValidator: validator,
+            inventory: const ManagedRuntimeInventory(manifest: _StubManifest()),
           ),
           fallbackExecutableCandidates: const [],
         ).provision(
-          host: _FakeHost(stateDirectory: stateDirectory, abortSignal: abort.signal),
+          host: _FakeHost(stateDirectory: stateDir.path, abortSignal: abort.signal),
           explicitExecutablePath: null,
         );
 

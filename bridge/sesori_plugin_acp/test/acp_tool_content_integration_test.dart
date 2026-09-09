@@ -129,6 +129,7 @@ void main() {
           launchDirectory: "/repo",
           pluginId: "acp",
           configurationTracker: AcpSessionConfigurationTracker(),
+          childSessions: AcpChildSessionTracker(),
         );
         final collector = _collector();
         PluginMessagePart? livePart;
@@ -160,6 +161,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "acp",
         configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
       );
     });
 
@@ -609,12 +611,14 @@ PluginToolState _liveState({required List<BridgeSseEvent> events}) =>
     events.whereType<BridgeSseMessagePartUpdated>().single.part.state;
 
 AcpReplayCollector _collector() => AcpReplayCollector(
+  sessionUpdateNormalizer: null,
   sessionId: "s1",
   agentId: "ACP",
   initialUserMessageId: null,
   messageIdOverride: null,
   messageTimeResolver: null,
   haltClassifier: null,
+  toolPartReplacement: null,
 );
 
 PluginToolState _replayState({required AcpReplayCollector collector}) => collector.build().single.parts.single.state;

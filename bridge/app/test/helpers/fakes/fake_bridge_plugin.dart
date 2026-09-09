@@ -76,6 +76,9 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   String? lastSendCommandAgent;
   ({String providerID, String modelID})? lastSendCommandModel;
   String? lastAbortSessionId;
+  bool? lastAbortUseAtomicStop;
+  Set<String>? lastAbortKnownSubAgentSessionIds;
+  PluginAbortResult abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   String? lastReplyQuestionId;
   String? lastReplySessionId;
   List<List<String>>? lastReplyAnswers;
@@ -100,6 +103,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Completer<void>? archiveSessionCompleter;
   Completer<void>? sendCommandStarted;
   Completer<void>? sendCommandCompleter;
+  Object? sendCommandError;
   Object? sendPromptError;
   int getProjectsCallCount = 0;
   int deleteWorkspaceCallCount = 0;
@@ -270,6 +274,7 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
+    if (sendCommandError case final error?) throw error;
     if (sendCommandStarted case final started? when !started.isCompleted) started.complete();
     lastSendCommandSessionId = sessionId;
     lastSendCommand = command;
@@ -285,9 +290,13 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     lastAbortSessionId = sessionId;
-    return const PluginAbortAccepted(workKept: false);
+    lastAbortUseAtomicStop = useAtomicStop;
+    lastAbortKnownSubAgentSessionIds = knownSubAgentSessionIds;
+    return abortResult;
   }
 
   @override

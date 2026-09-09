@@ -12,6 +12,7 @@ void main() {
       stderrChunks: [utf8.encode("abcde"), utf8.encode("fghij")],
     );
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: _FakeHostProcessService(process: process),
       runInShell: false,
       maxCapturedOutputCharactersPerStream: 6,
@@ -34,7 +35,11 @@ class const _FakeHostProcessService({required final SpawnedProcess process}) imp
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
-  }) async => process;
+    required bool includeParentEnvironment,
+  }) async {
+    expect(includeParentEnvironment, isTrue);
+    return process;
+  }
 
   @override
   Future<ProcessIdentity?> inspect({required int pid}) async => null;

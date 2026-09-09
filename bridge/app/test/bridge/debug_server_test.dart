@@ -25,6 +25,7 @@ import "package:sesori_bridge/src/server/foundation/bridge_restart_command_build
 import "package:sesori_bridge/src/server/foundation/bridge_restart_env.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/services/bridge_restart_service.dart";
+import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -61,6 +62,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
       accessTokenProvider: FakeAccessTokenProvider(),
       bridgeIdProvider: FakeBridgeIdProvider(),
     ),
+    pluginLifecycleRepository: lifecycleRepositoryForLifecycleService(service: lifecycleService),
     pluginLifecycleService: lifecycleService,
     pluginRuntime: runtimeForLifecycleService(service: lifecycleService),
     bridgeSettingsRepository: settingsRepositoryForLifecycleService(service: lifecycleService),
@@ -78,6 +80,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
     restartService: effectiveRestartService,
     filesystemAccessOk: true,
     statusNotifier: null,
+    startupRetryService: BridgeStartupRetryService(),
     reconnectBackoff: ReconnectBackoffPolicy.standard,
   ).create();
   final runtime = BridgeRuntime(
@@ -150,11 +153,11 @@ void main() {
       final client = await _SseTestClient.connect(debugServer.boundPort!);
       addTearDown(client.close);
 
-      plugin.add(const BridgeSseWorkspaceReady(name: "developer’s workspace"));
+      plugin.add(const BridgeSseFileEdited(file: "developer’s workspace"));
 
       final unicodeEvent = jsonDecodeMap(await client.nextEvent());
-      expect(unicodeEvent["type"], "workspace.ready");
-      expect(unicodeEvent["name"], "developer’s workspace");
+      expect(unicodeEvent["type"], "file.edited");
+      expect(unicodeEvent["file"], "developer’s workspace");
 
       plugin.add(const BridgeSseVcsBranchUpdated());
 
@@ -1178,7 +1181,9 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
-  }) async => const PluginAbortAccepted(workKept: false);
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+  }) async => const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];
@@ -1312,10 +1317,12 @@ class _BlockingRoutesPlugin() extends _FakeBridgePlugin {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     _abortStarted.complete();
     await _abortRelease.future;
-    return const PluginAbortAccepted(workKept: false);
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   }
 }
 
@@ -1434,7 +1441,9 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
-  }) async => const PluginAbortAccepted(workKept: false);
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+  }) async => const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
 
   @override
   Future<List<PluginAgent>> getAgents({required String projectId}) async => [];

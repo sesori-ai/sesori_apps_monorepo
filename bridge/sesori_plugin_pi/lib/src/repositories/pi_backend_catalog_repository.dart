@@ -44,6 +44,14 @@ class PiBackendCatalogRepository({
   required final CommandExecutor _commandExecutor,
   required final Duration _healthTimeout,
 }) {
+  static const _rpcExcludedCommandSourcePaths = <String>{
+    // Pi's bundled llama.cpp extension only exposes /llama, whose handler
+    // requires TUI mode. Match its origin so numbered aliases are excluded
+    // without hiding user commands with the same name. Revisit if Pi adds RPC
+    // support to this extension (verified against Pi 0.84.4).
+    "<inline:llama.cpp>",
+  };
+
   Future<bool> healthCheck() async {
     try {
       return (await _commandExecutor.run(_binaryPath, const ["--version"], timeout: _healthTimeout)).exitCode == 0;
@@ -107,7 +115,32 @@ class PiBackendCatalogRepository({
       if (initialIndex > 0) deduped.insert(0, deduped.removeAt(initialIndex));
 
       var partial = false;
+      List<PluginCommand> commands;
+      try {
+        final commandDtos = PiCommandsDto.fromJson(
+          (await _send(
+            client: client,
+            command: PiRpcCommand.getCommands,
+            arguments: const {},
+            timeout: _remaining(stopwatch: stopwatch, totalTimeout: totalTimeout),
+          )).data,
+        );
+        commands = [for (final command in commandDtos.commands) ?_command(command)];
+      } on TimeoutException catch (error, stack) {
+        partial = true;
+        commands = const [];
+        Log.w("[pi] command discovery timed out; continuing", error, stack);
+      } on PiRpcProcessExitException {
+        rethrow;
+      } on Object catch (error, stack) {
+        partial = true;
+        commands = const [];
+        Log.w("[pi] command discovery failed; continuing", error, stack);
+      }
+
       final thinkingByModel = <String, List<String>>{};
+      // Discover project commands before this unbounded sweep so slow thinking
+      // hydration cannot consume the command catalog's remaining deadline.
       // The total deadline bounds this sweep. A count cap would make every larger
       // healthy catalog partial, so it could never replace an older complete cache.
       for (final model in deduped.where((model) => model.reasoning)) {
@@ -136,29 +169,6 @@ class PiBackendCatalogRepository({
         }
       }
 
-      List<PluginCommand> commands;
-      try {
-        final commandDtos = PiCommandsDto.fromJson(
-          (await _send(
-            client: client,
-            command: PiRpcCommand.getCommands,
-            arguments: const {},
-            timeout: _remaining(stopwatch: stopwatch, totalTimeout: totalTimeout),
-          )).data,
-        );
-        commands = [for (final command in commandDtos.commands) ?_command(command)];
-      } on TimeoutException catch (error, stack) {
-        partial = true;
-        commands = const [];
-        Log.w("[pi] command discovery timed out; continuing", error, stack);
-      } on PiRpcProcessExitException {
-        rethrow;
-      } on Object catch (error, stack) {
-        partial = true;
-        commands = const [];
-        Log.w("[pi] command discovery failed; continuing", error, stack);
-      }
-
       return PiCatalogProbeObserved(
         snapshot: (
           agents: [
@@ -182,7 +192,8 @@ class PiBackendCatalogRepository({
         ),
       );
     } on Object catch (error, stack) {
-      if (client.stderrDiagnostics.contains(PiRpcClient.noModelsDiagnosticPrefix)) {
+      if (error is PiRpcProcessExitException &&
+          client.stderrDiagnostics.contains(PiRpcClient.noModelsDiagnosticPrefix)) {
         return const PiCatalogProbeNoModels();
       }
       Error.throwWithStackTrace(
@@ -251,17 +262,22 @@ class PiBackendCatalogRepository({
       for (final entry in entries)
         _provider(
           id: entry.key,
-          models: [
-            for (final model in entry.value)
-              PluginModel(
-                id: model.id!,
-                name: _displayName(model),
-                variants: thinkingByModel[_modelKey(model)] ?? const [],
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
+          models: CatalogStrengthOrder.models(
+            [
+              for (final model in entry.value)
+                PluginModel(
+                  id: model.id!,
+                  name: _displayName(model),
+                  // Strongest first; Pi's first-listed level stays the default.
+                  variants: CatalogStrengthOrder.variants(thinkingByModel[_modelKey(model)] ?? const []),
+                  defaultVariant: CatalogStrengthOrder.backendDefault(thinkingByModel[_modelKey(model)] ?? const []),
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
+            ],
+            idOf: (model) => model.id,
+          ),
           defaultModelId: entry.key == initial.provider ? initial.id : null,
         ),
     ];
@@ -284,6 +300,7 @@ class PiBackendCatalogRepository({
   PluginCommand? _command(PiCatalogCommandDto dto) {
     final name = dto.name?.trim();
     if (name == null || name.isEmpty) return null;
+    if (_rpcExcludedCommandSourcePaths.contains(dto.sourcePath)) return null;
     final description = dto.description?.trim();
     return PluginCommand(
       name: name,

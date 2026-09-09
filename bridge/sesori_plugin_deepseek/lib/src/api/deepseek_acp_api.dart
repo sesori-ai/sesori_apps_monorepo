@@ -8,8 +8,12 @@ class const DeepSeekAcpApi({required final String pluginId}) {
   static const String renameMethod = "deepseek/session/rename";
   static const String askUserQuestionMethod = "deepseek/ask_user_question";
   static const String sessionStatusMethod = "deepseek/session/status";
-  static const String initializeMetadataKey = "sesori.ai/deepseek";
-  static const int extensionProtocolVersion = 1;
+  static const String subagentMethod = "deepseek/subagent";
+  static const String subagentInterruptMethod = "deepseek/subagent/interrupt";
+  static const String sessionStopMethod = "deepseek/session/stop";
+  static const String inputCancelMethod = "deepseek/input/cancel";
+  static const String initializeMetadataKey = deepSeekExtensionMetadataKey;
+  static const int extensionProtocolVersion = 2;
 
   // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
   DeepSeekInitializeMetadataDto parseInitializeMetadata(Map<String, dynamic> json) {
@@ -148,6 +152,122 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return status;
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSubagentNotificationDto parseSubagentNotification(Map<String, dynamic> json) {
+    final notification = DeepSeekSubagentNotificationDto.fromJson(json);
+    if (!_validSubagentText(notification.sessionId, maxScalars: 256) ||
+        !_validSubagentText(notification.childSessionId, maxScalars: 256)) {
+      throw const FormatException("Invalid DeepSeek sub-agent notification");
+    }
+    switch (notification) {
+      case DeepSeekSubagentStartedDto(:final toolCallId, :final prompt, :final label, :final mode):
+        if (!_validSubagentText(toolCallId, maxScalars: 256) ||
+            !_validSubagentText(label, maxScalars: 256) ||
+            !_validSubagentPrompt(prompt) ||
+            mode == DeepSeekSubagentMode.unknown) {
+          throw const FormatException("Invalid DeepSeek sub-agent notification");
+        }
+      case DeepSeekSubagentEndedDto(:final stopReason, :final summary):
+        if (stopReason == DeepSeekSubagentStopReason.unknown || !_validSubagentSummary(summary)) {
+          throw const FormatException("Invalid DeepSeek sub-agent notification");
+        }
+    }
+    return notification;
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSubagentInterruptRequestDto parseSubagentInterruptRequest(Map<String, dynamic> json) {
+    final request = DeepSeekSubagentInterruptRequestDto.fromJson(json);
+    _validateSubagentInterruptRequest(request: request);
+    return request;
+  }
+
+  void _validateSubagentInterruptRequest({required DeepSeekSubagentInterruptRequestDto request}) {
+    if (!_validSubagentText(request.sessionId, maxScalars: 256) ||
+        !_validSubagentText(request.childSessionId, maxScalars: 256)) {
+      throw const FormatException("Invalid DeepSeek sub-agent interrupt request");
+    }
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSubagentInterruptResponseDto parseSubagentInterruptResponse(Map<String, dynamic> json) {
+    final response = DeepSeekSubagentInterruptResponseDto.fromJson(json);
+    if (response.result == DeepSeekSubagentInterruptResult.unknown) {
+      throw const FormatException("Invalid DeepSeek sub-agent interrupt response");
+    }
+    return response;
+  }
+
+  Future<DeepSeekSubagentInterruptResult> interruptSubagent({
+    required AcpStdioClient client,
+    required String sessionId,
+    required String childSessionId,
+  }) async {
+    final request = DeepSeekSubagentInterruptRequestDto(sessionId: sessionId, childSessionId: childSessionId);
+    _validateSubagentInterruptRequest(request: request);
+    final raw = await client.request(method: subagentInterruptMethod, params: request.toJson());
+    return parseSubagentInterruptResponse(_json(raw, method: subagentInterruptMethod)).result;
+  }
+
+  Future<DeepSeekSessionStopResponseDto> stopSession({
+    required AcpStdioClient client,
+    required DeepSeekSessionStopRequestDto request,
+  }) async {
+    _validateSessionStopRequest(request: request);
+    final raw = await client.request(method: sessionStopMethod, params: request.toJson());
+    return parseSessionStopResponse(_json(raw, method: sessionStopMethod));
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSessionStopRequestDto parseSessionStopRequest(Map<String, dynamic> json) {
+    final request = DeepSeekSessionStopRequestDto.fromJson(json);
+    _validateSessionStopRequest(request: request);
+    return request;
+  }
+
+  void _validateSessionStopRequest({required DeepSeekSessionStopRequestDto request}) {
+    final valid = switch (request) {
+      DeepSeekSessionStopSessionRequestDto(:final sessionId) => _validScopedStopSessionId(sessionId),
+      DeepSeekSessionStopChildRequestDto(:final sessionId, :final childSessionId) =>
+        _validScopedStopSessionId(sessionId) && _validScopedStopSessionId(childSessionId),
+    };
+    if (!valid) throw const FormatException("Invalid DeepSeek session stop request");
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSessionStopResponseDto parseSessionStopResponse(Map<String, dynamic> json) =>
+      DeepSeekSessionStopResponseDto.fromJson(json);
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekInputCancelRequestDto parseInputCancelRequest(Map<String, dynamic> json) {
+    final request = DeepSeekInputCancelRequestDto.fromJson(json);
+    if (!_validScopedStopSessionId(request.sessionId)) {
+      throw const FormatException("Invalid DeepSeek input cancellation request");
+    }
+    return request;
+  }
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekInputCancelResponseDto parseInputCancelResponse(Map<String, dynamic> json) =>
+      DeepSeekInputCancelResponseDto.fromJson(json);
+
+  // ignore: no_slop_linter/prefer_specific_type, ACP JSON object values are heterogeneous
+  DeepSeekSubagentReplayDto parseSubagentReplay(Map<String, dynamic> json) {
+    final replay = DeepSeekSubagentReplayDto.fromJson(json);
+    _validateSubagentReplay(replay);
+    return replay;
+  }
+
+  void _validateSubagentReplay(DeepSeekSubagentReplayDto replay) {
+    if (!_validSubagentText(replay.label, maxScalars: 256) ||
+        !_validSubagentPrompt(replay.prompt) ||
+        replay.mode == DeepSeekSubagentMode.unknown ||
+        !_validOptionalSubagentText(replay.childSessionId, maxScalars: 256) ||
+        !_validSubagentReplayEnd(replay.ended)) {
+      throw const FormatException("Invalid DeepSeek sub-agent replay metadata");
+    }
+  }
+
   // ignore: no_slop_linter/prefer_specific_type, ACP response and JSON object values are heterogeneous
   static Map<String, dynamic> _json(Object? raw, {required String method}) {
     if (raw is! Map) throw FormatException("$method returned a non-object result");
@@ -155,7 +275,7 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     return raw.cast<String, dynamic>();
   }
 
-  static void _validateHistoryResponse(DeepSeekHistoryResponseDto response, {required String? sessionId}) {
+  void _validateHistoryResponse(DeepSeekHistoryResponseDto response, {required String? sessionId}) {
     if (response.updates.length > 10000 ||
         response.updates.any(
           (update) =>
@@ -166,6 +286,49 @@ class const DeepSeekAcpApi({required final String pluginId}) {
     if (response case DeepSeekPaginatedHistoryResponseDto(nextBeforeSeq: final cursor) when cursor < 1) {
       throw const FormatException("Invalid DeepSeek history response");
     }
+    for (final update in response.updates) {
+      final deepSeek = update.metadata?.deepSeek;
+      final createdAt = deepSeek?.messageCreatedAt;
+      if (createdAt != null && (createdAt < 0 || createdAt > 9007199254740991)) {
+        throw const FormatException("Invalid DeepSeek history response");
+      }
+      final subagent = deepSeek?.subagent;
+      if (subagent != null) _validateSubagentReplay(subagent);
+    }
+  }
+
+  static bool _validSubagentReplayEnd(DeepSeekSubagentReplayEndedDto? ended) =>
+      ended == null || ended.stopReason != DeepSeekSubagentStopReason.unknown && _validSubagentSummary(ended.summary);
+
+  static bool _validSubagentSummary(String? value) => _validOptionalSubagentText(value, maxScalars: 512);
+
+  static bool _validSubagentPrompt(String value) =>
+      value == value.trim() && _validSubagentText(value, maxScalars: 32768);
+
+  static bool _validOptionalSubagentText(String? value, {required int maxScalars}) =>
+      value == null || _validSubagentText(value, maxScalars: maxScalars);
+
+  static bool _validScopedStopSessionId(String value) =>
+      _validSubagentText(value, maxScalars: 256) &&
+      !value.codeUnits.any((unit) => unit <= 0x1F || unit >= 0x7F && unit <= 0x9F);
+
+  static bool _validSubagentText(String value, {required int maxScalars}) {
+    if (value.isEmpty || !value.contains(RegExp(r"\S"))) return false;
+    var scalars = 0;
+    final units = value.codeUnits;
+    for (var index = 0; index < units.length; index++) {
+      final unit = units[index];
+      if (unit >= 0xD800 && unit <= 0xDBFF) {
+        if (index + 1 >= units.length) return false;
+        final next = units[++index];
+        if (next < 0xDC00 || next > 0xDFFF) return false;
+      } else if (unit >= 0xDC00 && unit <= 0xDFFF) {
+        return false;
+      }
+      scalars++;
+      if (scalars > maxScalars) return false;
+    }
+    return true;
   }
 
   static bool _optionalNonblank(String? value, {required int maxLength}) =>

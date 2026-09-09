@@ -16,7 +16,7 @@ void main() {
 
     setUp(() async {
       api = InMemoryBridgeSettingsApi(
-        config: '{"pullRequestRefreshIntervalSeconds":30}',
+        config: '{"pullRequestRefreshIntervalSeconds":30,"warmUpPluginsOnSessionOpen":true}',
       );
       repository = BridgeSettingsRepository(defaultEditorApi: null, api: api);
       await repository.loadSettings();

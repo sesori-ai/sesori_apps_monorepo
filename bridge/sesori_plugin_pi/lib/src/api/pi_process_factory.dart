@@ -26,6 +26,7 @@ final class HostPiProcessFactory({required final HostProcessService _processes})
   Future<PiProcessHandle> spawn({required PiLaunchSpec spec}) async {
     try {
       final process = await _processes.spawn(
+        includeParentEnvironment: true,
         executable: spec.binaryPath,
         arguments: spec.arguments,
         environment: spec.environment,

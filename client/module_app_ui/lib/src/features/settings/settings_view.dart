@@ -11,7 +11,6 @@ import "../../support/support_links.dart";
 import "widgets/account_row.dart";
 import "widgets/appearance_picker.dart";
 import "widgets/bridge_settings_section.dart";
-import "widgets/chat_input_mode_picker.dart";
 import "widgets/settings_section.dart";
 
 /// Vertical inset between the nav bar and the first settings section.
@@ -39,6 +38,8 @@ class const SettingsView({
   required final VoidCallback onOpenProfile,
   required final VoidCallback? onOpenNotifications,
   required final VoidCallback onOpenHarnesses,
+  required final VoidCallback onOpenDefaultInput,
+  required final Widget? additionalSettings,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -47,8 +48,10 @@ class const SettingsView({
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
+    final inputMode = context.watch<ChatInputModeCubit>().state;
     final account = this.account;
     final onOpenNotifications = this.onOpenNotifications;
+    final additionalSettings = this.additionalSettings;
 
     return PregoGlassScaffold(
       title: loc.settingsTitle,
@@ -94,30 +97,62 @@ class const SettingsView({
                   ),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
-                PregoGroupedRows(
-                  children: [
-                    if (onOpenNotifications != null)
-                      PregoGroupedRow(
-                        icon: TablerRegular.bell,
-                        title: Text(loc.settingsNotificationsTitle),
-                        trailing: const Icon(TablerRegular.chevron_right),
-                        onTap: onOpenNotifications,
-                      ),
-                    PregoGroupedRow(
-                      icon: TablerRegular.plug,
-                      title: Text(loc.settingsHarnessesTitle),
-                      trailing: const Icon(TablerRegular.chevron_right),
-                      onTap: onOpenHarnesses,
-                    ),
-                  ],
-                ),
-                const SizedBox(height: PregoSpacing.xl),
                 const BridgeSettingsSection(),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
-                  title: loc.settingsDefaultInputTitle,
-                  child: const ChatInputModePicker(),
+                  title: loc.settingsSectionSessions,
+                  child: PregoGroupedRows(
+                    children: [
+                      PregoGroupedRow(
+                        icon: TablerRegular.plug,
+                        title: Text(loc.settingsHarnessesTitle),
+                        trailing: const Icon(TablerRegular.chevron_right),
+                        onTap: onOpenHarnesses,
+                      ),
+                      PregoGroupedRow(
+                        icon: TablerRegular.keyboard,
+                        title: Text(loc.settingsDefaultInputTitle),
+                        trailing: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          spacing: PregoSpacing.xl,
+                          children: [
+                            Text(
+                              switch (inputMode) {
+                                ChatInputMode.voiceFirst => loc.settingsDefaultInputVoice,
+                                ChatInputMode.textFirst => loc.settingsDefaultInputText,
+                              },
+                              style: context.prego.textTheme.textMd.regular.copyWith(
+                                color: context.prego.colors.textTertiary,
+                              ),
+                            ),
+                            const Icon(TablerRegular.chevron_right),
+                          ],
+                        ),
+                        onTap: onOpenDefaultInput,
+                      ),
+                    ],
+                  ),
                 ),
+                if (onOpenNotifications != null) ...[
+                  const SizedBox(height: PregoSpacing.xl),
+                  SettingsSection(
+                    title: loc.settingsSectionPreferences,
+                    child: PregoGroupedRows(
+                      children: [
+                        PregoGroupedRow(
+                          icon: TablerRegular.bell,
+                          title: Text(loc.settingsNotificationsTitle),
+                          trailing: const Icon(TablerRegular.chevron_right),
+                          onTap: onOpenNotifications,
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (additionalSettings != null) ...[
+                  const SizedBox(height: PregoSpacing.xl),
+                  additionalSettings,
+                ],
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
                   title: loc.settingsSectionAppearance,

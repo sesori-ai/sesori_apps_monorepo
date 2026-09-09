@@ -94,27 +94,54 @@ const _$PluginManagementCapabilityEnumMap = {
 PluginAuthenticationDeviceCodeChallengeResponse
 _$PluginAuthenticationDeviceCodeChallengeResponseFromJson(Map json) =>
     PluginAuthenticationDeviceCodeChallengeResponse(
-      type:
-          $enumDecodeNullable(
-            _$PluginAuthenticationChallengeTypeEnumMap,
-            json['type'],
-          ) ??
-          PluginAuthenticationChallengeType.deviceCode,
       verificationUrl: json['verificationUrl'] as String,
       userCode: json['userCode'] as String,
+      $type: json['type'] as String?,
     );
 
 Map<String, dynamic> _$PluginAuthenticationDeviceCodeChallengeResponseToJson(
   PluginAuthenticationDeviceCodeChallengeResponse instance,
 ) => <String, dynamic>{
-  'type': _$PluginAuthenticationChallengeTypeEnumMap[instance.type]!,
   'verificationUrl': instance.verificationUrl,
   'userCode': instance.userCode,
+  'type': instance.$type,
 };
 
-const _$PluginAuthenticationChallengeTypeEnumMap = {
-  PluginAuthenticationChallengeType.deviceCode: 'deviceCode',
+PluginAuthenticationBrowserChallengeResponse
+_$PluginAuthenticationBrowserChallengeResponseFromJson(Map json) =>
+    PluginAuthenticationBrowserChallengeResponse(
+      authorizationUrl: json['authorizationUrl'] as String,
+      expectedCallbackUrl: json['expectedCallbackUrl'] as String,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PluginAuthenticationBrowserChallengeResponseToJson(
+  PluginAuthenticationBrowserChallengeResponse instance,
+) => <String, dynamic>{
+  'authorizationUrl': instance.authorizationUrl,
+  'expectedCallbackUrl': instance.expectedCallbackUrl,
+  'type': instance.$type,
 };
+
+PluginAuthenticationUnknownChallengeResponse
+_$PluginAuthenticationUnknownChallengeResponseFromJson(Map json) =>
+    PluginAuthenticationUnknownChallengeResponse(
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$PluginAuthenticationUnknownChallengeResponseToJson(
+  PluginAuthenticationUnknownChallengeResponse instance,
+) => <String, dynamic>{'type': instance.$type};
+
+_PluginAuthenticationRedirectRequest
+_$PluginAuthenticationRedirectRequestFromJson(Map json) =>
+    _PluginAuthenticationRedirectRequest(
+      redirectUrl: json['redirectUrl'] as String,
+    );
+
+Map<String, dynamic> _$PluginAuthenticationRedirectRequestToJson(
+  _PluginAuthenticationRedirectRequest instance,
+) => <String, dynamic>{'redirectUrl': instance.redirectUrl};
 
 PluginAuthenticationCompletedProgress
 _$PluginAuthenticationCompletedProgressFromJson(Map json) =>
@@ -342,5 +369,8 @@ const _$PluginAuthenticationConflictReasonEnumMap = {
   PluginAuthenticationConflictReason.inFlight: 'inFlight',
   PluginAuthenticationConflictReason.setupNotRequired: 'setupNotRequired',
   PluginAuthenticationConflictReason.unsupported: 'unsupported',
+  PluginAuthenticationConflictReason.noActive: 'noActive',
+  PluginAuthenticationConflictReason.wrongKind: 'wrongKind',
+  PluginAuthenticationConflictReason.alreadySubmitted: 'alreadySubmitted',
   PluginAuthenticationConflictReason.unknown: 'unknown',
 };

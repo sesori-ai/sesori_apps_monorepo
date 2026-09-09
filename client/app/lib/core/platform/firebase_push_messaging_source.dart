@@ -158,6 +158,7 @@ class FirebasePushMessagingSource implements PushMessagingSource {
       projectId: projectId,
       sessionId: sessionId,
       sessionTitle: message.notification?.title,
+      accountId: null,
     );
   }
 

@@ -17,6 +17,7 @@ class CursorEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
+  required super.childSessions,
   required final CursorGeneratedImageReader _generatedImageReader,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the

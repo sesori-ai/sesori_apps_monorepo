@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:path/path.dart' as p;
 import 'package:sesori_dart_core/sesori_dart_core.dart';
 import 'package:sesori_shared/sesori_shared.dart';
+import 'package:theme_prego/module_prego.dart';
 
 import '../utils/diff_highlighter.dart';
 import 'diff_file_view_model.dart';
@@ -41,10 +42,12 @@ class DiffViewModelBuilder() {
                       .map(
                         (line) => DiffLineViewModel(
                           line: line,
-                          highlightedSpan: DiffHighlighter.highlightLine(
-                            content: line.content,
-                            language: language,
-                          ),
+                          highlightedSpan: line.content.isEmpty
+                              ? null
+                              : DiffHighlighter.highlightLine(
+                                  content: PregoReadableSelectionArea.encodeText(text: line.content),
+                                  language: language,
+                                ),
                         ),
                       )
                       .toList(),

@@ -22,15 +22,18 @@ void main() {
       fakes.clear();
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       plugin = _RegistryCapturingAcpPlugin(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: cwd,
+        childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
           launchDirectory: cwd,
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(
@@ -475,9 +478,9 @@ void main() {
       await pump();
 
       final inlineError = events.whereType<BridgeSseMessageUpdated>().singleWhere(
-        (event) => event.info["role"] == "error",
+        (event) => event.info is PluginMessageError,
       );
-      expect(inlineError.info["errorMessage"], "Agent is already processing.");
+      expect((inlineError.info as PluginMessageError).errorMessage, "Agent is already processing.");
       expect(
         events.whereType<BridgeSseSessionError>(),
         isNotEmpty,
@@ -862,6 +865,7 @@ class _RegistryCapturingAcpPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -869,7 +873,11 @@ class _RegistryCapturingAcpPlugin({
   AcpApprovalRegistry? registry;
 
   @override
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) {
-    return registry = super.buildApprovalRegistry(client);
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) {
+    return registry = AcpApprovalRegistry.forClient(
+      client: client,
+      emit: emitActivityEvent,
+      activeSessionResolver: () => activeTurnSessionId,
+    );
   }
 }

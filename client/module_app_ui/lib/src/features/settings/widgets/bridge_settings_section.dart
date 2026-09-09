@@ -19,6 +19,7 @@ class const BridgeSettingsSection({super.key}) extends StatelessWidget {
       child: PregoGroupedRows(
         children: [
           const _YoloSettingsRow(),
+          const _PluginWarmupSettingsRow(),
           PregoGroupedRow(
             key: const Key("pull_request_refresh_interval"),
             icon: TablerRegular.refresh,
@@ -30,7 +31,9 @@ class const BridgeSettingsSection({super.key}) extends StatelessWidget {
                   when pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
                       pullRequestRefreshMutation is! PullRequestRefreshMutationUncertain &&
                       pullRequestRefreshMutation is! PullRequestRefreshMutationUnsupported &&
-                      (state is! BridgeSettingsReadyFull || state.yoloMutation is! YoloMutationInProgress) =>
+                      (state is! BridgeSettingsReadyFull ||
+                          (state.yoloMutation is! YoloMutationInProgress &&
+                              state.pluginWarmupMutation is! PluginWarmupMutationInProgress)) =>
                 () => unawaited(_editInterval(context: context, state: state)),
               BridgeSettingsLoading() ||
               BridgeSettingsDisconnected() ||
@@ -55,7 +58,8 @@ class const _YoloSettingsRow() extends StatelessWidget {
         ready.yoloMutation is! YoloMutationInProgress &&
         ready.yoloMutation is! YoloMutationUncertain &&
         ready.yoloMutation is! YoloMutationUnsupported &&
-        ready.pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress;
+        ready.pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress &&
+        ready.pluginWarmupMutation is! PluginWarmupMutationInProgress;
 
     void toggle({required bool enabled}) {
       final current = ready;
@@ -100,6 +104,99 @@ class const _YoloSettingsRow() extends StatelessWidget {
       ),
     );
   }
+}
+
+class const _PluginWarmupSettingsRow() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<BridgeSettingsCubit>().state;
+    final ready = state is BridgeSettingsReadyFull ? state : null;
+    final enabled = switch (ready?.pluginWarmupMutation) {
+      PluginWarmupMutationIdle(:final enabled) || PluginWarmupMutationFailed(:final enabled) => enabled,
+      PluginWarmupMutationInProgress() ||
+      PluginWarmupMutationUncertain() ||
+      PluginWarmupMutationUnsupported() ||
+      null => null,
+    };
+    final interactive =
+        ready != null &&
+        enabled != null &&
+        ready.yoloMutation is! YoloMutationInProgress &&
+        ready.pullRequestRefreshMutation is! PullRequestRefreshMutationInProgress;
+
+    void toggle({required bool enabled}) {
+      final current = ready;
+      if (current == null || !interactive) return;
+      unawaited(
+        context.read<BridgeSettingsCubit>().updatePluginWarmup(
+          enabled: enabled,
+          expectedState: current,
+        ),
+      );
+    }
+
+    return MergeSemantics(
+      child: PregoGroupedRow(
+        key: const Key("plugin_warmup_setting"),
+        icon: TablerRegular.rocket,
+        title: Text(context.loc.settingsPluginWarmupTitle),
+        subtitle: Text(_pluginWarmupDescription(context: context, state: state)),
+        trailing: switch (state) {
+          BridgeSettingsLoading() || BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationInProgress()) =>
+            PregoActivityIndicator(color: context.prego.colors.fgBrandPrimary),
+          BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationUnsupported()) ||
+          BridgeSettingsReadyLegacyPartial() ||
+          BridgeSettingsUnsupported() => Text(
+            context.loc.settingsPullRequestRefreshUnavailable,
+            style: context.prego.textTheme.textSm.regular.copyWith(
+              color: context.prego.colors.textSecondary,
+            ),
+          ),
+          BridgeSettingsReadyFull(
+            pluginWarmupMutation: PluginWarmupMutationIdle(:final enabled) ||
+                PluginWarmupMutationFailed(:final enabled),
+          ) =>
+            PregoSwitch(
+              key: const Key("plugin_warmup_switch"),
+              value: enabled,
+              onChanged: interactive ? (enabled) => toggle(enabled: enabled) : null,
+            ),
+          BridgeSettingsDisconnected() => Text(
+            context.loc.settingsPullRequestRefreshOffline,
+            style: context.prego.textTheme.textSm.regular.copyWith(
+              color: context.prego.colors.textSecondary,
+            ),
+          ),
+          BridgeSettingsFailure() ||
+          BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationUncertain()) => IconButton(
+            key: const Key("plugin_warmup_retry"),
+            tooltip: context.loc.settingsPluginWarmupRetry,
+            onPressed: context.read<BridgeSettingsCubit>().refresh,
+            icon: const Icon(TablerRegular.refresh),
+          ),
+        },
+        onTap: enabled == null || !interactive ? null : () => toggle(enabled: !enabled),
+      ),
+    );
+  }
+}
+
+String _pluginWarmupDescription({required BuildContext context, required BridgeSettingsState state}) {
+  return switch (state) {
+    BridgeSettingsLoading() => context.loc.settingsPluginWarmupLoading,
+    BridgeSettingsDisconnected() => context.loc.settingsPluginWarmupDisconnected,
+    BridgeSettingsUnsupported() ||
+    BridgeSettingsReadyLegacyPartial() ||
+    BridgeSettingsReadyFull(
+      pluginWarmupMutation: PluginWarmupMutationUnsupported(),
+    ) => context.loc.settingsPluginWarmupUnsupported,
+    BridgeSettingsFailure() => context.loc.settingsPluginWarmupLoadFailed,
+    BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationUncertain()) =>
+      context.loc.settingsPluginWarmupUncertain,
+    BridgeSettingsReadyFull(pluginWarmupMutation: PluginWarmupMutationFailed()) =>
+      context.loc.settingsPluginWarmupUpdateFailed,
+    BridgeSettingsReadyFull() => context.loc.settingsPluginWarmupDescription,
+  };
 }
 
 String _yoloDescription({required BuildContext context, required BridgeSettingsState state}) {

@@ -9,7 +9,7 @@ void main() {
 
   group("OpenCodeRuntimeManifest", () {
     test("uses the plugin id as its shared managed-runtime subdirectory", () {
-      expect(manifest.runtimeId, const OpenCodePluginDescriptor().id);
+      expect(manifest.runtimeId, OpenCodePluginDescriptor.production().id);
     });
 
     test("pins a sha256 asset for every supported platform target", () {

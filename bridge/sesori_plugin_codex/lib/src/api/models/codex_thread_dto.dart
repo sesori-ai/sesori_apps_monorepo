@@ -3,6 +3,18 @@ import "package:freezed_annotation/freezed_annotation.dart";
 part "codex_thread_dto.freezed.dart";
 part "codex_thread_dto.g.dart";
 
+/// Origin of a Codex app-server thread. `null` on the wire for root threads
+/// and, on codex-cli 0.148.0, also for live sub-agent threads; `parentThreadId`
+/// is the authoritative parentage signal there.
+enum CodexThreadSource() {
+  subAgent,
+  subAgentReview,
+  subAgentCompact,
+  subAgentThreadSpawn,
+  subAgentOther,
+  unknown,
+}
+
 @Freezed(fromJson: true, toJson: false)
 sealed class CodexThreadEnvelopeDto with _$CodexThreadEnvelopeDto {
   const factory({
@@ -24,6 +36,10 @@ sealed class CodexThreadDto with _$CodexThreadDto {
     required num? createdAt,
     required num? updatedAt,
     required String? modelProvider,
+    required String? parentThreadId,
+    required String? agentNickname,
+    required String? agentRole,
+    @JsonKey(unknownEnumValue: CodexThreadSource.unknown) required CodexThreadSource? threadSource,
   }) = _CodexThreadDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CodexThreadDtoFromJson(json);

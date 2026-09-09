@@ -66,6 +66,7 @@ void main() {
         processState: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
         status: const BridgeControlStatus(
+          startup: ControlStartupState.ready,
           helperOnline: true,
           relay: ControlRelayConnectionState.connected,
           plugin: ControlPluginHealthState.healthy,
@@ -120,6 +121,7 @@ void main() {
         processState: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
         status: const BridgeControlStatus(
+          startup: ControlStartupState.ready,
           helperOnline: true,
           relay: ControlRelayConnectionState.takenOver,
           plugin: ControlPluginHealthState.healthy,

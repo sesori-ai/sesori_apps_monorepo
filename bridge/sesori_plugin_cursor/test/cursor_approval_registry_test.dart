@@ -21,7 +21,7 @@ void main() {
     setUp(() async {
       fake = FakeAcpProcess();
       client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "cursor-agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "cursor-agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -84,7 +84,7 @@ void main() {
 
       expect(registry.pendingForSession(sessionId: "s1"), hasLength(1));
 
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: asked.id,
         answers: [
           ["Yes"],
@@ -108,7 +108,7 @@ void main() {
       final asked = emitted.single as BridgeSseQuestionAsked;
       expect(asked.questions.single.header, "Plan A");
 
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: asked.id,
         answers: [
           ["Accept"],

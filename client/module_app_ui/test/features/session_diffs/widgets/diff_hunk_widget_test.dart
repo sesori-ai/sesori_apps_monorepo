@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_diffs/models/diff_file_view_model.dart";
 import "package:sesori_app_ui/src/features/session_diffs/widgets/diff_hunk_widget.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:theme_prego/module_prego.dart";
 
 void main() {
   Widget buildTestWidget(DiffHunkViewModel viewModel) {
@@ -53,6 +54,39 @@ void main() {
             (widget.decoration! as BoxDecoration).color == const Color(0xFFF1F8FF),
       );
       expect(headerContainer, findsOneWidget);
+    });
+
+    testWidgets("hunk metadata is outside a selection", (tester) async {
+      const vm = DiffHunkViewModel(
+        hunk: DiffHunk(
+          oldStart: 1,
+          oldCount: 1,
+          newStart: 1,
+          newCount: 1,
+          lines: [],
+        ),
+        lines: [],
+      );
+
+      await tester.pumpWidget(
+        const MaterialApp(
+          home: Scaffold(
+            body: PregoReadableSelectionArea(
+              child: DiffHunkWidget(viewModel: vm),
+            ),
+          ),
+        ),
+      );
+
+      expect(
+        find.descendant(
+          of: find.byType(DiffHunkWidget),
+          matching: find.byWidgetPredicate(
+            (widget) => widget is SelectionContainer && widget.delegate == null,
+          ),
+        ),
+        findsOneWidget,
+      );
     });
 
     testWidgets("header uses monospace font", (tester) async {

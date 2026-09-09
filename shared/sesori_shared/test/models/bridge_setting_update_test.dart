@@ -46,6 +46,26 @@ void main() {
       expect(() => BridgeSettingUpdate.fromJson(const {"type": "yolo"}), throwsA(isA<TypeError>()));
     });
 
+    test("session-open warm-up variant round trips with its discriminator", () {
+      const update = BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false);
+
+      expect(update.toJson(), {"type": "warmUpPluginsOnSessionOpen", "enabled": false});
+      expect(BridgeSettingUpdate.fromJson(update.toJson()), update);
+    });
+
+    test("session-open warm-up rejects missing, null, and non-boolean values", () {
+      for (final enabled in <Object?>[null, "true", 1]) {
+        expect(
+          () => BridgeSettingUpdate.fromJson({"type": "warmUpPluginsOnSessionOpen", "enabled": enabled}),
+          throwsA(isA<TypeError>()),
+        );
+      }
+      expect(
+        () => BridgeSettingUpdate.fromJson(const {"type": "warmUpPluginsOnSessionOpen"}),
+        throwsA(isA<TypeError>()),
+      );
+    });
+
     test("unknown setting types degrade to an explicit variant", () {
       expect(
         BridgeSettingUpdate.fromJson(const {"type": "futureSetting", "enabled": true}),

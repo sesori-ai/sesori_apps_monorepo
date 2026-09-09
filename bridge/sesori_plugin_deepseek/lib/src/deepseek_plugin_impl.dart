@@ -11,7 +11,8 @@ import "services/deepseek_session_service.dart";
 class DeepSeekPlugin({
   required super.launchSpec,
   required super.launchDirectory,
-  required DeepSeekEventMapper mapper,
+  required final DeepSeekEventMapper mapper,
+  required super.childSessionTracker,
   required final DeepSeekAcpApi api,
   required final DeepSeekHistoryRepository historyRepository,
   required final DeepSeekSessionService deepSeekSessionService,
@@ -28,7 +29,7 @@ class DeepSeekPlugin({
       );
 
   @override
-  AcpApprovalRegistry buildApprovalRegistry(AcpStdioClient client) => DeepSeekApprovalRegistry(
+  AcpApprovalRegistry buildApprovalRegistry({required AcpStdioClient client}) => DeepSeekApprovalRegistry(
     client: client,
     emit: emitActivityEvent,
     activeSessionResolver: () => activeTurnSessionId,
@@ -36,12 +37,26 @@ class DeepSeekPlugin({
   );
 
   @override
-  void validateInitializeResult(AcpInitializeResult result) {
-    final metadata = result.raw["_meta"];
-    final deepSeekMetadata = metadata is Map ? metadata[DeepSeekAcpApi.initializeMetadataKey] : null;
-    if (deepSeekMetadata is! Map) throw const FormatException("DeepSeek initialize metadata is missing");
-    api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>());
-  }
+  bool get supportsScopedStop => true;
+
+  @override
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => deepSeekSessionService.stopScopedTree(client: client, target: target);
+
+  @override
+  Future<AcpChildCancelResult> cancelChild({
+    required AcpStdioClient client,
+    required String sessionId,
+    required String childSessionId,
+  }) => deepSeekSessionService.cancelChild(client: client, sessionId: sessionId, childSessionId: childSessionId);
+
+  @override
+  void captureLiveInitializeResult(AcpInitializeResult result) => mapper.resetLiveState();
+
+  @override
+  void validateInitializeResult(AcpInitializeResult result) => deepSeekSessionService.validateInitializeResult(result);
 
   @override
   void captureSessionConfig(
@@ -130,16 +145,23 @@ class DeepSeekPlugin({
   };
 
   @override
-  Future<List<PluginSession>> getChildSessions(String sessionId) async => [
-    for (final session in await listAllSessions(knownDirectories: const {}))
-      if (session.parentID == sessionId) session,
-  ];
+  Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    final persistedSessions = await listAllSessions(knownDirectories: const {});
+    return deepSeekSessionService.getChildSessions(
+      sessionId: sessionId,
+      directory: mapper.projectForSession(
+        sessionId: childSessionTracker.rootOf(sessionId: sessionId),
+      ),
+      persistedSessions: persistedSessions,
+    );
+  }
 
   @override
-  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
-    final client = await requireConnectedClient();
-    return await historyRepository.getMessages(client: client, sessionId: sessionId);
-  }
+  Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async =>
+      await historyRepository.getMessages(
+        client: await requireConnectedClient(),
+        sessionId: sessionId,
+      );
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async =>

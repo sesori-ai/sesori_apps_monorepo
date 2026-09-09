@@ -9,6 +9,7 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -171,15 +172,66 @@ void main() {
       );
     });
 
-    test("native import hides new projects while preserving existing visibility", () async {
+    test("pre-start snapshot uses the same atomic publication and tombstones", () async {
+      final projectPath = "${directory.path}/snapshot";
+      await database.sessionDao.insertSessionTombstone(
+        backendSessionId: "deleted",
+        pluginId: "snapshot",
+        deletedAt: 30,
+      );
+      final runtime = _SnapshotTestRuntime(
+        catalogSnapshot: PluginCatalogSnapshot(
+          projects: [
+            PluginProjectCatalogSnapshot(
+              project: PluginProject(id: "snapshot-project", directory: projectPath),
+              sessions: [
+                _pluginSession(id: "root", directory: projectPath),
+                _pluginSession(id: "child", parentId: "root", directory: projectPath),
+                _pluginSession(id: "deleted", directory: projectPath),
+              ],
+            ),
+          ],
+        ),
+      );
+      addTearDown(runtime.dispose);
+      final repository = CatalogImportRepository(
+        runtime: runtime,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+
+      final statuses = await repository
+          .importCatalog(
+            pluginId: "snapshot",
+            control: CatalogImportControl(explicitImportRequested: true, hydrationMarkerRequested: true),
+          )
+          .toList();
+
+      expect(statuses.last, isA<CatalogImportCompleted>());
+      final root = await database.sessionDao.getSessionByBinding(pluginId: "snapshot", backendSessionId: "root");
+      final child = await database.sessionDao.getSessionByBinding(pluginId: "snapshot", backendSessionId: "child");
+      expect(child?.parentSessionId, root?.sessionId);
+      expect(await database.sessionDao.getSessionByBinding(pluginId: "snapshot", backendSessionId: "deleted"), isNull);
+      expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNotNull);
+    });
+
+    test("native import shows new projects while preserving existing visibility", () async {
       final visiblePath = "${directory.path}/visible";
+      final hiddenPath = "${directory.path}/hidden";
       final importedPath = "${directory.path}/imported";
       await database.projectsDao.upsertProjectRows(
-        rows: [_projectRow(id: "visible-project", path: visiblePath)],
+        rows: [
+          _projectRow(id: "visible-project", path: visiblePath),
+          _projectRow(id: "hidden-project", path: hiddenPath),
+        ],
       );
+      await database.projectsDao.hideProject(projectId: "hidden-project");
       final plugin = _NativeImportPlugin(
         projects: [
           PluginProject(id: "visible-project", directory: visiblePath),
+          PluginProject(id: "hidden-project", directory: hiddenPath),
           PluginProject(id: "imported-project", directory: importedPath),
         ],
         rootsByProject: {
@@ -199,10 +251,11 @@ void main() {
           .drain<void>();
 
       expect((await database.projectsDao.getProject(projectId: "visible-project"))?.hidden, isFalse);
-      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isTrue);
+      expect((await database.projectsDao.getProject(projectId: "hidden-project"))?.hidden, isTrue);
+      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isFalse);
       expect(
         (await database.projectsDao.getCatalogProjects()).map((project) => project.projectId),
-        ["visible-project"],
+        unorderedEquals(["visible-project", "imported-project"]),
       );
       expect(
         (await database.sessionDao.getSessionByBinding(
@@ -211,6 +264,27 @@ void main() {
         ))?.projectId,
         "imported-project",
       );
+    });
+
+    test("automatic native hydration shows newly discovered projects", () async {
+      final importedPath = "${directory.path}/automatic-import";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "automatic-project", directory: importedPath)],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+
+      await _repository(database: database, plugin: plugin)
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(
+              explicitImportRequested: false,
+              hydrationMarkerRequested: true,
+            ),
+          )
+          .drain<void>();
+
+      expect((await database.projectsDao.getProject(projectId: "automatic-project"))?.hidden, isFalse);
     });
 
     test("native import gives an exact project id precedence during a move", () async {
@@ -703,6 +777,8 @@ void main() {
 
       expect(second.sessionsImported, 2);
       expect(second.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
+      final addedProject = (await database.projectsDao.getProjectsByPath(path: addedDirectory)).single;
+      expect(addedProject.hidden, isFalse);
     });
 
     test("root-only import filters tombstones", () async {
@@ -769,6 +845,55 @@ void main() {
 
       expect(statuses.last, isA<CatalogImportCancelled>());
       expect(await database.projectsDao.getAllProjects(), isEmpty);
+    });
+
+    test("cancellation before enumeration emits exactly one terminal cancelled event", () async {
+      final runtime = _PreEnumerationCancellationRuntime();
+      final repository = CatalogImportRepository(
+        runtime: runtime,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final control = CatalogImportControl(
+        explicitImportRequested: true,
+        hydrationMarkerRequested: true,
+      );
+      final result = repository.importCatalog(pluginId: "snapshot", control: control).toList();
+      await runtime.descriptorReadStarted.future;
+
+      control.cancellationRequested = true;
+      final statuses = await result;
+
+      expect(statuses, [isA<CatalogImportCancelled>()]);
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+      expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNull);
+    });
+
+    test("runtime cancellation before enumeration emits exactly one terminal cancelled event", () async {
+      final runtime = _RuntimeCancelledBeforeEnumeration();
+      final repository = CatalogImportRepository(
+        runtime: runtime,
+        projectsDao: database.projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+
+      final statuses = await repository
+          .importCatalog(
+            pluginId: "snapshot",
+            control: CatalogImportControl(
+              explicitImportRequested: true,
+              hydrationMarkerRequested: true,
+            ),
+          )
+          .toList();
+
+      expect(statuses, [isA<CatalogImportCancelled>()]);
+      expect(await database.projectsDao.getAllProjects(), isEmpty);
+      expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNull);
     });
 
     test("consumer cancellation at committing releases the import stream without publication", () async {
@@ -933,6 +1058,81 @@ void main() {
     });
   });
 }
+
+class _RuntimeCancelledBeforeEnumeration() extends TestPluginRuntime {
+  this : super(plugins: const {}, eligiblePluginIds: const {"snapshot"});
+
+  @override
+  Set<String> get startAllowedPluginIds => const {"snapshot"};
+
+  @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) async* {}
+}
+
+class _PreEnumerationCancellationRuntime() extends TestPluginRuntime {
+  this : super(plugins: const {}, eligiblePluginIds: const {"snapshot"});
+
+  final Completer<void> descriptorReadStarted = Completer<void>();
+
+  @override
+  Set<String> get startAllowedPluginIds => const {"snapshot"};
+
+  @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) async* {
+    descriptorReadStarted.complete();
+    while (!cancellation.isCancelled) {
+      await Future<void>.delayed(Duration.zero);
+    }
+  }
+}
+
+class _SnapshotTestRuntime({required final PluginCatalogSnapshot catalogSnapshot}) extends TestPluginRuntime {
+  this : super(plugins: const {}, eligiblePluginIds: const {"snapshot"});
+
+  @override
+  Set<String> get startAllowedPluginIds => const {"snapshot"};
+
+  @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) {
+    return body(
+      PluginCatalogImportSnapshotSource(
+        authority: const _SnapshotAuthority(),
+        cancellation: cancellation,
+        snapshot: catalogSnapshot,
+      ),
+    );
+  }
+
+  @override
+  void requireCatalogImportAuthority({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+  }) {}
+
+  @override
+  Future<R> commitCatalogImport<R>({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) => commit();
+}
+
+class const _SnapshotAuthority() implements PluginCatalogImportAuthority;
 
 class _BlockingProjectsDao({required AppDatabase database}) extends ProjectsDao {
   this : super(database);

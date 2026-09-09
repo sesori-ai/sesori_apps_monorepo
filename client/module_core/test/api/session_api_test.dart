@@ -37,6 +37,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
           queryParameters: any(named: "queryParameters"),
+          timeout: any(named: "timeout"),
         ),
       ).thenAnswer((invocation) async {
         final parser = invocation.namedArguments[#fromJson]! as SessionOptionsResponse Function(Map<String, dynamic>);
@@ -56,6 +57,9 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
           queryParameters: null,
+          // Discovery can outlast an ordinary request, so this must exceed the
+          // bridge's own deadline rather than abandon a healthy slow catalog.
+          timeout: const Duration(minutes: 2),
         ),
       ).called(1);
     });
@@ -67,6 +71,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
           queryParameters: any(named: "queryParameters"),
+          timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(options));
 
@@ -82,6 +87,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
           queryParameters: const {"refresh": "true"},
+          timeout: any(named: "timeout"),
         ),
       ).called(1);
     });
@@ -93,6 +99,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: any(named: "body"),
           queryParameters: any(named: "queryParameters"),
+          timeout: any(named: "timeout"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(options));
 
@@ -108,6 +115,7 @@ void main() {
           fromJson: any(named: "fromJson"),
           body: const PluginProjectIdRequest(projectId: "project-1", pluginId: "plugin-1"),
           queryParameters: const {"refresh": "false"},
+          timeout: any(named: "timeout"),
         ),
       ).called(1);
     });

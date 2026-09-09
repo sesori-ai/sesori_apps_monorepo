@@ -18,8 +18,14 @@ content the transcript renders live and after reload.
   settles after route exit; current-route failure instead transfers the one-shot
   snapshot into restoration. They never persist in a draft and travel inline
   within the staged-attachment size bound so the request fits the relay's message
-  limit. The owning plugin normalizes backend-produced images into a client-safe
-  attachment; host paths never cross that boundary.
+  limit. Existing-session picker and paste entry are absent while that chat's
+  harness is blocked; a completion racing the block cannot dispatch, and
+  the availability gate does not retain staged bytes. The owning plugin normalizes
+  backend-produced images into a client-safe attachment; host paths never cross
+  that boundary.
+- Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
+  Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
+  copies; a provider-local image path remains bounded metadata and is never opened or sent to a client.
 - GitHub Copilot's production descriptor advertises prompt attachments
   unconditionally, and the shared ACP mapper sends bounded inline image parts
   without renegotiating that declaration against initialization metadata. A
@@ -54,7 +60,11 @@ content the transcript renders live and after reload.
   account and attachment identities; raw account, bridge, session, and
   attachment identifiers never appear in cache paths. Only thumbnails persist,
   each account scope is pruned to 64 MiB after writes by oldest modification
-  time and then key, and reads do not refresh that order. Missing or corrupt
+  time and then key, and reads do not refresh that order. One shared
+  file-backed storage serves phone and desktop over each shell's temporary
+  directory lookup; writes land atomically through a uniquely named temporary
+  file, and a write interrupted by process death may leave that temporary file
+  behind, which metadata listing ignores. Missing or corrupt
   entries refetch, while logout and account switch fence late writes before
   deleting the retired account scope.
 - Live streaming and history replay converge: same image, same message and part
@@ -114,10 +124,10 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract's decode, size-bound, unknown-variant, typed stored-rendition request, scoped coalescing, timeout, sensitive-response redaction, persistent thumbnail cache, corruption recovery, bounded pruning, and auth cleanup behavior holds in its owning suites; composer picks and clipboard bytes share signature/size validation, and the desktop picker filters to supported raster extensions and preflights oversized files; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; stored thumbnails preserve aspect ratio while attachment collections retain center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, gate original actions, retry decode/load failures, and evict/release originals on close. Desktop adapter coverage verifies file-pick and file-save success/cancellation, pasteboard writes, and system-share file lifecycle. |
-| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. |
+| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved. |
+| L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, and desktop adapter coverage verifies file-pick and file-save success and cancellation, pasteboard writes, and system-share file lifecycle. |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
-| L4 Extended | Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. |
+| L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
 | L5 Full | Client end to end on alternate client platforms for picker, clipboard, animated formats, archive, and deletion; automated for an older bridge omitting attachment support; packaged or external for the released inline compatibility shape. Every supporting production plugin where supported. |
 
 ## Exploration Guidance
@@ -125,12 +135,18 @@ content the transcript renders live and after reload.
 Vary the image source (picker, clipboard, backend-generated, tool output, remote
 reference), raster format, collection size from one image to over the candidate
 limit, and bytes from small to over budget. Vary whether the transcript is seen
-live, after paging back, or after a reopen, and vary the plugin. For Copilot,
+live, after paging back, or after a reopen, and vary the plugin. For
+Antigravity, vary inline prompt images, standard provider image content,
+redundant raw image aliases, path-only metadata, mixed text/image output and
+live versus replay. For Copilot,
 vary a vision-capable selected model, a model that rejects images, and an
 account-level rejection without changing the descriptor's capability claim.
 
 ## Failure Signals
 
+- A blocked existing chat offers picker or paste submission; a late picker result
+  reaches the bridge; staged bytes survive solely because availability
+  recovered; or read-only mode prevents viewing existing transcript images.
 - An image renders live but is missing, duplicated, reordered, or re-identified
   after reload.
 - A host path, unsafe or unnormalized source URI, or raw attachment payload
@@ -157,6 +173,8 @@ account-level rejection without changing the descriptor's capability claim.
   decode succeeds, or retains original bytes/provider cache entries after closing.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
+- Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard
+  image, diverges between live and replay, or bypasses existing count/byte/type limits.
 - Copilot advertises images but drops the ACP image part, accepts it with the
   wrong selected model, or hides a model/account rejection.
 - Failed creation loses, duplicates, or persists submitted attachment bytes;
@@ -172,6 +190,8 @@ account-level rejection without changing the descriptor's capability claim.
 - Markdown inline image URLs use the platform network image loader for HTTP and
   HTTPS and do not pass through the guarded attachment loader; they are not
   covered by the remote-attachment guarantee.
+- Antigravity native prompt-image acceptance and Google-generated image behavior remain unverified; account or
+  model rejection must stay visible and does not justify reading path-only provider output.
 - Copilot does not negotiate its descriptor's attachment support against the
   initialized CLI capability. Image acceptance can vary by selected model and
   account entitlement; a visible upstream rejection is expected coverage, not a
@@ -186,8 +206,8 @@ account-level rejection without changing the descriptor's capability claim.
 ## Sources
 
 Shared attachment variants, budgets, safe-URI rules, and prompt part shapes;
-per-plugin image mappers, including Cursor generated-image reading, the shared
-ACP image mapping used by Copilot, and descriptor capability declarations;
+per-plugin image mappers, including Cursor generated-image reading, Antigravity raw-alias normalization, the shared
+ACP image mapping used by Antigravity and Copilot, and descriptor capability declarations;
 shared client composer validation, attachment cache, loader, viewer, and
 surface tests under `client/module_core` and `client/module_app_ui`; mobile
 picker, voice, and keyboard composition under `client/app`; and desktop picker,

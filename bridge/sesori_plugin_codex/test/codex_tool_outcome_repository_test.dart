@@ -169,6 +169,9 @@ class const _FixedClock() extends ServerClock {
 }
 
 class _MemoryHostJsonStore() implements HostJsonStore {
+  @override
+  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
+
   final Map<String, String> files = {};
 
   @override

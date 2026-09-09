@@ -4,35 +4,66 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "plugin_generation_factory.dart";
+import "plugin_generation_residency.dart";
 
-enum PluginRuntimeAccessGate() { enabled, draining, disabled }
+export "plugin_generation_residency.dart";
+
+enum PluginRuntimeAccessGate() {
+  enabled,
+  draining,
+  disabled,
+}
 
 class const PluginRuntimeAccess({
-    required final String pluginId,
-    required final PluginRuntimeAccessGate gate,
-    required final bool startAllowed,
-  });
+  required final String pluginId,
+  required final PluginRuntimeAccessGate gate,
+  required final bool startAllowed,
+});
 
-enum PluginRuntimeState() { disabled, blocked, dormant, starting, active, degraded, stopping, failed }
+enum PluginRuntimeState() {
+  disabled,
+  blocked,
+  dormant,
+  starting,
+  active,
+  degraded,
+  stopping,
+  failed,
+}
 
-enum PluginRuntimeTransition() { none, starting, stopping, restarting }
+enum PluginRuntimeTransition() {
+  none,
+  starting,
+  stopping,
+  restarting,
+}
 
-enum PluginStopIntent() { safe, force }
+enum PluginStopIntent() {
+  safe,
+  force,
+}
 
-enum PluginRuntimeConflictReason() { inFlight, busy, workStateUnknown, transitioning, notEligible }
+enum PluginRuntimeConflictReason() {
+  inFlight,
+  busy,
+  workStateUnknown,
+  transitioning,
+  notEligible,
+}
 
 class const PluginRuntimeSnapshot({
-    required final String pluginId,
-    required final PluginProjectOwnership projectOwnership,
-    required final PluginSetupStatus setup,
-    required final PluginRuntimeAccessGate accessGate,
-    required final bool startAllowed,
-    required final int? generation,
-    required final PluginRuntimeState state,
-    required final PluginWorkState workState,
-    required final int leaseCount,
-    required final PluginRuntimeTransition transition,
-  });
+  required final String pluginId,
+  required final PluginProjectOwnership projectOwnership,
+  required final PluginSetupStatus setup,
+  required final PluginRuntimeAccessGate accessGate,
+  required final bool startAllowed,
+  required final int? generation,
+  required final PluginRuntimeState state,
+  required final PluginWorkState workState,
+  required final int leaseCount,
+  required final PluginRuntimeTransition transition,
+  required final PluginGenerationResidency? generationResidency,
+});
 
 typedef SourcedPluginRuntimeEvent = ({
   String pluginId,
@@ -43,7 +74,45 @@ typedef SourcedPluginRuntimeEvent = ({
 });
 typedef SourcedPluginProvisionProgress = ({String pluginId, RuntimeProvisionProgress event});
 
-class const PluginRuntimeAuthenticationOperation({required final Stream<PluginAuthenticationEvent> events, required final void Function() abort});
+class const PluginRuntimeAuthenticationOperation({
+  required final Stream<PluginAuthenticationEvent> events,
+  required final void Function() abort,
+  required final int generation,
+});
+
+enum PluginRuntimeAuthenticationContinuationConflictReason() {
+  staleGeneration,
+  wrongKind,
+  alreadySubmitted,
+}
+
+sealed class const PluginRuntimeAuthenticationContinuationResult();
+
+final class const PluginRuntimeAuthenticationContinuationApplied()
+    extends PluginRuntimeAuthenticationContinuationResult;
+
+final class const PluginRuntimeAuthenticationContinuationConflict({
+  required final PluginRuntimeAuthenticationContinuationConflictReason reason,
+}) extends PluginRuntimeAuthenticationContinuationResult;
+
+abstract interface class PluginCatalogImportAuthority();
+
+sealed class const PluginCatalogImportSource({
+  required final PluginCatalogImportAuthority authority,
+  required final PluginCatalogCancellationSignal cancellation,
+});
+
+final class const PluginCatalogImportLiveSource({
+  required super.authority,
+  required super.cancellation,
+  required final BridgePluginApi api,
+}) extends PluginCatalogImportSource;
+
+final class const PluginCatalogImportSnapshotSource({
+  required super.authority,
+  required super.cancellation,
+  required final PluginCatalogSnapshot snapshot,
+}) extends PluginCatalogImportSource;
 
 sealed class const PluginRuntimeCommandResult({required final PluginRuntimeSnapshot snapshot});
 
@@ -51,18 +120,22 @@ final class const PluginRuntimeCommandApplied({required super.snapshot}) extends
 
 final class const PluginRuntimeCommandCurrent({required super.snapshot}) extends PluginRuntimeCommandResult;
 
-final class const PluginRuntimeCommandConflict({required super.snapshot, required final List<PluginRuntimeConflictReason> reasons}) extends PluginRuntimeCommandResult;
+final class const PluginRuntimeCommandConflict({
+  required super.snapshot,
+  required final List<PluginRuntimeConflictReason> reasons,
+}) extends PluginRuntimeCommandResult;
 
-final class const PluginRuntimeCommandFailed({required super.snapshot, required final String message}) extends PluginRuntimeCommandResult;
+final class const PluginRuntimeCommandFailed({required super.snapshot, required final String message})
+    extends PluginRuntimeCommandResult;
 
 class PluginRuntime({
-    required List<PluginRuntimeRegistration> registrations,
-    required final PluginGenerationFactory _generationFactory,
-    required final HostProcessService _setupProcesses,
-    required Map<String, String> environment,
-    required final ServerClock _clock,
-    required final Duration _shutdownBudget,
-  }) {
+  required List<PluginRuntimeRegistration> registrations,
+  required final PluginGenerationFactory _generationFactory,
+  required final HostProcessService _setupProcesses,
+  required Map<String, String> environment,
+  required final ServerClock _clock,
+  required final Duration _shutdownBudget,
+}) {
   this {
     if (_slots.length != registrations.length) {
       throw ArgumentError.value(registrations, "registrations", "must not contain duplicate plugin ids");
@@ -72,9 +145,9 @@ class PluginRuntime({
 
   final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
   final Map<String, _PluginRuntimeSlot> _slots = <String, _PluginRuntimeSlot>{
-         for (final registration in registrations)
-           registration.descriptor.id: _PluginRuntimeSlot(registration: registration),
-       };
+    for (final registration in registrations)
+      registration.descriptor.id: _PluginRuntimeSlot(registration: registration),
+  };
   late final BehaviorSubject<List<PluginRuntimeSnapshot>> _snapshotsSubject;
   final ReplaySubject<SourcedPluginRuntimeEvent> _backendEventsSubject = ReplaySubject<SourcedPluginRuntimeEvent>(
     maxSize: 1024,
@@ -179,6 +252,10 @@ class PluginRuntime({
   /// state — the caller re-inspects setup after a terminal [ProvisionReady].
   /// A shutdown aborts the install cooperatively via the returned stream's
   /// abort signal.
+  ///
+  /// An install may overlap a generation running from an older managed runtime
+  /// version, so the descriptor also receives the slot's live in-use fact to
+  /// gate its cleanup.
   Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) async* {
     final slot = _requireSlot(pluginId);
     if (_shuttingDown) {
@@ -194,36 +271,117 @@ class PluginRuntime({
         environment: _environment,
         stateDirectory: slot.registration.stateDirectory,
         startAborted: abortController.signal,
+        runtimeInUse: _SlotRuntimeInUseSignal(slot: slot),
       );
     } finally {
       _installAbortControllers.remove(abortController);
     }
   }
 
+  /// Whether a bridge start should install this plugin's pinned managed runtime
+  /// in the background because Sesori already manages an older one.
+  ///
+  /// The descriptor owns the decision and answers from configuration and its
+  /// state directory alone — no probing, no process spawning, no network.
+  bool needsManagedRuntimeUpgrade({required String pluginId}) {
+    final slot = _requireSlot(pluginId);
+    return slot.registration.descriptor.needsManagedRuntimeUpgrade(
+      config: slot.registration.config,
+      stateDirectory: slot.registration.stateDirectory,
+    );
+  }
+
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) {
     final slot = _requireSlot(pluginId);
     if (_shuttingDown) throw const PluginStartAbortedException();
+    if (slot.authentication != null) {
+      throw StateError('Plugin "$pluginId" already has an active authentication operation.');
+    }
     final descriptor = slot.registration.descriptor;
     if (descriptor is! InteractivePluginAuthenticationDescriptor) {
       throw StateError('Plugin "$pluginId" does not support interactive authentication.');
     }
     final authenticationDescriptor = descriptor as InteractivePluginAuthenticationDescriptor;
     final abortController = StartAbortController();
+    final descriptorOperation = authenticationDescriptor.authenticate(
+      config: slot.registration.config,
+      processes: _setupProcesses,
+      environment: _environment,
+      stateDirectory: slot.registration.stateDirectory,
+      store: slot.registration.store,
+      aborted: abortController.signal,
+    );
+    final authentication = _PluginRuntimeAuthentication(
+      generation: ++slot.authenticationGeneration,
+      abortController: abortController,
+      operation: descriptorOperation,
+    );
+    slot.authentication = authentication;
     _authenticationAbortControllers.add(abortController);
     final events = (() async* {
       try {
-        yield* authenticationDescriptor.authenticate(
-          config: slot.registration.config,
-          processes: _setupProcesses,
-          environment: _environment,
-          stateDirectory: slot.registration.stateDirectory,
-          aborted: abortController.signal,
-        );
+        yield* descriptorOperation.events;
       } finally {
+        authentication.acceptingContinuations = false;
         _authenticationAbortControllers.remove(abortController);
+        if (identical(slot.authentication, authentication)) {
+          slot.authentication = null;
+        }
       }
     })();
-    return PluginRuntimeAuthenticationOperation(events: events, abort: abortController.abort);
+    return PluginRuntimeAuthenticationOperation(
+      events: events,
+      abort: () => _abortAuthentication(slot: slot, authentication: authentication),
+      generation: authentication.generation,
+    );
+  }
+
+  Future<PluginRuntimeAuthenticationContinuationResult> submitAuthenticationRedirect({
+    required String pluginId,
+    required int generation,
+    required Uri redirectUri,
+  }) async {
+    final slot = _requireSlot(pluginId);
+    final authentication = slot.authentication;
+    if (_shuttingDown ||
+        authentication == null ||
+        authentication.generation != generation ||
+        !authentication.acceptingContinuations) {
+      return const PluginRuntimeAuthenticationContinuationConflict(
+        reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+      );
+    }
+    switch (authentication.operation) {
+      case PluginAuthenticationDeviceCodeOperation():
+        return const PluginRuntimeAuthenticationContinuationConflict(
+          reason: PluginRuntimeAuthenticationContinuationConflictReason.wrongKind,
+        );
+      case PluginAuthenticationBrowserOperation(:final submitRedirect):
+        if (authentication.redirectSubmitted) {
+          return const PluginRuntimeAuthenticationContinuationConflict(
+            reason: PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted,
+          );
+        }
+        authentication.redirectSubmitted = true;
+        await submitRedirect(redirectUri: redirectUri);
+        if (_shuttingDown || authentication.aborted) {
+          return const PluginRuntimeAuthenticationContinuationConflict(
+            reason: PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration,
+          );
+        }
+        return const PluginRuntimeAuthenticationContinuationApplied();
+    }
+  }
+
+  void _abortAuthentication({
+    required _PluginRuntimeSlot slot,
+    required _PluginRuntimeAuthentication authentication,
+  }) {
+    authentication.aborted = true;
+    if (identical(slot.authentication, authentication)) {
+      authentication.acceptingContinuations = false;
+    }
+    authentication.abortController.abort();
   }
 
   void applyAccess({required List<PluginRuntimeAccess> entries}) {
@@ -242,7 +400,10 @@ class PluginRuntime({
   }
 
   Future<void> startEager({required List<String> pluginIds}) async {
-    await Future.wait([for (final pluginId in pluginIds) _ensureStarted(slot: _requireSlot(pluginId))]);
+    await Future.wait([
+      for (final pluginId in pluginIds)
+        _ensureStarted(slot: _requireSlot(pluginId), residency: PluginGenerationResidency.normal),
+    ]);
   }
 
   Future<T> use<T>({
@@ -256,7 +417,12 @@ class PluginRuntime({
     required Enum operation,
     required Future<T> Function(BridgePluginApi api) body,
   }) async {
-    final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
+    final lease = await _acquire(
+      pluginId: pluginId,
+      operation: operation,
+      startIfNeeded: true,
+      acquisitionResidency: PluginGenerationResidency.normal,
+    );
     try {
       final result = await body(lease.api);
       _requireCurrentGeneration(lease: lease, operation: operation);
@@ -280,7 +446,12 @@ class PluginRuntime({
     required Future<P> Function(BridgePluginApi api) prepare,
     required Future<R> Function(P prepared, int generation) commit,
   }) async {
-    final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
+    final lease = await _acquire(
+      pluginId: pluginId,
+      operation: operation,
+      startIfNeeded: true,
+      acquisitionResidency: PluginGenerationResidency.normal,
+    );
     var commitProtected = false;
     try {
       final prepared = await prepare(lease.api);
@@ -334,9 +505,191 @@ class PluginRuntime({
     }
   }
 
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) async* {
+    final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
+    if (_shuttingDown) {
+      throw PluginOperationException(operation.name, statusCode: 503, message: "bridge is shutting down");
+    }
+    if (slot.accessGate != PluginRuntimeAccessGate.enabled || !slot.startAllowed) {
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is unavailable");
+    }
+
+    if (slot.plugin != null || slot.startFuture != null) {
+      yield* _useStream(
+        pluginId: pluginId,
+        operation: operation,
+        acquisitionResidency: PluginGenerationResidency.importOnly,
+        body: (api, generation) => body(
+          PluginCatalogImportLiveSource(
+            authority: _LiveCatalogImportAuthority(slot: slot, generation: generation, api: api),
+            cancellation: cancellation,
+            api: api,
+          ),
+        ),
+      );
+      return;
+    }
+    if (_blocksAcquisition(slot) || slot.catalogSnapshotPermit != null) {
+      throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
+    }
+
+    final permit = _CatalogSnapshotPermit(slot: slot);
+    slot
+      ..catalogSnapshotPermit = permit
+      ..leaseCount += 1;
+    Future<void> cancelPermit() {
+      permit.cancelled = true;
+      return permit.settled.future;
+    }
+
+    slot.operationStreamCancellations.add(cancelPermit);
+    _publishSnapshots();
+
+    final combinedCancellation = _CombinedCatalogCancellationSignal(external: cancellation, permit: permit);
+    PluginCatalogSnapshotResult result;
+    try {
+      result = await slot.registration.descriptor.readCatalogSnapshot(
+        config: slot.registration.config,
+        environment: _environment,
+        cancellation: combinedCancellation,
+      );
+    } on PluginStartAbortedException {
+      if (!permit.cancelled && !cancellation.isCancelled) {
+        _releaseCatalogSnapshotPermit(permit: permit, cancellation: cancelPermit);
+        rethrow;
+      }
+      result = const PluginCatalogSnapshotUnavailable();
+    } on Object catch (error, stackTrace) {
+      Log.w('Plugin "$pluginId" pre-start catalog snapshot failed; using live import', error, stackTrace);
+      result = const PluginCatalogSnapshotUnavailable();
+    }
+
+    try {
+      if (permit.cancelled || cancellation.isCancelled) return;
+      switch (result) {
+        case PluginCatalogSnapshotAvailable(:final snapshot):
+          yield* body(
+            PluginCatalogImportSnapshotSource(
+              authority: _SnapshotCatalogImportAuthority(permit: permit),
+              cancellation: combinedCancellation,
+              snapshot: snapshot,
+            ),
+          );
+          return;
+        case PluginCatalogSnapshotUnavailable():
+          break;
+      }
+    } finally {
+      _releaseCatalogSnapshotPermit(permit: permit, cancellation: cancelPermit);
+    }
+
+    if (permit.cancelled || cancellation.isCancelled) return;
+    yield* _useStream(
+      pluginId: pluginId,
+      operation: operation,
+      acquisitionResidency: PluginGenerationResidency.importOnly,
+      body: (api, generation) => body(
+        PluginCatalogImportLiveSource(
+          authority: _LiveCatalogImportAuthority(slot: slot, generation: generation, api: api),
+          cancellation: cancellation,
+          api: api,
+        ),
+      ),
+    );
+  }
+
+  void requireCatalogImportAuthority({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+  }) {
+    switch (authority) {
+      case _LiveCatalogImportAuthority(:final slot, :final generation, :final api):
+        final pluginId = slot.registration.descriptor.id;
+        requireCurrentGeneration(pluginId: pluginId, generation: generation, operation: operation);
+        if (!identical(slot.plugin?.api, api)) {
+          throw PluginOperationException(
+            operation.name,
+            statusCode: 503,
+            message: "plugin generation changed during catalog import",
+          );
+        }
+      case _SnapshotCatalogImportAuthority(:final permit):
+        final slot = permit.slot;
+        if (_shuttingDown ||
+            permit.cancelled ||
+            !identical(slot.catalogSnapshotPermit, permit) ||
+            slot.accessGate != PluginRuntimeAccessGate.enabled ||
+            !slot.startAllowed) {
+          throw PluginOperationException(
+            operation.name,
+            statusCode: 503,
+            message: "plugin catalog snapshot authority changed during import",
+          );
+        }
+      default:
+        throw ArgumentError.value(authority, "authority", "was not issued by this runtime");
+    }
+  }
+
+  Future<R> commitCatalogImport<R>({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) async {
+    requireCatalogImportAuthority(authority: authority, operation: operation);
+    switch (authority) {
+      case _LiveCatalogImportAuthority(:final slot, :final generation):
+        return await commitCurrentGeneration(
+          pluginId: slot.registration.descriptor.id,
+          generation: generation,
+          operation: operation,
+          commit: commit,
+        );
+      case _SnapshotCatalogImportAuthority(:final permit):
+        final slot = permit.slot;
+        slot.durableCommitCount++;
+        try {
+          return await commit();
+        } finally {
+          _endDurableCommit(slot);
+        }
+      default:
+        throw ArgumentError.value(authority, "authority", "was not issued by this runtime");
+    }
+  }
+
+  void _releaseCatalogSnapshotPermit({
+    required _CatalogSnapshotPermit permit,
+    required Future<void> Function() cancellation,
+  }) {
+    final slot = permit.slot;
+    slot.operationStreamCancellations.remove(cancellation);
+    if (identical(slot.catalogSnapshotPermit, permit)) slot.catalogSnapshotPermit = null;
+    if (slot.leaseCount > 0) slot.leaseCount--;
+    if (!permit.settled.isCompleted) permit.settled.complete();
+    _publishSnapshots();
+  }
+
   Stream<T> useStream<T>({
     required String pluginId,
     required Enum operation,
+    required Stream<T> Function(BridgePluginApi api, int generation) body,
+  }) => _useStream(
+    pluginId: pluginId,
+    operation: operation,
+    acquisitionResidency: PluginGenerationResidency.normal,
+    body: body,
+  );
+
+  Stream<T> _useStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginGenerationResidency acquisitionResidency,
     required Stream<T> Function(BridgePluginApi api, int generation) body,
   }) {
     StreamSubscription<T>? sourceSubscription;
@@ -403,7 +756,12 @@ class PluginRuntime({
     controller = StreamController<T>(
       onListen: () async {
         try {
-          final acquired = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: true);
+          final acquired = await _acquire(
+            pluginId: pluginId,
+            operation: operation,
+            startIfNeeded: true,
+            acquisitionResidency: acquisitionResidency,
+          );
           lease = acquired;
           if (cancelled) {
             releaseLease();
@@ -455,7 +813,12 @@ class PluginRuntime({
   }) async {
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
     if (!_isRoutable(slot)) return null;
-    final lease = await _acquire(pluginId: pluginId, operation: operation, startIfNeeded: false);
+    final lease = await _acquire(
+      pluginId: pluginId,
+      operation: operation,
+      startIfNeeded: false,
+      acquisitionResidency: PluginGenerationResidency.importOnly,
+    );
     try {
       final result = await body(lease.api, lease.generation);
       _requireCurrentGeneration(lease: lease, operation: operation);
@@ -517,6 +880,13 @@ class PluginRuntime({
         reasons: const [PluginRuntimeConflictReason.transitioning],
       );
     }
+    if (slot.catalogSnapshotPermit != null) {
+      return PluginRuntimeCommandConflict(
+        snapshot: _snapshotFor(slot),
+        reasons: const [PluginRuntimeConflictReason.inFlight],
+      );
+    }
+    _promoteGenerationResidency(slot);
     if (_isRoutable(slot)) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
     if (slot.transition != PluginRuntimeTransition.none && slot.transition != PluginRuntimeTransition.starting) {
       return PluginRuntimeCommandConflict(
@@ -524,7 +894,7 @@ class PluginRuntime({
         reasons: const [PluginRuntimeConflictReason.transitioning],
       );
     }
-    final plugin = await _ensureStarted(slot: slot);
+    final plugin = await _ensureStarted(slot: slot, residency: PluginGenerationResidency.normal);
     if (plugin == null || !_isRoutable(slot)) {
       return PluginRuntimeCommandFailed(snapshot: _snapshotFor(slot), message: "plugin failed to start");
     }
@@ -537,7 +907,7 @@ class PluginRuntime({
   }) async {
     final slot = _requireSlot(pluginId);
     if (_stopPreconditionConflict(slot: slot, intent: intent) case final conflict?) return conflict;
-    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    final hadPlugin = slot.plugin != null || slot.startFuture != null || slot.catalogSnapshotPermit != null;
     if (!hadPlugin) return PluginRuntimeCommandCurrent(snapshot: _snapshotFor(slot));
 
     final generationLabel = slot.generation?.toString() ?? "pending";
@@ -581,7 +951,7 @@ class PluginRuntime({
   }) async {
     final slot = _requireSlot(pluginId);
     if (_stopPreconditionConflict(slot: slot, intent: intent) case final conflict?) return conflict;
-    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    final hadPlugin = slot.plugin != null || slot.startFuture != null || slot.catalogSnapshotPermit != null;
     slot.accessGate = PluginRuntimeAccessGate.draining;
     slot.setupInspectionRevision++;
     _publishSnapshots();
@@ -672,6 +1042,7 @@ class PluginRuntime({
           slot: slot,
           transition: PluginRuntimeTransition.restarting,
           clearTransitionOnSettle: false,
+          residency: PluginGenerationResidency.normal,
         );
         if (!_ownsCommandTransition(slot: slot, commandTransition: commandTransition)) {
           return PluginRuntimeCommandConflict(
@@ -731,7 +1102,7 @@ class PluginRuntime({
         reasons: const [PluginRuntimeConflictReason.transitioning],
       );
     }
-    final hadPlugin = slot.plugin != null || slot.startFuture != null;
+    final hadPlugin = slot.plugin != null || slot.startFuture != null || slot.catalogSnapshotPermit != null;
     final hasLiveGeneration = slot.plugin != null;
     if (intent == PluginStopIntent.safe && hadPlugin && slot.leaseCount > 0) {
       return PluginRuntimeCommandConflict(
@@ -939,7 +1310,17 @@ class PluginRuntime({
     required _PluginRuntimeSlot slot,
     required PluginStopIntent intent,
   }) async {
-    if (intent == PluginStopIntent.force) slot.startAbortController?.abort();
+    var dormantSnapshotBarrierAttempted = false;
+    if (intent == PluginStopIntent.force) {
+      slot.startAbortController?.abort();
+      if (slot.plugin == null && slot.catalogSnapshotPermit != null) {
+        dormantSnapshotBarrierAttempted = true;
+        await _drainForcedStopBarrier(
+          slot: slot,
+          budgetElapsed: Stopwatch()..start(),
+        );
+      }
+    }
     Object? startError;
     StackTrace? startStackTrace;
     try {
@@ -979,7 +1360,7 @@ class PluginRuntime({
           );
         }
       }
-    } else {
+    } else if (!dormantSnapshotBarrierAttempted) {
       await _waitForDurableCommits(slot);
     }
     slot
@@ -1114,22 +1495,33 @@ class PluginRuntime({
     return remaining;
   }
 
+  void _promoteGenerationResidency(_PluginRuntimeSlot slot) {
+    final controller = slot.residencyController;
+    if (controller == null || controller.value == PluginGenerationResidency.normal) return;
+    controller.promoteToNormal();
+    _publishSnapshots();
+  }
+
   Future<_PluginLease> _acquire({
     required String pluginId,
     required Enum operation,
     required bool startIfNeeded,
+    required PluginGenerationResidency acquisitionResidency,
   }) async {
     if (_shuttingDown) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "bridge is shutting down");
     }
     final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
+    if (acquisitionResidency == PluginGenerationResidency.normal) _promoteGenerationResidency(slot);
     if (slot.accessGate != PluginRuntimeAccessGate.enabled || !slot.startAllowed) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is unavailable");
     }
     if (_blocksAcquisition(slot)) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
     }
-    if (!_isRoutable(slot) && startIfNeeded) await _ensureStarted(slot: slot);
+    if (!_isRoutable(slot) && startIfNeeded) {
+      await _ensureStarted(slot: slot, residency: acquisitionResidency);
+    }
     if (_blocksAcquisition(slot)) {
       throw PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is transitioning");
     }
@@ -1202,20 +1594,26 @@ class PluginRuntime({
     }
   }
 
-  Future<BridgePlugin?> _ensureStarted({required _PluginRuntimeSlot slot}) {
+  Future<BridgePlugin?> _ensureStarted({
+    required _PluginRuntimeSlot slot,
+    required PluginGenerationResidency residency,
+  }) {
+    if (residency == PluginGenerationResidency.normal) _promoteGenerationResidency(slot);
     if (_isRoutable(slot)) return Future<BridgePlugin?>.value(slot.plugin);
     final existing = slot.startFuture;
     if (existing != null) return existing;
     if (_shuttingDown ||
         slot.accessGate != PluginRuntimeAccessGate.enabled ||
         !slot.startAllowed ||
-        slot.transition != PluginRuntimeTransition.none) {
+        slot.transition != PluginRuntimeTransition.none ||
+        slot.catalogSnapshotPermit != null) {
       return Future<BridgePlugin?>.value();
     }
     return _beginStart(
       slot: slot,
       transition: PluginRuntimeTransition.starting,
       clearTransitionOnSettle: true,
+      residency: residency,
     );
   }
 
@@ -1223,13 +1621,17 @@ class PluginRuntime({
     required _PluginRuntimeSlot slot,
     required PluginRuntimeTransition transition,
     required bool clearTransitionOnSettle,
+    required PluginGenerationResidency residency,
   }) {
     final pluginId = slot.registration.descriptor.id;
     final generation = (slot.generation ?? 0) + 1;
     Log.d('Starting plugin "$pluginId" generation $generation at ${_clock.now().toIso8601String()}');
     final abortController = StartAbortController();
+    if (slot.residencyController case final previous?) unawaited(previous.dispose());
+    final residencyController = PluginGenerationResidencyController(initial: residency);
     slot
       ..generation = generation
+      ..residencyController = residencyController
       ..transition = transition
       ..state = PluginRuntimeState.starting
       ..workState = PluginWorkState.unknown
@@ -1265,6 +1667,7 @@ class PluginRuntime({
       await for (final event in _generationFactory.start(
         registration: slot.registration,
         startAborted: abortController.signal,
+        residency: slot.residencyController!,
       )) {
         switch (event) {
           case PluginGenerationProvisionProgress(:final event):
@@ -1360,6 +1763,7 @@ class PluginRuntime({
       );
       _applyStatus(slot: slot, generation: generation, status: started.currentStatus);
       Log.d('Plugin "$pluginId" generation $generation started (${slot.state.name})');
+      _runStartWarmUp(pluginId: pluginId, plugin: started);
       return started;
     } on PluginStartAbortedException {
       slot.state = PluginRuntimeState.failed;
@@ -1383,6 +1787,17 @@ class PluginRuntime({
       await _discardStartedPlugin(slot: slot, pluginId: pluginId, plugin: started);
       return null;
     }
+  }
+
+  /// Starts the plugin's own warm-up without joining it to the start: nothing
+  /// waits on it, so a slow or failing warm-up must not delay the request that
+  /// triggered the start or retire a healthy generation.
+  void _runStartWarmUp({required String pluginId, required BridgePlugin plugin}) {
+    unawaited(
+      Future<void>.sync(plugin.onStarted).catchError((Object error, StackTrace stackTrace) {
+        Log.w('Plugin "$pluginId" start warm-up failed', error, stackTrace);
+      }),
+    );
   }
 
   Future<void> _discardStartedPlugin({
@@ -1614,6 +2029,8 @@ class PluginRuntime({
     }
     try {
       await plugin?.shutdown(budget: _shutdownBudget);
+      await slot.residencyController?.dispose();
+      slot.residencyController = null;
     } on Object catch (error, stackTrace) {
       firstError ??= error;
       firstStackTrace ??= stackTrace;
@@ -1634,6 +2051,7 @@ class PluginRuntime({
   }
 
   bool _blocksAcquisition(_PluginRuntimeSlot slot) {
+    if (slot.catalogSnapshotPermit != null) return true;
     return switch (slot.transition) {
       PluginRuntimeTransition.none || PluginRuntimeTransition.starting => false,
       PluginRuntimeTransition.stopping || PluginRuntimeTransition.restarting => true,
@@ -1683,6 +2101,7 @@ class PluginRuntime({
       workState: slot.workState,
       leaseCount: slot.leaseCount,
       transition: slot.transition,
+      generationResidency: slot.residencyController?.value,
     );
   }
 
@@ -1711,6 +2130,10 @@ class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}
   Future<BridgePlugin?>? startFuture;
   Future<void>? cleanupFuture;
   StartAbortController? startAbortController;
+  PluginGenerationResidencyController? residencyController;
+  _CatalogSnapshotPermit? catalogSnapshotPermit;
+  int authenticationGeneration = 0;
+  _PluginRuntimeAuthentication? authentication;
   // ignore: cancel_subscriptions - generation ownership cancels these in PluginRuntime.
   StreamSubscription<PluginStatus>? statusSubscription;
   // ignore: cancel_subscriptions - generation ownership cancels these in PluginRuntime.
@@ -1721,4 +2144,51 @@ class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}
   final Set<Future<void> Function()> operationStreamCancellations = <Future<void> Function()>{};
 }
 
-class const _PluginLease({required final _PluginRuntimeSlot slot, required final int generation, required final BridgePluginApi api});
+/// Reports a slot's live generation to an in-flight managed-runtime install.
+///
+/// Read on each access rather than captured: a generation can start or stop
+/// while a download runs, and the installer only cares about the moment it
+/// decides whether to sweep. A starting generation counts — it has already
+/// resolved the binary path it will launch.
+class const _SlotRuntimeInUseSignal({required final _PluginRuntimeSlot _slot}) implements RuntimeInUseSignal {
+  @override
+  bool get isInUse => _slot.plugin != null || _slot.startFuture != null;
+}
+
+class _PluginRuntimeAuthentication({
+  required final int generation,
+  required final StartAbortController abortController,
+  required final PluginAuthenticationOperation operation,
+}) {
+  bool acceptingContinuations = true;
+  bool redirectSubmitted = false;
+  bool aborted = false;
+}
+
+class const _PluginLease({
+  required final _PluginRuntimeSlot slot,
+  required final int generation,
+  required final BridgePluginApi api,
+});
+
+final class _CatalogSnapshotPermit({required final _PluginRuntimeSlot slot}) {
+  bool cancelled = false;
+  final Completer<void> settled = Completer<void>();
+}
+
+final class const _LiveCatalogImportAuthority({
+  required final _PluginRuntimeSlot slot,
+  required final int generation,
+  required final BridgePluginApi api,
+}) implements PluginCatalogImportAuthority;
+
+final class const _SnapshotCatalogImportAuthority({required final _CatalogSnapshotPermit permit})
+    implements PluginCatalogImportAuthority;
+
+class const _CombinedCatalogCancellationSignal({
+  required final PluginCatalogCancellationSignal external,
+  required final _CatalogSnapshotPermit permit,
+}) implements PluginCatalogCancellationSignal {
+  @override
+  bool get isCancelled => external.isCancelled || permit.cancelled;
+}

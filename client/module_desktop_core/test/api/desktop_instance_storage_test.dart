@@ -66,6 +66,28 @@ void main() {
 
     expect(await storage.readWindowBounds(), isNull);
   });
+
+  test("attention notifications default to enabled", () async {
+    expect(await storage.readAttentionPreference(), DesktopAttentionPreference.enabled);
+  });
+
+  test("persists the desktop attention-notification preference", () async {
+    await storage.writeAttentionPreference(preference: DesktopAttentionPreference.disabled);
+
+    expect(await storage.readAttentionPreference(), DesktopAttentionPreference.disabled);
+    expect(
+      File(path.join(root.path, "desktop-instance", "attention-notifications")).readAsStringSync(),
+      "disabled",
+    );
+  });
+
+  test("invalid attention preferences safely default to enabled", () async {
+    final File file = File(path.join(root.path, "desktop-instance", "attention-notifications"));
+    file.createSync(recursive: true);
+    file.writeAsStringSync("not-a-preference");
+
+    expect(await storage.readAttentionPreference(), DesktopAttentionPreference.enabled);
+  });
 }
 
 class _FixedApplicationSupportDirectory({required final Directory directory})

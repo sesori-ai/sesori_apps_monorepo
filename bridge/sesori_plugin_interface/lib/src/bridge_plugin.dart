@@ -150,8 +150,10 @@ sealed class BridgePluginApi() {
   ///
   /// Dispatch failures (unknown command, missing session, backend down) MUST
   /// be thrown so callers can report the send as failed.
-  /// A no-longer-offered agent, model, or variant uses
-  /// [PluginStaleOptionsException], as documented by [sendPrompt].
+  /// A no-longer-offered command, agent, model, or variant uses
+  /// [PluginStaleOptionsException], as documented by [sendPrompt], so callers
+  /// can refresh the catalog instead of treating a deterministic rejection as
+  /// a transient transport failure.
   ///
   /// [promptId] carries the same identity contract as [sendPrompt]'s.
   ///
@@ -187,7 +189,12 @@ sealed class BridgePluginApi() {
   /// Stops the session's in-progress work. [subAgents] scopes the stop for
   /// plugins whose sessions run sub-agents; every other plugin ignores it and
   /// answers [PluginAbortAccepted].
-  Future<PluginAbortResult> abortSession({required String sessionId, required PluginAbortSubAgentPolicy subAgents});
+  Future<PluginAbortResult> abortSession({
+    required String sessionId,
+    required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
+  });
 
   /// Returns the agents available for the given project.
   ///

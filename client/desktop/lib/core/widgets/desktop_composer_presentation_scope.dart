@@ -17,6 +17,7 @@ class const DesktopComposerPresentationScope({
       // mobile voice-first preference must not turn into a dead voice control.
       inputMode: ChatInputMode.textFirst,
       isKeyboardVisible: false,
+      sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
       attachmentDispatcher: getIt.get<ComposerAttachmentDispatcher>,
       imageClipboard: getIt.get<ImageClipboard>,
       child: child,

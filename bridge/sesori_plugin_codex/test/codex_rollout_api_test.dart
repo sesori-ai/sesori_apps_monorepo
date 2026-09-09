@@ -10,6 +10,7 @@ import "package:codex_plugin/src/repositories/codex_message_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_image_attachment_mapper.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_user_content_mapper.dart";
 import "package:codex_plugin/src/repositories/models/codex_session_record.dart";
+import "package:codex_plugin/src/repositories/models/codex_thread_record.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -46,6 +47,91 @@ void main() {
       } catch (_) {
         // Best-effort cleanup.
       }
+    });
+
+    List<String> rolloutTurn({
+      required String id,
+      required bool includeShellTool,
+      required bool includeSpawnTool,
+    }) {
+      final toolName = includeSpawnTool ? "spawn_agent" : "exec_command";
+      final toolArguments = includeSpawnTool
+          ? jsonEncode({"task_name": "worker", "message": "Inspect the module"})
+          : jsonEncode({"cmd": "printf $id"});
+      return [
+        jsonEncode({
+          "type": "event_msg",
+          "payload": {"type": "task_started", "turn_id": "turn-$id"},
+        }),
+        jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "message",
+            "id": "user-$id",
+            "role": "user",
+            "content": [
+              {"type": "input_text", "text": "User $id"},
+            ],
+          },
+        }),
+        jsonEncode({
+          "type": "event_msg",
+          "payload": {"type": "user_message", "message": "User $id"},
+        }),
+        jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "reasoning",
+            "id": "reasoning-$id",
+            "summary": [
+              {"type": "summary_text", "text": "Reasoning $id"},
+            ],
+          },
+        }),
+        if (includeShellTool || includeSpawnTool) ...[
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call",
+              "id": "tool-item-$id",
+              "call_id": "call-$id",
+              "name": toolName,
+              "arguments": toolArguments,
+              "internal_chat_message_metadata_passthrough": {
+                "turn_id": "turn-$id",
+              },
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call_output",
+              "call_id": "call-$id",
+              "output": includeSpawnTool ? jsonEncode({"task_name": "/root/worker"}) : "output $id",
+            },
+          }),
+        ],
+        jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "message",
+            "id": "assistant-$id",
+            "role": "assistant",
+            "content": [
+              {"type": "output_text", "text": "Assistant $id"},
+            ],
+          },
+        }),
+        jsonEncode({
+          "type": "event_msg",
+          "payload": {"type": "task_complete", "turn_id": "turn-$id"},
+        }),
+      ];
+    }
+
+    String rollback({required int numTurns}) => jsonEncode({
+      "type": "event_msg",
+      "payload": {"type": "thread_rolled_back", "num_turns": numTurns},
     });
 
     test("readIndex returns empty when session_index.jsonl is missing", () {
@@ -967,6 +1053,7 @@ void main() {
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -988,6 +1075,118 @@ void main() {
       expect(messages[0].parts.last.id, "user-1-file-1");
       expect(messages[1].info.id, "assistant-1");
       expect(messages[1].parts.single.id, "assistant-1-text");
+    });
+
+    test("readMessages removes a rolled-back turn and keeps surrounding history", () {
+      const sessionId = "rollback-surrounding-history";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/09/09/rollout-rollback-surrounding-history.jsonl",
+        sessionId: sessionId,
+        cwd: "/repo/app",
+        cliVersion: "0.153.4",
+        extraLines: [
+          ...rolloutTurn(id: "kept", includeShellTool: true, includeSpawnTool: false),
+          ...rolloutTurn(id: "reverted", includeShellTool: true, includeSpawnTool: false),
+          rollback(numTurns: 1),
+          ...rolloutTurn(id: "appended", includeShellTool: false, includeSpawnTool: true),
+        ],
+      );
+      final read = messageRepository.prepareMessageRead(
+        rolloutPath: path,
+        sessionId: sessionId,
+      );
+
+      expect(read.hasSubtasks, isTrue);
+      final messages = messageRepository.projectMessages(
+        read: read,
+        sessionId: sessionId,
+        children: const [
+          CodexThreadRecord(
+            id: "child-1",
+            name: "Worker",
+            directory: "/repo/app",
+            createdAt: null,
+            updatedAt: null,
+            model: null,
+            modelProvider: null,
+            parentId: sessionId,
+            agentNickname: null,
+            agentPath: "/root/worker",
+          ),
+        ],
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+        childReplayDataById: const {},
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "user-kept",
+        "reasoning-kept",
+        "call-kept",
+        "assistant-kept",
+        "user-appended",
+        "reasoning-appended",
+        "call-appended",
+        "assistant-appended",
+      ]);
+      final visibleText = messages
+          .expand((message) => message.parts)
+          .whereType<PluginMessagePartText>()
+          .map(
+            (part) => part.text,
+          );
+      expect(visibleText, isNot(contains("User reverted")));
+      expect(visibleText, isNot(contains("Assistant reverted")));
+      expect(
+        messages.singleWhere((message) => message.info.id == "call-kept").parts.single.state.output,
+        "output kept",
+      );
+      final spawn = messages.singleWhere((message) => message.info.id == "call-appended").parts.single;
+      expect(spawn, isA<PluginMessagePartTool>(), reason: "missing activity must keep the generic spawn card");
+    });
+
+    test("readMessages applies repeated rollback counts to surviving user turns", () {
+      const sessionId = "rollback-cumulative-history";
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/09/09/rollout-rollback-cumulative-history.jsonl",
+        sessionId: sessionId,
+        cwd: "/repo/app",
+        cliVersion: "0.153.4",
+        extraLines: [
+          ...rolloutTurn(id: "1", includeShellTool: false, includeSpawnTool: false),
+          ...rolloutTurn(id: "2", includeShellTool: false, includeSpawnTool: false),
+          ...rolloutTurn(id: "3", includeShellTool: false, includeSpawnTool: true),
+          rollback(numTurns: 1),
+          ...rolloutTurn(id: "4", includeShellTool: false, includeSpawnTool: false),
+          rollback(numTurns: 2),
+          ...rolloutTurn(id: "5", includeShellTool: false, includeSpawnTool: false),
+        ],
+      );
+      final read = messageRepository.prepareMessageRead(
+        rolloutPath: path,
+        sessionId: sessionId,
+      );
+
+      expect(read.hasSubtasks, isFalse, reason: "the only spawn belonged to a rolled-back user turn");
+      final messages = messageRepository.projectMessages(
+        read: read,
+        sessionId: sessionId,
+        children: const [],
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+        childReplayDataById: const {},
+      );
+
+      expect(messages.map((message) => message.info.id), [
+        "user-1",
+        "reasoning-1",
+        "assistant-1",
+        "user-5",
+        "reasoning-5",
+        "assistant-5",
+      ]);
     });
 
     test("readMessages hides bridge context while preserving authored text and images", () {
@@ -1053,6 +1252,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1109,6 +1309,7 @@ authored arguments
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaad",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1158,6 +1359,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaae",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1204,6 +1406,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaac",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1241,6 +1444,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: sessionId,
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1373,6 +1577,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1449,6 +1654,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1489,6 +1695,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1537,12 +1744,14 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final firstRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
       final secondRead = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1600,12 +1809,14 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final busyMessages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
         structuredToolStatusByCallId: const {},
       );
       final idleMessages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1657,6 +1868,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1703,6 +1915,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1743,6 +1956,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1759,6 +1973,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         () => messageRepository.readMessages(
           rolloutPath: path,
           sessionId: sessionId,
+          children: const [],
           replayToolDisposition: CodexReplayToolDisposition.terminalize,
           structuredToolStatusByCallId: const {},
         ),
@@ -1827,6 +2042,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {
           "c2": PluginToolStatus.error,
@@ -2059,12 +2275,14 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
         structuredToolStatusByCallId: const {},
       );
       final idleMessages = messageRepository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -2097,6 +2315,57 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         (message) => message.info.id == "call-active",
       );
       expect(idleActiveCall.parts.single.state.status, PluginToolStatus.error);
+    });
+
+    test("async question acknowledgements do not become completed tool cards", () {
+      final path = _writeRollout(
+        codexHome,
+        path: "sessions/2026/09/07/rollout-async-question.jsonl",
+        sessionId: "async-question-thread",
+        cwd: "/repo/app",
+        cliVersion: "0.153.4",
+        extraLines: [
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "function_call",
+              "name": "request_user_input_async",
+              "call_id": "call-question",
+              "arguments": jsonEncode({
+                "questions": [
+                  {
+                    "title": "Which interface?",
+                    "options": ["Sesori", "CLI"],
+                  },
+                ],
+              }),
+            },
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {"type": "function_call_output", "call_id": "call-question", "output": '{"accepted":true}'},
+          }),
+          jsonEncode({
+            "type": "response_item",
+            "payload": {
+              "type": "message",
+              "id": "assistant",
+              "role": "assistant",
+              "content": [
+                {"type": "output_text", "text": "I will keep investigating."},
+              ],
+            },
+          }),
+        ],
+      );
+      final messages = messageRepository.readMessages(
+        rolloutPath: path,
+        sessionId: "async-question-thread",
+        children: const [],
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      );
+      expect(messages.single.parts.single.text, "I will keep investigating.");
     });
 
     test("readMessages restores current calls around malformed content items", () {
@@ -2174,6 +2443,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         messages = messageRepository.readMessages(
           rolloutPath: path,
           sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
+          children: const [],
           replayToolDisposition: CodexReplayToolDisposition.terminalize,
           structuredToolStatusByCallId: const {},
         );
@@ -2234,6 +2504,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           .readMessages(
             rolloutPath: path,
             sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+            children: const [],
             replayToolDisposition: CodexReplayToolDisposition.terminalize,
             structuredToolStatusByCallId: const {},
           )
@@ -2494,6 +2765,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-dddddddddddd",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -2540,6 +2812,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       final messages = repository.readMessages(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
+        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
         config: const CodexConfigDefaults(

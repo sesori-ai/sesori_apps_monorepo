@@ -67,7 +67,8 @@ void main() {
     expect(providers.providers.first.id, "custom");
     expect(providers.providers.first.defaultModelID, "custom/team/model-v2");
     expect(providers.providers.first.models.single.id, "custom/team/model-v2");
-    expect(providers.providers.first.models.single.variants, ["off", "high"]);
+    expect(providers.providers.first.models.single.variants, ["high", "off"]);
+    expect(providers.providers.first.models.single.defaultVariant, "off");
   });
 
   test("new sessions and reconnect clear stale shared configuration", () {
@@ -238,6 +239,10 @@ AcpNewSessionResult _result({required String model, required String mode, requir
 class _FakeConfigRepository() implements AcpSessionConfigRepository {
   final List<AcpNewSessionResult> results = [];
   final List<({String configId, String value})> writes = [];
+
+  @override
+  Future<void> setMode({required String sessionId, required String modeId}) =>
+      throw UnsupportedError("OMP options must not write ACP session modes");
 
   @override
   Future<AcpNewSessionResult?> setConfigOption({

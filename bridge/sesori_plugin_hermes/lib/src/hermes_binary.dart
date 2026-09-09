@@ -15,6 +15,7 @@ abstract final class HermesBinary() {
     required Map<String, String> environment,
   }) {
     return AcpLaunchSpec(
+      includeParentEnvironment: true,
       command: binary,
       args: const ["acp"],
       cwd: cwd,

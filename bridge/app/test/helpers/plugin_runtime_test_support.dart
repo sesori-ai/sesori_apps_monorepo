@@ -25,6 +25,7 @@ PluginRuntime createRegisteredTestPluginRuntime({required Iterable<String> plugi
           descriptor: _TestDescriptor(id: pluginId),
           config: const PluginConfig(values: {}),
           stateDirectory: ".",
+          store: const _UnusedHostJsonStore(),
         ),
     ],
     generationFactory: const _UnusedGenerationFactory(),
@@ -244,6 +245,60 @@ class TestPluginRuntime({
   }
 
   @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) {
+    final plugin = _plugins[pluginId];
+    if (plugin == null) {
+      return Stream.error(
+        PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running"),
+      );
+    }
+    return body(
+      PluginCatalogImportLiveSource(
+        authority: const _TestCatalogAuthority(),
+        cancellation: cancellation,
+        api: plugin,
+      ),
+    );
+  }
+
+  @override
+  void requireCatalogImportAuthority({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+  }) {
+    requireCurrentGeneration(
+      pluginId: _plugins.keys.single,
+      generation: currentGeneration,
+      operation: operation,
+    );
+  }
+
+  @override
+  Future<R> commitCatalogImport<R>({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) async {
+    requireCurrentGeneration(
+      pluginId: _plugins.keys.single,
+      generation: currentGeneration,
+      operation: operation,
+    );
+    final result = await commit();
+    requireCurrentGeneration(
+      pluginId: _plugins.keys.single,
+      generation: currentGeneration,
+      operation: operation,
+    );
+    return result;
+  }
+
+  @override
   Stream<T> useStream<T>({
     required String pluginId,
     required Enum operation,
@@ -287,6 +342,7 @@ class TestPluginRuntime({
       workState: PluginWorkState.idle,
       leaseCount: 0,
       transition: _transitions[plugin.id] ?? PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
   }
 }
@@ -308,6 +364,8 @@ class _AlwaysCurrentTestPluginRuntime() extends TestPluginRuntime {
   }) => generation == 1;
 }
 
+class const _TestCatalogAuthority() implements PluginCatalogImportAuthority;
+
 class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   @override
   Future<void> enforceBridgeOwnership() async {}
@@ -316,6 +374,7 @@ class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   Stream<PluginGenerationStartEvent> start({
     required PluginRuntimeRegistration registration,
     required StartAbortSignal startAborted,
+    required PluginGenerationResidencyController residency,
   }) => throw UnsupportedError("test runtime is already active");
 }
 
@@ -336,6 +395,29 @@ class const _TestDescriptor({@override required final String id}) extends Bridge
   Future<BridgePlugin> start(PluginHost host) => throw UnsupportedError("unused");
 }
 
+class const _UnusedHostJsonStore() implements HostJsonStore {
+  @override
+  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
+
+  @override
+  Future<void> delete({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> quarantine({required String name, required String quarantinedName}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> read({required String name}) => throw UnsupportedError("unused");
+
+  @override
+  Future<String?> update({
+    required String name,
+    required FutureOr<String?> Function(String? current) transform,
+  }) => throw UnsupportedError("unused");
+
+  @override
+  Future<void> write({required String name, required String contents}) => throw UnsupportedError("unused");
+}
+
 class const _UnusedHostProcessService() implements HostProcessService {
   @override
   Future<ProcessIdentity?> inspect({required int pid}) => throw UnsupportedError("unused");
@@ -353,5 +435,6 @@ class const _UnusedHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) => throw UnsupportedError("unused");
 }

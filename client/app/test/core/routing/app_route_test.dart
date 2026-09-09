@@ -15,8 +15,6 @@ import "package:sesori_mobile/features/session_detail/session_detail_screen.dart
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
 import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
 import "package:sesori_mobile/features/settings/harnesses_settings_screen.dart";
-import "package:sesori_mobile/features/settings/notification_settings_screen.dart";
-import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
 
@@ -171,51 +169,35 @@ void main() {
       expect(settingsPage.child, isA<SettingsScreen>());
     });
 
-    test("settings child routes build their screens without management nesting", () {
+    test("harness-only shell is a sibling of Settings with overview ancestry", () {
       final settingsRoute = buildAppRoutes().whereType<GoRoute>().singleWhere(
         (route) => route.path == AppRouteDef.settings.path,
       );
-      final children = settingsRoute.routes.whereType<GoRoute>().toList();
-
-      expect(
-        children.map((route) => route.path),
-        equals(["notifications", "harnesses", "profile"]),
+      final children = settingsRoute.routes;
+      expect((children[0] as GoRoute).path, "default-input");
+      expect((children[1] as GoRoute).path, "notifications");
+      expect((children[2] as GoRoute).path, "profile");
+      expect(children, hasLength(3));
+      final harnessShell = buildAppRoutes().whereType<ShellRoute>().singleWhere(
+        (shell) => shell.routes.whereType<GoRoute>().any((route) => route.path == AppRouteDef.settingsHarnesses.path),
       );
-      final notificationsWidget = children[0].builder!(_FakeBuildContext(), _FakeGoRouterState());
-      expect(notificationsWidget, isA<NotificationSettingsScreen>());
-      // Harnesses rise as a modal from the new-session harness menu and push
-      // in from the settings list, so the route builds its own page per
-      // presentation instead of taking the default push for both.
-      final harnessesModalPage = children[1].pageBuilder!(
+      final overview = harnessShell.routes.single as GoRoute;
+      expect(overview.path, AppRouteDef.settingsHarnesses.path);
+      expect((overview.routes.single as GoRoute).path, ":$pluginIdPathParam");
+      const child = SizedBox();
+      final modal = harnessShell.pageBuilder!(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "modal"}),
+        child,
       ) as CupertinoPage<void>;
-      expect(harnessesModalPage.fullscreenDialog, isTrue);
-      expect(harnessesModalPage.child, isA<HarnessesSettingsScreen>());
-      final harnessesPushedPage = children[1].pageBuilder!(
+      expect(modal.fullscreenDialog, isTrue);
+      expect(modal.child, isA<HarnessesSettingsScreen>());
+      final pushed = harnessShell.pageBuilder!(
         _FakeBuildContext(),
         _FakeGoRouterState(queryParameters: {harnessSettingsPresentationQueryParam: "pushed"}),
+        child,
       ) as MaterialPage<void>;
-      expect(harnessesPushedPage.child, isA<HarnessesSettingsScreen>());
-      expect(
-        (harnessesPushedPage.child as HarnessesSettingsScreen).presentation,
-        HarnessSettingsPresentation.pushed,
-      );
-      expect(children[1].routes, isEmpty);
-      final profileWidget = children[2].builder!(_FakeBuildContext(), _FakeGoRouterState());
-      expect(profileWidget, isA<ProfileScreen>());
-      expect(
-        _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[0].path),
-        AppRouteDef.settingsNotifications.path,
-      );
-      expect(
-        _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[1].path),
-        AppRouteDef.settingsHarnesses.path,
-      );
-      expect(
-        _composeRoutePath(parentPath: AppRouteDef.settings.path, path: children[2].path),
-        AppRouteDef.settingsProfile.path,
-      );
+      expect((pushed.child as HarnessesSettingsScreen).child, same(child));
     });
 
     test("newSession route builds NewSessionScreen", () {
@@ -248,7 +230,7 @@ void main() {
       expect("${AppRouteDef.sessionDetail.path}/diffs", AppRouteDef.sessionDiffs.path);
     });
 
-    test("keeps non-session routes flat and session routes nested under a ShellRoute", () {
+    test("keeps live sessions nested and modal flows in root shells", () {
       final routes = buildAppRoutes();
       final flatPaths = routes.whereType<GoRoute>().map((route) => route.path).toList();
       final shell = _sessionShellRoute();
@@ -269,9 +251,13 @@ void main() {
           AppRouteDef.newSession.path,
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
-          AppRouteDef.settings.path,
-          AppRouteDef.settingsNotifications.path,
+          AppRouteDef.archivedSessions.path,
+          AppRouteDef.archivedSessionDetail.path,
           AppRouteDef.settingsHarnesses.path,
+          AppRouteDef.settingsHarnessDetail.path,
+          AppRouteDef.settings.path,
+          AppRouteDef.settingsDefaultInput.path,
+          AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsProfile.path,
         ]),
       );
@@ -356,8 +342,8 @@ void main() {
     });
 
     group("nested route tree invariants", () {
-      test("registers exactly one shell route", () {
-        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(1));
+      test("registers separate live session, archive and harness shell routes", () {
+        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(3));
       });
 
       test("shell owns exactly one first-level session route", () {
@@ -531,7 +517,9 @@ List<ShellRoute> _collectShellRoutes({required List<RouteBase> routes}) {
   return shells;
 }
 
-ShellRoute _sessionShellRoute() => _collectShellRoutes(routes: buildAppRoutes()).single;
+ShellRoute _sessionShellRoute() =>
+    _collectShellRoutes(routes: buildAppRoutes())
+        .singleWhere((shell) => (shell.routes.first as GoRoute).path == ":$projectIdPathParam/sessions");
 
 String _composeRoutePath({required String parentPath, required String path}) {
   if (path.startsWith("/")) return path;

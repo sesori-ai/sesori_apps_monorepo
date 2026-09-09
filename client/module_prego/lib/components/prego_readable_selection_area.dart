@@ -3,13 +3,43 @@ import "package:material_ui/material_ui.dart";
 
 /// A selection area that preserves structural boundaries between text widgets
 /// when copying across them.
-class const PregoReadableSelectionArea({super.key, required final Widget child}) extends StatefulWidget {
+class const PregoReadableSelectionArea({
+  super.key,
+  required final Widget child,
+  final bool preserveEmptyLines = false,
+}) extends StatefulWidget {
+  /// Invisible selectable content used by callers that need a blank source
+  /// line to survive the selection-container boundary.
+  static const String emptyLineMarker = "\u200B";
+  static const String _escapedEmptyLineMarker = "$emptyLineMarker$emptyLineMarker";
+
+  /// Encodes source text for a selection area that preserves empty lines.
+  ///
+  /// Empty text becomes [emptyLineMarker]. Literal marker characters are
+  /// doubled so the delegate can distinguish them from that synthetic empty
+  /// line. Every selectable source line rendered inside a preserving area
+  /// should use this method.
+  static String encodeText({required String text}) {
+    if (text.isEmpty) return emptyLineMarker;
+    return text.replaceAll(emptyLineMarker, _escapedEmptyLineMarker);
+  }
+
   @override
   State<PregoReadableSelectionArea> createState() => _PregoReadableSelectionAreaState();
 }
 
 class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionArea> {
-  final _selectionDelegate = _ReadableSelectionContainerDelegate();
+  late final _selectionDelegate = _ReadableSelectionContainerDelegate(
+    preserveEmptyLines: widget.preserveEmptyLines,
+  );
+
+  @override
+  void didUpdateWidget(covariant PregoReadableSelectionArea oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.preserveEmptyLines != widget.preserveEmptyLines) {
+      _selectionDelegate.update(preserveEmptyLines: widget.preserveEmptyLines);
+    }
+  }
 
   @override
   void dispose() {
@@ -28,15 +58,27 @@ class _PregoReadableSelectionAreaState() extends State<PregoReadableSelectionAre
   }
 }
 
-class _ReadableSelectionContainerDelegate() extends StaticSelectionContainerDelegate {
+class _ReadableSelectionContainerDelegate({required bool preserveEmptyLines}) extends StaticSelectionContainerDelegate {
   static const _sameLineTolerance = 3.0;
+  bool _preserveEmptyLines = preserveEmptyLines;
+
+  void update({required bool preserveEmptyLines}) {
+    if (_preserveEmptyLines == preserveEmptyLines) return;
+    _preserveEmptyLines = preserveEmptyLines;
+    notifyListeners();
+  }
 
   @override
   SelectedContent? getSelectedContent() {
-    final parts = <({Selectable selectable, SelectedContent content})>[
+    final parts = <({Selectable selectable, String text})>[
       for (final selectable in selectables)
         if (selectable.getSelectedContent() case final SelectedContent content)
-          if (content.plainText.isNotEmpty) (selectable: selectable, content: content),
+          if (_selectedText(selectable: selectable, content: content) case final text?
+              when text.isNotEmpty ||
+                  _preserveEmptyLines &&
+                      (content.plainText == PregoReadableSelectionArea.emptyLineMarker ||
+                          selectable.value.hasSelection))
+            (selectable: selectable, text: text),
     ];
     if (parts.isEmpty) return null;
 
@@ -50,23 +92,60 @@ class _ReadableSelectionContainerDelegate() extends StaticSelectionContainerDele
           previousBounds: previousBounds,
           currentBounds: bounds.first,
           previousText: previousText,
-          currentText: part.content.plainText,
+          currentText: part.text,
         );
         buffer.write(separator);
       }
-      buffer.write(part.content.plainText);
+      buffer.write(part.text);
       previousBounds = bounds?.last ?? previousBounds;
-      previousText = part.content.plainText;
+      previousText = part.text;
     }
     return SelectedContent(plainText: buffer.toString());
   }
 
+  String? _selectedText({required Selectable selectable, required SelectedContent content}) {
+    if (content.plainText == PregoReadableSelectionArea.emptyLineMarker) {
+      return "";
+    }
+    if (content.plainText.isNotEmpty) {
+      return content.plainText.replaceAll(
+        PregoReadableSelectionArea._escapedEmptyLineMarker,
+        PregoReadableSelectionArea.emptyLineMarker,
+      );
+    }
+    if (_preserveEmptyLines && selectable.value.hasSelection) {
+      return "";
+    }
+    return null;
+  }
+
   ({Rect first, Rect last})? _screenBounds({required Selectable selectable}) {
-    if (selectable.boundingBoxes.isEmpty) return null;
     final transform = selectable.getTransformTo(null);
+    if (selectable.boundingBoxes case final boxes when boxes.isNotEmpty) {
+      return (
+        first: MatrixUtils.transformRect(transform, boxes.first),
+        last: MatrixUtils.transformRect(transform, boxes.last),
+      );
+    }
+
+    // An empty RenderParagraph has no glyph boxes, but a selected collapsed
+    // range still exposes its caret position. Use that position as a zero-width
+    // line box so an intentionally selected blank source row remains a real
+    // boundary in copied text.
+    final geometry = selectable.value;
+    final start = geometry.startSelectionPoint;
+    final end = geometry.endSelectionPoint;
+    if (start == null || end == null) return null;
+    final firstPosition = start.localPosition;
+    final lastPosition = end.localPosition;
+    final top = firstPosition.dy < lastPosition.dy ? firstPosition.dy : lastPosition.dy;
+    final bottom = (firstPosition.dy > lastPosition.dy ? firstPosition.dy : lastPosition.dy) + start.lineHeight;
+    final left = firstPosition.dx < lastPosition.dx ? firstPosition.dx : lastPosition.dx;
+    final right = firstPosition.dx > lastPosition.dx ? firstPosition.dx : lastPosition.dx;
+    final rect = Rect.fromLTRB(left, top, right, bottom);
     return (
-      first: MatrixUtils.transformRect(transform, selectable.boundingBoxes.first),
-      last: MatrixUtils.transformRect(transform, selectable.boundingBoxes.last),
+      first: MatrixUtils.transformRect(transform, rect),
+      last: MatrixUtils.transformRect(transform, rect),
     );
   }
 

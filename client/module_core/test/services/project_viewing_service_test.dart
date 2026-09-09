@@ -94,6 +94,35 @@ void main() {
       return claim;
     }
 
+    test("full-screen archive routes suspend declaration without consuming opener claims", () async {
+      readyList("project-1");
+      await drain();
+      for (final route in [AppRouteDef.archivedSessions, AppRouteDef.archivedSessionDetail]) {
+        routeSource.routes.add(route);
+        await drain();
+        expect(service.declaredProjectId, isNull);
+      }
+      routeSource.routes.add(AppRouteDef.sessions);
+      await drain();
+      expect(sent, ["project-1", null, "project-1"]);
+      final detail = service.beginDetailClaim(projectId: "project-1");
+      service.markClaimReady(claim: detail, projectId: "project-1");
+      routeSource.routes.add(AppRouteDef.sessionDetail);
+      await drain();
+      routeSource.routes.add(AppRouteDef.archivedSessionDetail);
+      await drain();
+      routeSource.routes.add(AppRouteDef.sessionDetail);
+      await drain();
+      expect(service.declaredProjectId, "project-1");
+    });
+
+    test("direct archive entry declares no live project", () async {
+      routeSource.routes.add(AppRouteDef.archivedSessionDetail);
+      await drain();
+      expect(service.declaredProjectId, isNull);
+      expect(sent, isEmpty);
+    });
+
     test("a list claim declares only after its first successful snapshot", () async {
       final claim = service.beginListClaim(projectId: "project-1");
       await drain();
@@ -308,6 +337,17 @@ void main() {
       await drain();
 
       expect(sent, ["project-1", "project-2"]);
+    });
+
+    test("harness detail covers project viewing without destroying the underlying claim", () async {
+      readyList("project-1");
+      await drain();
+      routeSource.routes.add(AppRouteDef.settingsHarnessDetail);
+      await drain();
+      expect(sent.last, isNull);
+      routeSource.routes.add(AppRouteDef.sessions);
+      await drain();
+      expect(sent.last, "project-1");
     });
 
     test("disposal rejects new claims while subscription cancellation is pending", () async {

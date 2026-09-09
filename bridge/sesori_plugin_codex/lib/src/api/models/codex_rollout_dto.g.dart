@@ -53,6 +53,16 @@ CodexRolloutEventMessageLineDto _$CodexRolloutEventMessageLineDtoFromJson(
   $type: json['type'] as String?,
 );
 
+CodexRolloutInterAgentCommunicationMetadataLineDto
+_$CodexRolloutInterAgentCommunicationMetadataLineDtoFromJson(Map json) =>
+    CodexRolloutInterAgentCommunicationMetadataLineDto(
+      timestamp: json['timestamp'] as String?,
+      payload: CodexRolloutInterAgentCommunicationMetadataDto.fromJson(
+        Map<String, dynamic>.from(json['payload'] as Map),
+      ),
+      $type: json['type'] as String?,
+    );
+
 CodexRolloutCompactedLineDto _$CodexRolloutCompactedLineDtoFromJson(Map json) =>
     CodexRolloutCompactedLineDto(
       timestamp: json['timestamp'] as String?,
@@ -69,6 +79,17 @@ CodexRolloutUserMessageEventDto _$CodexRolloutUserMessageEventDtoFromJson(
   Map json,
 ) => CodexRolloutUserMessageEventDto(
   message: json['message'] as String,
+  $type: json['type'] as String?,
+);
+
+CodexRolloutItemCompletedEventDto _$CodexRolloutItemCompletedEventDtoFromJson(
+  Map json,
+) => CodexRolloutItemCompletedEventDto(
+  threadId: json['thread_id'] as String,
+  turnId: json['turn_id'] as String,
+  item: CodexRolloutCompletedItemDto.fromJson(
+    Map<String, dynamic>.from(json['item'] as Map),
+  ),
   $type: json['type'] as String?,
 );
 
@@ -120,8 +141,47 @@ CodexRolloutTurnAbortedEventDto _$CodexRolloutTurnAbortedEventDtoFromJson(
   $type: json['type'] as String?,
 );
 
+CodexRolloutThreadRolledBackEventDto
+_$CodexRolloutThreadRolledBackEventDtoFromJson(Map json) =>
+    CodexRolloutThreadRolledBackEventDto(
+      numTurns: (json['num_turns'] as num).toInt(),
+      $type: json['type'] as String?,
+    );
+
 CodexRolloutUnknownEventDto _$CodexRolloutUnknownEventDtoFromJson(Map json) =>
     CodexRolloutUnknownEventDto($type: json['type'] as String?);
+
+_CodexRolloutInterAgentCommunicationMetadataDto
+_$CodexRolloutInterAgentCommunicationMetadataDtoFromJson(Map json) =>
+    _CodexRolloutInterAgentCommunicationMetadataDto(
+      triggerTurn: json['trigger_turn'] as bool,
+    );
+
+CodexRolloutCompletedSubAgentActivityDto
+_$CodexRolloutCompletedSubAgentActivityDtoFromJson(Map json) =>
+    CodexRolloutCompletedSubAgentActivityDto(
+      id: json['id'] as String,
+      kind: $enumDecode(
+        _$CodexSubAgentActivityKindEnumMap,
+        json['kind'],
+        unknownValue: CodexSubAgentActivityKind.unknown,
+      ),
+      agentThreadId: json['agent_thread_id'] as String,
+      agentPath: json['agent_path'] as String,
+      $type: json['type'] as String?,
+    );
+
+const _$CodexSubAgentActivityKindEnumMap = {
+  CodexSubAgentActivityKind.started: 'started',
+  CodexSubAgentActivityKind.interacted: 'interacted',
+  CodexSubAgentActivityKind.interrupted: 'interrupted',
+  CodexSubAgentActivityKind.completed: 'completed',
+  CodexSubAgentActivityKind.unknown: 'unknown',
+};
+
+CodexRolloutUnknownCompletedItemDto
+_$CodexRolloutUnknownCompletedItemDtoFromJson(Map json) =>
+    CodexRolloutUnknownCompletedItemDto($type: json['type'] as String?);
 
 _CodexRolloutErrorDto _$CodexRolloutErrorDtoFromJson(Map json) =>
     _CodexRolloutErrorDto(message: json['message'] as String);
@@ -134,7 +194,20 @@ _$CodexRolloutSessionMetadataPayloadDtoFromJson(Map json) =>
       timestamp: json['timestamp'] as String?,
       modelProvider: json['model_provider'] as String?,
       cliVersion: json['cli_version'] as String?,
+      parentThreadId: json['parent_thread_id'] as String?,
+      threadSource: $enumDecodeNullable(
+        _$CodexRolloutThreadSourceEnumMap,
+        json['thread_source'],
+        unknownValue: CodexRolloutThreadSource.unknown,
+      ),
+      agentNickname: json['agent_nickname'] as String?,
+      agentPath: json['agent_path'] as String?,
     );
+
+const _$CodexRolloutThreadSourceEnumMap = {
+  CodexRolloutThreadSource.subagent: 'subagent',
+  CodexRolloutThreadSource.unknown: 'unknown',
+};
 
 _CodexRolloutTurnContextPayloadDto _$CodexRolloutTurnContextPayloadDtoFromJson(
   Map json,
@@ -172,6 +245,24 @@ CodexRolloutReasoningDto _$CodexRolloutReasoningDtoFromJson(Map json) =>
       summary: const CodexRolloutContentListConverter().fromJson(
         json['summary'],
       ),
+      $type: json['type'] as String?,
+    );
+
+CodexRolloutAgentMessageDto _$CodexRolloutAgentMessageDtoFromJson(Map json) =>
+    CodexRolloutAgentMessageDto(
+      id: json['id'] as String?,
+      author: json['author'] as String,
+      recipient: json['recipient'] as String,
+      content: const CodexRolloutAgentMessageContentListConverter().fromJson(
+        json['content'],
+      ),
+      metadata: json['internal_chat_message_metadata_passthrough'] == null
+          ? null
+          : CodexRolloutItemMetadataDto.fromJson(
+              Map<String, dynamic>.from(
+                json['internal_chat_message_metadata_passthrough'] as Map,
+              ),
+            ),
       $type: json['type'] as String?,
     );
 
@@ -252,6 +343,24 @@ CodexRolloutUnknownResponseItemDto _$CodexRolloutUnknownResponseItemDtoFromJson(
   Map json,
 ) => CodexRolloutUnknownResponseItemDto($type: json['type'] as String?);
 
+CodexRolloutAgentMessageInputTextDto
+_$CodexRolloutAgentMessageInputTextDtoFromJson(Map json) =>
+    CodexRolloutAgentMessageInputTextDto(
+      text: json['text'] as String,
+      $type: json['type'] as String?,
+    );
+
+CodexRolloutAgentMessageEncryptedContentDto
+_$CodexRolloutAgentMessageEncryptedContentDtoFromJson(Map json) =>
+    CodexRolloutAgentMessageEncryptedContentDto(
+      encryptedContent: json['encrypted_content'] as String,
+      $type: json['type'] as String?,
+    );
+
+CodexRolloutUnknownAgentMessageContentDto
+_$CodexRolloutUnknownAgentMessageContentDtoFromJson(Map json) =>
+    CodexRolloutUnknownAgentMessageContentDto($type: json['type'] as String?);
+
 CodexRolloutInputTextDto _$CodexRolloutInputTextDtoFromJson(Map json) =>
     CodexRolloutInputTextDto(
       text: json['text'] as String,
@@ -311,4 +420,7 @@ _CodexToolArgumentsDto _$CodexToolArgumentsDtoFromJson(Map json) =>
       filePath: json['file_path'],
       query: json['query'],
       cellId: json['cell_id'],
+      taskName: _stringOrNull(json['task_name']),
+      message: _stringOrNull(json['message']),
+      agentType: _stringOrNull(json['agent_type']),
     );

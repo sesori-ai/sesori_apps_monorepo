@@ -3,7 +3,8 @@
 Status values: `pending` / `in-progress` / `done` / `blocked`. Evidence for a
 finished step lives in `steps/step-NN.md` (created when the step executes);
 this table records state only and never mirrors PR review status. MT gates are
-user-run checkpoints, not PRs; only the user marks them passed.
+checkpoints, not PRs. At the user's request the agent will execute MT Gate C and
+record a recommendation, but only the user marks it passed.
 
 | Step | Title | Status |
 |---|---|---|
@@ -28,8 +29,8 @@ user-run checkpoints, not PRs; only the user marks them passed.
 | 17 | 🚧 Session detail: transcript slice | done |
 | 18 | 🚧 Composer slice + voice/media seams (R2) | done |
 | 19 | ⚙️ Diffs + new-session slice | done |
-| 20 | 🚧 Desktop cockpit composition + attention notifications | in-progress |
-| — | MT gate C: cockpit parity + mobile regression (user-run) | pending |
+| 20 | 🚧 Desktop cockpit composition + attention notifications | done |
+| — | MT gate C: cockpit parity + mobile regression (agent-run by user request) | pending |
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
 
@@ -42,11 +43,22 @@ fixed, sequential replacement series; only one PR is opened at a time.
 | Slice | Fixed PR title | Status |
 |---|---|---|
 | 1/3 | ⚙️ `[desktop-app] Restore desktop window bounds [step 1/3]` | done |
-| 2/3 | 🚧 `[desktop-app] Compose the desktop cockpit [step 2/3]` | pending |
-| 3/3 | 🚧 `[desktop-app] Add desktop attention notifications [step 3/3]` | pending |
+| 2/3 | 🚧 `[desktop-app] Compose the desktop cockpit [step 2/3]` | done |
+| 3/3 | 🚧 `[desktop-app] Add desktop attention notifications [step 3/3]` | done |
 
-MT Gate C remains after all three slices. The top-level Step 20 row stays
-`in-progress` until the replacement series is complete.
+Slice 1 merged in PR #1267, slice 2 in PR #1269, and slice 3 in PR #1274.
+Step 20 is complete. Slice 3 passed implementation verification, full relevant
+client suites, clean macOS build/codesign, CI, and both architecture reviews.
+
+## MT Gate C — planned 2026-09-03
+
+The user delegated the manual run to the agent for the next working session.
+The baseline-first test matrix, safety checkpoints, live Codex/fixture strategy,
+mobile-device requirement, evidence rules, fix/retest policy, and completion
+criteria live in [`MT_GATE_C.md`](MT_GATE_C.md). Planning preflight found one
+active standalone bridge and no connected physical iOS device; neither was
+modified. Recheck both at execution time. The gate remains `pending` until the
+agent reports the result and the user accepts it.
 
 ## MT Gate A — accepted 2026-08-30
 

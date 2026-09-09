@@ -15,6 +15,7 @@ class CopilotPlugin._({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required CopilotSessionOptionsService copilotSessionOptionsService,
@@ -28,6 +29,7 @@ class CopilotPlugin._({
   }) {
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final launchSpec = CopilotBinary.launchSpec(
       binary: binaryPath,
       cwd: launchDirectory,
@@ -51,10 +53,12 @@ class CopilotPlugin._({
     return CopilotPlugin._(
       launchSpec: launchSpec,
       launchDirectory: launchDirectory,
+      childSessionTracker: childSessionTracker,
       eventMapper: AcpEventMapper(
         launchDirectory: launchDirectory,
         pluginId: CopilotPluginIdentity.id,
         configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
       ),
       commandTracker: commandTracker,
       sessionOptionsService: AcpSessionOptionsService(

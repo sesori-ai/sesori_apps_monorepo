@@ -50,6 +50,7 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
         workState: PluginWorkState.idle,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
+        generationResidency: PluginGenerationResidency.normal,
       ),
   ];
 
@@ -157,6 +158,7 @@ class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   Stream<PluginGenerationStartEvent> start({
     required PluginRuntimeRegistration registration,
     required StartAbortSignal startAborted,
+    required PluginGenerationResidencyController residency,
   }) => throw UnsupportedError("benchmark runtime is already active");
 }
 
@@ -177,5 +179,6 @@ class const _UnusedHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) => throw UnsupportedError("unused");
 }

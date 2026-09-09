@@ -187,6 +187,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -221,6 +222,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
   }) async {
     final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -354,6 +356,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       environment: host.environment,
     );
     final commandExecutor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
       processes: host.processes,
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
@@ -364,6 +367,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
         providerId: hasConfiguredModel ? status.provider : null,
       );
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
@@ -374,6 +378,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       launchDirectory: cwd,
       pluginId: HermesPluginIdentity.id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
     );
     final catalogRepository = HermesCatalogRepository(
       api: HermesAcpApi(
@@ -403,6 +408,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       // the bridge itself owns all project/session persistence for this
       // derive-style plugin, so the plugin needs no store of its own.
       launchDirectory: cwd,
+      childSessionTracker: childSessionTracker,
       eventMapper: eventMapper,
       commandTracker: commandTracker,
       sessionOptionsService: acpSessionOptionsService,

@@ -51,6 +51,21 @@ dart run build_runner build
 flutter run
 ```
 
+## Mobile component playbooks
+
+Shared app presentation that needs product localization or core state stays out
+of the PREGO-only design catalog. Launch the deep-scan row's dev-only Widgetbook with:
+
+```bash
+flutter run -t test/playbook/catalog_scan_row_playbook.dart -d chrome --web-port 7358
+```
+
+Open **Mobile → Deep scan row → All states and variants** to compare every
+meaningful rendering branch. The playbook also provides light/dark themes,
+iPhone/Android viewport frames, reduced-motion simulation, an interactive
+state playground, and local Cancel/Dismiss callback feedback. It uses synthetic
+state only and does not start app routing, DI, relay, analytics, or services.
+
 ## Singular mobile attribution
 
 The Android/iOS app includes Singular's basic install/session attribution integration. It starts in eligible release

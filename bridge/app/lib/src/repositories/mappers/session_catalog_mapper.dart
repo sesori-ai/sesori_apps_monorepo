@@ -32,27 +32,19 @@ class const SessionCatalogMapper() {
 
   /// The newest instant the bridge knows about for this session.
   ///
-  /// `updated_at` only advances when a backend reports a new time: a catalog
-  /// import, or a plugin that emits an activity-bearing `session.updated`.
-  /// Codex, ACP, and OpenCode do; Claude and Pi emit one only on rename, so a
-  /// session driven entirely on the laptop kept displaying the transcript time
-  /// read at the last import — "2d ago" on a session prompted minutes earlier.
-  ///
-  /// `last_user_message_at` is written live for every plugin, so folding it in
-  /// makes the displayed recency honest for all harnesses at once. It is
-  /// blended on read rather than written into `updated_at`, because catalog
-  /// import's staleness detection depends on that column holding only
-  /// backend-reported time (see CatalogImportRepository).
+  /// `updated_at` includes backend observations, bridge-owned metadata changes,
+  /// and live turn completion (including Stop). `last_user_message_at` is
+  /// written live for every plugin, so folding it in also shows fresh prompts
+  /// before the turn settles, even without a backend `session.updated` event.
+  /// Catalog import tracks backend history freshness separately from this
+  /// displayed recency (see CatalogImportRepository).
   ///
   /// `last_activity_at` is deliberately excluded even though it covers more
   /// events: it is an unseen-formula token, not a recency one. "Mark as
   /// Unread" synthesizes it from the current clock (SessionDao.forceUnseen),
   /// which would make an untouched session claim it just changed, and
   /// SessionUnseenService coalesces it to the FIRST event of an unseen streak,
-  /// so it would not follow a long response anyway. The cost of leaving it out
-  /// is that assistant-only work does not advance the displayed time past the
-  /// prompt that started it — conservative, and self-correcting on the next
-  /// user message or import.
+  /// so it would not follow a long response anyway.
   static int _latestActivityAt(SessionDto row) {
     if (row.lastUserMessageAt case final at? when at > row.updatedAt) return at;
     return row.updatedAt;

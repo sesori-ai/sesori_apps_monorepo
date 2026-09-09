@@ -16,9 +16,11 @@ class const DiffFileWidget({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onToggle,
-      child: _buildHeader(context),
+    return SelectionContainer.disabled(
+      child: GestureDetector(
+        onTap: onToggle,
+        child: _buildHeader(context),
+      ),
     );
   }
 

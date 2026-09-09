@@ -30,7 +30,10 @@ void main() {
       launchDirectory: "/project",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: AcpSessionConfigurationTracker(),
+      childSessions: AcpChildSessionTracker(),
       messageTimeParser: const DeepSeekMessageTimeParser(),
+      subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+      delegationTracker: DeepSeekDelegationTracker(),
       api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
     );
     List<BridgeSseEvent> map(Map<String, dynamic> params) => mapper.map(
@@ -53,7 +56,10 @@ void main() {
       launchDirectory: "/project",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: AcpSessionConfigurationTracker(),
+      childSessions: AcpChildSessionTracker(),
       messageTimeParser: const DeepSeekMessageTimeParser(),
+      subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+      delegationTracker: DeepSeekDelegationTracker(),
       api: const DeepSeekAcpApi(pluginId: DeepSeekIdentity.id),
     )..beginTurn(sessionId: "session-1", messageId: null);
     final events = mapper.map(

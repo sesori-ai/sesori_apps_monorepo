@@ -7,7 +7,6 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/conne
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
-import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -49,7 +48,6 @@ void main() {
       connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
       service = SessionDetailLoadService(
         repository: repository,
-        projectRepository: projectRepository,
         pluginRepository: pluginRepository,
         connectionService: connectionService,
       );
@@ -66,7 +64,7 @@ void main() {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -121,7 +119,7 @@ void main() {
         ),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
@@ -164,7 +162,7 @@ void main() {
         ),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect((result as SessionDetailLoadResultLoaded).snapshot.promptDefaults, refreshed);
     });
@@ -198,7 +196,7 @@ void main() {
         ),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
@@ -211,7 +209,7 @@ void main() {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
 
-      await service.load(sessionId: "session-1", projectId: "project-1");
+      await _load(service: service, projectId: "project-1");
 
       // A long transcript would otherwise ship in full on every open,
       // reconnect, and reload.
@@ -231,7 +229,7 @@ void main() {
         (_) async => ApiResponse.error(ApiError.generic()),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       expect((result as SessionDetailLoadResultLoaded).snapshot.supportsPromptAttachments, isNull);
@@ -250,7 +248,7 @@ void main() {
         ),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final snapshot = (result as SessionDetailLoadResultLoaded).snapshot;
@@ -278,7 +276,7 @@ void main() {
         session: testSession(id: "session-1", title: "Canonical title").copyWith(projectID: "other-project"),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -292,40 +290,14 @@ void main() {
       ).called(1);
     });
 
-    test("load uses catalog fallback plugin identity when session detail is unavailable", () async {
-      connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository);
-      when(
-        () => repository.getSession(sessionId: "session-1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
-        (_) async => const ProjectSessionContext(
-          projectId: "project-1",
-          pluginId: "catalog-plugin",
-          sessionTitle: "Recovered title",
-        ),
-      );
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
-
-      expect(result, isA<SessionDetailLoadResultLoaded>());
-      expect((result as SessionDetailLoadResultLoaded).snapshot.canonicalSessionTitle, "Recovered title");
-      verify(
-        () => repository.loadSessionOptions(
-          projectId: "project-1",
-          pluginId: "catalog-plugin",
-          mode: SessionOptionsRequestMode.dynamic,
-        ),
-      ).called(1);
-    });
-
     test("initial load waits for connection readiness and then loads", () async {
-      final waiting = await service.load(sessionId: "session-1", projectId: "project-1");
+      final waiting = await _load(service: service, projectId: "project-1");
       expect(waiting, isA<SessionDetailLoadResultWaitingForConnection>());
 
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
 
-      final loaded = await service.load(sessionId: "session-1", projectId: "project-1");
+      final loaded = await _load(service: service, projectId: "project-1");
       expect(loaded, isA<SessionDetailLoadResultLoaded>());
     });
 
@@ -337,7 +309,7 @@ void main() {
         () => repository.getChildren(sessionId: "session-1"),
       ).thenAnswer((_) => children.future);
 
-      final load = service.load(sessionId: "session-1", projectId: "project-1");
+      final load = _load(service: service, projectId: "project-1");
       await untilCalled(() => repository.getChildren(sessionId: "session-1"));
 
       verifyNever(() => repository.getPendingQuestions(sessionId: "session-1"));
@@ -387,7 +359,7 @@ void main() {
         (_) async => SessionOptionsRepositoryAvailable(catalog: _sessionOptionsCatalog(), isStale: false),
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultFailed>());
       verify(
@@ -406,7 +378,7 @@ void main() {
         canonicalSessionTitle: null,
       );
 
-      final result = await service.load(sessionId: "session-1", projectId: "project-1");
+      final result = await _load(service: service, projectId: "project-1");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       final loaded = result as SessionDetailLoadResultLoaded;
@@ -417,7 +389,7 @@ void main() {
       connectionStatus.add(connectedStatus);
       _stubRepositorySnapshot(repository: repository);
 
-      final result = await service.load(sessionId: "session-1", projectId: "");
+      final result = await _load(service: service, projectId: "");
 
       expect(result, isA<SessionDetailLoadResultLoaded>());
       // Providers must be requested with the project resolved from the session
@@ -439,84 +411,19 @@ void main() {
       );
     });
 
-    test("no route project and no session metadata loads empty providers without a request", () async {
+    test("failed metadata retains its cause and never starts plugin history", () async {
       connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository);
-      when(
-        () => repository.getSession(sessionId: "session-1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer((_) async => null);
-
-      final result = await service.load(sessionId: "session-1", projectId: "");
-
-      expect(result, isA<SessionDetailLoadResultLoaded>());
-      final loaded = result as SessionDetailLoadResultLoaded;
-      expect(loaded.snapshot.providerData?.items, isEmpty);
-      expect(loaded.snapshot.agents, isEmpty);
-      expect(loaded.snapshot.commands, isEmpty);
-      verifyNever(
-        () => repository.loadSessionOptions(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-          mode: any(named: "mode"),
-        ),
-      );
-    });
-
-    test("catalog recovery failure is logged before loading without plugin context", () async {
-      connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository);
       final error = ApiError.generic();
-      final logs = <String>[];
-      when(
-        () => repository.getSession(sessionId: "session-1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenThrow(error);
-
-      final result = await runZoned(
-        () => service.load(sessionId: "session-1", projectId: ""),
-        zoneSpecification: ZoneSpecification(
-          print: (self, parent, zone, line) => logs.add(line),
-        ),
-      );
-
-      expect(result, isA<SessionDetailLoadResultLoaded>());
-      expect(logs, contains(allOf(contains("Failed to load project session context"), contains(error.toString()))));
+      when(() => repository.getSession(sessionId: "session-1")).thenAnswer((_) async => ApiResponse.error(error));
+      final result = await service.loadMetadata(sessionId: "session-1");
+      expect((result as SessionDetailMetadataFailed).error, same(error));
       verifyNever(
-        () => repository.loadSessionOptions(
-          projectId: any(named: "projectId"),
-          pluginId: any(named: "pluginId"),
-          mode: any(named: "mode"),
+        () => repository.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
         ),
       );
-    });
-
-    test("failed session metadata recovers project context for a blank route", () async {
-      connectionStatus.add(connectedStatus);
-      _stubRepositorySnapshot(repository: repository);
-      when(
-        () => repository.getSession(sessionId: "session-1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-      when(() => projectRepository.findSessionContext(sessionId: "session-1")).thenAnswer(
-        (_) async => const ProjectSessionContext(
-          projectId: "project-1",
-          pluginId: "catalog-plugin",
-          sessionTitle: "Recovered title",
-        ),
-      );
-      final result = await service.load(sessionId: "session-1", projectId: "");
-
-      expect(result, isA<SessionDetailLoadResultLoaded>());
-      final loaded = result as SessionDetailLoadResultLoaded;
-      expect(loaded.snapshot.projectId, "project-1");
-      expect(loaded.snapshot.canonicalSessionTitle, "Recovered title");
-      verify(
-        () => repository.loadSessionOptions(
-          projectId: "project-1",
-          pluginId: "catalog-plugin",
-          mode: SessionOptionsRequestMode.dynamic,
-        ),
-      ).called(1);
     });
   });
 }
@@ -587,6 +494,7 @@ SessionOptionsCatalog _sessionOptionsCatalog() {
             providerID: "openai",
             name: "GPT-4.1",
             variants: [],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),
@@ -623,4 +531,15 @@ MessageWithParts _messageWithParts() {
     ),
     parts: <MessagePart>[],
   );
+}
+
+Future<SessionDetailLoadResult> _load({required SessionDetailLoadService service, required String projectId}) async {
+  return await switch (await service.loadMetadata(sessionId: "session-1")) {
+    SessionDetailMetadataFound(:final session) => service.load(session: session, projectId: projectId),
+    SessionDetailMetadataWaitingForConnection() => const SessionDetailLoadResult.waitingForConnection(),
+    SessionDetailMetadataFailed(:final error, :final stackTrace) => SessionDetailLoadResult.failed(
+      error: error,
+      stackTrace: stackTrace,
+    ),
+  };
 }

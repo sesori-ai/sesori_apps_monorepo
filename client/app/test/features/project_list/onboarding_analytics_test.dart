@@ -159,6 +159,12 @@ void main() {
     ).called(1);
   }
 
+  void expectCommandCopiedInfoAlert({required WidgetTester tester}) {
+    final alert = tester.widget<PregoPopupAlertsNotifications>(find.byType(PregoPopupAlertsNotifications));
+    expect(alert.title, "Command copied to clipboard");
+    expect(alert.variant, PregoPopupAlertsNotificationsVariant.info);
+  }
+
   group("connect-your-computer setup onboarding", () {
     testWidgets("keeps mobile CLI installation and omits desktop supervised start", (tester) async {
       await pumpConnectSetup(tester);
@@ -256,11 +262,13 @@ void main() {
 
     // Two command rows on this surface: the install box (step 1) first, the
     // run box (step 2) below it — hence copy/share at index 0 vs 1.
-    testWidgets("copying the default install command logs curl on unix", (tester) async {
+    testWidgets("copying the default install command shows an info alert and logs curl on unix", (tester) async {
       await pumpConnectSetup(tester);
 
       await tester.tap(find.bySemanticsLabel("Copy command").at(0));
       await tester.pumpAndSettle();
+
+      expectCommandCopiedInfoAlert(tester: tester);
 
       verifyLogged(
         const ProductAnalyticsEvent.installCommandCopied(
@@ -432,11 +440,13 @@ void main() {
       );
     });
 
-    testWidgets("copying the step-2 run command logs the run event", (tester) async {
+    testWidgets("copying the step-2 run command shows an info alert and logs the run event", (tester) async {
       await pumpConnectSetup(tester);
 
       await tester.tap(find.bySemanticsLabel("Copy command").at(1));
       await tester.pumpAndSettle();
+
+      expectCommandCopiedInfoAlert(tester: tester);
 
       verifyLogged(
         const ProductAnalyticsEvent.runCommandCopied(surface: OnboardingSurface.connectSetup),
@@ -445,7 +455,7 @@ void main() {
   });
 
   group("bridge-offline recovery view", () {
-    testWidgets("copying the run command logs the bridge-offline surface", (tester) async {
+    testWidgets("copying the run command shows an info alert and logs the bridge-offline surface", (tester) async {
       await pumpBridgeOffline(tester);
 
       // The install disclosure starts collapsed, so the always-visible run box
@@ -453,6 +463,7 @@ void main() {
       await tester.tap(find.bySemanticsLabel("Copy command"));
       await tester.pumpAndSettle();
 
+      expectCommandCopiedInfoAlert(tester: tester);
       verifyLogged(
         const ProductAnalyticsEvent.runCommandCopied(surface: OnboardingSurface.bridgeOffline),
       );
@@ -479,6 +490,8 @@ void main() {
       // the body, so it sits after the always-visible run box.
       await tester.tap(find.bySemanticsLabel("Copy command").at(1));
       await tester.pumpAndSettle();
+
+      expectCommandCopiedInfoAlert(tester: tester);
 
       verifyLogged(
         const ProductAnalyticsEvent.installCommandCopied(

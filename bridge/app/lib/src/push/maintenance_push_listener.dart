@@ -71,7 +71,7 @@ class MaintenancePushListener({
     try {
       action();
     } catch (error, stackTrace) {
-      Log.w("[push] maintenance step '$label' failed: $error\n$stackTrace");
+      Log.w("[push] maintenance step '$label' failed", error, stackTrace);
     }
   }
 }

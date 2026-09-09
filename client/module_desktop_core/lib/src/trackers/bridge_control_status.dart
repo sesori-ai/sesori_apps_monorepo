@@ -13,6 +13,7 @@ sealed class BridgeControlStatus with _$BridgeControlStatus {
   const factory({
     /// Whether a helper is currently connected to the GUI's control channel.
     required bool helperOnline,
+    required ControlStartupState startup,
     required ControlRelayConnectionState relay,
     required ControlPluginHealthState plugin,
     required int activeSessionCount,
@@ -25,6 +26,7 @@ sealed class BridgeControlStatus with _$BridgeControlStatus {
 
   /// Baseline before any helper has connected: bridge off, nothing known.
   static const BridgeControlStatus offline = BridgeControlStatus(
+    startup: ControlStartupState.unknown,
     helperOnline: false,
     relay: ControlRelayConnectionState.disconnected,
     plugin: ControlPluginHealthState.unknown,

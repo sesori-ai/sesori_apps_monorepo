@@ -27,22 +27,27 @@
 //     `api.client`. Services never call the api directly.
 //  4. A descriptor whose `start` builds the plugin and returns
 //     `AcpBridgePlugin.start(...)`; custom server requests go in an
-//     AcpApprovalRegistry subclass via `buildApprovalRegistry`.
+//     AcpPendingRegistry implementation via `buildApprovalRegistry`.
 export "src/acp_approval_registry.dart";
 export "src/acp_command_listener.dart";
 export "src/acp_command_tracker.dart";
 export "src/acp_config_option_parser.dart";
 export "src/acp_event_mapper.dart";
+export "src/acp_output_interceptor.dart";
+export "src/acp_pending_registry.dart";
 export "src/acp_plugin.dart";
 export "src/acp_process_factory.dart";
 export "src/acp_protocol.dart";
 export "src/acp_session_configuration_tracker.dart";
+export "src/acp_session_directory_batch.dart";
 export "src/acp_session_loader.dart";
 export "src/acp_session_options_service.dart";
 export "src/acp_stdio_client.dart";
 export "src/api/acp_agent_api.dart";
+export "src/models/acp_scoped_stop.dart";
 export "src/repositories/acp_session_config_repository.dart";
 export "src/repositories/mappers/acp_content_mapper.dart";
+export "src/repositories/trackers/acp_child_session_tracker.dart";
 // Plugin-lifecycle housing: the BridgePlugin wrapper + the host-backed process
 // factory a descriptor uses to run an ACP agent under the bridge's lifecycle.
 export "src/runtime/acp_bridge_plugin.dart";

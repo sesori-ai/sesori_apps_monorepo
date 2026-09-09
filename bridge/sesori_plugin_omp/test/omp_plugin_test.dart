@@ -320,9 +320,14 @@ void main() {
       expect(
         events
             .whereType<BridgeSseMessageUpdated>()
-            .singleWhere((event) => event.info["promptId"] == "prompt-2")
-            .info["role"],
-        "user",
+            .singleWhere(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == "prompt-2",
+                _ => false,
+              },
+            )
+            .info,
+        isA<PluginMessageUser>(),
       );
       respond(replacement, {"stopReason": "end_turn"});
     });

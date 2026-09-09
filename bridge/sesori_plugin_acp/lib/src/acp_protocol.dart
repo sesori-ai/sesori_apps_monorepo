@@ -31,13 +31,19 @@ abstract final class AcpMethods() {
   static const String sessionUpdate = "session/update";
   static const String sessionRequestPermission = "session/request_permission";
   static const String sessionSetConfigOption = "session/set_config_option";
+  static const String sessionSetMode = "session/set_mode";
   static const String elicitationCreate = "elicitation/create";
+}
+
+@Freezed(fromJson: false, toJson: true, copyWith: false, equal: false, toStringOverride: false)
+sealed class AcpSetModeParams with _$AcpSetModeParams {
+  const factory({required String sessionId, required String modeId}) = _AcpSetModeParams;
 }
 
 /// An auth method advertised by the agent in the `initialize` result.
 enum AcpAuthMethodType() {
   terminal,
-  other;
+  other,
 }
 
 class const AcpAuthMethod({

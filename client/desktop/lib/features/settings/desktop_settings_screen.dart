@@ -7,6 +7,7 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/external_link.dart";
+import "desktop_attention_preference_section.dart";
 
 /// Desktop-shell composition for the shared settings view.
 class const DesktopSettingsScreen({
@@ -14,18 +15,29 @@ class const DesktopSettingsScreen({
   required final VoidCallback onClose,
   required final VoidCallback onOpenProfile,
   required final VoidCallback onOpenHarnesses,
+  required final VoidCallback onOpenDefaultInput,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => BridgeSettingsCubit(
-        repository: getIt<BridgeSettingsRepository>(),
-        connectionService: getIt<ConnectionService>(),
-      ),
+    return MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => BridgeSettingsCubit(
+            repository: getIt<BridgeSettingsRepository>(),
+            connectionService: getIt<ConnectionService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => DesktopAttentionPreferenceCubit(
+            service: getIt<DesktopAttentionService>(),
+          ),
+        ),
+      ],
       child: _DesktopSettingsView(
         onClose: onClose,
         onOpenProfile: onOpenProfile,
         onOpenHarnesses: onOpenHarnesses,
+        onOpenDefaultInput: onOpenDefaultInput,
       ),
     );
   }
@@ -35,6 +47,7 @@ class const _DesktopSettingsView({
   required final VoidCallback onClose,
   required final VoidCallback onOpenProfile,
   required final VoidCallback onOpenHarnesses,
+  required final VoidCallback onOpenDefaultInput,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -52,6 +65,8 @@ class const _DesktopSettingsView({
       // preference capability.
       onOpenNotifications: null,
       onOpenHarnesses: onOpenHarnesses,
+      onOpenDefaultInput: onOpenDefaultInput,
+      additionalSettings: const DesktopAttentionPreferenceSection(),
       openSupportLink: ({required url}) async {
         await openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },

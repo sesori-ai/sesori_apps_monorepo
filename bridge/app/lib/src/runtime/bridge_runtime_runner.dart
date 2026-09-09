@@ -18,6 +18,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Console,
+        HostJsonStore,
         Log,
         PluginConfig,
         PluginStartAbortedException,
@@ -77,6 +78,7 @@ import "../server/api/terminal_prompt_api.dart";
 import "../server/foundation/bridge_replace_prompt.dart";
 import "../server/foundation/bridge_restart_command_builder.dart";
 import "../server/foundation/bridge_restart_env.dart";
+import "../server/host/bridge_host_json_store.dart";
 import "../server/host/bridge_host_process_service.dart";
 import "../server/host/plugin_state_directory.dart";
 import "../server/repositories/bridge_instance_repository.dart";
@@ -86,6 +88,7 @@ import "../server/repositories/terminal_prompt_repository.dart";
 import "../server/services/bridge_instance_service.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/app_client_onboarding_service.dart";
+import "../services/bridge_startup_retry_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
@@ -127,7 +130,10 @@ import "plugin_registry.dart";
 import "plugin_runtime.dart";
 import "runtime_provision_formatter.dart";
 
-enum _PhoneConnectionWaitOutcome() { connected, sessionStopped }
+enum _PhoneConnectionWaitOutcome() {
+  connected,
+  sessionStopped,
+}
 
 class const BridgeRuntimeRunner._() {
   /// Soft deadline granted to the plugin's ordered `shutdown()` step. The
@@ -231,7 +237,18 @@ class const BridgeRuntimeRunner._() {
         phase: BridgeShutdownPhase.shared,
         action: () => runtime?.close(),
       );
+    final startupRetryService = BridgeStartupRetryService();
+    shutdownCoordinator.addPhase(phase: BridgeShutdownPhase.signal, action: startupRetryService.cancel);
+    shutdownCoordinator.add(disposable: startupRetryService.dispose);
     final subscriptions = CompositeSubscription();
+    registerSignalHandlers(
+      requestShutdown: () async {
+        startAbortController.abort();
+        startupRetryService.cancel();
+        await runtime?.session.cancel();
+      },
+      subscriptions: subscriptions,
+    );
     shutdownCoordinator.add(disposable: subscriptions.cancel);
     final httpClient = http.Client();
     final processRunner = ProcessRunner();
@@ -249,6 +266,9 @@ class const BridgeRuntimeRunner._() {
     // live here under a frozen cross-version contract (see pluginStateDirectoryPath).
     final runtimeDirectory = path.join(managedRuntimePaths.cacheDirectory, "runtime");
     final runtimeFileApi = RuntimeFileApi(runtimeDirectory: runtimeDirectory);
+    final pluginStoresByStateDirectory = <String, HostJsonStore>{
+      runtimeDirectory: BridgeHostJsonStore(fileApi: runtimeFileApi),
+    };
     final systemProcessApi = SystemProcessApi(
       processRunner: processRunner,
       clock: serverClock,
@@ -290,6 +310,7 @@ class const BridgeRuntimeRunner._() {
     );
     final authRepository = AuthRepository(api: authApi);
     final runtimeAuthService = BridgeRuntimeAuthService(
+      startupRetryService: startupRetryService,
       authRepository: authRepository,
       loginEmailRepository: LoginEmailRepository(
         emailAuthApi: LoginEmailApi(authBackendUrl: options.authBackendUrl),
@@ -329,6 +350,7 @@ class const BridgeRuntimeRunner._() {
       // Kept in scope past this block: the ControlStatusNotifier (built later,
       // once the plugin exists) shares this client.
       ControlChannelClient? controlChannelClient;
+      ControlStatusNotifier? controlStatusNotifier;
       // Built early in supervised mode so the dispatcher can route the logout
       // `unregister_and_exit` command; reused as THE registration service later.
       // Standalone builds it after the interactive auth flow yields its token
@@ -342,6 +364,11 @@ class const BridgeRuntimeRunner._() {
           // exit (restart/auth/logout/contention) to the abnormal code.
           requestAbnormalExit: () => requestedSupervisedExit ??= BridgeSupervisedExitCode.controlChannelLost,
         );
+        controlStatusNotifier = ControlStatusNotifier(
+          client: controlChannelClient,
+          startupState: startupRetryService.states,
+        )..start();
+        shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
         // The GUI is the token authority in supervised mode: the bridge pulls
         // its access token from the control channel instead of the interactive
         // terminal login. Shares the same client the loss listener observes.
@@ -467,8 +494,8 @@ class const BridgeRuntimeRunner._() {
       if (updatesEnabledForThisInstall) {
         try {
           await updateLifecycle.reconcile();
-        } on Object catch (error) {
-          Log.w("Update reconciliation failed (non-fatal): $error");
+        } on Object catch (error, stackTrace) {
+          Log.w("Update reconciliation failed (non-fatal)", error, stackTrace);
         }
       }
 
@@ -487,7 +514,7 @@ class const BridgeRuntimeRunner._() {
       final supervisedTokenService = controlChannelTokenService;
       if (supervisedTokenService != null) {
         try {
-          authAccessToken = await supervisedTokenService.getAccessToken();
+          authAccessToken = await startupRetryService.run(operation: supervisedTokenService.getAccessToken);
         } on ControlTokenUnavailableException catch (error, stackTrace) {
           final bool exitAlreadyRequested = requestedSupervisedExit != null;
           final BridgeSupervisedExitCode tokenUnavailableExit = resolveSupervisedTokenUnavailableExit(
@@ -529,6 +556,7 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider = tokenService;
         tokenRefresher = tokenService;
       }
+      if (startAbortController.isAborted) throw const PluginStartAbortedException();
       await runtimeAuthService.logAuthenticatedUser(
         accessToken: authAccessToken,
       );
@@ -568,6 +596,28 @@ class const BridgeRuntimeRunner._() {
         isWindows: io.Platform.isWindows,
         platform: io.Platform.operatingSystem,
       );
+      final pluginRuntimeRegistrations = <PluginRuntimeRegistration>[];
+      for (final descriptor in knownPlugins) {
+        final stateDirectory = pluginStateDirectoryPath(
+          paths: managedRuntimePaths,
+          pluginId: descriptor.id,
+          stateStorage: descriptor.stateStorage,
+        );
+        final store = pluginStoresByStateDirectory.putIfAbsent(
+          stateDirectory,
+          () => BridgeHostJsonStore(
+            fileApi: RuntimeFileApi(runtimeDirectory: stateDirectory),
+          ),
+        );
+        pluginRuntimeRegistrations.add(
+          PluginRuntimeRegistration(
+            descriptor: descriptor,
+            config: pluginConfigs[descriptor.id]!,
+            stateDirectory: stateDirectory,
+            store: store,
+          ),
+        );
+      }
       final generationFactory = PluginGenerationFactory(
         managedRuntimePaths: managedRuntimePaths,
         currentBridgeIdentity: currentBridgeIdentity,
@@ -575,26 +625,15 @@ class const BridgeRuntimeRunner._() {
         startupMutexRepository: startupMutexRepository,
         bridgeInstanceService: bridgeInstanceService,
         processRepository: processRepository,
-        runtimeFileApi: runtimeFileApi,
         clock: serverClock,
         environment: environment,
         currentUser: currentUser,
         resolveIdleTimeoutMins: ({required pluginId}) =>
             bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
+        settingsChanges: bridgeSettingsRepository.settingsChanges,
       );
       final activePluginRuntime = PluginRuntime(
-        registrations: [
-          for (final descriptor in knownPlugins)
-            PluginRuntimeRegistration(
-              descriptor: descriptor,
-              config: pluginConfigs[descriptor.id]!,
-              stateDirectory: pluginStateDirectoryPath(
-                paths: managedRuntimePaths,
-                pluginId: descriptor.id,
-                stateStorage: descriptor.stateStorage,
-              ),
-            ),
-        ],
+        registrations: pluginRuntimeRegistrations,
         generationFactory: generationFactory,
         setupProcesses: hostProcessService,
         environment: environment,
@@ -603,26 +642,25 @@ class const BridgeRuntimeRunner._() {
       );
       pluginRuntime = activePluginRuntime;
       final lifecycleRepository = PluginLifecycleRepository(runtime: activePluginRuntime);
-      final activePluginLifecycleService =
-          PluginLifecycleService(
-            lifecycleRepository: lifecycleRepository,
-            preferredDefaultPluginId: preferredDefaultPluginId,
-            bridgeSettingsRepository: bridgeSettingsRepository,
-            idleTimerScheduler: const PluginIdleTimerScheduler(),
-            bridgeIdProvider: bridgeRegistrationService,
-            plugins: [
-              for (final descriptor in knownPlugins)
-                (
-                  id: descriptor.id,
-                  displayName: descriptor.displayName,
-                  activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
-                  residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
-                  sessionOptionsScope: descriptor.sessionOptionsScope,
-                  managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
-                  supportsPromptAttachments: descriptor.supportsPromptAttachments,
-                ),
-            ],
-          );
+      final activePluginLifecycleService = PluginLifecycleService(
+        lifecycleRepository: lifecycleRepository,
+        preferredDefaultPluginId: preferredDefaultPluginId,
+        bridgeSettingsRepository: bridgeSettingsRepository,
+        idleTimerScheduler: const PluginIdleTimerScheduler(),
+        bridgeIdProvider: bridgeRegistrationService,
+        plugins: [
+          for (final descriptor in knownPlugins)
+            (
+              id: descriptor.id,
+              displayName: descriptor.displayName,
+              activationPolicy: descriptor.activationPolicy(config: pluginConfigs[descriptor.id]!),
+              residencyPolicy: descriptor.residencyPolicy(config: pluginConfigs[descriptor.id]!),
+              sessionOptionsScope: descriptor.sessionOptionsScope,
+              managementCapabilities: descriptor.managementCapabilities(config: pluginConfigs[descriptor.id]!),
+              supportsPromptAttachments: descriptor.supportsPromptAttachments,
+            ),
+        ],
+      );
       pluginLifecycleService = activePluginLifecycleService;
       final uncontrollableDisabledPluginIds = activePluginLifecycleService.uncontrollableDisabledPluginIds(
         disabledPluginIds: bridgeSettings.plugins.disabledPluginIds,
@@ -665,8 +703,8 @@ class const BridgeRuntimeRunner._() {
         if (updatesEnabledForThisInstall) {
           try {
             await updateLifecycle.reconcile();
-          } on Object catch (error) {
-            Log.w("Update reconciliation after predecessor exit failed (non-fatal): $error");
+          } on Object catch (error, stackTrace) {
+            Log.w("Update reconciliation after predecessor exit failed (non-fatal)", error, stackTrace);
           }
         }
       }
@@ -688,9 +726,13 @@ class const BridgeRuntimeRunner._() {
           .addTo(subscriptions);
       await generationFactory.enforceBridgeOwnership();
       if (startAbortController.isAborted) {
-        Log.i("Plugin start aborted as requested.");
+        Log.i("Bridge startup aborted as requested.");
         return 0;
       }
+      // After ownership is settled, so no other live bridge is using this
+      // machine's managed runtime directories when the obsolete sweep runs.
+      // Returns immediately; the downloads continue behind startup.
+      activePluginLifecycleService.upgradeManagedRuntimes();
       for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");
@@ -709,17 +751,11 @@ class const BridgeRuntimeRunner._() {
       // observing the plugin's lifecycle stream, the relay's connection-state
       // stream, and registration successes. Started before the session runs so
       // the initial registration and relay connect are never missed.
-      ControlStatusNotifier? controlStatusNotifier;
-      if (controlChannelClient != null) {
-        controlStatusNotifier = ControlStatusNotifier(
-          client: controlChannelClient,
-          pluginMetadata: activePluginLifecycleService.metadataSnapshots,
-          relayConnectionState: relayClient.connectionState,
-          registrations: bridgeRegistrationService.registrations,
-        );
-        controlStatusNotifier.start();
-        shutdownCoordinator.add(disposable: controlStatusNotifier.dispose);
-      }
+      controlStatusNotifier?.observeRuntime(
+        pluginMetadata: activePluginLifecycleService.metadataSnapshots,
+        relayConnectionState: relayClient.connectionState,
+        registrations: bridgeRegistrationService.registrations,
+      );
 
       final restartService = BridgeRestartService(
         processRepository: processRepository,
@@ -753,6 +789,10 @@ class const BridgeRuntimeRunner._() {
         Log.w("Startup diagnostics failed; continuing without a degraded-access warning", error, stackTrace);
       }
 
+      // A signal received during diagnostics had no session to cancel yet.
+      // Honor the latched request before constructing the runtime.
+      if (startAbortController.isAborted) throw const PluginStartAbortedException();
+
       final database = AppDatabase.create(
         dataDirectory: options.dataDirectory,
       );
@@ -774,6 +814,7 @@ class const BridgeRuntimeRunner._() {
           yolo: bridgeSettings.yolo,
         ),
         client: relayClient,
+        pluginLifecycleRepository: lifecycleRepository,
         pluginLifecycleService: activePluginLifecycleService,
         pluginRuntime: activePluginRuntime,
         bridgeSettingsRepository: bridgeSettingsRepository,
@@ -792,6 +833,7 @@ class const BridgeRuntimeRunner._() {
         filesystemAccessOk: filesystemAccessOk,
         statusNotifier: controlStatusNotifier,
         reconnectBackoff: ReconnectBackoffPolicy.standard,
+        startupRetryService: startupRetryService,
       ).create();
       runtime = BridgeRuntime(
         database: database,
@@ -816,7 +858,6 @@ class const BridgeRuntimeRunner._() {
       }
       activeRuntime.catalogHydrationListener.start();
 
-      registerSignalHandlers(session: activeRuntime.session, subscriptions: subscriptions);
       // start() synchronously subscribes local route-trigger listeners before
       // the debug server can expose mutation routes.
       final sessionStart = activeRuntime.session.start();
@@ -891,7 +932,7 @@ class const BridgeRuntimeRunner._() {
       return requestedSupervisedExit?.code ?? 0;
     } on PluginStartAbortedException {
       if (startAbortController.isAborted) {
-        Log.i("Plugin start aborted as requested.");
+        Log.i("Bridge startup aborted as requested.");
         return 0;
       }
       rethrow;
@@ -916,7 +957,7 @@ class const BridgeRuntimeRunner._() {
         Log.w("Session teardown failed after a supervised restart handoff", error, stackTrace);
         return BridgeSupervisedExitCode.restart.code;
       }
-      Log.e("$error");
+      Log.e("Bridge startup or session failed", error, stackTrace);
       return 1;
     } finally {
       try {
@@ -1247,13 +1288,13 @@ class const BridgeRuntimeRunner._() {
         return inspected;
       }
       Log.w("Could not find own process (pid ${io.pid}) in the process table; using fallback identity");
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       if (!isWindows) {
         // A marker-less fallback would corrupt the startup lock on POSIX (see
         // method doc), so surface the failure instead of degrading.
         rethrow;
       }
-      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity: $error");
+      Log.w("Failed to inspect own process (pid ${io.pid}); using fallback identity", error, stackTrace);
     }
     return _fallbackCurrentBridgeIdentity(
       currentUser: currentUser,

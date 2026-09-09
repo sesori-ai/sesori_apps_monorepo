@@ -13,3 +13,7 @@ final class const SessionDetailPromptOptionsRecoveryFailed() extends SessionDeta
 /// provider/model available in the requested scope. [actionHint] is bounded,
 /// privacy-safe presentation supplied by the plugin.
 final class const SessionDetailAuthenticationRequired({required final String actionHint}) extends SessionDetailNotice;
+
+/// A refreshed command catalog no longer contains the queued command. The
+/// command remains visible but blocked until the user removes it.
+final class const SessionDetailCommandUnavailable() extends SessionDetailNotice;

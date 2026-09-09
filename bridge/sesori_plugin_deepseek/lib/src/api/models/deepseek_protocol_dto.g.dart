@@ -6,6 +6,78 @@ part of 'deepseek_protocol_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+DeepSeekSubagentInterruptRequestDto
+_$DeepSeekSubagentInterruptRequestDtoFromJson(Map json) {
+  $checkKeys(json, allowedKeys: const ['sessionId', 'childSessionId']);
+  return DeepSeekSubagentInterruptRequestDto(
+    sessionId: json['sessionId'] as String,
+    childSessionId: json['childSessionId'] as String,
+  );
+}
+
+Map<String, dynamic> _$DeepSeekSubagentInterruptRequestDtoToJson(
+  DeepSeekSubagentInterruptRequestDto instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'childSessionId': instance.childSessionId,
+};
+
+DeepSeekSubagentInterruptResponseDto
+_$DeepSeekSubagentInterruptResponseDtoFromJson(Map json) =>
+    DeepSeekSubagentInterruptResponseDto(
+      result: $enumDecode(
+        _$DeepSeekSubagentInterruptResultEnumMap,
+        json['result'],
+        unknownValue: DeepSeekSubagentInterruptResult.unknown,
+      ),
+    );
+
+Map<String, dynamic> _$DeepSeekSubagentInterruptResponseDtoToJson(
+  DeepSeekSubagentInterruptResponseDto instance,
+) => <String, dynamic>{
+  'result': _$DeepSeekSubagentInterruptResultEnumMap[instance.result]!,
+};
+
+const _$DeepSeekSubagentInterruptResultEnumMap = {
+  DeepSeekSubagentInterruptResult.interrupted: 'interrupted',
+  DeepSeekSubagentInterruptResult.notCancellable: 'not_cancellable',
+  DeepSeekSubagentInterruptResult.unknownChild: 'unknown_child',
+  DeepSeekSubagentInterruptResult.unknown: 'unknown',
+};
+
+DeepSeekSessionStopResponseDto _$DeepSeekSessionStopResponseDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const ['workKept']);
+  return DeepSeekSessionStopResponseDto(workKept: json['workKept'] as bool);
+}
+
+Map<String, dynamic> _$DeepSeekSessionStopResponseDtoToJson(
+  DeepSeekSessionStopResponseDto instance,
+) => <String, dynamic>{'workKept': instance.workKept};
+
+DeepSeekInputCancelRequestDto _$DeepSeekInputCancelRequestDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const ['sessionId']);
+  return DeepSeekInputCancelRequestDto(sessionId: json['sessionId'] as String);
+}
+
+Map<String, dynamic> _$DeepSeekInputCancelRequestDtoToJson(
+  DeepSeekInputCancelRequestDto instance,
+) => <String, dynamic>{'sessionId': instance.sessionId};
+
+DeepSeekInputCancelResponseDto _$DeepSeekInputCancelResponseDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const []);
+  return DeepSeekInputCancelResponseDto();
+}
+
+Map<String, dynamic> _$DeepSeekInputCancelResponseDtoToJson(
+  DeepSeekInputCancelResponseDto instance,
+) => <String, dynamic>{};
+
 DeepSeekInitializeMetadataDto _$DeepSeekInitializeMetadataDtoFromJson(
   Map json,
 ) => DeepSeekInitializeMetadataDto(
@@ -220,7 +292,11 @@ Map<String, dynamic> _$DeepSeekTerminalHistoryResponseDtoToJson(
 DeepSeekSessionUpdateEnvelopeDto _$DeepSeekSessionUpdateEnvelopeDtoFromJson(
   Map json,
 ) => DeepSeekSessionUpdateEnvelopeDto(
-  metadata: (json['_meta'] as Map?)?.map((k, e) => MapEntry(k as String, e)),
+  metadata: json['_meta'] == null
+      ? null
+      : DeepSeekEnvelopeMetadataDto.fromJson(
+          Map<String, dynamic>.from(json['_meta'] as Map),
+        ),
   sessionId: json['sessionId'] as String,
   update: Map<String, dynamic>.from(json['update'] as Map),
 );
@@ -228,9 +304,135 @@ DeepSeekSessionUpdateEnvelopeDto _$DeepSeekSessionUpdateEnvelopeDtoFromJson(
 Map<String, dynamic> _$DeepSeekSessionUpdateEnvelopeDtoToJson(
   DeepSeekSessionUpdateEnvelopeDto instance,
 ) => <String, dynamic>{
-  '_meta': ?instance.metadata,
+  '_meta': ?instance.metadata?.toJson(),
   'sessionId': instance.sessionId,
   'update': instance.update,
+};
+
+DeepSeekEnvelopeDeepSeekMetadataDto
+_$DeepSeekEnvelopeDeepSeekMetadataDtoFromJson(Map json) =>
+    DeepSeekEnvelopeDeepSeekMetadataDto(
+      messageCreatedAt: _nullableInteger(json['messageCreatedAt']),
+      subagent: json['subagent'] == null
+          ? null
+          : DeepSeekSubagentReplayDto.fromJson(
+              Map<String, dynamic>.from(json['subagent'] as Map),
+            ),
+    );
+
+Map<String, dynamic> _$DeepSeekEnvelopeDeepSeekMetadataDtoToJson(
+  DeepSeekEnvelopeDeepSeekMetadataDto instance,
+) => <String, dynamic>{
+  'messageCreatedAt': ?instance.messageCreatedAt,
+  'subagent': ?instance.subagent?.toJson(),
+};
+
+DeepSeekSubagentStartedDto _$DeepSeekSubagentStartedDtoFromJson(Map json) =>
+    DeepSeekSubagentStartedDto(
+      sessionId: json['sessionId'] as String,
+      childSessionId: json['childSessionId'] as String,
+      toolCallId: json['toolCallId'] as String,
+      prompt: json['prompt'] as String,
+      label: json['label'] as String,
+      mode: $enumDecode(
+        _$DeepSeekSubagentModeEnumMap,
+        json['mode'],
+        unknownValue: DeepSeekSubagentMode.unknown,
+      ),
+    );
+
+Map<String, dynamic> _$DeepSeekSubagentStartedDtoToJson(
+  DeepSeekSubagentStartedDto instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'childSessionId': instance.childSessionId,
+  'toolCallId': instance.toolCallId,
+  'prompt': instance.prompt,
+  'label': instance.label,
+  'mode': _$DeepSeekSubagentModeEnumMap[instance.mode]!,
+  'kind': instance.kind,
+};
+
+const _$DeepSeekSubagentModeEnumMap = {
+  DeepSeekSubagentMode.foreground: 'foreground',
+  DeepSeekSubagentMode.background: 'background',
+  DeepSeekSubagentMode.unknown: 'unknown',
+};
+
+DeepSeekSubagentEndedDto _$DeepSeekSubagentEndedDtoFromJson(Map json) =>
+    DeepSeekSubagentEndedDto(
+      sessionId: json['sessionId'] as String,
+      childSessionId: json['childSessionId'] as String,
+      stopReason: $enumDecode(
+        _$DeepSeekSubagentStopReasonEnumMap,
+        json['stopReason'],
+        unknownValue: DeepSeekSubagentStopReason.unknown,
+      ),
+      summary: json['summary'] as String?,
+    );
+
+Map<String, dynamic> _$DeepSeekSubagentEndedDtoToJson(
+  DeepSeekSubagentEndedDto instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'childSessionId': instance.childSessionId,
+  'stopReason': _$DeepSeekSubagentStopReasonEnumMap[instance.stopReason]!,
+  'summary': ?instance.summary,
+  'kind': instance.kind,
+};
+
+const _$DeepSeekSubagentStopReasonEnumMap = {
+  DeepSeekSubagentStopReason.completed: 'completed',
+  DeepSeekSubagentStopReason.aborted: 'aborted',
+  DeepSeekSubagentStopReason.error: 'error',
+  DeepSeekSubagentStopReason.maxTokens: 'max-tokens',
+  DeepSeekSubagentStopReason.refusal: 'refusal',
+  DeepSeekSubagentStopReason.unknown: 'unknown',
+};
+
+DeepSeekSubagentReplayDto _$DeepSeekSubagentReplayDtoFromJson(Map json) =>
+    DeepSeekSubagentReplayDto(
+      prompt: json['prompt'] as String,
+      label: json['label'] as String,
+      mode: $enumDecode(
+        _$DeepSeekSubagentModeEnumMap,
+        json['mode'],
+        unknownValue: DeepSeekSubagentMode.unknown,
+      ),
+      childSessionId: json['childSessionId'] as String?,
+      ended: json['ended'] == null
+          ? null
+          : DeepSeekSubagentReplayEndedDto.fromJson(
+              Map<String, dynamic>.from(json['ended'] as Map),
+            ),
+    );
+
+Map<String, dynamic> _$DeepSeekSubagentReplayDtoToJson(
+  DeepSeekSubagentReplayDto instance,
+) => <String, dynamic>{
+  'prompt': instance.prompt,
+  'label': instance.label,
+  'mode': _$DeepSeekSubagentModeEnumMap[instance.mode]!,
+  'childSessionId': ?instance.childSessionId,
+  'ended': ?instance.ended?.toJson(),
+};
+
+DeepSeekSubagentReplayEndedDto _$DeepSeekSubagentReplayEndedDtoFromJson(
+  Map json,
+) => DeepSeekSubagentReplayEndedDto(
+  stopReason: $enumDecode(
+    _$DeepSeekSubagentStopReasonEnumMap,
+    json['stopReason'],
+    unknownValue: DeepSeekSubagentStopReason.unknown,
+  ),
+  summary: json['summary'] as String?,
+);
+
+Map<String, dynamic> _$DeepSeekSubagentReplayEndedDtoToJson(
+  DeepSeekSubagentReplayEndedDto instance,
+) => <String, dynamic>{
+  'stopReason': _$DeepSeekSubagentStopReasonEnumMap[instance.stopReason]!,
+  'summary': ?instance.summary,
 };
 
 DeepSeekRenameRequestDto _$DeepSeekRenameRequestDtoFromJson(Map json) =>
@@ -401,4 +603,36 @@ Map<String, dynamic> _$DeepSeekWarningStatusDtoToJson(
   'sessionId': instance.sessionId,
   'message': instance.message,
   'kind': instance.kind,
+};
+
+DeepSeekSessionStopSessionRequestDto
+_$DeepSeekSessionStopSessionRequestDtoFromJson(Map json) {
+  $checkKeys(json, allowedKeys: const ['sessionId', 'kind']);
+  return DeepSeekSessionStopSessionRequestDto(
+    sessionId: json['sessionId'] as String,
+    $type: json['kind'] as String?,
+  );
+}
+
+Map<String, dynamic> _$DeepSeekSessionStopSessionRequestDtoToJson(
+  DeepSeekSessionStopSessionRequestDto instance,
+) => <String, dynamic>{'sessionId': instance.sessionId, 'kind': instance.$type};
+
+DeepSeekSessionStopChildRequestDto _$DeepSeekSessionStopChildRequestDtoFromJson(
+  Map json,
+) {
+  $checkKeys(json, allowedKeys: const ['sessionId', 'childSessionId', 'kind']);
+  return DeepSeekSessionStopChildRequestDto(
+    sessionId: json['sessionId'] as String,
+    childSessionId: json['childSessionId'] as String,
+    $type: json['kind'] as String?,
+  );
+}
+
+Map<String, dynamic> _$DeepSeekSessionStopChildRequestDtoToJson(
+  DeepSeekSessionStopChildRequestDto instance,
+) => <String, dynamic>{
+  'sessionId': instance.sessionId,
+  'childSessionId': instance.childSessionId,
+  'kind': instance.$type,
 };

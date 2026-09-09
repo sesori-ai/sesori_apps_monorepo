@@ -28,6 +28,17 @@ YoloSettingUpdate _$YoloSettingUpdateFromJson(Map json) => YoloSettingUpdate(
 Map<String, dynamic> _$YoloSettingUpdateToJson(YoloSettingUpdate instance) =>
     <String, dynamic>{'enabled': instance.enabled, 'type': instance.$type};
 
+WarmUpPluginsOnSessionOpenSettingUpdate
+_$WarmUpPluginsOnSessionOpenSettingUpdateFromJson(Map json) =>
+    WarmUpPluginsOnSessionOpenSettingUpdate(
+      enabled: json['enabled'] as bool,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$WarmUpPluginsOnSessionOpenSettingUpdateToJson(
+  WarmUpPluginsOnSessionOpenSettingUpdate instance,
+) => <String, dynamic>{'enabled': instance.enabled, 'type': instance.$type};
+
 UnknownBridgeSettingUpdate _$UnknownBridgeSettingUpdateFromJson(Map json) =>
     UnknownBridgeSettingUpdate($type: json['type'] as String?);
 

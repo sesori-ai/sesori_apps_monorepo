@@ -1,15 +1,24 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
-import "package:sesori_desktop/features/settings/desktop_harnesses_settings_screen.dart";
 
 void main() {
+  test("settings destination matching includes its child routes", () {
+    expect(isDesktopSettingsPath(path: AppRouteDef.settings.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.settingsDefaultInput.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.settingsProfile.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.settingsHarnesses.path), isTrue);
+    expect(isDesktopSettingsPath(path: AppRouteDef.projects.path), isFalse);
+    expect(isDesktopSettingsPath(path: "${AppRouteDef.settings.path}ful"), isFalse);
+  });
+
   test("desktop registers typed new-session and diff routes", () {
-    final paths = _shellRoutes().map((route) => route.path);
+    final paths = _routeRegistrations().map((registration) => registration.path);
 
     expect(paths, containsAll([AppRouteDef.newSession.path, AppRouteDef.sessionDiffs.path]));
   });
@@ -61,18 +70,35 @@ void main() {
       ),
     );
 
-    expect(widget, isA<DesktopHarnessesSettingsScreen>());
-    final screen = widget as DesktopHarnessesSettingsScreen;
+    expect(widget, isA<HarnessesSettingsView>());
+    final screen = widget as HarnessesSettingsView;
     expect(screen.presentation, HarnessSettingsPresentation.modal);
   });
 }
 
-Iterable<GoRoute> _shellRoutes() {
-  final shell = buildDesktopRoutes().single as ShellRoute;
-  return shell.routes.whereType<GoRoute>();
+Iterable<_RouteRegistration> _routeRegistrations({
+  List<RouteBase>? routes,
+  String parentPath = "",
+}) sync* {
+  for (final route in routes ?? buildDesktopRoutes()) {
+    switch (route) {
+      case GoRoute(:final path, :final routes):
+        final fullPath = path.startsWith("/") ? path : "${parentPath.endsWith("/") ? parentPath : "$parentPath/"}$path";
+        yield _RouteRegistration(path: fullPath, route: route);
+        yield* _routeRegistrations(routes: routes, parentPath: fullPath);
+      case ShellRoute(:final routes):
+        yield* _routeRegistrations(routes: routes, parentPath: parentPath);
+      case StatefulShellRoute():
+        throw UnsupportedError("Desktop routing does not use StatefulShellRoute");
+    }
+  }
 }
 
-GoRoute _routeWithPath(String path) => _shellRoutes().singleWhere((route) => route.path == path);
+GoRoute _routeWithPath(String path) {
+  return _routeRegistrations().singleWhere((registration) => registration.path == path).route;
+}
+
+class const _RouteRegistration({required final String path, required final GoRoute route});
 
 class _FakeBuildContext() extends Fake implements BuildContext;
 

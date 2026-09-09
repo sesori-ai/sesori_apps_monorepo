@@ -62,12 +62,15 @@ class SessionRepository({
   }
 
   /// Throws [SessionAbortRejectedException] for a refused `confirm`.
-  Future<ApiResponse<void>> abortSession({
+  Future<ApiResponse<bool>> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
   }) async {
     try {
-      return await _api.abortSession(sessionId: sessionId, subAgents: subAgents);
+      return switch (await _api.abortSession(sessionId: sessionId, subAgents: subAgents)) {
+        SuccessResponse(:final data) => ApiResponse.success(data.subAgentsHandled),
+        ErrorResponse(:final error) => ApiResponse.error(error),
+      };
     } on SessionAbortApiRejectedException catch (error, stackTrace) {
       Error.throwWithStackTrace(
         SessionAbortRejectedException(rejection: error.rejection, innerError: error),

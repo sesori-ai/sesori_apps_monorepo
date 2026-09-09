@@ -45,7 +45,7 @@ void main() {
       expect(repository.importCalls, 0);
     });
 
-    test("an existing marker completes an automatic request without enumeration", () async {
+    test("an existing marker skips an automatic request without publishing progress", () async {
       final repository = _FakeCatalogImportRepository(
         completion: const CatalogHydrationDto(
           pluginId: "selected",
@@ -63,16 +63,17 @@ void main() {
         policy: CatalogEmptyHydrationPolicy.complete,
       );
       addTearDown(service.dispose);
-      final completed = service.progress.firstWhere((status) => status is CatalogImportCompleted);
+      final progress = <CatalogImportProgress>[];
+      final subscription = service.progress.listen(progress.add);
+      addTearDown(subscription.cancel);
 
       service.start(pluginId: "selected", trigger: CatalogImportTrigger.automatic);
+      await pumpEventQueue();
 
-      expect(
-        await completed,
-        isA<CatalogImportCompleted>().having((status) => status.completedAt, "completedAt", 1234),
-      );
+      expect(repository.hydrationReads, 1);
       expect(repository.importCalls, 0);
-      expect(service.latestStatuses.single, isA<CatalogImportCompleted>());
+      expect(progress, isEmpty);
+      expect(service.latestStatuses, isEmpty);
     });
 
     test("overlapping automatic and explicit starts join and combine control", () async {

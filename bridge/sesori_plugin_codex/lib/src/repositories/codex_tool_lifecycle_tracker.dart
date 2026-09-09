@@ -42,6 +42,7 @@ class CodexToolLifecycleTracker({
       ),
       CodexRolloutSessionMetadataLineDto() ||
       CodexRolloutTurnContextLineDto() ||
+      CodexRolloutInterAgentCommunicationMetadataLineDto() ||
       CodexRolloutCompactedLineDto() ||
       CodexRolloutUnknownLineDto() => const [],
     };
@@ -179,6 +180,7 @@ class CodexToolLifecycleTracker({
         () => _TrackedTool(
           id: generationId,
           tool: "image_generation",
+          presentation: const CodexOrdinaryToolPresentation(),
           title: null,
           turnId: turnId,
           chronologySegment: thread.chronologySegment,
@@ -355,6 +357,7 @@ class CodexToolLifecycleTracker({
         () => _TrackedTool(
           id: id,
           tool: "image_generation",
+          presentation: const CodexOrdinaryToolPresentation(),
           title: null,
           turnId: null,
           chronologySegment: thread.chronologySegment,
@@ -402,6 +405,7 @@ class CodexToolLifecycleTracker({
         () => _TrackedTool(
           id: call.id,
           tool: call.tool,
+          presentation: call.presentation,
           title: call.title,
           turnId: effectiveTurnId,
           chronologySegment: thread.chronologySegment,
@@ -511,12 +515,13 @@ class CodexToolLifecycleTracker({
         turnId: turnId ?? thread.activeTurnId,
         status: PluginToolStatus.error,
       ),
+      CodexRolloutItemCompletedEventDto() => const [],
       CodexRolloutImageGenerationEndEventDto() => _observeImageGenerationEnd(
         thread: thread,
         event: event,
         time: time,
       ),
-      CodexRolloutUnknownEventDto() => const [],
+      CodexRolloutThreadRolledBackEventDto() || CodexRolloutUnknownEventDto() => const [],
     };
   }
 
@@ -533,6 +538,7 @@ class CodexToolLifecycleTracker({
       () => _TrackedTool(
         id: id,
         tool: "image_generation",
+        presentation: const CodexOrdinaryToolPresentation(),
         title: null,
         turnId: null,
         chronologySegment: thread.chronologySegment,
@@ -827,6 +833,7 @@ class _ThreadToolLifecycle() {
 class _TrackedTool({
   required final String id,
   required final String tool,
+  required var CodexToolPresentation presentation,
   required var String? title,
   required var String? turnId,
   required final int chronologySegment,
@@ -843,6 +850,7 @@ class _TrackedTool({
   CodexProjectedTool snapshot() => CodexProjectedTool(
     canonicalId: id,
     tool: tool,
+    presentation: presentation,
     title: title,
     status: status,
     output: rolloutOutput ?? appServerOutput,

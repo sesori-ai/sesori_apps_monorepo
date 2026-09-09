@@ -1296,7 +1296,6 @@ void main() {
               capturedProjectPath: Value(capturedProjectPath),
               revision: 1,
               capturedAt: 100,
-              completeness: PluginSessionOptionsCompleteness.complete,
               agentsJson: '[]',
               providersJson: '{}',
               commandsJson: '[]',
@@ -1405,7 +1404,6 @@ void main() {
             ownerId: 'cursor',
             revision: 1,
             capturedAt: 100,
-            completeness: PluginSessionOptionsCompleteness.complete,
             agentsJson: '[]',
             providersJson: '{}',
             commandsJson: '[]',
@@ -1418,7 +1416,6 @@ void main() {
             capturedProjectPath: const Value('/projects/one'),
             revision: 1,
             capturedAt: 100,
-            completeness: PluginSessionOptionsCompleteness.complete,
             agentsJson: '[]',
             providersJson: '{}',
             commandsJson: '[]',
@@ -1563,6 +1560,100 @@ void main() {
     },
   );
 
+  test(
+    'migration v14 → v15 drops persisted completeness and keeps cached rows',
+    () async {
+      final schema = await verifier.schemaAt(14);
+      schema.rawDatabase.execute(
+        'INSERT INTO projects_table '
+        '(project_id, path, hidden, base_branch, display_name, created_at, '
+        'updated_at, projection_updated_at, pr_cache_github_login) '
+        'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        ['p1', '/projects/one', 0, null, null, 100, 200, 150, null],
+      );
+      // A stored completeness string that names no known variant: before v15
+      // this row could not be decoded, and discovery for its plugin failed.
+      schema.rawDatabase.execute(
+        'INSERT INTO session_options_cache_table '
+        '(plugin_id, scope, owner_id, project_id, captured_project_path, '
+        'revision, captured_at, completeness, agents_json, providers_json, '
+        'commands_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          'cursor',
+          'plugin',
+          'cursor',
+          null,
+          null,
+          3,
+          100,
+          'unknown',
+          '{"agents":[]}',
+          '{"items":[],"connectedOnly":true}',
+          '{"items":[]}',
+        ],
+      );
+      schema.rawDatabase.execute(
+        'INSERT INTO session_options_cache_table '
+        '(plugin_id, scope, owner_id, project_id, captured_project_path, '
+        'revision, captured_at, completeness, agents_json, providers_json, '
+        'commands_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+        [
+          'opencode',
+          'project',
+          'p1',
+          'p1',
+          '/projects/one',
+          1,
+          100,
+          'complete',
+          '{"agents":[]}',
+          '{"items":[],"connectedOnly":true}',
+          '{"items":[]}',
+        ],
+      );
+
+      final db = AppDatabase(schema.newConnection());
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(
+        db,
+        15,
+        options: const ValidationOptions(validateDropped: true),
+      );
+
+      final columns = await db
+          .customSelect(
+            "SELECT name FROM pragma_table_info('session_options_cache_table')",
+          )
+          .get();
+      expect(
+        columns.map((row) => row.read<String>('name')),
+        isNot(contains('completeness')),
+      );
+
+      final rows = await db.select(db.sessionOptionsCacheTable).get();
+      expect(
+        rows.map(
+          (row) => (row.pluginId, row.ownerId, row.revision, row.capturedAt),
+        ),
+        unorderedEquals([
+          ('cursor', 'cursor', 3, 100),
+          ('opencode', 'p1', 1, 100),
+        ]),
+      );
+
+      await (db.delete(
+        db.projectsTable,
+      )..where((table) => table.projectId.equals('p1'))).go();
+      expect(
+        (await db.select(db.sessionOptionsCacheTable).get()).map(
+          (row) => row.pluginId,
+        ),
+        ['cursor'],
+      );
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+    },
+  );
+
   test('v13 PR key, scope index, and project FK remain enforced', () async {
     final db = await _migrateFromV12(verifier: verifier);
     addTearDown(db.close);
@@ -1664,13 +1755,14 @@ void main() {
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with
 /// the current companions and prove the FK graph introduced in v5 survives the
-/// later table rebuilds.
+/// later table rebuilds. The later helpers do the same from their own start
+/// version.
 Future<AppDatabase> _migrateFromV4({required SchemaVerifier verifier}) async {
   final connection = await verifier.startAt(4);
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    13,
+    15,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;
@@ -1681,7 +1773,7 @@ Future<AppDatabase> _migrateFromV11({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    12,
+    15,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;
@@ -1692,7 +1784,7 @@ Future<AppDatabase> _migrateFromV12({required SchemaVerifier verifier}) async {
   final db = AppDatabase(connection);
   await verifier.migrateAndValidate(
     db,
-    13,
+    15,
     options: const ValidationOptions(validateDropped: true),
   );
   return db;

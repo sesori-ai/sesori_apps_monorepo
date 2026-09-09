@@ -8,12 +8,74 @@ import "package:http/testing.dart";
 import "package:opencode_plugin/src/runtime/open_code_managed_api.dart";
 import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
 import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
+import "package:opencode_plugin/src/runtime/open_code_runtime_manifest.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+Future<PluginCatalogSnapshotResult> _unavailableCatalogSnapshot({
+  required PluginConfig config,
+  required Map<String, String> environment,
+  required PluginCatalogCancellationSignal cancellation,
+}) async => const PluginCatalogSnapshotUnavailable();
+
 void main() {
+  group("OpenCodePluginDescriptor.needsManagedRuntimeUpgrade", () {
+    final descriptor = OpenCodePluginDescriptor.production();
+    const config = PluginConfig(values: {"no-auto-start": false, "bin": null});
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("opencode-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory(p.join(stateDir.path, const OpenCodeRuntimeManifest().runtimeId, version)).createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const OpenCodeRuntimeManifest().bundledVersion.raw);
+
+      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("1.17.9");
+
+      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("1.17.9");
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("declines in attach mode, where Sesori does not own the runtime", () {
+      installedVersion("1.17.9");
+
+      expect(
+        descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {"no-auto-start": true, "bin": null}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group("OpenCodePluginDescriptor static surface", () {
-    const descriptor = OpenCodePluginDescriptor();
+    final descriptor = OpenCodePluginDescriptor.production();
 
     test("declares the OpenCode CLI options with bare names", () {
       expect(descriptor.id, equals("opencode"));
@@ -375,6 +437,7 @@ void main() {
     OpenCodePluginDescriptor descriptor({Object? initializeError}) {
       apiRecorder.initializeError = initializeError;
       return OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         candidatePorts: const <int>[51000],
@@ -709,6 +772,7 @@ void main() {
     test("attaches to a reachable server as Ready without owning it", () async {
       final host = attachHost();
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -738,6 +802,7 @@ void main() {
         ),
       );
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -764,6 +829,7 @@ void main() {
         ),
       );
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -780,6 +846,7 @@ void main() {
       final host = attachHost();
       apiRecorder.initializeError = const SocketException("connection refused");
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );
@@ -795,6 +862,7 @@ void main() {
 
     test("normalizes the password option like the legacy flow (trim, blank to null)", () async {
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -839,6 +907,7 @@ void main() {
       // start() hangs under the bridge's cross-instance startup mutex.
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         coldStartBudget: const Duration(milliseconds: 200),
@@ -859,6 +928,7 @@ void main() {
       // probe has already failed.
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );
@@ -993,6 +1063,8 @@ class _FakeHost({@override required final PluginConfig config}) implements Plugi
 
   @override
   Duration? get pluginIdleTimeout => null;
+  @override
+  Stream<Duration?> get pluginIdleTimeoutChanges => const Stream<Duration?>.empty();
 
   @override
   String? provisionedRuntimePath;
@@ -1087,6 +1159,7 @@ class _FakeHostProcessService() implements HostProcessService {
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     spawnEnvironments.add(environment);
     final process = _FakeSpawnedProcess(pid: nextPid++, executablePath: executable);
@@ -1162,6 +1235,9 @@ class _FakeSpawnedProcess({@override required final int pid, required final Stri
 }
 
 class _MemoryJsonStore() implements HostJsonStore {
+  @override
+  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
+
   final Map<String, String> files = <String, String>{};
 
   @override

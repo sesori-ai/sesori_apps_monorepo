@@ -300,6 +300,21 @@ void main() {
       });
     });
 
+    test("getActivityTimestamps returns the requested rows' timestamps only", () async {
+      await dao.setActivity(projectId: "/projects/a", createdAt: 10, updatedAt: 20);
+      await dao.setActivity(projectId: "/projects/b", createdAt: 30, updatedAt: 40);
+      await dao.setActivity(projectId: "/projects/c", createdAt: 50, updatedAt: 60);
+
+      expect(
+        await dao.getActivityTimestamps(projectIds: {"/projects/a", "/projects/c", "/projects/missing"}),
+        {
+          "/projects/a": (createdAt: 10, updatedAt: 20),
+          "/projects/c": (createdAt: 50, updatedAt: 60),
+        },
+      );
+      expect(await dao.getActivityTimestamps(projectIds: const {}), isEmpty);
+    });
+
     group("insertProjectsIfMissing", () {
       test("insertProjectsIfMissing inserts all missing projects in one batch", () async {
         await dao.insertProjectsIfMissing(projectIds: ["p1", "p2", "p3"]);

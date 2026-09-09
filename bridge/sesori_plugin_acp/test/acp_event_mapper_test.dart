@@ -7,6 +7,7 @@ class _EnvelopeTimeEventMapper({
   required super.launchDirectory,
   required super.pluginId,
   required super.configurationTracker,
+  required super.childSessions,
 }) extends AcpEventMapper {
   @override
   PluginMessageTime? messageTimeForNotification({required AcpNotification notification}) {
@@ -29,6 +30,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
     });
 
@@ -47,8 +49,8 @@ void main() {
       );
 
       final updated = events.whereType<BridgeSseMessageUpdated>().single;
-      final message = shared.Message.fromJson(updated.info);
-      expect(message, isA<shared.MessageAssistant>());
+      final message = updated.info;
+      expect(message, isA<PluginMessageAssistant>());
 
       expect(events.whereType<BridgeSseMessagePartUpdated>(), hasLength(1));
       final delta = events.whereType<BridgeSseMessagePartDelta>().single;
@@ -68,7 +70,7 @@ void main() {
             "content": {"type": "text", "text": "reply"},
           }),
         );
-        return shared.Message.fromJson(events.whereType<BridgeSseMessageUpdated>().single.info).id;
+        return events.whereType<BridgeSseMessageUpdated>().single.info.id;
       }
 
       final beforeRestart = assistantId(target: mapper, promptId: "prompt-one");
@@ -76,6 +78,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
       final afterRestart = assistantId(target: replacementMapper, promptId: "prompt-two");
 
@@ -421,10 +424,8 @@ void main() {
         ],
       );
 
-      final message = shared.Message.fromJson(
-        events.whereType<BridgeSseMessageUpdated>().single.info,
-      );
-      expect(message, isA<shared.MessageUser>());
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(message, isA<PluginMessageUser>());
       expect(
         events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.text),
         ["Hello", "Cursor"],
@@ -473,9 +474,7 @@ void main() {
         ],
       );
 
-      final message = shared.Message.fromJson(
-        events.whereType<BridgeSseMessageUpdated>().single.info,
-      );
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info;
       final parts = events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part).toList();
       expect(message.id, "s1-initial-user");
       expect(parts.map((part) => part.id), ["s1-initial-user-text", "s1-initial-user-image-1"]);
@@ -532,12 +531,8 @@ void main() {
         }),
       );
 
-      final beforeId = shared.Message.fromJson(
-        beforeTool.whereType<BridgeSseMessageUpdated>().single.info,
-      ).id;
-      final afterId = shared.Message.fromJson(
-        afterTool.whereType<BridgeSseMessageUpdated>().single.info,
-      ).id;
+      final beforeId = beforeTool.whereType<BridgeSseMessageUpdated>().single.info.id;
+      final afterId = afterTool.whereType<BridgeSseMessageUpdated>().single.info.id;
       expect(afterId, isNot(beforeId));
       expect(
         afterTool.whereType<BridgeSseMessagePartDelta>().single.delta,
@@ -572,12 +567,8 @@ void main() {
         }),
       );
 
-      final beforeId = shared.Message.fromJson(
-        before.whereType<BridgeSseMessageUpdated>().single.info,
-      ).id;
-      final afterId = shared.Message.fromJson(
-        after.whereType<BridgeSseMessageUpdated>().single.info,
-      ).id;
+      final beforeId = before.whereType<BridgeSseMessageUpdated>().single.info.id;
+      final afterId = after.whereType<BridgeSseMessageUpdated>().single.info.id;
       expect(afterId, isNot(beforeId));
       expect(after.whereType<BridgeSseMessagePartUpdated>().single.part.type, PluginMessagePartType.file);
     });
@@ -593,7 +584,7 @@ void main() {
         }),
       );
       final updated = events.whereType<BridgeSseMessageUpdated>().single;
-      expect(shared.Message.fromJson(updated.info), isA<shared.MessageAssistant>());
+      expect(updated.info, isA<PluginMessageAssistant>());
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part.type, PluginMessagePartType.tool);
       expect(part.tool, "read");
@@ -731,6 +722,7 @@ void main() {
         launchDirectory: "/repo",
         pluginId: "cursor",
         configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
       );
       AcpNotification timedUpdate(Map<String, dynamic> body, int createdAt) => AcpNotification(
         method: "session/update",
@@ -749,7 +741,7 @@ void main() {
         }, 20),
       );
       expect(
-        (updateEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        updateEvents.whereType<BridgeSseMessageUpdated>().single.info.time?.created,
         20,
       );
 
@@ -761,7 +753,7 @@ void main() {
         }, 10),
       );
       expect(
-        (callEvents.whereType<BridgeSseMessageUpdated>().single.info["time"] as Map)["created"],
+        callEvents.whereType<BridgeSseMessageUpdated>().single.info.time?.created,
         10,
       );
     });
@@ -961,7 +953,7 @@ void main() {
         }),
       );
       final firstEnvelope = first.whereType<BridgeSseMessageUpdated>().single;
-      final firstId = shared.Message.fromJson(firstEnvelope.info).id;
+      final firstId = firstEnvelope.info.id;
 
       // Same id, same role → same message, delta only.
       final more = mapper.map(
@@ -983,7 +975,7 @@ void main() {
         }),
       );
       final secondEnvelope = second.whereType<BridgeSseMessageUpdated>().single;
-      final secondId = shared.Message.fromJson(secondEnvelope.info).id;
+      final secondId = secondEnvelope.info.id;
       expect(secondId, isNot(firstId));
 
       // A later chunk for the FIRST message merges back into it (no envelope,
@@ -999,13 +991,15 @@ void main() {
       expect(late.whereType<BridgeSseMessagePartDelta>().single.messageID, firstId);
     });
 
-    test("plan maps to a todo update, commands invalidate the plugin catalog", () {
+    test("plan maps to a todo update, commands invalidate the session's options", () {
       expect(
         mapper.map(update({"sessionUpdate": "plan", "entries": const <Object?>[]})).single,
         isA<BridgeSseTodoUpdated>(),
       );
+      // The originating session is what resolves the catalog to refresh, so the
+      // options-change event alone carries this; no session-less twin is sent.
       final events = mapper.map(update({"sessionUpdate": "available_commands_update"}));
-      expect(events.whereType<BridgeSseCommandCatalogUpdated>(), hasLength(1));
+      expect(events.whereType<BridgeSseCommandCatalogUpdated>(), isEmpty);
       expect(
         events.whereType<BridgeSseSessionOptionsChanged>().single.sessionID,
         "s1",
@@ -1284,8 +1278,7 @@ void main() {
           "content": {"type": "text", "text": "hi"},
         }),
       );
-      final message =
-          shared.Message.fromJson(events.whereType<BridgeSseMessageUpdated>().single.info) as shared.MessageAssistant;
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
       expect(message.modelID, "claude-opus-4-8");
       expect(message.providerID, "cursor");
     });
@@ -1323,11 +1316,9 @@ void main() {
         }),
       );
 
-      final message = shared.Message.fromJson(
-        events.whereType<BridgeSseMessageUpdated>().single.info,
-      );
-      expect(message, isA<shared.MessageError>());
-      expect((message as shared.MessageError).errorMessage, "\n\nHALT: fix it");
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(message, isA<PluginMessageError>());
+      expect((message as PluginMessageError).errorMessage, "\n\nHALT: fix it");
       // No assistant text part or delta — the notice rides in the error message.
       expect(events.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
       expect(events.whereType<BridgeSseMessagePartDelta>(), isEmpty);
@@ -1377,8 +1368,8 @@ void main() {
       );
 
       expect(
-        shared.Message.fromJson(halt.whereType<BridgeSseMessageUpdated>().single.info),
-        isA<shared.MessageError>(),
+        halt.whereType<BridgeSseMessageUpdated>().single.info,
+        isA<PluginMessageError>(),
       );
     });
 
@@ -1403,15 +1394,11 @@ void main() {
         }),
       );
 
-      final beforeId = shared.Message.fromJson(
-        before.whereType<BridgeSseMessageUpdated>().single.info,
-      ).id;
+      final beforeId = before.whereType<BridgeSseMessageUpdated>().single.info.id;
       // The halt abandons the pre-halt envelope, so the post-halt chunk must
       // open a new one (its own envelope + a different message id), not append a
       // delta to the abandoned envelope.
-      final afterId = shared.Message.fromJson(
-        after.whereType<BridgeSseMessageUpdated>().single.info,
-      ).id;
+      final afterId = after.whereType<BridgeSseMessageUpdated>().single.info.id;
       expect(afterId, isNot(beforeId));
       expect(after.whereType<BridgeSseMessagePartDelta>().single.delta, "After");
     });
@@ -1447,10 +1434,8 @@ void main() {
         }),
       );
 
-      final message = shared.Message.fromJson(
-        events.whereType<BridgeSseMessageUpdated>().single.info,
-      );
-      expect(message, isA<shared.MessageAssistant>());
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(message, isA<PluginMessageAssistant>());
       expect(events.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.type), [
         PluginMessagePartType.file,
         PluginMessagePartType.text,
@@ -1480,8 +1465,8 @@ void main() {
       );
 
       expect(
-        shared.Message.fromJson(text.whereType<BridgeSseMessageUpdated>().single.info),
-        isA<shared.MessageAssistant>(),
+        text.whereType<BridgeSseMessageUpdated>().single.info,
+        isA<PluginMessageAssistant>(),
       );
       expect(text.whereType<BridgeSseMessagePartDelta>().single.delta, "HALT: fix it");
       expect(image.whereType<BridgeSseMessageUpdated>(), isEmpty);
@@ -1496,10 +1481,8 @@ void main() {
           "content": {"type": "text", "text": "real answer"},
         }),
       );
-      final message = shared.Message.fromJson(
-        events.whereType<BridgeSseMessageUpdated>().single.info,
-      );
-      expect(message, isA<shared.MessageAssistant>());
+      final message = events.whereType<BridgeSseMessageUpdated>().single.info;
+      expect(message, isA<PluginMessageAssistant>());
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "real answer");
     });
   });
@@ -1512,6 +1495,7 @@ class _HaltMapper({required super.configurationTracker}) extends AcpEventMapper 
     : super(
         launchDirectory: "/repo",
         pluginId: "cursor",
+        childSessions: AcpChildSessionTracker(),
       );
 
   @override

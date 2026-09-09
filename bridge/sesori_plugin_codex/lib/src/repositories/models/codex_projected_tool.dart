@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 final class CodexProjectedTool({
   required final String canonicalId,
   required final String tool,
+  required final CodexToolPresentation presentation,
   required final String? title,
   required final PluginToolStatus status,
   required final String? output,
@@ -12,3 +13,7 @@ final class CodexProjectedTool({
 }) {
   final List<PluginMessageAttachment> attachments = List.unmodifiable(attachments);
 }
+
+sealed class const CodexToolPresentation();
+
+final class const CodexOrdinaryToolPresentation() extends CodexToolPresentation;

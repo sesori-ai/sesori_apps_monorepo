@@ -9,6 +9,7 @@ import "../../platform/url_launcher.dart";
 import "../../repositories/models/plugin_management_result.dart";
 import "../../services/catalog_rescan_service.dart";
 import "../../services/models/catalog_rescan_state.dart";
+import "../../services/models/plugin_install_state.dart";
 import "../../services/plugin_management_service.dart";
 import "plugin_management_state.dart";
 
@@ -20,7 +21,7 @@ class PluginManagementCubit({
   this : super(const PluginManagementState.loading()) {
     _subscriptions
       ..add(_service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot)))
-      ..add(_service.installProgress.listen((installs) => _onInstallProgress(installs: installs)))
+      ..add(_service.installStates.listen((installs) => _onInstallStates(installs: installs)))
       ..add(_service.authenticationTerminal.listen(_onAuthenticationTerminal))
       ..add(_catalogRescanService.state.listen(_onCatalogScan));
   }
@@ -36,7 +37,6 @@ class PluginManagementCubit({
   /// row above that list, and announcing it again on an unrelated screen would
   /// report one run in two places.
   final Set<String> _scanClaims = {};
-  int _actionGeneration = 0;
   int _authenticationGeneration = 0;
 
   Future<void> refresh() => _service.refresh();
@@ -48,6 +48,7 @@ class PluginManagementCubit({
         current.authentication is! PluginAuthenticationPresentationFailed) {
       return;
     }
+    if (current.harnessControlsBlocked(pluginId: pluginId)) return;
     final generation = ++_authenticationGeneration;
     emit(
       current.copyWith(
@@ -67,7 +68,17 @@ class PluginManagementCubit({
     switch (result) {
       case PluginAuthenticationStartChallenge():
         final challenge = _service.authenticationChallenges.valueOrNull?[pluginId];
-        if (challenge == null) {
+        final presentation = switch (challenge) {
+          final PluginAuthenticationDeviceCodeChallenge challenge =>
+            PluginAuthenticationChallengePresentation.deviceCode(challenge: challenge),
+          final PluginAuthenticationBrowserChallenge challenge => PluginAuthenticationChallengePresentation.browser(
+            challenge: challenge,
+          ),
+          final PluginAuthenticationUnsupportedChallenge challenge =>
+            PluginAuthenticationChallengePresentation.updateRequired(challenge: challenge),
+          null => null,
+        };
+        if (presentation == null) {
           _setAuthenticationFailure(
             pluginId: pluginId,
             error: const PluginAuthenticationPresentationError.invalidChallenge(),
@@ -75,11 +86,7 @@ class PluginManagementCubit({
           return;
         }
         _setAuthentication(
-          PluginAuthenticationPresentationState.challenge(
-            pluginId: pluginId,
-            verificationUri: challenge.verificationUri,
-            userCode: challenge.userCode,
-          ),
+          PluginAuthenticationPresentationState.challenge(pluginId: pluginId, challenge: presentation),
         );
       case PluginAuthenticationStartFailed(:final failure):
         _setAuthenticationFailure(
@@ -94,33 +101,119 @@ class PluginManagementCubit({
     if (isClosed || current is! PluginManagementReady) return;
     final challenge = _authenticationChallengeData(current.authentication);
     if (challenge == null) return;
+    final authorizationUri = switch (challenge.challenge) {
+      PluginAuthenticationDeviceCodeChallenge(:final verificationUri) => verificationUri,
+      PluginAuthenticationBrowserChallenge(:final authorizationUri) => authorizationUri,
+      PluginAuthenticationUnsupportedChallenge() => null,
+    };
+    if (authorizationUri == null) return;
     final generation = _authenticationGeneration;
     bool launched;
     try {
-      launched = await _urlLauncher.launch(challenge.verificationUri);
+      launched = await _urlLauncher.launch(authorizationUri);
     } on Object {
       launched = false;
     }
-    if (isClosed) return;
+    if (isClosed || launched || generation != _authenticationGeneration) return;
     final latest = state;
-    if (launched ||
-        generation != _authenticationGeneration ||
-        latest is! PluginManagementReady ||
-        (latest.authentication is! PluginAuthenticationPresentationChallenge &&
-            latest.authentication is! PluginAuthenticationPresentationBrowserLaunchFailedState)) {
+    if (latest is! PluginManagementReady) return;
+    final authentication = latest.authentication;
+    if (authentication case PluginAuthenticationPresentationChallenge(:final challenge)
+        when challenge is! PluginAuthenticationDeviceCodePresentation &&
+            challenge is! PluginAuthenticationBrowserPresentation &&
+            challenge is! PluginAuthenticationInvalidRedirectPresentation) {
+      return;
+    }
+    if (authentication is! PluginAuthenticationPresentationChallenge &&
+        authentication is! PluginAuthenticationPresentationBrowserLaunchFailedState) {
       return;
     }
     final latestChallenge = _authenticationChallengeData(latest.authentication);
-    if (latestChallenge?.pluginId != challenge.pluginId) return;
-    emit(
-      latest.copyWith(
-        authentication: PluginAuthenticationPresentationState.browserLaunchFailed(
-          pluginId: challenge.pluginId,
-          verificationUri: challenge.verificationUri,
-          userCode: challenge.userCode,
-        ),
+    if (latestChallenge?.pluginId != challenge.pluginId || latestChallenge?.challenge != challenge.challenge) return;
+    _setAuthentication(
+      PluginAuthenticationPresentationState.browserLaunchFailed(
+        pluginId: challenge.pluginId,
+        challenge: challenge.challenge,
       ),
     );
+  }
+
+  Future<void> submitAuthenticationRedirect({required PluginAuthenticationContinuationIntent intent}) async {
+    final current = state;
+    if (isClosed || current is! PluginManagementReady) return;
+    if (current.authentication case PluginAuthenticationPresentationChallenge(
+      challenge: PluginAuthenticationRedirectSubmittingPresentation() ||
+          PluginAuthenticationRedirectSubmittedPresentation(),
+    )) {
+      return;
+    }
+    final challenge = _authenticationChallengeData(current.authentication);
+    if (challenge == null) return;
+    final browserChallenge = challenge.challenge;
+    if (browserChallenge is! PluginAuthenticationBrowserChallenge) return;
+    final generation = _authenticationGeneration;
+    final submission = _service.submitAuthenticationRedirect(pluginId: challenge.pluginId, intent: intent);
+    _setAuthentication(
+      PluginAuthenticationPresentationState.challenge(
+        pluginId: challenge.pluginId,
+        challenge: PluginAuthenticationChallengePresentation.redirectSubmitting(challenge: browserChallenge),
+      ),
+    );
+    final result = await submission;
+    if (isClosed || generation != _authenticationGeneration) return;
+    final authentication = switch (state) {
+      PluginManagementReady(:final authentication) => authentication,
+      PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
+    };
+    if (authentication is! PluginAuthenticationPresentationChallenge || authentication.pluginId != challenge.pluginId) {
+      return;
+    }
+    final presentation = authentication.challenge;
+    if (presentation is! PluginAuthenticationRedirectSubmittingPresentation ||
+        presentation.challenge != browserChallenge) {
+      return;
+    }
+
+    switch (result) {
+      case PluginAuthenticationContinuationApplied() ||
+          PluginAuthenticationContinuationUncertain() ||
+          PluginAuthenticationContinuationRejected(
+            reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
+          ):
+        _setAuthentication(
+          PluginAuthenticationPresentationState.challenge(
+            pluginId: challenge.pluginId,
+            challenge: PluginAuthenticationChallengePresentation.redirectSubmitted(challenge: browserChallenge),
+          ),
+        );
+      case PluginAuthenticationContinuationInvalidRedirect():
+        _setAuthentication(
+          PluginAuthenticationPresentationState.challenge(
+            pluginId: challenge.pluginId,
+            challenge: PluginAuthenticationChallengePresentation.invalidRedirect(challenge: browserChallenge),
+          ),
+        );
+      case PluginAuthenticationContinuationNotFound():
+        _setAuthenticationFailure(
+          pluginId: challenge.pluginId,
+          error: const PluginAuthenticationPresentationError.notFound(),
+        );
+      case PluginAuthenticationContinuationRejected(reason: PluginAuthenticationContinuationRejection.noActive):
+        _setAuthenticationFailure(
+          pluginId: challenge.pluginId,
+          error: const PluginAuthenticationPresentationError.notFound(),
+        );
+      case PluginAuthenticationContinuationRejected(reason: PluginAuthenticationContinuationRejection.wrongKind):
+        _setAuthenticationFailure(
+          pluginId: challenge.pluginId,
+          error: const PluginAuthenticationPresentationError.invalidChallenge(),
+        );
+      case PluginAuthenticationContinuationRequestFailure(:final error):
+        _setAuthenticationFailure(
+          pluginId: challenge.pluginId,
+          error: PluginAuthenticationPresentationError.request(error: error),
+        );
+    }
   }
 
   Future<void> cancelAuthentication() async {
@@ -133,8 +226,7 @@ class PluginManagementCubit({
     _setAuthentication(
       PluginAuthenticationPresentationState.cancelling(
         pluginId: challenge.pluginId,
-        verificationUri: challenge.verificationUri,
-        userCode: challenge.userCode,
+        challenge: challenge.challenge,
       ),
     );
     final result = await _service.cancelAuthentication(pluginId: challenge.pluginId);
@@ -157,8 +249,7 @@ class PluginManagementCubit({
         _setAuthentication(
           PluginAuthenticationPresentationState.cancellingUncertain(
             pluginId: challenge.pluginId,
-            verificationUri: challenge.verificationUri,
-            userCode: challenge.userCode,
+            challenge: challenge.challenge,
           ),
         );
       case PluginAuthenticationCancelFailed(:final failure):
@@ -292,40 +383,26 @@ class PluginManagementCubit({
     plan: _service.planClearIdleTimeoutOverride(pluginId: pluginId),
   );
 
-  Future<void> confirmForce() async {
-    final current = state;
-    final pending = switch (current) {
-      PluginManagementReady(action: final PluginManagementActionForceConfirmationRequired pending) => pending,
-      PluginManagementReady() ||
-      PluginManagementLoading() ||
-      PluginManagementUnsupported() ||
-      PluginManagementFailure() => null,
-    };
-    if (pending == null) return;
+  Future<void> confirmForce({required PluginManagementActionForceConfirmationRequired confirmation}) async {
+    final target = PluginManagementActionTarget.harness(pluginId: confirmation.pluginId);
+    if (!_ownsAction(target: target, action: confirmation)) return;
     await _runCommand(
-      pluginId: pending.pluginId,
-      request: pending.request,
+      pluginId: confirmation.pluginId,
+      request: confirmation.request,
       forceAction: null,
       replacePendingConfirmation: true,
     );
   }
 
-  void dismissForceConfirmation() {
-    if (isClosed) return;
-    final current = state;
-    if (current is! PluginManagementReady || current.action is! PluginManagementActionForceConfirmationRequired) {
-      return;
-    }
-    _actionGeneration++;
-    emit(current.copyWith(action: const PluginManagementActionState.idle()));
+  void dismissForceConfirmation({required PluginManagementActionForceConfirmationRequired confirmation}) {
+    final target = PluginManagementActionTarget.harness(pluginId: confirmation.pluginId);
+    if (!_ownsAction(target: target, action: confirmation)) return;
+    _setAction(target: target, action: const PluginManagementActionState.idle());
   }
 
-  void dismissActionError() {
-    if (isClosed) return;
-    final current = state;
-    if (current is! PluginManagementReady || current.action is! PluginManagementActionFailed) return;
-    _actionGeneration++;
-    emit(current.copyWith(action: const PluginManagementActionState.idle()));
+  void dismissActionError({required PluginManagementActionFailed failure}) {
+    if (!_ownsAction(target: failure.target, action: failure)) return;
+    _setAction(target: failure.target, action: const PluginManagementActionState.idle());
   }
 
   void dismissRefreshError() {
@@ -342,14 +419,14 @@ class PluginManagementCubit({
     required bool replacePendingConfirmation,
   }) async {
     final target = PluginManagementActionTarget.harness(pluginId: pluginId);
-    final generation = _beginAction(target: target, replacePendingConfirmation: replacePendingConfirmation);
-    if (generation == null) return;
+    final pending = _beginAction(target: target, replacePendingConfirmation: replacePendingConfirmation);
+    if (pending == null) return;
 
     final result = await _service.command(pluginId: pluginId, request: request);
-    if (!_canFinishAction(generation: generation)) return;
+    if (!_ownsAction(target: target, action: pending)) return;
 
-    _finishAction(
-      generation: generation,
+    _setAction(
+      target: target,
       action: _actionStateFor(
         result: result,
         target: target,
@@ -369,14 +446,14 @@ class PluginManagementCubit({
           error: const PluginManagementActionError.invalidIdleTimeout(),
         );
       case PluginManagementCommandPlanRequest(:final request):
-        final generation = _beginAction(target: target, replacePendingConfirmation: false);
-        if (generation == null) return;
+        final pending = _beginAction(target: target, replacePendingConfirmation: false);
+        if (pending == null) return;
         final result = await _service.updateIdleTimeout(request: request);
-        if (!_canFinishAction(generation: generation)) return;
+        if (!_ownsAction(target: target, action: pending)) return;
         // An idle-timeout update offers no force affordance, so a conflict here
         // is simply a failure.
-        _finishAction(
-          generation: generation,
+        _setAction(
+          target: target,
           action: _actionStateFor(result: result, target: target, force: null),
         );
     }
@@ -434,49 +511,69 @@ class PluginManagementCubit({
     };
   }
 
-  int? _beginAction({
+  bool _canBeginAction({
     required PluginManagementActionTarget target,
     required bool replacePendingConfirmation,
   }) {
-    if (isClosed) return null;
+    if (isClosed) return false;
     final current = state;
-    if (current is! PluginManagementReady) return null;
-    final canBegin =
-        current.action is PluginManagementActionIdle ||
-        current.action is PluginManagementActionFailed ||
-        (replacePendingConfirmation && current.action is PluginManagementActionForceConfirmationRequired);
-    if (!canBegin) return null;
-    final generation = ++_actionGeneration;
-    emit(current.copyWith(action: PluginManagementActionState.inProgress(target: target)));
-    return generation;
+    if (current is! PluginManagementReady) return false;
+    final action = current.actionFor(target: target);
+    if (action.blocksControls &&
+        !(replacePendingConfirmation && action is PluginManagementActionForceConfirmationRequired)) {
+      return false;
+    }
+    switch (target) {
+      case PluginManagementActionTargetAllHarnesses():
+        if (current.globalControlsBlocked) return false;
+      case PluginManagementActionTargetHarness(:final pluginId):
+        if (current.globalAction.blocksControls || current.harnessActivityBlocked(pluginId: pluginId)) {
+          return false;
+        }
+    }
+    return true;
   }
 
-  bool _canFinishAction({required int generation}) {
-    return !isClosed && generation == _actionGeneration && state is PluginManagementReady;
+  PluginManagementActionInProgress? _beginAction({
+    required PluginManagementActionTarget target,
+    required bool replacePendingConfirmation,
+  }) {
+    if (!_canBeginAction(target: target, replacePendingConfirmation: replacePendingConfirmation)) return null;
+    final pending = PluginManagementActionInProgress(target: target);
+    _setAction(target: target, action: pending);
+    return pending;
   }
 
-  void _finishAction({required int generation, required PluginManagementActionState action}) {
-    if (isClosed || generation != _actionGeneration) return;
+  bool _ownsAction({required PluginManagementActionTarget target, required PluginManagementActionState action}) {
     final current = state;
-    if (current is! PluginManagementReady) return;
-    emit(current.copyWith(action: action));
+    return !isClosed && current is PluginManagementReady && identical(current.actionFor(target: target), action);
+  }
+
+  void _setAction({required PluginManagementActionTarget target, required PluginManagementActionState action}) {
+    final current = state;
+    if (isClosed || current is! PluginManagementReady) return;
+    switch (target) {
+      case PluginManagementActionTargetAllHarnesses():
+        emit(current.copyWith(globalAction: action));
+      case PluginManagementActionTargetHarness(:final pluginId):
+        final actions = Map<String, PluginManagementActionState>.of(current.harnessActions);
+        if (action is PluginManagementActionIdle) {
+          actions.remove(pluginId);
+        } else {
+          actions[pluginId] = action;
+        }
+        emit(current.copyWith(harnessActions: actions));
+    }
   }
 
   void _emitImmediateFailure({
     required PluginManagementActionTarget target,
     required PluginManagementActionError error,
   }) {
-    if (isClosed) return;
-    final current = state;
-    if (current is! PluginManagementReady ||
-        (current.action is! PluginManagementActionIdle && current.action is! PluginManagementActionFailed)) {
-      return;
-    }
-    _actionGeneration++;
-    emit(
-      current.copyWith(
-        action: PluginManagementActionState.failed(target: target, error: error),
-      ),
+    if (!_canBeginAction(target: target, replacePendingConfirmation: false)) return;
+    _setAction(
+      target: target,
+      action: PluginManagementActionState.failed(target: target, error: error),
     );
   }
 
@@ -484,21 +581,21 @@ class PluginManagementCubit({
     if (isClosed) return;
     switch (snapshot) {
       case PluginManagementLoadResultLoading():
-        _actionGeneration++;
         emit(const PluginManagementState.loading());
       case PluginManagementLoadResultSupported(:final response, :final refreshError):
-        final action = switch (state) {
-          PluginManagementReady(:final action) => action,
+        final previous = switch (state) {
+          final PluginManagementReady ready when ready.response.bridgeId == response.bridgeId => ready,
+          PluginManagementReady() ||
           PluginManagementLoading() ||
           PluginManagementUnsupported() ||
-          PluginManagementFailure() => const PluginManagementActionState.idle(),
+          PluginManagementFailure() => null,
         };
         // Read the service's current progress rather than the previous state:
         // installs keep running across loading/reconnect transitions and while
         // this cubit is recreated (the screen builds a new one per visit), so
         // seeding from an empty map would hide a live install until its next
         // progress event.
-        final installs = _service.installProgress.valueOrNull ?? const <String, PluginInstallProgress>{};
+        final installs = _service.installStates.valueOrNull ?? const <String, PluginInstallState>{};
         emit(
           PluginManagementState.ready(
             response: response,
@@ -506,7 +603,8 @@ class PluginManagementCubit({
               final error? => PluginManagementRefreshState.failed(error: error),
               null => const PluginManagementRefreshState.idle(),
             },
-            action: action,
+            globalAction: previous?.globalAction ?? const PluginManagementActionState.idle(),
+            harnessActions: previous?.harnessActions ?? const {},
             authentication: switch (state) {
               PluginManagementReady(:final authentication) => authentication,
               PluginManagementLoading() ||
@@ -521,23 +619,17 @@ class PluginManagementCubit({
             // holds a rejection the user has not read yet.
             scanRejections: switch (state) {
               PluginManagementReady(:final scanRejections) => scanRejections,
-              PluginManagementLoading() ||
-              PluginManagementUnsupported() ||
-              PluginManagementFailure() => const {},
+              PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => const {},
             },
             scanOutcome: switch (state) {
               PluginManagementReady(:final scanOutcome) => scanOutcome,
-              PluginManagementLoading() ||
-              PluginManagementUnsupported() ||
-              PluginManagementFailure() => null,
+              PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
             },
           ),
         );
       case PluginManagementLoadResultUnsupported():
-        _actionGeneration++;
         emit(const PluginManagementState.unsupported());
       case PluginManagementLoadResultFailure(:final error):
-        _actionGeneration++;
         emit(PluginManagementState.failure(error: error));
     }
   }
@@ -655,13 +747,13 @@ class PluginManagementCubit({
     CatalogRescanNoHarness() => null,
   };
 
-  void _onInstallProgress({required Map<String, PluginInstallProgress> installs}) {
+  void _onInstallStates({required Map<String, PluginInstallState> installs}) {
     if (isClosed) return;
     final current = state;
     // A non-ready state has no card to update; the next ready snapshot reads
     // the service's current progress, so nothing is lost by ignoring it here.
     if (current is! PluginManagementReady) return;
-    if (const MapEquality<String, PluginInstallProgress>().equals(current.installs, installs)) return;
+    if (const MapEquality<String, PluginInstallState>().equals(current.installs, installs)) return;
     emit(current.copyWith(installs: installs));
   }
 
@@ -672,21 +764,19 @@ class PluginManagementCubit({
   }
 }
 
-({String pluginId, Uri verificationUri, String userCode})? _authenticationChallengeData(
+({String pluginId, PluginAuthenticationChallenge challenge})? _authenticationChallengeData(
   PluginAuthenticationPresentationState state,
 ) => switch (state) {
-  PluginAuthenticationPresentationChallenge(:final pluginId, :final verificationUri, :final userCode) ||
-  PluginAuthenticationPresentationBrowserLaunchFailedState(
-    :final pluginId,
-    :final verificationUri,
-    :final userCode,
-  ) ||
-  PluginAuthenticationPresentationCancelling(:final pluginId, :final verificationUri, :final userCode) ||
+  PluginAuthenticationPresentationChallenge(:final pluginId, :final challenge) => (
+    pluginId: pluginId,
+    challenge: challenge.challenge,
+  ),
+  PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId, :final challenge) ||
+  PluginAuthenticationPresentationCancelling(:final pluginId, :final challenge) ||
   PluginAuthenticationPresentationCancellingUncertain(
     :final pluginId,
-    :final verificationUri,
-    :final userCode,
-  ) => (pluginId: pluginId, verificationUri: verificationUri, userCode: userCode),
+    :final challenge,
+  ) => (pluginId: pluginId, challenge: challenge),
   PluginAuthenticationPresentationIdle() ||
   PluginAuthenticationPresentationStarting() ||
   PluginAuthenticationPresentationFailed() => null,

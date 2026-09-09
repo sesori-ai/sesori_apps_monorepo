@@ -7,6 +7,13 @@ enum WindowHostEvent() {
   resized,
 }
 
+/// Focus and visibility state reported by the native window.
+enum WindowHostState() {
+  focused,
+  unfocused,
+  hidden,
+}
+
 /// Platform-neutral native window size in logical pixels.
 @immutable
 class const WindowSize({
@@ -56,6 +63,10 @@ class const WindowBounds({
 /// and whether a close hides the window or performs a safe application quit.
 abstract interface class WindowHost() {
   Stream<WindowHostEvent> get events;
+
+  WindowHostState get currentState;
+
+  Stream<WindowHostState> get states;
 
   /// Prepares the native window before the Flutter application is rendered.
   ///

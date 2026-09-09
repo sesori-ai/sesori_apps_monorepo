@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
+import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/session_event_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_event_service.dart";
@@ -61,7 +63,7 @@ void main() {
     await Future.wait([createdDispatch, deletedDispatch]);
     final output = await outputFuture;
     expect(output.single.pluginId, "plugin");
-    expect(output.single.event, isA<BridgeSseSessionDeleted>());
+    expect((output.single.event as NormalizedOtherEvent).event, isA<BridgeSseSessionDeleted>());
     await dispatcher.dispose();
   });
 
@@ -93,7 +95,7 @@ void main() {
     final output = await outputFuture;
     expect(output.pluginId, "plugin");
     expect(
-      output.event,
+      (output.event as NormalizedOtherEvent).event,
       isA<BridgeSseSessionUpdated>()
           .having((event) => event.titleChanged, "titleChanged", isTrue)
           .having((event) => event.info, "info", session.toJson()),
@@ -200,7 +202,7 @@ void main() {
     );
 
     final output = await outputFuture;
-    expect((output.single.event as BridgeSsePermissionAsked).requestID, "current");
+    expect(((output.single.event as NormalizedOtherEvent).event as BridgeSsePermissionAsked).requestID, "current");
     expect(output.single.generation, 2);
     await dispatcher.dispose();
   });
@@ -279,6 +281,10 @@ class _GatedSessionEventService({required final Future<void> _normalizeGate}) im
   }) {
     return (pluginId: pluginId, generation: generation, projectionUpdatedAt: 1, event: event);
   }
+
+  @override
+  NormalizedBridgeEvent toNormalized({required BridgeSseEvent event}) =>
+      const SessionEventMapper().normalize(event: event);
 
   @override
   Future<List<BridgeSseEvent>> normalize({

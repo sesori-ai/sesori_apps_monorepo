@@ -26,6 +26,7 @@ SessionDetailState _loadedState({
   List<MessageWithParts> messages = const [],
 }) {
   return SessionDetailState.loaded(
+    interaction: const SessionInteractionState.available(refreshError: null),
     messages: messages,
     olderMessagesCursor: null,
     streamingText: streamingText,

@@ -49,6 +49,7 @@ final class PiPlugin._({
     required Duration catalogTimeout,
     required Duration healthTimeout,
     required Duration? Function() resolveIdleTimeout,
+    required Stream<Duration?> idleTimeoutChanges,
     required Duration editorTimeout,
   }) {
     final storage = PiSessionStorageApi(environment: storageEnvironment);
@@ -90,6 +91,7 @@ final class PiPlugin._({
       extensionUiService: extensionUiService,
       clock: clock,
       resolveIdleTimeout: resolveIdleTimeout,
+      idleTimeoutChanges: idleTimeoutChanges,
     );
     final catalogService = PiCatalogService(
       repository: PiBackendCatalogRepository(
@@ -372,9 +374,22 @@ final class PiPlugin._({
       staleOptions: true,
     );
     final options = await _catalogService.requireOptions(projectId: session.directory);
+    if (command.trim() != command || command.isEmpty) {
+      throw const PluginOperationException("sendCommand", statusCode: 400, message: "Invalid Pi command.");
+    }
     final catalogCommand = options.commands.where((candidate) => candidate.name == command).firstOrNull;
-    if (command.trim() != command || command.isEmpty || catalogCommand == null) {
-      throw const PluginOperationException("sendCommand", statusCode: 400, message: "Unsupported Pi command.");
+    if (catalogCommand == null) {
+      if (options.completeness != PluginSessionOptionsCompleteness.complete) {
+        throw const PluginOperationException(
+          "sendCommand",
+          statusCode: 503,
+          message: "Pi command availability could not be confirmed because catalog discovery was incomplete.",
+        );
+      }
+      throw const PluginStaleOptionsException(
+        "sendCommand",
+        message: "Pi no longer offers this command.",
+      );
     }
     try {
       final dispatch = _catalogService.isNativeCompactionCommand(command: catalogCommand)
@@ -413,9 +428,11 @@ final class PiPlugin._({
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     await _sessionService.abort(sessionId: sessionId);
-    return const PluginAbortAccepted(workKept: false);
+    return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   }
 
   Future<Set<String>> interruptActiveWork({required Duration budget}) =>

@@ -1,9 +1,9 @@
 import "dart:async";
 import "dart:collection";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PendingOperations;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" as shared;
 
 import "../api/models/claude_stream_message.dart";
 import "../claude_approval_registry.dart";
@@ -95,12 +95,13 @@ final class ClaudeSessionService({
   required final ServerClock _clock,
 
   /// Resolves the current per-session idle timeout, or null when idle reaping
-  /// is disabled. Read at every timer arm so a runtime settings change takes
-  /// effect at the next idle transition.
+  /// is disabled. Read whenever an idle timer is armed.
   required final Duration? Function() _resolveIdleTimeout,
+  required final Stream<Duration?> _idleTimeoutChanges,
 }) {
   this {
-    _processEvents = _processes.events.listen(_handleProcessEvent);
+    _processes.events.listen(_handleProcessEvent).addTo(_subscriptions);
+    _idleTimeoutChanges.listen(_handleIdleTimeoutChange).addTo(_subscriptions);
   }
 
   /// See [_SessionTurnState.recentlyDispatched]. 64 comfortably exceeds any
@@ -115,7 +116,7 @@ final class ClaudeSessionService({
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
   final PendingOperations _inFlightTeardowns = PendingOperations();
   final Map<String, Future<void>> _teardownsBySession = {};
-  late final StreamSubscription<ClaudeSessionProcessEvent> _processEvents;
+  final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
   bool _disposed = false;
 
@@ -287,7 +288,7 @@ final class ClaudeSessionService({
     state.idleGeneration++;
     if (state.pending == 1) {
       _workState.set(PluginWorkState.busy);
-      _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+      _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()));
       _emit(const BridgeSseProjectUpdated());
     }
   }
@@ -487,7 +488,7 @@ final class ClaudeSessionService({
   /// task with it.
   Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy subAgents}) async {
     final state = _turns[sessionId];
-    if (state == null) return const PluginAbortAccepted(workKept: false);
+    if (state == null) return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     final activeAbort = state.aborting;
     if (activeAbort != null) {
       // The in-flight abort may have kept work this caller wants stopped; run
@@ -505,7 +506,7 @@ final class ClaudeSessionService({
     }
     if (!state.hasWork) {
       _approvals.cancelForSession(sessionId: sessionId);
-      return const PluginAbortAccepted(workKept: false);
+      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     }
     // The CLI's only stop primitive, `interrupt`, also stops background agents
     // (observed on 2.1.257), so sub-agents can be kept only when no main turn
@@ -533,7 +534,7 @@ final class ClaudeSessionService({
         // run. The process stays resident for them, pending approvals are left
         // alone (a kept sub-agent may be waiting on one), and the running set
         // keeps the session busy until the tasks report and wake the main agent.
-        return const PluginAbortAccepted(workKept: true);
+        return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
       }
       _approvals.cancelForSession(sessionId: sessionId);
       // Teardown kills the CLI's in-process wakeup timer, and `--resume` does
@@ -555,7 +556,7 @@ final class ClaudeSessionService({
         _completeSelfStartedTurn(state: state);
         _settleIdle(sessionId: sessionId, state: state);
       }
-      return const PluginAbortAccepted(workKept: false);
+      return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     } finally {
       if (identical(state.aborting, aborting)) state.aborting = null;
       if (!aborting.isCompleted) aborting.complete();
@@ -605,7 +606,7 @@ final class ClaudeSessionService({
       state.idleGeneration++;
       _completeSelfStartedTurn(state: state);
     }
-    await _processEvents.cancel();
+    await _subscriptions.cancel();
     _approvals.dispose();
     await _processes.dispose();
     await _inFlightTeardowns.drain();
@@ -633,6 +634,20 @@ final class ClaudeSessionService({
     _emit(const BridgeSseProjectUpdated());
     _syncWorkState();
     _scheduleIdleReap(sessionId: sessionId, state: state);
+  }
+
+  void _handleIdleTimeoutChange(Duration? _) {
+    if (_disposed) return;
+    for (final entry in _turns.entries) {
+      final state = entry.value;
+      if (state.hasWork ||
+          state.aborting != null ||
+          !_processes.isResident(sessionId: entry.key) ||
+          _teardownsBySession.containsKey(entry.key)) {
+        continue;
+      }
+      _scheduleIdleReap(sessionId: entry.key, state: state);
+    }
   }
 
   void _scheduleIdleReap({required String sessionId, required _SessionTurnState state}) {
@@ -810,7 +825,7 @@ final class ClaudeSessionService({
         state.wakeupAt = null;
         state.idleGeneration++;
         _workState.set(PluginWorkState.busy);
-        _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+        _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()));
         _emit(const BridgeSseProjectUpdated());
       case ClaudeResultMessage():
         if (state.selfStartedTurn != null) _endSelfStartedTurn(sessionId: sessionId, state: state);
@@ -825,7 +840,7 @@ final class ClaudeSessionService({
   void _settleRetry({required String sessionId, required ClaudeStreamMessage message}) {
     if (message is! ClaudeStreamEventMessage && message is! ClaudeAssistantMessage) return;
     if (_retryStatuses.remove(sessionId) == null) return;
-    _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const shared.SessionStatus.busy().toJson()));
+    _emit(BridgeSseSessionStatus(sessionID: sessionId, status: const PluginSessionStatus.busy()));
   }
 
   void _endSelfStartedTurn({required String sessionId, required _SessionTurnState state}) {

@@ -54,6 +54,8 @@ class BridgeControlMessageDispatcher({
     switch (message) {
       case ControlTokenResponse(:final id, :final accessToken):
         _tokenService.handleTokenResponse(id: id, accessToken: accessToken);
+      case ControlTokenRetryLater(:final id):
+        _tokenService.handleTokenRetryLater(id: id);
       case ControlPromptResponse(:final id, :final accepted):
         _promptService.handlePromptResponse(id: id, accepted: accepted);
       case ControlShutdown():

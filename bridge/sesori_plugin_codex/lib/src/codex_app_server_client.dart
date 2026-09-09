@@ -330,7 +330,7 @@ class CodexAppServerClient({
     } catch (error, stack) {
       // The error (e.g. a FormatException from jsonDecode) can embed a snippet
       // of the offending frame, so redact it too.
-      Log.w("[codex][ws] failed to parse frame: ${_redactForLog("$error")}\n$stack");
+      Log.w("[codex][ws] failed to parse frame: ${_redactForLog("$error")}", null, stack);
     }
   }
 

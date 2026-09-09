@@ -8,7 +8,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
@@ -22,7 +21,15 @@ class MockPermissionRepository() extends Mock implements PermissionRepository;
 
 class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
 
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
+class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService {
+  this {
+    when(() => loadMetadata(sessionId: any(named: "sessionId"))).thenAnswer(
+      (invocation) async => SessionDetailMetadataLoadResult.found(
+        session: testSession(id: invocation.namedArguments[#sessionId] as String),
+      ),
+    );
+  }
+}
 
 class MockPluginRepository() extends Mock implements PluginRepository;
 
@@ -83,6 +90,11 @@ class AdaptiveSessionRouterTestHarness() {
     maxDurationReachedController = StreamController<void>.broadcast();
     rootNavigatorKey = GlobalKey<NavigatorState>();
 
+    when(
+      () => notificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => connectionService.events).thenAnswer((_) => const Stream<SseEvent>.empty());
     when(() => connectionService.status).thenAnswer((_) => statusController.stream);
     when(() => connectionService.currentStatus).thenReturn(_connectedStatus);
@@ -178,7 +190,7 @@ class AdaptiveSessionRouterTestHarness() {
 
     Future<SessionDetailLoadResult> loadSnapshot(Invocation invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
-      final sessionId = invocation.namedArguments[#sessionId]! as String;
+      final sessionId = (invocation.namedArguments[#session]! as Session).id;
       return SessionDetailLoadResult.loaded(
         snapshot: _buildDetailSnapshot(
           projectId: projectId,
@@ -191,13 +203,13 @@ class AdaptiveSessionRouterTestHarness() {
 
     when(
       () => sessionDetailLoadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(loadSnapshot);
     when(
       () => sessionDetailLoadService.reload(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(loadSnapshot);
@@ -249,7 +261,6 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     getIt.registerSingleton<ConnectionService>(connectionService);
@@ -262,6 +273,8 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<FailureReporter>(failureReporter);
     getIt.registerSingleton<PermissionRepository>(permissionRepository);
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
+    getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
+    getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
@@ -367,6 +380,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
   );
 
   return SessionDetailSnapshot(
+    areOptionsStale: false,
     bridgeQueuedPrompts: const [],
     projectId: projectId,
     pluginId: "opencode",

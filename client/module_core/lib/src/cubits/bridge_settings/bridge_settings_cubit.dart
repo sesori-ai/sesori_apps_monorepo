@@ -9,7 +9,10 @@ import "../../repositories/bridge_settings_repository.dart";
 import "../../repositories/models/bridge_settings_result.dart";
 import "bridge_settings_state.dart";
 
-class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, required ConnectionService connectionService}) extends Cubit<BridgeSettingsState> {
+class BridgeSettingsCubit({
+  required final BridgeSettingsRepository _repository,
+  required ConnectionService connectionService,
+}) extends Cubit<BridgeSettingsState> {
   this
     : super(
         connectionService.currentStatus is ConnectionConnected
@@ -200,6 +203,67 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
     }
   }
 
+  Future<void> updatePluginWarmup({required bool enabled, required BridgeSettingsReadyFull expectedState}) async {
+    if (_operationInProgress || !_connected || isClosed) return;
+    final current = state;
+    if (current is! BridgeSettingsReadyFull || !identical(current, expectedState)) return;
+    final currentEnabled = switch (current.pluginWarmupMutation) {
+      PluginWarmupMutationIdle(:final enabled) || PluginWarmupMutationFailed(:final enabled) => enabled,
+      PluginWarmupMutationInProgress() || PluginWarmupMutationUncertain() || PluginWarmupMutationUnsupported() => null,
+    };
+    if (currentEnabled == null || currentEnabled == enabled) return;
+
+    _operationInProgress = true;
+    final operationEpoch = _connectionEpoch;
+    emit(
+      _withPluginWarmup(
+        state: current,
+        mutation: PluginWarmupMutationInProgress(enabled: currentEnabled),
+      ),
+    );
+    try {
+      final result = await _repository.updatePluginWarmup(enabled: enabled);
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      switch (result) {
+        case PluginWarmupSettingsMutationCommitted(:final enabled):
+          emit(
+            _withPluginWarmup(
+              state: current,
+              mutation: PluginWarmupMutationIdle(enabled: enabled),
+            ),
+          );
+        case PluginWarmupSettingsMutationUnsupported():
+          emit(_withPluginWarmup(state: current, mutation: const PluginWarmupMutationUnsupported()));
+        case PluginWarmupSettingsMutationFailure(:final error):
+          emit(
+            _withPluginWarmup(
+              state: current,
+              mutation: PluginWarmupMutationFailed(enabled: currentEnabled, error: error),
+            ),
+          );
+        case PluginWarmupSettingsMutationUncertain():
+          await _reconcilePluginWarmup(
+            current: current,
+            currentEnabled: currentEnabled,
+            operationEpoch: operationEpoch,
+          );
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      emit(
+        _withPluginWarmup(
+          state: current,
+          mutation: PluginWarmupMutationFailed(
+            enabled: currentEnabled,
+            error: ApiError.dartHttpClient(error),
+          ),
+        ),
+      );
+    } finally {
+      _finishOperation();
+    }
+  }
+
   Future<void> _reconcilePullRequestRefresh({
     required BridgeSettingsReady current,
     required int operationEpoch,
@@ -263,6 +327,38 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
     }
   }
 
+  Future<void> _reconcilePluginWarmup({
+    required BridgeSettingsReadyFull current,
+    required bool currentEnabled,
+    required int operationEpoch,
+  }) async {
+    try {
+      final result = await _repository.load();
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      if (result case BridgeSettingsLoadFailure(:final error)) {
+        emit(
+          _withPluginWarmup(
+            state: current,
+            mutation: PluginWarmupMutationUncertain(enabled: currentEnabled, refreshError: error),
+          ),
+        );
+      } else {
+        _publishLoad(result: result, validationBounds: current.validationBounds);
+      }
+    } on Object catch (error) {
+      if (!_canPublish(operationEpoch: operationEpoch)) return;
+      emit(
+        _withPluginWarmup(
+          state: current,
+          mutation: PluginWarmupMutationUncertain(
+            enabled: currentEnabled,
+            refreshError: ApiError.dartHttpClient(error),
+          ),
+        ),
+      );
+    }
+  }
+
   PullRequestRefreshSettingsUpdatePlan _planPullRequestRefreshUpdate({required String input}) {
     return PullRequestRefreshSettingsUpdatePlan.parse(
       input: input,
@@ -290,6 +386,10 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
             pullRequestRefreshMutation: PullRequestRefreshMutationIdle(validationBounds: validationBounds),
             yoloEnabled: response.yolo.enabled,
             yoloMutation: const YoloMutationIdle(),
+            pluginWarmupMutation: switch (response.warmUpPluginsOnSessionOpen) {
+              final bool enabled => PluginWarmupMutationIdle(enabled: enabled),
+              null => const PluginWarmupMutationUnsupported(),
+            },
           ),
         );
       case BridgeSettingsLoadLegacyPartial(:final pullRequestRefresh):
@@ -312,12 +412,18 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
     required PullRequestRefreshMutationState mutation,
   }) {
     return switch (state) {
-      BridgeSettingsReadyFull(:final yoloEnabled, :final yoloMutation) => BridgeSettingsReadyFull(
-        pullRequestRefreshIntervalSeconds: intervalSeconds,
-        pullRequestRefreshMutation: mutation,
-        yoloEnabled: yoloEnabled,
-        yoloMutation: yoloMutation,
-      ),
+      BridgeSettingsReadyFull(
+        :final yoloEnabled,
+        :final yoloMutation,
+        :final pluginWarmupMutation,
+      ) =>
+        BridgeSettingsReadyFull(
+          pullRequestRefreshIntervalSeconds: intervalSeconds,
+          pullRequestRefreshMutation: mutation,
+          yoloEnabled: yoloEnabled,
+          yoloMutation: yoloMutation,
+          pluginWarmupMutation: pluginWarmupMutation,
+        ),
       BridgeSettingsReadyLegacyPartial() => BridgeSettingsReadyLegacyPartial(
         pullRequestRefreshIntervalSeconds: intervalSeconds,
         pullRequestRefreshMutation: mutation,
@@ -335,6 +441,20 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
       pullRequestRefreshMutation: state.pullRequestRefreshMutation,
       yoloEnabled: enabled,
       yoloMutation: mutation,
+      pluginWarmupMutation: state.pluginWarmupMutation,
+    );
+  }
+
+  BridgeSettingsReadyFull _withPluginWarmup({
+    required BridgeSettingsReadyFull state,
+    required PluginWarmupMutationState mutation,
+  }) {
+    return BridgeSettingsReadyFull(
+      pullRequestRefreshIntervalSeconds: state.pullRequestRefreshIntervalSeconds,
+      pullRequestRefreshMutation: state.pullRequestRefreshMutation,
+      yoloEnabled: state.yoloEnabled,
+      yoloMutation: state.yoloMutation,
+      pluginWarmupMutation: mutation,
     );
   }
 
@@ -365,6 +485,12 @@ class BridgeSettingsCubit({required final BridgeSettingsRepository _repository, 
   }
 }
 
-enum PullRequestRefreshInputValidation() { valid, invalid }
+enum PullRequestRefreshInputValidation() {
+  valid,
+  invalid,
+}
 
-enum BridgeSettingsUpdateAcceptance() { accepted, rejected }
+enum BridgeSettingsUpdateAcceptance() {
+  accepted,
+  rejected,
+}

@@ -17,6 +17,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_preference_repository.dart";
+import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -28,6 +29,10 @@ import "../../helpers/voice_test_helpers.dart";
 class MockComposerAttachmentDispatcher() extends Mock implements ComposerAttachmentDispatcher;
 
 class MockImageClipboard() extends Mock implements ImageClipboard;
+
+class _MockPluginManagementService() extends Mock implements PluginManagementService;
+
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 class MockPluginRepository() extends Mock implements PluginRepository;
 
@@ -149,6 +154,7 @@ Future<void> closeHarnessMenu(WidgetTester tester) async {
 }
 
 Widget _buildApp({
+  bool useHarnessFlow = false,
   ThemeMode themeMode = ThemeMode.light,
   SessionListState sessionListState = const SessionListState.loaded(
     sessions: [],
@@ -172,10 +178,13 @@ Widget _buildApp({
           ),
         ],
       ),
-      GoRoute(
-        path: "/settings/harnesses",
-        builder: (context, state) => const Material(child: Text("harnesses-settings")),
-      ),
+      if (useHarnessFlow)
+        buildHarnessSettingsRoute()
+      else
+        GoRoute(
+          path: "/settings/harnesses",
+          builder: (context, state) => const Material(child: Text("harnesses-settings")),
+        ),
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
@@ -442,7 +451,6 @@ void main() {
     GetIt.instance.registerSingleton<NewSessionOptionsService>(
       NewSessionOptionsService(
         sessionRepository: sessionRepository,
-        defaultModelSelector: const DefaultModelSelector(),
       ),
     );
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
@@ -1059,6 +1067,73 @@ void main() {
     expect(find.text("harnesses-settings"), findsOneWidget);
   });
 
+  for (final closeFromDetail in [false, true]) {
+    testWidgets("harness modal X retains the same New Session and draft (detail: $closeFromDetail)", (tester) async {
+      final service = _MockPluginManagementService();
+      when(service.onDispose).thenAnswer((_) async {});
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        const PluginManagementLoadResult.supported(
+          response: PluginManagementResponse(
+            snapshotToken: "navigation-test",
+            bridgeId: "bridge-1",
+            defaultPluginId: "test-harness",
+            defaultIdleTimeoutMins: 10,
+            plugins: [],
+          ),
+          refreshError: null,
+        ),
+      );
+      when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
+      final installs = BehaviorSubject<Map<String, PluginInstallState>>.seeded(const {});
+      addTearDown(installs.close);
+      when(() => service.installStates).thenAnswer((_) => installs.stream);
+      when(() => service.authenticationTerminal)
+          .thenAnswer((_) => const Stream<PluginAuthenticationTerminalUpdate>.empty());
+      GetIt.instance.registerSingleton<PluginManagementService>(service);
+      GetIt.instance.registerSingleton<UrlLauncher>(_MockUrlLauncher());
+      addTearDown(snapshots.close);
+      await tester.pumpWidget(_buildApp(useHarnessFlow: true));
+      await tester.pumpAndSettle();
+      await enterTypingMode(tester);
+      await tester.enterText(find.byType(EditableText), "half-written idea");
+      await tester.pump();
+      final opener = tester.element(find.byType(NewSessionScreen));
+      final composer = tester.element(find.byType(PromptInput));
+      final newSessionCubit = composer.read<NewSessionCubit>();
+      await openHarnessMenu(tester);
+      await tester.tap(find.byKey(const Key("new_session_harness_settings")));
+      await tester.pumpAndSettle();
+      final overview = tester.element(find.byType(HarnessesSettingsView));
+      final harnessCubit = overview.read<PluginManagementCubit>();
+      if (closeFromDetail) {
+        unawaited(
+          overview.pushRoute(
+            const AppRoute.settingsHarnessDetail(
+              pluginId: "removed",
+              presentation: HarnessSettingsPresentation.modal,
+            ),
+          ),
+        );
+        await tester.pumpAndSettle();
+        expect(
+          tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(),
+          same(harnessCubit),
+        );
+      }
+      await tester.tap(find.bySemanticsLabel("Close settings"));
+      await tester.pumpAndSettle();
+      expect(tester.element(find.byType(NewSessionScreen)), same(opener));
+      expect(tester.element(find.byType(PromptInput)), same(composer));
+      expect(tester.element(find.byType(PromptInput)).read<NewSessionCubit>(), same(newSessionCubit));
+      expect(newSessionCubit.composerDraft, ComposerDraft.typed(text: "half-written idea"));
+      expect(find.text("half-written idea"), findsOneWidget);
+      // Stream cancellation completes outside the widget-test clock.
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      expect(harnessCubit.isClosed, isTrue);
+      expect(snapshots.hasListener, isFalse);
+    });
+  }
+
   testWidgets("keeps the harness settings icon layout-safe on hover", (tester) async {
     final semantics = tester.ensureSemantics();
     await tester.pumpWidget(_buildApp());
@@ -1139,13 +1214,19 @@ void main() {
     expect(find.descendant(of: optionsScroll, matching: find.byType(PromptInput)), findsNothing);
     expect(tester.takeException(), isNull);
 
-    // The refresh action floats above the composer rather than riding the
-    // options it reloads, so scrolling must not carry it away.
+    // The refresh action shares the options scroll so it cannot cover a row.
+    // When the content fits, its fill-remaining sliver still rests it above the
+    // pinned composer and there is nothing for this drag to move.
     final refresh = find.byKey(const Key("new_session_options_refresh"));
-    expect(find.descendant(of: optionsScroll, matching: refresh), findsNothing);
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
 
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
     final composerTop = tester.getTopLeft(find.byType(PromptInput)).dy;
     final refreshRect = tester.getRect(refresh);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(refreshRect.top));
     expect(refreshRect.bottom, lessThanOrEqualTo(composerTop));
 
     await tester.drag(optionsScroll, const Offset(0, -250));
@@ -1156,10 +1237,10 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("scrolls the last option clear of the refresh at a large text scale", (tester) async {
-    // The refresh pill is padding around its label, not a fixed box, so it
-    // grows with the text scale. The band reserved beneath the options has to
-    // grow with it or the last row stays stranded underneath.
+  testWidgets("lays out the last option before the refresh at a large text scale", (tester) async {
+    // The refresh pill grows with the text scale. Keeping it in the scroll's
+    // normal sliver flow makes that measured height part of layout rather than
+    // an overlay band that has to be estimated separately.
     tester.platformDispatcher.textScaleFactorTestValue = 1.5;
     addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
     await tester.binding.setSurfaceSize(const Size(700, 400));
@@ -1170,15 +1251,50 @@ void main() {
 
     final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
     final refresh = find.byKey(const Key("new_session_options_refresh"));
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
 
     final scrollRect = tester.getRect(optionsScroll);
     await tester.dragFrom(Offset(scrollRect.center.dx, scrollRect.top + 8), const Offset(0, -2000));
     await tester.pumpAndSettle();
 
-    // Scrolled to the end, the reserved band must still span everything the
-    // pill covers — measured, so it holds however tall the pill has grown.
-    final reserved = tester.widget<SingleChildScrollView>(optionsScroll).padding! as EdgeInsetsDirectional;
-    expect(reserved.bottom, greaterThanOrEqualTo(scrollRect.bottom - tester.getRect(refresh).top));
+    expect(refresh.hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("keeps the refresh from covering workspace options with a multiline draft", (tester) async {
+    tester.view.physicalSize = const Size(420, 912);
+    tester.view.devicePixelRatio = 1;
+    tester.view.padding = const FakeViewPadding(top: 59, bottom: 34);
+    tester.view.viewPadding = const FakeViewPadding(top: 59, bottom: 34);
+    addTearDown(tester.view.reset);
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    tester.view.viewInsets = const FakeViewPadding(bottom: 344);
+    await tester.pumpAndSettle();
+    await tester.enterText(
+      find.byType(EditableText),
+      "one line of a long prompt\ntwo lines\nthree lines\nfour lines\nfive lines\nsix lines",
+    );
+    await tester.pumpAndSettle();
+
+    final optionsScroll = find.byKey(const Key("new_session_options_scroll"));
+    final refresh = find.byKey(const Key("new_session_options_refresh"), skipOffstage: false);
+    final workspace = find.ancestor(
+      of: find.byKey(const Key("new_session_dedicated_workspace")),
+      matching: find.byType(MergeSemantics),
+    );
+
+    expect(find.descendant(of: optionsScroll, matching: refresh, skipOffstage: false), findsOneWidget);
+    expect(workspace.hitTestable(), findsOneWidget);
+    expect(tester.getRect(workspace).bottom, lessThanOrEqualTo(tester.getRect(refresh).top));
     expect(tester.takeException(), isNull);
   });
 
@@ -1640,6 +1756,7 @@ void main() {
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
                   variants: ["xhigh", "low"],
+                  defaultVariant: null,
                   family: null,
                   releaseDate: null,
                 ),
@@ -1690,6 +1807,7 @@ void main() {
                   providerID: "anthropic",
                   name: "Claude 3.5 Sonnet",
                   variants: ["xhigh", "low"],
+                  defaultVariant: null,
                   family: null,
                   releaseDate: null,
                 ),

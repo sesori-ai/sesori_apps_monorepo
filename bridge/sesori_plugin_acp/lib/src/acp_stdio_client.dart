@@ -5,6 +5,7 @@ import "dart:io" as io;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
+import "acp_output_interceptor.dart";
 import "acp_process_factory.dart";
 
 class AcpRpcException({
@@ -32,6 +33,8 @@ class AcpStdioClient({
   required final AcpLaunchSpec _launchSpec,
   required final AcpProcessFactory _processFactory,
   final String _logTag = "acp",
+  final AcpOutputInterceptor? _stdoutInterceptor,
+  final AcpOutputInterceptor? _stderrInterceptor,
 }) {
   late final NdjsonProcessClient _transport = NdjsonProcessClient(
     responseCorrelationId: (frame) => frame["method"] == null ? frame["id"] : null,
@@ -64,9 +67,29 @@ class AcpStdioClient({
     if (_disposed) throw StateError("AcpStdioClient is disposed");
     final token = _transport.beginAttach();
     final process = await _processFactory(_launchSpec);
-    await _transport.attach(token: token, process: _AcpProcessHandle(process));
+    await _transport.attach(
+      token: token,
+      process: _AcpProcessHandle(
+        process: process,
+        stdout: () => _intercept(bytes: process.stdout, interceptor: _stdoutInterceptor),
+        stderr: () => _intercept(bytes: process.stderr, interceptor: _stderrInterceptor),
+      ),
+    );
     await _frames?.cancel();
     _frames = _transport.notifications.listen(_handleFrame);
+  }
+
+  Stream<List<int>> _intercept({required Stream<List<int>> bytes, required AcpOutputInterceptor? interceptor}) {
+    if (interceptor == null) return bytes;
+    return interceptor.intercept(bytes: bytes).handleError((Object error, StackTrace stackTrace) {
+      if (error is AcpOutputInterceptionException) {
+        // A failed filter cannot safely deliver further output. Detach now so
+        // future dispatch fails immediately, and use the existing teardown owner.
+        Log.w("[$_logTag] output interception failed; disconnecting", error, stackTrace);
+        unawaited(_transport.reset(reason: error, stackTrace: stackTrace, gracefulTimeout: Duration.zero));
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    });
   }
 
   Future<dynamic> request({
@@ -82,14 +105,57 @@ class AcpStdioClient({
     required String method,
     Object? params,
     Duration timeout = const Duration(seconds: 60),
+  }) => _dispatchRequest(
+    method: method,
+    params: params,
+    timeout: timeout,
+    activitySessionId: null,
+  );
+
+  /// Dispatches a long-running session request with an inactivity deadline.
+  /// Each inbound notification or server request explicitly attributed to
+  /// [sessionId] restarts [inactivityTimeout]; other sessions do not.
+  Future<({Future<dynamic> response})> dispatchSessionRequest({
+    required String method,
+    required Object? params,
+    required String sessionId,
+    required Duration inactivityTimeout,
+  }) => _dispatchRequest(
+    method: method,
+    params: params,
+    timeout: inactivityTimeout,
+    activitySessionId: sessionId,
+  );
+
+  Future<({Future<dynamic> response})> _dispatchRequest({
+    required String method,
+    required Object? params,
+    required Duration timeout,
+    required String? activitySessionId,
   }) async {
     final id = _nextId++;
     final frame = <String, Object?>{"jsonrpc": "2.0", "id": id, "method": method};
     if (params != null) frame["params"] = params;
-    final dispatched = await _transport.dispatch(id: id, frame: frame, timeout: timeout);
+    final dispatched = activitySessionId == null
+        ? await _transport.dispatch(id: id, frame: frame, timeout: timeout)
+        : await _transport.dispatchWithInactivityTimeout(
+            id: id,
+            frame: frame,
+            timeout: timeout,
+            activityMatcher: (incoming) => _isSessionActivity(
+              frame: incoming,
+              sessionId: activitySessionId,
+            ),
+          );
     final response = _mapResponse(dispatched.response);
     response.ignore();
     return (response: response);
+  }
+
+  bool _isSessionActivity({required JsonObject frame, required String sessionId}) {
+    if (frame["method"] is! String) return false;
+    final params = frame["params"];
+    return params is Map && params["sessionId"] == sessionId;
   }
 
   Future<dynamic> _mapResponse(Future<JsonObject> response) async {
@@ -156,7 +222,11 @@ class AcpStdioClient({
     if (_disposed) return;
     await _frames?.cancel();
     _frames = null;
-    await _transport.reset(reason: StateError("AcpStdioClient reset"), gracefulTimeout: gracefulTimeout);
+    await _transport.reset(
+      reason: StateError("AcpStdioClient reset"),
+      stackTrace: null,
+      gracefulTimeout: gracefulTimeout,
+    );
   }
 
   Future<void> dispose({Duration gracefulTimeout = const Duration(seconds: 5)}) async {
@@ -170,13 +240,17 @@ class AcpStdioClient({
   }
 }
 
-final class _AcpProcessHandle(final AcpProcessHandle process) implements NdjsonProcessHandle {
+final class _AcpProcessHandle({
+  required final AcpProcessHandle process,
+  required final Stream<List<int>> Function() stdout,
+  required final Stream<List<int>> Function() stderr,
+}) implements NdjsonProcessHandle {
   @override
   io.IOSink get stdin => process.stdin;
   @override
-  Stream<String> get stdoutLines => process.stdout.transform(utf8.decoder).transform(const LineSplitter());
+  Stream<String> get stdoutLines => stdout().transform(utf8.decoder).transform(const LineSplitter());
   @override
-  Stream<String> get stderrLines => process.stderr.transform(utf8.decoder).transform(const LineSplitter());
+  Stream<String> get stderrLines => stderr().transform(utf8.decoder).transform(const LineSplitter());
   @override
   Future<int> get done => process.exitCode;
   @override

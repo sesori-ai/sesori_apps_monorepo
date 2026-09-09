@@ -1,5 +1,7 @@
 # Design Catalog
 
+## Capability
+
 The design catalog renders production `theme_prego` components without loading
 either product shell or any authentication, relay, routing, analytics, or
 production service setup. A single typed scenario registry drives Widgetbook
@@ -32,7 +34,7 @@ a static Flutter Web application.
 - Confirm `web/catalog_manifest.json` changes only after the typed registry is
   intentionally changed and regenerated.
 
-## Maintenance Sources
+## Sources
 
 - `client/design_catalog/lib/src/catalog_scenarios.dart`
 - `client/design_catalog/lib/src/prego_button_catalog.dart`

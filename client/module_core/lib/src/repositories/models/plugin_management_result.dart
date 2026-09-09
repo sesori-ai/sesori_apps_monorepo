@@ -26,8 +26,7 @@ final class const PluginManagementLoadResultSupported({
 
 final class const PluginManagementLoadResultUnsupported() extends PluginManagementLoadResult;
 
-final class const PluginManagementLoadResultFailure({required final ApiError error})
-    extends PluginManagementLoadResult;
+final class const PluginManagementLoadResultFailure({required final ApiError error}) extends PluginManagementLoadResult;
 
 sealed class const PluginManagementMutationResult() {
   const factory success({
@@ -40,10 +39,10 @@ sealed class const PluginManagementMutationResult() {
     required PluginLifecycleConflict conflict,
   }) = PluginManagementMutationResultConflict;
 
-  /// The mutation request was sent but its outcome cannot be truthfully
-  /// published: the response cannot prove it or the connection/service fence
-  /// moved. Consumers render this as an uncertain state requiring refresh,
-  /// never as a bridge rejection or a committed success.
+  /// The mutation request was sent but its outcome cannot be confirmed by its
+  /// response, or its connection/bridge identity fence moved. Snapshot-only
+  /// supersession does not invalidate a correlated acknowledgment. Consumers
+  /// render uncertainty as requiring refresh, never as rejection or success.
   const factory uncertain() = PluginManagementMutationResultUncertain;
 
   const factory failure({required ApiError error}) = PluginManagementMutationResultFailure;
@@ -63,9 +62,6 @@ final class const PluginManagementMutationResultFailure({required final ApiError
     extends PluginManagementMutationResult;
 
 /// Why a plugin authentication start or cancel did not succeed.
-///
-/// Start and cancel fail in exactly the same ways, so they share one failure
-/// type rather than each declaring its own five-variant copy.
 sealed class const PluginAuthenticationFailure() {
   /// The bridge does not know this plugin.
   const factory notFound() = PluginAuthenticationFailureNotFound;
@@ -98,9 +94,23 @@ final class const PluginAuthenticationFailureUncertain() extends PluginAuthentic
 final class const PluginAuthenticationFailureRequest({required final ApiError error})
     extends PluginAuthenticationFailure;
 
+sealed class const PluginAuthenticationChallenge();
+
+final class const PluginAuthenticationDeviceCodeChallenge({
+  required final Uri verificationUri,
+  required final String userCode,
+}) extends PluginAuthenticationChallenge;
+
+final class const PluginAuthenticationBrowserChallenge({
+  required final Uri authorizationUri,
+  required final Uri expectedCallbackUri,
+}) extends PluginAuthenticationChallenge;
+
+final class const PluginAuthenticationUnsupportedChallenge() extends PluginAuthenticationChallenge;
+
 sealed class const PluginAuthenticationStartResult() {
   const factory challenge({
-    required PluginAuthenticationChallengeResponse challenge,
+    required PluginAuthenticationChallenge challenge,
   }) = PluginAuthenticationStartChallenge;
 
   const factory failed({
@@ -108,7 +118,7 @@ sealed class const PluginAuthenticationStartResult() {
   }) = PluginAuthenticationStartFailed;
 }
 
-final class const PluginAuthenticationStartChallenge({required final PluginAuthenticationChallengeResponse challenge})
+final class const PluginAuthenticationStartChallenge({required final PluginAuthenticationChallenge challenge})
     extends PluginAuthenticationStartResult;
 
 final class const PluginAuthenticationStartFailed({required final PluginAuthenticationFailure failure})
@@ -126,3 +136,39 @@ final class const PluginAuthenticationCancelSuccess() extends PluginAuthenticati
 
 final class const PluginAuthenticationCancelFailed({required final PluginAuthenticationFailure failure})
     extends PluginAuthenticationCancelResult;
+
+enum PluginAuthenticationContinuationRejection() {
+  noActive,
+  wrongKind,
+  alreadySubmitted,
+}
+
+sealed class const PluginAuthenticationContinuationResult() {
+  const factory applied() = PluginAuthenticationContinuationApplied;
+
+  const factory invalidRedirect() = PluginAuthenticationContinuationInvalidRedirect;
+
+  const factory notFound() = PluginAuthenticationContinuationNotFound;
+
+  const factory rejected({required PluginAuthenticationContinuationRejection reason}) =
+      PluginAuthenticationContinuationRejected;
+
+  const factory uncertain() = PluginAuthenticationContinuationUncertain;
+
+  const factory request({required ApiError error}) = PluginAuthenticationContinuationRequestFailure;
+}
+
+final class const PluginAuthenticationContinuationApplied() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationInvalidRedirect() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationNotFound() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationRejected({
+  required final PluginAuthenticationContinuationRejection reason,
+}) extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationUncertain() extends PluginAuthenticationContinuationResult;
+
+final class const PluginAuthenticationContinuationRequestFailure({required final ApiError error})
+    extends PluginAuthenticationContinuationResult;

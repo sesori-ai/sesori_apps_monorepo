@@ -19,16 +19,23 @@ import "../../routing/app_routes.dart";
 import "../../services/catalog_rescan_service.dart";
 import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
+import "../shared/optimistic_rename_tracker.dart";
 import "session_list_state.dart";
 
-enum _SessionFetchOutcome() { applied, failed, superseded }
+enum _SessionFetchOutcome() {
+  applied,
+  failed,
+  superseded,
+}
 
 class SessionListCubit({
+  required SessionListFilter initialFilter,
   required final SessionRepository _sessionRepository,
   required final SessionListService _sessionListService,
   required final ProjectRepository _projectRepository,
@@ -43,7 +50,9 @@ class SessionListCubit({
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginListClaim(projectId: _projectId);
+  final ProjectViewClaim? _projectViewClaim = initialFilter == SessionListFilter.archived
+      ? null
+      : _projectViewingService.beginListClaim(projectId: _projectId);
   SessionCleanupRejection? _lastCleanupRejection;
 
   /// Cached git context (base branch + remote repository identity), fetched
@@ -110,7 +119,7 @@ class SessionListCubit({
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
-            SesoriCommandCatalogUpdated() ||
+            SesoriSessionOptionsUpdated() ||
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
@@ -120,10 +129,6 @@ class SessionListCubit({
             SesoriMessagePartUpdated() ||
             SesoriMessagePartDelta() ||
             SesoriMessagePartRemoved() ||
-            SesoriPtyCreated() ||
-            SesoriPtyUpdated() ||
-            SesoriPtyExited() ||
-            SesoriPtyDeleted() ||
             SesoriPermissionAsked() ||
             SesoriPermissionReplied() ||
             SesoriPermissionUpdated() ||
@@ -138,18 +143,8 @@ class SessionListCubit({
             SesoriProjectUpdated() ||
             SesoriVcsBranchUpdated() ||
             SesoriFileEdited() ||
-            SesoriFileWatcherUpdated() ||
-            SesoriLspUpdated() ||
-            SesoriLspClientDiagnostics() ||
-            SesoriMcpToolsChanged() ||
-            SesoriMcpBrowserOpenFailed() ||
-            SesoriInstallationUpdated() ||
             SesoriInstallationUpdateAvailable() ||
-            SesoriWorkspaceReady() ||
-            SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
-            SesoriWorktreeReady() ||
-            SesoriWorktreeFailed() ||
             // Unseen changes are consumed via the SessionUnseenTracker stream.
             SesoriSessionUnseenChanged():
           break;
@@ -411,19 +406,92 @@ class SessionListCubit({
     };
   }
 
-  /// Renames a session. Returns `true` on success so the screen can show
-  /// a confirmation message.
+  /// Renames a session optimistically. Returns `false` after restoring the
+  /// prior title when the bridge rejects the rename.
   Future<bool> renameSession({required String sessionId, required String title}) async {
-    final response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
-    if (isClosed) return false;
+    if (state is! SessionListLoaded) return false;
+
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index < 0) return false;
+
+    final token = ++_nextRenameToken;
+    final renameState = _renameStateBySessionId.putIfAbsent(
+      sessionId,
+      () => OptimisticRenameTracker(confirmedValue: _allSessions[index].title),
+    );
+    renameState.begin(token: token, value: title);
+    _allSessions = _sessionListService.upsertSession(
+      sessions: _allSessions,
+      session: _allSessions[index].copyWith(title: title),
+    );
+    _emitFiltered();
+
+    final ApiResponse<Session> response;
+    try {
+      response = await _sessionRepository.renameSession(sessionId: sessionId, title: title);
+    } on Object {
+      _completeSessionRename(
+        sessionId: sessionId,
+        token: token,
+        title: title,
+        succeeded: false,
+      );
+      return false;
+    }
 
     switch (response) {
       case SuccessResponse():
-        await refreshSessions();
+        _completeSessionRename(
+          sessionId: sessionId,
+          token: token,
+          title: title,
+          succeeded: true,
+        );
+        if (!isClosed) {
+          unawaited(
+            _refreshSessions(
+              force: true,
+              catalogRefresh: false,
+              waitForPrData: _activeRefreshWaitsForPrData,
+            ),
+          );
+        }
         return true;
       case ErrorResponse():
+        _completeSessionRename(
+          sessionId: sessionId,
+          token: token,
+          title: title,
+          succeeded: false,
+        );
         return false;
     }
+  }
+
+  void _completeSessionRename({
+    required String sessionId,
+    required int token,
+    required String title,
+    required bool succeeded,
+  }) {
+    final renameState = _renameStateBySessionId[sessionId];
+    if (renameState == null) return;
+    renameState.complete(token: token, value: title, succeeded: succeeded);
+    if (!renameState.isSettled) {
+      if (!isClosed && state is SessionListLoaded) _emitFiltered();
+      return;
+    }
+
+    _renameStateBySessionId.remove(sessionId);
+    if (isClosed || state is! SessionListLoaded) return;
+    final index = _allSessions.indexWhere((session) => session.id == sessionId);
+    if (index >= 0) {
+      _allSessions = _sessionListService.upsertSession(
+        sessions: _allSessions,
+        session: _allSessions[index].copyWith(title: renameState.confirmedValue),
+      );
+    }
+    _emitFiltered();
   }
 
   /// Deletes a session permanently.
@@ -486,17 +554,26 @@ class SessionListCubit({
   /// Tracks the full unfiltered server response so toggling archived
   /// doesn't require a network round-trip.
   List<Session> _allSessions = [];
-  bool _showArchived = false;
+
+  /// Keeps pre-rename list responses from repainting an old title while the
+  /// mutation is still pending.
+  final Map<String, OptimisticRenameTracker> _renameStateBySessionId = {};
+  int _nextRenameToken = 0;
+  SessionListFilter _filter = initialFilter;
 
   void toggleArchived() {
-    _showArchived = !_showArchived;
+    if (state is! SessionListLoaded) return;
+    _filter = _filter == SessionListFilter.active ? SessionListFilter.all : SessionListFilter.active;
     _emitFiltered();
   }
 
   void _emitFiltered() {
     final visible = _sessionListService.visibleSessions(
-      sessions: _allSessions,
-      showArchived: _showArchived,
+      sessions: _allSessions.map((session) {
+        final renameState = _renameStateBySessionId[session.id];
+        return renameState == null ? session : session.copyWith(title: renameState.visibleValue);
+      }),
+      filter: _filter,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
       listStateBySessionId:
           _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, SessionListItemState>{},
@@ -509,7 +586,7 @@ class SessionListCubit({
     emit(
       SessionListState.loaded(
         sessions: visible,
-        showArchived: _showArchived,
+        filter: _filter,
         activeSessionIds: projectActivity,
         unseenBySessionId: _unseenBySessionId(visible),
         isRefreshing: isRefreshing,
@@ -698,7 +775,9 @@ class SessionListCubit({
             sinceTick: unseenTick,
           );
           _emitFiltered();
-          _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: _projectId);
+          if (_projectViewClaim case final claim?) {
+            _projectViewingService.markClaimReady(claim: claim, projectId: _projectId);
+          }
           _consumeCatalogChangesThrough(generation: catalogChangeGeneration);
           didApplySnapshot = true;
           return _SessionFetchOutcome.applied;
@@ -707,7 +786,7 @@ class SessionListCubit({
           if (silent && state is! SessionListLoading) {
             logw("Failed to refresh sessions: ${error.toString()}");
           } else {
-            _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
             loge("Session list load failed", error);
             emit(SessionListState.failed(reason: error.remoteFailureReason));
           }
@@ -805,7 +884,7 @@ class SessionListCubit({
 
   @override
   Future<void> close() {
-    _projectViewingService.releaseClaim(claim: _projectViewClaim);
+    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     _subscriptions.dispose();
     return super.close();
   }

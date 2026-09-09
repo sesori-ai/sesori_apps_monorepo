@@ -89,4 +89,20 @@ void main() {
 
     expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isFalse);
   });
+
+  test("lists installed versions newest first", () {
+    versionDir("1.16.0");
+    versionDir("1.17.9");
+    versionDir("0.9.0");
+    versionDir(".sesori-runtime-staging");
+
+    expect(
+      inventory.installedVersions(stateDirectory: stateDir.path).map((version) => version.raw),
+      ["1.17.9", "1.16.0", "0.9.0"],
+    );
+  });
+
+  test("lists nothing when the managed directory does not exist", () {
+    expect(inventory.installedVersions(stateDirectory: stateDir.path), isEmpty);
+  });
 }

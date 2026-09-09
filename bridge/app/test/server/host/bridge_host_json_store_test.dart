@@ -24,6 +24,72 @@ void main() {
       }
     });
 
+    test('child selection is inert and nested writes stay scoped and atomic', () async {
+      final child = store.scope(directoryName: 'profile').scope(directoryName: 'agent');
+      expect(tempDir.listSync(), isEmpty);
+      await child.write(name: 'settings.json', contents: '{"auth":{}}');
+      expect(await child.read(name: 'settings.json'), '{"auth":{}}');
+      expect(await store.read(name: 'settings.json'), isNull);
+      expect(File(p.join(tempDir.path, 'profile', 'agent', 'settings.json.tmp')).existsSync(), isFalse);
+      await expectLater(
+        child.update(name: 'settings.json', transform: (_) => throw StateError('interrupted')),
+        throwsStateError,
+      );
+      expect(await child.read(name: 'settings.json'), '{"auth":{}}');
+    });
+
+    test('child scopes keep bare name and reserved file restrictions', () async {
+      for (final name in [
+        '',
+        '.',
+        '..',
+        '../outside',
+        r'a\b',
+        '/root',
+        'C:root',
+        'a\u0000b',
+        'bridge-startup.lock',
+        'state.tmp',
+        'state.update-lock',
+      ]) {
+        expect(() => store.scope(directoryName: name), throwsArgumentError, reason: name);
+      }
+      final child = store.scope(directoryName: 'profile');
+      expect(() => child.read(name: '../settings.json'), throwsArgumentError);
+      expect(() => child.scope(directoryName: '..'), throwsArgumentError);
+      expect(tempDir.listSync(), isEmpty);
+    });
+
+    test('repeated child selection shares the update lock owner', () async {
+      final first = store.scope(directoryName: 'profile').scope(directoryName: 'agent');
+      final second = store.scope(directoryName: 'profile').scope(directoryName: 'agent');
+      final entered = Completer<void>();
+      final release = Completer<void>();
+      final one = first.update(
+        name: 'settings.json',
+        transform: (_) async {
+          entered.complete();
+          await release.future;
+          return 'one';
+        },
+      );
+      await entered.future;
+      var secondEntered = false;
+      final two = second.update(
+        name: 'settings.json',
+        transform: (current) {
+          secondEntered = true;
+          expect(current, 'one');
+          return 'two';
+        },
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(secondEntered, isFalse);
+      release.complete();
+      await Future.wait([one, two]);
+      expect(await first.read(name: 'settings.json'), 'two');
+    });
+
     test('read returns null for a missing file', () async {
       expect(await store.read(name: 'absent.json'), isNull);
     });
@@ -135,7 +201,11 @@ void main() {
 
       for (final name in invalidNames) {
         expect(() => store.read(name: name), throwsArgumentError, reason: name);
-        expect(() => store.write(name: name, contents: '{}'), throwsArgumentError, reason: name);
+        expect(
+          () => store.write(name: name, contents: '{}'),
+          throwsArgumentError,
+          reason: name,
+        );
         expect(() => store.delete(name: name), throwsArgumentError, reason: name);
         expect(
           () => store.update(name: name, transform: (current) => current),

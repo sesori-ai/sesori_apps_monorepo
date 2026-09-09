@@ -93,6 +93,7 @@ void main() {
   });
 
   test("a signed-out session answers with a null accessToken", () async {
+    when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
     when(() => tokenProvider.getFreshAccessToken(forceRefresh: false)).thenAnswer((_) async => null);
     final WebSocket helper = await connectHelper();
     final Future<Object?> reply = helper.first;
@@ -103,7 +104,7 @@ void main() {
     expect(response, const ControlMessage.tokenResponse(id: "44", accessToken: null));
   });
 
-  test("a throwing token seam degrades to a signed-out response", () async {
+  test("a throwing token seam retains the authenticated session and asks the helper to retry", () async {
     when(() => tokenProvider.getFreshAccessToken(forceRefresh: false)).thenThrow(StateError("refresh broke"));
     final WebSocket helper = await connectHelper();
     final Future<Object?> reply = helper.first;
@@ -111,7 +112,16 @@ void main() {
     sendFromHelper(helper, const ControlMessage.tokenRequest(id: "45"));
 
     final ControlMessage response = ControlMessage.fromJson(jsonDecodeMap(await reply as String? ?? ""));
-    expect(response, const ControlMessage.tokenResponse(id: "45", accessToken: null));
+    expect(response, const ControlMessage.tokenRetryLater(id: "45"));
+  });
+
+  test("a null refresh while still signed in asks the helper to retry", () async {
+    when(() => tokenProvider.getFreshAccessToken(forceRefresh: false)).thenAnswer((_) async => null);
+    final WebSocket helper = await connectHelper();
+    final Future<Object?> reply = helper.first;
+    sendFromHelper(helper, const ControlMessage.tokenRequest(id: "offline"));
+    final ControlMessage response = ControlMessage.fromJson(jsonDecodeMap(await reply as String? ?? ""));
+    expect(response, const ControlMessage.tokenRetryLater(id: "offline"));
   });
 
   test("status frames land in the status tracker", () async {
@@ -120,6 +130,7 @@ void main() {
     sendFromHelper(
       helper,
       const ControlMessage.status(
+        startup: ControlStartupState.ready,
         relay: ControlRelayConnectionState.connected,
         plugin: ControlPluginHealthState.healthy,
         activeSessionCount: 2,

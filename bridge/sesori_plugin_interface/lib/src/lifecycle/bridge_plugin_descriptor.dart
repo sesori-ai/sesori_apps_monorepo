@@ -2,6 +2,7 @@ import "package:meta/meta.dart";
 
 import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
+import "../models/plugin_catalog_snapshot.dart";
 import "bridge_plugin.dart";
 import "plugin_activation_policy.dart";
 import "plugin_config.dart";
@@ -12,6 +13,7 @@ import "plugin_residency_policy.dart";
 import "plugin_session_options_scope.dart";
 import "plugin_setup_status.dart";
 import "plugin_state_storage.dart";
+import "runtime_in_use_signal.dart";
 import "runtime_provision_progress.dart";
 import "start_abort_signal.dart";
 
@@ -105,6 +107,18 @@ abstract class const BridgePluginDescriptor() {
     required String stateDirectory,
   }) async => const PluginSetupReady();
 
+  /// Reads a complete metadata-only catalog without starting the plugin.
+  ///
+  /// Called only while the runtime slot is dormant. Implementations must avoid
+  /// process startup and backend mutation. Unavailable means the caller should
+  /// use the normal live plugin path. Unexpected read/schema failures throw so
+  /// the runtime can log the diagnostic before falling back.
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required PluginCatalogCancellationSignal cancellation,
+  }) async => const PluginCatalogSnapshotUnavailable();
+
   /// Installs this plugin's pinned managed runtime into [stateDirectory] and
   /// reports progress.
   ///
@@ -113,6 +127,10 @@ abstract class const BridgePluginDescriptor() {
   /// allowed to download, verify, extract, and place the managed binary, and
   /// to sweep superseded managed versions after success. It must never touch
   /// files outside the plugin's managed runtime area or start the backend.
+  ///
+  /// The plugin may already be running from an older supported managed version
+  /// while this install downloads its replacement; [runtimeInUse] reports that
+  /// at sweep time so the sweep leaves a live generation's directory alone.
   ///
   /// The stream's final event is terminal: [ProvisionReady] carries the
   /// installed binary path, [ProvisionFailed] a sanitized user-facing message
@@ -128,11 +146,26 @@ abstract class const BridgePluginDescriptor() {
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) {
     return Stream<RuntimeProvisionProgress>.value(
       ProvisionFailed(message: "$displayName does not support installing a managed runtime."),
     );
   }
+
+  /// Whether a bridge start should install this plugin's pinned managed runtime
+  /// in the background because Sesori already manages an older one.
+  ///
+  /// True only when the plugin can install a managed runtime under [config] and
+  /// a managed version directory other than the pinned target exists under
+  /// [stateDirectory]. A machine that has never installed through Sesori keeps
+  /// the explicit Install command. Synchronous and disk-only: no probing, no
+  /// process spawning, no network. The default declines, which suits every
+  /// plugin without a managed runtime.
+  bool needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required String stateDirectory,
+  }) => false;
 
   /// Resolves an already-present backend runtime and reports progress.
   ///

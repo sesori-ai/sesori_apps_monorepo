@@ -1,0 +1,18 @@
+{
+  "jsonrpc": "2.0",
+  "method": "_x.ai/session_notification",
+  "params": {
+    "sessionId": "01a00000-0000-7000-8000-000000000001",
+    "update": {
+      "sessionUpdate": "subagent_spawned",
+      "subagent_id": "01a00000-0000-7000-8000-000000000002",
+      "parent_session_id": "01a00000-0000-7000-8000-000000000001",
+      "parent_prompt_id": "00000000-0000-4000-8000-000000000010",
+      "child_session_id": "01a00000-0000-7000-8000-000000000002",
+      "subagent_type": "general-purpose",
+      "description": "Synthetic child task",
+      "effective_context_source": "new",
+      "model": "synthetic:model-alpha"
+    }
+  }
+}

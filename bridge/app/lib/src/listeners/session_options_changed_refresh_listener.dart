@@ -19,18 +19,25 @@ class SessionOptionsChangedRefreshListener({
     if (_subscription != null || _disposed) return;
     _subscription = _runtime.backendEvents.listen(
       (source) {
-        final event = source.event;
-        if (event is! BridgeSseSessionOptionsChanged ||
-            !_runtime.isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) {
-          return;
-        }
-        _track(
-          _refresh(
+        // Resolve the work before fencing on the generation, so an unrelated
+        // event costs nothing beyond the match.
+        final refresh = switch (source.event) {
+          BridgeSseSessionOptionsChanged(:final sessionID) => () => _refresh(
             pluginId: source.pluginId,
-            backendSessionId: event.sessionID,
+            backendSessionId: sessionID,
             generation: source.generation,
           ),
-        );
+          // Named no session, so every project this plugin has a cached catalog
+          // for could be affected.
+          BridgeSseCommandCatalogUpdated() => () => _refreshCachedProjects(
+            pluginId: source.pluginId,
+            generation: source.generation,
+          ),
+          _ => null,
+        };
+        if (refresh == null) return;
+        if (!_runtime.isCurrentGeneration(pluginId: source.pluginId, generation: source.generation)) return;
+        _track(refresh());
       },
       onError: (Object error, StackTrace stackTrace) {
         Log.w("Session options change trigger stream failed", error, stackTrace);
@@ -48,6 +55,21 @@ class SessionOptionsChangedRefreshListener({
 
   void _track(Future<void> operation) {
     unawaited(_pending.track(operation: operation));
+  }
+
+  Future<void> _refreshCachedProjects({
+    required String pluginId,
+    required int generation,
+  }) async {
+    try {
+      await _service.refreshActiveOnlyForCachedProjects(pluginId: pluginId, generation: generation);
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        'Automatic session options refresh failed after a command catalog change for plugin "$pluginId"',
+        error,
+        stackTrace,
+      );
+    }
   }
 
   Future<void> _refresh({

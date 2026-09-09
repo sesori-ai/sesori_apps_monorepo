@@ -16,8 +16,10 @@ class const AcpLaunchSpec({
   /// Working directory for the agent process. `null` inherits the bridge's.
   final String? cwd,
 
-  /// Extra environment entries merged over the inherited environment
-  /// (e.g. `CURSOR_API_KEY`).
+  /// Whether the process inherits the parent and host environment.
+  required final bool includeParentEnvironment,
+
+  /// Environment entries, merged over inherited values only when enabled.
   final Map<String, String> environment = const {},
 });
 
@@ -44,8 +46,7 @@ Future<AcpProcessHandle> defaultAcpProcessFactory(AcpLaunchSpec spec) async {
     spec.command,
     spec.args,
     workingDirectory: spec.cwd,
-    // includeParentEnvironment defaults to true, so these entries are merged
-    // over the inherited environment — no manual Platform.environment copy.
+    includeParentEnvironment: spec.includeParentEnvironment,
     environment: spec.environment,
     runInShell: io.Platform.isWindows,
   );

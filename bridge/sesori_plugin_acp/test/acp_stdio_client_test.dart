@@ -13,7 +13,7 @@ void main() {
     setUp(() async {
       fake = FakeAcpProcess();
       client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) async => fake,
       );
       await client.connect();
@@ -67,6 +67,41 @@ void main() {
       expect(seen, hasLength(1));
       expect(seen.single.method, "session/update");
       expect(seen.single.params["sessionId"], "s1");
+    });
+
+    test("session request inactivity resets only for matching session activity", () async {
+      const inactivityTimeout = Duration(milliseconds: 300);
+      final first = await client.dispatchSessionRequest(
+        method: "session/prompt",
+        params: const {"sessionId": "s1"},
+        sessionId: "s1",
+        inactivityTimeout: inactivityTimeout,
+      );
+      final second = await client.dispatchSessionRequest(
+        method: "session/prompt",
+        params: const {"sessionId": "s2"},
+        sessionId: "s2",
+        inactivityTimeout: inactivityTimeout,
+      );
+      final firstId = fake.written[0]["id"];
+
+      await Future<void>.delayed(const Duration(milliseconds: 180));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": "session/update",
+        "params": {
+          "sessionId": "s1",
+          "update": {"sessionUpdate": "agent_message_chunk"},
+        },
+      });
+
+      await expectLater(second.response, throwsA(isA<TimeoutException>()));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstId,
+        "result": {"stopReason": "end_turn"},
+      });
+      expect((await first.response as Map)["stopReason"], "end_turn");
     });
 
     test("server requests route to serverRequests and can be answered", () async {
@@ -148,7 +183,7 @@ void main() {
       final processes = <FakeAcpProcess>[first, replacement];
       var spawnIndex = 0;
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) async => processes[spawnIndex++],
       );
       addTearDown(() async {
@@ -202,7 +237,7 @@ void main() {
       final replacement = FakeAcpProcess();
       var spawnIndex = 0;
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) async => spawnIndex++ == 0 ? old : replacement,
       );
       addTearDown(() async {
@@ -244,7 +279,7 @@ void main() {
       final fake = FakeAcpProcess();
       final spawn = Completer<AcpProcessHandle>();
       final client = AcpStdioClient(
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         processFactory: (_) => spawn.future,
       );
 

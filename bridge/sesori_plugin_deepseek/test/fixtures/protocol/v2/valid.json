@@ -1,0 +1,337 @@
+[
+  {
+    "definition": "initializeMetadata",
+    "value": {
+      "extensionProtocolVersion": 2,
+      "adapterVersion": "0.1.0",
+      "harnessVersion": "0.1.1-rc.2",
+      "persistenceOwner": "sesori"
+    }
+  },
+  {
+    "definition": "initializeMetadata",
+    "value": {
+      "extensionProtocolVersion": 2,
+      "adapterVersion": "0.1.0",
+      "harnessVersion": "0.1.1-rc.2",
+      "persistenceOwner": "sesori",
+      "futureCapability": true
+    }
+  },
+  {
+    "definition": "promptMetadata",
+    "value": {
+      "messageId": "message-1"
+    }
+  },
+  {
+    "definition": "promptMetadata",
+    "value": {}
+  },
+  {
+    "definition": "catalogRequest",
+    "value": {
+      "cwd": "/synthetic/project"
+    }
+  },
+  {
+    "definition": "catalogRequest",
+    "value": {
+      "cwd": "C:\\synthetic\\project"
+    }
+  },
+  {
+    "definition": "catalogResponse",
+    "value": {
+      "agent": {
+        "id": "deepseek",
+        "name": "DeepSeek",
+        "primary": true
+      },
+      "providers": [
+        {
+          "id": "provider/alpha-\u03b1",
+          "name": "Synthetic Provider",
+          "models": [
+            {
+              "id": "v1c3ludGhldGlj",
+              "upstreamModelId": "model/alpha-\u03b1",
+              "name": "Synthetic Model",
+              "reasoningEfforts": [
+                "low",
+                "high"
+              ],
+              "defaultReasoningEffort": "low",
+              "supportsImages": true
+            }
+          ]
+        }
+      ],
+      "defaultSelectionId": "v1c3ludGhldGlj",
+      "commands": [
+        {
+          "name": "inspect",
+          "description": "Synthetic command"
+        }
+      ],
+      "failures": [
+        {
+          "providerId": "offline",
+          "category": "unavailable",
+          "message": "Synthetic provider unavailable"
+        }
+      ]
+    }
+  },
+  {
+    "definition": "historyRequest",
+    "value": {
+      "sessionId": "session-1",
+      "maxMessages": 50
+    }
+  },
+  {
+    "definition": "historyResponse",
+    "value": {
+      "updates": [
+        {
+          "sessionId": "session-1",
+          "update": {
+            "sessionUpdate": "agent_message_chunk"
+          },
+          "_meta": {
+            "sesori.ai/deepseek": {
+              "messageCreatedAt": 1787831943365
+            }
+          }
+        }
+      ],
+      "nextBeforeSeq": 12,
+      "hasMore": true
+    }
+  },
+  {
+    "definition": "renameRequest",
+    "value": {
+      "sessionId": "session-1",
+      "title": "Synthetic title"
+    }
+  },
+  {
+    "definition": "renameResponse",
+    "value": {
+      "title": "Synthetic title"
+    }
+  },
+  {
+    "definition": "askUserQuestionRequest",
+    "value": {
+      "sessionId": "session-1",
+      "questions": [
+        {
+          "id": "q1",
+          "text": "Choose synthetic option",
+          "options": [
+            "Alpha",
+            "Beta"
+          ],
+          "multiSelect": false
+        }
+      ]
+    }
+  },
+  {
+    "definition": "askUserQuestionResponse",
+    "value": {
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedLabels": [
+            "Alpha"
+          ]
+        }
+      ]
+    }
+  },
+  {
+    "definition": "askUserQuestionResponse",
+    "value": {
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedLabels": [],
+          "customAnswer": "Synthetic custom answer"
+        }
+      ]
+    }
+  },
+  {
+    "definition": "askUserQuestionResponse",
+    "value": {
+      "answers": [
+        {
+          "questionId": "q1",
+          "selectedLabels": [
+            "Alpha"
+          ],
+          "customAnswer": "Synthetic additional answer"
+        }
+      ]
+    }
+  },
+  {
+    "definition": "askUserQuestionRequest",
+    "value": {
+      "sessionId": "session-1",
+      "questions": [
+        {
+          "id": "plan-1",
+          "text": "Review the plan",
+          "options": [
+            "Approve",
+            "Reject"
+          ],
+          "intent": "plan_review",
+          "approveLabel": "Approve"
+        }
+      ]
+    }
+  },
+  {
+    "definition": "sessionStatusNotification",
+    "value": {
+      "sessionId": "session-1",
+      "kind": "retry",
+      "attempt": 1,
+      "limit": 3
+    }
+  },
+  {
+    "definition": "sessionStatusNotification",
+    "value": {
+      "sessionId": "session-1",
+      "kind": "retry",
+      "attempt": 2
+    }
+  },
+  {
+    "definition": "sessionStatusNotification",
+    "value": {
+      "sessionId": "session-1",
+      "kind": "compaction_started"
+    }
+  },
+  {
+    "definition": "sessionStatusNotification",
+    "value": {
+      "sessionId": "session-1",
+      "kind": "compaction_completed"
+    }
+  },
+  {
+    "definition": "sessionStatusNotification",
+    "value": {
+      "sessionId": "session-1",
+      "kind": "warning",
+      "message": "Synthetic warning"
+    }
+  },
+  {
+    "definition": "subagentNotification",
+    "value": {
+      "kind": "started",
+      "sessionId": "session-1",
+      "childSessionId": "child-1",
+      "toolCallId": "call-1",
+      "label": "Probe child",
+      "prompt": "Synthetic prompt for child-1",
+      "mode": "foreground"
+    }
+  },
+  {
+    "definition": "subagentNotification",
+    "value": {
+      "kind": "started",
+      "sessionId": "session-1",
+      "childSessionId": "child-2",
+      "toolCallId": "call-2",
+      "label": "Probe child",
+      "prompt": "Synthetic prompt for child-2",
+      "mode": "background"
+    }
+  },
+  {
+    "definition": "subagentNotification",
+    "value": {
+      "kind": "ended",
+      "sessionId": "session-1",
+      "childSessionId": "child-1",
+      "stopReason": "completed",
+      "summary": "Done."
+    }
+  },
+  {
+    "definition": "subagentNotification",
+    "value": {
+      "kind": "ended",
+      "sessionId": "session-1",
+      "childSessionId": "child-2",
+      "stopReason": "aborted"
+    }
+  },
+  {
+    "definition": "historyResponse",
+    "value": {
+      "updates": [
+        {
+          "sessionId": "session-1",
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "call-1"
+          },
+          "_meta": {
+            "sesori.ai/deepseek": {
+              "messageCreatedAt": 1,
+              "subagent": {
+                "label": "Probe child",
+                "prompt": "Synthetic child prompt",
+                "mode": "background",
+                "childSessionId": "child-1",
+                "ended": {
+                  "stopReason": "completed",
+                  "summary": "Done."
+                }
+              }
+            }
+          }
+        }
+      ],
+      "hasMore": false
+    }
+  },
+  {
+    "definition": "subagentInterruptRequest",
+    "value": {
+      "sessionId": "session-1",
+      "childSessionId": "child-1"
+    }
+  },
+  {
+    "definition": "subagentInterruptResponse",
+    "value": {
+      "result": "interrupted"
+    }
+  },
+  {
+    "definition": "subagentInterruptResponse",
+    "value": {
+      "result": "not_cancellable"
+    }
+  },
+  {
+    "definition": "subagentInterruptResponse",
+    "value": {
+      "result": "unknown_child"
+    }
+  }
+]

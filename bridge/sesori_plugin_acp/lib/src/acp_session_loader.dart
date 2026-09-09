@@ -1,12 +1,16 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "acp_event_mapper.dart" show AcpHaltNotice;
+import "acp_event_mapper.dart" show AcpHaltNotice, AcpSessionUpdateNormalizer;
 import "repositories/mappers/acp_content_mapper.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
 
 typedef AcpReplayUserMessageIdOverride = String? Function({required String acpMessageId});
 typedef AcpReplayMessageTimeResolver = PluginMessageTime? Function({required Map<String, dynamic> params});
+typedef AcpReplayToolPartReplacement = PluginMessagePart? Function({
+  required String toolCallId,
+  required PluginMessagePartTool toolPart,
+});
 typedef _AcpReplayAssistantSelection = ({String? modelId, String? providerId, String? variant});
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
@@ -20,6 +24,9 @@ class AcpReplayCollector({
   required final String agentId,
   required final String? initialUserMessageId,
 
+  /// The live mapper's pure hook. Null retains standard ACP envelopes unchanged.
+  required final AcpSessionUpdateNormalizer? sessionUpdateNormalizer,
+
   /// Overrides a replayed user's ACP message id with backend authority.
   required final AcpReplayUserMessageIdOverride? messageIdOverride,
 
@@ -31,6 +38,11 @@ class AcpReplayCollector({
   /// notice as an error message exactly as it appeared live. Null on backends
   /// with no halt notices.
   required final AcpHaltNotice? Function({required String text})? haltClassifier,
+
+  /// Replaces one materialized standard tool part with a harness-specific part.
+  /// Null retains the generic ACP projection. This synchronous projection is
+  /// replay-local; it must not read or mutate live lifecycle state.
+  required final AcpReplayToolPartReplacement? toolPartReplacement,
 }) {
   static const AcpContentMapper _contentMapper = AcpContentMapper();
 
@@ -39,7 +51,8 @@ class AcpReplayCollector({
   bool _hasUserDraft = false;
   _PendingAssistantContent? _pendingAssistantContent;
 
-  void consume(Map<String, dynamic> params) {
+  void consume(Map<String, dynamic> rawParams) {
+    final params = sessionUpdateNormalizer?.call(params: rawParams) ?? rawParams;
     final update = _asMap(params["update"]);
     if (update == null) return;
     final rawSessionUpdate = update["sessionUpdate"];
@@ -404,7 +417,7 @@ class AcpReplayCollector({
     required _ToolDraft tool,
   }) {
     final content = tool.contentTracker.snapshot;
-    return PluginMessagePart.tool(
+    final toolPart = PluginMessagePartTool(
       id: "${draft.id}-tool-$toolId",
       sessionID: sessionId,
       messageID: draft.id,
@@ -417,6 +430,7 @@ class AcpReplayCollector({
         attachments: content.attachments,
       ),
     );
+    return toolPartReplacement?.call(toolCallId: toolId, toolPart: toolPart) ?? toolPart;
   }
 
   void _retainTime({required _Draft draft, required PluginMessageTime? time}) {

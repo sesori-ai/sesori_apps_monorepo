@@ -185,7 +185,11 @@ _TestRecord _record({required String ownerSessionId, required int pid, required 
   );
 }
 
-enum _TestStatus() { starting, ready, stopping }
+enum _TestStatus() {
+  starting,
+  ready,
+  stopping,
+}
 
 class const _TestRecord({
     required final String ownerSessionId,
@@ -297,6 +301,9 @@ class const _TestRecordMapper() implements RuntimeRecordMapper<_TestRecord> {
 }
 
 class _FakeHostJsonStore() implements HostJsonStore {
+  @override
+  HostJsonStore scope({required String directoryName}) => throw UnsupportedError("Unused child store");
+
   final Map<String, String> files = <String, String>{};
   final List<String> calls = <String>[];
   void Function()? onBeforeUpdate;

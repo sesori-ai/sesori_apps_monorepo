@@ -11,6 +11,7 @@ class _PolicyPlugin({
   required final bool forms,
   required final Duration closeTimeout,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
@@ -19,7 +20,7 @@ class _PolicyPlugin({
     : super(
         id: "acp",
         agentDisplayName: "ACP",
-        launchSpec: const AcpLaunchSpec(command: "agent", args: ["acp"]),
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
         launchDirectory: "/repo",
       );
 
@@ -66,15 +67,18 @@ void main() {
     }) {
       final configurationTracker = AcpSessionConfigurationTracker();
       final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
       return _PolicyPlugin(
         processWide: processWide,
         failClosed: failClosed,
         forms: forms,
         closeTimeout: closeTimeout,
+        childSessionTracker: childSessionTracker,
         eventMapper: AcpEventMapper(
           launchDirectory: "/repo",
           pluginId: "acp",
           configurationTracker: configurationTracker,
+          childSessions: childSessionTracker,
         ),
         commandTracker: commandTracker,
         sessionOptionsService: AcpSessionOptionsService(

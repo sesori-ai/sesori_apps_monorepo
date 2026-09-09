@@ -14,6 +14,7 @@ typedef HostProcessStarter = Future<io.Process> Function(
   Map<String, String>? environment,
   String? workingDirectory,
   bool runInShell,
+  required bool includeParentEnvironment,
 });
 
 class BridgeHostProcessService({
@@ -31,6 +32,7 @@ class BridgeHostProcessService({
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     final process = await _processStarter(
       executable,
@@ -38,6 +40,7 @@ class BridgeHostProcessService({
       environment: environment,
       workingDirectory: workingDirectory,
       runInShell: runInShell,
+      includeParentEnvironment: includeParentEnvironment,
     );
 
     final spawnIdentity = ProcessIdentity(
@@ -75,12 +78,12 @@ class BridgeHostProcessService({
     final ProcessIdentity? inspectedIdentity;
     try {
       inspectedIdentity = await _processRepository.inspectProcess(pid: spawnIdentity.pid);
-    } on Object catch (error) {
+    } on Object catch (error, stackTrace) {
       // The child is already running and only the returned handle lets the
       // caller stop it, so nothing thrown by the process-table read — Errors
       // included — may fail the spawn. Fall back to the partial spawn-time
       // identity.
-      Log.w("Post-spawn identity inspection failed for pid ${spawnIdentity.pid}\n$error");
+      Log.w("Post-spawn identity inspection failed for pid ${spawnIdentity.pid}", error, stackTrace);
       return spawnIdentity;
     }
 

@@ -9,6 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "core/di/injection.dart";
 import "core/routing/desktop_router.dart";
+import "core/widgets/desktop_escape_dismissal.dart";
 
 /// Root widget of the Sesori desktop app.
 ///
@@ -79,6 +80,7 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               applicationTerminator: getIt(),
               logRepository: getIt(),
               instanceService: getIt(),
+              relayConnectionService: getIt(),
               takeoverOrchestrator: getIt(),
               logoutTracker: getIt(),
               urlLauncher: getIt(),
@@ -99,10 +101,13 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         routerConfig: desktopRouter,
-        builder: (context, child) => _DesktopRootEffects(
-          navigatorKey: desktopRootNavigatorKey,
-          child: child ?? const SizedBox.shrink(),
-        ),
+        builder: (context, child) {
+          scheduleDesktopRouterReady();
+          return _DesktopRootEffects(
+            navigatorKey: desktopRootNavigatorKey,
+            child: child ?? const SizedBox.shrink(),
+          );
+        },
       ),
     );
   }
@@ -112,13 +117,15 @@ class const _DesktopRootEffects({required final Widget child, required final Glo
     extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return SseToastListener(
-      navigatorKey: navigatorKey,
-      child: Column(
-        children: <Widget>[
-          ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
-          Expanded(child: child),
-        ],
+    return DesktopEscapeDismissal(
+      child: SseToastListener(
+        navigatorKey: navigatorKey,
+        child: Column(
+          children: <Widget>[
+            ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
+            Expanded(child: child),
+          ],
+        ),
       ),
     );
   }

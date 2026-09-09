@@ -14,6 +14,7 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -56,7 +57,6 @@ void main() {
       mockProjectRepository = MockProjectRepository();
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
-        projectRepository: mockProjectRepository,
         pluginRepository: stubbedPluginRepository(),
         connectionService: mockConnectionService,
       );
@@ -74,7 +74,7 @@ void main() {
         () => mockNotificationCanceller.cancelForSession(
           sessionId: any(named: "sessionId"),
         ),
-      ).thenReturn(null);
+      ).thenAnswer((_) async {});
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -427,7 +427,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      ).thenAnswer((_) async => ApiResponse<bool>.success(false));
       final analyticsService = stubbedProductAnalyticsService();
       final cubit = _buildCubit(
         sessionId: sessionId,
@@ -790,6 +790,9 @@ SessionDetailCubit _buildCubit({
 }) {
   return SessionDetailCubit(
     connectionService,
+    claimProjectView: true,
+    pluginManagementService: stubbedPluginManagementService(),
+    interactionCalculator: const SessionInteractionCalculator(),
     loadService: loadService,
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
@@ -903,6 +906,7 @@ ProviderListResponse _providers() {
             providerID: "anthropic",
             name: "Claude 3.5 Sonnet",
             variants: [],
+            defaultVariant: null,
             family: null,
             releaseDate: null,
           ),

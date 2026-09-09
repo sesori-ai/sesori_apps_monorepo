@@ -279,6 +279,8 @@ final class _PluginHost({
 
   @override
   ServerClock get clock => const ServerClock();
+  @override
+  Stream<Duration?> get pluginIdleTimeoutChanges => const Stream<Duration?>.empty();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
@@ -318,6 +320,7 @@ final class _ProcessService(final List<Object> _outcomes) implements HostProcess
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     this.arguments.add(List.unmodifiable(arguments));
     environments.add(environment == null ? null : Map.unmodifiable(environment));

@@ -1,3 +1,5 @@
+import "dart:io" show Platform;
+
 import "package:codex_plugin/src/runtime/codex_plugin_descriptor.dart";
 import "package:codex_plugin/src/runtime/codex_runtime_manifest.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
@@ -14,70 +16,65 @@ void main() {
     });
 
     test("pinned versions", () {
-      expect(CodexRuntimeManifest.targetVersion, "0.148.0");
+      expect(CodexRuntimeManifest.targetVersion, "0.153.4");
       expect(manifest.bundledVersion.toString(), CodexRuntimeManifest.targetVersion);
       expect(manifest.minPathVersion.toString(), "0.139.0");
       expect(manifest.runtimeId, const CodexPluginDescriptor().id);
       expect(manifest.pathExecutableName, "codex");
+      expect(manifest.binaryFileName, Platform.isWindows ? r"bin\codex.exe" : "bin/codex");
     });
 
-    test("pins a sha256 asset for every platform target", () {
-      for (final os in PlatformOs.values) {
-        for (final arch in PlatformArch.values) {
+    test("pins the canonical package and digest for every platform target", () {
+      const expected = <PlatformOs, Map<PlatformArch, ({String assetName, String sha256})>>{
+        PlatformOs.macos: {
+          PlatformArch.arm64: (
+            assetName: "codex-package-aarch64-apple-darwin.tar.gz",
+            sha256: "35438da1fbf7a6db7ddb3bcec84448fa6015ba188461472a97d9d1da7d9c4353",
+          ),
+          PlatformArch.x64: (
+            assetName: "codex-package-x86_64-apple-darwin.tar.gz",
+            sha256: "3ee638d7155c856ef31f3f4a85cb2195de1939962d3924c935b24f0514564a3d",
+          ),
+        },
+        PlatformOs.linux: {
+          PlatformArch.arm64: (
+            assetName: "codex-package-aarch64-unknown-linux-musl.tar.gz",
+            sha256: "fc395cb043a1093ab0db34f44aba3199bfaa9ce640cd9be7fd588f44b0da64a4",
+          ),
+          PlatformArch.x64: (
+            assetName: "codex-package-x86_64-unknown-linux-musl.tar.gz",
+            sha256: "a822187e1a2420c61c5926721bfbd878701ed95547c9bb0d4de4498a16ba1821",
+          ),
+        },
+        PlatformOs.windows: {
+          PlatformArch.arm64: (
+            assetName: "codex-package-aarch64-pc-windows-msvc.tar.gz",
+            sha256: "ac51b1a5932e07dffcaa6e98f4801f13b25192094739b732fc8b40ddb41bbda2",
+          ),
+          PlatformArch.x64: (
+            assetName: "codex-package-x86_64-pc-windows-msvc.tar.gz",
+            sha256: "a6ef3442cb12766a88b39311d79244289e4f9763e2c53ff4fbebc2cb653cc5f3",
+          ),
+        },
+      };
+
+      for (final osEntry in expected.entries) {
+        for (final archEntry in osEntry.value.entries) {
           final asset = manifest.assetFor(
-            target: PlatformTarget(os: os, arch: arch),
+            target: PlatformTarget(os: osEntry.key, arch: archEntry.key),
           );
-          expect(asset, isNotNull, reason: "missing asset for $os/$arch");
-          expect(asset!.sha256, matches(RegExp(r"^[0-9a-f]{64}$")), reason: "$os/$arch sha256");
-          expect(asset.assetName, isNotEmpty);
+          expect(asset, isA<ArchiveRuntimeAsset>(), reason: "${osEntry.key}/${archEntry.key} asset type");
+          final archive = asset! as ArchiveRuntimeAsset;
+          expect(archive.assetName, archEntry.value.assetName);
+          expect(archive.sha256, archEntry.value.sha256);
+          expect(archive.format, ArchiveFormat.tarGz);
+          expect(archive.layout, RuntimeArchiveLayout.packageDirectory);
+          expect(
+            archive.archiveBinaryName,
+            osEntry.key == PlatformOs.windows ? "bin/codex.exe" : "bin/codex",
+          );
         }
       }
-    });
-
-    test("darwin/linux ship .tar.gz, windows ships .exe.zip", () {
-      ArchiveRuntimeAsset asset(PlatformOs os, PlatformArch arch) =>
-          manifest.assetFor(
-                target: PlatformTarget(os: os, arch: arch),
-              )!
-              as ArchiveRuntimeAsset;
-
-      expect(asset(PlatformOs.macos, PlatformArch.arm64).format, ArchiveFormat.tarGz);
-      expect(asset(PlatformOs.macos, PlatformArch.arm64).assetName, endsWith(".tar.gz"));
-      expect(asset(PlatformOs.linux, PlatformArch.x64).format, ArchiveFormat.tarGz);
-      expect(asset(PlatformOs.linux, PlatformArch.x64).assetName, endsWith(".tar.gz"));
-
-      for (final arch in PlatformArch.values) {
-        final windows = asset(PlatformOs.windows, arch);
-        expect(windows.format, ArchiveFormat.zip, reason: "windows/$arch format");
-        expect(windows.assetName, endsWith(".exe.zip"), reason: "windows/$arch asset");
-      }
-    });
-
-    test("archive member is the target-triple name (asset name minus extension)", () {
-      expect(
-        (manifest.assetFor(
-                  target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-                )!
-                as ArchiveRuntimeAsset)
-            .archiveBinaryName,
-        "codex-aarch64-apple-darwin",
-      );
-      expect(
-        (manifest.assetFor(
-                  target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
-                )!
-                as ArchiveRuntimeAsset)
-            .archiveBinaryName,
-        "codex-x86_64-unknown-linux-musl",
-      );
-      expect(
-        (manifest.assetFor(
-                  target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.x64),
-                )!
-                as ArchiveRuntimeAsset)
-            .archiveBinaryName,
-        "codex-x86_64-pc-windows-msvc.exe",
-      );
     });
 
     test("download URL embeds the rust-v bundled tag and asset name", () {
@@ -86,7 +83,10 @@ void main() {
       )!;
       expect(
         manifest.downloadUrlFor(asset: asset),
-        equals("https://github.com/openai/codex/releases/download/rust-v0.148.0/codex-aarch64-apple-darwin.tar.gz"),
+        equals(
+          "https://github.com/openai/codex/releases/download/"
+          "rust-v0.153.4/codex-package-aarch64-apple-darwin.tar.gz",
+        ),
       );
     });
 

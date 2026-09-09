@@ -104,21 +104,7 @@ class CatalogImportService({
           _publish(CatalogImportProgress.cancelled(pluginId: pluginId));
           return;
         }
-        if (!control.explicitImportRequested && completion != null) {
-          _publish(
-            CatalogImportProgress.completed(
-              pluginId: pluginId,
-              projectsImported: 0,
-              sessionsImported: 0,
-              // No import ran, so nothing is new. Zero rather than null: null
-              // means the bridge does not report deltas at all, and this one
-              // does.
-              newItems: const CatalogImportNewItems(projects: 0, sessions: 0),
-              completedAt: completion.completedAt,
-            ),
-          );
-          return;
-        }
+        if (!control.explicitImportRequested && completion != null) return;
       }
 
       await for (final progress in _repository.importCatalog(pluginId: pluginId, control: control)) {

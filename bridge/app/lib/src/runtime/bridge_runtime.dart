@@ -113,7 +113,7 @@ Future<void> startDebugServerIfRequested({
 }
 
 void registerSignalHandlers({
-  required OrchestratorSession session,
+  required Future<void> Function() requestShutdown,
   required CompositeSubscription subscriptions,
 }) {
   var shutdownSignalCount = 0;
@@ -124,7 +124,7 @@ void registerSignalHandlers({
       exit(1);
     }
     Log.i("[shutdown] $name received (#$shutdownSignalCount) - cancelling session");
-    unawaited(session.cancel());
+    unawaited(requestShutdown());
   }
 
   ProcessSignal.sigint.watch().listen((_) => handleShutdownSignal("SIGINT")).addTo(subscriptions);

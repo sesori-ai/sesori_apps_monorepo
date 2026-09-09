@@ -7,11 +7,15 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "app.dart";
 import "core/di/injection.dart";
 import "core/platform/desktop_launch_arguments.dart";
+import "core/routing/desktop_router.dart";
 
 Future<void> main(List<String> arguments) async {
   final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
-  configureDesktopDependencies();
+  configureDesktopDependencies(
+    router: desktopRouter,
+    routerReady: desktopRouterReady,
+  );
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
   if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;
@@ -37,6 +41,9 @@ Future<void> main(List<String> arguments) async {
   // connects automatically when AuthGate restores or completes a login, and
   // no second reconnect driver is introduced in the desktop shell.
   getIt<ConnectionService>();
+  // Desktop attention derives from the authenticated relay stream and must be
+  // listening before a restored session can receive its first user prompt.
+  await getIt<DesktopAttentionService>().start();
   // Start local analytics state before building. Authenticated reconciliation
   // waits until after the first frame so a slow server cannot blank startup;
   // Profile reflects the service's synchronization state until it settles.

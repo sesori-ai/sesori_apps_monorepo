@@ -47,6 +47,7 @@ void main() {
             child: BlocProvider<SessionListCubit>.value(
               value: cubit,
               child: SessionListPanel(
+                onOpenArchived: cubit.toggleArchived,
                 projectName: "Project One",
                 onNewSession: () {},
                 onSessionTap: ({required session}) {},
@@ -106,7 +107,7 @@ void main() {
     await pumpPanel(tester, session: session);
     await longPressTile(tester, title: "My Session");
 
-    // Archiving is reversible and Delete is not, so only Delete shouts. If every
+    // Delete destroys the audit record, so only Delete shouts. If every
     // row were tinted, none of them would carry a warning. Hit-testable scopes
     // the finders to the open menu — the row's swipe pills reuse the same
     // labels but rest clipped off-row.
@@ -146,6 +147,7 @@ void main() {
     await pumpPanel(tester, session: session);
     await longPressTile(tester, title: "Old Session");
 
+    expect(find.widgetWithText(InkWell, "Rename"), findsNothing);
     expect(find.widgetWithText(InkWell, "Unarchive"), findsNothing);
     expect(find.widgetWithText(InkWell, "Archive"), findsNothing);
     expect(find.widgetWithText(InkWell, "Delete"), findsOneWidget);
@@ -188,6 +190,7 @@ void main() {
             body: BlocProvider<SessionListCubit>.value(
               value: cubit,
               child: SessionListPanel(
+                onOpenArchived: cubit.toggleArchived,
                 projectName: "Project One",
                 onNewSession: () {},
                 onSessionTap: ({required session}) {},

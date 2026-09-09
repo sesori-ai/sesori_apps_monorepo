@@ -6,6 +6,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
+import "package:sesori_bridge/src/server/host/bridge_host_json_store.dart";
 import "package:sesori_bridge/src/server/host/plugin_state_directory.dart";
 import "package:sesori_bridge/src/server/repositories/process_repository.dart";
 import "package:sesori_bridge/src/server/repositories/startup_mutex_repository.dart";
@@ -101,11 +102,11 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
     startupMutexRepository: startupMutexRepository,
     bridgeInstanceService: bridgeInstanceService,
     processRepository: _FakeProcessRepository(),
-    runtimeFileApi: RuntimeFileApi(runtimeDirectory: runtimeDirectory.path),
     clock: const ServerClock(),
     environment: const <String, String>{},
     currentUser: null,
     resolveIdleTimeoutMins: ({required pluginId}) => 10,
+    settingsChanges: const Stream<Object?>.empty(),
   );
   final runtime =
       PluginRuntime(
@@ -118,6 +119,15 @@ Future<_StartupSample> _runFixture({required int selectedCount}) async {
                 paths: managedRuntimePaths,
                 pluginId: descriptor.id,
                 stateStorage: descriptor.stateStorage,
+              ),
+              store: BridgeHostJsonStore(
+                fileApi: RuntimeFileApi(
+                  runtimeDirectory: pluginStateDirectoryPath(
+                    paths: managedRuntimePaths,
+                    pluginId: descriptor.id,
+                    stateStorage: descriptor.stateStorage,
+                  ),
+                ),
               ),
             ),
         ],
@@ -309,6 +319,9 @@ class _FakePlugin({required String id}) implements BridgePlugin {
 
   @override
   PluginDiagnostics describe() => PluginDiagnostics(pluginId: _api.id, endpoint: null, details: const {});
+
+  @override
+  Future<void> onStarted() async {}
 
   @override
   Future<Set<String>> interruptActiveWork({required Duration budget}) async => const {};

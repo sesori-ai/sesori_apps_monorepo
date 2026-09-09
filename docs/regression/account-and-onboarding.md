@@ -30,6 +30,9 @@ participates.
 - With no bridge, Projects shows install and start commands, the explainer, and
   support links, and copy/share hand off the command unchanged; connected with no
   projects shows the add-project call to action instead.
+- Copying install or start commands on onboarding or bridge-disconnected pages
+  shows the informational "Command copied to clipboard" popup, not the success
+  variant.
 - An account that never registered a bridge parks offline silently; the
   bridge-offline banner is reserved for accounts that have one.
 - A persisted registered-bridge read that completes after logout cannot restore
@@ -61,7 +64,8 @@ the prompt and a reused one when testing suppression.
 - Splash doing network work, or routing a valid session to sign-in.
 - A recoverable interruption surfacing as terminal, or a real failure as silent.
 - Tokens surviving logout, an in-flight login/refresh/restore re-saving tokens or
-  emitting authenticated after logout, a rejected refresh leaving credentials
+  emitting authenticated after logout, a malformed or non-2xx login response
+  persisting tokens, a rejected refresh leaving credentials
   restorable after relaunch, a transport failure clearing a usable session, or
   macOS OAuth completion failing with a missing Keychain entitlement (`-34018`).
 - A delayed persisted registered-bridge read restoring the previous account's

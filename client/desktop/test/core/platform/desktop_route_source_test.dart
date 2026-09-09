@@ -9,18 +9,21 @@ void main() {
   test("desktop router declares the typed session-detail destination", () {
     final paths = <String>[];
 
-    void collectPaths({required List<RouteBase> routes}) {
+    void collectPaths({required List<RouteBase> routes, required String parentPath}) {
       for (final route in routes) {
         if (route case GoRoute(:final path, :final routes)) {
-          paths.add(path);
-          collectPaths(routes: routes);
+          final fullPath = path.startsWith("/")
+              ? path
+              : "${parentPath.endsWith("/") ? parentPath : "$parentPath/"}$path";
+          paths.add(fullPath);
+          collectPaths(routes: routes, parentPath: fullPath);
         } else if (route case ShellRoute(:final routes)) {
-          collectPaths(routes: routes);
+          collectPaths(routes: routes, parentPath: parentPath);
         }
       }
     }
 
-    collectPaths(routes: desktopRouter.configuration.routes);
+    collectPaths(routes: desktopRouter.configuration.routes, parentPath: "");
 
     expect(paths, contains(AppRouteDef.sessionDetail.path));
   });

@@ -2,18 +2,18 @@ import "dart:async";
 import "dart:io";
 
 import "package:flutter_test/flutter_test.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/capabilities/voice/audio_format_config.dart";
 import "package:sesori_mobile/capabilities/voice/recording_file_provider.dart";
-import "package:sesori_mobile/core/platform/temporary_directory_client.dart";
 
 void main() {
   test("reuses the app-wide cached temporary directory", () async {
     var directoryLoads = 0;
-    final temporaryDirectoryClient = TemporaryDirectoryClient.forTesting(
-      load: () async {
+    final temporaryDirectoryClient = TemporaryDirectoryClient(
+      provider: _FakeTemporaryDirectoryProvider(() async {
         directoryLoads++;
         return Directory("/tmp/sesori-recording-file-provider-test");
-      },
+      }),
     );
     final provider = RecordingFileProvider(
       audioFormat: AudioFormatConfig.forPlatform(isWeb: false),
@@ -36,11 +36,11 @@ void main() {
     final firstLoad = Completer<Directory>();
     final recoveredDirectory = Directory("/tmp/sesori-recording-file-provider-recovered");
     var directoryLoads = 0;
-    final temporaryDirectoryClient = TemporaryDirectoryClient.forTesting(
-      load: () {
+    final temporaryDirectoryClient = TemporaryDirectoryClient(
+      provider: _FakeTemporaryDirectoryProvider(() {
         directoryLoads++;
         return directoryLoads == 1 ? firstLoad.future : Future.value(recoveredDirectory);
-      },
+      }),
     );
     final provider = RecordingFileProvider(
       audioFormat: AudioFormatConfig.forPlatform(isWeb: false),
@@ -53,4 +53,9 @@ void main() {
     expect(await path, startsWith("${recoveredDirectory.path}/sesori_voice_"));
     expect(directoryLoads, 2);
   });
+}
+
+class _FakeTemporaryDirectoryProvider(final Future<Directory> Function() _load) implements TemporaryDirectoryProvider {
+  @override
+  Future<Directory> temporaryDirectory() => _load();
 }

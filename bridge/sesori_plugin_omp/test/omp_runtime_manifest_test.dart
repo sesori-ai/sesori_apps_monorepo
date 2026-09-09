@@ -20,6 +20,13 @@ void main() {
     expect(manifest.parseVersion(value: "omp/not-a-version"), isNull);
   });
 
+  test("parses bare version directory names the installer writes", () {
+    // `omp --version` prints `omp/<semver>`, but version directories carry the
+    // bare version, so the two parsers are deliberately different.
+    expect(manifest.parseInstalledVersion(value: "17.3.8")?.raw, "17.3.8");
+    expect(manifest.parseInstalledVersion(value: ".sesori-runtime-staging"), isNull);
+  });
+
   test("maps all seven official direct binary assets", () {
     final assets = <RuntimeAsset>[
       manifest.assetFor(

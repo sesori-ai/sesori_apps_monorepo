@@ -7,6 +7,15 @@ final class FakeSessionOptionsService() implements SessionOptionsService {
   final List<({String pluginId, String projectId})> explicitInvalidations = [];
 
   @override
+  Stream<SessionOptionsCacheUpdate> get cacheUpdates => const Stream<SessionOptionsCacheUpdate>.empty();
+
+  @override
+  Future<void> dispose() async {}
+
+  @override
+  Future<void> refreshActiveOnlyForCachedProjects({required String pluginId, required int generation}) async {}
+
+  @override
   Future<SessionOptionsOutcome> loadDynamic({required String pluginId, required String projectId}) async =>
       const SessionOptionsAutomaticNoOp();
 

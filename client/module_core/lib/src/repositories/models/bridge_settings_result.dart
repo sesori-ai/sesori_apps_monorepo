@@ -61,6 +61,18 @@ final class const YoloSettingsMutationUncertain() extends YoloSettingsMutationRe
 
 final class const YoloSettingsMutationFailure({required final ApiError error}) extends YoloSettingsMutationResult;
 
+sealed class const PluginWarmupSettingsMutationResult();
+
+final class const PluginWarmupSettingsMutationCommitted({required final bool enabled})
+    extends PluginWarmupSettingsMutationResult;
+
+final class const PluginWarmupSettingsMutationUnsupported() extends PluginWarmupSettingsMutationResult;
+
+final class const PluginWarmupSettingsMutationUncertain() extends PluginWarmupSettingsMutationResult;
+
+final class const PluginWarmupSettingsMutationFailure({required final ApiError error})
+    extends PluginWarmupSettingsMutationResult;
+
 final class const PullRequestRefreshSettingsBounds._({
   required final int minimumIntervalSeconds,
   required final int maximumIntervalSeconds,

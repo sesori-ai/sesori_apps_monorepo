@@ -12,6 +12,7 @@ import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/archived_sessions_artwork.dart";
 import "../../features/session_list/session_list_cubit_provider.dart";
 import "../../features/session_list/session_list_screen.dart";
+import "../../features/settings/default_input_settings_screen.dart";
 import "../../features/settings/harnesses_settings_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
 import "../../features/settings/profile_screen.dart";
@@ -33,8 +34,8 @@ const _newSessionRouteSegment = "new";
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
 const _sessionDetailRouteSegment = ":$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
+const _settingsDefaultInputRouteSegment = "default-input";
 const _settingsNotificationsRouteSegment = "notifications";
-const _settingsHarnessesRouteSegment = "harnesses";
 const _settingsProfileRouteSegment = "profile";
 
 extension AppRouteToGoRoute on AppRouteDef {
@@ -97,12 +98,16 @@ extension on AppRoute {
   /// instance instead of decoding the URL a second time.
   Widget get screen {
     return switch (this) {
+      AppRouteArchivedSessions() ||
+      AppRouteArchivedSessionDetail() => throw StateError("Archive pages belong to their flow shell"),
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
       AppRouteSettings() => const SettingsScreen(),
+      AppRouteSettingsDefaultInput() => const DefaultInputSettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
-      AppRouteSettingsHarnesses(:final presentation) => HarnessesSettingsScreen(presentation: presentation),
+      AppRouteSettingsHarnesses() ||
+      AppRouteSettingsHarnessDetail() => throw StateError("Harness pages belong to their flow shell"),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
@@ -120,6 +125,9 @@ extension on AppRoute {
         :final readOnly,
       ) =>
         SessionDetailScreen(
+          auditView: false,
+          onBack: null,
+          onClose: null,
           projectId: projectId,
           projectName: projectName,
           sessionId: sessionId,
@@ -247,6 +255,7 @@ List<RouteBase> _buildAppRoutes({
             final projectViewingService = getIt<ProjectViewingService>();
 
             return SessionListCubitProvider(
+              filter: SessionListFilter.active,
               key: ValueKey("session-list-cubit-$projectId"),
               projectId: projectId,
               child: SessionSplitShell(
@@ -325,6 +334,9 @@ List<RouteBase> _buildAppRoutes({
                       state: state,
                       pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId)),
                       child: SessionDetailScreen(
+                        auditView: false,
+                        onBack: null,
+                        onClose: null,
                         key: ValueKey("session-detail-${route.sessionId}"),
                         projectId: route.projectId,
                         projectName: route.projectName,
@@ -366,43 +378,17 @@ List<RouteBase> _buildAppRoutes({
         ),
       ],
     ),
+    buildArchivedSessionsRoute(),
+    buildHarnessSettingsRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [
         GoRoute(
-          path: _settingsNotificationsRouteSegment,
-          builder: (context, state) => AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
+          path: _settingsDefaultInputRouteSegment,
+          builder: (context, state) => AppRouteDef.settingsDefaultInput._buildScreen(context: context, state: state),
         ),
         GoRoute(
-          path: _settingsHarnessesRouteSegment,
-          // Harness settings are reached from two places, and the route says
-          // which one. From the settings list they are the next page of that
-          // stack, so they push in like every other settings page. From the
-          // new-session harness menu they are a detour from an unrelated
-          // screen, so they rise as a modal and close back onto it.
-          //
-          // The modal is a CupertinoPage for the same reason settings itself
-          // uses one: only the Cupertino route honours `fullscreenDialog` on
-          // Android too. Choosing per presentation requires a pageBuilder, so
-          // the pushed branch spells out the MaterialPage that go_router would
-          // otherwise supply, keeping the platform's push transition.
-          pageBuilder: (context, state) {
-            final route = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters);
-            final child = route.screen;
-            return switch (route.presentation) {
-              HarnessSettingsPresentation.modal => CupertinoPage<void>(
-                key: state.pageKey,
-                fullscreenDialog: true,
-                child: child,
-              ),
-              HarnessSettingsPresentation.pushed => MaterialPage<void>(
-                key: state.pageKey,
-                name: state.name ?? state.path,
-                arguments: <String, String>{...state.pathParameters, ...state.uri.queryParameters},
-                restorationId: state.pageKey.value,
-                child: child,
-              ),
-            };
-          },
+          path: _settingsNotificationsRouteSegment,
+          builder: (context, state) => AppRouteDef.settingsNotifications._buildScreen(context: context, state: state),
         ),
         GoRoute(
           path: _settingsProfileRouteSegment,
@@ -427,6 +413,8 @@ class const _SessionListPane({
     return KeyedSubtree(
       key: ValueKey("session-list-$projectId"),
       child: SessionListPanel(
+        onOpenArchived: () =>
+            context.pushRoute(AppRoute.archivedSessions(projectId: projectId, projectName: projectName)),
         projectName: projectName,
         selectedSessionId: selectedSessionId,
         // Use the root navigator from shell chrome; GoRouter pop would target
@@ -462,3 +450,169 @@ final appRouter = GoRouter(
   },
   routes: buildAppRoutes(),
 );
+
+/// Harness-only navigator and provider shared by overview and URL detail pages.
+@visibleForTesting
+ShellRoute buildHarnessSettingsRoute() {
+  final navigatorKey = GlobalKey<NavigatorState>();
+  void close({required BuildContext context}) {
+    // The nested Navigator's context belongs to the stable outer flow page.
+    final flowContext = navigatorKey.currentContext ?? (throw StateError("Harness flow is not mounted"));
+    final flowRoute = ModalRoute.of(flowContext) ?? (throw StateError("Harness flow has no owning route"));
+    final outerNavigator = flowRoute.navigator ?? (throw StateError("Harness flow has no navigator"));
+    // Remove owned pageless sheets first, without touching the opener.
+    outerNavigator.popUntil((route) => route == flowRoute);
+    if (flowRoute.isFirst) {
+      context.goRoute(const AppRoute.projects());
+    } else {
+      outerNavigator.pop();
+    }
+  }
+
+  return ShellRoute(
+    navigatorKey: navigatorKey,
+    pageBuilder: (context, state, child) {
+      final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
+      final content = HarnessesSettingsScreen(child: child);
+      return presentation == HarnessSettingsPresentation.modal
+          ? CupertinoPage<void>(key: state.pageKey, fullscreenDialog: true, child: content)
+          : MaterialPage<void>(key: state.pageKey, child: content);
+    },
+    routes: [
+      GoRoute(
+        path: AppRouteDef.settingsHarnesses.path,
+        builder: (context, state) {
+          final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
+              .presentation;
+          return HarnessesSettingsView(
+            presentation: presentation,
+            connectionBanner: ConnectionBanner.maybeFor(context),
+            onClose: () => close(context: context),
+            onBack: () => close(context: context),
+            onOpenHarness: ({required pluginId}) => context.pushRoute(
+              AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation),
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ":$pluginIdPathParam",
+            builder: (context, state) {
+              final route = AppRouteSettingsHarnessDetail.fromParams(
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              );
+              return HarnessSettingsDetailView(
+                pluginId: route.pluginId,
+                presentation: route.presentation,
+                connectionBanner: ConnectionBanner.maybeFor(context),
+                onBack: () => context.pop(),
+                onClose: () => close(context: context),
+              );
+            },
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// A full-screen audit flow outside the adaptive live-session panes.
+@visibleForTesting
+ShellRoute buildArchivedSessionsRoute() {
+  final navigatorKey = GlobalKey<NavigatorState>();
+  void close({required BuildContext context}) {
+    final flowContext = navigatorKey.currentContext ?? (throw StateError("Archive flow is not mounted"));
+    final flowRoute = ModalRoute.of(flowContext) ?? (throw StateError("Archive flow has no owning route"));
+    final outerNavigator = flowRoute.navigator ?? (throw StateError("Archive flow has no navigator"));
+    outerNavigator.popUntil((route) => route == flowRoute);
+    if (flowRoute.isFirst) {
+      context.goRoute(const AppRoute.projects());
+    } else {
+      outerNavigator.pop();
+    }
+  }
+
+  return ShellRoute(
+    navigatorKey: navigatorKey,
+    pageBuilder: (context, state, child) => CupertinoPage<void>(
+      key: state.pageKey,
+      fullscreenDialog: true,
+      child: SessionListCubitProvider(
+        key: ValueKey("archive-list-${state.pathParameters[projectIdPathParam]}"),
+        projectId:
+            state.pathParameters[projectIdPathParam] ?? (throw StateError("Archive flow requires project identity")),
+        filter: SessionListFilter.archived,
+        child: child,
+      ),
+    ),
+    routes: [
+      GoRoute(
+        path: AppRouteDef.archivedSessions.path,
+        builder: (context, state) {
+          final route = AppRouteArchivedSessions.fromParams(
+            pathParams: state.pathParameters,
+            queryParams: state.uri.queryParameters,
+          );
+          return ArchivedSessionsView(
+            emptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
+            onClose: () => close(context: context),
+            onSessionTap: ({required session}) => context.pushRoute(
+              AppRoute.archivedSessionDetail(
+                projectId: route.projectId,
+                projectName: route.projectName,
+                sessionId: session.id,
+                sessionTitle: session.title,
+              ),
+            ),
+            actionDispatcher: SessionListActionDispatcher(
+              onSessionDeleted: ({required context, required sessionId}) =>
+                  closeDeletedArchivedSessionRoute(context: context, projectId: route.projectId, sessionId: sessionId),
+            ),
+          );
+        },
+        routes: [
+          GoRoute(
+            path: ":$sessionIdPathParam",
+            builder: (context, state) {
+              final route = AppRouteArchivedSessionDetail.fromParams(
+                pathParams: state.pathParameters,
+                queryParams: state.uri.queryParameters,
+              );
+              return SessionDetailScreen(
+                key: ValueKey("archived-detail-${route.sessionId}"),
+                projectId: route.projectId,
+                projectName: route.projectName,
+                sessionId: route.sessionId,
+                sessionTitle: route.sessionTitle,
+                readOnly: true,
+                auditView: true,
+                onBack: context.pop,
+                onClose: () => close(context: context),
+              );
+            },
+          ),
+        ],
+      ),
+    ],
+  );
+}
+
+/// A stale deletion must not move a different audit record or the live opener.
+void closeDeletedArchivedSessionRoute({
+  required BuildContext context,
+  required String projectId,
+  required String sessionId,
+}) {
+  // ignore: no_slop_linter/avoid_raw_go_router, current location identity check before typed navigation
+  final state = GoRouter.of(context).state;
+  if (state.fullPath != AppRouteDef.archivedSessionDetail.path) return;
+  final route = AppRouteArchivedSessionDetail.fromParams(
+    pathParams: state.pathParameters,
+    queryParams: state.uri.queryParameters,
+  );
+  if (route.projectId != projectId || route.sessionId != sessionId) return;
+  // Pop only the archive navigator; go() would discard the modal's opener.
+  // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
+  Navigator.of(context).popUntil((route) => route.isFirst);
+}

@@ -22,12 +22,20 @@ class FlutterWindowHost.forTesting({
   static const Size _defaultSize = Size(720, 620);
 
   final StreamController<WindowHostEvent> _events = StreamController<WindowHostEvent>.broadcast(sync: true);
+  final StreamController<WindowHostState> _states = StreamController<WindowHostState>.broadcast(sync: true);
+  WindowHostState _currentState = WindowHostState.hidden;
   bool _listenerRegistered = false;
   bool _initialized = false;
   bool _disposed = false;
 
   @override
   Stream<WindowHostEvent> get events => _events.stream;
+
+  @override
+  WindowHostState get currentState => _currentState;
+
+  @override
+  Stream<WindowHostState> get states => _states.stream;
 
   @override
   Future<void> initialize({
@@ -66,9 +74,12 @@ class FlutterWindowHost.forTesting({
         // possible; keep this as a cross-platform fallback for hosts that
         // initially order the window.
         await _manager.hide();
+        _emitState(state: WindowHostState.hidden);
       } else {
         await _manager.show();
+        _emitState(state: WindowHostState.unfocused);
         await _manager.focus();
+        _emitState(state: WindowHostState.focused);
       }
       _initialized = true;
     } on Object {
@@ -101,6 +112,30 @@ class FlutterWindowHost.forTesting({
   @override
   void onWindowResize() {
     _emitEvent(event: WindowHostEvent.resized);
+  }
+
+  @override
+  void onWindowFocus() {
+    if (_currentState != WindowHostState.hidden) {
+      _emitState(state: WindowHostState.focused);
+    }
+  }
+
+  @override
+  void onWindowBlur() {
+    if (_currentState != WindowHostState.hidden) {
+      _emitState(state: WindowHostState.unfocused);
+    }
+  }
+
+  @override
+  void onWindowMinimize() {
+    _emitState(state: WindowHostState.hidden);
+  }
+
+  @override
+  void onWindowRestore() {
+    _emitState(state: WindowHostState.unfocused);
   }
 
   @override
@@ -141,13 +176,16 @@ class FlutterWindowHost.forTesting({
     // puts the app back in the Dock before the window is shown.
     await _manager.setSkipTaskbar(false);
     await _manager.show();
+    _emitState(state: WindowHostState.unfocused);
     await _manager.focus();
+    _emitState(state: WindowHostState.focused);
   }
 
   @override
   Future<void> hide() async {
     _ensureInitialized();
     await _manager.hide();
+    _emitState(state: WindowHostState.hidden);
     // On macOS this switches to the accessory activation policy: the tray
     // remains available while the hidden window disappears from the Dock.
     await _manager.setSkipTaskbar(true);
@@ -156,6 +194,16 @@ class FlutterWindowHost.forTesting({
   void _emitEvent({required WindowHostEvent event}) {
     if (!_events.isClosed) {
       _events.add(event);
+    }
+  }
+
+  void _emitState({required WindowHostState state}) {
+    if (_currentState == state) {
+      return;
+    }
+    _currentState = state;
+    if (!_states.isClosed) {
+      _states.add(state);
     }
   }
 
@@ -177,7 +225,7 @@ class FlutterWindowHost.forTesting({
     } on Object catch (error, stackTrace) {
       logw("Failed to restore native close behavior while disposing the window host", error, stackTrace);
     } finally {
-      await _events.close();
+      await Future.wait<void>([_events.close(), _states.close()]);
     }
   }
 

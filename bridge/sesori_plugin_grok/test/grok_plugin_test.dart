@@ -1,9 +1,12 @@
 import "dart:async";
+import "dart:convert";
+import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:grok_plugin/grok_plugin.dart";
 import "package:grok_plugin/src/api/grok_acp_api.dart";
+import "package:grok_plugin/src/grok_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -117,6 +120,249 @@ void main() {
       fake.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
       expect(await connecting, isTrue);
     }
+
+    test("child sessions and parentage come from the live sub-agent tracker", () async {
+      plugin.childSessionTracker.spawn(
+        sessionId: "root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "child",
+          description: "Synthetic child",
+          agent: "general-purpose",
+          prompt: null,
+          isBackground: false,
+        ),
+        directory: "/repo",
+      );
+
+      final children = await plugin.getChildSessions("root");
+      expect(children.single.id, "child");
+      expect(children.single.parentID, "root");
+      expect(children.single.directory, "/repo");
+      expect(children.single.title, "Synthetic child");
+      expect(await plugin.getChildSessions("child"), isEmpty);
+    });
+
+    test("deleting running child work fails without forgetting its live state", () async {
+      plugin.childSessionTracker.spawn(
+        sessionId: "root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "child",
+          description: "Synthetic child",
+          agent: "general-purpose",
+          prompt: null,
+          isBackground: false,
+        ),
+        directory: "/repo",
+      );
+
+      for (final sessionId in ["child", "root"]) {
+        await expectLater(
+          plugin.deleteSession(sessionId),
+          throwsA(
+            isA<PluginOperationException>().having(
+              (error) => error.message,
+              "message",
+              contains("must finish or be stopped"),
+            ),
+          ),
+        );
+      }
+
+      expect(plugin.childSessionTracker.isChild(sessionId: "child"), isTrue);
+      expect((await plugin.getSessionStatuses())["child"], const PluginSessionStatus.busy());
+
+      plugin.childSessionTracker.finishAndHoldRoot(
+        childSessionId: "child",
+        holdId: "wake-child",
+        status: PluginToolStatus.completed,
+        output: null,
+        error: null,
+      );
+      await expectLater(plugin.deleteSession("child"), throwsA(isA<PluginOperationException>()));
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: "root"), isTrue);
+
+      plugin.childSessionTracker
+        ..releaseRootHold(rootSessionId: "root", holdId: "wake-child")
+        ..spawn(
+          sessionId: "root",
+          spawn: const AcpChildSpawn(
+            childSessionId: "sibling",
+            description: "Still running",
+            agent: "general-purpose",
+            prompt: null,
+            isBackground: false,
+          ),
+          directory: "/repo",
+        );
+      await plugin.deleteSession("child");
+      expect(plugin.childSessionTracker.isChild(sessionId: "child"), isFalse);
+      expect(plugin.childSessionTracker.isChild(sessionId: "sibling"), isTrue);
+    });
+
+    test("persisted children survive a restart and merge with live ones", () async {
+      final home = Directory.systemTemp.createTempSync("grok-home-");
+      addTearDown(() => home.deleteSync(recursive: true));
+      final rootDir = Directory("${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}/root")
+        ..createSync(recursive: true);
+      File("${rootDir.path}/updates.jsonl").writeAsStringSync(
+        jsonEncode({
+          "method": "_x.ai/session/update",
+          "params": {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "subagent_spawned",
+              "subagent_id": "persisted",
+              "child_session_id": "persisted",
+              "subagent_type": "general-purpose",
+              "description": "Persisted child",
+            },
+          },
+        }),
+      );
+      File("${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}/persisted/summary.json")
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          jsonEncode({
+            "info": {"id": "persisted", "cwd": "/repo"},
+            "session_kind": "subagent",
+          }),
+        );
+      final restarted = GrokPlugin(
+        binaryPath: "grok",
+        launchDirectory: "/repo",
+        environment: {"HOME": home.path},
+        processFactory: (_) async => fake,
+      );
+      addTearDown(restarted.dispose);
+      restarted.childSessionTracker.spawn(
+        sessionId: "root",
+        spawn: const AcpChildSpawn(
+          childSessionId: "live",
+          description: "Live child",
+          agent: "general-purpose",
+          prompt: null,
+          isBackground: false,
+        ),
+        directory: "/repo",
+      );
+
+      final children = await restarted.getChildSessions("root");
+      expect(children.map((session) => session.id), ["persisted", "live"]);
+      expect(
+        children.map((session) => session.parentID),
+        everyElement("root"),
+        reason: "persisted parentage resolves without the live tracker",
+      );
+    });
+
+    test("full ACP enumeration augments an outside-launch root with its persisted child", () async {
+      final home = Directory.systemTemp.createTempSync("grok-enumeration-home-");
+      addTearDown(() => home.deleteSync(recursive: true));
+      await plugin.dispose();
+      plugin = GrokPlugin(
+        binaryPath: "grok",
+        launchDirectory: "/repo",
+        environment: {"HOME": home.path},
+        processFactory: (_) async => fake,
+      );
+      const outside = "/outside-launch-directory";
+      final rootDir = Directory("${home.path}/.grok/sessions/${Uri.encodeComponent(outside)}/root")
+        ..createSync(recursive: true);
+      File("${rootDir.path}/summary.json").writeAsStringSync(
+        jsonEncode({
+          "info": {"id": "root", "cwd": outside},
+        }),
+      );
+      File("${rootDir.path}/updates.jsonl").writeAsStringSync(
+        jsonEncode({
+          "method": "_x.ai/session/update",
+          "params": {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "subagent_spawned",
+              "subagent_id": "child",
+              "child_session_id": "child",
+              "parent_session_id": "root",
+              "description": "Persisted child",
+            },
+          },
+        }),
+      );
+      File("${home.path}/.grok/sessions/${Uri.encodeComponent(outside)}/child/summary.json")
+        ..createSync(recursive: true)
+        ..writeAsStringSync(
+          jsonEncode({
+            "info": {"id": "child", "cwd": outside},
+            "session_kind": "subagent",
+          }),
+        );
+      await connect();
+
+      final listing = plugin.listAllSessions(knownDirectories: const {});
+      final bare = await waitForFrame(method: AcpMethods.sessionList);
+      expect((bare["params"] as Map<String, dynamic>)["cwd"], isNull);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": bare["id"],
+        "result": {
+          "sessions": [
+            {"sessionId": "root", "title": "Root"},
+          ],
+        },
+      });
+      final launchScoped = await waitForFrame(method: AcpMethods.sessionList);
+      expect((launchScoped["params"] as Map<String, dynamic>)["cwd"], "/repo");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": launchScoped["id"],
+        "result": {"sessions": const <Object?>[]},
+      });
+
+      final sessions = await listing;
+      expect(sessions.map((session) => session.id), ["root", "child"]);
+      expect(sessions.first.directory, outside, reason: "the persisted tree repairs the bare-list fallback");
+      expect(plugin.directoryForSession(sessionId: "root"), outside, reason: "resume routing uses the same repair");
+      expect(plugin.directoryForSession(sessionId: "child"), outside, reason: "child events share root attribution");
+      expect(sessions.last.parentID, "root");
+      expect(sessions.last.directory, outside);
+    });
+
+    test("bare enumeration fallback preserves an existing session directory", () async {
+      await connect();
+      const storedDirectory = "/stored-project";
+      plugin.primeSessionDirectory(sessionId: "root", directory: storedDirectory);
+
+      final listing = plugin.listAllSessions(knownDirectories: const {});
+      final bare = await waitForFrame(method: AcpMethods.sessionList);
+      expect((bare["params"] as Map<String, dynamic>)["cwd"], isNull);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": bare["id"],
+        "result": {
+          "sessions": [
+            {"sessionId": "root", "title": "Root"},
+          ],
+        },
+      });
+      final launchScoped = await waitForFrame(method: AcpMethods.sessionList);
+      expect((launchScoped["params"] as Map<String, dynamic>)["cwd"], "/repo");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": launchScoped["id"],
+        "result": {"sessions": const <Object?>[]},
+      });
+      final storedScoped = await waitForFrame(method: AcpMethods.sessionList);
+      expect((storedScoped["params"] as Map<String, dynamic>)["cwd"], storedDirectory);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": storedScoped["id"],
+        "result": {"sessions": const <Object?>[]},
+      });
+
+      final sessions = await listing;
+      expect(sessions.single.directory, storedDirectory);
+      expect(plugin.directoryForSession(sessionId: "root"), storedDirectory);
+    });
 
     test("uses Grok identity, headless auth policy, and stop-and-send", () {
       expect(plugin.id, "grok");
@@ -239,6 +485,84 @@ void main() {
       });
       fake.emit({"jsonrpc": "2.0", "id": selection["id"], "result": <String, dynamic>{}});
       final prompt = await waitForFrame(method: AcpMethods.sessionPrompt);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+    });
+
+    test("resume load suppresses replayed Grok lifecycle while later extension updates remain live", () async {
+      await connect();
+      plugin.primeSessionDirectory(sessionId: "stored", directory: "/repo");
+      await plugin.sendPrompt(
+        promptId: "p1",
+        sessionId: "stored",
+        parts: const [PluginPromptPart.text(text: "Continue")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final load = await waitForFrame(method: AcpMethods.sessionLoad);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokEventMapper.sessionUpdateMethod,
+        "params": {
+          "sessionId": "stored",
+          "update": {
+            "sessionUpdate": "subagent_spawned",
+            "subagent_id": "historical-child",
+            "child_session_id": "historical-child",
+            "description": "Historical child",
+          },
+        },
+      });
+      fake.emit({"jsonrpc": "2.0", "id": load["id"], "result": const <String, dynamic>{}});
+      final prompt = await waitForFrame(method: AcpMethods.sessionPrompt);
+      expect(plugin.childSessionTracker.isChild(sessionId: "historical-child"), isFalse);
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokEventMapper.sessionNotificationMethod,
+        "params": {
+          "sessionId": "stored",
+          "update": {
+            "sessionUpdate": "subagent_spawned",
+            "subagent_id": "live-child",
+            "child_session_id": "live-child",
+            "description": "Live child",
+          },
+        },
+      });
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokEventMapper.sessionNotificationMethod,
+        "params": {
+          "sessionId": "stored",
+          "update": {
+            "sessionUpdate": "subagent_finished",
+            "subagent_id": "live-child",
+            "child_session_id": "live-child",
+            "status": "completed",
+            "will_wake": true,
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: "stored"), isTrue);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokEventMapper.sessionUpdateMethod,
+        "params": {
+          "sessionId": "stored",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "subagent-completed-live-child",
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: "stored"), isFalse);
       fake.emit({
         "jsonrpc": "2.0",
         "id": prompt["id"],

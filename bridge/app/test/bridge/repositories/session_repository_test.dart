@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -676,212 +677,6 @@ void main() {
       expect(result[1].projectID, "/derived/.worktrees/session");
     });
 
-    test("insertStoredSession ensures project and stores prompt defaults transactionally", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s-created",
-        backendSessionId: "backend-created",
-        pluginId: plugin.id,
-        projectId: "p-created",
-        isDedicated: true,
-        createdAt: 123,
-        worktreePath: "/tmp/wt",
-        branchName: "feature/defaults",
-        baseBranch: "main",
-        baseCommit: "abc123",
-        agent: "agent-1",
-        agentModel: const AgentModel(
-          providerID: "provider-1",
-          modelID: "model-1",
-          variant: "variant-1",
-        ),
-      );
-
-      final projects = await db.select(db.projectsTable).get();
-      final row = await db.sessionDao.getSession(sessionId: "s-created");
-
-      expect(projects.map((project) => project.projectId), equals(["p-created"]));
-      expect(row, isNotNull);
-      expect(row!.backendSessionId, equals("backend-created"));
-      expect(row.pluginId, equals(plugin.id));
-      expect(row.lastAgent, equals("agent-1"));
-      expect(row.lastAgentModel?.providerID, equals("provider-1"));
-      expect(row.lastAgentModel?.modelID, equals("model-1"));
-      expect(row.lastAgentModel?.variant, equals("variant-1"));
-      expect(row.worktreePath, equals("/tmp/wt"));
-    });
-
-    test("insertStoredSession drops the orphaned placeholder project row after re-attribution", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      // A live session.created raced ahead of the create flow: the placeholder
-      // keyed the session (and a project row) to the plugin-reported worktree
-      // cwd instead of the project the user opened.
-      const worktree = "/repo/.worktrees/s1";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [worktree]);
-      await db.sessionDao.insertSessionsIfMissing(
-        pluginId: "fake",
-        sessions: [
-          (
-            sessionId: "s1",
-            backendSessionId: "s1",
-            projectId: worktree,
-            directory: worktree,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-        ],
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s1",
-        backendSessionId: "s1",
-        pluginId: plugin.id,
-        projectId: "/repo",
-        isDedicated: true,
-        createdAt: 200,
-        worktreePath: worktree,
-        branchName: "s1",
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-
-      // The session is re-attributed to the canonical project and the stale
-      // worktree project row is gone — it must not surface as an empty
-      // derived project card.
-      final row = await db.sessionDao.getSession(sessionId: "s1");
-      expect(row?.projectId, "/repo");
-      final projects = await db.select(db.projectsTable).get();
-      expect(projects.map((project) => project.projectId), equals(["/repo"]));
-    });
-
-    test("insertStoredSession keeps a project row that carries user-set state", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      // The placeholder happens to be keyed to a path the user renamed — a
-      // real project, not junk. It must survive the cleanup even once its
-      // last session is re-attributed away.
-      const touched = "/repo/renamed";
-      await db.projectsDao.setDisplayName(projectId: touched, displayName: "My Project", updatedAt: 100);
-      await db.sessionDao.insertSessionsIfMissing(
-        pluginId: "fake",
-        sessions: [
-          (
-            sessionId: "s1",
-            backendSessionId: "s1",
-            projectId: touched,
-            directory: touched,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-        ],
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s1",
-        backendSessionId: "s1",
-        pluginId: plugin.id,
-        projectId: "/repo",
-        isDedicated: false,
-        createdAt: 200,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-
-      final projects = await db.select(db.projectsTable).get();
-      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", touched}));
-    });
-
-    test("insertStoredSession keeps a placeholder project row that other sessions still reference", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      const shared = "/repo/other";
-      await db.projectsDao.insertProjectsIfMissing(projectIds: [shared]);
-      await db.sessionDao.insertSessionsIfMissing(
-        pluginId: "fake",
-        sessions: [
-          (
-            sessionId: "s1",
-            backendSessionId: "s1",
-            projectId: shared,
-            directory: shared,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-          (
-            sessionId: "s-other",
-            backendSessionId: "s-other",
-            projectId: shared,
-            directory: shared,
-            createdAt: 100,
-            archivedAt: null,
-          ),
-        ],
-      );
-
-      await repository.insertStoredSession(
-        sessionId: "s1",
-        backendSessionId: "s1",
-        pluginId: plugin.id,
-        projectId: "/repo",
-        isDedicated: false,
-        createdAt: 200,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        agent: null,
-        agentModel: null,
-      );
-
-      final projects = await db.select(db.projectsTable).get();
-      expect(projects.map((project) => project.projectId).toSet(), equals({"/repo", shared}));
-      expect((await db.sessionDao.getSession(sessionId: "s-other"))?.projectId, shared);
-    });
-
     test("updatePromptDefaults writes latest nullable prompt defaults", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -894,7 +689,8 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s-update",
         backendSessionId: "s-update",
         pluginId: plugin.id,
@@ -1353,7 +1149,8 @@ void main() {
           pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
-        await repository.insertStoredSession(
+        await insertTestSession(
+          db: db,
           sessionId: "stable-live",
           backendSessionId: "backend-live",
           pluginId: plugin.id,
@@ -1466,7 +1263,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "stable-s1",
         backendSessionId: "backend-s1",
         pluginId: plugin.id,
@@ -1532,7 +1330,8 @@ void main() {
         ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "wrong-plugin",
         backendSessionId: "backend-wrong-plugin",
         pluginId: "other-plugin",
@@ -1570,7 +1369,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "stable-s1",
         backendSessionId: "backend-s1",
         pluginId: plugin.id,
@@ -1622,7 +1422,8 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
       );
       for (final (sessionId, backendSessionId) in [("stable-s1", "backend-s1"), ("stable-child", "backend-child")]) {
-        await repository.insertStoredSession(
+        await insertTestSession(
+          db: db,
           sessionId: sessionId,
           backendSessionId: backendSessionId,
           pluginId: plugin.id,
@@ -1698,6 +1499,70 @@ void main() {
       expect(statuses.unavailablePluginIds, ["setup-blocked"]);
     });
 
+    test("abort forwards one recursive backend descendant snapshot and acknowledgment", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const projectId = "abort-project";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await db.sessionDao.insertSession(
+        sessionId: "root",
+        backendSessionId: "backend-root",
+        projectId: projectId,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+        preservePullRequestScope: false,
+      );
+      for (final child in const [
+        (id: "child", backendId: "backend-child", parentId: "root"),
+        (id: "grandchild", backendId: "backend-grandchild", parentId: "child"),
+      ]) {
+        await db.sessionDao.insertObservedChild(
+          sessionId: child.id,
+          backendSessionId: child.backendId,
+          projectId: projectId,
+          parentSessionId: child.parentId,
+          directory: projectId,
+          catalogTitle: null,
+          archivedAt: null,
+          createdAt: 1,
+          updatedAt: 1,
+          projectionUpdatedAt: 1,
+          pluginId: plugin.id,
+        );
+      }
+      plugin.abortResult = const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final result = await repository.abortSession(
+        sessionId: "root",
+        subAgents: SessionAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+      );
+
+      expect(plugin.lastAbortSessionId, "backend-root");
+      expect(plugin.lastAbortUseAtomicStop, isTrue);
+      expect(plugin.lastAbortKnownSubAgentSessionIds, {"backend-child", "backend-grandchild"});
+      expect(
+        result,
+        isA<SessionAborted>()
+            .having((result) => result.workKept, "kept", true)
+            .having((result) => result.subAgentsHandled, "handled", true),
+      );
+    });
+
     test("unknown sessions reject message and abort operations", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1714,7 +1579,7 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       await expectLater(
-        repository.abortSession(sessionId: "unknown", subAgents: SessionAbortSubAgentPolicy.stop),
+        repository.abortSession(sessionId: "unknown", subAgents: SessionAbortSubAgentPolicy.stop, useAtomicStop: false),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       expect(plugin.lastGetMessagesSessionId, isNull);
@@ -2436,7 +2301,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         pluginId: plugin.id,
@@ -2525,7 +2391,11 @@ void main() {
         ),
         () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),
-        () => repository.abortSession(sessionId: "gone", subAgents: SessionAbortSubAgentPolicy.stop),
+        () => repository.abortSession(
+          sessionId: "gone",
+          subAgents: SessionAbortSubAgentPolicy.stop,
+          useAtomicStop: false,
+        ),
         () async => await repository.getChildSessions(sessionId: "gone"),
       ];
       for (final operation in guardedOperations) {
@@ -2645,7 +2515,8 @@ void main() {
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "sesori-id",
         backendSessionId: "backend-id",
         pluginId: plugin.id,
@@ -2820,6 +2691,9 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   int getSessionsFailuresRemaining = 0;
   int sendPromptCalls = 0;
   String? lastAbortSessionId;
+  bool? lastAbortUseAtomicStop;
+  Set<String>? lastAbortKnownSubAgentSessionIds;
+  PluginAbortResult abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   List<PluginProjectActivitySummary> activitySummaries = const [];
   Set<String> failingProjectIds = const {};
   Map<String, PluginProject> projectsByDirectory = const {};
@@ -2937,9 +2811,13 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     lastAbortSessionId = sessionId;
-    return const PluginAbortAccepted(workKept: false);
+    lastAbortUseAtomicStop = useAtomicStop;
+    lastAbortKnownSubAgentSessionIds = knownSubAgentSessionIds;
+    return abortResult;
   }
 
   @override

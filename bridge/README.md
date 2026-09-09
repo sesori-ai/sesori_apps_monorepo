@@ -18,6 +18,7 @@ Clients <--(E2E encrypted)--> Relay Server <--(E2E encrypted)--> Bridge CLI -> [
 | `sesori_plugin_opencode` | OpenCode backend implementation of the plugin contract |
 | `sesori_plugin_codex` | Codex backend implementation |
 | `sesori_plugin_acp` | Shared ACP protocol plugin base |
+| `sesori_plugin_antigravity` | Google Antigravity implementation over ACP |
 | `sesori_plugin_cursor` | Cursor implementation over ACP |
 | `sesori_plugin_omp` | Oh My Pi implementation over ACP |
 | `sesori_plugin_claude` | Claude Code backend implementation |
@@ -40,51 +41,16 @@ The Makefiles use Dart from the Flutter SDK pinned in the repository's
 `.tool-versions`; install that asdf Flutter version first. Packaged installs
 remain the simplest way to run the bridge headlessly without a source checkout.
 
-## Install
+## Install and uninstall
 
-For packaged installs, use the bridge distribution docs instead of building from source:
+Packaged installs are documented once, in
+[INSTALL.md](INSTALL.md): the shell installers, `npx @sesori/bridge`, the managed
+install locations, update behavior and the update track, and the uninstall steps.
+[RELEASING.md](RELEASING.md) covers release verification and the manual
+test-release flow.
 
-- [INSTALL.md](INSTALL.md) — shell installer, `npx @sesori/bridge`, update behavior, and uninstall steps
-- [RELEASING.md](RELEASING.md) — release verification and manual test-release flow
-
-Quick packaged install options:
-
-```bash
-# npm bootstrap
-npx @sesori/bridge
-
-# If PATH has not refreshed in this shell yet, open a new terminal
-# or run ~/.local/share/sesori/bin/sesori-bridge directly on macOS/Linux.
-sesori-bridge
-
-# macOS / Linux shell installer
-curl -fsSL https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.sh | bash
-```
-
-Windows PowerShell:
-
-```powershell
-irm https://raw.githubusercontent.com/sesori-ai/sesori_apps_monorepo/main/install.ps1 | iex
-```
-
-Both install paths create a managed runtime under `~/.local/share/sesori/` on macOS/Linux or `%LOCALAPPDATA%\sesori\` on Windows. On macOS/Linux, a symlink is placed at `~/.local/bin/sesori-bridge`. If `~/.local/bin` is already in your PATH, the command is available immediately.
-
-The npm bootstrap path uses `npx @sesori/bridge` only as a launcher: it installs or refreshes the managed native runtime under the Sesori install root and then gets out of the way. The steady-state command remains `sesori-bridge`, not a binary inside `node_modules`.
-
-## Uninstall
-
-Delete the managed install directory to fully remove the packaged bridge runtime:
-
-- macOS / Linux: `~/.local/share/sesori/`
-- Windows: `%LOCALAPPDATA%\sesori\`
-
-Also remove the symlink on macOS/Linux:
-
-```bash
-rm -f ~/.local/bin/sesori-bridge
-```
-
-If you used the npm bootstrap path, `npm uninstall @sesori/bridge` does not remove that managed install directory.
+Building from source, as described above, is for working on the bridge itself; a
+packaged install remains the simplest way to run it headlessly.
 
 ## Development Commands
 
@@ -115,8 +81,8 @@ local cross-compilation.
 
 Every registered plugin is eligible unless its ID appears in
 `plugins.disabled` in bridge settings. Setup-ready plugins start independently,
-and the first operational plugin in case-insensitive display-name order is the
-current default for new clients. This default is separate from legacy missing
+and OpenCode is the default when selectable; otherwise the first selectable
+plugin in case-insensitive display-name order is the default for new clients. This default is separate from legacy missing
 identity: released payloads without `pluginId` always mean OpenCode, not the
 current default.
 
@@ -131,13 +97,54 @@ they are started, monitored, failed, and stopped independently. A plugin failure
 disables controls routed to that plugin but does not stop the relay, catalog
 browsing, or another plugin.
 
+### Antigravity official runtime
+
+Antigravity support uses Google's proprietary official ACP runtime pair. Review
+[Google's terms](https://antigravity.google/terms) and
+[Antigravity documentation](https://antigravity.google/docs/) before using it.
+The pin is ACP registry package `1.0.0`, with exact runtime identity
+`agy_acp_server_20260818_01_RC01`. Sesori can install the official pair from
+harness detail after showing download guidance, then update existing managed
+installations on bridge start. Linux requires Info-ZIP `unzip` with ZipInfo;
+installation checks it before downloading. See [INSTALL.md](INSTALL.md).
+
+For manual setup, place `agy_acp_server.par` and `localharness_external`
+together on macOS arm64 or Linux x64/arm64; on Windows x64/arm64 use
+`agy_acp_server.exe` and `localharness_external.exe`. Both POSIX files must be
+executable. macOS x64 is unsupported, including an explicit binary path.
+Either make the server discoverable on PATH or pass
+`--antigravity-bin <path-to-server>`. The sibling harness is mandatory; an
+explicit server path is authoritative and disables managed Install/upgrade.
+Otherwise resolution prefers a validated PATH pair, then an installed managed
+pair. Setup inspection itself remains inert and does not validate the runtime.
+
+Authentication supports personal Google OAuth only and must be started from a
+current Sesori mobile or desktop app; there is no bridge-CLI fallback. For a
+remote browser, submit its final loopback return URL through the active Sesori
+challenge. Sesori uses an isolated Antigravity profile below bridge plugin
+state and never imports ambient Google credentials.
+
+Prompts stay in supervised `default` mode; persistent and warning-bearing
+approvals are excluded. One primary agent is available; until a real
+new/load/resume discovers models in a fresh process, new sessions use the
+account default.
+Later model selection, replay and image content use the existing shared ACP
+boundaries. Provider-local image paths are never fetched. Local session deletion
+removes Sesori's record but not Google's retained conversation/profile files.
+
+The [Antigravity operator guide](../docs/ANTIGRAVITY.md) covers complete setup,
+remote login, retained history and limits. Native macOS arm64 managed installation
+has been checked; native Linux/Windows and authenticated end-to-end behavior
+remain unverified. Do not confuse implemented capabilities with completed L5 QA.
+
+### Catalog reads
+
 Normal project, root-session, session-detail, and child reads use the durable
-database catalog only. Import is a non-destructive observation of one plugin:
-connected Sesori apps start it through `POST /plugin/import`, cancel it through
-`DELETE /plugin/import`, and read the latest per-plugin statuses through
-`GET /plugin/import`; progress is also published as plugin-attributed SSE.
-Catalog readers continue to see the last committed snapshot while import
-enumerates or publishes.
+database catalog only; external harness work enters through an explicit,
+non-destructive per-plugin import. Catalog readers continue to see the last
+committed snapshot while an import enumerates or publishes. The ownership model
+behind this, including the import endpoints and the identity rules, is in
+[docs/ARCHITECTURE.md](../docs/ARCHITECTURE.md#catalog-ownership-and-the-plugin-boundary).
 
 ## Security
 

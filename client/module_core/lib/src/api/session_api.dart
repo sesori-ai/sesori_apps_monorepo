@@ -48,6 +48,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// Discovery can legitimately outlast an ordinary request: a backend that
+  /// indexes its command catalog on first use keeps the bridge waiting, and
+  /// OpenCode has been measured past half a minute on a cold server. This is the
+  /// outer deadline of that chain, so it must exceed every bridge-side one;
+  /// abandoning the request here would report a transport failure for a
+  /// slow-but-healthy catalog the bridge is about to return.
+  static const Duration _optionsTimeout = Duration(minutes: 2);
+
   Future<ApiResponse<SessionOptionsResponse>> loadSessionOptions({
     required String projectId,
     required String pluginId,
@@ -62,6 +70,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         SessionOptionsRequestMode.cacheOnly => const {"refresh": "false"},
         SessionOptionsRequestMode.forceRefresh => const {"refresh": "true"},
       },
+      timeout: _optionsTimeout,
     );
   }
 
@@ -337,14 +346,14 @@ class SessionApi({required final RelayHttpApiClient _client}) {
 
   /// Stops a session with the given sub-agent scope. A 409 carrying a
   /// [SessionAbortRejection] surfaces as [SessionAbortApiRejectedException].
-  Future<ApiResponse<SuccessEmptyResponse>> abortSession({
+  Future<ApiResponse<SessionAbortResponse>> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
   }) async {
     final response = await _client.post(
       "/session/abort",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: AbortSessionRequest(sessionId: sessionId, subAgents: subAgents),
+      fromJson: SessionAbortResponse.fromJson,
+      body: AbortSessionRequest(sessionId: sessionId, subAgents: subAgents, useAtomicStop: true),
     );
     if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final String rawBody))) {
       final SessionAbortRejection rejection;

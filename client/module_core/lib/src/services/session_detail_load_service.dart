@@ -8,13 +8,11 @@ import "../foundation/models/session_options/session_options_request_mode.dart";
 import "../logging/logging.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/plugin_repository.dart";
-import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 
 @lazySingleton
 class SessionDetailLoadService({
   required final SessionRepository _repository,
-  required final ProjectRepository _projectRepository,
   required final PluginRepository _pluginRepository,
   required final ConnectionService _connectionService,
 }) {
@@ -26,12 +24,29 @@ class SessionDetailLoadService({
   /// Messages fetched per load-older request.
   static const olderPageSize = 50;
 
-  Future<SessionDetailLoadResult> load({required String sessionId, required String projectId}) {
-    return _loadSnapshot(sessionId: sessionId, projectId: projectId, requireCompleteOptions: false);
+  Future<SessionDetailMetadataLoadResult> loadMetadata({required String sessionId}) async {
+    if (_connectionService.currentStatus is! ConnectionConnected) {
+      return const SessionDetailMetadataLoadResult.waitingForConnection();
+    }
+    try {
+      return switch (await _repository.getSession(sessionId: sessionId)) {
+        SuccessResponse(:final data) => SessionDetailMetadataLoadResult.found(session: data),
+        ErrorResponse(:final error) => SessionDetailMetadataLoadResult.failed(
+          error: error,
+          stackTrace: StackTrace.current,
+        ),
+      };
+    } on Object catch (error, stackTrace) {
+      return SessionDetailMetadataLoadResult.failed(error: error, stackTrace: stackTrace);
+    }
   }
 
-  Future<SessionDetailLoadResult> reload({required String sessionId, required String projectId}) {
-    return _loadSnapshot(sessionId: sessionId, projectId: projectId, requireCompleteOptions: true);
+  Future<SessionDetailLoadResult> load({required Session session, required String projectId}) {
+    return _loadSnapshot(session: session, projectId: projectId, requireCompleteOptions: false);
+  }
+
+  Future<SessionDetailLoadResult> reload({required Session session, required String projectId}) {
+    return _loadSnapshot(session: session, projectId: projectId, requireCompleteOptions: true);
   }
 
   /// One page of messages older than [before], for a load-older action.
@@ -58,7 +73,7 @@ class SessionDetailLoadService({
   }
 
   Future<SessionDetailLoadResult> _loadSnapshot({
-    required String sessionId,
+    required Session session,
     required String projectId,
     required bool requireCompleteOptions,
   }) async {
@@ -67,7 +82,9 @@ class SessionDetailLoadService({
     }
 
     try {
-      final routeProjectId = projectId.normalize();
+      final sessionId = session.id;
+      final effectiveProjectId = projectId.normalize() ?? session.projectID;
+      final pluginId = session.pluginId;
       // Only the newest page: a long transcript otherwise ships in full on
       // every open, reconnect, and reload. Older messages load on demand.
       final messagesFuture = _repository.getMessages(
@@ -76,18 +93,7 @@ class SessionDetailLoadService({
         before: null,
       );
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
-      final sessionResponse = await _repository.getSession(sessionId: sessionId);
-      final session = switch (sessionResponse) {
-        SuccessResponse(:final data) => data,
-        ErrorResponse(:final error) => () {
-          logw("Failed to load session: ${error.toString()}");
-          return null;
-        }(),
-      };
-      final fallbackContext = session == null ? await _loadProjectSessionContext(sessionId: sessionId) : null;
-      final effectiveProjectId = routeProjectId ?? session?.projectID.normalize() ?? fallbackContext?.projectId;
-      final pluginId = session?.pluginId ?? fallbackContext?.pluginId;
-      final isArchived = session?.time?.archived != null;
+      final isArchived = session.time?.archived != null;
       final optionsFuture = isArchived
           ? Future<_SessionDetailOptionsResult>.value(
               const _SessionDetailOptionsAvailable(
@@ -95,6 +101,7 @@ class SessionDetailLoadService({
                   agents: <AgentInfo>[],
                   providerData: null,
                   commands: <CommandInfo>[],
+                  areStale: false,
                 ),
               ),
             )
@@ -138,7 +145,7 @@ class SessionDetailLoadService({
         SuccessResponse(:final data) => (data.messages, data.nextCursor, data.replayedPromptDefaults),
         ErrorResponse(:final error) => throw error,
       };
-      final promptDefaults = replayedPromptDefaults ?? session?.promptDefaults;
+      final promptDefaults = replayedPromptDefaults ?? session.promptDefaults;
 
       final pendingQuestions = switch (questionsResponse) {
         SuccessResponse(:final data) => data.data,
@@ -188,9 +195,10 @@ class SessionDetailLoadService({
           agents: options.agents,
           providerData: options.providerData,
           commands: options.commands,
-          canonicalSessionTitle: session?.title ?? fallbackContext?.sessionTitle,
+          areOptionsStale: options.areStale,
+          canonicalSessionTitle: session.title,
           promptDefaults: promptDefaults,
-          isRootSession: session != null ? session.parentID == null : null,
+          isRootSession: session.parentID == null,
           isArchived: isArchived,
         ),
       );
@@ -211,25 +219,29 @@ class SessionDetailLoadService({
           agents: <AgentInfo>[],
           providerData: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
           commands: <CommandInfo>[],
+          areStale: false,
         ),
       );
     }
 
-    _SessionDetailOptionsResult fromCatalog(SessionOptionsCatalog catalog) => _SessionDetailOptionsAvailable(
-      options: (
-        agents: catalog.agents,
-        providerData: ProviderListResponse(
-          items: catalog.providers,
-          connectedOnly: catalog.providersConnectedOnly,
-        ),
-        commands: catalog.commands,
-      ),
-    );
+    _SessionDetailOptionsResult fromCatalog(SessionOptionsCatalog catalog, {bool areStale = false}) =>
+        _SessionDetailOptionsAvailable(
+          options: (
+            agents: catalog.agents,
+            providerData: ProviderListResponse(
+              items: catalog.providers,
+              connectedOnly: catalog.providersConnectedOnly,
+            ),
+            commands: catalog.commands,
+            areStale: areStale,
+          ),
+        );
     const unavailable = _SessionDetailOptionsAvailable(
       options: (
         agents: <AgentInfo>[],
         providerData: null,
         commands: <CommandInfo>[],
+        areStale: false,
       ),
     );
 
@@ -239,8 +251,8 @@ class SessionDetailLoadService({
       mode: SessionOptionsRequestMode.dynamic,
     );
     switch (result) {
-      case SessionOptionsRepositoryAvailable(:final catalog):
-        return fromCatalog(catalog);
+      case SessionOptionsRepositoryAvailable(:final catalog, :final isStale):
+        return fromCatalog(catalog, areStale: isStale);
       case SessionOptionsRepositoryUnsupported():
         // COMPATIBILITY 2026-08-09 (v1.8.0): Published older bridges do not
         // expose /session/options. Remove this fallback with support for them.
@@ -331,15 +343,6 @@ class SessionDetailLoadService({
       return null;
     }
   }
-
-  Future<ProjectSessionContext?> _loadProjectSessionContext({required String sessionId}) async {
-    try {
-      return await _projectRepository.findSessionContext(sessionId: sessionId);
-    } on Object catch (error, stackTrace) {
-      logw("Failed to load project session context: ${error.toString()}", error, stackTrace);
-      return null;
-    }
-  }
 }
 
 class const SessionDetailSnapshot({
@@ -366,6 +369,11 @@ class const SessionDetailSnapshot({
   required final List<AgentInfo> agents,
   required final ProviderListResponse? providerData,
   required final List<CommandInfo> commands,
+
+  /// Whether the bridge served these options from a snapshot old enough to be
+  /// worth refreshing behind the user. The options stay usable meanwhile; the
+  /// cubit brings them up to date without a loading state.
+  required final bool areOptionsStale,
   required final String? canonicalSessionTitle,
   required final SessionPromptDefaults? promptDefaults,
 
@@ -383,6 +391,7 @@ typedef _SessionDetailOptions = ({
   List<AgentInfo> agents,
   ProviderListResponse? providerData,
   List<CommandInfo> commands,
+  bool areStale,
 });
 
 sealed class const _SessionDetailOptionsResult();
@@ -399,6 +408,24 @@ final class _LegacySessionOptionsLoadError({required List<LegacySessionOptionErr
   @override
   String toString() => errors.map((failure) => "${failure.source.name}: ${failure.error.toString()}").join("; ");
 }
+
+sealed class const SessionDetailMetadataLoadResult() {
+  const factory found({required Session session}) = SessionDetailMetadataFound;
+
+  const factory waitingForConnection() = SessionDetailMetadataWaitingForConnection;
+
+  const factory failed({
+    required Object error,
+    required StackTrace? stackTrace,
+  }) = SessionDetailMetadataFailed;
+}
+
+final class const SessionDetailMetadataFound({required final Session session}) extends SessionDetailMetadataLoadResult;
+
+final class const SessionDetailMetadataWaitingForConnection() extends SessionDetailMetadataLoadResult;
+
+final class const SessionDetailMetadataFailed({required final Object error, required final StackTrace? stackTrace})
+    extends SessionDetailMetadataLoadResult;
 
 sealed class const SessionDetailLoadResult() {
   const factory loaded({

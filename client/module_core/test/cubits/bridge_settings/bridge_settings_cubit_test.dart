@@ -35,6 +35,7 @@ void main() {
     final state = cubit.state as BridgeSettingsReadyFull;
     expect(state.pullRequestRefreshIntervalSeconds, 30);
     expect(state.yoloEnabled, isTrue);
+    expect((state.pluginWarmupMutation as PluginWarmupMutationIdle).enabled, isTrue);
     for (final input in ["14", " 45 ", "3601"]) {
       expect(cubit.validatePullRequestRefreshInput(input: input), PullRequestRefreshInputValidation.valid);
     }
@@ -42,6 +43,27 @@ void main() {
       expect(cubit.validatePullRequestRefreshInput(input: input), PullRequestRefreshInputValidation.invalid);
     }
     verify(service.load).called(1);
+  });
+
+  test("treats session-open warm-up as unsupported when an older aggregate omits it", () async {
+    when(service.load).thenAnswer(
+      (_) async => const BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+          yolo: YoloSettingsResponse(enabled: false),
+          warmUpPluginsOnSessionOpen: null,
+        ),
+      ),
+    );
+    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    addTearDown(cubit.close);
+
+    await _waitForState<BridgeSettingsReadyFull>(cubit);
+
+    expect(
+      (cubit.state as BridgeSettingsReadyFull).pluginWarmupMutation,
+      isA<PluginWarmupMutationUnsupported>(),
+    );
   });
 
   test("represents legacy PR-only support explicitly", () async {
@@ -81,6 +103,26 @@ void main() {
     final afterYolo = cubit.state as BridgeSettingsReadyFull;
     expect(afterYolo.pullRequestRefreshIntervalSeconds, 46);
     expect(afterYolo.yoloMutation, isA<YoloMutationFailed>());
+  });
+
+  test("commits session-open warm-up without reloading the bridge", () async {
+    _stubFullLoad(service, intervalSeconds: 30, yoloEnabled: false);
+    when(() => service.updatePluginWarmup(enabled: false)).thenAnswer(
+      (_) async => const PluginWarmupSettingsMutationCommitted(enabled: false),
+    );
+    final cubit = BridgeSettingsCubit(repository: service, connectionService: connection);
+    addTearDown(cubit.close);
+    await _waitForState<BridgeSettingsReadyFull>(cubit);
+
+    await cubit.updatePluginWarmup(
+      enabled: false,
+      expectedState: cubit.state as BridgeSettingsReadyFull,
+    );
+
+    final mutation = (cubit.state as BridgeSettingsReadyFull).pluginWarmupMutation;
+    expect((mutation as PluginWarmupMutationIdle).enabled, isFalse);
+    verify(() => service.updatePluginWarmup(enabled: false)).called(1);
+    verify(service.load).called(1);
   });
 
   test("keeps YOLO available when the PR mutation route is unsupported", () async {
@@ -251,6 +293,7 @@ void main() {
         pullRequestRefreshMutation: PullRequestRefreshMutationIdle(validationBounds: null),
         yoloEnabled: false,
         yoloMutation: YoloMutationIdle(),
+        pluginWarmupMutation: PluginWarmupMutationIdle(enabled: true),
       ),
     );
 
@@ -268,6 +311,7 @@ BridgeSettingsLoadSupported _fullResult({required int intervalSeconds, required 
     response: BridgeSettingsResponse(
       pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: intervalSeconds),
       yolo: YoloSettingsResponse(enabled: yoloEnabled),
+      warmUpPluginsOnSessionOpen: true,
     ),
   );
 }

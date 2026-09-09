@@ -497,16 +497,27 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<StoredSession?> getStoredSession({required String sessionId}) async => null;
 
   @override
+  Future<String?> getSessionTitle({required String sessionId}) async => null;
+
+  @override
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,
   }) async => null;
 
   @override
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
   }) async => const {};
+
+  @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
 
   @override
   Future<StoredSession?> updateObservedSessionProjection({
@@ -525,6 +536,17 @@ class _NoopSessionRepository() implements SessionRepository {
     required StoredSession parent,
     required int projectionUpdatedAt,
   }) async => null;
+
+  @override
+  Future<StoredSession> requireStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    throw PluginOperationException.notFound(
+      operation.name,
+      message: "session $sessionId was not found",
+    );
+  }
 
   @override
   Future<StoredSession> requireRoutableStoredSession({
@@ -553,22 +575,6 @@ class _NoopSessionRepository() implements SessionRepository {
   }) async {}
 
   @override
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) async {}
-
-  @override
   Future<void> updatePromptDefaults({
     required String sessionId,
     required String? agent,
@@ -582,7 +588,8 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
-  }) async => const SessionAborted(workKept: false);
+    required bool useAtomicStop,
+  }) async => const SessionAborted(workKept: false, subAgentsHandled: false);
 
   @override
   Future<void> notifySessionArchived({required String sessionId}) async {}
@@ -964,16 +971,30 @@ class FakeSessionRepository({
   }
 
   @override
+  Future<String?> getSessionTitle({required String sessionId}) async {
+    final row = await _sessionDao.getSession(sessionId: sessionId);
+    return row?.title ?? row?.catalogTitle;
+  }
+
+  @override
   Future<StoredSession?> getStoredSessionByBackendId({
     required String pluginId,
     required String backendSessionId,
   }) async => null;
 
   @override
-  Future<Map<String, StoredSession>> getStoredSessionsByBackendIds({
+  Future<Map<String, String>> getSessionIdsByBackendIds({
     required String pluginId,
     required List<String> backendSessionIds,
   }) async => const {};
+
+  @override
+  Future<Session?> recordSessionCompletion({
+    required String sessionId,
+    required String pluginId,
+    required int generation,
+    required int completedAt,
+  }) async => null;
 
   @override
   Future<StoredSession?> updateObservedSessionProjection({
@@ -994,7 +1015,7 @@ class FakeSessionRepository({
   }) async => null;
 
   @override
-  Future<StoredSession> requireRoutableStoredSession({
+  Future<StoredSession> requireStoredSession({
     required String sessionId,
     required SessionOperation operation,
   }) async {
@@ -1005,6 +1026,15 @@ class FakeSessionRepository({
         message: "session $sessionId was not found",
       );
     }
+    return stored;
+  }
+
+  @override
+  Future<StoredSession> requireRoutableStoredSession({
+    required String sessionId,
+    required SessionOperation operation,
+  }) async {
+    final stored = await requireStoredSession(sessionId: sessionId, operation: operation);
     await ensurePluginRoutable(pluginId: stored.pluginId, operation: operation);
     return stored;
   }
@@ -1048,37 +1078,6 @@ class FakeSessionRepository({
   }) async {}
 
   @override
-  Future<void> insertStoredSession({
-    required String sessionId,
-    required String backendSessionId,
-    required String pluginId,
-    required String projectId,
-    required bool isDedicated,
-    required int createdAt,
-    required String? worktreePath,
-    required String? branchName,
-    required String? baseBranch,
-    required String? baseCommit,
-    required String? agent,
-    required AgentModel? agentModel,
-  }) {
-    return _sessionDao.insertSession(
-      sessionId: sessionId,
-      backendSessionId: backendSessionId,
-      projectId: projectId,
-      isDedicated: isDedicated,
-      createdAt: createdAt,
-      worktreePath: worktreePath,
-      branchName: branchName,
-      baseBranch: baseBranch,
-      baseCommit: baseCommit,
-      lastAgent: agent,
-      lastAgentModel: agentModel,
-      pluginId: pluginId,
-    );
-  }
-
-  @override
   Future<void> updatePromptDefaults({
     required String sessionId,
     required String? agent,
@@ -1092,9 +1091,18 @@ class FakeSessionRepository({
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
   }) async {
-    await _plugin.abortSession(sessionId: sessionId, subAgents: subAgents.toPlugin());
-    return const SessionAborted(workKept: false);
+    final result = await _plugin.abortSession(
+      sessionId: sessionId,
+      subAgents: subAgents.toPlugin(),
+      useAtomicStop: useAtomicStop,
+      knownSubAgentSessionIds: const {},
+    );
+    return SessionAborted(
+      workKept: result is PluginAbortAccepted && result.workKept,
+      subAgentsHandled: result is PluginAbortAccepted && result.subAgentsHandled,
+    );
   }
 
   @override

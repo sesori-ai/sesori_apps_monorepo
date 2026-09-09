@@ -7,8 +7,8 @@ import "dart:async";
 ///
 /// Owned as a single shared instance at the composition root: the orchestrator
 /// writes to it (setViewing / releaseConnection on RelaySessionView and
-/// disconnect), and [SessionUnseenService] reads it ([isViewed]) and listens to
-/// [viewStarts] to mark sessions seen on open.
+/// disconnect), while [SessionUnseenService] and session warm-up listeners read
+/// [isViewed], [activeSessionIds], and [viewStarts] for their respective reactions.
 class SessionViewTracker() {
   // connID -> the session that connection is currently viewing.
   final Map<int, String> _viewedByConnection = {};
@@ -56,6 +56,9 @@ class SessionViewTracker() {
     _viewedByConnection.clear();
     _viewerCountBySession.clear();
   }
+
+  /// Sessions currently being viewed by at least one connection.
+  Set<String> get activeSessionIds => Set<String>.unmodifiable(_viewerCountBySession.keys);
 
   /// Whether [sessionId] is currently being viewed by at least one connection.
   bool isViewed({required String sessionId}) => (_viewerCountBySession[sessionId] ?? 0) > 0;

@@ -335,6 +335,7 @@ class const _SesoriAppShell() extends StatelessWidget {
     final themeMode = context.watch<AppearanceCubit>().state.themeMode;
 
     return MaterialApp.router(
+      debugShowCheckedModeBanner: false,
       onGenerateTitle: (context) => context.loc.appTitle,
       themeMode: themeMode,
       theme: buildPregoThemeData(brightness: Brightness.light),

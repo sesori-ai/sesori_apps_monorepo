@@ -56,6 +56,7 @@ class _AssistantMessageCardHarnessState() extends State<_AssistantMessageCardHar
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailPresentationScope(
+        openHarnessSettings: () {},
         messageImageRepository: () => _messageImageRepository,
         imageSaver: _MockImageSaver.new,
         imageClipboard: _MockImageClipboard.new,

@@ -65,11 +65,14 @@ abstract class PluginHost() {
   /// The user-configured idle timeout for this plugin, or null when idle
   /// cleanup is disabled.
   ///
-  /// A live getter over the bridge's runtime-mutable settings: read it when
-  /// arming an idle timer rather than caching it, so a settings change takes
-  /// effect at the next idle transition without a plugin restart. Plugins
-  /// whose descriptor declares `PluginResidencyPolicy.resident` own idle
-  /// cleanup themselves (the bridge's whole-plugin suspension timer never
-  /// arms) and use this value for their internal reclamation instead.
+  /// A live getter over the bridge's runtime-mutable settings. Read it when
+  /// arming an idle timer rather than caching it, so settings changes reach
+  /// plugins without a restart.
   Duration? get pluginIdleTimeout;
+
+  /// Emits the newly effective timeout whenever it changes at runtime.
+  ///
+  /// The stream does not emit an initial value; read [pluginIdleTimeout] for
+  /// the current value when starting. A null event disables idle cleanup.
+  Stream<Duration?> get pluginIdleTimeoutChanges;
 }

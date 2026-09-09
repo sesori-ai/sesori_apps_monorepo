@@ -14,21 +14,26 @@ import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
+import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../services/session_interaction_calculator.dart";
+import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
-import "../../utils/model_filter/default_model_selector.dart";
+import "../../services/transcript_snapshot_calculator.dart";
 import "deferred_part_event_buffer.dart";
 import "prompt_send_queue.dart";
 import "queued_session_submission.dart";
@@ -44,6 +49,7 @@ enum _SessionRefreshTrigger(final String logValue) {
   lifecycleResumed("lifecycle_resumed"),
   dataMayBeStale("data_may_be_stale"),
   waitingForConnection("waiting_for_connection"),
+  harnessAvailable("harness_available"),
   queuedEvent("queued_event"),
 }
 
@@ -64,9 +70,17 @@ enum _SessionRefreshResult() {
   closed,
 }
 
+enum _OptionsReloadResult() {
+  updated,
+  authenticationRequired,
+  failed,
+}
+
 class SessionDetailCubit(
   final ConnectionService _connectionService, {
   required final SessionDetailLoadService _loadService,
+  required final PluginManagementService _pluginManagementService,
+  required final SessionInteractionCalculator _interactionCalculator,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
@@ -76,6 +90,7 @@ class SessionDetailCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final String _sessionId,
   required final String _projectId,
+  required final bool claimProjectView,
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
 
@@ -83,16 +98,26 @@ class SessionDetailCubit(
   /// Overridable so tests can exercise the coalescing without real waits.
   final Duration eventRefreshMinInterval = const Duration(seconds: 5),
 }) extends Cubit<SessionDetailState> {
+  static const SessionSelectionCalculator _selection = SessionSelectionCalculator();
+  static const TranscriptSnapshotCalculator _transcript = TranscriptSnapshotCalculator();
+
+  /// Shown when a catalog offers no agent at all, so the composer still names
+  /// something. Backends that advertise agents always replace it.
+  static const String _fallbackAgentName = "build";
+
   /// Bumped whenever the transcript is replaced wholesale (a refresh or
   /// reload), so an older-page request that started before it can tell its
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
-  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
-  static const _defaultModelSelector = DefaultModelSelector();
+  final ProjectViewClaim? _projectViewClaim = claimProjectView
+      ? _projectViewingService.beginDetailClaim(projectId: _projectId)
+      : null;
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final Set<String> _staleOptionsRecoveryAttemptedPromptIds = {};
+  Session? _sessionMetadata;
+  SessionInteractionState _interaction = const SessionInteractionState.checking();
 
   /// Monotonic counter stamped on parked sends, so a snapshot can settle only
   /// the parked prompts its fetch actually had a chance to observe.
@@ -107,7 +132,16 @@ class SessionDetailCubit(
   final CompositeSubscription _subscriptions = CompositeSubscription();
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
-  int _commandCatalogGeneration = 0;
+
+  /// Bumped whenever an options reload applies. A session reload that started
+  /// before that must not put the catalog it fetched back on screen.
+  int _optionsGeneration = 0;
+
+  /// Bumped when an options reload is requested, and recorded when one applies,
+  /// so two overlapping reads cannot let the older answer land last and undo the
+  /// newer one.
+  int _optionsReloadRequest = 0;
+  int _lastAppliedOptionsReload = 0;
   Timer? _eventRefreshCooldown;
   bool _eventRefreshQueued = false;
   bool _needsStaleRefresh = false;
@@ -115,6 +149,13 @@ class SessionDetailCubit(
   bool _wasPaused = false;
   bool _wasConnected = false;
   bool _stalePromptOptionsRefreshInFlight = false;
+  bool _backgroundOptionsRefreshInFlight = false;
+
+  /// Route visibility is separate from app lifecycle visibility. Desktop can
+  /// cover the nested session navigator with a root-level settings route while
+  /// leaving this cubit mounted; a covered route must not declare the session
+  /// as viewed when its load or refresh completes.
+  bool _routeVisible = true;
 
   // A disconnect invalidates capability snapshots that could authorize image sends.
   int _connectionGeneration = 0;
@@ -164,13 +205,66 @@ class SessionDetailCubit(
       ..add(_connectionService.sessionEvents(_sessionId).listen(_handleEvent))
       ..add(_connectionService.events.listen(_handleGlobalEvent))
       ..add(_connectionService.status.listen(_onConnectionStatusChanged))
+      ..add(_pluginManagementService.snapshots.listen(_onManagementResult))
       ..add(
         _connectionService.dataMayBeStale.listen(
           (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
         ),
       )
       ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged));
-    _loadMessages(isReload: false);
+    unawaited(_pluginManagementService.refresh());
+    unawaited(_loadMessages(isReload: false));
+  }
+
+  SessionInteractionState _calculateInteraction({required Session session}) {
+    return _interactionCalculator.calculate(
+      pluginId: session.pluginId,
+      managementResult: _pluginManagementService.snapshots.hasValue ? _pluginManagementService.snapshots.value : null,
+      connectionStatus: _connectionService.currentStatus,
+      previous: _interaction,
+    );
+  }
+
+  void _onManagementResult(PluginManagementLoadResult result) {
+    if (isClosed) return;
+    if (result case PluginManagementLoadResultFailure(:final error)) {
+      logw("Harness availability check failed for session $_sessionId", error);
+    }
+    final session = _sessionMetadata;
+    if (session == null) return;
+    final next = _calculateInteraction(session: session);
+    if (next == _interaction) return;
+    _interaction = next;
+
+    final current = state;
+    switch (current) {
+      case SessionDetailLoaded(:final interaction):
+        if (!next.canInteract) {
+          emit(current.copyWith(interaction: next));
+        } else if (!interaction.canInteract) {
+          _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+        } else {
+          emit(current.copyWith(interaction: next));
+        }
+      case SessionDetailHarnessUnavailable():
+        if (next.canInteract) {
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
+        } else {
+          emit(SessionDetailState.harnessUnavailable(session: session, interaction: next));
+        }
+      case SessionDetailLoading() || SessionDetailFailed():
+        break;
+    }
+  }
+
+  Future<void> recheckHarnessAvailability() async {
+    await _pluginManagementService.refresh();
+    if (isClosed || !_interaction.canInteract) return;
+    if (state is SessionDetailLoaded) {
+      _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+    } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
+      await reload();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -181,13 +275,23 @@ class SessionDetailCubit(
     final connectionGeneration = _connectionGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
+    final previous = state;
     emit(const SessionDetailState.loading());
     final parkEpochAtFetch = _parkEpoch;
-    late final SessionDetailLoadResult result;
+    late final SessionDetailMetadataLoadResult metadataResult;
+    SessionDetailLoadResult? result;
     try {
-      result = isReload
-          ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-          : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+      metadataResult = await _loadService.loadMetadata(sessionId: _sessionId);
+      if (metadataResult case SessionDetailMetadataFound(:final session)
+          when !isClosed && connectionGeneration == _connectionGeneration) {
+        _sessionMetadata = session;
+        _interaction = _calculateInteraction(session: session);
+        if (_interaction.canInteract) {
+          result = isReload
+              ? await _loadService.reload(session: session, projectId: _projectId)
+              : await _loadService.load(session: session, projectId: _projectId);
+        }
+      }
     } finally {
       final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
       if (remaining == 0) {
@@ -209,6 +313,50 @@ class SessionDetailCubit(
       return _SessionRefreshResult.staleConnection;
     }
 
+    switch (metadataResult) {
+      case SessionDetailMetadataWaitingForConnection():
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+        _waitingForConnection = true;
+        if (_isConnected) {
+          _waitingForConnection = false;
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.waitingForConnection));
+        }
+        return _SessionRefreshResult.waitingForConnection;
+      case SessionDetailMetadataFailed(:final error, :final stackTrace):
+        _waitingForConnection = false;
+        loge("Session metadata load failed", error, stackTrace);
+        if (previous is SessionDetailLoaded) {
+          emit(previous.copyWith(interaction: _interaction));
+          _drainPendingEvents();
+          _drainDeferredPartsForLoadedMessages();
+        } else {
+          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+          emit(
+            SessionDetailState.failed(
+              reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+            ),
+          );
+        }
+        return _SessionRefreshResult.failed;
+      case SessionDetailMetadataFound(:final session):
+        if (result == null || !_interaction.canInteract) {
+          _waitingForConnection = false;
+          final current = state;
+          final retained = current is SessionDetailLoaded ? current : previous;
+          if (retained is SessionDetailLoaded) {
+            emit(retained.copyWith(interaction: _interaction));
+            _drainPendingEvents();
+            _drainDeferredPartsForLoadedMessages();
+          } else {
+            if (_projectViewClaim case final claim?) {
+              _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+            }
+            emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+          }
+          return _SessionRefreshResult.applied;
+        }
+    }
+
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
@@ -217,12 +365,13 @@ class SessionDetailCubit(
           sequence: deferredPartEventSequence,
         );
         emit(_buildLoadedState(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch));
+        _refreshStaleOptions(snapshot: snapshot);
         final effectiveProjectId = snapshot.projectId;
         if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
-          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
-        } else {
+          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+        } else if (_projectViewClaim case final claim?) {
           _projectViewingService.markClaimReady(
-            claim: _projectViewClaim,
+            claim: claim,
             projectId: effectiveProjectId,
           );
         }
@@ -230,13 +379,13 @@ class SessionDetailCubit(
         // a load that fails or waits for connection must not mark the session
         // read (clearing its bold globally) while the user only saw a
         // loading/error state.
-        _sessionViewingService.setViewingSession(_sessionId);
+        _declareViewingSessionIfVisible();
         _drainPendingEvents();
         _drainDeferredPartsForLoadedMessages();
         _tryDrainQueue();
         return _SessionRefreshResult.applied;
       case SessionDetailLoadResultWaitingForConnection():
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _waitingForConnection = true;
         if (_connectionService.currentStatus is ConnectionConnected) {
           _waitingForConnection = false;
@@ -249,7 +398,7 @@ class SessionDetailCubit(
         return _SessionRefreshResult.waitingForConnection;
       case SessionDetailLoadResultFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
         _deferredPartEvents.clear();
@@ -275,7 +424,11 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
     final cursor = current.olderMessagesCursor;
-    if (cursor == null || current.isLoadingOlderMessages) return;
+    // A refresh replaces the newest page, so a page requested against the
+    // outgoing transcript could only splice unrelated history onto it.
+    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing || !current.interaction.canInteract) {
+      return;
+    }
 
     final generation = _transcriptGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -336,7 +489,8 @@ class SessionDetailCubit(
     final active = _activeRefresh;
     if (active != null) {
       _logRefresh(action: _SessionRefreshAction.coalesced, trigger: trigger);
-      if (trigger == _SessionRefreshTrigger.connectionReconnected) {
+      if (trigger == _SessionRefreshTrigger.connectionReconnected ||
+          trigger == _SessionRefreshTrigger.harnessAvailable) {
         _queueConnectionRefreshAfter(activeRefresh: active);
       }
       // This call raced an in-flight refresh. If a staleness signal is
@@ -491,13 +645,21 @@ class SessionDetailCubit(
   Future<_SessionRefreshResult> _doSilentRefresh() async {
     final current = state;
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
+    if (!_interaction.canInteract) return _SessionRefreshResult.applied;
     final connectionGeneration = _connectionGeneration;
-    final commandCatalogGeneration = _commandCatalogGeneration;
+    final optionsGeneration = _optionsGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
+    // The transcript as the fetch sees it; live changes received while the
+    // fetch is in flight are reconciled against it when the page lands.
+    final before = current.messages;
 
+    // An older page still in flight describes the transcript this refresh is
+    // about to replace, so it must not join the refreshed one.
+    _transcriptGeneration++;
     emit(
       current.copyWith(
         isRefreshing: true,
+        isLoadingOlderMessages: false,
         queuedMessages: _promptQueue.items,
         awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
         sendingSubmission: _promptQueue.active,
@@ -506,7 +668,33 @@ class SessionDetailCubit(
 
     final parkEpochAtFetch = _parkEpoch;
     try {
-      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
+      final metadata = await _loadService.loadMetadata(sessionId: _sessionId);
+      if (isClosed) return _SessionRefreshResult.closed;
+      if (connectionGeneration != _connectionGeneration) {
+        _emitRefreshEnded();
+        return _SessionRefreshResult.staleConnection;
+      }
+      final Session session;
+      switch (metadata) {
+        case SessionDetailMetadataFound(session: final found):
+          session = found;
+          _sessionMetadata = session;
+          _interaction = _calculateInteraction(session: session);
+        case SessionDetailMetadataWaitingForConnection():
+          _emitRefreshEnded();
+          return _SessionRefreshResult.waitingForConnection;
+        case SessionDetailMetadataFailed(:final error, :final stackTrace):
+          logw("Session metadata refresh failed", error, stackTrace);
+          _emitRefreshFailed();
+          return _SessionRefreshResult.failed;
+      }
+      if (!_interaction.canInteract) {
+        _emitRefreshEnded();
+        final latest = state;
+        if (latest is SessionDetailLoaded) emit(latest.copyWith(interaction: _interaction));
+        return _SessionRefreshResult.applied;
+      }
+      final result = await _loadService.reload(session: session, projectId: _projectId);
       if (isClosed) return _SessionRefreshResult.closed;
       if (connectionGeneration != _connectionGeneration) {
         _emitRefreshEnded();
@@ -517,55 +705,54 @@ class SessionDetailCubit(
         case SessionDetailLoadResultLoaded(:final snapshot):
           _waitingForConnection = false;
           final derived = _deriveSnapshot(snapshot);
-          final latestAssistant = derived.latestAssistant;
-          final availableAgents = derived.agents;
-          final availableProviders = derived.providers;
-
-          final streamingText = _streamingBuffer.snapshot();
-          _streamingBuffer.clear();
-
           final refreshedChildSessions = derived.children;
 
           final latest = state;
           if (latest is! SessionDetailLoaded) return _SessionRefreshResult.closed;
+          final messages = _transcript.reconcile(before: before, live: latest.messages, fetched: snapshot.messages);
+          _retireStreamingPartsCoveredBy(messages: messages);
           final preservedSelectedAgent = latest.selectedAgent;
           final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
-          final availableCommands = commandCatalogGeneration == _commandCatalogGeneration
-              ? snapshot.commands
-              : latest.availableCommands;
-          final availableVariants = _deriveAvailableVariants(
+          // An options reload that landed while this snapshot was in flight read
+          // the cache more recently than the snapshot did, so it wins.
+          final optionsSuperseded = optionsGeneration != _optionsGeneration;
+          final availableAgents = optionsSuperseded ? latest.availableAgents : derived.agents;
+          final availableProviders = optionsSuperseded ? latest.availableProviders : derived.providers;
+          final availableCommands = optionsSuperseded ? latest.availableCommands : snapshot.commands;
+          final availableVariants = _selection.availableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
           );
+          // Assistant metadata describes the transcript actually installed,
+          // not the raw fetched page a live assistant may have outrun.
+          final assistant = _assistantMetadata(messages: messages, agents: availableAgents);
           _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
 
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
           final queue = _queueView(bridgePrompts: snapshot.bridgeQueuedPrompts);
 
-          // The transcript is being replaced wholesale, so any older-page
-          // request still in flight no longer joins onto it.
           _deferredPartEvents.discardForMessagesThrough(
             messageIds: snapshot.messages.map((message) => message.info.id),
             sequence: deferredPartEventSequence,
           );
-          _transcriptGeneration++;
           emit(
             latest.copyWith(
-              messages: snapshot.messages,
+              interaction: _interaction,
+              messages: messages,
               // A refresh re-reads the newest page, so previously paged-back
               // history is dropped and the cursor returns to that page's edge.
               // Keeping older pages would leave a gap between them and the
               // refreshed page whenever the session moved on meanwhile.
               olderMessagesCursor: snapshot.olderMessagesCursor,
               isLoadingOlderMessages: false,
-              streamingText: streamingText,
+              streamingText: _streamingBuffer.snapshot(),
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
               bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
-              agent: latestAssistant?.agent,
-              assistantAgentModel: derived.assistantAgentModel,
+              agent: assistant.latestAssistant?.agent,
+              assistantAgentModel: assistant.assistantAgentModel,
               children: refreshedChildSessions,
               childStatuses: derived.childStatuses,
               isArchived: snapshot.isArchived,
@@ -576,9 +763,9 @@ class SessionDetailCubit(
               sessionTitle: snapshot.canonicalSessionTitle ?? latest.sessionTitle,
               selectedAgent: preservedSelectedAgent,
               selectedAgentModel: preservedSelectedAgentModel,
-              stagedCommand: _resolveStagedCommand(
-                availableCommands: availableCommands,
-                stagedCommand: preservedStagedCommand,
+              stagedCommand: _selection.resolveStagedCommand(
+                commands: availableCommands,
+                staged: preservedStagedCommand,
               ),
               queuedMessages: queue.queuedMessages,
               awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
@@ -587,8 +774,9 @@ class SessionDetailCubit(
               availableVariants: availableVariants,
             ),
           );
+          if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
           _tryDrainQueue();
-          if (_reassertViewAfterRefresh) {
+          if (_reassertViewAfterRefresh && _routeVisible) {
             // A resume/reconnect requested this refresh; the refreshed
             // transcript has rendered, so it is safe to re-declare the view
             // (which marks the session seen on the bridge).
@@ -604,15 +792,33 @@ class SessionDetailCubit(
           return _SessionRefreshResult.waitingForConnection;
         case SessionDetailLoadResultFailed(:final error, :final stackTrace):
           logw("Silent refresh failed", error, stackTrace);
-          _emitRefreshEnded();
+          _emitRefreshFailed();
           return _SessionRefreshResult.failed;
       }
     } on Object catch (error, stackTrace) {
       logw("Silent refresh failed", error, stackTrace);
       if (isClosed) return _SessionRefreshResult.closed;
-      _emitRefreshEnded();
+      _emitRefreshFailed();
       return _SessionRefreshResult.failed;
     }
+  }
+
+  void _emitRefreshFailed() {
+    _emitRefreshEnded();
+    final current = state;
+    if (current is! SessionDetailLoaded || current.interaction.canInteract || !_interaction.canInteract) return;
+    // Setup recovered, but the content/options needed to interact did not.
+    // Keep the transcript read-only without repeating an obsolete setup reason.
+    emit(
+      current.copyWith(
+        interaction: const SessionInteractionState.blocked(
+          reason: SessionInteractionBlockedReason.contentLoadFailed,
+          displayName: null,
+          actionHint: null,
+          refreshError: null,
+        ),
+      ),
+    );
   }
 
   void _emitRefreshEnded() {
@@ -657,44 +863,30 @@ class SessionDetailCubit(
     logd("[session-refresh] action=${action.name} trigger=${trigger.logValue}");
   }
 
-  void _onCommandCatalogUpdated({required String pluginId}) {
+  /// Brings a cache the bridge served without rediscovering up to date, behind
+  /// the user: the options on screen stay usable with no loading state, and
+  /// change only if the backend's answer did. One runs at a time, because a
+  /// reconnect can re-read the same still-stale cache while the first is still
+  /// in flight.
+  void _refreshStaleOptions({required SessionDetailSnapshot snapshot}) {
+    if (!snapshot.areOptionsStale || _backgroundOptionsRefreshInFlight) return;
+    _backgroundOptionsRefreshInFlight = true;
+    unawaited(
+      _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false).whenComplete(() {
+        _backgroundOptionsRefreshInFlight = false;
+      }),
+    );
+  }
+
+  /// The bridge committed a new options snapshot for this session's plugin.
+  /// Reading it back is a local cache hit, so this never starts discovery — the
+  /// bridge already did that work, and this only adopts its answer.
+  void _onSessionOptionsUpdated({required String pluginId, required String? projectId}) {
     final current = state;
     if (current is! SessionDetailLoaded || current.pluginId != pluginId) return;
-    final generation = ++_commandCatalogGeneration;
-    unawaited(_refreshCommandCatalog(pluginId: pluginId, generation: generation));
-  }
-
-  Future<void> _refreshCommandCatalog({required String pluginId, required int generation}) async {
-    try {
-      final response = await _sessionRepository.listCommands(projectId: _projectId, pluginId: pluginId);
-      if (isClosed || generation != _commandCatalogGeneration) return;
-      switch (response) {
-        case SuccessResponse(:final data):
-          final latest = state;
-          if (latest is! SessionDetailLoaded || latest.pluginId != pluginId) return;
-          emit(
-            latest.copyWith(
-              availableCommands: data.items,
-              stagedCommand: _resolveStagedCommand(
-                availableCommands: data.items,
-                stagedCommand: latest.stagedCommand,
-              ),
-            ),
-          );
-        case ErrorResponse(:final error):
-          logw("Failed to refresh command catalog", error);
-      }
-    } on Object catch (error, stackTrace) {
-      logw("Failed to refresh command catalog", error, stackTrace);
-    }
-  }
-
-  CommandInfo? _resolveStagedCommand({
-    required List<CommandInfo> availableCommands,
-    required CommandInfo? stagedCommand,
-  }) {
-    if (stagedCommand == null) return null;
-    return availableCommands.firstWhereOrNull((c) => c.name == stagedCommand.name);
+    // A plugin-scoped catalog names no project and applies to every one of them.
+    if (projectId != null && projectId.normalize() != _projectId.normalize()) return;
+    unawaited(_reloadOptions(mode: SessionOptionsRequestMode.cacheOnly, notify: false));
   }
 
   /// Returns the latest agent-authored assistant or error [Message], or null if none.
@@ -730,8 +922,8 @@ class SessionDetailCubit(
           _onMessageUpdated(info);
         case SesoriMessageRemoved(:final messageID):
           _onMessageRemoved(messageID);
-        case SesoriMessagePartDelta(:final partID, :final delta):
-          _onPartDelta(partId: partID, delta: delta);
+        case SesoriMessagePartDelta(:final messageID, :final partID, :final delta):
+          _onPartDelta(messageId: messageID, partId: partID, delta: delta);
         case SesoriMessagePartUpdated(:final part):
           _onPartUpdated(part);
         case SesoriMessagePartRemoved(:final messageID, :final partID):
@@ -838,8 +1030,8 @@ class SessionDetailCubit(
         displaySessionId: displaySessionId,
       ),
       // The loaded session identifies its plugin after the initial snapshot,
-      // so retain catalog invalidations until that scope can be matched.
-      SesoriCommandCatalogUpdated() => true,
+      // so retain options updates until that scope can be matched.
+      SesoriSessionOptionsUpdated() => true,
       // Definitively irrelevant high-volume events.
       SesoriServerConnected() ||
       SesoriServerHeartbeat() ||
@@ -860,28 +1052,14 @@ class SessionDetailCubit(
       SesoriMessagePartUpdated() ||
       SesoriMessagePartDelta() ||
       SesoriMessagePartRemoved() ||
-      SesoriPtyCreated() ||
-      SesoriPtyUpdated() ||
-      SesoriPtyExited() ||
-      SesoriPtyDeleted() ||
       SesoriPermissionUpdated() ||
       SesoriTodoUpdated() ||
       SesoriProjectsSummary() ||
       SesoriProjectUpdated() ||
       SesoriVcsBranchUpdated() ||
       SesoriFileEdited() ||
-      SesoriFileWatcherUpdated() ||
-      SesoriLspUpdated() ||
-      SesoriLspClientDiagnostics() ||
-      SesoriMcpToolsChanged() ||
-      SesoriMcpBrowserOpenFailed() ||
-      SesoriInstallationUpdated() ||
       SesoriInstallationUpdateAvailable() ||
-      SesoriWorkspaceReady() ||
-      SesoriWorkspaceFailed() ||
       SesoriTuiToastShow() ||
-      SesoriWorktreeReady() ||
-      SesoriWorktreeFailed() ||
       SesoriSessionPromptDefaultsChanged() ||
       // Queued prompts render only for the session itself; own-session events
       // arrive through the session-scoped stream, not this global path.
@@ -921,8 +1099,8 @@ class SessionDetailCubit(
         case final SesoriQuestionRejected event
             when _surfacesChildRequestHere(sessionID: event.sessionID, displaySessionId: event.displaySessionId):
           _onQuestionResolved(event.requestID);
-        case SesoriCommandCatalogUpdated(:final pluginId):
-          _onCommandCatalogUpdated(pluginId: pluginId);
+        case SesoriSessionOptionsUpdated(:final pluginId, :final projectId):
+          _onSessionOptionsUpdated(pluginId: pluginId, projectId: projectId);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -942,10 +1120,6 @@ class SessionDetailCubit(
             SesoriMessagePartUpdated() ||
             SesoriMessagePartDelta() ||
             SesoriMessagePartRemoved() ||
-            SesoriPtyCreated() ||
-            SesoriPtyUpdated() ||
-            SesoriPtyExited() ||
-            SesoriPtyDeleted() ||
             SesoriPermissionAsked() ||
             SesoriPermissionReplied() ||
             SesoriPermissionUpdated() ||
@@ -958,18 +1132,8 @@ class SessionDetailCubit(
             SesoriProjectUpdated() ||
             SesoriVcsBranchUpdated() ||
             SesoriFileEdited() ||
-            SesoriFileWatcherUpdated() ||
-            SesoriLspUpdated() ||
-            SesoriLspClientDiagnostics() ||
-            SesoriMcpToolsChanged() ||
-            SesoriMcpBrowserOpenFailed() ||
-            SesoriInstallationUpdated() ||
             SesoriInstallationUpdateAvailable() ||
-            SesoriWorkspaceReady() ||
-            SesoriWorkspaceFailed() ||
             SesoriTuiToastShow() ||
-            SesoriWorktreeReady() ||
-            SesoriWorktreeFailed() ||
             SesoriSessionUnseenChanged() ||
             SesoriSessionQueuedPrompts() ||
             SesoriSessionPromptDefaultsChanged():
@@ -1024,23 +1188,23 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
-    final agents = current.availableAgents;
-    final providers = current.availableProviders;
-    final persistedAgent = promptDefaults.agent;
-    final persistedModel = promptDefaults.model;
-
-    final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
-    final bool hasValidPersistedModel =
-        persistedModel != null && _isModelAvailable(model: persistedModel, providers: providers);
-
-    final newAgent = hasValidPersistedAgent ? persistedAgent : current.selectedAgent;
-    final newModel = hasValidPersistedModel ? persistedModel : current.selectedAgentModel;
+    // The bridge's remembered selection wins where the catalog still offers it,
+    // otherwise what is on screen stays. Reconciling the two together keeps the
+    // variant list from describing a model that is no longer selected.
+    final reconciled = _selection.reconcile(
+      agents: current.availableAgents,
+      providers: current.availableProviders,
+      agentNameCandidates: [promptDefaults.agent, current.selectedAgent],
+      modelCandidates: [promptDefaults.model],
+      retainedModel: current.selectedAgentModel,
+    );
 
     if (isClosed) return;
     emit(
       current.copyWith(
-        selectedAgent: newAgent,
-        selectedAgentModel: newModel,
+        selectedAgent: reconciled.agentName ?? current.selectedAgent,
+        selectedAgentModel: reconciled.model,
+        availableVariants: reconciled.availableVariants,
       ),
     );
   }
@@ -1106,8 +1270,7 @@ class SessionDetailCubit(
       messages[index] = messages[index].copyWith(info: message);
     } else {
       final entry = MessageWithParts(info: message, parts: const []);
-      final insertionIndex = _messageInsertionIndex(messages: messages, message: message);
-      messages.insert(insertionIndex, entry);
+      messages.insert(_transcript.insertionIndex(messages: messages, message: message), entry);
     }
 
     if (isClosed) return;
@@ -1208,6 +1371,7 @@ class SessionDetailCubit(
   /// bridge's confirmation — including not-found, which means it already
   /// dispatched or was removed elsewhere; only a transport failure keeps it.
   Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
+    if (_refuseWhenInteractionBlocked(action: "cancel a bridge-queued prompt")) return;
     final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
     // Only not-found means the entry is gone (dispatched or removed
     // elsewhere); any other failure proves nothing about the bridge queue.
@@ -1232,20 +1396,6 @@ class SessionDetailCubit(
     );
   }
 
-  int _messageInsertionIndex({required List<MessageWithParts> messages, required Message message}) {
-    final created = message.time?.created;
-    if (created == null) return messages.length;
-    for (var index = 0; index < messages.length; index++) {
-      final existing = messages[index].info;
-      final existingCreated = existing.time?.created;
-      if (existingCreated == null) continue;
-      if (existingCreated > created) {
-        return index;
-      }
-    }
-    return messages.length;
-  }
-
   void _onMessageRemoved(String messageId) {
     final current = state;
     if (current is! SessionDetailLoaded) return;
@@ -1267,9 +1417,67 @@ class SessionDetailCubit(
   // Streaming text
   // ---------------------------------------------------------------------------
 
-  void _onPartDelta({required String partId, required String delta}) {
-    _streamingBuffer.appendDelta(partId: partId, delta: delta);
+  void _onPartDelta({required String messageId, required String partId, required String delta}) {
+    _streamingBuffer.appendDelta(
+      partId: partId,
+      delta: delta,
+      // A part whose earlier content arrived through a refresh snapshot keeps
+      // streaming from that content; the buffer asks only when it has no
+      // accumulator for the part.
+      baseText: () {
+        final current = state;
+        if (current is! SessionDetailLoaded) return null;
+        for (final message in current.messages) {
+          if (message.info.id != messageId) continue;
+          for (final part in message.parts) {
+            if (part.id == partId) return _streamedText(part);
+          }
+        }
+        return null;
+      },
+    );
   }
+
+  /// Drops streaming accumulators whose full text the incoming transcript
+  /// already contains, so the installed part is shown instead.
+  ///
+  /// History carries no universal completion signal (several backends load
+  /// messages with a null completion time), so coverage is decided by content:
+  /// only a same-ID text/reasoning part that starts or ends with the entire
+  /// buffered value retires it. The suffix case is a reconnect outside the
+  /// replay window, where the accumulator holds only the tail of a part and
+  /// the snapshot is the sole source of its prefix. An absent, shorter or
+  /// divergent part keeps the buffer, which still holds live content the
+  /// transcript has not shown it can replace.
+  void _retireStreamingPartsCoveredBy({required List<MessageWithParts> messages}) {
+    final buffered = _streamingBuffer.snapshot();
+    if (buffered.isEmpty) return;
+    for (final message in messages) {
+      for (final part in message.parts) {
+        final live = buffered[part.id];
+        if (live == null) continue;
+        final installed = _streamedText(part);
+        if (installed == null) continue;
+        if (installed.startsWith(live) || installed.endsWith(live)) _streamingBuffer.removePart(part.id);
+      }
+    }
+  }
+
+  /// The content a streaming delta accumulates for [part], or null for part
+  /// kinds that never stream text.
+  static String? _streamedText(MessagePart part) => switch (part) {
+    MessagePartText(:final text) || MessagePartReasoning(:final text) => text,
+    MessagePartTool() ||
+    MessagePartSubtask() ||
+    MessagePartStepStart() ||
+    MessagePartStepFinish() ||
+    MessagePartFile() ||
+    MessagePartSnapshot() ||
+    MessagePartPatch() ||
+    MessagePartAgent() ||
+    MessagePartRetry() ||
+    MessagePartCompaction() => null,
+  };
 
   void _onPartUpdated(MessagePart part) {
     final current = state;
@@ -1428,6 +1636,14 @@ class SessionDetailCubit(
     final reconnected = isConnected && !_wasConnected;
     if (!isConnected && _wasConnected) _connectionGeneration++;
     _wasConnected = isConnected;
+    if (reconnected) {
+      final session = _sessionMetadata;
+      _interaction = session == null
+          ? const SessionInteractionState.checking()
+          : _calculateInteraction(session: session);
+      final current = state;
+      if (current is SessionDetailLoaded) emit(current.copyWith(interaction: _interaction));
+    }
     if (!isConnected) {
       _connectionRefreshQueued = false;
       final current = state;
@@ -1480,6 +1696,7 @@ class SessionDetailCubit(
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
   }) async {
+    if (_refuseWhenInteractionBlocked(action: "send a prompt")) return;
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
@@ -1623,6 +1840,7 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
+    if (_refuseWhenInteractionBlocked(action: "drain the prompt queue")) return;
     if (_refuseWhenArchived(action: "drain the prompt queue")) return;
 
     final pendingSubmission = _promptQueue.items.firstOrNull;
@@ -1675,7 +1893,7 @@ class SessionDetailCubit(
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
-                optionsRecovered = await _refreshStalePromptOptions();
+                optionsRecovered = await _refreshStalePromptOptions(rejectedSubmission: submission);
               } finally {
                 _stalePromptOptionsRefreshInFlight = false;
               }
@@ -1714,57 +1932,130 @@ class SessionDetailCubit(
     }
   }
 
-  Future<bool> _refreshStalePromptOptions() async {
+  /// Rediscovers the catalog after the bridge rejected a send for naming an
+  /// option it no longer has. The user is waiting on this one, so it reports
+  /// both outcomes through the notice stream.
+  Future<bool> _refreshStalePromptOptions({required QueuedSessionSubmission rejectedSubmission}) async {
+    final reload = await _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false);
+    if (isClosed) return false;
+    switch (reload) {
+      case _OptionsReloadResult.authenticationRequired:
+        _staleOptionsRecoveryAttemptedPromptIds.remove(rejectedSubmission.promptId);
+        return false;
+      case _OptionsReloadResult.failed:
+        _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+        return false;
+      case _OptionsReloadResult.updated:
+        break;
+    }
+    final latest = state;
+    if (latest is! SessionDetailLoaded) return false;
+    // A cache update may have overtaken the forced refresh. Reconcile against
+    // the catalog actually applied to the screen in either case.
+    final rejectedCommand = rejectedSubmission.command;
+    final commandUnavailable =
+        rejectedCommand != null && !latest.availableCommands.any((command) => command.name == rejectedCommand);
+    if (commandUnavailable) {
+      _promptQueue.markCommandUnavailable(promptId: rejectedSubmission.promptId);
+    }
+    _noticeStream.add(
+      commandUnavailable ? const SessionDetailCommandUnavailable() : const SessionDetailPromptOptionsUpdated(),
+    );
+    return true;
+  }
+
+  /// Brings the options on screen up to date with the bridge and re-validates
+  /// the selection against them, so a chosen agent, model, or variant that no
+  /// longer exists cannot survive on screen until the next send is rejected.
+  ///
+  /// [notify] belongs to a load the user is waiting on. A background one stays
+  /// silent: the options simply change if the backend's answer did.
+  Future<_OptionsReloadResult> _reloadOptions({
+    required SessionOptionsRequestMode mode,
+    required bool notify,
+  }) async {
     final current = state;
-    if (current is! SessionDetailLoaded) return false;
+    if (current is! SessionDetailLoaded) return _OptionsReloadResult.failed;
     final pluginId = current.pluginId;
     if (pluginId == null) {
-      logw("Could not refresh stale prompt options because the session plugin is unresolved");
-      if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
-      return false;
+      logw("Could not refresh prompt options because the session plugin is unresolved");
+      if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     }
 
+    final requestGeneration = ++_optionsReloadRequest;
     try {
       final result = await _sessionRepository.loadSessionOptions(
         projectId: _projectId,
         pluginId: pluginId,
-        mode: SessionOptionsRequestMode.forceRefresh,
+        mode: mode,
       );
-      if (isClosed) return false;
+      if (isClosed) return _OptionsReloadResult.failed;
+      // A reload requested after this one has already applied, so it read the
+      // cache more recently and this answer must not replace it. The caller
+      // still succeeded: what is on screen is at least as fresh as what this
+      // read fetched, which is exactly what a stale-send recovery waits for.
+      // That recovery still owes the user its notice — the options did change
+      // under a selection they were rejected for, whichever read delivered it.
+      if (_lastAppliedOptionsReload > requestGeneration) {
+        if (notify) _noticeStream.add(const SessionDetailPromptOptionsUpdated());
+        return _OptionsReloadResult.updated;
+      }
       final latest = state;
-      if (latest is! SessionDetailLoaded) return false;
+      if (latest is! SessionDetailLoaded) return _OptionsReloadResult.failed;
 
       if (result case SessionOptionsRepositoryAvailable(:final catalog)) {
-        final agents = catalog.agents
-            .whereType<AgentInfo>()
-            .where((agent) => !agent.hidden && agent.mode != AgentMode.subagent)
-            .toList();
+        final agents = _selection.selectableAgents(agents: catalog.agents);
         final providers = catalog.providers;
         final commands = catalog.commands;
-        final selectedAgent = agents.any((agent) => agent.name == latest.selectedAgent)
-            ? latest.selectedAgent
-            : (agents.firstOrNull?.name ?? "build");
-        final agentChanged = selectedAgent != latest.selectedAgent;
-        final preferredAgentModel = agents.firstWhereOrNull((agent) => agent.name == selectedAgent)?.model;
-        final selectedModelCandidate = agentChanged && preferredAgentModel != null
-            ? preferredAgentModel
-            : latest.selectedAgentModel;
-        final selectedModel = _validatedPromptModel(
-          candidate: selectedModelCandidate,
+        // A refresh answers with the catalog the backend has now, so a selection
+        // it no longer offers is corrected rather than retained — that
+        // correction is the whole point of refreshing.
+        //
+        // A replacement agent's own declared model outranks the departed one's:
+        // the agent that expressed that preference is gone. It only outranks it,
+        // though — a replacement declaring no model expresses no preference, so
+        // the model on screen is kept rather than reset to a catalog default.
+        // While the agent holds, its model holds with it.
+        //
+        // "Held" means the previous agent was a real catalog entry, not the
+        // placeholder name shown when a catalog advertised no agents at all. A
+        // catalog that later advertises an agent under that same name is a new
+        // agent, and its declared model applies.
+        final agentName = _selection.validatedAgentName(
+          agents: agents,
+          candidates: [latest.selectedAgent],
+        );
+        final heldSameAgent =
+            agentName == latest.selectedAgent &&
+            latest.availableAgents.any((agent) => agent.name == latest.selectedAgent);
+        final replacedAgentModel = heldSameAgent
+            ? null
+            : agents.firstWhereOrNull((agent) => agent.name == agentName)?.model;
+        final reconciled = _selection.reconcile(
           agents: agents,
           providers: providers,
+          agentNameCandidates: [agentName],
+          modelCandidates: [replacedAgentModel, latest.selectedAgentModel],
+          retainedModel: null,
         );
+        final selectedAgent = reconciled.agentName ?? _fallbackAgentName;
+        final selectedModel = reconciled.model;
 
         _promptQueue.replacePending(
           update: (submission) => submission.withSelection(
             agent: _validatedQueuedAgent(candidate: submission.agent, agents: agents),
             agentModel: submission.agentModel == null
                 ? null
-                : _validatedPromptModel(
-                    candidate: submission.agentModel,
-                    agents: agents,
-                    providers: providers,
-                  ),
+                : _selection
+                      .reconcile(
+                        agents: agents,
+                        providers: providers,
+                        agentNameCandidates: [submission.agent],
+                        modelCandidates: [submission.agentModel],
+                        retainedModel: null,
+                      )
+                      .model,
           ),
         );
 
@@ -1775,25 +2066,24 @@ class SessionDetailCubit(
             availableCommands: commands,
             selectedAgent: selectedAgent,
             selectedAgentModel: selectedModel,
-            availableVariants: _deriveAvailableVariants(
-              providers: providers,
-              model: selectedModel,
-            ),
-            stagedCommand: _resolveStagedCommand(
-              availableCommands: commands,
-              stagedCommand: latest.stagedCommand,
+            availableVariants: reconciled.availableVariants,
+            stagedCommand: _selection.resolveStagedCommand(
+              commands: commands,
+              staged: latest.stagedCommand,
             ),
             queuedMessages: _visibleStagedItems(bridgePrompts: latest.bridgeQueuedPrompts),
             sendingSubmission: _visibleStagedSending(bridgePrompts: latest.bridgeQueuedPrompts),
           ),
         );
-        _noticeStream.add(const SessionDetailPromptOptionsUpdated());
-        return true;
+        _optionsGeneration++;
+        _lastAppliedOptionsReload = requestGeneration;
+        if (notify) _noticeStream.add(const SessionDetailPromptOptionsUpdated());
+        return _OptionsReloadResult.updated;
       }
 
       if (result case SessionOptionsRepositoryAuthenticationRequired(:final actionHint)) {
         _noticeStream.add(SessionDetailAuthenticationRequired(actionHint: actionHint));
-        return false;
+        return _OptionsReloadResult.authenticationRequired;
       }
 
       final error = switch (result) {
@@ -1807,73 +2097,28 @@ class SessionDetailCubit(
         SessionOptionsRepositoryFailure(:final error) => error,
       };
       if (error == null) {
-        logw("Failed to refresh stale prompt options (${result.runtimeType.toString()})");
+        logw("Failed to refresh prompt options (${result.runtimeType.toString()})");
       } else {
-        logw("Failed to refresh stale prompt options", error);
+        logw("Failed to refresh prompt options", error);
       }
-      _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
-      return false;
+      if (notify) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     } on Object catch (error, stackTrace) {
-      logw("Failed to refresh stale prompt options", error, stackTrace);
-      if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
-      return false;
+      logw("Failed to refresh prompt options", error, stackTrace);
+      if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     }
   }
 
+  /// A queued submission's agent, revalidated against the current catalog.
+  /// Null means "whatever the session is set to" and stays null; a withdrawn
+  /// agent falls back like any other.
   String? _validatedQueuedAgent({
     required String? candidate,
     required List<AgentInfo> agents,
   }) {
-    if (candidate == null || agents.any((agent) => agent.name == candidate)) return candidate;
-    return agents.firstOrNull?.name;
-  }
-
-  AgentModel? _validatedPromptModel({
-    required AgentModel? candidate,
-    required List<AgentInfo> agents,
-    required List<ProviderInfo> providers,
-  }) {
     if (candidate == null) return null;
-    final model = _isModelAvailable(model: candidate, providers: providers)
-        ? candidate
-        : _fallbackAgentModel(agents: agents, providers: providers);
-    if (model == null) return null;
-    // Never leave a variant-offering model unset: the composer renders the
-    // first available variant when none is selected, so an unset one would
-    // display an effort the send does not carry.
-    return _withResolvedVariant(
-      model: model,
-      availableVariants: _deriveAvailableVariants(providers: providers, model: model),
-    );
-  }
-
-  bool _isModelAvailable({required AgentModel model, required List<ProviderInfo> providers}) {
-    return providers.any(
-      (provider) => provider.id == model.providerID && provider.models.containsKey(model.modelID),
-    );
-  }
-
-  AgentModel? _fallbackAgentModel({
-    required List<AgentInfo> agents,
-    required List<ProviderInfo> providers,
-  }) {
-    if (agents.firstOrNull?.model case final model?) return model;
-    // Walk every provider: the first may be misconfigured or fully
-    // deprecated and therefore have no selectable model.
-    for (final provider in providers) {
-      final picked = _defaultModelSelector.pickFromProvider(
-        models: provider.models,
-        defaultModelID: provider.defaultModelID,
-      );
-      if (picked != null) {
-        return AgentModel(
-          providerID: provider.id,
-          modelID: picked.id,
-          variant: null,
-        );
-      }
-    }
-    return null;
+    return _selection.validatedAgentName(agents: agents, candidates: [candidate]);
   }
 
   ComposerDraft get composerDraft => _composerDraft;
@@ -1897,7 +2142,7 @@ class SessionDetailCubit(
       QueuedTextSubmission(:final inputMode) => AnalyticsSubmission.text(
         inputMode: _analyticsInputMode(inputMode),
       ),
-      QueuedCommandSubmission() => const AnalyticsSubmission.command(),
+      QueuedCommandSubmission() || UnavailableQueuedCommandSubmission() => const AnalyticsSubmission.command(),
     };
     _reportProductEvent(
       event: ProductAnalyticsEvent.sessionMessageSent(submission: analyticsSubmission),
@@ -1972,14 +2217,43 @@ class SessionDetailCubit(
   /// prompt becomes visible — the notification has served its purpose once the
   /// user is already looking at the content.
   void clearNotifications() {
-    _notificationCanceller?.cancelForSession(sessionId: _sessionId);
+    final notificationCanceller = _notificationCanceller;
+    if (notificationCanceller != null) {
+      unawaited(notificationCanceller.cancelForSession(sessionId: _sessionId));
+    }
+  }
+
+  /// Shell-reported visibility also gates transient UI above a nested navigator.
+  bool get isRouteVisible => _routeVisible;
+
+  /// Updates whether this detail route is currently visible to the user.
+  ///
+  /// A root-level route can cover the nested session navigator without
+  /// disposing this cubit, so shell-reported visibility fences both the initial
+  /// load and later refresh declarations.
+  void setRouteVisible({required bool isVisible}) {
+    if (_routeVisible == isVisible) return;
+    _routeVisible = isVisible;
+    if (isVisible) {
+      reassertViewingSession();
+    } else {
+      _sessionViewingService.clearViewingSession(_sessionId);
+    }
   }
 
   /// Restores this loaded session as the active view after a pushed child route
   /// is removed. The initial load and refresh paths own their own declarations;
   /// an unloaded or failed route must not mark the session seen.
   void reassertViewingSession() {
-    if (state is SessionDetailLoaded) _sessionViewingService.setViewingSession(_sessionId);
+    if (_routeVisible && state is SessionDetailLoaded) {
+      _sessionViewingService.setViewingSession(_sessionId);
+    }
+  }
+
+  void _declareViewingSessionIfVisible() {
+    if (_routeVisible) {
+      _sessionViewingService.setViewingSession(_sessionId);
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -1998,7 +2272,7 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(current.copyWith(pendingQuestions: pending));
-    _questionStream.add(question);
+    if (current.interaction.canInteract) _questionStream.add(question);
   }
 
   void _onQuestionResolved(String requestId) {
@@ -2022,7 +2296,7 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(current.copyWith(pendingPermissions: pending));
-    _permissionStream.add(permission);
+    if (current.interaction.canInteract) _permissionStream.add(permission);
   }
 
   void _onPermissionResolved(String requestId) {
@@ -2035,9 +2309,14 @@ class SessionDetailCubit(
     emit(current.copyWith(pendingPermissions: pending));
   }
 
-  /// Archiving is permanent, so an archived session is audit-only: every
-  /// mutation refuses here rather than in the widgets. Returns `true` when the
-  /// caller must stop.
+  /// Gate the mutation seam too, including callbacks from an already-open UI.
+  bool _refuseWhenInteractionBlocked({required String action}) {
+    final current = state;
+    if (current is SessionDetailLoaded && current.interaction.canInteract) return false;
+    logw("Refused to $action while the session harness is unavailable");
+    return true;
+  }
+
   bool _refuseWhenArchived({required String action}) {
     final current = state;
     if (current is! SessionDetailLoaded || !current.isArchived) return false;
@@ -2107,9 +2386,13 @@ class SessionDetailCubit(
     required void Function() reportSuccess,
     bool checkArchived = true,
   }) async {
+    if (_refuseWhenInteractionBlocked(action: archivedAction)) return false;
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
-    _notificationCanceller?.cancelForSession(sessionId: sessionId);
+    final notificationCanceller = _notificationCanceller;
+    if (notificationCanceller != null) {
+      unawaited(notificationCanceller.cancelForSession(sessionId: sessionId));
+    }
     try {
       final result = await submit();
       if (result case ErrorResponse(:final error)) throw error;
@@ -2133,41 +2416,46 @@ class SessionDetailCubit(
   // ---------------------------------------------------------------------------
 
   void selectAgent(String agent) {
+    if (_refuseWhenInteractionBlocked(action: "select an agent")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
     final agentInfo = current.availableAgents.firstWhereOrNull((a) => a.name == agent);
     if (agentInfo == null) return;
-    // A null model means this agent has no model preference of its own.
-    final agentModel = agentInfo.model ?? current.selectedAgentModel;
-    final availableVariants = _deriveAvailableVariants(
+    // An agent with no declared model keeps the one already on screen, which is
+    // also where a declared model the catalog no longer offers falls back to.
+    final reconciled = _selection.reconcile(
+      agents: current.availableAgents,
       providers: current.availableProviders,
-      model: agentModel,
+      agentNameCandidates: [agent],
+      modelCandidates: [agentInfo.model],
+      retainedModel: current.selectedAgentModel,
     );
 
     if (isClosed) return;
     emit(
       current.copyWith(
         selectedAgent: agent,
-        selectedAgentModel: _withResolvedVariant(model: agentModel, availableVariants: availableVariants),
-        availableVariants: availableVariants,
+        selectedAgentModel: reconciled.model,
+        availableVariants: reconciled.availableVariants,
       ),
     );
   }
 
   void selectModel({required String providerID, required String modelID}) {
+    if (_refuseWhenInteractionBlocked(action: "select a model")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
     final previousVariant = current.selectedAgentModel?.variant;
     final newModel = AgentModel(providerID: providerID, modelID: modelID, variant: null);
-    final availableVariants = _deriveAvailableVariants(
+    final availableVariants = _selection.availableVariants(
       providers: current.availableProviders,
       model: newModel,
     );
     final variant = availableVariants.any((v) => v.id == previousVariant)
         ? previousVariant
-        : availableVariants.firstOrNull?.id;
+        : _selection.defaultVariant(providers: current.availableProviders, model: newModel);
 
     final agentModel = _resolveAgentModel(
       agents: current.availableAgents,
@@ -2185,6 +2473,7 @@ class SessionDetailCubit(
   }
 
   void selectVariant(SessionVariant variant) {
+    if (_refuseWhenInteractionBlocked(action: "select a model variant")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     final agentModel = current.selectedAgentModel;
@@ -2195,6 +2484,7 @@ class SessionDetailCubit(
   }
 
   void stageCommand(CommandInfo command) {
+    if (_refuseWhenInteractionBlocked(action: "stage a command")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2203,6 +2493,7 @@ class SessionDetailCubit(
   }
 
   void clearStagedCommand() {
+    if (_refuseWhenInteractionBlocked(action: "clear a staged command")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2219,18 +2510,31 @@ class SessionDetailCubit(
   /// Under `stop` every busy child session is aborted too — plugins whose
   /// children are real sessions keep today's stop-everything behavior.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
+    if (_refuseWhenInteractionBlocked(action: "stop the session")) {
+      return const SessionAbortOutcome.failed();
+    }
     try {
+      final requestChildStatuses = switch (state) {
+        SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
+        SessionDetailLoading() ||
+        SessionDetailHarnessUnavailable() ||
+        SessionDetailFailed() => const <String, SessionStatus>{},
+      };
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      if (root case ErrorResponse(:final error)) throw error;
+      final subAgentsHandled = switch (root) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw error,
+      };
       _clearLocalPromptQueue();
 
-      // Read state after the await: an abort-driven status or transcript event
-      // may have landed meanwhile and must not be overwritten by a stale copy.
+      // Prefer post-stop status truth, but retain the request snapshot when an
+      // concurrent reload temporarily replaces the loaded detail state.
       final current = state;
-      if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
+      final childStatuses = current is SessionDetailLoaded ? current.childStatuses : requestChildStatuses;
+      if (subAgents != SessionAbortSubAgentPolicy.keep && !subAgentsHandled) {
         final results = await Future.wait([
-          for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
+          for (final MapEntry(key: childId, value: status) in childStatuses.entries)
             if (status is SessionStatusBusy || status is SessionStatusRetry)
               _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
         ]);
@@ -2260,11 +2564,21 @@ class SessionDetailCubit(
   }
 
   _SnapshotDerivation _deriveSnapshot(SessionDetailSnapshot snapshot) {
-    final latestAssistant = _latestAssistantOrErrorMessage(snapshot.messages);
     final children = [...snapshot.childSessions];
     _sortChildrenByUpdatedDesc(children);
     final childIds = children.map((child) => child.id).toSet();
-    final agents = snapshot.agents.where((agent) => !agent.hidden && agent.mode != AgentMode.subagent).toList();
+    return (
+      children: children,
+      childStatuses: Map.fromEntries(snapshot.statuses.entries.where((entry) => childIds.contains(entry.key))),
+      agents: _selection.selectableAgents(agents: snapshot.agents),
+      providers: snapshot.providerData?.items ?? <ProviderInfo>[],
+    );
+  }
+
+  /// The latest agent-authored assistant/error message of [messages] and the
+  /// model it ran on, resolved against the [agents] catalog in effect.
+  _AssistantMetadata _assistantMetadata({required List<MessageWithParts> messages, required List<AgentInfo> agents}) {
+    final latestAssistant = _latestAssistantOrErrorMessage(messages);
     final assistantAgentModel = switch (latestAssistant) {
       MessageAssistant(sender: MessageSender.agent, :final modelID, :final providerID) ||
       MessageError(
@@ -2273,44 +2587,28 @@ class SessionDetailCubit(
       ) => _resolveAgentModel(agents: agents, providerID: providerID, modelID: modelID),
       MessageAssistant() || MessageUser() || null => null,
     };
-    return (
-      latestAssistant: latestAssistant,
-      assistantAgentModel: assistantAgentModel,
-      children: children,
-      childStatuses: Map.fromEntries(snapshot.statuses.entries.where((entry) => childIds.contains(entry.key))),
-      agents: agents,
-      providers: snapshot.providerData?.items ?? <ProviderInfo>[],
-    );
+    return (latestAssistant: latestAssistant, assistantAgentModel: assistantAgentModel);
   }
 
   SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
     _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
     final derived = _deriveSnapshot(snapshot);
-    final latestAssistant = derived.latestAssistant;
     final childSessions = derived.children;
     final agents = derived.agents;
     final providers = derived.providers;
 
-    final persistedDefaults = snapshot.promptDefaults;
-    final persistedAgent = persistedDefaults?.agent;
-    final persistedModel = persistedDefaults?.model;
-
-    final bool hasValidPersistedAgent = persistedAgent != null && agents.any((a) => a.name == persistedAgent);
-    final bool hasValidPersistedModel =
-        persistedModel != null && _isModelAvailable(model: persistedModel, providers: providers);
-
-    final String defaultAgent = hasValidPersistedAgent
-        ? persistedAgent
-        : (agents.isNotEmpty ? agents.first.name : "build");
-
-    final assistantAgentModel = derived.assistantAgentModel;
-    final defaultAgentModel = hasValidPersistedModel
-        ? persistedModel
-        : (assistantAgentModel ?? _fallbackAgentModel(agents: agents, providers: providers));
-
-    final availableVariants = _deriveAvailableVariants(
+    final assistant = _assistantMetadata(messages: snapshot.messages, agents: agents);
+    final latestAssistant = assistant.latestAssistant;
+    final assistantAgentModel = assistant.assistantAgentModel;
+    // The transcript's own model is retained rather than validated: a session
+    // imported from a terminal must not silently resume on a different provider
+    // because a retained provider cache does not list what it ran on.
+    final reconciled = _selection.reconcile(
+      agents: agents,
       providers: providers,
-      model: defaultAgentModel,
+      agentNameCandidates: [snapshot.promptDefaults?.agent],
+      modelCandidates: [snapshot.promptDefaults?.model],
+      retainedModel: assistantAgentModel,
     );
 
     final initialSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
@@ -2318,6 +2616,7 @@ class SessionDetailCubit(
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
+      interaction: _interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
       streamingText: const {},
@@ -2340,37 +2639,12 @@ class SessionDetailCubit(
       availableAgents: agents,
       availableProviders: providers,
       availableCommands: snapshot.commands,
-      selectedAgent: defaultAgent,
-      selectedAgentModel: _withResolvedVariant(
-        model: defaultAgentModel,
-        availableVariants: availableVariants,
-      ),
+      selectedAgent: reconciled.agentName ?? _fallbackAgentName,
+      selectedAgentModel: reconciled.model,
       stagedCommand: null,
       isRefreshing: false,
-      availableVariants: availableVariants,
+      availableVariants: reconciled.availableVariants,
     );
-  }
-
-  /// A model that offers variants always runs at a named one. An unset variant
-  /// resolves to the first available, which plugins declare default-first.
-  AgentModel? _withResolvedVariant({
-    required AgentModel? model,
-    required List<SessionVariant> availableVariants,
-  }) {
-    if (model == null) return null;
-    if (availableVariants.any((variant) => variant.id == model.variant)) return model;
-    return model.copyWith(variant: availableVariants.firstOrNull?.id);
-  }
-
-  List<SessionVariant> _deriveAvailableVariants({
-    required List<ProviderInfo> providers,
-    required AgentModel? model,
-  }) {
-    final providerID = model?.providerID;
-    final modelID = model?.modelID;
-    final provider = providerID != null ? providers.firstWhereOrNull((p) => p.id == providerID) : null;
-    final m = provider?.models[modelID];
-    return m?.variants.where((v) => v != "none").map((v) => SessionVariant(id: v)).toList() ?? [];
   }
 
   List<SesoriQuestionAsked> _mapPendingQuestions(List<PendingQuestion> pendingQuestions) {
@@ -2418,7 +2692,7 @@ class SessionDetailCubit(
   @override
   Future<void> close() {
     _sessionViewingService.clearViewingSession(_sessionId);
-    _projectViewingService.releaseClaim(claim: _projectViewClaim);
+    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _deferredPartEvents.clear();
@@ -2438,9 +2712,9 @@ typedef _QueueView = ({
   QueuedSessionSubmission? sendingSubmission,
 });
 
+typedef _AssistantMetadata = ({Message? latestAssistant, AgentModel? assistantAgentModel});
+
 typedef _SnapshotDerivation = ({
-  Message? latestAssistant,
-  AgentModel? assistantAgentModel,
   List<Session> children,
   Map<String, SessionStatus> childStatuses,
   List<AgentInfo> agents,

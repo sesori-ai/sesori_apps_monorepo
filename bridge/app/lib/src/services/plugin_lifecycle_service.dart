@@ -287,9 +287,14 @@ class PluginLifecycleService({
       if (active.request == request) {
         // A joined install returns the accepted snapshot immediately; the
         // in-flight install keeps streaming progress and owns the slot.
-        return request is PluginLifecycleInstallRequest
-            ? Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation)
-            : active.completer.future;
+        if (request is PluginLifecycleInstallRequest) {
+          // The in-flight install may be a startup upgrade, which deliberately
+          // does not start the harness. An explicit Install carries the user's
+          // intent to enable and start it, so it takes over the completion.
+          active.installCompletion = InstallCompletion.enableAndStart;
+          return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
+        }
+        return active.completer.future;
       }
       throw PluginManagementConflictException(
         PluginLifecycleConflict(
@@ -309,18 +314,55 @@ class PluginLifecycleService({
       );
     }
 
-    final command = _ActivePluginCommand(request: request);
-    _activePluginCommands[pluginId] = command;
     if (request is PluginLifecycleInstallRequest) {
       // Accepted-immediately: a download can run for minutes, far beyond any
       // relay request budget. The HTTP response is the current snapshot;
       // progress streams via SSE and the terminal outcome invalidates the
       // management snapshot. The slot stays occupied until the install ends.
-      unawaited(_executeInstall(pluginId: pluginId, command: command));
+      _admitInstall(pluginId: pluginId, request: request, completion: InstallCompletion.enableAndStart);
       return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
     }
+    final command = _ActivePluginCommand(request: request);
+    _activePluginCommands[pluginId] = command;
     unawaited(_executeCommand(pluginId: pluginId, command: command));
     return command.completer.future;
+  }
+
+  /// Occupies [pluginId]'s command slot with an install and starts it.
+  ///
+  /// Shared by the explicit Install command and the startup upgrade so both
+  /// join, conflict, and release the slot identically. Returns as soon as the
+  /// install is admitted; the download runs on its own.
+  void _admitInstall({
+    required String pluginId,
+    required PluginLifecycleInstallRequest request,
+    required InstallCompletion completion,
+  }) {
+    final command = _ActivePluginCommand(request: request, installCompletion: completion);
+    _activePluginCommands[pluginId] = command;
+    unawaited(_executeInstall(pluginId: pluginId, command: command));
+  }
+
+  /// Installs the pinned managed runtime for every eligible plugin that still
+  /// has an older Sesori-managed one on disk.
+  ///
+  /// Called once per bridge start, after single-live-bridge ownership is settled
+  /// so no other bridge is using this machine's managed runtime directories.
+  /// Returns immediately: startup never waits on a download, and a harness
+  /// already running an older supported version keeps serving until its next
+  /// generation. A plugin with a command already in flight is skipped; that
+  /// command owns the slot.
+  void upgradeManagedRuntimes() {
+    for (final pluginId in _requireEligiblePluginIds()) {
+      if (_activePluginCommands.containsKey(pluginId)) continue;
+      if (!_lifecycleRepository.needsManagedRuntimeUpgrade(pluginId: pluginId)) continue;
+      Log.i('Plugin "$pluginId" has a superseded managed runtime; installing the current one in the background.');
+      _admitInstall(
+        pluginId: pluginId,
+        request: const PluginLifecycleInstallRequest(),
+        completion: InstallCompletion.reinspectOnly,
+      );
+    }
   }
 
   Stream<PluginInstallProgressUpdate> get installProgress => _installProgressController.stream;
@@ -376,6 +418,66 @@ class PluginLifecycleService({
     return authentication.challenge.future;
   }
 
+  Future<void> submitAuthenticationRedirect({
+    required String pluginId,
+    required Uri redirectUri,
+  }) async {
+    if (_setupById == null) {
+      throw StateError("Plugin lifecycle has not been initialized.");
+    }
+    if (!_knownPluginIds.contains(pluginId)) {
+      throw PluginManagementPluginNotFoundException(pluginId);
+    }
+    _requireBridgeId();
+    final authentication = _activePluginAuthentications[pluginId];
+    if (authentication == null) {
+      throw _authenticationContinuationConflict(
+        pluginId: pluginId,
+        reason: PluginAuthenticationContinuationConflictReason.noActive,
+      );
+    }
+    final result = await _lifecycleRepository.submitAuthenticationRedirect(
+      pluginId: pluginId,
+      generation: authentication.operation.generation,
+      redirectUri: redirectUri,
+    );
+    switch (result) {
+      case PluginRuntimeAuthenticationContinuationApplied():
+        return;
+      case PluginRuntimeAuthenticationContinuationConflict(:final reason):
+        throw _authenticationContinuationConflict(
+          pluginId: pluginId,
+          reason: switch (reason) {
+            PluginRuntimeAuthenticationContinuationConflictReason.staleGeneration =>
+              PluginAuthenticationContinuationConflictReason.noActive,
+            PluginRuntimeAuthenticationContinuationConflictReason.wrongKind =>
+              PluginAuthenticationContinuationConflictReason.wrongKind,
+            PluginRuntimeAuthenticationContinuationConflictReason.alreadySubmitted =>
+              PluginAuthenticationContinuationConflictReason.alreadySubmitted,
+          },
+        );
+    }
+  }
+
+  PluginAuthenticationContinuationConflictException _authenticationContinuationConflict({
+    required String pluginId,
+    required PluginAuthenticationContinuationConflictReason reason,
+  }) => PluginAuthenticationContinuationConflictException(
+    reason: reason,
+    conflict: PluginAuthenticationConflict(
+      pluginId: pluginId,
+      reasons: [
+        switch (reason) {
+          PluginAuthenticationContinuationConflictReason.noActive => PluginAuthenticationConflictReason.noActive,
+          PluginAuthenticationContinuationConflictReason.wrongKind => PluginAuthenticationConflictReason.wrongKind,
+          PluginAuthenticationContinuationConflictReason.alreadySubmitted =>
+            PluginAuthenticationConflictReason.alreadySubmitted,
+        },
+      ],
+      current: _managementRowForPluginId(pluginId),
+    ),
+  );
+
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
@@ -420,6 +522,23 @@ class PluginLifecycleService({
                 PluginAuthenticationChallengeResponse.deviceCode(
                   verificationUrl: verificationUri.toString(),
                   userCode: userCode,
+                ),
+              );
+            }
+            return terminal;
+          }(),
+          PluginAuthenticationBrowserChallenge(:final authorizationUri, :final expectedCallbackUri) => () {
+            if (authorizationUri.scheme != "https" ||
+                authorizationUri.host.isEmpty ||
+                !expectedCallbackUri.isAbsolute ||
+                expectedCallbackUri.host.isEmpty) {
+              throw StateError("Plugin authentication returned invalid browser challenge URLs.");
+            }
+            if (!authentication.challenge.isCompleted) {
+              authentication.challenge.complete(
+                PluginAuthenticationChallengeResponse.browser(
+                  authorizationUrl: authorizationUri.toString(),
+                  expectedCallbackUrl: expectedCallbackUri.toString(),
                 ),
               );
             }
@@ -532,19 +651,36 @@ class PluginLifecycleService({
       switch (terminal) {
         case ProvisionReady():
           _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.finalizing, percent: null, message: null);
-          await _enable(pluginId: pluginId, command: command);
-          // The binary is installed, but setup can still be blocked (most
-          // often authentication). Report completed only when the harness
-          // actually became usable; otherwise the phone would show success
-          // while the card stays blocked.
+          // Read now, not at admission: an explicit Install may have joined a
+          // startup upgrade while it was downloading.
+          switch (command.installCompletion) {
+            case InstallCompletion.enableAndStart:
+              await _enable(pluginId: pluginId, command: command);
+            case InstallCompletion.reinspectOnly:
+              // A startup upgrade nobody asked for must not spawn a process.
+              // Re-inspection is what flips a runtime-missing harness to ready
+              // and routable; a running harness keeps its current generation.
+              final setup = await _inspectForCommand(pluginId: pluginId, command: command);
+              // An explicit Install can still join during that inspection — it
+              // owns the same slot until this command releases it — so honour a
+              // promotion that arrived too late for the branch above.
+              if (command.installCompletion == InstallCompletion.enableAndStart && setup is PluginSetupReady) {
+                _handleRuntimeCommandResult(
+                  pluginId: pluginId,
+                  result: await _lifecycleRepository.start(pluginId: pluginId),
+                );
+              }
+          }
+          // Authentication is a separate setup step, not an installation
+          // failure. Keep the login-required card blocked without telling the
+          // client to reinstall a runtime that was successfully provisioned.
           final setup = _requireSetupById()[pluginId];
+          final installed = setup is PluginSetupReady || setup is PluginSetupAuthenticationRequired;
           _emitInstallProgress(
             pluginId: pluginId,
-            phase: setup is PluginSetupReady ? PluginInstallPhase.completed : PluginInstallPhase.failed,
+            phase: installed ? PluginInstallPhase.completed : PluginInstallPhase.failed,
             percent: null,
-            message: setup is PluginSetupReady
-                ? null
-                : "The runtime installed, but the harness still needs setup. Check its status.",
+            message: installed ? null : "The runtime installed, but the harness still needs setup. Check its status.",
           );
         case ProvisionFailed():
           // Descriptor failure text is not a trusted wire payload; the phone
@@ -1289,7 +1425,7 @@ class PluginLifecycleService({
     final currentIds = snapshots.map((snapshot) => snapshot.pluginId).toSet();
     _idleTimers.keys.where((pluginId) => !currentIds.contains(pluginId)).toList().forEach(_cancelIdleTimer);
     for (final snapshot in snapshots) {
-      final timeoutMins = _suspensionIdleTimeoutMins(snapshot.pluginId);
+      final timeoutMins = _suspensionIdleTimeoutMins(snapshot);
       if (!_supportsIdleSuspension(pluginId: snapshot.pluginId) || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) {
         _cancelIdleTimer(snapshot.pluginId);
         continue;
@@ -1336,14 +1472,19 @@ class PluginLifecycleService({
 
   /// The timeout driving whole-plugin idle suspension; `0` disables it.
   ///
+  /// Positive configured timeouts are capped at five minutes while a generation
+  /// remains import-only, then normal residency restores the configured value.
   /// Resident plugins are never suspended: they either attach to an external
   /// backend the bridge does not own (OpenCode attach mode) or own idle
   /// reclamation internally (Claude's per-session process reap).
-  int _suspensionIdleTimeoutMins(String pluginId) {
-    final residencyPolicy = _residencyPolicyById[pluginId];
+  int _suspensionIdleTimeoutMins(PluginRuntimeSnapshot snapshot) {
+    final residencyPolicy = _residencyPolicyById[snapshot.pluginId];
     if (residencyPolicy == null) throw StateError("Plugin lifecycle has not been registered.");
     if (residencyPolicy == PluginResidencyPolicy.resident) return 0;
-    return _effectiveIdleTimeoutMins(pluginId);
+    final configured = _effectiveIdleTimeoutMins(snapshot.pluginId);
+    return configured > 0 && snapshot.generationResidency == PluginGenerationResidency.importOnly
+        ? configured.clamp(1, 5)
+        : configured;
   }
 
   Future<void> _stopAfterIdleWindow({
@@ -1354,7 +1495,7 @@ class PluginLifecycleService({
     _idleTimers.remove(pluginId);
     if (!_supportsIdleSuspension(pluginId: pluginId)) return;
     final snapshot = _lifecycleRepository.snapshot.where((entry) => entry.pluginId == pluginId).firstOrNull;
-    final timeoutMins = _suspensionIdleTimeoutMins(pluginId);
+    final timeoutMins = snapshot == null ? 0 : _suspensionIdleTimeoutMins(snapshot);
     if (snapshot == null || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) return;
     Log.d('Plugin "$pluginId" idle timeout elapsed (${timeoutMins}m); requesting safe suspension');
     try {
@@ -1430,6 +1571,17 @@ class const PluginManagementConflictException(final PluginLifecycleConflict conf
 
 class const PluginAuthenticationConflictException(final PluginAuthenticationConflict conflict) implements Exception;
 
+enum PluginAuthenticationContinuationConflictReason() {
+  noActive,
+  wrongKind,
+  alreadySubmitted,
+}
+
+class const PluginAuthenticationContinuationConflictException({
+  required final PluginAuthenticationContinuationConflictReason reason,
+  required final PluginAuthenticationConflict conflict,
+}) implements Exception;
+
 class const PluginAuthenticationChallengeUnavailableException() implements Exception;
 
 class const PluginManagementCommandFailedException(final String message) implements Exception {
@@ -1439,7 +1591,25 @@ class const PluginManagementCommandFailedException(final String message) impleme
 
 class const PluginManagementMutationOutcomeUncertainException() implements Exception;
 
-class _ActivePluginCommand({required final PluginLifecycleCommandRequest request}) {
+/// What a finished install does with the plugin it just provisioned.
+enum InstallCompletion() {
+  /// An explicit Install: the user asked for this harness, so enable it,
+  /// re-inspect, and start it.
+  enableAndStart,
+
+  /// A startup upgrade: re-inspect so a harness blocked on an old runtime
+  /// becomes routable, but never spawn a process nobody asked for.
+  reinspectOnly,
+}
+
+class _ActivePluginCommand({
+  required final PluginLifecycleCommandRequest request,
+
+  /// Read only when [request] is an install, and read at the terminal event so
+  /// an explicit Install that joins a running startup upgrade can still promote
+  /// it. Defaults to the meaning every user-issued command carries.
+  var InstallCompletion installCompletion = InstallCompletion.enableAndStart,
+}) {
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }
 

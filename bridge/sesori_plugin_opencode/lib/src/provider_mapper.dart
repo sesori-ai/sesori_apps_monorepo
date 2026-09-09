@@ -1,5 +1,5 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
-    show Log, PluginModel, PluginProvider, PluginProviderAuthType, PluginProvidersResult;
+    show CatalogStrengthOrder, Log, PluginModel, PluginProvider, PluginProviderAuthType, PluginProvidersResult;
 
 import "models/openapi/config_providers_response.g.dart";
 import "models/openapi/model.g.dart";
@@ -14,33 +14,47 @@ enum _ProviderModelStatus() {
 
 /// Maps an OpenCode [ConfigProvidersResponse] to the plugin interface
 /// [PluginProvidersResult], optionally filtering to connected providers only.
+///
+/// Models are listed in picker order: Anthropic and OpenAI models strongest
+/// first through [CatalogStrengthOrder], every other model newest release
+/// first, undated models last, ties by name. Variants are strongest first
+/// with OpenCode's first-listed selectable variant kept as the default.
 PluginProvidersResult mapProviderResponse({
   required ConfigProvidersResponse response,
 }) {
   final providers = response.providers.map((providerInfo) {
-    final models = providerInfo.models.values
-        .map(
-          (m) => PluginModel(
-            id: m.id,
-            name: m.name,
-            variants: _enabledVariants(variants: m.variants),
-            family: m.family,
-            isAvailable: _isModelAvailable(
-              status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),
-            ),
-            releaseDate: _parseReleaseDate(m.releaseDate),
-          ),
-        )
-        .toList();
+    final newestFirst = providerInfo.models.values.map((m) {
+      final enabled = _enabledVariants(variants: m.variants);
+      return PluginModel(
+        id: m.id,
+        name: m.name,
+        variants: CatalogStrengthOrder.variants(enabled),
+        defaultVariant: CatalogStrengthOrder.backendDefault(enabled),
+        family: m.family,
+        isAvailable: _isModelAvailable(
+          status: _parseProviderModelStatus(rawStatus: m.status, modelId: m.id),
+        ),
+        releaseDate: _parseReleaseDate(m.releaseDate),
+      );
+    }).toList()..sort(_newestFirst);
 
     return _mapProvider(
       id: providerInfo.id,
       name: providerInfo.name,
-      models: models,
+      models: CatalogStrengthOrder.models(newestFirst, idOf: (model) => model.id),
     );
   }).toList();
 
   return PluginProvidersResult(providers: providers);
+}
+
+int _newestFirst(PluginModel a, PluginModel b) {
+  final aDate = a.releaseDate;
+  final bDate = b.releaseDate;
+  if (aDate == null && bDate != null) return 1;
+  if (bDate == null && aDate != null) return -1;
+  final byDate = aDate == null || bDate == null ? 0 : bDate.compareTo(aDate);
+  return byDate != 0 ? byDate : a.name.compareTo(b.name);
 }
 
 _ProviderModelStatus _parseProviderModelStatus({
@@ -103,8 +117,14 @@ PluginProvider _mapProvider({
     id: id,
     name: name,
     authType: switch (id.toLowerCase()) {
-      "anthropic" || "openai" || "google" || "mistral" || "groq" || "xai" || "deepseek" || "azure" =>
-        PluginProviderAuthType.apiKey,
+      "anthropic" ||
+      "openai" ||
+      "google" ||
+      "mistral" ||
+      "groq" ||
+      "xai" ||
+      "deepseek" ||
+      "azure" => PluginProviderAuthType.apiKey,
       _ => PluginProviderAuthType.unknown,
     },
     models: models,

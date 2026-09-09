@@ -498,7 +498,7 @@ void main() {
       expect(provider.defaultModelID, "opencode-go:deepseek-v4-flash");
       expect(
         provider.models.map((model) => model.id),
-        ["opencode-go:deepseek-v4-flash", "opencode-go:gpt-5"],
+        ["opencode-go:gpt-5", "opencode-go:deepseek-v4-flash"],
       );
 
       expect(processes.spawnedExecutables, [
@@ -559,6 +559,7 @@ class _ProbeProcessService({
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     spawnedExecutables.add(executable);
     spawnedArguments.add(List<String>.from(arguments));

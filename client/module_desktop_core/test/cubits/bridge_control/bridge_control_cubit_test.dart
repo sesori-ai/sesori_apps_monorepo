@@ -18,6 +18,7 @@ void main() {
     late _FakeDesktopApplicationTerminator applicationTerminator;
     late _FakeBridgeProcessLogRepository logRepository;
     late _FakeDesktopInstanceService instanceService;
+    late _FakeDesktopRelayConnectionService relayConnectionService;
     late _FakeDesktopBridgeTakeoverOrchestrator takeoverOrchestrator;
     late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
@@ -33,6 +34,7 @@ void main() {
       applicationTerminator = _FakeDesktopApplicationTerminator();
       logRepository = _FakeBridgeProcessLogRepository();
       instanceService = _FakeDesktopInstanceService();
+      relayConnectionService = _FakeDesktopRelayConnectionService();
       takeoverOrchestrator = _FakeDesktopBridgeTakeoverOrchestrator();
       logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
@@ -46,6 +48,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -64,6 +67,45 @@ void main() {
       await logoutTracker.dispose();
     });
 
+    test("a live helper waiting for the server stays starting until readiness", () async {
+      await cubit.initialize();
+      statusTracker.markHelperConnected();
+      processService.emit(state: const BridgeProcessRunning(pid: 123), desiredState: BridgeProcessDesiredState.on);
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.waitingForServer,
+          relay: ControlRelayConnectionState.disconnected,
+          plugin: ControlPluginHealthState.unknown,
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for server (retrying every minute)");
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.connected,
+          plugin: ControlPluginHealthState.healthy,
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Bridge: Connected");
+    });
+
+    test("a temporary desktop token failure shows an authentication wait", () async {
+      await cubit.initialize();
+      statusTracker.markHelperConnected();
+      processService.emit(state: const BridgeProcessRunning(pid: 123), desiredState: BridgeProcessDesiredState.on);
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.waitingForAuthentication,
+          relay: ControlRelayConnectionState.disconnected,
+          plugin: ControlPluginHealthState.unknown,
+        ),
+      );
+      await pumpEventQueue();
+      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for desktop authentication (retrying every minute)");
+    });
+
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
       await cubit.initialize();
 
@@ -80,6 +122,7 @@ void main() {
       statusTracker.markHelperConnected();
       statusTracker.applyStatus(
         status: const ControlStatus(
+          startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.connected,
           plugin: ControlPluginHealthState.degraded,
           activeSessionCount: 3,
@@ -117,6 +160,7 @@ void main() {
       statusTracker.markHelperConnected();
       statusTracker.applyStatus(
         status: const ControlStatus(
+          startup: ControlStartupState.ready,
           relay: ControlRelayConnectionState.takenOver,
           plugin: ControlPluginHealthState.healthy,
           activeSessionCount: 0,
@@ -178,6 +222,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -339,6 +384,27 @@ void main() {
       expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
     });
 
+    test("connection recovery starts the helper and reconnects the relay", () async {
+      await cubit.initialize();
+
+      await cubit.recoverConnection();
+
+      expect(processService.startCalls, 1);
+      expect(relayConnectionService.recoverCalls, 1);
+    });
+
+    test("does not recover either owner while logout locks controls", () async {
+      await cubit.initialize();
+      relayConnectionService.recoverCalls = 0;
+      logoutTracker.markInProgress();
+      await pumpEventQueue();
+
+      await cubit.recoverConnection();
+
+      expect(processService.startCalls, 0);
+      expect(relayConnectionService.recoverCalls, 0);
+    });
+
     test("a failed start leaves the next toggle targeted at retrying start", () async {
       processService.startError = StateError("spawn failed");
       await cubit.initialize();
@@ -467,6 +533,7 @@ void main() {
         applicationTerminator: applicationTerminator,
         logRepository: logRepository,
         instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
         takeoverOrchestrator: takeoverOrchestrator,
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
@@ -620,6 +687,12 @@ class _FakeWindowHost() implements WindowHost {
   Stream<WindowHostEvent> get events => _events.stream;
 
   @override
+  WindowHostState get currentState => WindowHostState.focused;
+
+  @override
+  Stream<WindowHostState> get states => const Stream<WindowHostState>.empty();
+
+  @override
   Future<void> initialize({
     required bool hidden,
     required WindowBounds? initialBounds,
@@ -717,6 +790,18 @@ class _FakeDesktopInstanceService() implements DesktopInstanceService {
   }
 
   Future<void> disposeFake() => _focusRequests.close();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _FakeDesktopRelayConnectionService() implements DesktopRelayConnectionService {
+  int recoverCalls = 0;
+
+  @override
+  Future<void> recoverForAuthenticatedDestination() async {
+    recoverCalls++;
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

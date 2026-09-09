@@ -8,6 +8,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/server_conne
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -53,7 +54,7 @@ void main() {
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(
@@ -63,7 +64,7 @@ void main() {
     );
     when(
       () => loadService.reload(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(
@@ -74,6 +75,9 @@ void main() {
 
     cubit = SessionDetailCubit(
       connectionService,
+      claimProjectView: true,
+      pluginManagementService: stubbedPluginManagementService(),
+      interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
       promptDispatcher: sessionRepository,
       permissionRepository: MockPermissionRepository(),
@@ -237,6 +241,7 @@ SessionDetailSnapshot _snapshot({
   required List<MessageWithParts> messages,
   required int? olderMessagesCursor,
 }) => SessionDetailSnapshot(
+  areOptionsStale: false,
   bridgeQueuedPrompts: const [],
   projectId: "project-1",
   pluginId: "plugin-1",

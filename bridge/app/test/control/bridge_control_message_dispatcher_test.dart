@@ -100,6 +100,7 @@ void main() {
       client.emit(
         _encode(
           const ControlMessage.status(
+            startup: ControlStartupState.ready,
             relay: ControlRelayConnectionState.connected,
             plugin: ControlPluginHealthState.healthy,
           ),

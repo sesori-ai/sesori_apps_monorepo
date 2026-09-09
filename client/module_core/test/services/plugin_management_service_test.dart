@@ -8,14 +8,29 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/plugin_management/plugin_management_cubit.dart";
+import "package:sesori_dart_core/src/cubits/plugin_management/plugin_management_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
+import "package:sesori_dart_core/src/services/models/plugin_install_state.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
+enum _ReconciliationInvalidation() {
+  disconnect,
+  reconnect,
+  bridgeReplacement,
+  disposal,
+  unsupported,
+}
+
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
@@ -42,17 +57,19 @@ void main() {
   });
 
   group("authentication orchestration", () {
-    test("retains an HTTPS challenge and refreshes on terminal progress", () async {
+    test("serializes browser redirects and preserves a response across terminal progress", () async {
+      final continuation = Completer<PluginAuthenticationContinuationResult>();
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(
-          const PluginAuthenticationStartResult.challenge(
-            challenge: PluginAuthenticationChallengeResponse.deviceCode(
-              verificationUrl: "https://auth.example/device",
-              userCode: "ABCD-EFGH",
+          PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationBrowserChallenge(
+              authorizationUri: Uri.parse("https://accounts.example/authorize"),
+              expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
             ),
           ),
         )
+        ..queueAuthenticationContinuation(continuation.future)
         ..queueLoad(_supported(_response(token: "terminal")));
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = PluginManagementService(
@@ -65,12 +82,25 @@ void main() {
 
       final result = await service.startAuthentication(pluginId: "codex");
       expect(result, isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["codex"], isA<PluginAuthenticationBrowserChallenge>());
       expect(
-        service.authenticationChallenges.value["codex"],
-        PluginAuthenticationChallenge(
-          verificationUri: Uri.parse("https://auth.example/device"),
-          userCode: "ABCD-EFGH",
+        await service.submitAuthenticationRedirect(
+          pluginId: "codex",
+          intent: const PluginAuthenticationContinuationIntent.pasted(
+            rawInput: "http://localhost:43120/callback?code=wrong-host",
+          ),
         ),
+        isA<PluginAuthenticationContinuationInvalidRedirect>(),
+      );
+      const redirect = "http://127.0.0.1:43120/callback?code=opaque";
+      Future<PluginAuthenticationContinuationResult> submit() => service.submitAuthenticationRedirect(
+        pluginId: "codex",
+        intent: const PluginAuthenticationContinuationIntent.pasted(rawInput: redirect),
+      );
+      final first = submit();
+      expect(
+        (await submit() as PluginAuthenticationContinuationRejected).reason,
+        PluginAuthenticationContinuationRejection.alreadySubmitted,
       );
       final terminals = <PluginAuthenticationTerminalUpdate>[];
       service.authenticationTerminal.listen(terminals.add);
@@ -79,22 +109,22 @@ void main() {
         progress: const PluginAuthenticationProgress.completed(),
       );
       await _waitFor(() => repository.loadCalls == 2);
-
+      continuation.complete(const PluginAuthenticationContinuationResult.applied());
+      expect(await first, isA<PluginAuthenticationContinuationApplied>());
+      expect(repository.authenticationRedirects, [Uri.parse(redirect)]);
       expect(service.authenticationChallenges.value, isEmpty);
       expect(terminals.single.progress, const PluginAuthenticationProgress.completed());
     });
 
-    test("rejects non-HTTPS challenge and clears operations on reconnect", () async {
+    test("retains unknown challenges for cancellation and clears them on reconnect", () async {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(
           const PluginAuthenticationStartResult.challenge(
-            challenge: PluginAuthenticationChallengeResponse.deviceCode(
-              verificationUrl: "http://auth.example/device",
-              userCode: "ABCD-EFGH",
-            ),
+            challenge: PluginAuthenticationUnsupportedChallenge(),
           ),
-        );
+        )
+        ..queueAuthenticationCancel(const PluginAuthenticationCancelResult.success());
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = PluginManagementService(
         pluginRepository: repository,
@@ -104,17 +134,11 @@ void main() {
       addTearDown(service.onDispose);
       await _waitFor(() => service.snapshots.hasValue);
 
-      expect(
-        await service.startAuthentication(pluginId: "codex"),
-        isA<PluginAuthenticationStartFailed>().having(
-          (result) => result.failure,
-          "failure",
-          isA<PluginAuthenticationFailureRequest>(),
-        ),
-      );
-      expect(service.authenticationChallenges.value, isEmpty);
+      expect(await service.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["codex"], isA<PluginAuthenticationUnsupportedChallenge>());
+      expect(await service.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelSuccess>());
       connection.emitStatus(const ConnectionDisconnected());
-      expect(service.authenticationChallenges.value, isEmpty);
+      await _waitFor(() => service.authenticationChallenges.value.isEmpty);
     });
 
     test("fast terminal settles authorship before the start response returns", () async {
@@ -139,9 +163,9 @@ void main() {
         progress: const PluginAuthenticationProgress.cancelled(),
       );
       start.complete(
-        const PluginAuthenticationStartResult.challenge(
-          challenge: PluginAuthenticationChallengeResponse.deviceCode(
-            verificationUrl: "https://auth.example/device",
+        PluginAuthenticationStartResult.challenge(
+          challenge: PluginAuthenticationDeviceCodeChallenge(
+            verificationUri: Uri.parse("https://auth.example/device"),
             userCode: "ABCD-EFGH",
           ),
         ),
@@ -191,9 +215,9 @@ void main() {
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
         ..queueAuthenticationStart(
-          const PluginAuthenticationStartResult.challenge(
-            challenge: PluginAuthenticationChallengeResponse.deviceCode(
-              verificationUrl: "https://auth.example/device",
+          PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationDeviceCodeChallenge(
+              verificationUri: Uri.parse("https://auth.example/device"),
               userCode: "ABCD-EFGH",
             ),
           ),
@@ -457,6 +481,58 @@ void main() {
   });
 
   group("publication fencing", () {
+    for (final request in [
+      const PluginLifecycleCommandRequest.enable(),
+      const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+    ]) {
+      test("management SSE before ${request.runtimeType} response preserves its acknowledgment", () async {
+        final mutation = Completer<PluginManagementMutationResult>();
+        final authoritativeLoad = Completer<PluginManagementLoadResult>();
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueLoad(_supported(_response(token: "starting")))
+          ..queueLoad(authoritativeLoad.future)
+          ..queueMutation(mutation.future);
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+        );
+        addTearDown(() async {
+          await service.onDispose();
+          await connection.dispose();
+        });
+        await _waitFor(() => service.snapshots.hasValue);
+        final publishedTokens = <String>[];
+        final subscription = service.snapshots.listen((snapshot) {
+          if (snapshot case PluginManagementLoadResultSupported(:final response)) {
+            publishedTokens.add(response.snapshotToken);
+          }
+        });
+        addTearDown(subscription.cancel);
+
+        final command = service.command(pluginId: "one", request: request);
+        // The bridge publishes a starting transition before start/restart
+        // completes. Its event-triggered GET can beat the command response.
+        connection.emitManagementChanged(snapshotToken: "starting");
+        await _waitFor(() => _supportedResponse(service).snapshotToken == "starting");
+        final acknowledgment = _success(_response(token: "command-result"));
+        mutation.complete(acknowledgment);
+        await _waitFor(() => repository.loadCalls == 3);
+        expect(_supportedResponse(service).snapshotToken, "starting");
+        authoritativeLoad.complete(_supported(_response(token: "authoritative")));
+        final result = await command;
+        await _pump();
+
+        expect(publishedTokens, isNot(contains("command-result")));
+        expect(_supportedResponse(service).snapshotToken, "authoritative");
+        expect(repository.mutationCalls, 1);
+        // Success is proved by this request's response, never by GET metadata.
+        expect(result, same(acknowledgment));
+      });
+    }
+
     test("a mutation publication supersedes an older refresh and forces a clean GET", () async {
       final oldRefresh = Completer<PluginManagementLoadResult>();
       final repository = _FakePluginRepository()
@@ -490,7 +566,7 @@ void main() {
       expect(_supportedResponse(service).snapshotToken, "authoritative");
     });
 
-    test("an intervening refresh makes a mutation uncertain and triggers an authoritative GET", () async {
+    test("an intervening refresh preserves the acknowledgment and triggers an authoritative GET", () async {
       final mutation = Completer<PluginManagementMutationResult>();
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
@@ -517,10 +593,191 @@ void main() {
       mutation.complete(_success(_response(token: "mutation")));
       final result = await mutationFuture;
 
-      expect(result, isA<PluginManagementMutationResultUncertain>());
+      expect(result, isA<PluginManagementMutationResultSuccess>());
       expect(repository.loadCalls, 3);
       expect(_supportedResponse(service).snapshotToken, "authoritative");
     });
+
+    for (final completionOrder in [false, true]) {
+      test("overlapping command acknowledgments survive publication order reversed=$completionOrder", () async {
+        final firstResponse = Completer<PluginManagementMutationResult>();
+        final secondResponse = Completer<PluginManagementMutationResult>();
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueLoad(_supported(_response(token: "authoritative")))
+          ..queueMutation(firstResponse.future)
+          ..queueMutation(secondResponse.future);
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+        );
+        addTearDown(() async {
+          await service.onDispose();
+          await connection.dispose();
+        });
+        await _waitFor(() => service.snapshots.hasValue);
+        final first = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+        final second = service.command(
+          pluginId: "two",
+          request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+        );
+        final early = _success(_response(token: "early"));
+        final late = _success(_response(token: "late"));
+        (completionOrder ? secondResponse : firstResponse).complete(early);
+        expect(await (completionOrder ? second : first), same(early));
+        (completionOrder ? firstResponse : secondResponse).complete(late);
+        expect(await (completionOrder ? first : second), same(late));
+        expect(repository.mutationCalls, 2);
+        expect(repository.loadCalls, 2);
+        expect(_supportedResponse(service).snapshotToken, "authoritative");
+      });
+    }
+
+    test("cubit overlaps through the real service without losing either acknowledgment", () async {
+      final one = Completer<PluginManagementMutationResult>();
+      final two = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueLoad(_supported(_response(token: "authoritative")))
+        ..queueMutation(one.future)
+        ..queueMutation(two.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      final scan = FakeCatalogRescanService();
+      final cubit = PluginManagementCubit(
+        service: service,
+        urlLauncher: _MockUrlLauncher(),
+        catalogRescanService: scan,
+      );
+      addTearDown(() async {
+        await cubit.close();
+        await scan.onDispose();
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => cubit.state is PluginManagementReady);
+      final first = cubit.enable(pluginId: "one");
+      final second = cubit.enable(pluginId: "two");
+      expect(repository.mutationCalls, 2);
+      two.complete(_success(_response(token: "second-command")));
+      await second;
+      expect((cubit.state as PluginManagementReady).harnessActions.keys, ["one"]);
+      one.complete(_success(_response(token: "stale-first-command")));
+      await first;
+      await _pump();
+      final ready = cubit.state as PluginManagementReady;
+      expect(ready.harnessActions, isEmpty);
+      expect(ready.response.snapshotToken, "authoritative");
+      expect(repository.loadCalls, 2);
+    });
+
+    test("a failed reconciliation retains its typed error without losing the acknowledgment", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final error = ApiError.dartHttpClient(TimeoutException("management refresh"));
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueLoad(_supported(_response(token: "intervening")))
+        ..queueLoad(PluginManagementLoadResult.failure(error: error))
+        ..queueLoad(_supported(_response(token: "recovered")))
+        ..queueMutation(mutation.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      final command = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+      await service.refresh();
+      final acknowledgment = _success(_response(token: "command-result"));
+      mutation.complete(acknowledgment);
+      expect(await command, same(acknowledgment));
+      final retained = service.snapshots.value as PluginManagementLoadResultSupported;
+      expect(retained.response.snapshotToken, "intervening");
+      expect(retained.refreshError, same(error));
+      await _pump();
+      expect(repository.loadCalls, 3);
+      connection.emitStale();
+      await _waitFor(() => _supportedResponse(service).snapshotToken == "recovered");
+      expect(repository.loadCalls, 4);
+      expect(repository.mutationCalls, 1);
+    });
+
+    for (final invalidation in _ReconciliationInvalidation.values) {
+      test("${invalidation.name} during reconciliation cannot release an old acknowledgment", () async {
+        final mutation = Completer<PluginManagementMutationResult>();
+        final reconciliation = Completer<PluginManagementLoadResult>();
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueLoad(_supported(_response(token: "intervening")))
+          ..queueLoad(reconciliation.future)
+          ..queueMutation(mutation.future);
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+        );
+        addTearDown(() async {
+          await service.onDispose();
+          await connection.dispose();
+        });
+        await _waitFor(() => service.snapshots.hasValue);
+        final command = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+        await service.refresh();
+        mutation.complete(_success(_response(token: "command-result")));
+        await _waitFor(() => repository.loadCalls == 3);
+
+        switch (invalidation) {
+          case _ReconciliationInvalidation.disconnect:
+            connection.emitStatus(const ConnectionStatus.disconnected());
+          case _ReconciliationInvalidation.reconnect:
+            repository.queueLoad(_supported(_response(token: "reconnected")));
+            connection
+              ..emitStatus(const ConnectionStatus.disconnected())
+              ..emitStatus(_connected);
+          case _ReconciliationInvalidation.bridgeReplacement:
+            repository.queueLoad(_supported(_response(token: "confirmed", bridgeId: "br_b")));
+          case _ReconciliationInvalidation.disposal:
+            unawaited(service.onDispose());
+          case _ReconciliationInvalidation.unsupported:
+            break;
+        }
+        await _pump();
+        reconciliation.complete(switch (invalidation) {
+          _ReconciliationInvalidation.bridgeReplacement => _supported(
+            _response(token: "replacement", bridgeId: "br_b"),
+          ),
+          _ReconciliationInvalidation.unsupported => const PluginManagementLoadResult.unsupported(),
+          _ => _supported(_response(token: "reconciled")),
+        });
+        expect(await command, isA<PluginManagementMutationResultUncertain>());
+        expect(repository.mutationCalls, 1);
+        switch (invalidation) {
+          case _ReconciliationInvalidation.disconnect:
+            expect(service.snapshots.value, isA<PluginManagementLoadResultLoading>());
+          case _ReconciliationInvalidation.reconnect:
+            await _waitFor(() => service.snapshots.value is PluginManagementLoadResultSupported);
+            expect(_supportedResponse(service).snapshotToken, "reconnected");
+          case _ReconciliationInvalidation.bridgeReplacement:
+            expect(_supportedResponse(service).snapshotToken, "confirmed");
+          case _ReconciliationInvalidation.disposal:
+            expect(_supportedResponse(service).snapshotToken, "intervening");
+          case _ReconciliationInvalidation.unsupported:
+            expect(service.snapshots.value, isA<PluginManagementLoadResultUnsupported>());
+        }
+      });
+    }
 
     test("disconnect during a mutation returns uncertain without publishing its response", () async {
       final mutation = Completer<PluginManagementMutationResult>();
@@ -616,10 +873,13 @@ void main() {
       expect(service.snapshots.value, isA<PluginManagementLoadResultLoading>());
     });
 
-    test("repository uncertain schedules a clean GET before returning", () async {
+    test("repository uncertainty survives an active idle enabled snapshot", () async {
+      final active = _response(token: "authoritative").copyWith(
+        plugins: [_conflict(const []).current.copyWith(runtimeState: PluginRuntimeState.active)],
+      );
       final repository = _FakePluginRepository()
         ..queueLoad(_supported(_response(token: "initial")))
-        ..queueLoad(_supported(_response(token: "authoritative")))
+        ..queueLoad(_supported(active))
         ..queueMutation(const PluginManagementMutationResult.uncertain());
       final connection = _FakeConnectionService(initialStatus: _connected);
       final service = PluginManagementService(
@@ -706,6 +966,41 @@ void main() {
       expect(repository.loadCalls, 3);
       expect(_supportedResponse(service).bridgeId, "br_b");
       expect(_supportedResponse(service).snapshotToken, "b2");
+    });
+
+    test("identity mismatch after an intervening GET still fences all captured responses", () async {
+      final firstResponse = Completer<PluginManagementMutationResult>();
+      final lateResponse = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueLoad(_supported(_response(token: "intervening")))
+        ..queueLoad(_supported(_response(token: "confirmed")))
+        ..queueLoad(_supported(_response(token: "after-late")))
+        ..queueMutation(firstResponse.future)
+        ..queueMutation(lateResponse.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      final first = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable());
+      final late = service.command(pluginId: "two", request: const PluginLifecycleCommandRequest.enable());
+      await service.refresh();
+      firstResponse.complete(_success(_response(token: "wrong-bridge", bridgeId: "br_b")));
+      expect(await first, isA<PluginManagementMutationResultUncertain>());
+      expect(_supportedResponse(service).snapshotToken, "confirmed");
+      // Even when the clean GET restores br_a, this request's epoch is gone.
+      lateResponse.complete(_success(_response(token: "old-br-a")));
+      expect(await late, isA<PluginManagementMutationResultUncertain>());
+      expect(_supportedResponse(service).snapshotToken, "after-late");
+      expect(repository.loadCalls, 4);
+      expect(repository.mutationCalls, 2);
     });
 
     test("offline mutations fail without dispatch", () async {
@@ -900,20 +1195,28 @@ void main() {
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 30);
       await _pump();
       expect(
-        service.installProgress.value,
-        const {"codex": PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 30)},
+        service.installStates.value,
+        const {
+          "codex": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 30),
+          ),
+        },
       );
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.extracting);
       await _pump();
       expect(
-        service.installProgress.value,
-        const {"codex": PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null)},
+        service.installStates.value,
+        const {
+          "codex": PluginInstallState.inProgress(
+            progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+          ),
+        },
       );
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
       await _pump();
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       // The terminal outcome does not itself refresh; the bridge's snapshot
       // invalidation does, exactly as for any other management change.
       expect(repository.loadCalls, 1);
@@ -921,6 +1224,135 @@ void main() {
       // report — otherwise the metric would count surfaces, not installs.
       expect(reportedEvents, isEmpty);
     });
+
+    test("authentication-required setup clears a stale install failure without starting login", () async {
+      final missing = _conflict([]).current
+          .copyWith(setup: _conflict([]).current.setup.copyWith(state: PluginSetupState.runtimeMissing));
+      final loginRequired = missing.copyWith(
+        setup: missing.setup.copyWith(state: PluginSetupState.authenticationRequired),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "two").copyWith(plugins: [loginRequired])));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect(service.installStates.value["one"], const PluginInstallState.failed());
+
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(service.authenticationChallenges.value, isEmpty);
+      expect(reportedEvents, isEmpty);
+    });
+
+    test("failed installs replay, survive missing snapshots, recover, and reset on disconnect", () async {
+      final missing = _conflict([]).current
+          .copyWith(setup: _conflict([]).current.setup.copyWith(state: PluginSetupState.runtimeMissing));
+      final ready = missing.copyWith(setup: missing.setup.copyWith(state: PluginSetupState.ready));
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "two").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "three").copyWith(plugins: [ready])));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect((await service.installStates.first)["one"], const PluginInstallState.failed());
+      final emittedStates = <Map<String, PluginInstallState>>[];
+      final subscription = service.installStates.listen(emittedStates.add);
+      addTearDown(subscription.cancel);
+      await _pump();
+      emittedStates.clear();
+
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value["one"], const PluginInstallState.failed());
+      expect(emittedStates, isEmpty, reason: "An unchanged snapshot is not an install-state update.");
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(emittedStates, [<String, PluginInstallState>{}], reason: "Ready recovery publishes the cleared failure.");
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.downloading, percent: 10);
+      await _pump();
+      expect(service.installStates.value["one"], isA<PluginInstallInProgress>());
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      connection.emitStatus(const ConnectionStatus.disconnected());
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(reportedEvents, isEmpty);
+    });
+
+    for (final response in [
+      _success(_response(token: "accepted")),
+      const PluginManagementMutationResult.uncertain(),
+      PluginManagementMutationResult.failure(error: ApiError.generic()),
+    ]) {
+      for (final terminal in [PluginInstallPhase.failed, PluginInstallPhase.completed]) {
+        test("early $terminal survives ${response.runtimeType} and retry clears failure", () async {
+          final mutation = Completer<PluginManagementMutationResult>();
+          final repository = _FakePluginRepository()
+            ..queueLoad(_supported(_response(token: "one")))
+            ..queueMutation(mutation.future)
+            ..queueMutation(const PluginManagementMutationResult.uncertain())
+            ..queueLoad(_supported(_response(token: "two")))
+            ..queueLoad(_supported(_response(token: "three")));
+          final connection = _FakeConnectionService(initialStatus: _connected);
+          final service = PluginManagementService(
+            pluginRepository: repository,
+            connectionService: connection,
+            productAnalyticsService: analytics,
+          );
+          addTearDown(() async {
+            await service.onDispose();
+            await connection.dispose();
+          });
+          await _waitFor(() => service.snapshots.hasValue);
+          final command = service.command(pluginId: "codex", request: const PluginLifecycleCommandRequest.install());
+          connection.emitInstallProgress(pluginId: "codex", phase: terminal);
+          await _pump();
+          if (terminal == PluginInstallPhase.failed) {
+            expect(service.installStates.value["codex"], const PluginInstallState.failed());
+          }
+          mutation.complete(response);
+          await command;
+          await _pump();
+          expect(
+            service.installStates.value["codex"],
+            terminal == PluginInstallPhase.failed ? const PluginInstallState.failed() : null,
+          );
+          expect(reportedEvents.single.parameters, {"outcome": terminal.name});
+          if (terminal == PluginInstallPhase.failed) {
+            final retry = service.command(pluginId: "codex", request: const PluginLifecycleCommandRequest.install());
+            expect(service.installStates.value["codex"], isA<PluginInstallInProgress>());
+            await retry;
+            expect(reportedEvents, hasLength(1));
+          }
+        });
+      }
+    }
 
     test("reports the outcome only for an install this app started", () async {
       final repository = _FakePluginRepository()
@@ -983,7 +1415,7 @@ void main() {
       );
       // The row is busy from the tap, before any progress event arrives.
       await _pump();
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       // A cached install can finish inside the request round trip.
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
@@ -995,7 +1427,7 @@ void main() {
       await _pump();
 
       expect(reportedEvents.single.parameters, {"outcome": "completed"});
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
     });
 
     test("the row stays busy from acceptance until the first progress event", () async {
@@ -1022,18 +1454,20 @@ void main() {
 
       // Accepted, but the bridge has not reported a phase yet: the harness must
       // still read as installing so the row cannot be tapped again.
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 5);
       await _pump();
       expect(
-        service.installProgress.value["codex"],
-        const PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 5),
+        service.installStates.value["codex"],
+        const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 5),
+        ),
       );
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
       await _pump();
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
     });
 
     test("a reconnect during an unresolved install command leaves no busy row", () async {
@@ -1059,18 +1493,18 @@ void main() {
         request: const PluginLifecycleCommandRequest.install(),
       );
       await _pump();
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       connection.emitStatus(const ConnectionStatus.disconnected());
       await _pump();
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
 
       // The orphaned command resolving later must not resurrect the row.
       mutation.complete(_success(_response(token: "one")));
       await command;
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       expect(reportedEvents, isEmpty);
     });
 
@@ -1099,12 +1533,12 @@ void main() {
 
       // The command may still have reached the bridge, so Install must not
       // become tappable and start a second download.
-      expect(service.installProgress.value.containsKey("codex"), isTrue);
+      expect(service.installStates.value.containsKey("codex"), isTrue);
 
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       expect(reportedEvents.single.parameters, {"outcome": "completed"});
     });
 
@@ -1139,7 +1573,7 @@ void main() {
       await command;
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
       expect(reportedEvents.single.parameters, {"outcome": "completed"});
     });
 
@@ -1167,7 +1601,7 @@ void main() {
 
       // A rejected command must also release the busy row, or Install could
       // never be retried.
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
 
       // The bridge never accepted it, so a later install of the same harness
       // (started elsewhere) is not this app's outcome.
@@ -1196,12 +1630,12 @@ void main() {
       await _waitFor(() => service.snapshots.hasValue);
       connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.downloading, percent: 10);
       await _pump();
-      expect(service.installProgress.value, isNotEmpty);
+      expect(service.installStates.value, isNotEmpty);
 
       connection.emitStatus(const ConnectionStatus.disconnected());
       await _pump();
 
-      expect(service.installProgress.value, isEmpty);
+      expect(service.installStates.value, isEmpty);
     });
   });
 }
@@ -1277,6 +1711,8 @@ class _FakePluginRepository() implements PluginRepository {
   final Queue<Future<PluginManagementMutationResult>> _mutations = Queue();
   final Queue<Future<PluginAuthenticationStartResult>> _authenticationStarts = Queue();
   final Queue<Future<PluginAuthenticationCancelResult>> _authenticationCancels = Queue();
+  final Queue<Future<PluginAuthenticationContinuationResult>> _authenticationContinuations = Queue();
+  final List<Uri> authenticationRedirects = [];
   int loadCalls = 0;
   int mutationCalls = 0;
 
@@ -1294,6 +1730,19 @@ class _FakePluginRepository() implements PluginRepository {
 
   void queueAuthenticationCancel(FutureOr<PluginAuthenticationCancelResult> result) {
     _authenticationCancels.add(Future<PluginAuthenticationCancelResult>.value(result));
+  }
+
+  void queueAuthenticationContinuation(FutureOr<PluginAuthenticationContinuationResult> result) {
+    _authenticationContinuations.add(Future<PluginAuthenticationContinuationResult>.value(result));
+  }
+
+  @override
+  Future<PluginAuthenticationContinuationResult> submitAuthenticationRedirect({
+    required String pluginId,
+    required Uri redirectUri,
+  }) {
+    authenticationRedirects.add(redirectUri);
+    return _authenticationContinuations.removeFirst();
   }
 
   @override

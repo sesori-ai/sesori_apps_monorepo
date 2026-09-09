@@ -8,7 +8,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -16,7 +15,15 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 import "../../helpers/voice_test_helpers.dart";
 
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
+class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService {
+  this {
+    when(() => loadMetadata(sessionId: any(named: "sessionId"))).thenAnswer(
+      (invocation) async => SessionDetailMetadataLoadResult.found(
+        session: testSession(id: invocation.namedArguments[#sessionId] as String),
+      ),
+    );
+  }
+}
 
 class MockSessionRepository() extends Mock implements SessionRepository;
 
@@ -35,6 +42,9 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailScreen(
+        auditView: false,
+        onBack: null,
+        onClose: null,
         projectId: "project-1",
         projectName: null,
         sessionId: "session-1",
@@ -47,6 +57,7 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
 SessionDetailLoadResult _loadedResult() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -71,6 +82,7 @@ SessionDetailLoadResult _loadedResult() {
 SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
   return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: const [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -95,6 +107,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
 SessionDetailLoadResult _loadedResultWithPendingQuestion() {
   return const SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
+      areOptionsStale: false,
       bridgeQueuedPrompts: [],
       projectId: "project-1",
       pluginId: "opencode",
@@ -140,11 +153,15 @@ void _registerDependencies({
 
   getIt.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
   getIt.registerSingleton<SessionDetailLoadService>(loadService);
+  getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
+  getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
   getIt.registerSingleton<SessionRepository>(promptDispatcher);
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
   getIt.registerSingleton<SessionViewingService>(sessionViewingService);
   getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
   getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
+  final routeSource = MockRouteSource(initialRoute: AppRouteDef.sessionDetail);
+  getIt.registerSingleton<RouteSource>(routeSource, dispose: (_) => routeSource.dispose());
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
@@ -192,6 +209,11 @@ void main() {
       ),
     );
 
+    when(
+      () => notificationCanceller.cancelForSession(
+        sessionId: any(named: "sessionId"),
+      ),
+    ).thenAnswer((_) async {});
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEvents.stream);
     when(() => connectionService.events).thenAnswer((_) => globalEvents.stream);
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
@@ -211,13 +233,13 @@ void main() {
 
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResult());
     when(
       () => loadService.reload(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResult());
@@ -246,7 +268,7 @@ void main() {
     final loadCompleter = Completer<SessionDetailLoadResult>();
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) => loadCompleter.future);
@@ -268,7 +290,7 @@ void main() {
   testWidgets("shows carried title on failed load and keeps retry wired to reload", (tester) async {
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => const SessionDetailLoadResult.failed(error: Object(), stackTrace: null));
@@ -284,7 +306,7 @@ void main() {
 
     verify(
       () => loadService.reload(
-        sessionId: "session-1",
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).called(1);
@@ -293,7 +315,7 @@ void main() {
   testWidgets("canonical title overrides the carried route title", (tester) async {
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
@@ -308,7 +330,7 @@ void main() {
   testWidgets("later SSE title update still overrides the currently loaded title", (tester) async {
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) async => _loadedResultWithCanonicalTitle("Canonical title"));
@@ -338,7 +360,7 @@ void main() {
     final loadCompleter = Completer<SessionDetailLoadResult>();
     when(
       () => loadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer((_) => loadCompleter.future);

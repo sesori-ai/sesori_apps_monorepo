@@ -14,6 +14,7 @@ import "../foundation/relay_client.dart";
 /// `ControlChannelClient.send` directly.
 ///
 /// Observed triggers — all push-based, no timers:
+/// - startup: authentication/registration/relay progress, including server waits;
 /// - plugin health: the lifecycle service's ordered eligible-plugin metadata
 ///   snapshots, reduced to degraded when any eligible plugin is degraded or
 ///   failed and healthy otherwise (eligibility is not runtime residency);
@@ -34,9 +35,7 @@ import "../foundation/relay_client.dart";
 /// pushed exactly once (no periodic spam).
 class ControlStatusNotifier({
   required final ControlChannelClient _client,
-  required final Stream<List<PluginMetadata>> _pluginMetadata,
-  required final Stream<RelayConnectionState> _relayConnectionState,
-  required final Stream<String> _registrations,
+  required final Stream<ControlStartupState> _startupState,
 }) {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
@@ -46,6 +45,7 @@ class ControlStatusNotifier({
   ControlRelayConnectionState _relay = ControlRelayConnectionState.disconnected;
   ControlPluginHealthState _plugin = ControlPluginHealthState.unknown;
   int _activeSessionCount = 0;
+  ControlStartupState _startup = ControlStartupState.starting;
   ControlStatus? _lastSentStatus;
   String? _bridgeId;
   bool _started = false;
@@ -55,10 +55,25 @@ class ControlStatusNotifier({
   void start() {
     if (_started) return;
     _started = true;
-    _pluginMetadata.listen(_handlePluginMetadata).addTo(_subscriptions);
-    _relayConnectionState.listen(_handleRelayConnectionState).addTo(_subscriptions);
-    _registrations.listen(_handleRegistered).addTo(_subscriptions);
+    _startupState
+        .listen((state) {
+          _startup = state;
+          _pushStatus();
+        })
+        .addTo(_subscriptions);
     _client.connectionState.listen(_handleControlChannelState).addTo(_subscriptions);
+  }
+
+  /// Attach live runtime sources once composition completes. Startup status is
+  /// already available while authentication is waiting for the network.
+  void observeRuntime({
+    required Stream<List<PluginMetadata>> pluginMetadata,
+    required Stream<RelayConnectionState> relayConnectionState,
+    required Stream<String> registrations,
+  }) {
+    pluginMetadata.listen(_handlePluginMetadata).addTo(_subscriptions);
+    relayConnectionState.listen(_handleRelayConnectionState).addTo(_subscriptions);
+    registrations.listen(_handleRegistered).addTo(_subscriptions);
   }
 
   Future<void> dispose() async {
@@ -118,6 +133,7 @@ class ControlStatusNotifier({
 
   void _pushStatus({bool force = false}) {
     final status = ControlStatus(
+      startup: _startup,
       relay: _relay,
       plugin: _plugin,
       activeSessionCount: _activeSessionCount,

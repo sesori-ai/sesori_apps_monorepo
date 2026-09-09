@@ -194,33 +194,35 @@ $PluginSetupMetadataCopyWith<$Res> get setup {
 PluginAuthenticationChallengeResponse _$PluginAuthenticationChallengeResponseFromJson(
   Map<String, dynamic> json
 ) {
-    return PluginAuthenticationDeviceCodeChallengeResponse.fromJson(
-      json
-    );
+        switch (json['type']) {
+                  case 'deviceCode':
+          return PluginAuthenticationDeviceCodeChallengeResponse.fromJson(
+            json
+          );
+                case 'browser':
+          return PluginAuthenticationBrowserChallengeResponse.fromJson(
+            json
+          );
+        
+          default:
+            return PluginAuthenticationUnknownChallengeResponse.fromJson(
+  json
+);
+        }
+      
 }
 
 /// @nodoc
 mixin _$PluginAuthenticationChallengeResponse {
 
- PluginAuthenticationChallengeType get type; String get verificationUrl; String get userCode;
+
 
   /// Serializes this PluginAuthenticationChallengeResponse to a JSON map.
   Map<String, dynamic> toJson();
 
 
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationChallengeResponse&&(identical(other.type, type) || other.type == type)&&(identical(other.verificationUrl, verificationUrl) || other.verificationUrl == verificationUrl)&&(identical(other.userCode, userCode) || other.userCode == userCode));
-}
 
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,type,verificationUrl,userCode);
 
-@override
-String toString() {
-  return 'PluginAuthenticationChallengeResponse(type: $type, verificationUrl: $verificationUrl, userCode: $userCode)';
-}
 
 
 }
@@ -233,12 +235,15 @@ String toString() {
 @JsonSerializable()
 
 class PluginAuthenticationDeviceCodeChallengeResponse implements PluginAuthenticationChallengeResponse {
-  const PluginAuthenticationDeviceCodeChallengeResponse({this.type = PluginAuthenticationChallengeType.deviceCode, required this.verificationUrl, required this.userCode});
+  const PluginAuthenticationDeviceCodeChallengeResponse({required this.verificationUrl, required this.userCode,  String? $type}): $type = $type ?? 'deviceCode';
   factory PluginAuthenticationDeviceCodeChallengeResponse.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationDeviceCodeChallengeResponseFromJson(json);
 
-@override@JsonKey() final  PluginAuthenticationChallengeType type;
-@override final  String verificationUrl;
-@override final  String userCode;
+ final  String verificationUrl;
+ final  String userCode;
+
+@JsonKey(name: 'type')
+final String $type;
+
 
 
 @override
@@ -246,19 +251,109 @@ Map<String, dynamic> toJson() {
   return _$PluginAuthenticationDeviceCodeChallengeResponseToJson(this, );
 }
 
-@override
-bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationDeviceCodeChallengeResponse&&(identical(other.type, type) || other.type == type)&&(identical(other.verificationUrl, verificationUrl) || other.verificationUrl == verificationUrl)&&(identical(other.userCode, userCode) || other.userCode == userCode));
+
+
+
+
 }
 
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode => Object.hash(runtimeType,type,verificationUrl,userCode);
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationBrowserChallengeResponse implements PluginAuthenticationChallengeResponse {
+  const PluginAuthenticationBrowserChallengeResponse({required this.authorizationUrl, required this.expectedCallbackUrl,  String? $type}): $type = $type ?? 'browser';
+  factory PluginAuthenticationBrowserChallengeResponse.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationBrowserChallengeResponseFromJson(json);
+
+ final  String authorizationUrl;
+ final  String expectedCallbackUrl;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
 
 @override
-String toString() {
-  return 'PluginAuthenticationChallengeResponse.deviceCode(type: $type, verificationUrl: $verificationUrl, userCode: $userCode)';
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationBrowserChallengeResponseToJson(this, );
 }
+
+
+
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class PluginAuthenticationUnknownChallengeResponse implements PluginAuthenticationChallengeResponse {
+  const PluginAuthenticationUnknownChallengeResponse({ String? $type}): $type = $type ?? 'unknown';
+  factory PluginAuthenticationUnknownChallengeResponse.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationUnknownChallengeResponseFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationUnknownChallengeResponseToJson(this, );
+}
+
+
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$PluginAuthenticationRedirectRequest {
+
+ String get redirectUrl;
+
+  /// Serializes this PluginAuthenticationRedirectRequest to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _PluginAuthenticationRedirectRequest implements PluginAuthenticationRedirectRequest {
+  const _PluginAuthenticationRedirectRequest({required this.redirectUrl});
+  factory _PluginAuthenticationRedirectRequest.fromJson(Map<String, dynamic> json) => _$PluginAuthenticationRedirectRequestFromJson(json);
+
+@override final  String redirectUrl;
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$PluginAuthenticationRedirectRequestToJson(this, );
+}
+
+
+
 
 
 }

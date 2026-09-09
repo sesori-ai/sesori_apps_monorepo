@@ -16,6 +16,8 @@ import "../repositories/deepseek_catalog_repository.dart";
 import "../repositories/deepseek_history_repository.dart";
 import "../repositories/deepseek_session_repository.dart";
 import "../repositories/mappers/deepseek_catalog_mapper.dart";
+import "../repositories/mappers/deepseek_subagent_mapper.dart";
+import "../repositories/trackers/deepseek_delegation_tracker.dart";
 import "../services/deepseek_session_options_service.dart";
 import "../services/deepseek_session_service.dart";
 import "deepseek_runtime_manifest.dart";
@@ -23,7 +25,7 @@ import "deepseek_runtime_manifest.dart";
 const int _probeOutputLimit = 64 * 1024;
 
 class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
-  static const String minVersion = "0.1.0";
+  static const String minVersion = DeepSeekRuntimeManifest.minimumVersion;
   static const String targetVersion = DeepSeekRuntimeManifest.targetVersion;
   static const String binOption = "bin";
   static const Duration _probeTimeout = Duration(seconds: 10);
@@ -80,19 +82,26 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   }
 
   @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: DeepSeekRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
+
+  @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
     const manifest = DeepSeekRuntimeManifest();
-    yield* ManagedRuntimeProvisionService(
-      manifest: manifest,
-      selectionService: ManagedRuntimeSelectionService(
-        manifest: manifest,
-        versionValidator: _versionValidator(processes: host.processes),
-      ),
-      fallbackExecutableCandidates: const [],
-    ).provision(
-      host: host,
-      explicitExecutablePath: _explicitBin(config: host.config),
-    );
+    yield* const ManagedRuntimeComposition()
+        .createProvisioner(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: host.processes),
+          fallbackExecutableCandidates: const [],
+        )
+        .provision(
+          host: host,
+          explicitExecutablePath: _explicitBin(config: host.config),
+        );
   }
 
   @override
@@ -102,28 +111,24 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     required Map<String, String> environment,
     required String stateDirectory,
     required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
   }) async* {
     const manifest = DeepSeekRuntimeManifest();
     final commandExecutor = _executor(processes);
     final httpClient = http.Client();
     try {
-      final service = ManagedRuntimeInstallService(
+      final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
-        versionValidator: _versionValidator(processes: processes),
-        installService: RuntimeInstallService(
-          downloadClient: BinaryDownloadClient(httpClient: httpClient),
-          checksumValidator: ChecksumValidator(),
-          archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
-          commandExecutor: commandExecutor,
-          runtimeId: manifest.runtimeId,
-        ),
-        cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
+        candidateValidator: _versionValidator(processes: processes),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* service.install(
         environment: environment,
         stateDirectory: stateDirectory,
         startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
       );
     } finally {
       httpClient.close();
@@ -143,13 +148,13 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         await ManagedRuntimeSelectionService(
           manifest: manifest,
           versionValidator: _versionValidator(processes: processes),
+          inventory: const ManagedRuntimeInventory(manifest: manifest),
         ).select(
           explicitExecutablePath: explicit,
           fallbackExecutableCandidates: const [],
           environment: environment,
           stateDirectory: stateDirectory,
           abortSignal: StartAbortSignal.never,
-          managedVersionPolicy: ManagedRuntimeVersionPolicy.exact,
         );
     switch (selection) {
       case ManagedRuntimeSelected(:final binaryPath, :final version):
@@ -217,6 +222,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   }
 
   HostProcessCommandExecutor _executor(HostProcessService processes) => HostProcessCommandExecutor(
+    includeParentEnvironment: true,
     processes: processes,
     runInShell: io.Platform.isWindows,
     maxCapturedOutputCharactersPerStream: _probeOutputLimit,
@@ -236,14 +242,20 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     final processFactory = hostProcessAcpFactory(processes: host.processes, environment: host.environment);
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     const messageTimeParser = DeepSeekMessageTimeParser();
+    const subagentMapper = DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id);
+    final delegationTracker = DeepSeekDelegationTracker();
     final mapper = DeepSeekEventMapper(
       launchDirectory: cwd,
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
       api: api,
       messageTimeParser: messageTimeParser,
+      subagentMapper: subagentMapper,
+      delegationTracker: delegationTracker,
     );
     const catalogMapper = DeepSeekCatalogMapper();
     const catalogRepository = DeepSeekCatalogRepository(api: api, mapper: catalogMapper);
@@ -261,6 +273,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         environment: const {},
       ),
       launchDirectory: cwd,
+      childSessionTracker: childSessionTracker,
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(
@@ -268,9 +281,12 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         eventMapper: mapper,
         pluginId: DeepSeekIdentity.id,
         messageTimeParser: messageTimeParser,
+        subagentMapper: subagentMapper,
       ),
-      deepSeekSessionService: const DeepSeekSessionService(
-        repository: DeepSeekSessionRepository(api: api),
+      deepSeekSessionService: DeepSeekSessionService(
+        repository: const DeepSeekSessionRepository(api: api),
+        childSessions: childSessionTracker,
+        minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
       ),
       deepSeekSessionOptionsService: deepSeekOptions,
       commandTracker: commandTracker,

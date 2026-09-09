@@ -14,6 +14,7 @@ sesori_apps_monorepo/
 │   sesori_plugin_opencode/     # OpenCode backend plugin
 │   sesori_plugin_codex/        # Codex backend plugin
 │   sesori_plugin_acp/          # Agent Client Protocol backend plugin
+│   sesori_plugin_antigravity/  # Google Antigravity ACP backend plugin
 │   sesori_plugin_cursor/       # Cursor ACP backend plugin
 │   sesori_plugin_copilot/      # GitHub Copilot ACP backend plugin
 │   sesori_plugin_grok/         # Grok Build ACP backend plugin
@@ -46,6 +47,7 @@ graph TD
   bridge_app --> sesori_plugin_opencode[bridge/sesori_plugin_opencode]
   bridge_app --> sesori_plugin_codex[bridge/sesori_plugin_codex]
   bridge_app --> sesori_plugin_acp[bridge/sesori_plugin_acp]
+  bridge_app --> sesori_plugin_antigravity[bridge/sesori_plugin_antigravity]
   bridge_app --> sesori_plugin_cursor[bridge/sesori_plugin_cursor]
   bridge_app --> sesori_plugin_copilot[bridge/sesori_plugin_copilot]
   bridge_app --> sesori_plugin_grok[bridge/sesori_plugin_grok]
@@ -69,6 +71,11 @@ graph TD
   sesori_plugin_acp --> sesori_plugin_interface
   sesori_plugin_acp --> sesori_bridge_foundation
   sesori_plugin_acp --> sesori_shared
+  sesori_plugin_antigravity --> sesori_plugin_interface
+  sesori_plugin_antigravity --> sesori_bridge_foundation
+  sesori_plugin_antigravity --> sesori_plugin_acp
+  sesori_plugin_antigravity --> sesori_plugin_runtime
+  sesori_plugin_antigravity --> sesori_shared
   sesori_plugin_cursor --> sesori_plugin_interface
   sesori_plugin_cursor --> sesori_bridge_foundation
   sesori_plugin_cursor --> sesori_plugin_acp
@@ -122,12 +129,118 @@ At runtime, the components form a simple pipeline:
 
 ```mermaid
 graph LR
-  OC["AI Assistant<br/>(localhost)"] -- "HTTP + SSE" --> B["Bridge CLI<br/>(your machine)"]
+  OC["AI Assistant<br/>(localhost)"] -- "Plugin-owned local transport" --> B["Bridge CLI<br/>(your machine)"]
   B -- "WSS · E2E encrypted" --> R["Relay Server<br/>(cloud)"]
   R -- "WSS · E2E encrypted" --> M["Mobile App<br/>(your phone)"]
 ```
 
 See [HOW_IT_WORKS.md](HOW_IT_WORKS.md) for the full breakdown of each hop and the encryption handshake.
+
+## Catalog ownership and the plugin boundary
+
+The bridge owns the durable catalog of projects, sessions, and their
+relationships. Plugins are execution harnesses and capability providers; they are
+not the normal source for project and session list reads. Normal list requests
+read only from the bridge-owned catalog and never enumerate enabled plugins, so
+read cost depends on the returned page rather than on plugin count or the health
+of the slowest backend.
+
+The catalog is authoritative for what Sesori knows and presents. A plugin remains
+authoritative for whether its backend can execute or resume an operation right
+now. Persisting a last-known session does not prove the backend can still open
+it; a temporarily unavailable plugin does not invalidate the durable entity.
+
+**Sesori owns** projects and sessions known to Sesori, project-to-session and
+parent-to-child relationships, plugin binding and backend-handle attribution,
+bridge-owned names and archive or deletion intent, worktree, base-branch and
+prompt-default metadata, unseen and activity state, and catalog provenance.
+
+**Plugins own** agent execution and backend runtime state, transport and process
+lifecycle, backend capabilities, models, agents, variants and commands, the
+actual current operability of a backend session, and transcript retrieval.
+
+### Update semantics
+
+- Changes initiated through Sesori write through to the catalog immediately. A
+  session created through Sesori appears at once; it never waits for a later
+  backend enumeration.
+- Plugin events may update list metadata and lifecycle state for sessions already
+  known to Sesori, but they must not discover unrelated external root sessions or
+  projects.
+- Child sessions are the deliberate exception. An event may persist a child only
+  when its parent or ancestor resolves to a known session from the same plugin;
+  the child inherits that ancestry's project and plugin attribution. Nested
+  children form a durable task hierarchy that root session lists exclude and that
+  cascades when a parent is deleted through Sesori. An unresolved child may wait
+  for its parent or use a targeted lookup under a known root; it must not trigger
+  global plugin discovery.
+- Work created directly in a harness enters through an explicit per-plugin
+  **import**, not a sync: `POST`, `DELETE` and `GET /plugin/import` start, cancel
+  and report it, and progress is emitted as plugin-attributed SSE. Import is
+  non-destructive, and absence from a later import means only that the entity was
+  not observed — never that it was deleted. Real unavailability is learned when a
+  targeted operation returns a typed not-found result, not from a transient
+  transport failure.
+
+### Identity
+
+A session separates its Sesori-owned id, the owning plugin id, and the opaque
+backend session handle, with uniqueness enforced per `(plugin_id,
+backend_session_id)`. Session controls resolve the durable binding and pass only
+the backend handle to the owning plugin. Released peers that omit plugin identity
+decode to OpenCode, because that was the only backend they could target; this
+legacy identity is distinct from the enabled order and must never mean "first
+enabled plugin". Projects remain one cross-plugin entity per directory with
+shared hide, name and base-branch metadata. The catalog is per-bridge and does
+not replace the separate multi-bridge addressing axis.
+
+### Parallel runtime
+
+Every registered plugin is eligible unless its id appears in the
+`plugins.disabled` denylist in bridge settings. Eligible plugins are ordered by
+case-insensitive display name, tie-broken by id, and the current default for new
+clients is OpenCode when it is selectable and otherwise the first selectable
+plugin in that order. Plugin-specific CLI options are namespaced per plugin as
+`--<pluginId>-<name>`. The bridge starts, monitors, degrades and stops plugins
+independently, routes session controls through each stored binding, and
+preserves one shared project space across plugins. A plugin outage degrades execution for its bound sessions without
+removing their durable records. The client discovers the bridge-authored ordered
+plugin list, selects its default when routable, and scopes saved agent, model and
+variant choices by project and plugin.
+
+This direction deliberately makes direct harness usage a secondary workflow:
+external work appears after import, and imported metadata may be stale until
+another import or a live event updates it.
+
+### Antigravity boundaries
+
+`sesori_plugin_antigravity` owns Google's runtime pair, release pin, isolated
+profile, personal OAuth validation, metadata recovery and provider normalization.
+Its descriptor composes the existing shared managed installer with an
+initialize-only candidate validator; it does not introduce another installer.
+Inspection is read-only, while installation owns disposable candidate state and
+validates before placement. Linux extractor preflight belongs to the explicit
+installation path, never inspection.
+
+Runtime/profile Storage → Repository → Service boundaries separate filesystem
+access, normalized outcomes and policy. Authentication uses the plugin's ACP
+and loopback clients through repositories/services; the shared lifecycle owns
+the attempt and neutral client challenge. Raw OAuth output is intercepted before
+NDJSON/logging. Actual runtime processes disable parent-environment inheritance;
+archive helpers retain the existing host command-execution policy.
+
+The connection-scoped interaction composer binds repositories/services to the
+real lazy/reconnected ACP client. Shared ACP code owns transport, pending
+interaction lifecycle and session residency; Google-specific fields are
+normalized inside the plugin before live/replay retention. Recovered `.meta`
+directory bindings remain fallbacks beneath bridge/live authority. Google
+history is never a second normal catalog database or a deletion target.
+
+Mobile and desktop share settings, login presentation and chooser widgets.
+They consume `Antigravity` metadata or the raw `antigravity`/plug fallback, not
+Google-specific branches or a new shared harness enum value. See the
+[operator guide](ANTIGRAVITY.md) and [capability matrix](HARNESS_CAPABILITIES.md)
+for supported behavior and the native/authenticated verification gaps.
 
 ## Design principles
 

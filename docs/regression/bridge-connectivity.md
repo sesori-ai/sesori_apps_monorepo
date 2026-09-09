@@ -9,8 +9,13 @@ explicit restart, and the connection states the app presents.
 ## Required Behavior
 
 - A start is ready only after registration, socket open, auth frame sent, listeners and
-  initial summary set up, and the first inbound read armed; earlier failure tears down
-  what was acquired and surfaces the error.
+  initial summary set up, and the first inbound read armed. During startup, temporary
+  authentication, registration and relay connection failures keep the process alive
+  and retry after one minute, without an attempt limit. Every failed attempt prints
+  a Console warning that the server could not be reached and the internet connection
+  may be unavailable; local diagnostics retain the original error and stack trace.
+  Shutdown interrupts the retry wait. Rejected credentials still use the normal login
+  flow, and non-network startup failures surface normally.
 - Relay traffic is end-to-end encrypted and a joining client completes key exchange
   before it is served; one room-key encryptor is shared across that bridge
   session while every encrypted frame receives a fresh nonce.
@@ -23,8 +28,17 @@ explicit restart, and the connection states the app presents.
 - Drops reconnect with bounded backoff and a fresh read iterator; takeover backs off on
   a longer jittered curve, a revoked bridge re-registers, and a token change re-auths.
 - Ordered mutation and event lanes continue processing later work after one operation fails, and graceful shutdown drains work accepted before shutdown began.
+- The bridge forwards only event kinds something consumes. OpenCode editor and
+  runtime housekeeping (PTY, file-watcher, LSP, MCP, installation-updated,
+  workspace and worktree notifications) and Codex MCP startup notices stop
+  inside their plugins; toast, VCS, file-edited, installation-update-available
+  (which feeds the immediate push), command-catalog and lifecycle signals still
+  reach clients. A client ignores an unknown event type from an older bridge.
 - Deliberate shutdown is not an outage; a handshake cancelled mid-flight closes at
   once and can never later authenticate.
+- Client relay disconnect closes active SSE streams and the socket without
+  attempting encrypted sends after disposal. The bridge releases the connection's
+  SSE subscription when it receives the phone-disconnected notification.
 - One live bridge per account holds the slot; a second start resolves ownership
   explicitly, and an explicit restart hands off to its successor cleanly.
 - Bridge registration uses a stable machine name. On macOS, transient
@@ -38,6 +52,12 @@ explicit restart, and the connection states the app presents.
   the supervisor to Start and establishes an authenticated relay client; it
   never falls through to mobile CLI installation or relay-only reconnect
   guidance.
+- Inline connection alerts use a theme-aware rounded card: 16px outer and inner
+  padding, 16px corners, a subtle border and status tint, and a readable medium
+  title. The bridge-disconnected warning remains informational, with its
+  broadcast-off icon and live-region announcement. Its entire padded height
+  participates in the navigation's show/hide animation so the bar and content
+  stay clear of the card and return to their original positions on recovery.
 - The client relay socket pings on an interval, so a silently dead network path
   (Wi-Fi drop, VPN toggle, sleep/wake) surfaces as a socket close and enters
   reconnect within roughly two ping intervals instead of waiting on request
@@ -110,7 +130,7 @@ explicit restart, and the connection states the app presents.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
-| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
+| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
 | L3 Release | The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
 | L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
@@ -122,6 +142,11 @@ backgrounding, token expiry, competing bridge. Vary whether a client is connecte
 the bridge starts, how many clients are present, and whether restart is explicit.
 
 ## Failure Signals
+
+- A temporary startup outage exits the process or exhausts the supervisor crash
+  budget; retries stop, run faster than one minute, or fail to recover when the
+  server returns. Rejected credentials or a permanent WebSocket upgrade error
+  retry forever. Shutdown during a retry wait fails to stop promptly.
 
 - Readiness claimed before registration, auth send, listener setup, or read arming.
 - Plaintext session content crossing the relay, or a client served without key exchange.
@@ -140,6 +165,9 @@ the bridge starts, how many clients are present, and whether restart is explicit
   startup never establishes the desktop relay client.
 - A dead network path leaving the app claiming connected for minutes, or the
   reconnecting banner flashing on every routine foreground resume.
+- An inline connection alert touching the screen edges, losing its rounded
+  clipping or theme contrast, overlapping navigation/content, clipping the
+  disconnected title at standard phone text size, or leaving space after recovery.
 - GUI shutdown unregistering the bridge, emitting login-needed, or exiting with the
   auth-required sentinel because teardown cancelled the bootstrap token request.
 - A forced stop leaving a backend alive, targeting only one process-table snapshot,

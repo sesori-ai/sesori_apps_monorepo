@@ -2,12 +2,65 @@ import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:pi_plugin/pi_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 void main() {
+  group("PiPluginDescriptor.needsManagedRuntimeUpgrade", () {
+    late Directory stateDir;
+
+    setUp(() async {
+      stateDir = await Directory.systemTemp.createTemp("pi-upgrade");
+    });
+
+    tearDown(() async {
+      if (stateDir.existsSync()) await stateDir.delete(recursive: true);
+    });
+
+    void installedVersion(String version) {
+      Directory(p.join(stateDir.path, const PiRuntimeManifest().runtimeId, version)).createSync(recursive: true);
+    }
+
+    test("declines without a superseded managed runtime", () {
+      installedVersion(const PiRuntimeManifest().bundledVersion.raw);
+
+      expect(
+        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("asks for an upgrade when a superseded version is installed", () {
+      installedVersion("0.84.2");
+
+      expect(
+        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () {
+      installedVersion("0.84.2");
+
+      expect(
+        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {PiPluginDescriptor.binOption: "/custom/pi"}),
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+  });
+
   group("PiPluginDescriptor setup", () {
     test("declares Pi capabilities without registering it", () {
       final descriptor = PiPluginDescriptor.production();
@@ -48,8 +101,13 @@ void main() {
       expect(processes.executables, ["pi", contains("/state/pi/0.84.4/pi")]);
     });
 
-    test("inspectSetup checks only version and preserves the environment", () async {
-      final processes = _Processes(outputs: const [_Output(stdout: "pi 0.84.2\n", exitCode: 0)]);
+    test("inspectSetup reports a usable model listing as ready and preserves the environment", () async {
+      final processes = _Processes(
+        outputs: const [
+          _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+          _Output(stdout: "provider      model\nopenai-codex  gpt-5.4\n", exitCode: 0),
+        ],
+      );
       final result = await PiPluginDescriptor.production().inspectSetup(
         config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
         processes: processes,
@@ -57,11 +115,77 @@ void main() {
         stateDirectory: "/state",
       );
 
-      expect(result, const PluginSetupReady());
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.84.2"));
       expect(processes.arguments, [
         const ["--version"],
+        const ["--list-models"],
       ]);
-      expect(processes.environments.single, const {"PI_CODING_AGENT_DIR": "/profile"});
+      expect(processes.environments, everyElement(const {"PI_CODING_AGENT_DIR": "/profile"}));
+    });
+
+    test("inspectSetup reports an empty model listing as authentication required", () async {
+      final result = await PiPluginDescriptor.production().inspectSetup(
+        config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "${PiRpcClient.noModelsDiagnosticPrefix}\n  docs/providers.md\n", exitCode: 0),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(
+        result,
+        isA<PluginSetupAuthenticationRequired>().having((s) => s.runtimeVersion, "runtimeVersion", "0.84.2"),
+      );
+    });
+
+    test("inspectSetup cannot determine setup when the model listing exits non-zero", () async {
+      final result = await PiPluginDescriptor.production().inspectSetup(
+        config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "unreadable catalog\n", exitCode: 2),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
+    });
+
+    test("inspectSetup trusts the no-models diagnostic over a non-zero listing exit", () async {
+      final result = await PiPluginDescriptor.production().inspectSetup(
+        config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
+        processes: _Processes(
+          outputs: const [
+            _Output(stdout: "pi 0.84.2\n", exitCode: 0),
+            _Output(stdout: "${PiRpcClient.noModelsDiagnosticPrefix}\n", exitCode: 1),
+          ],
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupAuthenticationRequired>());
+    });
+
+    test("inspectSetup cannot determine setup when the model listing fails to run", () async {
+      final result = await PiPluginDescriptor.production().inspectSetup(
+        config: const PluginConfig(values: {PiPluginDescriptor.binOption: "pi"}),
+        processes: _Processes(
+          outputs: const [_Output(stdout: "pi 0.84.2\n", exitCode: 0)],
+          spawnErrorAfter: 1,
+        ),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupUnknown>());
     });
 
     test("explicit binary is authoritative and classifies setup failures", () async {
@@ -138,6 +262,7 @@ void main() {
               required catalogTimeout,
               required healthTimeout,
               required resolveIdleTimeout,
+              required idleTimeoutChanges,
               required editorTimeout,
             }) {
               capturedBinaryPath = binaryPath;
@@ -157,6 +282,7 @@ void main() {
                 catalogTimeout: catalogTimeout,
                 healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
+                idleTimeoutChanges: idleTimeoutChanges,
                 editorTimeout: editorTimeout,
               );
             },
@@ -199,6 +325,7 @@ void main() {
               required healthTimeout,
               required resolveIdleTimeout,
               required editorTimeout,
+              required idleTimeoutChanges,
             }) {
               built = _plugin(
                 binaryPath: binaryPath,
@@ -213,6 +340,7 @@ void main() {
                 catalogTimeout: catalogTimeout,
                 healthTimeout: healthTimeout,
                 resolveIdleTimeout: resolveIdleTimeout,
+                idleTimeoutChanges: idleTimeoutChanges,
                 editorTimeout: editorTimeout,
               );
               abort.abort();
@@ -273,6 +401,7 @@ PiPlugin _plugin({
   required Duration catalogTimeout,
   required Duration healthTimeout,
   required Duration? Function() resolveIdleTimeout,
+  required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
 }) => PiPlugin(
   binaryPath: binaryPath,
@@ -287,6 +416,7 @@ PiPlugin _plugin({
   catalogTimeout: catalogTimeout,
   healthTimeout: healthTimeout,
   resolveIdleTimeout: resolveIdleTimeout,
+  idleTimeoutChanges: idleTimeoutChanges,
   editorTimeout: editorTimeout,
 );
 
@@ -299,6 +429,8 @@ class _Host({
 }) implements PluginHost {
   @override
   final StartAbortSignal startAborted = startAborted ?? StartAbortSignal.never;
+  @override
+  Stream<Duration?> get pluginIdleTimeoutChanges => const Stream<Duration?>.empty();
 
   @override
   Map<String, String> get environment => const {"HOME": "/home/test", "PI_CODING_AGENT_DIR": "/profile"};
@@ -318,6 +450,7 @@ class const _Output({required final String stdout, required final int exitCode})
 class _Processes({
   final List<_Output> outputs = const [],
   final Object? spawnError,
+  final int? spawnErrorAfter,
 }) implements HostProcessService {
   final List<String> executables = [];
   final List<List<String>> arguments = [];
@@ -332,11 +465,13 @@ class _Processes({
     required Map<String, String>? environment,
     required String? workingDirectory,
     required bool runInShell,
+    required bool includeParentEnvironment,
   }) async {
     executables.add(executable);
     this.arguments.add(arguments);
     environments.add(environment);
     if (spawnError case final error?) throw error;
+    if (_index == spawnErrorAfter) throw ProcessException(executable, arguments, "spawn failed");
     return _ProbeProcess(output: outputs[_index++]);
   }
 

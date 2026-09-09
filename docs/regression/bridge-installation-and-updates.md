@@ -26,6 +26,9 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   release in place; the running process stays on its old code until the next start. Its
   track is stable by default, internal also takes pre-releases, and a change applies after restart.
   Transient auto-update outages stay quiet and retry on the next cycle.
+- Self-update archive extraction supplies an explicit two-minute per-command budget to the
+  shared extractor, covering both member listing and extraction where separate. Traversal,
+  symlink rejection and timeout diagnostics remain enforced before an update can be adopted.
 - Applying happens in place under a cross-process lock with a durable attempt record and
   log, and can roll back; startup reconciliation is local and network-free, reports the
   prior attempt, and never fails startup. Residue sweeping is best-effort: lock
@@ -74,7 +77,7 @@ after apply. Use a throwaway machine when mutating an install root.
 
 ## Sources
 
-- `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `app/npm/`
+- `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
 - `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
   `bridge/app/bin/bridge.dart` (`update`, `config track`)

@@ -91,6 +91,12 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en')];
 
+  /// No description provided for @sessionDetailHarnessLegacyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your bridge to check harness availability.'**
+  String get sessionDetailHarnessLegacyWarning;
+
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
@@ -481,6 +487,60 @@ abstract class AppLocalizations {
   /// **'Retry YOLO setting'**
   String get settingsYoloRetry;
 
+  /// No description provided for @settingsPluginWarmupTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Warm harness on session open'**
+  String get settingsPluginWarmupTitle;
+
+  /// No description provided for @settingsPluginWarmupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Starts the session\'s harness when you open it to reduce delays on your first action.'**
+  String get settingsPluginWarmupDescription;
+
+  /// No description provided for @settingsPluginWarmupLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading the bridge setting…'**
+  String get settingsPluginWarmupLoading;
+
+  /// No description provided for @settingsPluginWarmupDisconnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to configure this setting.'**
+  String get settingsPluginWarmupDisconnected;
+
+  /// No description provided for @settingsPluginWarmupUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the connected bridge to configure this setting.'**
+  String get settingsPluginWarmupUnsupported;
+
+  /// No description provided for @settingsPluginWarmupLoadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t load the bridge setting. Check your connection and try again.'**
+  String get settingsPluginWarmupLoadFailed;
+
+  /// No description provided for @settingsPluginWarmupUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The update status is unknown. Refresh before trying again.'**
+  String get settingsPluginWarmupUncertain;
+
+  /// No description provided for @settingsPluginWarmupUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
+  String get settingsPluginWarmupUpdateFailed;
+
+  /// No description provided for @settingsPluginWarmupRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry harness warm-up setting'**
+  String get settingsPluginWarmupRetry;
+
   /// No description provided for @settingsPullRequestRefreshTitle.
   ///
   /// In en, this message translates to:
@@ -604,7 +664,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementDefaultsSection.
   ///
   /// In en, this message translates to:
-  /// **'Bridge Default'**
+  /// **'Global harness settings'**
   String get harnessManagementDefaultsSection;
 
   /// No description provided for @harnessManagementDefaultTimeout.
@@ -616,7 +676,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementDefaultTimeoutDescription.
   ///
   /// In en, this message translates to:
-  /// **'Apply this timeout to every harness that supports idle-timeout control.'**
+  /// **'Apply to all harnesses and replace individual overrides.'**
   String get harnessManagementDefaultTimeoutDescription;
 
   /// No description provided for @harnessManagementEnabled.
@@ -628,7 +688,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementRefreshSetup.
   ///
   /// In en, this message translates to:
-  /// **'Refresh setup'**
+  /// **'Check setup'**
   String get harnessManagementRefreshSetup;
 
   /// No description provided for @harnessManagementInstall.
@@ -682,7 +742,7 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementRestart.
   ///
   /// In en, this message translates to:
-  /// **'Restart'**
+  /// **'Restart harness'**
   String get harnessManagementRestart;
 
   /// No description provided for @harnessManagementIdleTimeout.
@@ -751,6 +811,12 @@ abstract class AppLocalizations {
   /// **'Custom timeouts must be a whole number greater than zero.'**
   String get harnessManagementTimeoutHelp;
 
+  /// No description provided for @harnessManagementReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get harnessManagementReview;
+
   /// No description provided for @harnessManagementCancel.
   ///
   /// In en, this message translates to:
@@ -766,8 +832,8 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementForceDisableTitle.
   ///
   /// In en, this message translates to:
-  /// **'Force disable harness?'**
-  String get harnessManagementForceDisableTitle;
+  /// **'Force disable {harnessName}?'**
+  String harnessManagementForceDisableTitle(String harnessName);
 
   /// No description provided for @harnessManagementForceRestartTitle.
   ///
@@ -865,6 +931,18 @@ abstract class AppLocalizations {
   /// **'Security notice. Only continue if you started this login. Verify the website address before entering the code.'**
   String get harnessAuthenticationSecuritySemantics;
 
+  /// No description provided for @harnessAuthenticationBrowserInstructions.
+  ///
+  /// In en, this message translates to:
+  /// **'Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.'**
+  String get harnessAuthenticationBrowserInstructions;
+
+  /// No description provided for @harnessAuthenticationRedirectLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Redirect URL'**
+  String get harnessAuthenticationRedirectLabel;
+
   /// No description provided for @harnessAuthenticationCodeLabel.
   ///
   /// In en, this message translates to:
@@ -937,6 +1015,12 @@ abstract class AppLocalizations {
   /// **'Update the connected bridge to log in from this device.'**
   String get harnessAuthenticationUnsupported;
 
+  /// No description provided for @harnessAuthenticationUpdateRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Update Sesori to continue this harness login.'**
+  String get harnessAuthenticationUpdateRequired;
+
   /// No description provided for @harnessAuthenticationConflict.
   ///
   /// In en, this message translates to:
@@ -955,10 +1039,16 @@ abstract class AppLocalizations {
   /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
   String get harnessAuthenticationInvalidChallenge;
 
+  /// No description provided for @harnessAuthenticationInvalidRedirect.
+  ///
+  /// In en, this message translates to:
+  /// **'Paste the full redirect URL from the local callback page.'**
+  String get harnessAuthenticationInvalidRedirect;
+
   /// No description provided for @harnessAuthenticationBrowserFailed.
   ///
   /// In en, this message translates to:
-  /// **'The secure website could not be opened. Copy the code and try again.'**
+  /// **'The secure website could not be opened. Try again.'**
   String get harnessAuthenticationBrowserFailed;
 
   /// No description provided for @harnessAuthenticationRequestFailed.
@@ -1273,6 +1363,24 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
+  /// No description provided for @settingsSectionSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get settingsSectionSessions;
+
+  /// No description provided for @settingsSectionPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get settingsSectionPreferences;
+
+  /// No description provided for @settingsDefaultInputDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how you default talk to Sesori.'**
+  String get settingsDefaultInputDescription;
+
   /// Settings entry and page title for choosing the default session composer input
   ///
   /// In en, this message translates to:
@@ -1560,6 +1668,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get sessionDetailRetry;
+
+  /// Action that refreshes harness availability after authentication may have been restored elsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Recheck'**
+  String get sessionDetailRecheck;
 
   /// No description provided for @sessionDetailPromptHint.
   ///
@@ -2041,6 +2155,12 @@ abstract class AppLocalizations {
   /// **'Queued command'**
   String get sessionDetailQueuedCommand;
 
+  /// No description provided for @sessionDetailUnavailableCommand.
+  ///
+  /// In en, this message translates to:
+  /// **'Command unavailable'**
+  String get sessionDetailUnavailableCommand;
+
   /// No description provided for @sessionDetailSendingMessage.
   ///
   /// In en, this message translates to:
@@ -2065,11 +2185,23 @@ abstract class AppLocalizations {
   /// **'Provider login required'**
   String get sessionDetailAuthenticationRequired;
 
+  /// No description provided for @sessionDetailCommandUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'That command is no longer available. Remove it from the queue to continue.'**
+  String get sessionDetailCommandUnavailable;
+
   /// No description provided for @sessionDetailCancelQueued.
   ///
   /// In en, this message translates to:
   /// **'Cancel'**
   String get sessionDetailCancelQueued;
+
+  /// No description provided for @sessionDetailRemoveQueued.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get sessionDetailRemoveQueued;
 
   /// No description provided for @sessionDetailPickerAgent.
   ///
@@ -2383,24 +2515,6 @@ abstract class AppLocalizations {
   /// **'{count, plural, =1{1 background task} other{{count} background tasks}}'**
   String sessionListBackgroundTasks(int count);
 
-  /// No description provided for @sessionListStaleProjectTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Project directory not found'**
-  String get sessionListStaleProjectTitle;
-
-  /// No description provided for @sessionListStaleProjectMessage.
-  ///
-  /// In en, this message translates to:
-  /// **'The directory for this project no longer exists or has been renamed. Sessions cannot be loaded because the server can no longer resolve this project.'**
-  String get sessionListStaleProjectMessage;
-
-  /// No description provided for @sessionListStaleProjectBack.
-  ///
-  /// In en, this message translates to:
-  /// **'Go back'**
-  String get sessionListStaleProjectBack;
-
   /// No description provided for @voiceRecord.
   ///
   /// In en, this message translates to:
@@ -2478,12 +2592,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The saved recording is no longer available. Record again or type instead.'**
   String get voiceErrorSavedRecordingMissing;
-
-  /// No description provided for @voiceErrorNetwork.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not reach the server. Check your connection.'**
-  String get voiceErrorNetwork;
 
   /// No description provided for @voiceErrorNotAuthenticated.
   ///
@@ -2773,18 +2881,6 @@ abstract class AppLocalizations {
   /// **'Save'**
   String get renameSave;
 
-  /// No description provided for @renameSessionSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Session renamed'**
-  String get renameSessionSuccess;
-
-  /// No description provided for @renameProjectSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Project renamed'**
-  String get renameProjectSuccess;
-
   /// No description provided for @renameSessionFailed.
   ///
   /// In en, this message translates to:
@@ -2916,6 +3012,96 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'This session is archived and read-only.'**
   String get sessionDetailArchivedNotice;
+
+  /// No description provided for @sessionDetailHarnessFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'This harness'**
+  String get sessionDetailHarnessFallbackName;
+
+  /// No description provided for @sessionDetailHarnessDisabledReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is disabled.'**
+  String sessionDetailHarnessDisabledReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessAuthenticationReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to {harnessName} to continue.'**
+  String sessionDetailHarnessAuthenticationReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessRuntimeMissingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is not installed or cannot be used.'**
+  String sessionDetailHarnessRuntimeMissingReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessUnavailableReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is unavailable.'**
+  String sessionDetailHarnessUnavailableReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessStoppingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is stopping.'**
+  String sessionDetailHarnessStoppingReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessNotInspectedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} has not been checked yet.'**
+  String sessionDetailHarnessNotInspectedReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessUnknownReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} reported an unknown status.'**
+  String sessionDetailHarnessUnknownReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessMissingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'This session’s harness is not available on the connected bridge.'**
+  String get sessionDetailHarnessMissingReason;
+
+  /// No description provided for @sessionDetailHarnessCheckFailedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t check whether this session’s harness is available.'**
+  String get sessionDetailHarnessCheckFailedReason;
+
+  /// No description provided for @sessionDetailContentLoadFailedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.'**
+  String get sessionDetailContentLoadFailedReason;
+
+  /// No description provided for @sessionDetailHarnessCheckingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking whether this session’s harness is available…'**
+  String get sessionDetailHarnessCheckingReason;
+
+  /// No description provided for @sessionDetailHarnessHistoryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat history cannot be loaded until the harness is available.'**
+  String get sessionDetailHarnessHistoryUnavailable;
+
+  /// No description provided for @sessionDetailHarnessRefreshWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness status could not be refreshed. The last known status is shown.'**
+  String get sessionDetailHarnessRefreshWarning;
+
+  /// No description provided for @sessionDetailOpenHarnessSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Harness Settings'**
+  String get sessionDetailOpenHarnessSettings;
 
   /// No description provided for @sessionListArchiveConfirmTitle.
   ///
@@ -3466,7 +3652,7 @@ abstract class AppLocalizations {
   /// Title of the scan row when some harnesses scanned successfully and others did not.
   ///
   /// In en, this message translates to:
-  /// **'Scan finished'**
+  /// **'Scanning finished'**
   String get catalogScanPartlyFailedTitle;
 
   /// Supporting line on a partly failed scan row. Both harnesses counts are at least one, so the total is always plural.
@@ -3484,7 +3670,7 @@ abstract class AppLocalizations {
   /// Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it.
   ///
   /// In en, this message translates to:
-  /// **'Check the bridge log for details'**
+  /// **'Check bridge logs'**
   String get catalogScanFailedDetail;
 
   /// Title of the scan row when the connected bridge is too old to scan harness catalogs on request.
@@ -3538,7 +3724,7 @@ abstract class AppLocalizations {
   /// Supporting line under the per-harness scan action, saying what scanning does.
   ///
   /// In en, this message translates to:
-  /// **'Import projects and sessions this harness has on disk'**
+  /// **'Find sessions created or moved outside Sesori and reload their latest messages.'**
   String get harnessManagementScanDescription;
 
   /// Replaces the scan action's description when the bridge refused to import from this harness, usually because it is not running or its setup is incomplete.
@@ -3564,6 +3750,210 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Dismiss'**
   String get catalogScanDismiss;
+
+  /// No description provided for @harnessManagementRefreshSetupDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Recheck installation, sign-in and runtime status.'**
+  String get harnessManagementRefreshSetupDescription;
+
+  /// No description provided for @harnessManagementRestartDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart {name}. Active sessions need your confirmation.'**
+  String harnessManagementRestartDescription(String name);
+
+  /// No description provided for @harnessManagementIdleTimeoutDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop this harness after the selected time without an active session.'**
+  String get harnessManagementIdleTimeoutDescription;
+
+  /// No description provided for @harnessesNeedsAttention.
+  ///
+  /// In en, this message translates to:
+  /// **'Needs attention'**
+  String get harnessesNeedsAttention;
+
+  /// No description provided for @harnessesNotInstalled.
+  ///
+  /// In en, this message translates to:
+  /// **'Not installed'**
+  String get harnessesNotInstalled;
+
+  /// No description provided for @harnessesStatusSetupSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Status & setup'**
+  String get harnessesStatusSetupSection;
+
+  /// No description provided for @harnessesActionsSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions'**
+  String get harnessesActionsSection;
+
+  /// No description provided for @harnessesAutomationSection.
+  ///
+  /// In en, this message translates to:
+  /// **'Automation'**
+  String get harnessesAutomationSection;
+
+  /// No description provided for @harnessesStatusLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Status'**
+  String get harnessesStatusLabel;
+
+  /// No description provided for @harnessesVersionLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Version'**
+  String get harnessesVersionLabel;
+
+  /// No description provided for @harnessesActivityLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Activity'**
+  String get harnessesActivityLabel;
+
+  /// No description provided for @harnessesInstallingStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing'**
+  String get harnessesInstallingStatus;
+
+  /// No description provided for @harnessesInstallTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Install {name}'**
+  String harnessesInstallTitle(String name);
+
+  /// No description provided for @harnessesInstallingTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Installing {name}'**
+  String harnessesInstallingTitle(String name);
+
+  /// No description provided for @harnessesInstallDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Install this harness on your connected computer to use it in Sesori.'**
+  String get harnessesInstallDescription;
+
+  /// No description provided for @harnessesStartInstallation.
+  ///
+  /// In en, this message translates to:
+  /// **'Start installation'**
+  String get harnessesStartInstallation;
+
+  /// No description provided for @harnessesRestartInstallation.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart installation'**
+  String get harnessesRestartInstallation;
+
+  /// No description provided for @harnessesInstallationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Installation failed'**
+  String get harnessesInstallationFailed;
+
+  /// No description provided for @harnessesInstallationFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the installation again when you’re ready.'**
+  String get harnessesInstallationFailedDescription;
+
+  /// No description provided for @harnessesEnabledLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} enabled'**
+  String harnessesEnabledLabel(String name);
+
+  /// No description provided for @harnessesUpdatingLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating {name}'**
+  String harnessesUpdatingLabel(String name);
+
+  /// No description provided for @harnessesForceRestartTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart {name}?'**
+  String harnessesForceRestartTitle(String name);
+
+  /// No description provided for @harnessesForceRestartDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} may be active in a session. Force restarting can interrupt active work.'**
+  String harnessesForceRestartDescription(String name);
+
+  /// No description provided for @harnessesForceRestartAction.
+  ///
+  /// In en, this message translates to:
+  /// **'Force restart'**
+  String get harnessesForceRestartAction;
+
+  /// No description provided for @harnessesStatusIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'Idle'**
+  String get harnessesStatusIdle;
+
+  /// No description provided for @harnessesStatusRunning.
+  ///
+  /// In en, this message translates to:
+  /// **'Running'**
+  String get harnessesStatusRunning;
+
+  /// No description provided for @archivedSessionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived tasks'**
+  String get archivedSessionsTitle;
+
+  /// No description provided for @archivedSessionsClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close archived sessions'**
+  String get archivedSessionsClose;
+
+  /// No description provided for @archivedSessionsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get archivedSessionsToday;
+
+  /// No description provided for @archivedSessionsYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get archivedSessionsYesterday;
+
+  /// No description provided for @archivedSessionsThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get archivedSessionsThisWeek;
+
+  /// No description provided for @archivedSessionsLastWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Last week'**
+  String get archivedSessionsLastWeek;
+
+  /// No description provided for @archivedSessionsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get archivedSessionsThisMonth;
+
+  /// No description provided for @archivedSessionsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'One month ago'**
+  String get archivedSessionsLastMonth;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

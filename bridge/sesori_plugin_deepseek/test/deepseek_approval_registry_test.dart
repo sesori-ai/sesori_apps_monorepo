@@ -5,6 +5,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
 import "package:deepseek_plugin/deepseek_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -22,7 +23,7 @@ void main() {
   setUp(() async {
     fake = FakeAcpProcess();
     client = AcpStdioClient(
-      launchSpec: const AcpLaunchSpec(command: "deepseek", args: ["serve"]),
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "deepseek", args: ["serve"]),
       processFactory: (_) async => fake,
     );
     await client.connect();
@@ -45,17 +46,22 @@ void main() {
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     final mapper = DeepSeekEventMapper(
       launchDirectory: "/project",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
       api: api,
       messageTimeParser: const DeepSeekMessageTimeParser(),
+      subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+      delegationTracker: DeepSeekDelegationTracker(),
     );
     final plugin = DeepSeekPlugin(
-      launchSpec: const AcpLaunchSpec(command: "deepseek", args: []),
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "deepseek", args: []),
       launchDirectory: "/project",
       processFactory: (_) async => fake,
+      childSessionTracker: childSessionTracker,
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(
@@ -63,9 +69,12 @@ void main() {
         eventMapper: mapper,
         pluginId: DeepSeekIdentity.id,
         messageTimeParser: const DeepSeekMessageTimeParser(),
+        subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
       ),
-      deepSeekSessionService: const DeepSeekSessionService(
-        repository: DeepSeekSessionRepository(api: api),
+      deepSeekSessionService: DeepSeekSessionService(
+        repository: const DeepSeekSessionRepository(api: api),
+        childSessions: childSessionTracker,
+        minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
       ),
       deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
         repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),
@@ -81,12 +90,12 @@ void main() {
         agentDisplayName: "DeepSeek",
       ),
     );
-    final built = plugin.buildApprovalRegistry(client);
+    final built = plugin.buildApprovalRegistry(client: client);
     expect(built, isA<DeepSeekApprovalRegistry>());
     await built.dispose();
     await plugin.dispose();
   });
-  test("option, custom, and free-form answers preserve ordered question IDs", () {
+  test("option, custom, and free-form answers preserve ordered question IDs", () async {
     registry.handleExtensionRequest(
       questionRequest(7, const {
         "sessionId": "session-1",
@@ -105,7 +114,7 @@ void main() {
     expect(questions.first.custom, isTrue);
     expect(questions.last.question, "Why?\n\nExplain the tradeoff.");
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Yes", "With safeguards"],
@@ -147,7 +156,7 @@ void main() {
       "outcome": {"outcome": "selected", "optionId": "allow-once"},
     });
   });
-  test("two sessions retain exact question and request correlation", () {
+  test("two sessions retain exact question and request correlation", () async {
     for (final entry in [(11, "session-1", "q1"), (12, "session-2", "q2")]) {
       registry.handleExtensionRequest(
         questionRequest(entry.$1, {
@@ -165,7 +174,7 @@ void main() {
 
     expect(events.whereType<BridgeSseQuestionAsked>().map((event) => event.sessionID), ["session-1", "session-2"]);
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-2",
         answers: const [
           ["No"],
@@ -174,7 +183,7 @@ void main() {
       isTrue,
     );
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Yes"],
@@ -209,7 +218,7 @@ void main() {
     registry.cancelForSession(sessionId: "session-1");
     await Future<void>.delayed(Duration.zero);
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Yes"],
@@ -220,6 +229,88 @@ void main() {
     expect(registry.pendingForSession(sessionId: "session-1"), isEmpty);
     expect(registry.pendingForSession(sessionId: "session-2"), hasLength(1));
     expect(fake.written.single["error"], {"code": -32603, "message": "aborted"});
+  });
+  test("ordered input cancellation removes old input but preserves a later reused question ID", () async {
+    registry.attach(stream: client.serverRequests);
+    <Map<String, dynamic>>[
+      {
+        "jsonrpc": "2.0",
+        "id": 31,
+        "method": DeepSeekAcpApi.askUserQuestionMethod,
+        "params": {
+          "sessionId": "session-1",
+          "questions": [
+            {"id": "reused", "text": "Old question"},
+          ],
+        },
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": 32,
+        "method": DeepSeekAcpApi.inputCancelMethod,
+        "params": {"sessionId": "session-1"},
+      },
+      {
+        "jsonrpc": "2.0",
+        "id": 33,
+        "method": DeepSeekAcpApi.askUserQuestionMethod,
+        "params": {
+          "sessionId": "session-1",
+          "questions": [
+            {"id": "reused", "text": "New question"},
+          ],
+        },
+      },
+    ].forEach(fake.emit);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(
+      await registry.replyQuestion(
+        requestId: "request-1",
+        answers: const [
+          ["stale"],
+        ],
+      ),
+      isFalse,
+    );
+    expect(registry.pendingForSession(sessionId: "session-1"), hasLength(1));
+    expect(fake.written.map((frame) => frame["id"]), [31, 32]);
+    expect(fake.written.first["error"], {"code": -32603, "message": "aborted"});
+    expect(fake.written.last["result"], isEmpty);
+    expect(
+      await registry.replyQuestion(
+        requestId: "request-2",
+        answers: const [
+          ["current"],
+        ],
+      ),
+      isTrue,
+    );
+    expect(fake.written.last["id"], 33);
+  });
+  test("malformed input cancellation leaves pending input intact", () {
+    registry.handleExtensionRequest(
+      questionRequest(34, const {
+        "sessionId": "session-1",
+        "questions": [
+          {"id": "question", "text": "Still pending"},
+        ],
+      }),
+    );
+
+    registry.handleExtensionRequest(
+      const AcpServerRequest(
+        id: 35,
+        method: DeepSeekAcpApi.inputCancelMethod,
+        params: {"sessionId": "  "},
+      ),
+    );
+
+    expect(fake.written.single["error"], {
+      "code": -32602,
+      "message": "Invalid DeepSeek input cancellation request",
+    });
+    expect(registry.pendingForSession(sessionId: "session-1"), hasLength(1));
   });
   test("plan review exposes fixed options and rejects custom input", () async {
     registry.handleExtensionRequest(
@@ -241,7 +332,7 @@ void main() {
 
     final logs = await _captureWarnings(() async {
       expect(
-        registry.replyQuestion(
+        await registry.replyQuestion(
           requestId: "request-1",
           answers: const [
             ["Change it"],
@@ -254,7 +345,7 @@ void main() {
     expect(logs, contains("DeepSeek plan-review questions do not accept custom answers"));
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: const [
           ["Approve"],
@@ -279,7 +370,7 @@ void main() {
     );
     final logs = await _captureWarnings(() async {
       expect(
-        registry.replyQuestion(
+        await registry.replyQuestion(
           requestId: "request-1",
           answers: const [
             ["A", "A"],
@@ -306,7 +397,7 @@ void main() {
         ],
       }),
     );
-    expect(registry.replyQuestion(requestId: "request-1", answers: const [<String>[]]), isTrue);
+    expect(await registry.replyQuestion(requestId: "request-1", answers: const [<String>[]]), isTrue);
     await Future<void>.delayed(Duration.zero);
     expect(fake.written.single["error"], {"code": -32603, "message": "invalid answer"});
     expect(registry.hasAnyPendingInput, isFalse);
@@ -321,7 +412,7 @@ void main() {
       }),
     );
     expect(
-      registry.replyQuestion(
+      await registry.replyQuestion(
         requestId: "request-1",
         answers: [
           ["x".padRight(2049, "x")],

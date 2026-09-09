@@ -4,6 +4,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:deepseek_plugin/deepseek_plugin.dart";
 import "package:deepseek_plugin/deepseek_testing.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -12,17 +13,28 @@ void main() {
     final fake = FakeAcpProcess();
     final configurationTracker = AcpSessionConfigurationTracker();
     final commandTracker = AcpCommandTracker();
+    final childSessionTracker = AcpChildSessionTracker();
     const api = DeepSeekAcpApi(pluginId: DeepSeekIdentity.id);
     final mapper = DeepSeekEventMapper(
       launchDirectory: "/repo",
       pluginId: DeepSeekIdentity.id,
       configurationTracker: configurationTracker,
+      childSessions: childSessionTracker,
       api: api,
       messageTimeParser: const DeepSeekMessageTimeParser(),
+      subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
+      delegationTracker: DeepSeekDelegationTracker(),
     );
     final plugin = DeepSeekPlugin(
-      launchSpec: const AcpLaunchSpec(command: "deepseek", args: [], cwd: "/repo", environment: {}),
+      launchSpec: const AcpLaunchSpec(
+        includeParentEnvironment: true,
+        command: "deepseek",
+        args: [],
+        cwd: "/repo",
+        environment: {},
+      ),
       launchDirectory: "/repo",
+      childSessionTracker: childSessionTracker,
       mapper: mapper,
       api: api,
       historyRepository: DeepSeekHistoryRepository(
@@ -30,9 +42,12 @@ void main() {
         eventMapper: mapper,
         pluginId: DeepSeekIdentity.id,
         messageTimeParser: const DeepSeekMessageTimeParser(),
+        subagentMapper: const DeepSeekSubagentMapper(agentId: DeepSeekIdentity.id),
       ),
-      deepSeekSessionService: const DeepSeekSessionService(
-        repository: DeepSeekSessionRepository(api: api),
+      deepSeekSessionService: DeepSeekSessionService(
+        repository: const DeepSeekSessionRepository(api: api),
+        childSessions: childSessionTracker,
+        minimumAdapterVersion: SemanticVersion.parse(value: DeepSeekRuntimeManifest.minimumVersion),
       ),
       deepSeekSessionOptionsService: DeepSeekSessionOptionsService(
         repository: const DeepSeekCatalogRepository(api: api, mapper: DeepSeekCatalogMapper()),
@@ -59,9 +74,18 @@ void main() {
       throw StateError("DeepSeek never wrote $count '$method' frame(s)");
     }
 
+    final parentRow = {
+      "sessionId": "parent",
+      "cwd": "/other",
+      "title": "Parent",
+      "updatedAt": 2000,
+      "_meta": {
+        "sesori.ai/deepseek": {"createdAt": 1000},
+      },
+    };
     final sessionRow = {
       "sessionId": "child",
-      "cwd": "/repo",
+      "cwd": "/other",
       "title": "Child",
       "updatedAt": 2000,
       "_meta": {
@@ -96,7 +120,7 @@ void main() {
             "jsonrpc": "2.0",
             "id": request["id"],
             "result": {
-              "sessions": [sessionRow, malformedParentRow, blankParentRow],
+              "sessions": [parentRow, sessionRow, malformedParentRow, blankParentRow],
             },
           });
         }
@@ -119,7 +143,7 @@ void main() {
           "authMethods": <Object?>[],
           "_meta": {
             "sesori.ai/deepseek": {
-              "extensionProtocolVersion": 1,
+              "extensionProtocolVersion": 2,
               "adapterVersion": DeepSeekPluginDescriptor.targetVersion,
               "harnessVersion": "0.1.1-rc.2",
               "persistenceOwner": "sesori",
@@ -129,15 +153,43 @@ void main() {
       });
       expect(await connecting, isTrue);
 
+      childSessionTracker.spawn(
+        sessionId: "parent",
+        spawn: const AcpChildSpawn(
+          childSessionId: "live-child",
+          description: "Live child",
+          agent: DeepSeekIdentity.id,
+          prompt: "Inspect",
+          isBackground: true,
+        ),
+        directory: "/repo",
+      );
+      final children = await plugin.getChildSessions("parent");
+      expect(children.map((session) => session.id), ["child", "live-child"]);
+      expect(children.singleWhere((session) => session.id == "live-child").projectID, "/other");
+
+      childSessionTracker.spawn(
+        sessionId: "live-child",
+        spawn: const AcpChildSpawn(
+          childSessionId: "live-grandchild",
+          description: "Live grandchild",
+          agent: DeepSeekIdentity.id,
+          prompt: "Inspect more",
+          isBackground: true,
+        ),
+        directory: "/other",
+      );
+      final grandchildren = await plugin.getChildSessions("live-child");
+      expect(grandchildren.single.id, "live-grandchild");
+      expect(grandchildren.single.projectID, "/other");
+      expect(grandchildren.single.directory, "/other");
+
       final sessions = await plugin.listAllSessions(knownDirectories: const {});
       final child = sessions.singleWhere((session) => session.id == "child");
       expect(child.parentID, "parent");
       expect(child.time, const PluginSessionTime(created: 1000, updated: 2000, archived: null));
       expect(sessions.singleWhere((session) => session.id == "malformed-parent").parentID, isNull);
       expect(sessions.singleWhere((session) => session.id == "blank-parent").parentID, isNull);
-
-      final children = await plugin.getChildSessions("parent");
-      expect(children.map((session) => session.id), ["child"]);
 
       final events = mapper.map(
         const AcpNotification(
@@ -148,10 +200,9 @@ void main() {
           },
         ),
       );
-      expect(
-        events.whereType<BridgeSseSessionUpdated>().single.info["time"],
-        const {"created": 1000, "updated": 3000},
-      );
+      final updatedChild = events.whereType<BridgeSseSessionUpdated>().single.info;
+      expect(updatedChild["projectID"], "/other");
+      expect(updatedChild["time"], const {"created": 1000, "updated": 3000});
     } finally {
       responding = false;
       await responder;

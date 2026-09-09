@@ -1,13 +1,13 @@
 import 'dart:io';
 
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart' show Console, Log;
-
 import 'package:sesori_shared/sesori_shared.dart';
 
 import '../auth/auth_repository.dart';
 import '../auth/login_email_repository.dart';
 import '../auth/login_oauth_service.dart';
 import '../auth/token.dart';
+import '../services/bridge_startup_retry_service.dart';
 import 'bridge_cli_options.dart';
 
 const Duration _oAuthAckTimeout = Duration(seconds: 5);
@@ -16,6 +16,7 @@ class const BridgeRuntimeAuthService({
   required final LoginEmailRepository _loginEmailRepository,
   required final LoginOAuthService _loginOAuthService,
   required final AuthRepository _authRepository,
+  required final BridgeStartupRetryService _startupRetryService,
   required final Future<TokenData> Function() _loadTokens,
   required final Future<void> Function(TokenData tokens) _saveTokens,
   required final Future<void> Function() _clearTokens,
@@ -49,50 +50,23 @@ class const BridgeRuntimeAuthService({
     TokenData? storedTokens;
     try {
       storedTokens = await _loadTokens();
-      try {
-        final lookup = await _authRepository.lookupCurrentUser(accessToken: storedTokens.accessToken);
-        switch (lookup) {
-          case AuthUserFound():
-            final tokensToSave = TokenData(
-              accessToken: storedTokens.accessToken,
-              refreshToken: storedTokens.refreshToken,
-              lastProvider: storedTokens.lastProvider,
-            );
-            await _saveTokens(tokensToSave);
-            return tokensToSave;
-          case AuthUserRejected(statusCode: 401):
-            final refresh = await _authRepository.refreshToken(refreshToken: storedTokens.refreshToken);
-            switch (refresh) {
-              case AuthTokenRefreshed(:final response):
-                final tokensToSave = TokenData(
-                  accessToken: response.accessToken,
-                  refreshToken: response.refreshToken,
-                  lastProvider: storedTokens.lastProvider,
-                );
-                await _saveTokens(tokensToSave);
-                return tokensToSave;
-              case AuthTokenRefreshRejected():
-                break;
-            }
-          case AuthUserRejected():
-            break;
-        }
-      } catch (error) {
-        throw Exception('validate stored tokens: $error');
-      }
     } on PathNotFoundException {
       // Token file or its parent directory does not exist — fall through to
       // login below. PathNotFoundException is the portable "missing path"
       // signal: POSIX ENOENT, Windows ERROR_FILE_NOT_FOUND (errno 2), and
       // Windows ERROR_PATH_NOT_FOUND (errno 3, e.g. the %LOCALAPPDATA%\sesori
       // directory missing on first run) all surface as this type.
-    } on FileSystemException catch (error) {
-      throw Exception('load stored tokens: $error');
     } on FormatException {
       // Invalid token data (e.g., missing/invalid lastProvider) — treat as no valid tokens
       await _clearTokens();
       storedTokens = null;
       // Fall through to login below
+    }
+
+    final tokens = storedTokens;
+    if (tokens != null) {
+      final validated = await _startupRetryService.run(operation: () => _validateStoredTokens(tokens: tokens));
+      if (validated != null) return validated;
     }
 
     final provider = storedTokens?.lastProvider ?? await promptForProvider();
@@ -101,6 +75,37 @@ class const BridgeRuntimeAuthService({
       authBackendUrl: options.authBackendUrl,
       provider: provider,
     );
+  }
+
+  Future<TokenData?> _validateStoredTokens({required TokenData tokens}) async {
+    final lookup = await _authRepository.lookupCurrentUser(accessToken: tokens.accessToken);
+    switch (lookup) {
+      case AuthUserFound():
+        final tokensToSave = TokenData(
+          accessToken: tokens.accessToken,
+          refreshToken: tokens.refreshToken,
+          lastProvider: tokens.lastProvider,
+        );
+        await _saveTokens(tokensToSave);
+        return tokensToSave;
+      case AuthUserRejected(statusCode: 401):
+        final refresh = await _authRepository.refreshToken(refreshToken: tokens.refreshToken);
+        switch (refresh) {
+          case AuthTokenRefreshed(:final response):
+            final tokensToSave = TokenData(
+              accessToken: response.accessToken,
+              refreshToken: response.refreshToken,
+              lastProvider: tokens.lastProvider,
+            );
+            await _saveTokens(tokensToSave);
+            return tokensToSave;
+          case AuthTokenRefreshRejected():
+            break;
+        }
+      case AuthUserRejected():
+        break;
+    }
+    return null;
   }
 
   Future<void> logAuthenticatedUser({

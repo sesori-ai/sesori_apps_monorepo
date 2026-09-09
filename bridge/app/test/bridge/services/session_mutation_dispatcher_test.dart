@@ -53,7 +53,8 @@ void main() {
       String? worktreePath,
       String? branchName,
     }) async {
-      await repository.insertStoredSession(
+      await insertTestSession(
+        db: db,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         pluginId: "codex",

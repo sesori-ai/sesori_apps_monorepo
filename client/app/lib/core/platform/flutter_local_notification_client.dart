@@ -8,8 +8,6 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "notification_tap_event.dart";
-
 extension on NotificationImportance {
   Importance toLocalNotificationImportance() {
     return switch (this) {
@@ -31,6 +29,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
       StreamController<NotificationOpenRequest>.broadcast();
 
   NotificationOpenRequest? _initialNotificationOpen;
+  Future<void>? _initialization;
   bool _initialNotificationOpenConsumed = false;
   bool _initialized = false;
 
@@ -38,12 +37,24 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   Stream<NotificationOpenRequest> get notificationOpenedStream => _notificationOpenedController.stream;
 
   @override
-  Future<void> initialize() async {
+  Future<void> initialize() {
     if (_initialized) {
-      return;
+      return Future<void>.value();
     }
+    final existing = _initialization;
+    if (existing != null) {
+      return existing;
+    }
+    final operation = _initialize();
+    _initialization = operation;
+    return operation.whenComplete(() {
+      if (identical(_initialization, operation)) {
+        _initialization = null;
+      }
+    });
+  }
 
-    _initialized = true;
+  Future<void> _initialize() async {
     final launchDetails = await _plugin.getNotificationAppLaunchDetails();
     _initialNotificationOpen = _notificationOpenFromPayload(
       payload: launchDetails?.didNotificationLaunchApp ?? false ? launchDetails?.notificationResponse?.payload : null,
@@ -71,6 +82,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
       ),
       onDidReceiveNotificationResponse: _onNotificationResponse,
     );
+    _initialized = true;
   }
 
   @override
@@ -99,7 +111,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
 
     try {
-      final tapEvent = NotificationTapEvent.fromJson(jsonDecodeMap(payload));
+      final tapEvent = LocalNotificationPayload.fromJson(jsonDecodeMap(payload));
       final sessionId = tapEvent.sessionId;
       final projectId = tapEvent.projectId;
       if (sessionId == null || projectId == null) {
@@ -110,6 +122,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
         projectId: projectId,
         sessionId: sessionId,
         sessionTitle: tapEvent.sessionTitle,
+        accountId: tapEvent.accountId,
       );
     } catch (error, stackTrace) {
       logw("Failed to parse local notification payload", error, stackTrace);
@@ -132,6 +145,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     required String? sessionId,
     required String? projectId,
     required String? sessionTitle,
+    required String? accountId,
   }) async {
     final id = sessionId == null
         ? DateTime.now().millisecondsSinceEpoch.remainder(2147483647)
@@ -147,10 +161,11 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
 
     final payload = jsonEncode(
-      NotificationTapEvent(
+      LocalNotificationPayload(
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
+        accountId: accountId,
       ).toJson(),
     );
 
@@ -176,9 +191,11 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   }
 
   @override
-  void cancelForSession({required String sessionId}) {
-    unawaited(_cancelForSession(sessionNotificationId(sessionId: sessionId)));
-  }
+  Future<void> cancelAll() => _plugin.cancelAll();
+
+  @override
+  Future<void> cancelForSession({required String sessionId}) =>
+      _cancelForSession(sessionNotificationId(sessionId: sessionId));
 
   /// Dismisses every notification for a session, across the surfaces that may
   /// have rendered it:
@@ -188,7 +205,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
   ///    posted as `(tag, 0)`: `cancel(0, tag: id)`.
   ///
   /// Each surface is cancelled independently and best-effort, so a failure on
-  /// one is logged and never blocks the other or escapes this fire-and-forget call.
+  /// one is logged and never blocks the other or escapes this operation.
   Future<void> _cancelForSession(int id) async {
     try {
       await cancel(id: id, tag: null);
@@ -216,5 +233,7 @@ class FlutterLocalNotificationClient({required final FlutterLocalNotificationsPl
     }
   }
 
+  @override
+  @disposeMethod
   Future<void> dispose() => _notificationOpenedController.close();
 }

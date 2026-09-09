@@ -8,6 +8,7 @@ class TestAcpPlugin({
   required super.launchSpec,
   required super.launchDirectory,
   required super.eventMapper,
+  required super.childSessionTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required super.processFactory,
