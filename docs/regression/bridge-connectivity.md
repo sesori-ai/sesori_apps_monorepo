@@ -52,6 +52,12 @@ explicit restart, and the connection states the app presents.
   the supervisor to Start and establishes an authenticated relay client; it
   never falls through to mobile CLI installation or relay-only reconnect
   guidance.
+- Inline connection alerts use a theme-aware rounded card: 16px outer and inner
+  padding, 16px corners, a subtle border and status tint, and a readable medium
+  title. The bridge-disconnected warning remains informational, with its
+  broadcast-off icon and live-region announcement. Its entire padded height
+  participates in the navigation's show/hide animation so the bar and content
+  stay clear of the card and return to their original positions on recovery.
 - The client relay socket pings on an interval, so a silently dead network path
   (Wi-Fi drop, VPN toggle, sleep/wake) surfaces as a socket close and enters
   reconnect within roughly two ping intervals instead of waiting on request
@@ -159,6 +165,9 @@ the bridge starts, how many clients are present, and whether restart is explicit
   startup never establishes the desktop relay client.
 - A dead network path leaving the app claiming connected for minutes, or the
   reconnecting banner flashing on every routine foreground resume.
+- An inline connection alert touching the screen edges, losing its rounded
+  clipping or theme contrast, overlapping navigation/content, clipping the
+  disconnected title at standard phone text size, or leaving space after recovery.
 - GUI shutdown unregistering the bridge, emitting login-needed, or exiting with the
   auth-required sentinel because teardown cancelled the bootstrap token request.
 - A forced stop leaving a backend alive, targeting only one process-table snapshot,
