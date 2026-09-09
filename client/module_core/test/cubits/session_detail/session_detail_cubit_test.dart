@@ -340,6 +340,44 @@ void main() {
       });
     }
 
+    test("a blocked session whose stored history cannot be served reports the block", () async {
+      // Serving history can still need a harness-backed backfill when the bridge
+      // has no complete snapshot, and that backfill is exactly what the block
+      // prevents. The user must see the block, not a generic failure.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailHarnessUnavailable,
+        description: "unavailable history",
+      );
+      final blocked = cubit.state as SessionDetailHarnessUnavailable;
+      expect(blocked.interaction, isA<SessionInteractionBlocked>());
+      expect(
+        (blocked.interaction as SessionInteractionBlocked).reason,
+        SessionInteractionBlockedReason.authenticationRequired,
+      );
+    });
+
     test("metadata refresh failure preserves the loaded transcript and buffered events", () async {
       final cubit = buildCubit();
       addTearDown(cubit.close);

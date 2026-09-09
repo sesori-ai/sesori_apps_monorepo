@@ -71,6 +71,15 @@ sealed class SessionDetailState with _$SessionDetailState {
     @Default([]) List<SessionVariant> availableVariants,
   }) = SessionDetailLoaded;
 
+  /// The harness is blocked *and* its stored history could not be served,
+  /// because the bridge still needs a harness-backed backfill for this session.
+  /// A blocked session whose history did load is an ordinary [SessionDetailLoaded]
+  /// carrying a blocked interaction.
+  const factory harnessUnavailable({
+    required Session session,
+    required SessionInteractionState interaction,
+  }) = SessionDetailHarnessUnavailable;
+
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }
 

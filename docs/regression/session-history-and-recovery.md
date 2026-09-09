@@ -13,15 +13,24 @@ reconnect or restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
-- Session detail resolves canonical catalog metadata before any plugin-backed
-  history request. If management then blocks the exact harness, a cold open shows
-  metadata and an honest history-unavailable state without issuing the read or
-  declaring unseen transcript content viewed.
-- A harness block never withholds history. The transcript and its older pages come
-  from the bridge database, so a cold blocked chat loads and paginates normally with
-  the block reported in the composer's place. If a block arrives during reload, or
-  metadata refresh fails, the loaded transcript remains and buffered session/global/
-  part events are applied. A blocked reload cannot require harness-owned options.
+- Session detail resolves canonical catalog metadata before the history request.
+  A block does not itself withhold history: a cold blocked open still attempts the
+  read, and an already-synced session renders its transcript with the block
+  reported in the composer's place. Only when that read fails — the bridge has no
+  complete snapshot, so serving it would need the backfill the block prevents —
+  does the chat fall back to an honest history-unavailable state.
+- A blocked load never requires harness-owned options, and a load that ran blocked
+  never opens the composer on that degraded catalog: eligibility arriving mid-load
+  keeps interaction blocked until a strict refresh applies complete options.
+- If a block arrives during reload, or metadata refresh fails, the loaded
+  transcript remains and buffered session/global/part events are applied. Paging
+  older messages is not gated on eligibility, because a rendered blocked transcript
+  proves the store is synced and serves its own pages; a store that goes stale
+  between pages fails that page and keeps the cursor for retry.
+- A blocked chat that stays on screen keeps its bridge-side view declaration. A
+  resume or reconnect that released it re-declares it even though the refresh
+  itself is a no-op while blocked, so the visible chat does not mark its own
+  updates unread.
 - On restored eligibility, the client refreshes history, options and pending input
   before interaction resumes. Failed content restoration keeps the transcript
   read-only, directs the user to reopen the chat, and does not misreport a successful
@@ -176,10 +185,10 @@ reconnect or restart.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. Automated client: a cold management block resolves canonical metadata, still loads and renders the stored transcript, and reports the block in the composer's place. |
+| L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. Automated client: a cold management block resolves canonical metadata, renders the stored transcript with the block reported in the composer's place when the read succeeds, and falls back to the history-unavailable state when it fails. |
 | L2 Routine | Automated client: a live block preserves messages; a block or metadata failure during reload restores the transcript and replays buffered events; content restoration failure stays read-only with guidance to reopen the chat. Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history, and replays rollback markers to remove reverted turn content and subtasks while retaining prior and subsequently appended turns, including cumulative rollbacks and fork-prefix boundaries; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the pre-0.84.3 fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. Automated DeepSeek coverage checks direct-parent live/replay tile identity, multiple ordered storage-safe content runs, latest metadata across pages, unbound startup errors, and live-state isolation. |
 | L3 Release | Client end to end on the release-target client platform: compare cold blocked history, a live block after history renders, and restored eligibility without route reopening. Every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
-| L4 Extended | Client end to end on macOS desktop and iOS, plus an Android variation: change availability from a second client while history is visible and while reload is in flight, page back through an older page while blocked, and confirm history keeps loading without contacting the harness; reconnect inside/outside replay and switch bridge identity without losing retained or buffered content. Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
+| L4 Extended | Client end to end on macOS desktop and iOS, plus an Android variation: change availability from a second client while history is visible and while reload is in flight, page back through an older page on a synced blocked session, and confirm an unsynced blocked session reports the block instead of an empty or failed transcript; reconnect inside/outside replay and switch bridge identity without losing retained or buffered content. Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
 | L5 Full | Automated and headless bridge for unreadable or partial store artifacts, interrupted backfill, and startup reconciliation; packaged or external for pagination's released-client shape; live plugin for very large transcripts. Every supporting production plugin. |
 
 ## Exploration Guidance
@@ -199,11 +208,14 @@ rules where supported.
 
 ## Failure Signals
 
-- A cold blocked chat renders a normal empty-history state, hides its stored
-  transcript behind a full-screen notice, or fails to load because harness-owned
-  options were required. A live block/reload race blanks messages, loses buffered
+- A cold blocked chat renders a normal empty-history state, hides an already-synced
+  transcript behind a full-screen notice, fails to load because harness-owned
+  options were required, or reports an unsynced blocked read as a generic error
+  instead of the block. A live block/reload race blanks messages, loses buffered
   events or turns a metadata refresh failure into a cold shell.
-- Interaction returns before a successful content/options refresh. A failed restoration erases the retained
+- A blocked load opens the composer on its degraded option catalog when eligibility
+  arrives mid-load. A resumed blocked chat stays undeclared and marks its own
+  updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
@@ -270,9 +282,10 @@ rules where supported.
 ## Known Limitations
 
 - A first-ever open or a stale re-read still needs the backend; if it is
-  unavailable and cannot auto-start, that read fails. The client therefore pauses
-  pagination while management blocks the harness; it cannot request a guaranteed
-  store-only page through the current history contract.
+  unavailable and cannot auto-start, that read fails. There is no guaranteed
+  store-only read in the current history contract, so a blocked session whose
+  store is unsynced cannot show its transcript at all; it reports the block
+  instead. A blocked session that is synced reads and pages normally.
 - An independently owned backend can outlive a bridge restart holding state an
   inactive runtime slot cannot see, so bridge inactivity and backend
   unavailability are not fully distinguished. Agent, provider, and command

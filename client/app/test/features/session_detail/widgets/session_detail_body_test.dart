@@ -885,6 +885,26 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("unservable blocked history falls back to the full-screen notice", (tester) async {
+    when(() => cubit.state).thenReturn(
+      SessionDetailState.harnessUnavailable(session: testSession(), interaction: authRequired),
+    );
+    var settingsOpened = 0;
+    await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
+    await tester.pumpAndSettle();
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
+    expect(
+      find.text("Chat history for this session still needs the harness. Enable it to load the transcript."),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key("session_harness_recheck")));
+    verify(cubit.recheckHarnessAvailability).called(1);
+    await tester.tap(find.byKey(const Key("session_harness_settings")));
+    expect(settingsOpened, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("content restoration failure explains route recovery without actions", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       interaction: const SessionInteractionState.blocked(
