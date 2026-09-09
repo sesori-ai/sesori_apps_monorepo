@@ -271,6 +271,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   are Enabled. Degraded remains attention even though its separate scan capability is routable.
   A stopping harness belongs to Disabled — where a toggled-off harness settles — and keeps its
   `Stopping` status there instead of jumping through Needs attention while it drains.
+  A harness that changes group closes in the section it left while opening in the section it
+  joined, and an emptied section closes with its last row rather than disappearing under it;
+  reduced motion keeps the same result without the transition.
 - Harness names and the separate download target open details without starting installation;
   setup guidance stays visible before the explicit detail installation button. Switches send
   actual enable/disable intent and retain the bridge's

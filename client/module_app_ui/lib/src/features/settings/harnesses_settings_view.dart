@@ -134,38 +134,53 @@ class const _ReadyView({
             title: Text(loc.harnessesEmptyTitle),
             subtitle: Text(loc.harnessesEmptyDescription),
           ),
-        for (final group in _HarnessGroup.values)
-          if (response.plugins.any(
-            (plugin) => _group(plugin: plugin, install: state.installs[plugin.setup.id]) == group,
-          )) ...[
-            SettingsSection(
+        // Harnesses change group as they are toggled, installed or stopped, so
+        // a row that leaves closes in its old section while a copy opens in the
+        // new one, and a section that empties or appears follows its rows.
+        PregoAnimatedList<_HarnessGroup>(
+          items: [
+            for (final group in _HarnessGroup.values)
+              if (response.plugins.any(
+                (plugin) => _group(plugin: plugin, install: state.installs[plugin.setup.id]) == group,
+              ))
+                group,
+          ],
+          itemKey: ValueKey<_HarnessGroup>.new,
+          itemBuilder: (context, index, group) => Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+            child: SettingsSection(
               title: _groupTitle(context: context, group: group),
               child: PregoGroupedRows(
                 color: context.prego.colors.bgSurface2,
                 showDividers: false,
                 children: [
-                  for (final plugin in response.plugins)
-                    if (_group(plugin: plugin, install: state.installs[plugin.setup.id]) == group)
-                      Column(
-                        crossAxisAlignment: CrossAxisAlignment.stretch,
-                        children: [
-                          _HarnessOverviewRow(
-                            plugin: plugin,
-                            state: state,
-                            onOpen: () => onOpenHarness(pluginId: plugin.setup.id),
-                          ),
-                          _HarnessActionFeedback(
-                            state: state,
-                            target: PluginManagementActionTarget.harness(pluginId: plugin.setup.id),
-                            groupForceReview: false,
-                          ),
-                        ],
-                      ),
+                  PregoAnimatedList<PluginManagementMetadata>(
+                    items: [
+                      for (final plugin in response.plugins)
+                        if (_group(plugin: plugin, install: state.installs[plugin.setup.id]) == group) plugin,
+                    ],
+                    itemKey: (plugin) => ValueKey(plugin.setup.id),
+                    itemBuilder: (context, index, plugin) => Column(
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        _HarnessOverviewRow(
+                          plugin: plugin,
+                          state: state,
+                          onOpen: () => onOpenHarness(pluginId: plugin.setup.id),
+                        ),
+                        _HarnessActionFeedback(
+                          state: state,
+                          target: PluginManagementActionTarget.harness(pluginId: plugin.setup.id),
+                          groupForceReview: false,
+                        ),
+                      ],
+                    ),
+                  ),
                 ],
               ),
             ),
-            const SizedBox(height: PregoSpacing.xl),
-          ],
+          ),
+        ),
         if (response.plugins.any(_supportsOperationalTimeout))
           SettingsSection(
             title: loc.harnessManagementDefaultsSection,

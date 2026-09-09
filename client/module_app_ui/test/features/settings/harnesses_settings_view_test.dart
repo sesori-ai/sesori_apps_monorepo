@@ -181,6 +181,27 @@ void main() {
     expect(find.text("Stopping"), findsOneWidget);
   });
 
+  testWidgets("a harness changing group animates out of the old section instead of jumping", (tester) async {
+    phone(tester: tester);
+    publish(plugins: [_ready]);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harnesses_card_ready")), findsOneWidget);
+
+    publish(plugins: [_ready.copyWith(runtimeState: PluginRuntimeState.disabled)]);
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    // The outgoing snapshot closes with the section it left while the row opens
+    // in the one it moved to.
+    expect(find.byKey(const Key("harnesses_card_ready")), findsNWidgets(2));
+    expect(find.text("Enabled"), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harnesses_card_ready")), findsOneWidget);
+    expect(find.text("Enabled"), findsNothing);
+    expect(find.text("Disabled"), findsOneWidget);
+  });
+
   testWidgets("overview groups honest states in design order and preserves registry order", (tester) async {
     phone(tester: tester);
     publish(
@@ -360,6 +381,9 @@ void main() {
       );
       await tester.runAsync(() => Future<void>.delayed(Duration.zero));
       await tester.pump();
+      // The overview harness just changed group, so let it finish moving before
+      // asserting that a single pending switch slot survived the move.
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.bySemanticsLabel("Loading harnesses"), findsNothing);
       expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsOneWidget);
       result.complete(
