@@ -42,11 +42,35 @@ class SessionDetailLoadService({
   }
 
   Future<SessionDetailLoadResult> load({required Session session, required String projectId}) {
-    return _loadSnapshot(session: session, projectId: projectId, requireCompleteOptions: false);
+    return _loadSnapshot(
+      session: session,
+      projectId: projectId,
+      requireCompleteOptions: false,
+      optionsMode: SessionOptionsRequestMode.dynamic,
+    );
+  }
+
+  /// The transcript for a session whose harness is blocked.
+  ///
+  /// Options are read cache-only: dynamic discovery is served through the
+  /// bridge's may-activate path, so asking a blocked harness for them can stall
+  /// the open behind a start attempt it cannot complete.
+  Future<SessionDetailLoadResult> loadWithoutHarness({required Session session, required String projectId}) {
+    return _loadSnapshot(
+      session: session,
+      projectId: projectId,
+      requireCompleteOptions: false,
+      optionsMode: SessionOptionsRequestMode.cacheOnly,
+    );
   }
 
   Future<SessionDetailLoadResult> reload({required Session session, required String projectId}) {
-    return _loadSnapshot(session: session, projectId: projectId, requireCompleteOptions: true);
+    return _loadSnapshot(
+      session: session,
+      projectId: projectId,
+      requireCompleteOptions: true,
+      optionsMode: SessionOptionsRequestMode.dynamic,
+    );
   }
 
   /// One page of messages older than [before], for a load-older action.
@@ -76,6 +100,7 @@ class SessionDetailLoadService({
     required Session session,
     required String projectId,
     required bool requireCompleteOptions,
+    required SessionOptionsRequestMode optionsMode,
   }) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
@@ -109,6 +134,7 @@ class SessionDetailLoadService({
               projectId: effectiveProjectId,
               pluginId: pluginId,
               requireComplete: requireCompleteOptions,
+              mode: optionsMode,
             );
       final promptAttachmentSupportFuture = isArchived
           ? Future<bool?>.value(null)
@@ -211,6 +237,7 @@ class SessionDetailLoadService({
     required String? projectId,
     required String? pluginId,
     required bool requireComplete,
+    required SessionOptionsRequestMode mode,
   }) async {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null || pluginId == null) {
@@ -248,7 +275,7 @@ class SessionDetailLoadService({
     final result = await _repository.loadSessionOptions(
       projectId: normalizedProjectId,
       pluginId: pluginId,
-      mode: SessionOptionsRequestMode.dynamic,
+      mode: mode,
     );
     switch (result) {
       case SessionOptionsRepositoryAvailable(:final catalog, :final isStale):

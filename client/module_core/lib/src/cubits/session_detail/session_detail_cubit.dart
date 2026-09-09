@@ -286,9 +286,14 @@ class SessionDetailCubit(
         _sessionMetadata = session;
         _interaction = _calculateInteraction(session: session);
         interactionAtLoad = _interaction;
-        result = isReload && interactionAtLoad.canInteract
-            ? await _loadService.reload(session: session, projectId: _projectId)
-            : await _loadService.load(session: session, projectId: _projectId);
+        result = switch ((reload: isReload, canInteract: interactionAtLoad.canInteract)) {
+          (reload: true, canInteract: true) => await _loadService.reload(session: session, projectId: _projectId),
+          (reload: false, canInteract: true) => await _loadService.load(session: session, projectId: _projectId),
+          (reload: _, canInteract: false) => await _loadService.loadWithoutHarness(
+            session: session,
+            projectId: _projectId,
+          ),
+        };
       }
     } finally {
       final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
@@ -657,10 +662,24 @@ class SessionDetailCubit(
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
 
+  /// Re-declares the bridge-side view a resume or reconnect released.
+  ///
+  /// A blocked chat keeps its transcript on screen, so its refresh being a
+  /// no-op must not leave it undeclared; otherwise the chat the user is reading
+  /// keeps marking its own updates unread.
+  void _reassertViewIfPending() {
+    if (!_reassertViewAfterRefresh || !_routeVisible) return;
+    _reassertViewAfterRefresh = false;
+    _sessionViewingService.setViewingSession(_sessionId);
+  }
+
   Future<_SessionRefreshResult> _doSilentRefresh() async {
     final current = state;
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
-    if (!_interaction.canInteract) return _SessionRefreshResult.applied;
+    if (!_interaction.canInteract) {
+      _reassertViewIfPending();
+      return _SessionRefreshResult.applied;
+    }
     final connectionGeneration = _connectionGeneration;
     final optionsGeneration = _optionsGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -707,13 +726,7 @@ class SessionDetailCubit(
         _emitRefreshEnded();
         final latest = state;
         if (latest is SessionDetailLoaded) emit(latest.copyWith(interaction: _interaction));
-        // The blocked transcript stays on screen, so a resume/reconnect that
-        // released the bridge-side view must still re-declare it; otherwise the
-        // chat the user is reading keeps marking its own updates unread.
-        if (_reassertViewAfterRefresh && _routeVisible) {
-          _reassertViewAfterRefresh = false;
-          _sessionViewingService.setViewingSession(_sessionId);
-        }
+        _reassertViewIfPending();
         return _SessionRefreshResult.applied;
       }
       final result = await _loadService.reload(session: session, projectId: _projectId);
@@ -798,13 +811,9 @@ class SessionDetailCubit(
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
           _tryDrainQueue();
-          if (_reassertViewAfterRefresh && _routeVisible) {
-            // A resume/reconnect requested this refresh; the refreshed
-            // transcript has rendered, so it is safe to re-declare the view
-            // (which marks the session seen on the bridge).
-            _reassertViewAfterRefresh = false;
-            _sessionViewingService.setViewingSession(_sessionId);
-          }
+          // The refreshed transcript has rendered, so it is safe to re-declare
+          // the view (which marks the session seen on the bridge).
+          _reassertViewIfPending();
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
           return _SessionRefreshResult.applied;

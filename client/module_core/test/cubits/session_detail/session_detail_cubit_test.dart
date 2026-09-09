@@ -2435,6 +2435,58 @@ void main() {
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
       });
 
+      test("a blocked chat still re-asserts the view its resume released", () async {
+        // The blocked transcript stays on screen, so its refresh being a no-op
+        // must not leave the chat undeclared and marking its own updates unread.
+        final viewingService = stubbedSessionViewingService();
+        final lifecycle = MockLifecycleSource();
+        final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+          managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+        );
+        addTearDown(snapshots.close);
+        final management = MockPluginManagementService();
+        when(() => management.snapshots).thenAnswer((_) => snapshots);
+        when(management.refresh).thenAnswer((_) async {});
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
+          ),
+        );
+        final cubit = buildCubit(
+          sessionViewingService: viewingService,
+          lifecycleSource: lifecycle,
+          pluginManagementService: management,
+        );
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+
+        snapshots.add(
+          managementFixture(
+            pluginId: "plugin-1",
+            setup: PluginSetupState.authenticationRequired,
+            runtime: PluginRuntimeState.blocked,
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+          description: "blocked while loaded",
+        );
+        clearInteractions(viewingService);
+
+        // Backgrounding released the bridge-side view; the resume refresh has
+        // nothing to fetch while blocked, but must still re-declare it.
+        lifecycle.emitState(LifecycleState.paused);
+        lifecycle.emitState(LifecycleState.resumed);
+        // The blocked refresh never sets isRefreshing, so let it settle instead.
+        for (var turn = 0; turn < 5; turn++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        verify(() => viewingService.setViewingSession(sessionId)).called(1);
+      });
+
       test("resume refreshes and re-asserts the view only after the refresh renders", () async {
         final viewingService = stubbedSessionViewingService();
         final lifecycle = MockLifecycleSource();

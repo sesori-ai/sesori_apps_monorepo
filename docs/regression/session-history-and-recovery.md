@@ -19,9 +19,13 @@ reconnect or restart.
   reported in the composer's place. Only when that read fails — the bridge has no
   complete snapshot, so serving it would need the backfill the block prevents —
   does the chat fall back to an honest history-unavailable state.
-- A blocked load never requires harness-owned options, and a load that ran blocked
-  never opens the composer on that degraded catalog: eligibility arriving mid-load
-  keeps interaction blocked until a strict refresh applies complete options.
+- A blocked load never requires harness-owned options and never asks for them
+  dynamically: option discovery is served through the bridge's may-activate path,
+  so a blocked open reads options cache-only rather than stalling behind a start
+  attempt the block cannot complete. A load that ran blocked also never opens the
+  composer on that degraded catalog: eligibility arriving mid-load keeps
+  interaction blocked until a strict refresh applies complete options, and a
+  failure is classified against the interaction as it stands when the load lands.
 - If a block arrives during reload, or metadata refresh fails, the loaded
   transcript remains and buffered session/global/part events are applied. Paging
   older messages is not gated on eligibility, because a rendered blocked transcript
@@ -213,9 +217,11 @@ rules where supported.
   options were required, or reports an unsynced blocked read as a generic error
   instead of the block. A live block/reload race blanks messages, loses buffered
   events or turns a metadata refresh failure into a cold shell.
-- A blocked load opens the composer on its degraded option catalog when eligibility
-  arrives mid-load. A resumed blocked chat stays undeclared and marks its own
-  updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
+- A blocked open waits on dynamic option discovery or lets it start the harness.
+  A blocked load opens the composer on its degraded option catalog when eligibility
+  arrives mid-load, or reports a mid-load eligibility change against the stale
+  interaction the load began with. A resumed blocked chat stays undeclared and
+  marks its own updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
