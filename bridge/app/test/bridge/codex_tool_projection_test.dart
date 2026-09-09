@@ -20,9 +20,7 @@ CodexRolloutLineDto _line({required Map<String, dynamic> payload}) => CodexRollo
   "payload": payload,
 });
 ToolState _project({required CodexProjectedTool tool}) =>
-    (const CodexToolPartMapper().map(sessionId: "s", tool: tool, children: const []).toShared(sessionId: "s")
-            as MessagePartTool)
-        .state;
+    (const CodexToolPartMapper().map(sessionId: "s", tool: tool).toShared(sessionId: "s") as MessagePartTool).state;
 
 void main() {
   final cases = [

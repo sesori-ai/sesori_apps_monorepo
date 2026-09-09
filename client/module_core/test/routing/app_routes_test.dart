@@ -3,6 +3,56 @@ import "package:test/test.dart";
 
 void main() {
   group("AppRoute", () {
+    test("archive route decoding requires project and session identity", () {
+      expect(
+        () => AppRoute.fromDef(def: AppRouteDef.archivedSessions, pathParams: const {}, queryParams: const {}),
+        throwsArgumentError,
+      );
+      expect(
+        () => AppRoute.fromDef(
+          def: AppRouteDef.archivedSessionDetail,
+          pathParams: const {projectIdPathParam: "p1"},
+          queryParams: const {},
+        ),
+        throwsArgumentError,
+      );
+    });
+
+    test("archive routes round-trip encoded identity and never carry editable intent", () {
+      final routes = [
+        const AppRoute.archivedSessions(projectId: "project/1", projectName: "A & B"),
+        const AppRoute.archivedSessionDetail(
+          projectId: "project/1",
+          projectName: "A & B",
+          sessionId: "session/2",
+          sessionTitle: "Audit ?",
+        ),
+      ];
+      for (final route in routes) {
+        final uri = Uri.parse(route.buildPath());
+        final decoded = AppRoute.fromDef(
+          def: route.def,
+          pathParams: {
+            projectIdPathParam: uri.pathSegments[1],
+            if (uri.pathSegments.length > 3) sessionIdPathParam: uri.pathSegments[3],
+          },
+          queryParams: uri.queryParameters,
+        );
+        expect(decoded.buildPath(), route.buildPath());
+        expect(uri.queryParameters.containsKey("readOnly"), isFalse);
+      }
+    });
+
+    test("Default input round-trips a parameterless settings route with a pinned screen name", () {
+      const route = AppRoute.settingsDefaultInput();
+      expect(route.buildPath(), "/settings/default-input");
+      expect(
+        AppRoute.fromDef(def: route.def, pathParams: const {}, queryParams: const {}),
+        isA<AppRouteSettingsDefaultInput>(),
+      );
+      expect(AnalyticsScreen.settingsDefaultInput.wireValue, "settings_default_input");
+    });
+
     test("settings Harnesses route round-trips its presentation", () {
       for (final presentation in HarnessSettingsPresentation.values) {
         final route = AppRoute.settingsHarnesses(presentation: presentation);

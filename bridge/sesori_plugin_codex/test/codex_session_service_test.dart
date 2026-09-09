@@ -471,6 +471,7 @@ class _RecordingMessageRepository() extends CodexMessageRepository {
     required List<CodexThreadRecord> children,
     required CodexReplayToolDisposition replayToolDisposition,
     required Map<String, PluginToolStatus> structuredToolStatusByCallId,
+    required Map<String, CodexSubAgentReplayData> childReplayDataById,
     CodexConfigDefaults config = const CodexConfigDefaults.empty(),
   }) {
     statuses = structuredToolStatusByCallId;

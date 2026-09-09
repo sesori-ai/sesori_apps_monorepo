@@ -91,6 +91,12 @@ abstract class AppLocalizations {
   /// A list of this localizations delegate's supported locales.
   static const List<Locale> supportedLocales = <Locale>[Locale('en')];
 
+  /// No description provided for @sessionDetailHarnessLegacyWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Update your bridge to check harness availability.'**
+  String get sessionDetailHarnessLegacyWarning;
+
   /// No description provided for @appTitle.
   ///
   /// In en, this message translates to:
@@ -1351,6 +1357,24 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
+  /// No description provided for @settingsSectionSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get settingsSectionSessions;
+
+  /// No description provided for @settingsSectionPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get settingsSectionPreferences;
+
+  /// No description provided for @settingsDefaultInputDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how you default talk to Sesori.'**
+  String get settingsDefaultInputDescription;
+
   /// Settings entry and page title for choosing the default session composer input
   ///
   /// In en, this message translates to:
@@ -1638,6 +1662,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get sessionDetailRetry;
+
+  /// Action that refreshes harness availability after authentication may have been restored elsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Recheck'**
+  String get sessionDetailRecheck;
 
   /// No description provided for @sessionDetailPromptHint.
   ///
@@ -2965,6 +2995,96 @@ abstract class AppLocalizations {
   /// **'This session is archived and read-only.'**
   String get sessionDetailArchivedNotice;
 
+  /// No description provided for @sessionDetailHarnessFallbackName.
+  ///
+  /// In en, this message translates to:
+  /// **'This harness'**
+  String get sessionDetailHarnessFallbackName;
+
+  /// No description provided for @sessionDetailHarnessDisabledReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is disabled.'**
+  String sessionDetailHarnessDisabledReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessAuthenticationReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in to {harnessName} to continue.'**
+  String sessionDetailHarnessAuthenticationReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessRuntimeMissingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is not installed or cannot be used.'**
+  String sessionDetailHarnessRuntimeMissingReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessUnavailableReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is unavailable.'**
+  String sessionDetailHarnessUnavailableReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessStoppingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} is stopping.'**
+  String sessionDetailHarnessStoppingReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessNotInspectedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} has not been checked yet.'**
+  String sessionDetailHarnessNotInspectedReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessUnknownReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} reported an unknown status.'**
+  String sessionDetailHarnessUnknownReason(String harnessName);
+
+  /// No description provided for @sessionDetailHarnessMissingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'This session’s harness is not available on the connected bridge.'**
+  String get sessionDetailHarnessMissingReason;
+
+  /// No description provided for @sessionDetailHarnessCheckFailedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t check whether this session’s harness is available.'**
+  String get sessionDetailHarnessCheckFailedReason;
+
+  /// No description provided for @sessionDetailContentLoadFailedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.'**
+  String get sessionDetailContentLoadFailedReason;
+
+  /// No description provided for @sessionDetailHarnessCheckingReason.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking whether this session’s harness is available…'**
+  String get sessionDetailHarnessCheckingReason;
+
+  /// No description provided for @sessionDetailHarnessHistoryUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Chat history cannot be loaded until the harness is available.'**
+  String get sessionDetailHarnessHistoryUnavailable;
+
+  /// No description provided for @sessionDetailHarnessRefreshWarning.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness status could not be refreshed. The last known status is shown.'**
+  String get sessionDetailHarnessRefreshWarning;
+
+  /// No description provided for @sessionDetailOpenHarnessSettings.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Harness Settings'**
+  String get sessionDetailOpenHarnessSettings;
+
   /// No description provided for @sessionListArchiveConfirmTitle.
   ///
   /// In en, this message translates to:
@@ -3768,6 +3888,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Running'**
   String get harnessesStatusRunning;
+
+  /// No description provided for @archivedSessionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived tasks'**
+  String get archivedSessionsTitle;
+
+  /// No description provided for @archivedSessionsClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close archived sessions'**
+  String get archivedSessionsClose;
+
+  /// No description provided for @archivedSessionsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get archivedSessionsToday;
+
+  /// No description provided for @archivedSessionsYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get archivedSessionsYesterday;
+
+  /// No description provided for @archivedSessionsThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get archivedSessionsThisWeek;
+
+  /// No description provided for @archivedSessionsLastWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Last week'**
+  String get archivedSessionsLastWeek;
+
+  /// No description provided for @archivedSessionsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get archivedSessionsThisMonth;
+
+  /// No description provided for @archivedSessionsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'One month ago'**
+  String get archivedSessionsLastMonth;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

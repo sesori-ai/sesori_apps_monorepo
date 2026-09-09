@@ -117,11 +117,12 @@ class AnalyticsRouteListener {
     AppRouteDef.settings ||
     AppRouteDef.settingsHarnesses ||
     AppRouteDef.settingsHarnessDetail => AnalyticsScreen.settings,
+    AppRouteDef.settingsDefaultInput => AnalyticsScreen.settingsDefaultInput,
     AppRouteDef.settingsNotifications => AnalyticsScreen.settingsNotifications,
     AppRouteDef.settingsProfile => AnalyticsScreen.settingsProfile,
-    AppRouteDef.sessions => AnalyticsScreen.sessions,
+    AppRouteDef.sessions || AppRouteDef.archivedSessions => AnalyticsScreen.sessions,
     AppRouteDef.newSession => AnalyticsScreen.newSession,
-    AppRouteDef.sessionDetail => AnalyticsScreen.sessionDetail,
+    AppRouteDef.sessionDetail || AppRouteDef.archivedSessionDetail => AnalyticsScreen.sessionDetail,
     AppRouteDef.sessionDiffs => AnalyticsScreen.sessionDiffs,
   };
 

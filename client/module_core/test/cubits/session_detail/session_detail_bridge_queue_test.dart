@@ -17,6 +17,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -149,7 +150,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -178,7 +179,7 @@ void main() {
       );
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -212,6 +213,9 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
+        claimProjectView: true,
+        pluginManagementService: stubbedPluginManagementService(),
+        interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,
         promptDispatcher: mockSessionRepository,
         permissionRepository: MockPermissionRepository(),

@@ -15,14 +15,17 @@ import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/loaded_state_analytics_reporter.dart";
+import "../services/models/session_list_filter.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
+import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_list_service.dart";
 import "../services/project_viewing_service.dart";
 import "../services/registered_bridges_service.dart";
 import "../services/session_detail_load_service.dart";
+import "../services/session_interaction_calculator.dart";
 import "../services/session_list_service.dart";
 import "../services/session_unseen_tracker.dart";
 import "../services/session_viewing_service.dart";
@@ -36,13 +39,17 @@ import "../services/sse_event_tracker.dart";
 /// collaborator list lives here, so the two shells cannot drift apart.
 
 SessionDetailCubit createSessionDetailCubit({
+  required bool claimProjectView,
   required GetIt locator,
   required String sessionId,
   required String projectId,
 }) {
   return SessionDetailCubit(
     locator<ConnectionService>(),
+    claimProjectView: claimProjectView,
     loadService: locator<SessionDetailLoadService>(),
+    pluginManagementService: locator<PluginManagementService>(),
+    interactionCalculator: locator<SessionInteractionCalculator>(),
     promptDispatcher: locator<SessionRepository>(),
     permissionRepository: locator<PermissionRepository>(),
     sessionViewingService: locator<SessionViewingService>(),
@@ -75,8 +82,13 @@ ProjectListCubit createProjectListCubit({required GetIt locator}) {
   );
 }
 
-SessionListCubit createSessionListCubit({required GetIt locator, required String projectId}) {
+SessionListCubit createSessionListCubit({
+  required GetIt locator,
+  required String projectId,
+  required SessionListFilter initialFilter,
+}) {
   return SessionListCubit(
+    initialFilter: initialFilter,
     sessionRepository: locator<SessionRepository>(),
     sessionListService: locator<SessionListService>(),
     projectRepository: locator<ProjectRepository>(),

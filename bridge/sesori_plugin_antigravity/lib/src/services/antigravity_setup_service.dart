@@ -17,6 +17,7 @@ class AntigravitySetupService({
     required Map<String, String> environment,
     required PlatformTarget target,
     required String geminiHome,
+    required bool managedInstallAvailable,
   }) {
     final runtime = _runtime.inspect(
       explicitServerPath: explicitServerPath,
@@ -37,12 +38,20 @@ class AntigravitySetupService({
         return PluginSetupRuntimeMissing(
           actionHint: source == AntigravityRuntimeSource.explicit
               ? "Fix the configured Antigravity runtime pair, then restart the bridge."
+              : managedInstallAvailable
+              ? "Install Google's official proprietary Antigravity runtime from Sesori after reviewing Google's "
+                    "terms (https://antigravity.google/terms) and documentation (https://antigravity.google/docs/), "
+                    "or provide the official pair locally."
               : "Provide the official Antigravity ACP runtime pair, then retry setup detection.",
         );
       case AntigravityRuntimeCandidateRejected(:final source):
         return PluginSetupUnavailable(
           actionHint: source == AntigravityRuntimeSource.explicit
               ? "Fix the configured Antigravity runtime pair, then restart the bridge."
+              : managedInstallAvailable
+              ? "The discovered Antigravity runtime pair is invalid. Install Google's official proprietary runtime "
+                    "after reviewing Google's terms (https://antigravity.google/terms) and documentation "
+                    "(https://antigravity.google/docs/), or replace the local pair."
               : "The discovered Antigravity runtime pair is invalid. Replace it with the official pair.",
         );
       case AntigravityRuntimeCandidateUnsupported():

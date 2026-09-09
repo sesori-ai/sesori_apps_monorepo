@@ -11,6 +11,30 @@ Three runs: (A) spawn one sub-agent that replies "done"; (B) spawn a child
 that runs `sleep 90`, then `turn/interrupt` the parent; (C) same, then
 `turn/interrupt` the child.
 
+## Current-pin correction (codex-cli 0.153.4, 2026-09-08)
+
+A bounded production-shaped stdio probe against managed 0.153.4 supersedes the
+0.148.0 rollout-input assumptions below without erasing their historical value:
+
+- persisted started activity is
+  `event_msg/item_completed/item/SubAgentActivity`; its `id` exactly equals the
+  preceding `spawn_agent.call_id` for both forked and nonforked children;
+- `thread/read(includeTurns: true)` exposed no initial child user item, and live
+  app-server output emitted no stable child `userMessage` or public raw-response
+  notification;
+- initial child input appended after child `turn/started` as adjacent
+  `inter_agent_communication_metadata` and `response_item/agent_message` records;
+  normal model-origin payload was encrypted, while existing rollout tails can
+  observe the append without another watcher or timer;
+- user-approved prompt provenance for encrypted input is only the exact nonblank
+  `message` from the matching spawn call id. Never use a parent user message,
+  copied history, task name, child order, timing, or the agent-message envelope
+  header. A valid child-owned plaintext `NEW_TASK` payload may replace that
+  fallback for the initial delegated turn.
+
+Raw probe payloads remain private under the owned `/tmp` artifacts. Native source
+was pinned to Codex commit `3d2ee51ca2d5db578f328aa75e20aa22c0197c9a`.
+
 ## Frame order on the parent connection (run A)
 
 1. `thread/started {thread: {id: P, parentThreadId: null, agentNickname: null,

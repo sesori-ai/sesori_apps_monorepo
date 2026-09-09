@@ -15,11 +15,13 @@ import "../repositories/codex_thread_repository.dart";
 import "../repositories/codex_tool_outcome_repository.dart";
 import "../repositories/mappers/codex_session_mapper.dart";
 import "../repositories/models/codex_session_record.dart";
+import "../repositories/models/codex_sub_agent_rollout_fact.dart";
 import "../repositories/models/codex_thread_record.dart";
 
 final class const CodexSessionMessageRead._({
   required final CodexPreparedMessageRead _messages,
   required final List<CodexThreadRecord> _children,
+  required final Map<String, CodexSubAgentReplayData> _childReplayDataById,
   required final Map<String, PluginToolStatus> _structuredToolStatusByCallId,
   required final CodexConfigDefaults _config,
 });
@@ -144,6 +146,7 @@ class CodexSessionService({
   Future<CodexSubAgentThreadAnnouncement?> handleSubAgentStarted({
     required String childThreadId,
     required String parentThreadId,
+    required String callId,
     required String parentDirectory,
     required String? agentPath,
     required PluginSessionStatus status,
@@ -213,16 +216,55 @@ class CodexSessionService({
       );
       _subAgentTracker.replaceChild(child: child);
     }
+    final tile = _subAgentTracker.observeStarted(
+      child: child,
+      callId: callId,
+    );
     return CodexSubAgentThreadAnnouncement(
       child: child,
       status: startedStatus,
-      events: _sessionMapper.mapChildStarted(
-        child: child,
-        fallbackDirectory: _launchDirectory,
-        status: startedStatus,
-      ),
+      events: [
+        ..._sessionMapper.mapChildStarted(
+          child: child,
+          fallbackDirectory: _launchDirectory,
+          status: startedStatus,
+        ),
+        if (tile != null) _sessionMapper.mapSubAgentTile(task: tile),
+      ],
     );
   }
+
+  List<BridgeSseEvent> observeSubAgentRolloutFact({
+    required String sessionId,
+    required CodexSubAgentRolloutFact fact,
+  }) {
+    final task = switch (fact) {
+      CodexSubAgentSpawnFact() => _subAgentTracker.observeSpawn(parentId: sessionId, fact: fact),
+      CodexSubAgentInitialInputFact() => _subAgentTracker.observeInitialInput(childId: sessionId, fact: fact),
+      CodexSubAgentStartedActivityFact() => null,
+    };
+    return task == null ? const [] : [_sessionMapper.mapSubAgentTile(task: task)];
+  }
+
+  bool hasRenderedSubAgentTile({required String sessionId, required String callId}) =>
+      _subAgentTracker.hasRenderedTile(parentId: sessionId, callId: callId);
+
+  List<BridgeSseEvent> finishSubAgent({
+    required String childSessionId,
+    required PluginToolStatus status,
+    required String? turnId,
+  }) {
+    final task = _subAgentTracker.finish(
+      childId: childSessionId,
+      status: status,
+      turnId: turnId,
+    );
+    return task == null ? const [] : [_sessionMapper.mapSubAgentTile(task: task)];
+  }
+
+  List<BridgeSseEvent> cancelOpenSubAgents({Set<String>? sessionIds}) => [
+    for (final task in _subAgentTracker.cancelOpen(sessionIds: sessionIds)) _sessionMapper.mapSubAgentTile(task: task),
+  ];
 
   Set<String> get deferredRootIds => _subAgentTracker.deferredRootIds;
 
@@ -263,8 +305,15 @@ class CodexSessionService({
     _subAgentTracker.setChildActive(childId: thread.id, active: _isActiveStatus(status));
   }
 
-  void observeRootTurnStarted({required String sessionId}) =>
-      _subAgentTracker.cancelDeferredRootIdle(rootId: sessionId);
+  void observeTurnStarted({
+    required String sessionId,
+    required String? turnId,
+  }) {
+    _subAgentTracker.cancelDeferredRootIdle(rootId: sessionId);
+    if (turnId != null) {
+      _subAgentTracker.observeTurnStarted(childId: sessionId, turnId: turnId);
+    }
+  }
 
   void observeSessionStatus({required String sessionId, required PluginSessionStatus status}) =>
       _subAgentTracker.setChildActive(childId: sessionId, active: _isActiveStatus(status));
@@ -278,6 +327,7 @@ class CodexSessionService({
     required bool sessionClosed,
     required Iterable<BridgeSseEvent> events,
   }) {
+    final mappedEvents = events.toList(growable: false);
     final coordinated = <BridgeSseEvent>[
       if (sessionClosed && activityChanged && sessionId != null && _subAgentTracker.isChild(sessionId: sessionId))
         BridgeSseSessionStatus(
@@ -287,7 +337,7 @@ class CodexSessionService({
     ];
     final shouldDeferIdle =
         sessionId != null && sessionIsIdle && _subAgentTracker.busyChildIds(rootId: sessionId).isNotEmpty;
-    for (final event in events) {
+    for (final event in mappedEvents) {
       if (shouldDeferIdle && _isSessionIdleEvent(event: event, sessionId: sessionId)) {
         _subAgentTracker.deferRootIdle(rootId: sessionId);
       } else {
@@ -397,14 +447,19 @@ class CodexSessionService({
     for (final sessionId in sessionIds) {
       _subAgentTracker.setChildActive(childId: sessionId, active: false);
     }
+    final tileEvents = cancelOpenSubAgents(sessionIds: sessionIds.toSet());
     final releasedRoot = _subAgentTracker.releaseRootIdleIfSettled(childId: sessionIds.first);
     for (final sessionId in sessionIds.reversed) {
       await _deleteSession(sessionId: sessionId);
     }
     _subAgentTracker.forget(sessionId: sessionIds.first);
-    return releasedRoot == null
-        ? const []
-        : [..._rootIdleEvents(rootId: releasedRoot), const BridgeSseProjectUpdated()];
+    return [
+      ...tileEvents,
+      if (releasedRoot != null) ...[
+        ..._rootIdleEvents(rootId: releasedRoot),
+        const BridgeSseProjectUpdated(),
+      ],
+    ];
   }
 
   bool _isSessionIdleEvent({required BridgeSseEvent event, required String sessionId}) => switch (event) {
@@ -739,12 +794,23 @@ class CodexSessionService({
     final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
     if (path == null) return null;
     final messages = _messageRepository.prepareMessageRead(rolloutPath: path, sessionId: sessionId);
-    final children = messages.hasSubtasks
-        ? [
-            for (final record in await _catalogRepository.listSessionRecordsInIsolate())
-              if (record.parentId == sessionId) _sessionMapper.mapPersistedThread(record: record),
-          ]
-        : const <CodexThreadRecord>[];
+    final childReplayDataById = <String, CodexSubAgentReplayData>{};
+    final children = <CodexThreadRecord>[];
+    if (messages.hasSubtasks) {
+      for (final record in await _catalogRepository.listSessionRecordsInIsolate()) {
+        if (record.parentId != sessionId) continue;
+        children.add(_sessionMapper.mapPersistedThread(record: record));
+        try {
+          final childRead = _messageRepository.prepareMessageRead(
+            rolloutPath: record.rolloutPath,
+            sessionId: record.id,
+          );
+          childReplayDataById[record.id] = _messageRepository.subAgentReplayData(read: childRead);
+        } on Object catch (error, stackTrace) {
+          Log.w("[codex] failed to read sub-agent terminal state for ${record.id}", error, stackTrace);
+        }
+      }
+    }
     Map<String, PluginToolStatus> structuredToolStatusByCallId;
     try {
       structuredToolStatusByCallId = await _toolOutcomeRepository.readStatuses(
@@ -761,6 +827,7 @@ class CodexSessionService({
     return CodexSessionMessageRead._(
       messages: messages,
       children: children,
+      childReplayDataById: childReplayDataById,
       structuredToolStatusByCallId: structuredToolStatusByCallId,
       config: _metadataRepository.readConfigDefaults(),
     );
@@ -783,6 +850,7 @@ class CodexSessionService({
         PluginSessionStatusBusy() || PluginSessionStatusRetry() => CodexReplayToolDisposition.preserveRunning,
       },
       structuredToolStatusByCallId: read._structuredToolStatusByCallId,
+      childReplayDataById: read._childReplayDataById,
       config: read._config,
     );
   }

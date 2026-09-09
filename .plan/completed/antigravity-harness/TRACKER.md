@@ -2,10 +2,11 @@
 
 ## Current State
 
-- **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–9 merged; Step 10.a open for review
-- **Base:** synced with main `28998e2f736c96eded48d6b604bce7c589d86863` after Step 9 merge
-- **Current branch:** `antigravity-harness-step-10a-archive-budgets`
+- **Plan:** `.plan/completed/antigravity-harness/PLAN.md`
+- **Status:** completed under explicitly accepted reduced verification; Step 12 retirement ready for review
+- **Base:** synced with main `51faa03f6ee40ad5fb30ca78779c558f5f4f7f17` after Step 11 merge
+- **Current branch:** `antigravity-harness-step-12-verification`
+- **Open PR:** [#1397](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1397) (final Step 12 retirement).
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -21,9 +22,20 @@
   [#1359](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1359) (Step 8.a),
   [#1360](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1360) (Step 8.b),
   [#1367](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1367) (Step 8.c),
-  [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9)
-- **Open PR:** [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a).
-- **Next action:** monitor Step 10.a; begin only Step 10.b locally.
+  [#1373](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1373) (Step 9),
+  [#1376](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1376) (Step 10.a)
+- **Merged PR:** [#1380](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1380) (Step 10.b). At the terminal
+  report, 15/16 checks were complete with clean Cubic approval; Codex review was still running, so no 16/16 claim is made.
+- **Merged PR:** [#1384](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1384) (Step 10.c); terminal report
+  had 15/16 checks complete, with clean Cubic approval and no actionable Codex feedback.
+- **Merged PR:** [#1386](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1386) (Step 10.d), with 19/19 checks
+  passing at merge, Cubic approval and all review feedback handled. Final head `f9fa90695f` had 888 changed lines.
+- **Merged PR:** [#1395](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1395) (Step 11 guidance); terminal report
+  had 15/16 checks complete, Cubic approval and no outstanding feedback. Do not infer 16/16 passing.
+- **Owner decision:** accepted reduced verification and retirement after the remaining native/authenticated/client and
+  cumulative catalog gaps were presented. The exact waiver is recorded in `PLAN.md`; [EVIDENCE.md](EVIDENCE.md) retains
+  every Partial/Blocked/Not run result. This is not a full L5 pass.
+- **Next action:** monitor final PR #1397 through human review; no successor implementation step remains.
 
 ## Fixed PR Series
 
@@ -42,12 +54,14 @@
 - [x] Step 8.a/12 — `🚧 [antigravity-harness] feat(antigravity): add recovery foundations and ACP seams [step 8.a/12]`
 - [x] Step 8.b/12 — `🚧 [antigravity-harness] feat(antigravity): compose persistent ACP sessions [step 8.b/12]`
 - [x] Step 8.c/12 — `🚧 [antigravity-harness] feat(antigravity): compose runtime descriptor and setup [step 8.c/12]`
-- [ ] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
-- [ ] Step 10.a/12 — `⚙️ [antigravity-harness] feat(runtime): declare archive command budgets [step 10.a/12]`
-- [ ] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
-- [ ] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.c/12]`
-- [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
-- [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
+- [x] Step 9/12 — `⚙️ [antigravity-harness] feat(bridge): activate local Antigravity runtimes [step 9/12]`
+- [x] Step 10.a/12 — `🌿 [antigravity-harness] feat(runtime): require archive command budgets [step 10.a/12]`
+- [x] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
+- [x] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): validate official managed candidates [step 10.c/12]`
+- [x] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
+- [x] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
+- [x] Step 12/12 — `🌱 [antigravity-harness] docs: retire plan with accepted verification limits [step 12/12]`
+  Retirement implemented; PR #1397 is open, pending merge. This check does not assert that its PR merged.
 
 ## Step 1 Checklist
 
@@ -379,7 +393,7 @@
 - [x] Add required `ArchiveRuntimeAsset.archiveCommandTimeout` and extractor input, applying it to archive listing and
   extraction. Update all 34 current platform assets, fixture assets, extractor doubles and the self-update caller.
 - [x] Existing archives/self-update explicitly keep a two-minute per-command budget. Listing no longer has a separate
-  fixed 30-second bound. No Antigravity managed asset, installation action or native timing claim is introduced.
+  fixed 30-second bound. No Antigravity managed asset or installation action is introduced.
 - [x] Add deterministic simulated slow-command/timeout-cleanup coverage and selected-asset forwarding assertions;
   preserve real tar/zip/symlink tests and update both relevant regression documents.
 - [x] Focused JSON-counted tests pass: foundation archive 8; runtime install 12 + managed install 14 + provision 10;
@@ -395,6 +409,137 @@
 - [x] Step 9 merged with 16/16 checks; synchronized main `28998e2f73`. All reviewed bridge files remain byte-identical.
   Main also changed app/plugin stop contracts, so reran the 10 app updater/registry tests and app analysis: all pass.
   This overlaps the initial 54-test scope; unchanged archive tests were not rerun. Publication counts include metadata.
+
+## Step 10.b Checklist
+
+- [x] Add one required backend-neutral candidate-validation seam and adapt all seven managed-runtime installers
+  explicitly through their existing exact bundled-version validators.
+- [x] Validate downloaded candidates after checksum, archive hardening and executable chmod but before package placement
+  or sentinel creation; remove the duplicate destructive post-placement probe.
+- [x] Own disposable validation cwd/state below private managed staging, keep extraction in a child directory, and await
+  validation plus context cleanup for downloads and cached candidates.
+- [x] Pass `StartAbortSignal` through the seam while retaining honest bounded-command behavior for current validators.
+- [x] Cover validation ordering/containment/private-mode commands, cache validation, exact-version behavior, and
+  rejection/abort before placement preserving the retained supported prior package and sentinel.
+- [x] Pinned Dart 3.13.2 verification: all 195 non-hidden tests across the runtime package's 19 suites pass; runtime,
+  OpenCode, Codex, Cursor, DeepSeek, Copilot, OMP and Pi analyzers are clean with fatal infos. Counts use successful
+  JSON `testDone` records keyed by suite/test IDs; logs are retained under `/tmp/antigravity-step10b-*`.
+- [x] First foreground architecture review `d9e0453b` approved complete `57e9ecf33e` → `1cc96e98ff`: all 21 files,
+  581 additions + 111 deletions = 692 lines, no findings. Keep this immutable review distinct from publication metadata.
+- [x] Final localized diagnostics retain candidate launch errors/stacks and actual/expected version mismatches before
+  returning a rejected candidate. Sixteen overlapping validator tests pass and owning analysis is clean; these are
+  not additional unique cases on top of the initial 195. No architecture boundary changed in this follow-up.
+- [x] Step 10.b merged in PR #1380. Its terminal report had 15/16 completed checks, clean Cubic approval, and Codex
+  review still running; do not restate that as 16/16.
+
+## Step 10.c Checklist
+
+- [x] Step 10.c delivers release facts and candidate validation. Manifest and descriptor installation belong to
+  Step 10.d under the approved split.
+- [x] Independently downloaded all five archives from the exact official registry URLs at commit
+  `536e378b70a7a6d5f078a9160180e3569a23253c`; recomputed every SHA-256 and archive byte count, and listed both member
+  names/sizes. All facts match `pingdotgg/t3code@fff33f9e851912363c5b1f3ac65598be35eb5f0d`.
+- [x] Pin all five verified archive facts in `AntigravityRelease`, retaining the independently hashed macOS member
+  digests and the unsupported macOS x64 result.
+- [x] Add `AntigravityRuntimeVersionValidator(required runtimeService)`. It uses the installer-owned state as
+  `GEMINI_HOME`, shares the profile's ambient-credential stripping policy, forces file storage, uses the supplied staged
+  cwd and abort signal, and awaits the existing initialize-only ACP process lifecycle under a 90-second bound.
+- [x] Native macOS arm64 correctness evidence: the packaged extractor and production validator accepted the official
+  artifact and exact initialize contract, created no auth/session request, and left no files in disposable validation
+  cwd/state. This does not establish native correctness on other platforms.
+- [x] Keep Install unavailable: no manifest, descriptor install capability, installer composition or managed-download
+  disclosure is added in this slice.
+- [x] Worker `9d318de2` reached its 30-minute timeout after committing `68fd08a88e`, with a clean tree. Recovered only
+  missing artifacts through foreground run `6d34e6d3`; no tests/downloads were repeated for that recovery.
+- [x] First architecture review `10b3a055` approved complete `8184d028f3` → `68fd08a88e`: all 15 files,
+  532 additions + 55 deletions = 587 lines, no findings. Artifact SHA-256 is recorded in the recovered scope file.
+- [x] Initial focused tests: profile 17 + release 3 + runtime service 13 + validator 4 = 37; owning analyzer clean.
+  After main's ACP/NDJSON lifecycle changes, reran the 17 runtime-service/validator cases and owning analysis: passed.
+  This overlaps the initial 37, not 54 unique cases. Reviewed production files remain unchanged after synchronization.
+
+## Step 10.d Checklist
+
+- [x] Added `AntigravityRuntimeManifest` from the already pinned five official release artifacts. Every asset is a ZIP
+  package directory with a conservative two-minute per listing/extraction command budget.
+  Managed directories use registry package version `1.0.0`, while candidate validation
+  separately requires runtime identity `agy_acp_server_20260818_01_RC01`.
+- [x] Composed the shared managed installer/cleaner with the existing initialize-only
+  `AntigravityRuntimeVersionValidator`. The descriptor keeps explicit -> valid PATH -> installed managed precedence,
+  advertises Install only on Google's five targets without `--antigravity-bin`, and closes its required download client.
+- [x] Added pre-action proprietary Google download disclosure with terms/documentation links. Updated the capability,
+  runtime-installation, setup/lifecycle and Antigravity descriptor regression contracts without advancing the Step 11
+  root/bridge README reconciliation.
+- [x] Focused pinned-Dart verification passes: 34 non-hidden Antigravity tests across five suites and 4 app registry
+  tests, counted from successful JSON `testDone` records with suite/test IDs. Antigravity and app analyzers are clean
+  with fatal infos. One initial app registry run failed because its fixture omitted the now-read `bin` option; the
+  fixture was corrected and its four tests plus app analysis pass.
+- [x] Foreground native macOS arm64 managed-pipeline smoke reused the independently rehashed cached official archive in
+  disposable state. It downloaded through the descriptor, verified/extracted the package, preserved the server/harness
+  siblings, ran exactly one false-inheritance initialize-only validation, removed validation cwd/state and staging,
+  and returned the `1.0.0` managed server. No OAuth, authentication, session or real user profile was used.
+- [x] Native Linux x64/arm64 and Windows x64/arm64 correctness remains unexecuted and is not claimed. Shared automated
+  tests continue to own integrity, traversal/symlink, candidate-before-placement, abort, cleanup and prior-runtime
+  retention coverage. Same-pinned-directory placement itself is not claimed to roll back after rename.
+- Pre-review cap against `4fdd433392eabde75f1d800b649337206f057421`: 483 additions + 97 deletions = 580
+  changed lines across 14 files, including the committed user plan correction.
+- [x] First foreground architecture review `5d75ef9a` approved complete `4fdd433392` → `4ecc6b141f`: all 14 files,
+  483 additions + 97 deletions = 580 lines, no findings. Publication metadata is counted separately.
+- Final Step 10.d publication: base `4fdd433392eabde75f1d800b649337206f057421` to
+  head `f9fa90695feba09865a2843fe6fc1751cdb2e2a4`. Summing additions/deletions from
+  `git diff --numstat <base> <head>` gives 764 + 124 = 888 lines across 20 files.
+  Unlike the 580-line review checkpoint, this includes publication/tracker metadata plus the README, client disclosure,
+  shared-UI coverage and Linux preflight follow-ups below. It is a full net diff, not commit churn; no tracker-only
+  reconciliation is omitted. Step 11's later tracker edits are outside this immutable Step 10.d range.
+- [x] Review correction: overview download opens existing detail without installing; detail always shows setup guidance
+  before its Install button. Invalid managed-pair guidance includes both Google URLs. No new wire field or UI component.
+  Current focused evidence: 12 descriptor tests + 50 client settings tests pass; Antigravity and shared UI analyzers clean.
+  This overlaps earlier evidence, not 62 additional unique cases. Documentation now states retained supported-runtime
+  protection, permits existing managed upgrades, and attributes coverage/slices accurately.
+- [x] CI follow-up: update the two stale shared-UI expectations for overview navigation and visible hints;
+  all 19 shared settings-view tests pass. Reconcile the later lifecycle-document requirement with the same flow.
+  Production code is unchanged; prior passing analyzers and mobile-shell tests were not rerun.
+- [x] Linux ZIP prerequisite follow-up: an action-only bounded ZipInfo preflight fails before download-client creation
+  or staging writes, retaining local diagnostics and observing abort before/after the command. The install guide names
+  the distribution package. All 18 descriptor tests pass; owning analysis is clean after a const-only test lint fix.
+  Synthetic Linux cases cover missing/incompatible/timed-out tools, abort boundaries and successful preflight ordering;
+  host macOS ZipInfo help succeeded, not a native Linux installation claim. No unchanged client suites were rerun.
+- User declined additional recovery machinery for the rare externally supplied PATH pair that passes inert filename
+  inspection but fails runtime validation. Preserve existing inspection/lifecycle semantics rather than expanding this PR.
+
+## Step 11 Checklist
+
+- [x] Sync to merged Step 10.d; retain upstream work without including it in this PR's base-to-head diff.
+- [x] Update both root `README.md` and `bridge/README.md` with official pair/pin, supported hosts, managed/manual
+  installation, current-client personal login, supervised defaults, retained history and honest verification limits.
+- [x] Add `docs/ANTIGRAVITY.md` as the consolidated operator guide; link getting-started/headless guides without
+  relabelling OpenCode's resource estimates as Antigravity requirements. Reconcile the architecture dependency graph
+  and ownership prose with the already-implemented runtime installer, authentication, recovery and shared presentation.
+- [x] Audit both shells' settings/new-session composition, shared metadata-driven chooser and `PregoBrandLogo` fallback.
+  Both consume shared views: descriptor-aware surfaces show `Antigravity`; ID-only surfaces retain `antigravity`/plug.
+  This is a source audit, not packaged UI execution. No provider-specific UI, asset, analytics or production code added.
+- [x] Audit all ten named regression contracts: setup/lifecycle, installation, projects/sessions, creation/options, turns,
+  history/recovery, questions/permissions, tools/files, attachments/images and archiving/deletion. Preserve their already
+  documented behavior and pending native/authenticated coverage; reconcile operator links and Linux prerequisite prose.
+- [x] Validate local Markdown links/anchors, release pin/pair names, whitespace and the complete 1,500-line diff cap.
+  Validation is documentation-only; no Dart/Flutter suites or architecture reviewers run for this non-production step.
+- [x] Publish Step 11 as #1395 and start its monitor. Step 12 remains required; no plan retirement or L5 pass is claimed.
+
+## Step 12 Verification and Accepted Retirement
+
+- [x] Sync to merged Step 11; pin source `fe06ee356ebfc61cf14058881afd3f991e1d1b6e` for review and testing.
+- [x] First cumulative architecture review `0be00c31` approves all nineteen production PRs and integrated owning files.
+  Full report recovered verbatim from its completed transcript after the output handoff replaced it with a short summary;
+  review bundle and report hash are in [EVIDENCE.md](EVIDENCE.md). No repeated review or production corrections.
+- [x] Run the available automated subset: 1,398 passing tests across eleven package/suite selections, eleven clean
+  analyzers. JSON case counts, exact suite selections, versions and local logs are recorded in the evidence document.
+- [x] Reuse unchanged macOS arm64 initialize-only/managed-pipeline evidence; no extra download or real Google operation.
+- [x] Account for all 33 indexed regression features and the required host/account/client matrix without treating
+  automated/fake boundaries as live/provider/client E2E proof. Missing native hosts/Google QA access are blocked;
+  other unexecuted catalog journeys remain explicitly Not run. No full L5 pass is claimed.
+- [x] Owner selected “Accept reduced verification and retire” after the passing subset and remaining gaps were explained.
+  Record the named reduction in `PLAN.md` and preserve all results in `EVIDENCE.md`; no unexecuted check becomes a pass.
+- [x] Move the plan/tracker/evidence to `.plan/completed/antigravity-harness/` under that explicit acceptance.
+- [x] Publish final documentation-only PR #1397 and start its monitor; no further implementation step remains.
 
 ## Architecture Reviews
 
@@ -418,7 +563,9 @@
 - **Step 2 implementation review:** first pass rejected handwritten parsing of newly exposed ACP initialize fields. The
   shared parser additions were reverted, and Layer 1 now maps into generated Antigravity Freezed/JSON DTOs before the
   repository. The second and final pass approved the corrected architecture with no remaining violations.
-- **Series implementation review:** required in Step 12 over the Step 2-10 production range; maximum two passes
+- **Series implementation review:** completed and approved in Step 12 by `0be00c31`, first pass, with no blocking
+  findings. Covered all nineteen Step 2–10 production PRs at `fe06ee356ebfc61cf14058881afd3f991e1d1b6e`;
+  exact scope and report hash are recorded in `EVIDENCE.md`. No second pass was required.
 
 ## Locked Decisions
 
@@ -445,33 +592,14 @@
 
 ## Retirement Coverage
 
-Highest required level: **L5 Full**, including the complete applicable documented L1-L5 catalog.
+The original **L5 Full** requirement was reduced for retirement by the owner's explicit acceptance recorded in
+`PLAN.md`. The authoritative final target, account/client and complete 33-feature catalog dispositions are in
+[EVIDENCE.md](EVIDENCE.md); the original intended boundaries remain in `PLAN.md`.
 
-Required target rows:
-
-| Target | Local pair | Managed install | ACP identity | Process smoke | Status |
-| --- | --- | --- | --- | --- | --- |
-| macOS arm64 | Required | Required | Required | Required | Not run |
-| Linux x64 | Required | Required | Required | Required | Not run |
-| Linux arm64 | Required | Required | Required | Required | Not run |
-| Windows x64 | Required | Required | Required | Required | Not run |
-| Windows arm64 | Required | Required | Required | Required | Not run |
-| macOS x64 | Unsupported guidance | Must be absent | N/A | N/A | Not run |
-
-Required representative end-to-end rows:
-
-| Flow | Boundary | Status |
-| --- | --- | --- |
-| Same-host personal OAuth | Google -> bridge host -> official agent -> desktop | Not run |
-| Remote personal OAuth | Google -> client -> pasted redirect -> bridge loopback -> agent | Not run |
-| Model/session create and turn | client -> relay -> bridge -> official agent -> Google | Not run |
-| Permission and interaction question | official agent -> bridge -> client -> exact response | Not run |
-| History, cold resume, bridge restart | isolated profile -> ACP load/resume -> client | Not run |
-| Managed install rollback/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
-| Unknown/older-client fallback | shared wire/plugin identity -> client presentation | Not run |
-
-Antigravity-affected regression documents are listed in Step 11 of `PLAN.md`. Step 12 additionally collects every
-applicable catalog entry from L1 through L5 across its required plugin/platform boundaries.
+The macOS arm64 native subset is **Partial**; macOS x64 capability omission is **Pass (automated)**. Native Linux/Windows
+and real personal Google flows are **Blocked**. Packaged client journeys and other unexecuted catalog checks remain
+**Not run**, with only the listed automated/native subsets marked **Partial** or **Pass**. No full L5 pass is claimed.
+These recorded gaps are accepted for retirement, not outstanding requirements under this completed plan.
 
 ## Evidence Log
 

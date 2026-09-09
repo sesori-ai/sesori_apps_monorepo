@@ -1,5 +1,6 @@
 {
   "@@locale": "en",
+  "sessionDetailHarnessLegacyWarning": "Update your bridge to check harness availability.",
   "appTitle": "Sesori Mobile",
   "connectErrorUnexpectedFormat": "Unexpected response format",
   "connectErrorUnknown": "An unknown error occurred",
@@ -367,6 +368,9 @@
   "@settingsAppearanceSystem": {
     "description": "Theme option that follows the device appearance setting"
   },
+  "settingsSectionSessions": "Sessions",
+  "settingsSectionPreferences": "Preferences",
+  "settingsDefaultInputDescription": "Choose how you default talk to Sesori.",
   "settingsDefaultInputTitle": "Default input",
   "@settingsDefaultInputTitle": {
     "description": "Settings entry and page title for choosing the default session composer input"
@@ -463,6 +467,10 @@
     "description": "Label on a transcript message injected by session automation rather than authored by the user or agent."
   },
   "sessionDetailRetry": "Retry",
+  "sessionDetailRecheck": "Recheck",
+  "@sessionDetailRecheck": {
+    "description": "Action that refreshes harness availability after authentication may have been restored elsewhere."
+  },
   "sessionDetailPromptHint": "Ask anything...",
   "sessionDetailHoldToTalk": "Hold to talk",
   "@sessionDetailHoldToTalk": {
@@ -899,6 +907,28 @@
   "newSessionOptionsRefreshFailedUnavailable": "Refresh failed and no valid cached options remain. You can create with defaults.",
   "sessionListDeleteWorktreeCheckbox": "Delete worktree",
   "sessionDetailArchivedNotice": "This session is archived and read-only.",
+  "sessionDetailHarnessFallbackName": "This harness",
+  "sessionDetailHarnessDisabledReason": "{harnessName} is disabled.",
+  "@sessionDetailHarnessDisabledReason": {"placeholders": {"harnessName": {"type": "String"}}},
+  "sessionDetailHarnessAuthenticationReason": "Sign in to {harnessName} to continue.",
+  "@sessionDetailHarnessAuthenticationReason": {"placeholders": {"harnessName": {"type": "String"}}},
+  "sessionDetailHarnessRuntimeMissingReason": "{harnessName} is not installed or cannot be used.",
+  "@sessionDetailHarnessRuntimeMissingReason": {"placeholders": {"harnessName": {"type": "String"}}},
+  "sessionDetailHarnessUnavailableReason": "{harnessName} is unavailable.",
+  "@sessionDetailHarnessUnavailableReason": {"placeholders": {"harnessName": {"type": "String"}}},
+  "sessionDetailHarnessStoppingReason": "{harnessName} is stopping.",
+  "@sessionDetailHarnessStoppingReason": {"placeholders": {"harnessName": {"type": "String"}}},
+  "sessionDetailHarnessNotInspectedReason": "{harnessName} has not been checked yet.",
+  "@sessionDetailHarnessNotInspectedReason": {"placeholders": {"harnessName": {"type": "String"}}},
+  "sessionDetailHarnessUnknownReason": "{harnessName} reported an unknown status.",
+  "@sessionDetailHarnessUnknownReason": {"placeholders": {"harnessName": {"type": "String"}}},
+  "sessionDetailHarnessMissingReason": "This session’s harness is not available on the connected bridge.",
+  "sessionDetailHarnessCheckFailedReason": "Couldn’t check whether this session’s harness is available.",
+  "sessionDetailContentLoadFailedReason": "The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.",
+  "sessionDetailHarnessCheckingReason": "Checking whether this session’s harness is available…",
+  "sessionDetailHarnessHistoryUnavailable": "Chat history cannot be loaded until the harness is available.",
+  "sessionDetailHarnessRefreshWarning": "Harness status could not be refreshed. The last known status is shown.",
+  "sessionDetailOpenHarnessSettings": "Open Harness Settings",
   "sessionListArchiveConfirmTitle": "Archive session?",
   "sessionListArchiveConfirmMessage": "Archiving makes this session permanently read-only. You can still view its history, but you can’t send new prompts or unarchive it.",
   "sessionListArchiveConfirmAction": "Archive",
@@ -1317,5 +1347,13 @@
   "@harnessesForceRestartDescription": {"placeholders": {"name": {"type": "String"}}},
   "harnessesForceRestartAction": "Force restart",
   "harnessesStatusIdle": "Idle",
-  "harnessesStatusRunning": "Running"
+  "harnessesStatusRunning": "Running",
+  "archivedSessionsTitle": "Archived tasks",
+  "archivedSessionsClose": "Close archived sessions",
+  "archivedSessionsToday": "Today",
+  "archivedSessionsYesterday": "Yesterday",
+  "archivedSessionsThisWeek": "This week",
+  "archivedSessionsLastWeek": "Last week",
+  "archivedSessionsThisMonth": "This month",
+  "archivedSessionsLastMonth": "One month ago"
 }

@@ -34,6 +34,14 @@ If PATH has not refreshed yet:
 sesori-bridge
 ```
 
+### Linux: Antigravity managed runtime prerequisite
+
+Install your distribution's Info-ZIP `unzip` package before installing Antigravity from Sesori
+(for example, `sudo apt-get install unzip` on Debian/Ubuntu or `sudo dnf install unzip` on Fedora).
+It must support ZipInfo mode (`unzip -Z -h`). Sesori checks this when installation is requested,
+before downloading Google's archive; the bridge installer does not install this system package.
+This prerequisite does not apply to harnesses using other archive formats.
+
 ## Windows
 
 ### 1. Install

@@ -74,6 +74,7 @@ graph TD
   sesori_plugin_antigravity --> sesori_plugin_interface
   sesori_plugin_antigravity --> sesori_bridge_foundation
   sesori_plugin_antigravity --> sesori_plugin_acp
+  sesori_plugin_antigravity --> sesori_plugin_runtime
   sesori_plugin_antigravity --> sesori_shared
   sesori_plugin_cursor --> sesori_plugin_interface
   sesori_plugin_cursor --> sesori_bridge_foundation
@@ -128,7 +129,7 @@ At runtime, the components form a simple pipeline:
 
 ```mermaid
 graph LR
-  OC["AI Assistant<br/>(localhost)"] -- "HTTP + SSE" --> B["Bridge CLI<br/>(your machine)"]
+  OC["AI Assistant<br/>(localhost)"] -- "Plugin-owned local transport" --> B["Bridge CLI<br/>(your machine)"]
   B -- "WSS · E2E encrypted" --> R["Relay Server<br/>(cloud)"]
   R -- "WSS · E2E encrypted" --> M["Mobile App<br/>(your phone)"]
 ```
@@ -210,6 +211,36 @@ variant choices by project and plugin.
 This direction deliberately makes direct harness usage a secondary workflow:
 external work appears after import, and imported metadata may be stale until
 another import or a live event updates it.
+
+### Antigravity boundaries
+
+`sesori_plugin_antigravity` owns Google's runtime pair, release pin, isolated
+profile, personal OAuth validation, metadata recovery and provider normalization.
+Its descriptor composes the existing shared managed installer with an
+initialize-only candidate validator; it does not introduce another installer.
+Inspection is read-only, while installation owns disposable candidate state and
+validates before placement. Linux extractor preflight belongs to the explicit
+installation path, never inspection.
+
+Runtime/profile Storage → Repository → Service boundaries separate filesystem
+access, normalized outcomes and policy. Authentication uses the plugin's ACP
+and loopback clients through repositories/services; the shared lifecycle owns
+the attempt and neutral client challenge. Raw OAuth output is intercepted before
+NDJSON/logging. Actual runtime processes disable parent-environment inheritance;
+archive helpers retain the existing host command-execution policy.
+
+The connection-scoped interaction composer binds repositories/services to the
+real lazy/reconnected ACP client. Shared ACP code owns transport, pending
+interaction lifecycle and session residency; Google-specific fields are
+normalized inside the plugin before live/replay retention. Recovered `.meta`
+directory bindings remain fallbacks beneath bridge/live authority. Google
+history is never a second normal catalog database or a deletion target.
+
+Mobile and desktop share settings, login presentation and chooser widgets.
+They consume `Antigravity` metadata or the raw `antigravity`/plug fallback, not
+Google-specific branches or a new shared harness enum value. See the
+[operator guide](ANTIGRAVITY.md) and [capability matrix](HARNESS_CAPABILITIES.md)
+for supported behavior and the native/authenticated verification gaps.
 
 ## Design principles
 

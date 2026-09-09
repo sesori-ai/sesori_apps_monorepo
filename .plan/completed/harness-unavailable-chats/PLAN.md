@@ -17,37 +17,38 @@ This replaces the earlier broader proposal. There is **no queue recovery work**:
 no outbox, rejected-submission retention, attachment persistence, retry redesign,
 new composer handoff contract, or structured bridge rejection protocol. Existing
 queue ownership, storage, delivery uncertainty and cancellation behavior remain
-unchanged. Implementation has not started.
+unchanged. The gate landed in [PR #1375](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1375).
 
-## Observed problem and current code
+## Observed problem and original code baseline
 
 The user reported Claude Code returning expired authentication. Local login
 failed; restarting the harness put setup into `authenticationRequired`. The chat
 still accepted input, showed it as Queued, and that apparent queued message was
 absent after authentication and a settings round trip.
 
-Code inspection confirms the prevention gap, not the exact reported timing:
+The following historical snapshot records the prevention gap that PR #1375
+closed; it is the original baseline, not current code guidance:
 
 - `shared/sesori_shared/lib/src/models/sesori/plugin_setup_response.dart` already
   reports ready, authenticationRequired, runtimeMissing, unavailable,
   notInspected and unknown. `plugin_management.dart` adds runtime state and
   safe action hints. No new wire field is needed.
-- `client/module_core/lib/src/services/plugin_management_service.dart` owns
-  management snapshots, bridge/connection fencing, change-event refresh and
-  coalescing. Chats do not consume its `snapshots` stream.
-- `SessionDetailCubit.sendMessage` and `_drainQueuedMessages` check connection,
+- `client/module_core/lib/src/services/plugin_management_service.dart` already
+  owned management snapshots, bridge/connection fencing, change-event refresh
+  and coalescing. Chats did not yet consume its `snapshots` stream.
+- `SessionDetailCubit.sendMessage` and `_drainQueuedMessages` checked connection,
   archive and attachment constraints, but not harness usability. Generic errors
-  requeue locally. This plan prevents known-unavailable admission; it does not
-  repair or redesign those error/queue paths.
-- Shared `SessionDetailBody` selects read-only presentation only for route
+  requeued locally. The implementation prevents known-unavailable admission; it
+  does not repair or redesign those error/queue paths.
+- Shared `SessionDetailBody` selected read-only presentation only for route
   read-only mode or archive. Pending question/permission modal predicates also
-  omit harness status.
+  omitted harness status.
 - `PluginRuntime._acquire` already refuses setup-blocked, disabled, transitioning
   and unstartable harnesses. Reuse that authoritative bridge protection; do not
   add a second admission mechanism.
-- Catalog session metadata is readable without a plugin, but message history
-  calls the owning plugin. `SessionDetailLoadService` currently starts history
-  before resolving metadata. A cold blocked chat therefore needs a reason-bearing
+- Catalog session metadata was readable without a plugin, but message history
+  called the owning plugin. `SessionDetailLoadService` started history before
+  resolving metadata. A cold blocked chat therefore needs a reason-bearing
   shell, not a promise of newly cached/offline history.
 
 ## Required behavior
@@ -94,7 +95,7 @@ behavior rather than introducing a different connectivity policy.
 - Expose Retry for unavailable status/metadata checks. Recovery means reloading
   prerequisites and re-enabling interaction, **not recovering queued messages**.
 - Disable all harness-mutating chat controls while blocked: send, text/voice
-  input, attachments/paste/drop submission, slash commands, selection changes,
+  input, attachments/paste submission, slash commands, selection changes,
   stop and remote queued-prompt cancellation. Apply the same decision before
   cubit mutation methods, not only in widgets.
 - Do not open question/permission response dialogs while blocked. Dismiss an
@@ -218,11 +219,16 @@ The user-approved scope reduction replaces the earlier six-step proposal before
 any implementation PR began. Slug remains `harness-unavailable-chats`. Count
 additions plus deletions, generated code and tests toward the 1,500-line soft cap;
 if implementation cannot fit, revise the split/total before opening that PR.
+The user explicitly approved a step-2 cap exception after focused verification:
+keep the coherent gate and required internal API/test/generated updates together
+rather than add a prerequisite PR. Review fixes brought the merged PR to
+approximately 1,900 changed lines. The four-step series and input-gating-only
+scope remain unchanged.
 
 | Step and exact title | What / why | Risk and test focus | Expected result / estimate |
 |---|---|---|---|
 | 🌱 [harness-unavailable-chats] Plan read-only unavailable chats [step 1/4] | This plan and tracker; record prevention-only scope. | Low; documentation paths, titles and consistency. | No user-visible/database change; plan only. Approximately 350 documentation lines in the final plan/tracker. |
-| ⚙️ [harness-unavailable-chats] Gate unavailable chats on both clients [step 2/4] | Shared availability projection, metadata-first blocked view, cubit action/drain guards, shared notice/dialog gating and shell settings callbacks. | Medium; management transitions, existing startup/queue policy, cold history, disposal, both surfaces. | Known unusable chats are read-only with clear guidance and automatically regain eligible controls. No database/wire/storage change. Approximately 1,000–1,450 changed lines including generation and tests. |
+| ⚙️ [harness-unavailable-chats] Gate unavailable chats on both clients [step 2/4] | Shared availability projection, metadata-first blocked view, cubit action/drain guards, shared notice/dialog gating and shell settings callbacks. | Medium; management transitions, existing startup/queue policy, cold history, disposal, both surfaces. | Known unusable chats are read-only with clear guidance and automatically regain eligible controls. No database/wire/storage change. Approximately 1,900 changed lines including generation, tests and review fixes (user-approved cap exception retained without widening scope). |
 | 🌿 [harness-unavailable-chats] Reconcile chat availability regressions [step 3/4] | Complete affected feature docs against delivered behavior and detection limits. | Low; accuracy of required behavior, failure signals and matrix. | No additional user-visible/database change; executable regression contracts. Approximately 100–200 lines. |
 | 🌿 [harness-unavailable-chats] Verify read-only chats and retire plan [step 4/4] | Run the recorded matrix, record privacy-safe EVIDENCE.md and cleanup, retire only after passing. | Low implementation complexity; isolated setup/auth fixtures required. | Proven gate and recovery of interaction, not messages. No additional product/database change. Approximately 100–200 lines plus directory move. |
 
@@ -307,6 +313,22 @@ Missing infrastructure is not a pass. Any reduction to this matrix requires
 explicit user acceptance recorded here; otherwise the plan stays active.
 Planning/docs-only changes need no Dart/Flutter test run.
 
+### Accepted final-matrix reduction — 2026-09-08
+
+After reviewing the completed evidence, the user explicitly accepted both
+remaining infrastructure-limited reductions:
+
+- no live macOS desktop unavailable-to-usable journey, because another Sesori
+  desktop process could not be disturbed and approved GUI automation tooling
+  was unavailable;
+- no distinct iOS pending-transcription availability transition, because the
+  simulator produced no usable recording payload with which to hold that phase.
+
+These rows remain recorded as **Blocked** in [EVIDENCE.md](EVIDENCE.md), not as
+passes. Automated desktop Settings routing, iOS active-recording coverage, and
+all other applicable automated/live rows pass. With the two named reductions
+accepted, the reduced final matrix is complete and the plan may retire.
+
 ## Review and scope decisions
 
 Two architecture reviews of the earlier broader draft identified ownership and
@@ -319,4 +341,8 @@ attachment memory). The user chose **input gating only**, superseding all recove
 storage, typed admission responses, asynchronous handoff and queue changes. Those
 are removed, not deferred implementation requirements. No third architecture
 review is needed merely to approve applied findings; implementation receives its
-own scoped review. No implementation or live reproduction has run for this PR.
+own scoped review. Implementation and focused automated verification landed in PR #1375. The
+step-4 live matrix is recorded in [EVIDENCE.md](EVIDENCE.md): available mobile,
+bridge and multi-client rows pass, while macOS desktop and distinct
+pending-transcription rows remain honestly blocked. The user explicitly accepted
+those two reductions, so the plan is retired with no other matrix reduction.

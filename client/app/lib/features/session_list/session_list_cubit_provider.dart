@@ -7,12 +7,13 @@ import "../../core/di/injection.dart";
 class const SessionListCubitProvider({
   super.key,
   required final String projectId,
+  required final SessionListFilter filter,
   required final Widget child,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createSessionListCubit(locator: getIt, projectId: projectId),
+      create: (_) => createSessionListCubit(initialFilter: filter, locator: getIt, projectId: projectId),
       child: child,
     );
   }

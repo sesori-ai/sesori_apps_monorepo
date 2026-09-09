@@ -2,6 +2,7 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
+import "../../foundation/models/session_interaction_state.dart";
 import "queued_session_submission.dart";
 
 part "session_detail_state.freezed.dart";
@@ -11,6 +12,7 @@ sealed class SessionDetailState with _$SessionDetailState {
   const factory loading() = SessionDetailLoading;
 
   const factory loaded({
+    required SessionInteractionState interaction,
     required List<MessageWithParts> messages,
 
     /// Cursor for the page of messages before [messages], or null when the
@@ -68,6 +70,11 @@ sealed class SessionDetailState with _$SessionDetailState {
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
   }) = SessionDetailLoaded;
+
+  const factory harnessUnavailable({
+    required Session session,
+    required SessionInteractionState interaction,
+  }) = SessionDetailHarnessUnavailable;
 
   const factory failed({required RemoteFailureReason reason}) = SessionDetailFailed;
 }

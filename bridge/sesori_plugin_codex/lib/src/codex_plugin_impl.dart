@@ -20,12 +20,14 @@ import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_event_mapper.dart";
 import "models/codex_collaboration_mode.dart";
+import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
 import "repositories/codex_tool_lifecycle_tracker.dart";
 import "repositories/codex_tool_outcome_repository.dart";
 import "repositories/mappers/codex_question_mapper.dart";
+import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
 import "services/codex_rollout_tailer.dart";
@@ -53,6 +55,7 @@ class CodexPlugin._({
   required final String? _capabilityToken,
   required final CodexAppServerClient Function()? _clientFactory,
   required final CodexSessionService _sessionService,
+  required final CodexMessageRepository _messageRepository,
   required final CodexEventMapper _eventMapper,
   required final CodexRolloutTailer _rolloutTailer,
   required final CodexToolLifecycleTracker _toolLifecycleTracker,
@@ -142,6 +145,7 @@ class CodexPlugin._({
     required String? capabilityToken,
     required CodexAppServerClient Function()? clientFactory,
     required CodexSessionService sessionService,
+    required CodexMessageRepository messageRepository,
     required CodexEventMapper eventMapper,
     required CodexRolloutTailer rolloutTailer,
     required CodexToolLifecycleTracker toolLifecycleTracker,
@@ -159,6 +163,7 @@ class CodexPlugin._({
          capabilityToken: capabilityToken,
          clientFactory: clientFactory,
          sessionService: sessionService,
+         messageRepository: messageRepository,
          eventMapper: eventMapper,
          rolloutTailer: rolloutTailer,
          toolLifecycleTracker: toolLifecycleTracker,
@@ -259,6 +264,7 @@ class CodexPlugin._({
       ..._sessionService.deferredRootIds,
     };
     final hadVisibleActivity = activeSessionIds.isNotEmpty || (registry?.hasAnyPendingInput ?? false);
+    _sessionService.cancelOpenSubAgents().forEach(_eventBuffer.add);
     _connectFuture = null;
     _client = null;
     _sessionService.detachAppServerRepositories();
@@ -338,22 +344,34 @@ class CodexPlugin._({
       lifecycle: CodexCorrelatableItemLifecycle.started,
       kind: CodexSubAgentActivityKind.started,
       threadId: final parentId,
+      :final itemId,
       :final agentThreadId,
       :final agentPath,
     )) {
-      final announced = await _announceSubAgentThread(
+      // Probe-confirmed ordering persists `spawn_agent` before this activity.
+      // Drain first so its generic card and agent metadata exist; the service
+      // replaces that exact call id once child-owned prompt text is known.
+      _rolloutTailer.drain(sessionId: parentId);
+      await _announceSubAgentThread(
         parentId: parentId,
         childId: agentThreadId,
+        callId: itemId,
         agentPath: agentPath,
       );
-      if (announced) {
-        _rolloutTailer.drain(sessionId: parentId);
-        final tool = _toolLifecycleTracker.observeSubAgentStarted(event: subAgentItem);
-        _eventMapper
-            .mapProjectedTool(
-              threadId: parentId,
-              tool: tool,
-              children: _sessionService.knownChildThreads(sessionId: parentId),
+    } else if (subAgentItem case CodexSubAgentActivity(:final kind, :final agentThreadId)) {
+      final status = switch (kind) {
+        CodexSubAgentActivityKind.completed => PluginToolStatus.completed,
+        CodexSubAgentActivityKind.interrupted => PluginToolStatus.cancelled,
+        CodexSubAgentActivityKind.started ||
+        CodexSubAgentActivityKind.interacted ||
+        CodexSubAgentActivityKind.unknown => null,
+      };
+      if (status != null) {
+        _sessionService
+            .finishSubAgent(
+              childSessionId: agentThreadId,
+              status: status,
+              turnId: null,
             )
             .forEach(_eventBuffer.add);
       }
@@ -386,18 +404,13 @@ class CodexPlugin._({
       for (final tool in _toolLifecycleTracker.observeTerminalNotification(
         notification: notification,
       )) {
-        _eventMapper
-            .mapProjectedTool(
-              threadId: threadId,
-              tool: tool,
-              children: _sessionService.knownChildThreads(sessionId: threadId),
-            )
-            .forEach(_eventBuffer.add);
+        _mapProjectedTool(threadId: threadId, tool: tool).forEach(_eventBuffer.add);
       }
     }
     // Keep work state busy until the terminal rollout drain has emitted its
     // final tool updates. Forced runtime teardown waits for this transition
     // before disconnecting the generation's event stream.
+    final subAgentTerminalEvents = _subAgentTerminalEvents(notification);
     final activityChanged = _maintainBookkeeping(notification);
     final projectedTool = correlatableItem == null
         ? _toolLifecycleTracker.observeUncorrelatedAppServerItem(
@@ -427,18 +440,14 @@ class CodexPlugin._({
     final mappedThreadId = correlatableItem?.threadId ?? threadId;
     final mappedEvents = projectedTool == null
         ? _eventMapper.map(notification)
-        : _eventMapper.mapProjectedTool(
-            threadId: mappedThreadId!,
-            tool: projectedTool,
-            children: _sessionService.knownChildThreads(sessionId: mappedThreadId),
-          );
+        : _mapProjectedTool(threadId: mappedThreadId!, tool: projectedTool);
     _sessionService
         .coordinateSessionEvents(
           sessionId: mappedThreadId,
           sessionIsIdle: mappedThreadId != null && _sessionStatuses[mappedThreadId] is PluginSessionStatusIdle,
           activityChanged: activityChanged,
           sessionClosed: notification.method == "thread/closed",
-          events: mappedEvents,
+          events: [...subAgentTerminalEvents, ...mappedEvents],
         )
         .forEach(_eventBuffer.add);
     if (notification.method == "turn/started" && threadId != null) {
@@ -452,6 +461,7 @@ class CodexPlugin._({
   Future<bool> _announceSubAgentThread({
     required String parentId,
     required String childId,
+    required String callId,
     required String? agentPath,
   }) async {
     if (_deletedThreadIds.contains(parentId) || _deletedThreadIds.contains(childId)) return false;
@@ -461,6 +471,7 @@ class CodexPlugin._({
     final announcement = await _sessionService.handleSubAgentStarted(
       childThreadId: childId,
       parentThreadId: parentId,
+      callId: callId,
       parentDirectory: _directoryForSession(parentId),
       agentPath: agentPath,
       status: status,
@@ -476,6 +487,33 @@ class CodexPlugin._({
     announcement.events.forEach(_eventBuffer.add);
     _syncWorkState();
     return true;
+  }
+
+  List<BridgeSseEvent> _subAgentTerminalEvents(CodexServerNotification notification) {
+    final childId = notification.params["threadId"] as String?;
+    if (childId == null) return const [];
+    final status = switch (notification.method) {
+      "turn/completed" => switch (_turnStatus(notification.params)) {
+        "failed" => PluginToolStatus.error,
+        "interrupted" => PluginToolStatus.cancelled,
+        _ => PluginToolStatus.completed,
+      },
+      "error" => PluginToolStatus.error,
+      "thread/closed" => PluginToolStatus.cancelled,
+      _ => null,
+    };
+    return status == null
+        ? const []
+        : _sessionService.finishSubAgent(
+            childSessionId: childId,
+            status: status,
+            turnId: notification.method == "thread/closed" ? null : _notificationTurnId(notification.params),
+          );
+  }
+
+  String? _turnStatus(Map<String, dynamic> params) {
+    final turn = params["turn"];
+    return turn is Map ? turn["status"] as String? : null;
   }
 
   CodexImageGenerationItemDto? _parseImageGeneration({
@@ -494,17 +532,39 @@ class CodexPlugin._({
     return parsed is CodexImageGenerationItemDto ? parsed : null;
   }
 
+  List<BridgeSseEvent> _mapProjectedTool({
+    required String threadId,
+    required CodexProjectedTool tool,
+  }) {
+    if (_sessionService.hasRenderedSubAgentTile(
+      sessionId: threadId,
+      callId: tool.canonicalId,
+    )) {
+      return const [];
+    }
+    return _eventMapper.mapProjectedTool(
+      threadId: threadId,
+      tool: tool,
+    );
+  }
+
   void _handleRolloutAppend(CodexRolloutAppend append) {
     final tools = _toolLifecycleTracker.observeRolloutLine(
       threadId: append.sessionId,
       line: append.line,
     );
     for (final tool in tools) {
-      _eventMapper
-          .mapProjectedTool(
-            threadId: append.sessionId,
-            tool: tool,
-            children: _sessionService.knownChildThreads(sessionId: append.sessionId),
+      _mapProjectedTool(threadId: append.sessionId, tool: tool).forEach(_eventBuffer.add);
+    }
+    final subAgentFact = _messageRepository.subAgentRolloutFact(
+      line: append.line,
+      previousLine: append.previousLine,
+    );
+    if (subAgentFact != null) {
+      _sessionService
+          .observeSubAgentRolloutFact(
+            sessionId: append.sessionId,
+            fact: subAgentFact,
           )
           .forEach(_eventBuffer.add);
     }
@@ -673,8 +733,11 @@ class CodexPlugin._({
       case "turn/started":
         if (threadId == null) return false;
         if (!_recordAuthoritativeTurnEvidence(threadId)) return false;
-        _sessionService.observeRootTurnStarted(sessionId: threadId);
         final turnId = _notificationTurnId(params);
+        _sessionService.observeTurnStarted(
+          sessionId: threadId,
+          turnId: turnId,
+        );
         if (turnId != null) _activeTurnByThread[threadId] = turnId;
         return _setSessionStatus(threadId, const PluginSessionStatus.busy());
       case "turn/completed":
@@ -1077,6 +1140,7 @@ class CodexPlugin._({
     required String sessionId,
     required CodexServerNotification terminal,
   }) async {
+    _subAgentTerminalEvents(terminal).forEach(_eventBuffer.add);
     try {
       await _rolloutTailer.finish(sessionId: sessionId);
     } on Object catch (error, stackTrace) {
@@ -1088,13 +1152,7 @@ class CodexPlugin._({
       );
     }
     for (final tool in _toolLifecycleTracker.observeTerminalNotification(notification: terminal)) {
-      _eventMapper
-          .mapProjectedTool(
-            threadId: sessionId,
-            tool: tool,
-            children: _sessionService.knownChildThreads(sessionId: sessionId),
-          )
-          .forEach(_eventBuffer.add);
+      _mapProjectedTool(threadId: sessionId, tool: tool).forEach(_eventBuffer.add);
     }
   }
 

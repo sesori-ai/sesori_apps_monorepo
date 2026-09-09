@@ -10,6 +10,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get sessionDetailHarnessLegacyWarning => 'Update your bridge to check harness availability.';
+
+  @override
   String get appTitle => 'Sesori Mobile';
 
   @override
@@ -689,6 +692,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
+  String get settingsSectionSessions => 'Sessions';
+
+  @override
+  String get settingsSectionPreferences => 'Preferences';
+
+  @override
+  String get settingsDefaultInputDescription => 'Choose how you default talk to Sesori.';
+
+  @override
   String get settingsDefaultInputTitle => 'Default input';
 
   @override
@@ -836,6 +848,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailRetry => 'Retry';
+
+  @override
+  String get sessionDetailRecheck => 'Recheck';
 
   @override
   String get sessionDetailPromptHint => 'Ask anything...';
@@ -1595,6 +1610,67 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
 
   @override
+  String get sessionDetailHarnessFallbackName => 'This harness';
+
+  @override
+  String sessionDetailHarnessDisabledReason(String harnessName) {
+    return '$harnessName is disabled.';
+  }
+
+  @override
+  String sessionDetailHarnessAuthenticationReason(String harnessName) {
+    return 'Sign in to $harnessName to continue.';
+  }
+
+  @override
+  String sessionDetailHarnessRuntimeMissingReason(String harnessName) {
+    return '$harnessName is not installed or cannot be used.';
+  }
+
+  @override
+  String sessionDetailHarnessUnavailableReason(String harnessName) {
+    return '$harnessName is unavailable.';
+  }
+
+  @override
+  String sessionDetailHarnessStoppingReason(String harnessName) {
+    return '$harnessName is stopping.';
+  }
+
+  @override
+  String sessionDetailHarnessNotInspectedReason(String harnessName) {
+    return '$harnessName has not been checked yet.';
+  }
+
+  @override
+  String sessionDetailHarnessUnknownReason(String harnessName) {
+    return '$harnessName reported an unknown status.';
+  }
+
+  @override
+  String get sessionDetailHarnessMissingReason => 'This session’s harness is not available on the connected bridge.';
+
+  @override
+  String get sessionDetailHarnessCheckFailedReason => 'Couldn’t check whether this session’s harness is available.';
+
+  @override
+  String get sessionDetailContentLoadFailedReason =>
+      'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.';
+
+  @override
+  String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';
+
+  @override
+  String get sessionDetailHarnessHistoryUnavailable => 'Chat history cannot be loaded until the harness is available.';
+
+  @override
+  String get sessionDetailHarnessRefreshWarning =>
+      'Harness status could not be refreshed. The last known status is shown.';
+
+  @override
+  String get sessionDetailOpenHarnessSettings => 'Open Harness Settings';
+
+  @override
   String get sessionListArchiveConfirmTitle => 'Archive session?';
 
   @override
@@ -2090,4 +2166,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessesStatusRunning => 'Running';
+
+  @override
+  String get archivedSessionsTitle => 'Archived tasks';
+
+  @override
+  String get archivedSessionsClose => 'Close archived sessions';
+
+  @override
+  String get archivedSessionsToday => 'Today';
+
+  @override
+  String get archivedSessionsYesterday => 'Yesterday';
+
+  @override
+  String get archivedSessionsThisWeek => 'This week';
+
+  @override
+  String get archivedSessionsLastWeek => 'Last week';
+
+  @override
+  String get archivedSessionsThisMonth => 'This month';
+
+  @override
+  String get archivedSessionsLastMonth => 'One month ago';
 }

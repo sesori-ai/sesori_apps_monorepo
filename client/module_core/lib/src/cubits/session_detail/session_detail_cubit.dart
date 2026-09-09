@@ -14,19 +14,23 @@ import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
+import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../services/session_interaction_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
 import "../../services/transcript_snapshot_calculator.dart";
@@ -45,6 +49,7 @@ enum _SessionRefreshTrigger(final String logValue) {
   lifecycleResumed("lifecycle_resumed"),
   dataMayBeStale("data_may_be_stale"),
   waitingForConnection("waiting_for_connection"),
+  harnessAvailable("harness_available"),
   queuedEvent("queued_event"),
 }
 
@@ -68,6 +73,8 @@ enum _SessionRefreshResult() {
 class SessionDetailCubit(
   final ConnectionService _connectionService, {
   required final SessionDetailLoadService _loadService,
+  required final PluginManagementService _pluginManagementService,
+  required final SessionInteractionCalculator _interactionCalculator,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
@@ -77,6 +84,7 @@ class SessionDetailCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final String _sessionId,
   required final String _projectId,
+  required final bool claimProjectView,
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
 
@@ -96,10 +104,14 @@ class SessionDetailCubit(
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
-  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
+  final ProjectViewClaim? _projectViewClaim = claimProjectView
+      ? _projectViewingService.beginDetailClaim(projectId: _projectId)
+      : null;
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final Set<String> _staleOptionsRecoveryAttemptedPromptIds = {};
+  Session? _sessionMetadata;
+  SessionInteractionState _interaction = const SessionInteractionState.checking();
 
   /// Monotonic counter stamped on parked sends, so a snapshot can settle only
   /// the parked prompts its fetch actually had a chance to observe.
@@ -187,13 +199,66 @@ class SessionDetailCubit(
       ..add(_connectionService.sessionEvents(_sessionId).listen(_handleEvent))
       ..add(_connectionService.events.listen(_handleGlobalEvent))
       ..add(_connectionService.status.listen(_onConnectionStatusChanged))
+      ..add(_pluginManagementService.snapshots.listen(_onManagementResult))
       ..add(
         _connectionService.dataMayBeStale.listen(
           (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
         ),
       )
       ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged));
-    _loadMessages(isReload: false);
+    unawaited(_pluginManagementService.refresh());
+    unawaited(_loadMessages(isReload: false));
+  }
+
+  SessionInteractionState _calculateInteraction({required Session session}) {
+    return _interactionCalculator.calculate(
+      pluginId: session.pluginId,
+      managementResult: _pluginManagementService.snapshots.hasValue ? _pluginManagementService.snapshots.value : null,
+      connectionStatus: _connectionService.currentStatus,
+      previous: _interaction,
+    );
+  }
+
+  void _onManagementResult(PluginManagementLoadResult result) {
+    if (isClosed) return;
+    if (result case PluginManagementLoadResultFailure(:final error)) {
+      logw("Harness availability check failed for session $_sessionId", error);
+    }
+    final session = _sessionMetadata;
+    if (session == null) return;
+    final next = _calculateInteraction(session: session);
+    if (next == _interaction) return;
+    _interaction = next;
+
+    final current = state;
+    switch (current) {
+      case SessionDetailLoaded(:final interaction):
+        if (!next.canInteract) {
+          emit(current.copyWith(interaction: next));
+        } else if (!interaction.canInteract) {
+          _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+        } else {
+          emit(current.copyWith(interaction: next));
+        }
+      case SessionDetailHarnessUnavailable():
+        if (next.canInteract) {
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
+        } else {
+          emit(SessionDetailState.harnessUnavailable(session: session, interaction: next));
+        }
+      case SessionDetailLoading() || SessionDetailFailed():
+        break;
+    }
+  }
+
+  Future<void> recheckHarnessAvailability() async {
+    await _pluginManagementService.refresh();
+    if (isClosed || !_interaction.canInteract) return;
+    if (state is SessionDetailLoaded) {
+      _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+    } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
+      await reload();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -204,13 +269,23 @@ class SessionDetailCubit(
     final connectionGeneration = _connectionGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
+    final previous = state;
     emit(const SessionDetailState.loading());
     final parkEpochAtFetch = _parkEpoch;
-    late final SessionDetailLoadResult result;
+    late final SessionDetailMetadataLoadResult metadataResult;
+    SessionDetailLoadResult? result;
     try {
-      result = isReload
-          ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-          : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+      metadataResult = await _loadService.loadMetadata(sessionId: _sessionId);
+      if (metadataResult case SessionDetailMetadataFound(:final session)
+          when !isClosed && connectionGeneration == _connectionGeneration) {
+        _sessionMetadata = session;
+        _interaction = _calculateInteraction(session: session);
+        if (_interaction.canInteract) {
+          result = isReload
+              ? await _loadService.reload(session: session, projectId: _projectId)
+              : await _loadService.load(session: session, projectId: _projectId);
+        }
+      }
     } finally {
       final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
       if (remaining == 0) {
@@ -232,6 +307,50 @@ class SessionDetailCubit(
       return _SessionRefreshResult.staleConnection;
     }
 
+    switch (metadataResult) {
+      case SessionDetailMetadataWaitingForConnection():
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+        _waitingForConnection = true;
+        if (_isConnected) {
+          _waitingForConnection = false;
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.waitingForConnection));
+        }
+        return _SessionRefreshResult.waitingForConnection;
+      case SessionDetailMetadataFailed(:final error, :final stackTrace):
+        _waitingForConnection = false;
+        loge("Session metadata load failed", error, stackTrace);
+        if (previous is SessionDetailLoaded) {
+          emit(previous.copyWith(interaction: _interaction));
+          _drainPendingEvents();
+          _drainDeferredPartsForLoadedMessages();
+        } else {
+          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+          emit(
+            SessionDetailState.failed(
+              reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+            ),
+          );
+        }
+        return _SessionRefreshResult.failed;
+      case SessionDetailMetadataFound(:final session):
+        if (result == null || !_interaction.canInteract) {
+          _waitingForConnection = false;
+          final current = state;
+          final retained = current is SessionDetailLoaded ? current : previous;
+          if (retained is SessionDetailLoaded) {
+            emit(retained.copyWith(interaction: _interaction));
+            _drainPendingEvents();
+            _drainDeferredPartsForLoadedMessages();
+          } else {
+            if (_projectViewClaim case final claim?) {
+              _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+            }
+            emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+          }
+          return _SessionRefreshResult.applied;
+        }
+    }
+
     switch (result) {
       case SessionDetailLoadResultLoaded(:final snapshot):
         _waitingForConnection = false;
@@ -243,10 +362,10 @@ class SessionDetailCubit(
         _refreshStaleOptions(snapshot: snapshot);
         final effectiveProjectId = snapshot.projectId;
         if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
-          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
-        } else {
+          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+        } else if (_projectViewClaim case final claim?) {
           _projectViewingService.markClaimReady(
-            claim: _projectViewClaim,
+            claim: claim,
             projectId: effectiveProjectId,
           );
         }
@@ -260,7 +379,7 @@ class SessionDetailCubit(
         _tryDrainQueue();
         return _SessionRefreshResult.applied;
       case SessionDetailLoadResultWaitingForConnection():
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _waitingForConnection = true;
         if (_connectionService.currentStatus is ConnectionConnected) {
           _waitingForConnection = false;
@@ -273,7 +392,7 @@ class SessionDetailCubit(
         return _SessionRefreshResult.waitingForConnection;
       case SessionDetailLoadResultFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
         _deferredPartEvents.clear();
@@ -301,7 +420,9 @@ class SessionDetailCubit(
     final cursor = current.olderMessagesCursor;
     // A refresh replaces the newest page, so a page requested against the
     // outgoing transcript could only splice unrelated history onto it.
-    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing) return;
+    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing || !current.interaction.canInteract) {
+      return;
+    }
 
     final generation = _transcriptGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -362,7 +483,8 @@ class SessionDetailCubit(
     final active = _activeRefresh;
     if (active != null) {
       _logRefresh(action: _SessionRefreshAction.coalesced, trigger: trigger);
-      if (trigger == _SessionRefreshTrigger.connectionReconnected) {
+      if (trigger == _SessionRefreshTrigger.connectionReconnected ||
+          trigger == _SessionRefreshTrigger.harnessAvailable) {
         _queueConnectionRefreshAfter(activeRefresh: active);
       }
       // This call raced an in-flight refresh. If a staleness signal is
@@ -517,6 +639,7 @@ class SessionDetailCubit(
   Future<_SessionRefreshResult> _doSilentRefresh() async {
     final current = state;
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
+    if (!_interaction.canInteract) return _SessionRefreshResult.applied;
     final connectionGeneration = _connectionGeneration;
     final optionsGeneration = _optionsGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -539,7 +662,33 @@ class SessionDetailCubit(
 
     final parkEpochAtFetch = _parkEpoch;
     try {
-      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
+      final metadata = await _loadService.loadMetadata(sessionId: _sessionId);
+      if (isClosed) return _SessionRefreshResult.closed;
+      if (connectionGeneration != _connectionGeneration) {
+        _emitRefreshEnded();
+        return _SessionRefreshResult.staleConnection;
+      }
+      final Session session;
+      switch (metadata) {
+        case SessionDetailMetadataFound(session: final found):
+          session = found;
+          _sessionMetadata = session;
+          _interaction = _calculateInteraction(session: session);
+        case SessionDetailMetadataWaitingForConnection():
+          _emitRefreshEnded();
+          return _SessionRefreshResult.waitingForConnection;
+        case SessionDetailMetadataFailed(:final error, :final stackTrace):
+          logw("Session metadata refresh failed", error, stackTrace);
+          _emitRefreshFailed();
+          return _SessionRefreshResult.failed;
+      }
+      if (!_interaction.canInteract) {
+        _emitRefreshEnded();
+        final latest = state;
+        if (latest is SessionDetailLoaded) emit(latest.copyWith(interaction: _interaction));
+        return _SessionRefreshResult.applied;
+      }
+      final result = await _loadService.reload(session: session, projectId: _projectId);
       if (isClosed) return _SessionRefreshResult.closed;
       if (connectionGeneration != _connectionGeneration) {
         _emitRefreshEnded();
@@ -583,6 +732,7 @@ class SessionDetailCubit(
           );
           emit(
             latest.copyWith(
+              interaction: _interaction,
               messages: messages,
               // A refresh re-reads the newest page, so previously paged-back
               // history is dropped and the cursor returns to that page's edge.
@@ -636,15 +786,33 @@ class SessionDetailCubit(
           return _SessionRefreshResult.waitingForConnection;
         case SessionDetailLoadResultFailed(:final error, :final stackTrace):
           logw("Silent refresh failed", error, stackTrace);
-          _emitRefreshEnded();
+          _emitRefreshFailed();
           return _SessionRefreshResult.failed;
       }
     } on Object catch (error, stackTrace) {
       logw("Silent refresh failed", error, stackTrace);
       if (isClosed) return _SessionRefreshResult.closed;
-      _emitRefreshEnded();
+      _emitRefreshFailed();
       return _SessionRefreshResult.failed;
     }
+  }
+
+  void _emitRefreshFailed() {
+    _emitRefreshEnded();
+    final current = state;
+    if (current is! SessionDetailLoaded || current.interaction.canInteract || !_interaction.canInteract) return;
+    // Setup recovered, but the content/options needed to interact did not.
+    // Keep the transcript read-only without repeating an obsolete setup reason.
+    emit(
+      current.copyWith(
+        interaction: const SessionInteractionState.blocked(
+          reason: SessionInteractionBlockedReason.contentLoadFailed,
+          displayName: null,
+          actionHint: null,
+          refreshError: null,
+        ),
+      ),
+    );
   }
 
   void _emitRefreshEnded() {
@@ -1197,6 +1365,7 @@ class SessionDetailCubit(
   /// bridge's confirmation — including not-found, which means it already
   /// dispatched or was removed elsewhere; only a transport failure keeps it.
   Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
+    if (_refuseWhenInteractionBlocked(action: "cancel a bridge-queued prompt")) return;
     final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
     // Only not-found means the entry is gone (dispatched or removed
     // elsewhere); any other failure proves nothing about the bridge queue.
@@ -1461,6 +1630,14 @@ class SessionDetailCubit(
     final reconnected = isConnected && !_wasConnected;
     if (!isConnected && _wasConnected) _connectionGeneration++;
     _wasConnected = isConnected;
+    if (reconnected) {
+      final session = _sessionMetadata;
+      _interaction = session == null
+          ? const SessionInteractionState.checking()
+          : _calculateInteraction(session: session);
+      final current = state;
+      if (current is SessionDetailLoaded) emit(current.copyWith(interaction: _interaction));
+    }
     if (!isConnected) {
       _connectionRefreshQueued = false;
       final current = state;
@@ -1513,6 +1690,7 @@ class SessionDetailCubit(
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
   }) async {
+    if (_refuseWhenInteractionBlocked(action: "send a prompt")) return;
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
@@ -1656,6 +1834,7 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
+    if (_refuseWhenInteractionBlocked(action: "drain the prompt queue")) return;
     if (_refuseWhenArchived(action: "drain the prompt queue")) return;
 
     final pendingSubmission = _promptQueue.items.firstOrNull;
@@ -2026,12 +2205,14 @@ class SessionDetailCubit(
     }
   }
 
+  /// Shell-reported visibility also gates transient UI above a nested navigator.
+  bool get isRouteVisible => _routeVisible;
+
   /// Updates whether this detail route is currently visible to the user.
   ///
-  /// A desktop root-level route can cover the nested session navigator without
-  /// disposing this cubit, so route visibility must fence both the initial load
-  /// and later refresh declarations. The mobile shell leaves the default
-  /// visible value in place and continues to use [reassertViewingSession].
+  /// A root-level route can cover the nested session navigator without
+  /// disposing this cubit, so shell-reported visibility fences both the initial
+  /// load and later refresh declarations.
   void setRouteVisible({required bool isVisible}) {
     if (_routeVisible == isVisible) return;
     _routeVisible = isVisible;
@@ -2073,7 +2254,7 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(current.copyWith(pendingQuestions: pending));
-    _questionStream.add(question);
+    if (current.interaction.canInteract) _questionStream.add(question);
   }
 
   void _onQuestionResolved(String requestId) {
@@ -2097,7 +2278,7 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(current.copyWith(pendingPermissions: pending));
-    _permissionStream.add(permission);
+    if (current.interaction.canInteract) _permissionStream.add(permission);
   }
 
   void _onPermissionResolved(String requestId) {
@@ -2110,9 +2291,14 @@ class SessionDetailCubit(
     emit(current.copyWith(pendingPermissions: pending));
   }
 
-  /// Archiving is permanent, so an archived session is audit-only: every
-  /// mutation refuses here rather than in the widgets. Returns `true` when the
-  /// caller must stop.
+  /// Gate the mutation seam too, including callbacks from an already-open UI.
+  bool _refuseWhenInteractionBlocked({required String action}) {
+    final current = state;
+    if (current is SessionDetailLoaded && current.interaction.canInteract) return false;
+    logw("Refused to $action while the session harness is unavailable");
+    return true;
+  }
+
   bool _refuseWhenArchived({required String action}) {
     final current = state;
     if (current is! SessionDetailLoaded || !current.isArchived) return false;
@@ -2182,6 +2368,7 @@ class SessionDetailCubit(
     required void Function() reportSuccess,
     bool checkArchived = true,
   }) async {
+    if (_refuseWhenInteractionBlocked(action: archivedAction)) return false;
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
     final notificationCanceller = _notificationCanceller;
@@ -2211,6 +2398,7 @@ class SessionDetailCubit(
   // ---------------------------------------------------------------------------
 
   void selectAgent(String agent) {
+    if (_refuseWhenInteractionBlocked(action: "select an agent")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2237,6 +2425,7 @@ class SessionDetailCubit(
   }
 
   void selectModel({required String providerID, required String modelID}) {
+    if (_refuseWhenInteractionBlocked(action: "select a model")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2266,6 +2455,7 @@ class SessionDetailCubit(
   }
 
   void selectVariant(SessionVariant variant) {
+    if (_refuseWhenInteractionBlocked(action: "select a model variant")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     final agentModel = current.selectedAgentModel;
@@ -2276,6 +2466,7 @@ class SessionDetailCubit(
   }
 
   void stageCommand(CommandInfo command) {
+    if (_refuseWhenInteractionBlocked(action: "stage a command")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2284,6 +2475,7 @@ class SessionDetailCubit(
   }
 
   void clearStagedCommand() {
+    if (_refuseWhenInteractionBlocked(action: "clear a staged command")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2300,10 +2492,15 @@ class SessionDetailCubit(
   /// Under `stop` every busy child session is aborted too — plugins whose
   /// children are real sessions keep today's stop-everything behavior.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
+    if (_refuseWhenInteractionBlocked(action: "stop the session")) {
+      return const SessionAbortOutcome.failed();
+    }
     try {
       final requestChildStatuses = switch (state) {
         SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
-        SessionDetailLoading() || SessionDetailFailed() => const <String, SessionStatus>{},
+        SessionDetailLoading() ||
+        SessionDetailHarnessUnavailable() ||
+        SessionDetailFailed() => const <String, SessionStatus>{},
       };
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
@@ -2401,6 +2598,7 @@ class SessionDetailCubit(
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
+      interaction: _interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
       streamingText: const {},
@@ -2476,7 +2674,7 @@ class SessionDetailCubit(
   @override
   Future<void> close() {
     _sessionViewingService.clearViewingSession(_sessionId);
-    _projectViewingService.releaseClaim(claim: _projectViewClaim);
+    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _deferredPartEvents.clear();

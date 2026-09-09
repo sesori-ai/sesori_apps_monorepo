@@ -176,7 +176,7 @@ final class const PiPluginDescriptor({
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        versionValidator: _versionValidator(processes: processes),
+        candidateValidator: _versionValidator(processes: processes),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* service.install(

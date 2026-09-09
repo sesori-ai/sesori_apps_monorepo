@@ -12,6 +12,7 @@ import "permission_modal.dart";
 import "question_modal.dart";
 import "session_detail_loaded_view.dart";
 import "session_detail_scaffold_sections.dart";
+import "session_harness_unavailable_notice.dart";
 
 String? _resolveModelName({required AgentModel? model, required List<ProviderInfo> providers}) {
   if (model == null) return null;
@@ -31,6 +32,7 @@ class const SessionDetailBody({
   required final bool readOnly,
   required final Widget? banner,
   required final VoidCallback? onBack,
+  required final VoidCallback? onClose,
   required final VoidCallback? onShowDiffs,
   required final SessionDetailBottomControlsBuilder? bottomControlsBuilder,
 }) extends StatefulWidget {
@@ -89,12 +91,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         sessionStatus: sessionStatus,
         childStatuses: childStatuses,
       ),
-      SessionDetailLoading() => false,
-      SessionDetailFailed() => false,
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
     };
     final fallbackTitle = widget.sessionTitle ?? loc.sessionDetailTitle;
     final title = switch (state) {
       SessionDetailLoaded(:final sessionTitle) => sessionTitle ?? fallbackTitle,
+      SessionDetailHarnessUnavailable(:final session) => session.title ?? fallbackTitle,
       SessionDetailLoading() || SessionDetailFailed() => fallbackTitle,
     };
     final subtitle = switch (state) {
@@ -104,12 +106,18 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         ?agent,
         ?_resolveModelName(model: assistantAgentModel, providers: availableProviders),
       ].join(" · "),
-      SessionDetailLoading() || SessionDetailFailed() => "",
+      SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => "",
     };
     final canShowDiffs = state is SessionDetailLoaded && (state.isRootSession ?? false) && !state.isArchived;
     final onShowDiffs = widget.onShowDiffs;
 
     final actions = <Widget>[
+      if (widget.onClose != null)
+        PregoButtonsIconGlass(
+          icon: TablerRegular.x,
+          semanticLabel: loc.archivedSessionsClose,
+          onPressed: widget.onClose,
+        ),
       if (canShowDiffs && onShowDiffs != null)
         PregoButtonsIconGlass(
           icon: TablerRegular.git_compare,
@@ -132,10 +140,27 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
         ),
     ];
 
+    final statusWarning = switch (state) {
+      SessionDetailLoaded(:final SessionInteractionLegacyUnverified interaction) => interaction,
+      SessionDetailLoaded(:final SessionInteractionAvailable interaction) when interaction.refreshError != null =>
+        interaction,
+      SessionDetailLoaded() ||
+      SessionDetailLoading() ||
+      SessionDetailHarnessUnavailable() ||
+      SessionDetailFailed() => null,
+    };
     return PregoGlassScaffold(
       title: title,
       subtitleText: subtitle.isEmpty ? null : subtitle,
-      banner: widget.banner,
+      banner: statusWarning == null
+          ? widget.banner
+          : Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                ?widget.banner,
+                _buildHarnessNotice(interaction: statusWarning, historyUnavailable: false),
+              ],
+            ),
       // A chat owns its own (reversed) scroll, so there is no top-anchored
       // scroll for a large title to collapse against. Use the fixed, centred
       // inline title (Figma "Middle Title") instead.
@@ -180,9 +205,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
           // it; the inline title is used instead, as on the new-session screen.
           final SessionDetailLoaded loaded => SliverFillRemaining(
             hasScrollBody: true,
-            // Archiving is permanent, so an archived session is audit-only:
-            // it renders through the same read-only variant as a background
-            // task, with no composer or mutating controls.
             child: widget.readOnly || loaded.isArchived
                 ? SessionDetailLoadedView.readOnly(
                     projectId: widget.projectId,
@@ -190,6 +212,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                     state: loaded,
                     onShowPendingQuestions: _showPendingQuestions,
                     onShowPendingPermissions: _showPendingPermissions,
+                    bottomControls: loaded.isArchived || loaded.interaction.canInteract
+                        ? null
+                        : _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false),
                   )
                 : SessionDetailLoadedView.interactive(
                     projectId: widget.projectId,
@@ -197,13 +222,19 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
                     state: loaded,
                     onShowPendingQuestions: _showPendingQuestions,
                     onShowPendingPermissions: _showPendingPermissions,
-                    bottomControls: widget.bottomControlsBuilder?.call(
-                      context: context,
-                      projectId: widget.projectId,
-                      sessionId: widget.sessionId,
-                      state: loaded,
-                    ),
+                    bottomControls: !loaded.interaction.canInteract
+                        ? _buildHarnessNotice(interaction: loaded.interaction, historyUnavailable: false)
+                        : widget.bottomControlsBuilder?.call(
+                            context: context,
+                            projectId: widget.projectId,
+                            sessionId: widget.sessionId,
+                            state: loaded,
+                          ),
                   ),
+          ),
+          SessionDetailHarnessUnavailable(:final interaction) => SliverFillRemaining(
+            hasScrollBody: false,
+            child: Center(child: _buildHarnessNotice(interaction: interaction, historyUnavailable: true)),
           ),
           SessionDetailFailed(:final reason) => SliverFillRemaining(
             hasScrollBody: false,
@@ -219,14 +250,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
 
   void _showPendingQuestions() {
     final state = context.read<SessionDetailCubit>().state;
-    if (state case SessionDetailLoaded(:final pendingQuestions) when pendingQuestions.isNotEmpty) {
+    if (state case SessionDetailLoaded(:final pendingQuestions, :final interaction)
+        when interaction.canInteract && !widget.readOnly && pendingQuestions.isNotEmpty) {
       _showQuestionModal(pendingQuestions.first);
     }
   }
 
   void _showPendingPermissions() {
     final state = context.read<SessionDetailCubit>().state;
-    if (state case SessionDetailLoaded(:final pendingPermissions) when pendingPermissions.isNotEmpty) {
+    if (state case SessionDetailLoaded(:final pendingPermissions, :final interaction)
+        when interaction.canInteract && !widget.readOnly && pendingPermissions.isNotEmpty) {
       _showPermissionModal(pendingPermissions.first);
     }
   }
@@ -240,7 +273,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     bool isPending() {
       final state = cubit.state;
       return state is SessionDetailLoaded &&
+          !widget.readOnly &&
           !state.isArchived &&
+          state.interaction.canInteract &&
           state.pendingQuestions.any((q) => q.id == question.id);
     }
 
@@ -277,7 +312,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     bool isPending() {
       final state = cubit.state;
       return state is SessionDetailLoaded &&
+          !widget.readOnly &&
           !state.isArchived &&
+          state.interaction.canInteract &&
           state.pendingPermissions.any((p) => p.requestID == permission.requestID);
     }
 
@@ -336,7 +373,17 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   void _scheduleModal(VoidCallback action) =>
       Future.delayed(const Duration(milliseconds: 200), () => mounted ? action() : null);
 
-  bool get _isCurrentPage => ModalRoute.of(context)?.isCurrent ?? false;
+  bool get _isCurrentPage =>
+      context.read<SessionDetailCubit>().isRouteVisible && (ModalRoute.of(context)?.isCurrent ?? false);
+
+  Widget _buildHarnessNotice({required SessionInteractionState interaction, required bool historyUnavailable}) {
+    return SessionHarnessUnavailableNotice(
+      interaction: interaction,
+      historyUnavailable: historyUnavailable,
+      onOpenHarnessSettings: SessionDetailPresentationScope.read(context).openHarnessSettings,
+      onRecheck: () => unawaited(context.read<SessionDetailCubit>().recheckHarnessAvailability()),
+    );
+  }
 
   void _showFailureAlert(String message) {
     PregoPopupAlertPresenter.of(context).show(

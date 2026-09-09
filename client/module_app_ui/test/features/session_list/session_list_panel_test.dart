@@ -52,6 +52,7 @@ void main() {
                 width: width,
                 height: 800,
                 child: SessionListPanel(
+                  onOpenArchived: cubit.toggleArchived,
                   // A long name maximises title pressure on the narrow header.
                   projectName: "A Fairly Long Project Name That Will Not Fit",
                   onBack: () {},

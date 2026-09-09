@@ -45,6 +45,9 @@ class _Validator({
   final List<String> probes = [];
 
   @override
+  Future<bool> validate({required RuntimeCandidateValidationContext context}) => Future<bool>.value(false);
+
+  @override
   Future<RuntimeProbeOutcome> probe({
     required String executable,
     required Map<String, String>? environment,

@@ -187,8 +187,9 @@ state.
   a root also removes its `subagents/` directory; deleting a child removes its
   transcript and meta file.
 - A live Codex `subAgentActivity started` resolves the named thread through
-  `thread/read`, announces it under its direct parent with the parent's project
-  directory and Codex nickname (or agent path), and never depends on a missing
+  metadata-only `thread/read(includeTurns: false)`, announces it under its
+  direct parent with the parent's project directory and Codex nickname (or agent
+  path), and never depends on a missing
   child `thread/started`. Later child activity and title updates retain that
   parent. Connection startup restores persisted lifecycle ancestry before
   pending-input routing, and resuming a child restores the same mapper context.

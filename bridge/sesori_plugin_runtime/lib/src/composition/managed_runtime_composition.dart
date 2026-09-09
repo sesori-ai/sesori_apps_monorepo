@@ -5,6 +5,7 @@ import "../provisioning/managed_runtime_install_service.dart";
 import "../provisioning/managed_runtime_inventory.dart";
 import "../provisioning/managed_runtime_provision_service.dart";
 import "../provisioning/managed_runtime_selection_service.dart";
+import "../provisioning/runtime_candidate_validator.dart";
 import "../provisioning/runtime_install_service.dart";
 import "../provisioning/runtime_manifest.dart";
 import "../provisioning/runtime_version_validator.dart";
@@ -23,17 +24,17 @@ class const ManagedRuntimeComposition() {
     required RuntimeManifest manifest,
     required CommandExecutor commandExecutor,
     required BinaryDownloadClient downloadClient,
-    required RuntimeVersionValidator versionValidator,
+    required RuntimeCandidateValidator candidateValidator,
     required RuntimeAssetResolver assetResolver,
   }) {
     return ManagedRuntimeInstallService(
       manifest: manifest,
-      versionValidator: versionValidator,
       installService: RuntimeInstallService(
         downloadClient: downloadClient,
         checksumValidator: ChecksumValidator(),
         archiveExtractor: ArchiveExtractor(commandExecutor: commandExecutor),
         commandExecutor: commandExecutor,
+        candidateValidator: candidateValidator,
         runtimeId: manifest.runtimeId,
       ),
       cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),

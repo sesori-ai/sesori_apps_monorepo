@@ -1,22 +1,30 @@
-# Antigravity Local Runtime Activation
+# Antigravity Runtime Activation
 
 ## Status and supported behavior
 
-Registered local-runtime support. Antigravity appears through the existing generic plugin inventory under its
-plugin-owned opaque ID, while managed installation remains a later gate. This activation adds no database/wire
-migration or analytics event and its synthetic verification performs no real OAuth or Google history access.
+Registered local and managed-runtime support. Antigravity appears through the existing generic plugin inventory under
+its plugin-owned opaque ID. This activation adds no database/wire migration or analytics event and its verification
+performs no real OAuth or Google history access. For user/operator instructions and the consolidated supported-runtime
+contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
 
 - Setup inspection is inert. It checks only the official sibling runtime filenames and isolated token-file presence; it
   does not create files, read token contents, spawn/probe a process, prepare a browser command or authenticate.
-- Runtime precedence is authoritative explicit pair, then PATH, then the future managed-layout location. Empty POSIX
+- Runtime precedence is authoritative explicit pair, then PATH, then the installed managed-layout location. Empty POSIX
   PATH entries continue to mean the current directory. Static inspection does not claim a validated runtime version.
 - Missing/rejected/unsupported/boundary outcomes map to honest setup statuses and current-client authentication hints.
   macOS x64 reports unsupported-platform guidance without constructing a managed filename, preparing a profile or
   launching a process, including when an explicit binary option is supplied.
   A recovered PATH storage failure retains its cause, stack and PATH context in local logs before managed fallback;
-  ordinary absence or pair rejection remains non-error resolution. Install is not advertised. The app registry exposes
-  `Antigravity` and namespaces the descriptor's bare `bin` option as `--antigravity-bin`; OpenCode remains the preferred
-  default.
+  ordinary absence or pair rejection remains non-error resolution. Install is advertised only without an explicit
+  override on macOS arm64, Linux x64/arm64 and Windows x64/arm64; macOS x64 remains unsupported. Eligible missing or
+  invalid PATH/managed setup guidance discloses the proprietary Google download and provides terms/documentation URLs.
+  The overview download icon opens detail; detail keeps that guidance visible before the explicit Install button. The
+  app registry exposes `Antigravity` and namespaces the descriptor's bare `bin` option as `--antigravity-bin`; OpenCode
+  remains the preferred default.
+- Linux installation checks `unzip -Z -h` for Info-ZIP/ZipInfo support before creating the download client or staging
+  files. A missing/incompatible extractor or preflight failure reports package-installation guidance locally and to the
+  client without downloading the archive. The command is bounded; abort is observed before and after it. Setup inspection
+  remains inert. macOS and Windows retain their existing extraction paths.
 - Provisioning and start prepare the same isolated profile before exact runtime probing. Every profile helper, probe and
   live ACP process receives the sanitized environment with parent inheritance disabled. No ambient Google/Gemini
   credential or browser override reaches those processes.
@@ -39,20 +47,28 @@ migration or analytics event and its synthetic verification performs no real OAu
 Setup inspection writing state, reading token contents, launching a process, weakening explicit-path authority,
 inheriting ambient credentials, opening a browser, silently authenticating, retaining stale configuration after reset,
 terminating best-effort provisioning on timeout, or omitting Antigravity from inventory are regressions. Advertising
-managed install before its pinned implementation, adding a shared `Harness` case, or replacing the generic client
-presentation is also a regression. Preparation or probe timeouts preserve local diagnostics and settle as
-`ProvisionFailed`; explicit startup abort still propagates.
+managed install with an explicit override or on macOS x64, first installation without an explicit action, adding a shared
+`Harness` case, or replacing the generic client presentation is also a regression. Existing Sesori-managed runtimes may
+upgrade at bridge start. Preparation or probe timeouts
+preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abort still propagates.
 
 - **L1/L2:** app `plugin_registry_test.dart` and `run_command_catalog_import_test.dart` cover the exact registered ID,
-  display name, plugin-owned identity, local-only management capabilities, OpenCode default, inert declaration and
-  namespaced CLI option. `antigravity_profile_service_test.dart` covers read-only token-presence inspection and isolated
+  display name, plugin-owned identity, current-target management capabilities, OpenCode default, inert
+  declaration and namespaced CLI option. `antigravity_plugin_descriptor_test.dart` owns target/override gating.
+  Client `harnesses_settings_screen_test.dart` covers overview-to-detail navigation without an install request and
+  visible missing/invalid-runtime guidance before explicit installation. `antigravity_runtime_manifest_test.dart` covers the official five-target
+  assets, checksums, package-directory layout, conservative two-minute archive-command budget, version directory and
+  macOS x64 omission. `antigravity_profile_service_test.dart` covers read-only token-presence inspection and isolated
   preparation. `antigravity_session_options_service_test.dart` covers exact opaque fresh/existing defaults, acknowledged
   selection stamping, contradictory replies and atomic catalog/configuration reset. Shared ACP tracker coverage retains
   blank-as-absent behavior without normalizing valid opaque values.
 - **L3/L4:** `antigravity_plugin_descriptor_test.dart` covers inert explicit/PATH/managed inspection, shared root store,
-  sanitized profile/probe/live inputs, probe-timeout degradation, source browser-noop invocation, abort, exit
-  reset/reconnect and shutdown. `antigravity_runtime_service_test.dart` covers recovered PATH storage diagnostics and
-  inert managed fallback. `antigravity_plugin_test.dart` covers exact whitespace-bearing live/replay stamping and
-  cold-reset resume before strict dispatch.
-- **L5 Full:** real personal OAuth, native supported-target pairs, cross-target launch/permissions, bridge import and
-  tombstone behavior remain pending gates. Synthetic registration/composition evidence does not replace them.
+  sanitized profile/probe/live inputs, managed capability/override/failure behavior, Linux extractor preflight failure,
+  abort and download ordering, probe-timeout degradation, source
+  browser-noop invocation, abort, exit reset/reconnect and shutdown. `antigravity_runtime_service_test.dart` covers
+  recovered PATH storage diagnostics and inert managed fallback. `antigravity_plugin_test.dart` covers exact
+  whitespace-bearing live/replay stamping and cold-reset resume before strict dispatch.
+- **L5 Full:** the managed macOS arm64 pipeline has run against the cached independently rehashed official archive in
+  disposable state, preserving both siblings and completing isolated initialize-only validation/cleanup before result.
+  Native Linux/Windows managed installs, real personal OAuth, cross-target launch/permissions, bridge import and
+  tombstone behavior remain unverified. Automated registration/composition evidence does not replace them.

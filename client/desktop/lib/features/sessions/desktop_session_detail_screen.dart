@@ -20,11 +20,13 @@ class const DesktopSessionDetailScreen({
   required final VoidCallback onBack,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+  required final VoidCallback onOpenHarnessSettings,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createSessionDetailCubit(locator: getIt, sessionId: sessionId, projectId: projectId),
+      create: (_) =>
+          createSessionDetailCubit(claimProjectView: true, locator: getIt, sessionId: sessionId, projectId: projectId),
       child: DesktopComposerPresentationScope(
         child: _SessionActivityAnalyticsOwner(
           child: DesktopSessionDetailView(
@@ -35,6 +37,7 @@ class const DesktopSessionDetailScreen({
             onBack: onBack,
             onShowDiffs: onShowDiffs,
             onOpenSession: onOpenSession,
+            onOpenHarnessSettings: onOpenHarnessSettings,
             messageImageRepository: getIt.get<MessageImageRepository>,
             imageSaver: getIt.get<ImageSaver>,
             imageClipboard: getIt.get<ImageClipboard>,
@@ -56,6 +59,7 @@ class const DesktopSessionDetailView({
   required final VoidCallback onBack,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+  required final VoidCallback onOpenHarnessSettings,
   required final SessionDetailCapabilityProvider<MessageImageRepository> messageImageRepository,
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
   required final SessionDetailCapabilityProvider<ImageClipboard> imageClipboard,
@@ -72,7 +76,9 @@ class const DesktopSessionDetailView({
       canShareImages: canShareImages,
       openExternalLink: openDesktopExternalLink,
       openSession: onOpenSession,
+      openHarnessSettings: onOpenHarnessSettings,
       child: SessionDetailBody(
+        onClose: null,
         projectId: projectId,
         sessionId: sessionId,
         sessionTitle: sessionTitle,
@@ -138,8 +144,11 @@ class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyt
 
   bool get _isCoveredBySettings {
     return switch (_topRoute) {
+      AppRouteDef.archivedSessions ||
+      AppRouteDef.archivedSessionDetail ||
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
+      AppRouteDef.settingsDefaultInput ||
       AppRouteDef.settingsProfile ||
       AppRouteDef.settingsHarnesses ||
       AppRouteDef.settingsHarnessDetail => true,

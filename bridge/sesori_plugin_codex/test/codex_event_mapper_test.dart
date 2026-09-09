@@ -1994,7 +1994,7 @@ class _ToolLifecycleHarness({
     final events = <BridgeSseEvent>[];
     for (final tool in _toolTracker.observeRolloutLine(threadId: threadId, line: line)) {
       events.addAll(
-        _eventMapper.mapProjectedTool(threadId: threadId, tool: tool, children: const []),
+        _eventMapper.mapProjectedTool(threadId: threadId, tool: tool),
       );
     }
     return events;
@@ -2025,7 +2025,7 @@ class _ToolLifecycleHarness({
     if (tool == null || threadId is! String) {
       return _eventMapper.map(notification);
     }
-    return _eventMapper.mapProjectedTool(threadId: threadId, tool: tool, children: const []);
+    return _eventMapper.mapProjectedTool(threadId: threadId, tool: tool);
   }
 
   void clearRolloutTurn({required String threadId}) {

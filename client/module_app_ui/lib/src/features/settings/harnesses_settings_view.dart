@@ -232,9 +232,7 @@ class const _HarnessOverviewRow({
               constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
               tooltip: context.loc.harnessesInstallTitle(plugin.setup.displayName),
               icon: const Icon(TablerRegular.download),
-              onPressed: _controlsBlocked(state.action)
-                  ? null
-                  : () => context.read<PluginManagementCubit>().install(pluginId: plugin.setup.id),
+              onPressed: _controlsBlocked(state.action) ? null : onOpen,
             )
           else
             const SizedBox(width: 44, height: 44, child: Icon(TablerRegular.chevron_right)),
