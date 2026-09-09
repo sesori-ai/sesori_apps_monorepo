@@ -185,6 +185,10 @@ void main() {
           if (textScale == 1) {
             expect(markRect, initialMark);
             expect(titleOffset, initialTitle);
+          } else if (!scan.isLive) {
+            final textBlock = find.ancestor(of: find.text(title), matching: find.byType(Column)).first;
+            final action = find.byKey(const ValueKey("catalog-scan-dismiss-action"));
+            expect(tester.getTopLeft(action).dy - tester.getBottomLeft(textBlock).dy, PregoSpacing.xs);
           }
           expect(tester.takeException(), isNull);
         }

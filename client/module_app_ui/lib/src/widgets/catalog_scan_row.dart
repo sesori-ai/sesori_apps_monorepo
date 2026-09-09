@@ -464,6 +464,7 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 textBlock,
+                                const SizedBox(height: PregoSpacing.xs),
                                 Align(alignment: AlignmentDirectional.centerEnd, child: action),
                               ],
                             )
