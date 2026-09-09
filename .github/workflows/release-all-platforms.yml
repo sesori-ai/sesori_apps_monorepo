@@ -3,7 +3,7 @@ name: Release All Platforms
 run-name: "release · build ${{ github.sha }}"
 
 # Hourly internal release: uploads iOS to TestFlight and Android to the
-# Play internal track, builds the 5-platform bridge archives, and — only when
+# Play internal track, builds the 6-platform bridge archives, and — only when
 # EVERYTHING succeeded (all-or-nothing) — pushes a `v<X>-internal.<N>` tag and
 # rolls the single internal GitHub pre-release onto it (previous pre-release
 # objects are deleted; their tags are kept forever as the build-number→commit
@@ -133,7 +133,7 @@ jobs:
       MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
       MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
 
-  # All-or-nothing: runs only when iOS, Android AND all five bridge targets
+  # All-or-nothing: runs only when iOS, Android AND all six bridge targets
   # succeeded, so every internal tag maps to a complete set (both store builds
   # + all bridge binaries). On failure no release tag or release is published;
   # the attempt marker remains and the pre-release stays on the previous build.
@@ -242,5 +242,5 @@ jobs:
             echo "- **Version**: \`${VERSION}-internal.${BUILD_NUMBER}\`"
             echo "- **Tag**: \`${TAG}\`"
             echo "- **iOS (TestFlight)** / **Android (internal track)**: build ${BUILD_NUMBER} (iOS next: ${{ needs.next-build-number.outputs.ios_next }}, Android next: ${{ needs.next-build-number.outputs.android_next }})"
-            echo "- **Bridge pre-release**: rolled to \`${TAG}\` (5 platform archives + checksums)"
+            echo "- **Bridge pre-release**: rolled to \`${TAG}\` (6 platform archives + checksums)"
           } >> "$GITHUB_STEP_SUMMARY"

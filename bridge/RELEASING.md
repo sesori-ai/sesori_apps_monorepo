@@ -108,7 +108,7 @@ The cron provides 24 scheduled opportunities per day, not a strict store quota: 
 
 ### 3. Submit to production
 
-Run the `Submit Release` workflow (`submit-release.yml`) with the build number to promote. For production it rebuilds the bridge from the resolved commit with the clean version, tags `v<X.Y.Z>`, and creates the GitHub release with the five archives plus `checksums.txt`. Use `platforms: bridge-only` for a bridge hotfix that skips the app stores.
+Run the `Submit Release` workflow (`submit-release.yml`) with the build number to promote. For production it rebuilds the bridge from the resolved commit with the clean version, tags `v<X.Y.Z>`, and creates the GitHub release with the six archives plus `checksums.txt`. Use `platforms: bridge-only` for a bridge hotfix that skips the app stores.
 
 - `publish_bridge` ticked (default): the release is published immediately — bridge auto-update goes live for all users right away.
 - `publish_bridge` unticked: the release is created as a pre-release, invisible to the auto-updater until you promote it in the GitHub UI.

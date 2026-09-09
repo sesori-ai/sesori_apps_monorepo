@@ -41,7 +41,7 @@ if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
       client/app/ client/module_core/ client/module_auth/ client/module_prego/ client/module_app_ui/ \
       client/pubspec.yaml client/pubspec.lock client/analysis_options.yaml client/Makefile \
       shared/ bridge/ .tool-versions tool/generate_release_notes.dart \
-      .github/scripts/check_internal_release.sh .github/workflows/release-all-platforms.yml \
+      .github/actions/ .github/scripts/check_internal_release.sh .github/workflows/release-all-platforms.yml \
       '.github/workflows/_reusable-*.yml'; then
       skip_release "No release-relevant changes since ${BASELINE}."
     else

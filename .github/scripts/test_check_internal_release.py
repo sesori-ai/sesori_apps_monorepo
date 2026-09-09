@@ -161,6 +161,8 @@ class InternalReleaseGateTest(unittest.TestCase):
         for path in [
             ".github/workflows/release-all-platforms.yml",
             ".github/workflows/_reusable-ios-testflight.yml",
+            ".github/actions/setup-flutter/action.yml",
+            ".github/actions/resolve-flutter-dart-version/action.yml",
             ".github/scripts/check_internal_release.sh",
             ".tool-versions",
             "tool/generate_release_notes.dart",

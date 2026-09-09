@@ -1,6 +1,6 @@
 name: Bridge Build (reusable)
 
-# Builds the 5-platform sesori-bridge archives and uploads them as workflow
+# Builds the 6-platform sesori-bridge archives and uploads them as workflow
 # artifacts (sesori-bridge-<os>-<arch>.<ext>). Used by:
 #   - release-all-platforms.yml — hourly when main has eligible changes (or on
 #     manual dispatch), baking an X.Y.Z-internal.<N>

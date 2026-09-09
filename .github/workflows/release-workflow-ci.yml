@@ -4,12 +4,16 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/actions/**'
+      - '.github/workflows/_reusable-*.yml'
       - '.github/scripts/check_internal_release.sh'
       - '.github/scripts/test_check_internal_release.py'
       - '.github/workflows/release-all-platforms.yml'
       - '.github/workflows/release-workflow-ci.yml'
   pull_request:
     paths:
+      - '.github/actions/**'
+      - '.github/workflows/_reusable-*.yml'
       - '.github/scripts/check_internal_release.sh'
       - '.github/scripts/test_check_internal_release.py'
       - '.github/workflows/release-all-platforms.yml'
