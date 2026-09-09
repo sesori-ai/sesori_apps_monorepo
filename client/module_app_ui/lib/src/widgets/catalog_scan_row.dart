@@ -16,6 +16,8 @@ const Curve _revealEaseOut = Cubic(0.23, 1, 0.32, 1);
 // with just enough blur to connect the card to the pull without looking glassy.
 const double _entranceScaleFrom = 0.97;
 const double _entranceBlurSigma = 2;
+// Keep the leading footprint identical when loading becomes a result.
+const double _scanMarkSize = 20;
 
 /// The catalog scan reported as one quiet row above a list.
 ///
@@ -355,7 +357,6 @@ class const _RowContent({
 /// The Figma result card: leading mark, two fixed lines, one tinted action.
 class const _ScanCard({required final _RowContent content}) extends StatelessWidget {
   static const double _minHeight = 69;
-  static const double _markSize = 22;
   // Figma's radial is 483.76px wide for a 69px vertical radius.
   static const double _glowScaleX = 7.011014492753623;
 
@@ -389,35 +390,29 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
         colors.textErrorPrimary,
       ),
     };
-    final textBlock = Padding(
-      padding: const EdgeInsetsDirectional.only(top: 1),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            content.title,
-            maxLines: wrapsText ? null : 1,
-            overflow: wrapsText ? null : TextOverflow.ellipsis,
-            style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
-          ),
-          const SizedBox(height: PregoSpacing.xxs),
-          Text(
-            content.detail,
-            maxLines: wrapsText ? null : 1,
-            overflow: wrapsText ? null : TextOverflow.ellipsis,
-            style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
-          ),
-        ],
-      ),
+    final textBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          content.title,
+          maxLines: wrapsText ? null : 1,
+          overflow: wrapsText ? null : TextOverflow.ellipsis,
+          style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: PregoSpacing.xxs),
+        Text(
+          content.detail,
+          maxLines: wrapsText ? null : 1,
+          overflow: wrapsText ? null : TextOverflow.ellipsis,
+          style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
+        ),
+      ],
     );
-    final action = Padding(
-      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
-      child: _ScanDismissButton(
-        label: content.actionLabel,
-        color: actionColor,
-        onPressed: content.onAction,
-      ),
+    final action = _ScanDismissButton(
+      label: content.actionLabel,
+      color: actionColor,
+      onPressed: content.onAction,
     );
 
     return Column(
@@ -454,12 +449,12 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
                   vertical: PregoSpacing.lg,
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox.square(
                       key: const ValueKey("catalog-scan-terminal-icon"),
-                      dimension: _markSize,
-                      child: Icon(icon, size: _markSize, color: markColor),
+                      dimension: _scanMarkSize,
+                      child: Icon(icon, size: _scanMarkSize, color: markColor),
                     ),
                     const SizedBox(width: PregoSpacing.sm),
                     Expanded(
@@ -473,7 +468,7 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
                               ],
                             )
                           : Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Expanded(child: textBlock),
                                 const SizedBox(width: PregoSpacing.xs),
@@ -602,7 +597,7 @@ class _ScanLoadingCardState()
                         key: const ValueKey("prego-deep-scan-loader"),
                         turns: _loaderTurns,
                         child: PregoAiLoader(
-                          size: 20,
+                          size: _scanMarkSize,
                           animate: false,
                           fillMode: .outline,
                           color: colors.textPrimary,
