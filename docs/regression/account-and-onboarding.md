@@ -30,6 +30,9 @@ participates.
 - With no bridge, Projects shows install and start commands, the explainer, and
   support links, and copy/share hand off the command unchanged; connected with no
   projects shows the add-project call to action instead.
+- Copying install or start commands on onboarding or bridge-disconnected pages
+  shows the informational "Command copied to clipboard" popup, not the success
+  variant.
 - An account that never registered a bridge parks offline silently; the
   bridge-offline banner is reserved for accounts that have one.
 - A persisted registered-bridge read that completes after logout cannot restore
