@@ -52,6 +52,7 @@ Widget _buildApp({
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
+  VoidCallback? onClose,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -82,6 +83,7 @@ Widget _buildApp({
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             child: SessionDetailBody(
+              onClose: onClose,
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Session",
@@ -271,6 +273,23 @@ void main() {
   tearDown(() async {
     await GetIt.instance.reset();
   });
+
+  for (final auditState in [
+    const SessionDetailState.loading(),
+    const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
+  ]) {
+    testWidgets("audit Back and Close remain available in $auditState", (tester) async {
+      when(() => cubit.state).thenReturn(auditState);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: auditState);
+      var closed = false;
+      await tester.pumpWidget(_buildApp(cubit: cubit, onClose: () => closed = true));
+      await tester.pump();
+      expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
+      expect(find.bySemanticsLabel("Close archived sessions"), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+      expect(closed, isTrue);
+    });
+  }
 
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
     final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");

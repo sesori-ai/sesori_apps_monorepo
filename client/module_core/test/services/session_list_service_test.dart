@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/models/session_list_filter.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -9,6 +10,35 @@ import "package:test/test.dart";
 class _MockProjectRepository() extends Mock implements ProjectRepository;
 
 void main() {
+  test("archive projection excludes live rows and orders by retirement, not activity", () {
+    final service = SessionListService(
+      repository: _MockProjectRepository(),
+      activityCalculator: const SessionActivityCalculator(),
+    );
+    final live = _session(id: "live", title: "Live", updatedAt: 500);
+    final earlier = _session(
+      id: "earlier",
+      title: "Earlier",
+      updatedAt: 900,
+    ).copyWith(time: const SessionTime(created: 1, updated: 900, archived: 100));
+    final later = _session(
+      id: "later",
+      title: "Later",
+      updatedAt: 50,
+    ).copyWith(time: const SessionTime(created: 1, updated: 50, archived: 200));
+    List<String> project({required SessionListFilter filter}) => service
+        .visibleSessions(
+          sessions: [live, earlier, later],
+          filter: filter,
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        )
+        .map((s) => s.id)
+        .toList();
+    expect(project(filter: SessionListFilter.archived), ["later", "earlier"]);
+    expect(project(filter: SessionListFilter.active), ["live"]);
+    expect(project(filter: SessionListFilter.all), ["earlier", "live", "later"]);
+  });
   test("running sessions use activity markers while inactive sessions stay timestamp ordered", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
@@ -22,7 +52,7 @@ void main() {
         _session(id: "inactive", title: "Beta", updatedAt: 200),
         _session(id: "running-new-activity", title: "Alpha", updatedAt: 100),
       ],
-      showArchived: true,
+      filter: SessionListFilter.all,
       activityBySessionId: const {
         "running-new-update": SessionActivityInfo(isRetrying: true, lastUserActivityAt: null, updatedAt: null),
         "waiting": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
@@ -51,7 +81,7 @@ void main() {
         _session(id: "live-newer", title: "Live", updatedAt: 100).copyWith(lastUserActivityAt: 80),
         _session(id: "backend-newer", title: "Backend", updatedAt: 400).copyWith(lastUserActivityAt: 100),
       ],
-      showArchived: true,
+      filter: SessionListFilter.all,
       activityBySessionId: const {},
       listStateBySessionId: const {
         "live-newer": (unseen: false, lastUserActivityAt: 300),
@@ -77,7 +107,7 @@ void main() {
         _session(id: "new-update", title: "B", updatedAt: 20).copyWith(lastUserActivityAt: 5),
         _session(id: "new-activity", title: "A", updatedAt: 10).copyWith(lastUserActivityAt: 15),
       ],
-      showArchived: true,
+      filter: SessionListFilter.all,
       activityBySessionId: const {
         "new-update": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
         "new-activity": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
@@ -101,7 +131,7 @@ void main() {
         _session(id: "inactive-b", title: "B", updatedAt: 5),
         _session(id: "inactive-a", title: "A", updatedAt: 5),
       ],
-      showArchived: true,
+      filter: SessionListFilter.all,
       activityBySessionId: const {
         "running-a": SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null),
         "running-b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),

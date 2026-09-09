@@ -1340,5 +1340,13 @@
   "@harnessesForceRestartDescription": {"placeholders": {"name": {"type": "String"}}},
   "harnessesForceRestartAction": "Force restart",
   "harnessesStatusIdle": "Idle",
-  "harnessesStatusRunning": "Running"
+  "harnessesStatusRunning": "Running",
+  "archivedSessionsTitle": "Archived tasks",
+  "archivedSessionsClose": "Close archived sessions",
+  "archivedSessionsToday": "Today",
+  "archivedSessionsYesterday": "Yesterday",
+  "archivedSessionsThisWeek": "This week",
+  "archivedSessionsLastWeek": "Last week",
+  "archivedSessionsThisMonth": "This month",
+  "archivedSessionsLastMonth": "One month ago"
 }

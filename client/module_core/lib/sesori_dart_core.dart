@@ -26,6 +26,7 @@ export "package:sesori_auth/sesori_auth.dart"
         JsonParsingError,
         NonSuccessCodeError,
         NotAuthenticatedError;
+
 export "package:sesori_auth/sesori_auth.dart" show ApiResponse, ErrorResponse, SuccessResponse;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
@@ -187,6 +188,7 @@ export "src/services/models/new_session_selection_intent.dart";
 export "src/services/models/plugin_install_state.dart";
 export "src/services/models/product_analytics_state.dart";
 export "src/services/models/session_activity_info.dart";
+export "src/services/models/session_list_filter.dart";
 export "src/services/new_session_options_service.dart";
 export "src/services/new_session_plugin_service.dart";
 export "src/services/new_session_selection_tracker.dart";

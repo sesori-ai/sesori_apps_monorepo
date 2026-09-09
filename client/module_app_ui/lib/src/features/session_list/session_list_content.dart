@@ -6,6 +6,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/remote_failure_view.dart";
+import "archived_session_date_label.dart";
 import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
@@ -43,6 +44,7 @@ class const SessionListContent({
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
     final onSessionTap = this.onSessionTap;
+    final now = DateTime.now();
 
     return switch (state) {
       SessionListLoading() => SliverToBoxAdapter(
@@ -59,40 +61,76 @@ class const SessionListContent({
               final isArchived = session.time?.archived != null;
               final activityInfo = loaded.activeSessionIds[session.id];
 
-              return Padding(
-                // Keep the list's outer breathing room attached to its first
-                // and last rows so that space collapses with the final item.
-                padding: EdgeInsetsDirectional.only(
-                  top: index == 0 ? 8 : 0,
-                  bottom: index == loaded.sessions.length - 1 ? 8 : 0,
-                ),
-                child: SessionTile(
-                  session: session,
-                  isArchived: isArchived,
-                  isActive: activityInfo != null,
-                  unseen: loaded.isSessionUnseen(session: session),
-                  selected: selectedSessionId == session.id,
-                  awaitingInput: activityInfo?.awaitingInput ?? false,
-                  isRetrying: activityInfo?.isRetrying ?? false,
-                  backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
-                  onTap: onSessionTap == null ? null : () => onSessionTap(session: session),
-                  // The list's context, not the row's: archive/delete
-                  // unmount the row before their follow-ups run.
-                  menuEntries: () => actionDispatcher.sessionMenuEntries(context: context, session: session),
-                  onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
-                  onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),
-                  onToggleUnread: () => actionDispatcher.handleSessionToggleUnread(
-                    context: context,
-                    session: session,
+              final archiveLabel = loaded.filter == SessionListFilter.archived
+                  ? archivedSessionDateLabel(
+                      archivedAt: DateTime.fromMillisecondsSinceEpoch(
+                        session.time?.archived ?? (throw StateError("Archive row requires archive time")),
+                      ),
+                      now: now,
+                      loc: loc,
+                    )
+                  : null;
+              final previousLabel = archiveLabel != null && index > 0
+                  ? archivedSessionDateLabel(
+                      archivedAt: DateTime.fromMillisecondsSinceEpoch(
+                        loaded.sessions[index - 1].time?.archived ??
+                            (throw StateError("Archive row requires archive time")),
+                      ),
+                      now: now,
+                      loc: loc,
+                    )
+                  : null;
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  if (archiveLabel != null && archiveLabel != previousLabel)
+                    Padding(
+                      padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 12),
+                      child: Text(
+                        archiveLabel,
+                        style: context.prego.textTheme.textSm.regular.copyWith(
+                          color: context.prego.colors.textSecondary,
+                        ),
+                      ),
+                    ),
+                  Padding(
+                    // Keep the list's outer breathing room attached to its first
+                    // and last rows so that space collapses with the final item.
+                    padding: EdgeInsetsDirectional.only(
+                      top: index == 0 ? 8 : 0,
+                      bottom: index == loaded.sessions.length - 1 ? 8 : 0,
+                    ),
+                    child: SessionTile(
+                      session: session,
+                      isArchived: isArchived,
+                      isActive: activityInfo != null,
+                      unseen: loaded.isSessionUnseen(session: session),
+                      selected: selectedSessionId == session.id,
+                      awaitingInput: activityInfo?.awaitingInput ?? false,
+                      isRetrying: activityInfo?.isRetrying ?? false,
+                      backgroundTaskCount: activityInfo?.backgroundTaskCount ?? 0,
+                      onTap: onSessionTap == null ? null : () => onSessionTap(session: session),
+                      // The list's context, not the row's: archive/delete
+                      // unmount the row before their follow-ups run.
+                      menuEntries: () => actionDispatcher.sessionMenuEntries(context: context, session: session),
+                      onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
+                      onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),
+                      onToggleUnread: () => actionDispatcher.handleSessionToggleUnread(
+                        context: context,
+                        session: session,
+                      ),
+                    ),
                   ),
-                ),
+                ],
               );
             },
           ),
           if (loaded.sessions.isEmpty)
             SliverFillRemaining(
               hasScrollBody: false,
-              child: loaded.showArchived ? archivedEmptyState : SessionEmptyState(projectName: projectName),
+              child: (loaded.filter != SessionListFilter.active)
+                  ? archivedEmptyState
+                  : SessionEmptyState(projectName: projectName),
             ),
         ],
       ),

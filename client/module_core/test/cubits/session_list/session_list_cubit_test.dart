@@ -16,6 +16,7 @@ import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejecti
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
+import "package:sesori_dart_core/src/services/models/session_list_filter.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -87,7 +88,8 @@ void main() {
     });
 
     /// Convenience factory — stubs must be set up before calling this.
-    SessionListCubit buildCubit() => SessionListCubit(
+    SessionListCubit buildCubit({SessionListFilter filter = SessionListFilter.active}) => SessionListCubit(
+      initialFilter: filter,
       sessionRepository: mockSessionService,
       sessionListService: sessionListService,
       projectRepository: mockProjectRepository,
@@ -100,6 +102,22 @@ void main() {
       failureReporter: mockFailureReporter,
       catalogRescanService: fakeCatalogRescanService,
     );
+
+    test("archive inventory never acquires or releases the live opener claim", () async {
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.archivedSessions);
+      when(
+        () => mockProjectRepository.listSessions(
+          projectId: any(named: "projectId"),
+          waitForPrData: any(named: "waitForPrData"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+      final cubit = buildCubit(filter: SessionListFilter.archived);
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionListLoaded).filter, SessionListFilter.archived);
+      await cubit.close();
+      verifyNever(() => mockProjectViewingService.beginListClaim(projectId: any(named: "projectId")));
+      verifyNever(() => mockProjectViewingService.releaseClaim(claim: any(named: "claim")));
+    });
 
     test("successful list render readies its project claim and close releases it", () async {
       mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
@@ -686,7 +704,7 @@ void main() {
       skip: 1,
       expect: () => [
         isA<SessionListLoaded>()
-            .having((s) => s.showArchived, "showArchived", isTrue)
+            .having((s) => s.filter, "filter", SessionListFilter.all)
             .having((s) => s.sessions.length, "visible sessions", 1),
       ],
     );
@@ -828,11 +846,11 @@ void main() {
       expect: () => [
         // toggleArchived: shows the archived session.
         isA<SessionListLoaded>()
-            .having((s) => s.showArchived, "showArchived after toggle", isTrue)
+            .having((s) => s.filter, "filter after toggle", SessionListFilter.all)
             .having((s) => s.sessions.length, "visible sessions after toggle", 1),
         // refreshSessions: re-emits with showArchived still true and new data.
         isA<SessionListLoaded>()
-            .having((s) => s.showArchived, "showArchived after refresh", isTrue)
+            .having((s) => s.filter, "filter after refresh", SessionListFilter.all)
             .having((s) => s.sessions.first.title, "refreshed title", "Refreshed"),
       ],
     );
@@ -1532,6 +1550,7 @@ void main() {
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
+          initialFilter: SessionListFilter.active,
           sessionRepository: mockSessionService,
           sessionListService: sessionListService,
           projectRepository: mockProjectRepository,

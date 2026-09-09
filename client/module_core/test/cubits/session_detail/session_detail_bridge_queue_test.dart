@@ -213,6 +213,7 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
+        claimProjectView: true,
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,

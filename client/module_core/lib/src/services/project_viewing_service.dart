@@ -266,6 +266,8 @@ class ProjectViewingService({
         _ProjectViewClaimFailed() => wideListPaneVisible ? listProjectId : null,
         null => _detailTransitionProjectId ?? (wideListPaneVisible ? listProjectId : null),
       },
+      AppRouteDef.archivedSessions ||
+      AppRouteDef.archivedSessionDetail ||
       AppRouteDef.splash ||
       AppRouteDef.login ||
       AppRouteDef.projects ||

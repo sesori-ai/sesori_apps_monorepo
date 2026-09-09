@@ -222,6 +222,7 @@ void main() {
         home: BlocProvider<SessionListCubit>.value(
           value: sessionListCubit,
           child: SessionListScaffold(
+            onOpenArchived: sessionListCubit.toggleArchived,
             onSessionTap: ({required session}) {},
             actionDispatcher: const SessionListActionDispatcher(onSessionDeleted: null),
             archivedEmptyState: const SessionArchivedEmptyState(artwork: null),

@@ -134,12 +134,14 @@ void main() {
     /// Only the viewing services and the lifecycle source differ between cases,
     /// so each test names just the seam it exercises.
     SessionDetailCubit buildCubit({
+      bool claimProjectView = true,
       SessionViewingService? sessionViewingService,
       ProjectViewingService? projectViewingService,
       LifecycleSource? lifecycleSource,
       PluginManagementService? pluginManagementService,
     }) => SessionDetailCubit(
       mockConnectionService,
+      claimProjectView: claimProjectView,
       pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
@@ -1067,6 +1069,7 @@ void main() {
     test("clearNotifications is a no-op when the shell has no notification integration", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
+        claimProjectView: true,
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
@@ -2246,6 +2249,20 @@ void main() {
     );
 
     group("viewing declaration", () {
+      test("audit detail loads without acquiring, readying or releasing a live project claim", () async {
+        final projectViewing = stubbedProjectViewingService();
+        final cubit = buildCubit(projectViewingService: projectViewing, claimProjectView: false);
+        await _awaitLoaded(cubit);
+        await cubit.close();
+        verifyNever(() => projectViewing.beginDetailClaim(projectId: any(named: "projectId")));
+        verifyNever(
+          () => projectViewing.markClaimReady(
+            claim: any(named: "claim"),
+            projectId: any(named: "projectId"),
+          ),
+        );
+        verifyNever(() => projectViewing.releaseClaim(claim: any(named: "claim")));
+      });
       test("declares the view once the transcript loads and clears it on close", () async {
         final viewingService = stubbedSessionViewingService();
         final projectViewingService = stubbedProjectViewingService();

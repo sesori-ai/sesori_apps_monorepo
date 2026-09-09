@@ -3864,6 +3864,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Running'**
   String get harnessesStatusRunning;
+
+  /// No description provided for @archivedSessionsTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Archived tasks'**
+  String get archivedSessionsTitle;
+
+  /// No description provided for @archivedSessionsClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close archived sessions'**
+  String get archivedSessionsClose;
+
+  /// No description provided for @archivedSessionsToday.
+  ///
+  /// In en, this message translates to:
+  /// **'Today'**
+  String get archivedSessionsToday;
+
+  /// No description provided for @archivedSessionsYesterday.
+  ///
+  /// In en, this message translates to:
+  /// **'Yesterday'**
+  String get archivedSessionsYesterday;
+
+  /// No description provided for @archivedSessionsThisWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'This week'**
+  String get archivedSessionsThisWeek;
+
+  /// No description provided for @archivedSessionsLastWeek.
+  ///
+  /// In en, this message translates to:
+  /// **'Last week'**
+  String get archivedSessionsLastWeek;
+
+  /// No description provided for @archivedSessionsThisMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'This month'**
+  String get archivedSessionsThisMonth;
+
+  /// No description provided for @archivedSessionsLastMonth.
+  ///
+  /// In en, this message translates to:
+  /// **'One month ago'**
+  String get archivedSessionsLastMonth;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

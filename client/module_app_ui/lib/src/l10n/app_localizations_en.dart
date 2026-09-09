@@ -2154,4 +2154,28 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessesStatusRunning => 'Running';
+
+  @override
+  String get archivedSessionsTitle => 'Archived tasks';
+
+  @override
+  String get archivedSessionsClose => 'Close archived sessions';
+
+  @override
+  String get archivedSessionsToday => 'Today';
+
+  @override
+  String get archivedSessionsYesterday => 'Yesterday';
+
+  @override
+  String get archivedSessionsThisWeek => 'This week';
+
+  @override
+  String get archivedSessionsLastWeek => 'Last week';
+
+  @override
+  String get archivedSessionsThisMonth => 'This month';
+
+  @override
+  String get archivedSessionsLastMonth => 'One month ago';
 }

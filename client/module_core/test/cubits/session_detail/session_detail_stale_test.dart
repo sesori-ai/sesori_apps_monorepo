@@ -115,6 +115,7 @@ void main() {
       Duration eventRefreshMinInterval = const Duration(seconds: 5),
     }) => SessionDetailCubit(
       mockConnectionService,
+      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,

@@ -84,6 +84,7 @@ class SessionDetailCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final String _sessionId,
   required final String _projectId,
+  required final bool claimProjectView,
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
 
@@ -103,7 +104,9 @@ class SessionDetailCubit(
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
-  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
+  final ProjectViewClaim? _projectViewClaim = claimProjectView
+      ? _projectViewingService.beginDetailClaim(projectId: _projectId)
+      : null;
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final Set<String> _staleOptionsRecoveryAttemptedPromptIds = {};
@@ -306,7 +309,7 @@ class SessionDetailCubit(
 
     switch (metadataResult) {
       case SessionDetailMetadataWaitingForConnection():
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _waitingForConnection = true;
         if (_isConnected) {
           _waitingForConnection = false;
@@ -321,7 +324,7 @@ class SessionDetailCubit(
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
         } else {
-          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
           emit(
             SessionDetailState.failed(
               reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
@@ -339,7 +342,9 @@ class SessionDetailCubit(
             _drainPendingEvents();
             _drainDeferredPartsForLoadedMessages();
           } else {
-            _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: session.projectID);
+            if (_projectViewClaim case final claim?) {
+              _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+            }
             emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
           }
           return _SessionRefreshResult.applied;
@@ -357,10 +362,10 @@ class SessionDetailCubit(
         _refreshStaleOptions(snapshot: snapshot);
         final effectiveProjectId = snapshot.projectId;
         if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
-          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
-        } else {
+          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+        } else if (_projectViewClaim case final claim?) {
           _projectViewingService.markClaimReady(
-            claim: _projectViewClaim,
+            claim: claim,
             projectId: effectiveProjectId,
           );
         }
@@ -374,7 +379,7 @@ class SessionDetailCubit(
         _tryDrainQueue();
         return _SessionRefreshResult.applied;
       case SessionDetailLoadResultWaitingForConnection():
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _waitingForConnection = true;
         if (_connectionService.currentStatus is ConnectionConnected) {
           _waitingForConnection = false;
@@ -387,7 +392,7 @@ class SessionDetailCubit(
         return _SessionRefreshResult.waitingForConnection;
       case SessionDetailLoadResultFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _pendingSessionEvents.clear();
         _pendingGlobalEvents.clear();
         _deferredPartEvents.clear();
@@ -2202,10 +2207,9 @@ class SessionDetailCubit(
 
   /// Updates whether this detail route is currently visible to the user.
   ///
-  /// A desktop root-level route can cover the nested session navigator without
-  /// disposing this cubit, so route visibility must fence both the initial load
-  /// and later refresh declarations. The mobile shell leaves the default
-  /// visible value in place and continues to use [reassertViewingSession].
+  /// A root-level route can cover the nested session navigator without
+  /// disposing this cubit, so shell-reported visibility fences both the initial
+  /// load and later refresh declarations.
   void setRouteVisible({required bool isVisible}) {
     if (_routeVisible == isVisible) return;
     _routeVisible = isVisible;
@@ -2667,7 +2671,7 @@ class SessionDetailCubit(
   @override
   Future<void> close() {
     _sessionViewingService.clearViewingSession(_sessionId);
-    _projectViewingService.releaseClaim(claim: _projectViewClaim);
+    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _deferredPartEvents.clear();

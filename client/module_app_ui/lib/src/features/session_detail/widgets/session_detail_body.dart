@@ -32,6 +32,7 @@ class const SessionDetailBody({
   required final bool readOnly,
   required final Widget? banner,
   required final VoidCallback? onBack,
+  required final VoidCallback? onClose,
   required final VoidCallback? onShowDiffs,
   required final SessionDetailBottomControlsBuilder? bottomControlsBuilder,
 }) extends StatefulWidget {
@@ -111,6 +112,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     final onShowDiffs = widget.onShowDiffs;
 
     final actions = <Widget>[
+      if (widget.onClose != null)
+        PregoButtonsIconGlass(
+          icon: TablerRegular.x,
+          semanticLabel: loc.archivedSessionsClose,
+          onPressed: widget.onClose,
+        ),
       if (canShowDiffs && onShowDiffs != null)
         PregoButtonsIconGlass(
           icon: TablerRegular.git_compare,

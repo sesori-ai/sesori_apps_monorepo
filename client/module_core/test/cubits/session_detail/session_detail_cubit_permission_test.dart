@@ -790,6 +790,7 @@ SessionDetailCubit _buildCubit({
 }) {
   return SessionDetailCubit(
     connectionService,
+    claimProjectView: true,
     pluginManagementService: stubbedPluginManagementService(),
     interactionCalculator: const SessionInteractionCalculator(),
     loadService: loadService,
