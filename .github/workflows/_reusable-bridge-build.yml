@@ -2,7 +2,8 @@ name: Bridge Build (reusable)
 
 # Builds the 5-platform sesori-bridge archives and uploads them as workflow
 # artifacts (sesori-bridge-<os>-<arch>.<ext>). Used by:
-#   - release-all-platforms.yml — per main merge, baking an X.Y.Z-internal.<N>
+#   - release-all-platforms.yml — hourly when main has eligible changes (or on
+#     manual dispatch), baking an X.Y.Z-internal.<N>
 #     version so internal binaries self-report exactly their release tag.
 #   - submit-release.yml — at production submit, building from the resolved
 #     commit whose committed pubspec already holds the clean version.

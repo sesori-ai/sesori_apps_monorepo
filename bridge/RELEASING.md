@@ -90,11 +90,21 @@ the workflows.
 make bump-version TYPE=patch
 ```
 
-That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, all six npm package manifests in `bridge/app/npm/`, and `client/app/pubspec.yaml` aligned to the same `X.Y.Z` semantic release. For an explicit version, run `make bump-version VERSION=X.Y.Z`. The bump is REQUIRED after every production release: `release-all-platforms.yml` fails its preflight guard for any main push whose version already has a `v<version>` tag.
+That bump step is the source of truth for the release version. It must keep `bridge/app/pubspec.yaml`, `bridge/app/lib/src/version.dart`, all six npm package manifests in `bridge/app/npm/`, and `client/app/pubspec.yaml` aligned to the same `X.Y.Z` semantic release. For an explicit version, run `make bump-version VERSION=X.Y.Z`. The bump is REQUIRED after every production release: `release-all-platforms.yml` fails its preflight guard for a new build whose version already has a `v<version>` tag on another commit.
 
-### 2. Merge to main
+### 2. Merge to main and wait for the hourly release
 
-Every main merge runs `release-all-platforms.yml`: it uploads the mobile apps to TestFlight / Play internal, builds all five bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). The auto-updater ignores pre-releases on the default `stable` track; bridges switched to the `internal` track (`sesori-bridge config track internal`) pick up these `-internal.<N>` pre-releases.
+`release-all-platforms.yml` checks main hourly at **45 minutes past the hour** (`45 * * * *`, UTC), not on each merge. GitHub may delay scheduled runs. Each run uses its triggering main SHA throughout; later merges wait for the next run. The existing concurrency group serializes main releases without cancelling an active build.
+
+Scheduled runs skip commits that already carry a release tag or match the rolling `internal-release-attempt` tag. Otherwise, they compare the whole batch against that attempt (or the nearest release tag before the first attempt). Only mobile-product, shared, bridge, or release-automation changes qualify; desktop-only and unrelated documentation changes do not consume store uploads. The exact paths live in `.github/scripts/check_internal_release.sh`.
+
+Before version validation, store queries, or builds, the workflow moves the lightweight `internal-release-attempt` tag to the chosen SHA. A failure or cancellation therefore cannot cause hourly retries of that commit. A later relevant change allows another attempt; the marker is not a release and creates no GitHub release object. If recording the marker fails, no build starts.
+
+An eligible run uploads the mobile apps to TestFlight / Play internal, builds all six bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). Existing internal release tags remain immutable build-number-to-commit mappings. The auto-updater ignores pre-releases on the default `stable` track; bridges switched to the `internal` track (`sesori-bridge config track internal`) pick up these `-internal.<N>` pre-releases.
+
+For an immediate build or a retry after fixing credentials/store issues, open **Actions → Release All Platforms → Run workflow**, normally on `main`. Manual dispatch bypasses the scheduled tag/path checks but still validates versions and allocates a fresh aligned build number. Manual builds on another branch do not move main's attempt marker. The standalone iOS/Android manual workflows remain available.
+
+The cron provides 24 scheduled opportunities per day, not a strict store quota: delayed runs and manual uploads still count against each store's limits.
 
 ### 3. Submit to production
 
@@ -124,7 +134,7 @@ Use this sequence when you want to test the real packaged distribution flow end 
 ### A. Test a GitHub Release for the shell installers
 
 1. Bump the shared App + Bridge version with `make bump-version TYPE=<type>` or `make bump-version VERSION=X.Y.Z`.
-2. Merge to main and wait for `release-all-platforms.yml` to roll the internal pre-release.
+2. Merge to main and wait for the next hourly `release-all-platforms.yml` run to roll the internal pre-release, or use **Run workflow** for an immediate build.
 3. Run `Submit Release` for production (use `platforms: bridge-only` to skip the app stores).
 4. Wait for the `v<X.Y.Z>` GitHub Release to be published with its assets and `checksums.txt`.
 5. Verify the release contains all six platform archives plus `checksums.txt`.

@@ -1,0 +1,30 @@
+name: Release Workflow CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/scripts/check_internal_release.sh'
+      - '.github/scripts/test_check_internal_release.py'
+      - '.github/workflows/release-all-platforms.yml'
+      - '.github/workflows/release-workflow-ci.yml'
+  pull_request:
+    paths:
+      - '.github/scripts/check_internal_release.sh'
+      - '.github/scripts/test_check_internal_release.py'
+      - '.github/workflows/release-all-platforms.yml'
+      - '.github/workflows/release-workflow-ci.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Lint release gate
+        run: shellcheck .github/scripts/check_internal_release.sh
+      - name: Test scheduled release decisions and attempt recording
+        run: python3 .github/scripts/test_check_internal_release.py
