@@ -45,6 +45,10 @@ typedef SessionMessagesPage = ({
   List<MessageWithParts> messages,
   int? nextCursor,
   SessionPromptDefaults? replayedPromptDefaults,
+
+  /// Whether the store served this page while behind the harness, so newer
+  /// messages may be missing. Only a store-only read can report this.
+  bool awaitingHarnessSync,
 });
 
 /// The single writer of the chat history store.
@@ -70,13 +74,24 @@ class ChatHistoryService({
   /// The store is preferred only when a backfill has completed *and* no
   /// backend activity has been observed past the captured watermark, so a
   /// session advanced outside Sesori still reads correctly.
+  ///
+  /// [storedOnly] removes that fallback: the store answers even when it is
+  /// behind, and the page reports `awaitingHarnessSync`. Callers that cannot
+  /// wake the harness — because it is disabled, needs authentication, or is
+  /// slow right after a start — ask for that instead of a page they may never
+  /// receive.
   Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
     int? limit,
     int? before,
     required MessageAttachmentDelivery attachmentDelivery,
+    required bool storedOnly,
   }) async {
     final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
+    // Set by the read below when it serves a store the harness has moved past.
+    // The read is a single queued closure, so this is written before any
+    // reader of it resumes.
+    var awaitingHarnessSync = false;
     // The archive check, the freshness decision, and the read all run inside
     // the session queue, so they observe one state. Deciding outside it would
     // let queued work — an observed import, or a failed capture clearing
@@ -106,7 +121,11 @@ class ChatHistoryService({
 
         final state = await _chatHistoryRepository.getSyncState(sessionId: sessionId);
         if (state == null || state.syncedAt == null || state.watermark < state.backendActivityAt) {
-          return null;
+          // A store-only read has no backfill to fall back to, so it serves
+          // what the store holds and says so, rather than waking the harness
+          // for the rest.
+          if (!storedOnly) return null;
+          awaitingHarnessSync = true;
         }
         return await _chatHistoryRepository.getSessionMessages(
           sessionId: sessionId,
@@ -124,10 +143,18 @@ class ChatHistoryService({
       // backfill will run. The page is already in memory, so detecting them is
       // free; only a page that actually contains one pays for a status read.
       if (!_containsOpenToolPart(page: decided)) {
-        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
+        return _messagesPage(
+          page: decided,
+          replayedPromptDefaults: replayedPromptDefaults,
+          awaitingHarnessSync: awaitingHarnessSync,
+        );
       }
       if (!await _sweepUnlessTurnRunning(sessionId: sessionId)) {
-        return _messagesPage(page: decided, replayedPromptDefaults: replayedPromptDefaults);
+        return _messagesPage(
+          page: decided,
+          replayedPromptDefaults: replayedPromptDefaults,
+          awaitingHarnessSync: awaitingHarnessSync,
+        );
       }
       final storageScope = await _requireStorageScope(sessionId: sessionId);
       final page = await _enqueueRead(
@@ -140,7 +167,23 @@ class ChatHistoryService({
           attachmentProjection: attachmentProjection,
         ),
       );
-      return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
+      return _messagesPage(
+        page: page,
+        replayedPromptDefaults: replayedPromptDefaults,
+        awaitingHarnessSync: awaitingHarnessSync,
+      );
+    }
+
+    // The store holds no row for this session at all — the read above returns
+    // null only for that. A store-only read cannot backfill it, so it reports
+    // an empty transcript the harness still owes.
+    if (storedOnly) {
+      return (
+        messages: const <MessageWithParts>[],
+        nextCursor: null,
+        replayedPromptDefaults: null,
+        awaitingHarnessSync: true,
+      );
     }
 
     final replayedPromptDefaults = await _backfillSessionForRead(sessionId: sessionId);
@@ -160,16 +203,22 @@ class ChatHistoryService({
         attachmentProjection: attachmentProjection,
       ),
     );
-    return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
+    return _messagesPage(
+      page: page,
+      replayedPromptDefaults: replayedPromptDefaults,
+      awaitingHarnessSync: false,
+    );
   }
 
   SessionMessagesPage _messagesPage({
     required ChatHistoryPage page,
     required SessionPromptDefaults? replayedPromptDefaults,
+    required bool awaitingHarnessSync,
   }) => (
     messages: page.messages,
     nextCursor: page.nextCursor,
     replayedPromptDefaults: replayedPromptDefaults,
+    awaitingHarnessSync: awaitingHarnessSync,
   );
 
   MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>

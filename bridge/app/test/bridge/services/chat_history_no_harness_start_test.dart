@@ -1,5 +1,6 @@
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart" show Message, MessageTime;
 import "package:test/test.dart";
 
 import "../../helpers/test_chat_history.dart";
@@ -60,6 +61,57 @@ void main() {
       plugin.lastGetMessagesSessionId,
       isNull,
       reason: "a synced store must render history with the harness untouched",
+    );
+  });
+
+  // A store-only read makes that guarantee unconditional. Freshness is the
+  // bridge's own bookkeeping, so a client that cannot wake the harness at all —
+  // it is disabled, or needs authentication — must not have its transcript
+  // depend on it.
+  test("an unsynced session is served store-only without starting the plugin", () async {
+    final database = createTestDatabase();
+    addTearDown(database.close);
+    final plugin = FakeBridgePlugin();
+    addTearDown(plugin.close);
+
+    final sessionRepository = singlePluginSessionRepository(
+      plugin: plugin,
+      sessionDao: database.sessionDao,
+      projectsDao: database.projectsDao,
+      pullRequestDao: database.pullRequestDao,
+      unseenCalculator: const SessionUnseenCalculator(),
+    );
+    addTearDown(sessionRepository.dispose);
+    final history = createTestChatHistory(sessionRepository: sessionRepository);
+    await recordSessionBinding(
+      database: database,
+      sessionId: "ses_a",
+      backendSessionId: "backend-a",
+      pluginId: plugin.id,
+      projectId: "project-a",
+      parentSessionId: null,
+    );
+    // A live capture creates rows without ever marking the session synced, so
+    // an ordinary read here would backfill.
+    await history.service.captureMessage(
+      sessionId: "ses_a",
+      message: Message.user(
+        promptId: null,
+        id: "live",
+        sessionID: "ses_a",
+        agent: null,
+        time: const MessageTime(created: 1, completed: null),
+      ),
+    );
+
+    final page = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+
+    expect(page.messages.single.info.id, "live");
+    expect(page.awaitingHarnessSync, isTrue);
+    expect(
+      plugin.lastGetMessagesSessionId,
+      isNull,
+      reason: "a store-only read must serve an unsynced store without waking the harness",
     );
   });
 }

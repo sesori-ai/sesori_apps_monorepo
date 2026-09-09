@@ -20,6 +20,7 @@ _MessageWithPartsResponse _$MessageWithPartsResponseFromJson(Map json) =>
           : SessionPromptDefaults.fromJson(
               Map<String, dynamic>.from(json['replayedPromptDefaults'] as Map),
             ),
+      awaitingHarnessSync: json['awaitingHarnessSync'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$MessageWithPartsResponseToJson(
@@ -28,6 +29,7 @@ Map<String, dynamic> _$MessageWithPartsResponseToJson(
   'messages': instance.messages.map((e) => e.toJson()).toList(),
   'nextCursor': ?instance.nextCursor,
   'replayedPromptDefaults': ?instance.replayedPromptDefaults?.toJson(),
+  'awaitingHarnessSync': instance.awaitingHarnessSync,
 };
 
 _MessageWithParts _$MessageWithPartsFromJson(Map json) => _MessageWithParts(

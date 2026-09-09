@@ -18,7 +18,11 @@ mixin _$MessageWithPartsResponse {
 
  List<MessageWithParts> get messages;/// Cursor for the next older page, to be sent back verbatim as the
 /// request's `before`. Null means the transcript is complete.
- int? get nextCursor; SessionPromptDefaults? get replayedPromptDefaults;
+ int? get nextCursor; SessionPromptDefaults? get replayedPromptDefaults;/// Whether the store this page came from is behind the harness, so the
+/// transcript may be missing its newest messages. Only a `storedOnly`
+/// request can see this true: every other read backfills from the harness
+/// before serving.
+ bool get awaitingHarnessSync;
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -31,16 +35,16 @@ $MessageWithPartsResponseCopyWith<MessageWithPartsResponse> get copyWith => _$Me
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults)&&(identical(other.awaitingHarnessSync, awaitingHarnessSync) || other.awaitingHarnessSync == awaitingHarnessSync));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages),nextCursor,replayedPromptDefaults);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages),nextCursor,replayedPromptDefaults,awaitingHarnessSync);
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults)';
+  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults, awaitingHarnessSync: $awaitingHarnessSync)';
 }
 
 
@@ -51,7 +55,7 @@ abstract mixin class $MessageWithPartsResponseCopyWith<$Res>  {
   factory $MessageWithPartsResponseCopyWith(MessageWithPartsResponse value, $Res Function(MessageWithPartsResponse) _then) = _$MessageWithPartsResponseCopyWithImpl;
 @useResult
 $Res call({
- List<MessageWithParts> messages, int? nextCursor, SessionPromptDefaults? replayedPromptDefaults
+ List<MessageWithParts> messages, int? nextCursor, SessionPromptDefaults? replayedPromptDefaults, bool awaitingHarnessSync
 });
 
 
@@ -68,12 +72,13 @@ class _$MessageWithPartsResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? messages = null,Object? nextCursor = freezed,Object? replayedPromptDefaults = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? messages = null,Object? nextCursor = freezed,Object? replayedPromptDefaults = freezed,Object? awaitingHarnessSync = null,}) {
   return _then(MessageWithPartsResponse(
 messages: null == messages ? _self.messages : messages // ignore: cast_nullable_to_non_nullable
 as List<MessageWithParts>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
 as int?,replayedPromptDefaults: freezed == replayedPromptDefaults ? _self.replayedPromptDefaults : replayedPromptDefaults // ignore: cast_nullable_to_non_nullable
-as SessionPromptDefaults?,
+as SessionPromptDefaults?,awaitingHarnessSync: null == awaitingHarnessSync ? _self.awaitingHarnessSync : awaitingHarnessSync // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 /// Create a copy of MessageWithPartsResponse
@@ -97,7 +102,7 @@ $SessionPromptDefaultsCopyWith<$Res>? get replayedPromptDefaults {
 @JsonSerializable()
 
 class _MessageWithPartsResponse implements MessageWithPartsResponse {
-  const _MessageWithPartsResponse({required  List<MessageWithParts> messages, required this.nextCursor, required this.replayedPromptDefaults}): _messages = messages;
+  const _MessageWithPartsResponse({required  List<MessageWithParts> messages, required this.nextCursor, required this.replayedPromptDefaults, this.awaitingHarnessSync = false}): _messages = messages;
   factory _MessageWithPartsResponse.fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);
 
  final  List<MessageWithParts> _messages;
@@ -111,6 +116,11 @@ class _MessageWithPartsResponse implements MessageWithPartsResponse {
 /// request's `before`. Null means the transcript is complete.
 @override final  int? nextCursor;
 @override final  SessionPromptDefaults? replayedPromptDefaults;
+/// Whether the store this page came from is behind the harness, so the
+/// transcript may be missing its newest messages. Only a `storedOnly`
+/// request can see this true: every other read backfills from the harness
+/// before serving.
+@override@JsonKey() final  bool awaitingHarnessSync;
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -125,16 +135,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults)&&(identical(other.awaitingHarnessSync, awaitingHarnessSync) || other.awaitingHarnessSync == awaitingHarnessSync));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),nextCursor,replayedPromptDefaults);
+int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),nextCursor,replayedPromptDefaults,awaitingHarnessSync);
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults)';
+  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults, awaitingHarnessSync: $awaitingHarnessSync)';
 }
 
 
@@ -145,7 +155,7 @@ abstract mixin class _$MessageWithPartsResponseCopyWith<$Res> implements $Messag
   factory _$MessageWithPartsResponseCopyWith(_MessageWithPartsResponse value, $Res Function(_MessageWithPartsResponse) _then) = __$MessageWithPartsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- List<MessageWithParts> messages, int? nextCursor, SessionPromptDefaults? replayedPromptDefaults
+ List<MessageWithParts> messages, int? nextCursor, SessionPromptDefaults? replayedPromptDefaults, bool awaitingHarnessSync
 });
 
 
@@ -162,12 +172,13 @@ class __$MessageWithPartsResponseCopyWithImpl<$Res>
 
 /// Create a copy of MessageWithPartsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? nextCursor = freezed,Object? replayedPromptDefaults = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? messages = null,Object? nextCursor = freezed,Object? replayedPromptDefaults = freezed,Object? awaitingHarnessSync = null,}) {
   return _then(_MessageWithPartsResponse(
 messages: null == messages ? _self._messages : messages // ignore: cast_nullable_to_non_nullable
 as List<MessageWithParts>,nextCursor: freezed == nextCursor ? _self.nextCursor : nextCursor // ignore: cast_nullable_to_non_nullable
 as int?,replayedPromptDefaults: freezed == replayedPromptDefaults ? _self.replayedPromptDefaults : replayedPromptDefaults // ignore: cast_nullable_to_non_nullable
-as SessionPromptDefaults?,
+as SessionPromptDefaults?,awaitingHarnessSync: null == awaitingHarnessSync ? _self.awaitingHarnessSync : awaitingHarnessSync // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
