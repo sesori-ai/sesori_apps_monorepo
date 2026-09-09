@@ -148,6 +148,7 @@ class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyt
       AppRouteDef.archivedSessionDetail ||
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
+      AppRouteDef.settingsDefaultInput ||
       AppRouteDef.settingsProfile ||
       AppRouteDef.settingsHarnesses ||
       AppRouteDef.settingsHarnessDetail => true,

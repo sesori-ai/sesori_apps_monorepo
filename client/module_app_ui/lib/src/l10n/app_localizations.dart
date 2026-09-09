@@ -1357,6 +1357,24 @@ abstract class AppLocalizations {
   /// **'System'**
   String get settingsAppearanceSystem;
 
+  /// No description provided for @settingsSectionSessions.
+  ///
+  /// In en, this message translates to:
+  /// **'Sessions'**
+  String get settingsSectionSessions;
+
+  /// No description provided for @settingsSectionPreferences.
+  ///
+  /// In en, this message translates to:
+  /// **'Preferences'**
+  String get settingsSectionPreferences;
+
+  /// No description provided for @settingsDefaultInputDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose how you default talk to Sesori.'**
+  String get settingsDefaultInputDescription;
+
   /// Settings entry and page title for choosing the default session composer input
   ///
   /// In en, this message translates to:
@@ -1644,6 +1662,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry'**
   String get sessionDetailRetry;
+
+  /// Action that refreshes harness availability after authentication may have been restored elsewhere.
+  ///
+  /// In en, this message translates to:
+  /// **'Recheck'**
+  String get sessionDetailRecheck;
 
   /// No description provided for @sessionDetailPromptHint.
   ///
@@ -3034,7 +3058,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailContentLoadFailedReason.
   ///
   /// In en, this message translates to:
-  /// **'The harness is available, but chat content or options could not be loaded. Retry to continue.'**
+  /// **'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.'**
   String get sessionDetailContentLoadFailedReason;
 
   /// No description provided for @sessionDetailHarnessCheckingReason.

@@ -14,9 +14,11 @@ idle suspension, the management snapshot, and lifecycle commands.
   reload it. Disabled, authentication-required, missing-runtime, unavailable,
   stopping, uninspected, unknown and missing-harness states block interaction. Ready
   setup with dormant, starting, active or degraded runtime remains routable.
-- An unverified initial check blocks input with Retry; a first check failure remains
-  blocked and keeps its original error for local diagnosis. Retained refresh errors
-  show a warning without changing the last established decision. An older public
+- Only an authentication-required block offers Recheck. It requests fresh management
+  evidence when authentication may have been restored elsewhere; it does not authenticate.
+  Disabled and every other blocked reason omit that action. A first check failure
+  remains blocked and keeps its original error for local diagnosis. Retained refresh
+  errors show a warning without changing the last established decision. An older public
   bridge without management support keeps interaction available with an upgrade
   warning; a request failure is never treated as endpoint absence.
 - Disconnect preserves an established block. Reconnect requires fresh connected
@@ -79,12 +81,15 @@ idle suspension, the management snapshot, and lifecycle commands.
   of settings, credentials, providers, and skills but its session root is never
   scanned. Session, attachment, query, and spill mutations stay below plugin
   state, and session-local model/reasoning writes never modify user settings.
-- Antigravity is a local-only ACP v1 harness over Google's official proprietary runtime pair. An explicit
-  `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH is checked.
-  Setup inspection is static and inert, reports personal-auth readiness from token-file presence without reading it,
-  and advertises current-client browser login only when required. It never imports ambient credentials, starts a
-  process, opens a browser, or offers managed installation. Preparation, exact identity/version probing, login and live
-  start use the same isolated profile/environment with parent inheritance disabled.
+- Antigravity is an ACP v1 harness over Google's official proprietary runtime pair. An explicit
+  `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH then the
+  installed managed pair are checked. Setup inspection is static and inert, reports personal-auth readiness from
+  token-file presence without reading it, and advertises current-client browser login only when required. It never
+  imports ambient credentials, starts a process, opens a browser or downloads a runtime. Managed Install is explicit,
+  limited to macOS arm64, Linux x64/arm64 and Windows x64/arm64 (not macOS x64), absent with an override, and preceded
+  by Google terms/documentation guidance visible on the detail screen before installation. The overview download icon
+  opens that screen rather than starting a download. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
+  with parent inheritance disabled.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`
   authoritative, otherwise prefers a compatible PATH release (`>=1.0.78`) over
@@ -255,8 +260,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   retained within groups; empty groups disappear. Installing entries belong to Not installed;
   genuinely disabled entries belong to Disabled; only ready dormant/starting/active entries
   are Enabled. Degraded remains attention even though its separate scan capability is routable.
-- Harness names open details, switches send actual enable/disable intent, and the separate
-  download target immediately starts an advertised install. Switches retain the bridge's
+- Harness names and the separate download target open details without starting installation;
+  setup guidance stays visible before the explicit detail installation button. Switches send
+  actual enable/disable intent and retain the bridge's
   known enabled preference while blocked by setup or another operation; unknown runtime
   has no inferred switch. A pending toggle replaces only that harness's switch with an
   in-place indicator in the same 64×44 slot; the list stays visible and other mutations
@@ -379,8 +385,8 @@ owned-process exit; and restart.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
   being logged, failed, or restarted as an unexpected crash.
 - Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, launches ACP,
-  opens a browser, falls through from an explicit pair, or advertises managed install; registration changes the
-  OpenCode preferred default or adds a shared `Harness` enum case.
+  opens a browser, falls through from an explicit pair, downloads automatically, or offers managed install with an
+  override/on macOS x64; registration changes the OpenCode preferred default or adds a shared `Harness` enum case.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
   PATH release, offers install with an explicit path or on an unsupported
@@ -397,8 +403,9 @@ owned-process exit; and restart.
 
 ## Known Limitations
 
-- The harness set comes from the current registry; unregistered in-development harnesses
-  are out of scope. Antigravity managed installation and native cross-target/OAuth evidence remain pending gates.
+- The harness set comes from the current registry; unregistered in-development harnesses are out of scope.
+  Antigravity managed installation is implemented. Native Linux/Windows correctness and real OAuth evidence remain
+  unverified; current native managed-pipeline evidence is macOS arm64 only.
 - DeepSeek is registered and enabled by default. Its official theme-independent
   brand-blue artwork, local provider setup guidance, and managed install controls
   follow the same backend-neutral registry and client surfaces as every other harness.
@@ -426,7 +433,8 @@ owned-process exit; and restart.
 
 ## Sources
 
-- [Antigravity local runtime activation](antigravity-descriptor-and-setup.md),
+- [Antigravity operator guidance](../ANTIGRAVITY.md),
+  [official runtime activation](antigravity-descriptor-and-setup.md),
   [isolated profile](antigravity-isolated-profiles.md), and
   [personal authentication](antigravity-personal-authentication.md) contracts.
 - Shared host/process boundary coverage: `bridge_host_json_store_test.dart`,

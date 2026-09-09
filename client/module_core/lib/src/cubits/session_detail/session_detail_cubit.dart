@@ -251,7 +251,7 @@ class SessionDetailCubit(
     }
   }
 
-  Future<void> retryHarnessAvailability() async {
+  Future<void> recheckHarnessAvailability() async {
     await _pluginManagementService.refresh();
     if (isClosed || !_interaction.canInteract) return;
     if (state is SessionDetailLoaded) {

@@ -197,7 +197,9 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("name, actual enabled switch and immediate install icon are independent targets", (tester) async {
+  testWidgets("name and download open detail while the enabled switch independently changes eligibility", (
+    tester,
+  ) async {
     phone(tester: tester);
     publish(
       plugins: [_plugin(id: "missing", runtime: PluginRuntimeState.blocked, setup: PluginSetupState.runtimeMissing)],
@@ -226,9 +228,9 @@ void main() {
     expect(tester.getSize(install).shortestSide, greaterThanOrEqualTo(44));
     await tester.tap(install);
     await tester.pumpAndSettle();
-    verify(() => service.command(pluginId: "missing", request: const PluginLifecycleCommandRequest.install()))
-        .called(1);
-    expect(opened, isEmpty);
+    verifyNever(() => service.command(pluginId: "missing", request: const PluginLifecycleCommandRequest.install()));
+    expect(opened, ["missing"]);
+    opened.clear();
     await tester.tap(find.text("missing"));
     expect(opened, ["missing"]);
   });
@@ -419,9 +421,7 @@ void main() {
     expect(find.byType(PregoBottomSheet), findsNothing);
   });
 
-  testWidgets("install card replaces redundant missing-runtime instructions but preserves manual setup help", (
-    tester,
-  ) async {
+  testWidgets("setup guidance stays visible with managed installation and manual setup", (tester) async {
     phone(tester: tester);
     const hint = "Install the harness locally or use Sesori installation.";
     final missing = _plugin(
@@ -432,8 +432,9 @@ void main() {
     publish(plugins: [missing]);
     await tester.pumpWidget(app(detailId: "missing"));
     await tester.pumpAndSettle();
-    expect(find.text(hint), findsNothing);
+    expect(find.text(hint), findsOneWidget);
     expect(find.text("Start installation"), findsOneWidget);
+    verifyNever(() => service.command(pluginId: "missing", request: const PluginLifecycleCommandRequest.install()));
 
     publish(
       plugins: [

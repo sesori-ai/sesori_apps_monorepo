@@ -3,11 +3,12 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.b merged, Step 10.c in review, Step 10.d awaiting native measurements
+- **Status:** completed under explicitly accepted reduced verification; Steps 1–11 merged,
+  Step 12 retirement [PR #1397](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1397) open for review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
-  8.a/8.b/8.c, and 10.a/10.b/10.c
+  8.a/8.b/8.c, and 10.a/10.b/10.c/10.d
 - **Delivery order:** user-supplied official runtime pair first; pinned managed installation follows after local
   support is live
 
@@ -143,9 +144,9 @@ that privacy-safe result as a contract fixture. The released binary wins over T3
   SQLite conversation contents or mutate private history files.
 - Local deletion remains a Sesori tombstone plus standard close when advertised. It does not delete Google's
   conversation/profile files; Git/database behavior and UI must describe this honestly.
-- Managed installation is explicit user action, never startup download or background update. Download directly from
-  `dl.google.com`, verify independently computed immutable SHA-256 digests, preserve the pair together, then run the
-  exact ACP identity probe before activation.
+- First managed installation requires explicit user action; existing Sesori-managed installations may upgrade on
+  bridge start. Download directly from `dl.google.com`, verify independently computed immutable SHA-256 digests,
+  preserve the pair together, then run the exact ACP identity probe before activation.
 - Show that the runtime is proprietary and link Google's current terms/docs in setup/product documentation. Sesori
   does not interpret entitlement or copy credentials; the user chooses whether to install and authenticate.
 - No Antigravity-specific analytics. Existing generic authoritative session/auth/install outcomes are sufficient, and
@@ -533,8 +534,8 @@ New persistent mutable state:
 - Google-owned isolated profile under the plugin state root: typed `settings.json` written by Sesori, then token,
   conversation databases, metadata, and brain files written by the official agent. This is required for explicit
   authentication and recovery without touching a user's unrelated Google profile.
-- Managed runtime package directory and existing shared runtime activation metadata after Step 10. No automatic install
-  or update.
+- Managed runtime package directory and existing shared runtime activation metadata after Step 10. First installation
+  is explicit; existing managed installations may upgrade on bridge start.
 - Existing bridge session/project/tombstone tables only. No schema, migration, duplicated session sidecar, or persisted
   auth continuation.
 
@@ -628,9 +629,10 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
 11. `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
     - Complete product/operator guidance, then audit and reconcile already-updated regression contracts, cross-links,
       matrices, and limits.
-12. `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
-    - Run architecture implementation review and the recorded L1-L5 matrix, fix only in-scope defects, record evidence,
-      and move the passing plan to `.plan/completed/antigravity-harness/`.
+12. `🌱 [antigravity-harness] docs: retire plan with accepted verification limits [step 12/12]`
+    - Record the completed cumulative architecture review, passing automated/native subset and explicit owner acceptance
+      of the remaining matrix reduction, then move the plan to `.plan/completed/antigravity-harness/`.
+    - Complexity is trivial for this final documentation-only diff; no production changes were required.
 
 Each PR targets at most 1,500 changed lines including tests and generated output. The original Step 2 exceeded the cap,
 so its ACP boundary/release pin remains Step 2 and local runtime resolution moves to Step 3; the two small final docs
@@ -976,14 +978,15 @@ full-diff cap per PR. Keep only the immediate successor local:
 - **10.a — Archive command budgets (estimated 250–450 lines):** required asset/extractor command budgets,
   every current manifest/caller updated explicitly, focused forwarding/slow-command/timeout tests, and runtime/self-update
   regression contracts. Existing archive extraction retains two minutes; listing now uses the same declared budget.
-  No Antigravity installation is exposed, no official artifact budgets or native timing claims are made yet.
+  No Antigravity installation or official artifact budgets are introduced in this slice.
 - **10.b — Isolated candidate validation (estimated 600–1,000 lines):** the required shared pre-placement seam,
   explicit current-caller adapters, disposable owner-only staging/cached validation context and failure/shutdown cleanup.
 - **10.c — Official candidate validation (review checkpoint: 587 lines):** independently rehashed five-target artifact
-  facts and the isolated initialize-only validator. Native macOS arm64 archive/probe evidence is recorded separately.
+  facts and the isolated initialize-only validator, with native macOS arm64 correctness evidence.
 - **10.d — Managed pair activation (estimated 600–1,100 lines):** manifest, descriptor composition, install disclosure,
-  measured target budgets and failure/rollback coverage. This successor requires packaged Linux x64/arm64 and Windows
-  x64/arm64 measurements; Install remains unavailable until those gates pass. Further coherent splits remain preapproved.
+  conservative bounded archive-command timeouts and pre-placement prior-runtime retention/abort coverage. Integrity,
+  traversal, isolated candidate
+  validation and cleanup remain required. Further coherent splits remain preapproved.
 
 The requirements below apply across those slices; partitioning does not remove any of them:
 
@@ -997,18 +1000,19 @@ The requirements below apply across those slices; partitioning does not remove a
 - Compose `AntigravityRuntimeVersionValidator(required runtimeService)` as that seam's adapter. The shared installer
   creates an owner-only disposable state directory inside managed staging; the adapter supplies it as `GEMINI_HOME`,
   strips ambient credentials, runs initialize-only, and terminates without auth/session creation. Timeout, failure, or
-  shutdown kills the probe and removes staging, leaving the prior installed pair untouched; success removes the probe
+  shutdown kills the probe and removes staging, leaving retained supported prior pairs untouched; success removes the probe
   home before placement. Cached validation uses the same disposable managed-area context.
 - Narrowly document the install contract's distinction between a bounded, noninteractive staging validator and a live
   plugin start: no process is registered/exposed, and all validator cwd/state/files remain inside managed staging.
 - Extend descriptor precedence to explicit -> valid PATH -> already-installed managed. Advertise install only without
-  an explicit override and on one of the five supported targets; install is always explicit.
+  an explicit override and on one of the five supported targets; first installation is explicit, while existing managed
+  installations may upgrade on bridge start.
 - Add required `archiveCommandTimeout` to `ArchiveRuntimeAsset`, forward it as a required named `ArchiveExtractor`
   input, and update every existing asset/caller explicitly. Apply it to both traversal preflight listing and extraction,
-  replacing the fixed 30-second/two-minute limits. Give each Antigravity target a measured budget that completes both
-  full archive passes on its packaged host; retain traversal/symlink checks and test successful slow preflight/extract.
+  replacing the fixed 30-second/two-minute limits. Give Antigravity assets conservative bounded command timeouts;
+  retain traversal/symlink checks and deterministic successful slow-command and timeout-cleanup tests.
 - Add managed-download disclosure and five-target/macOS-x64 capability facts before Install is exposed. Update
-  `docs/regression/plugin-runtime-installation.md` with the supported targets, budgets, rollback, and abort evidence in
+  `docs/regression/plugin-runtime-installation.md` with supported targets, budgets, pre-placement retention and abort evidence in
   this PR rather than deferring it to Step 11.
 - Cover all target mappings/digests, package sibling preservation, corrupt archive/hash, partial pair, staging-home
   containment/mode/cleanup, no auth/session call, failed probe before placement, shutdown abort at phase boundaries,
@@ -1047,6 +1051,13 @@ Enterprise/API-key/Agent Platform/macOS-x64 support.
 
 ### Step 12/12: Verify and retire
 
+The first cumulative architecture review passed, as did 1,398 focused tests and eleven owning analyzers; see
+[EVIDENCE.md](EVIDENCE.md) for exact scope and versions. No production corrections were required. The owner explicitly
+accepted the named verification reduction below and requested retirement on that evidence; this is not an L5 pass.
+
+Original intended verification procedure, retained to identify the scope reduced by the explicit acceptance below;
+these bullets are not outstanding requirements under this completed plan:
+
 - Run `architecture-implementation-review` through a sub-agent over the Git-defined Step 2-10 production commit/PR
   range. Resolve valid in-scope findings with at most the two passes allowed by repository policy.
 - Run focused package/app/shared/client tests and analyzers after the final code state and any review fixes.
@@ -1056,12 +1067,36 @@ Enterprise/API-key/Agent Platform/macOS-x64 support.
 - Do not retire on incomplete required coverage unless the user explicitly accepts a named matrix reduction in this
   plan. On full pass, move both files to `.plan/completed/antigravity-harness/`.
 
+## Accepted Verification Reduction — 2026-09-08
+
+After receiving the passing automated/review results and the missing QA requirements, the owner selected
+**“Accept reduced verification and retire.”** The presented choice explicitly waived the remaining live Google,
+native Linux/Windows, packaged-client and unexecuted L1–L5 catalog checks, accepting the recorded automated tests and
+macOS initialize-only subset with their limitations documented.
+
+Accepted retirement evidence: the cumulative nineteen-PR architecture approval, 1,398 passing selected tests,
+eleven clean analyzers, five-target archive integrity facts and preserved macOS arm64 initialize-only/managed-pipeline
+verification. The following remaining requirements are waived **for this plan's retirement**, not marked passed:
+
+- Real personal Google OAuth, same-host direct and remote pasted callbacks, and all authenticated live Google
+  session/model/permission/question/image/history/import/deletion/reconnect and two-session flows.
+- Native Linux x64/arm64 and Windows x64/arm64 packaged installation and session matrices; the remaining authenticated
+  macOS arm64 packaged lifecycle matrix beyond the preserved initialize-only/managed-install subset.
+- Packaged iOS and desktop end-to-end journeys, required remote-client topology, multi-client/compatibility execution,
+  and the remaining all-plugin, installer, push, analytics, GitHub and device/external-service checks.
+- Every unexecuted portion of the cumulative 33-feature L1–L5 catalog explicitly accounted for in `EVIDENCE.md`.
+
+This acceptance permits moving the plan to completed. Existing implementation and supported-capability contracts are
+unchanged; blocked/not-run results stay visible in the evidence and operator guidance. The original intended matrix
+below is retained to identify the accepted gap, not to claim it ran.
+
 ## Regression And Retirement Matrix
 
-Highest required level: **L5 Full**. The delivered managed runtime makes packaged claims across five host targets, and
+Originally required level: **L5 Full**, reduced for retirement only by the explicit acceptance above.
+The delivered managed runtime makes packaged claims across five host targets, and
 browser authentication/session behavior crosses Google, bridge, encrypted transport, and client boundaries. Under
-`docs/regression/README.md`, Step 12 runs the complete applicable documented catalog cumulatively from L1 through L5,
-not only the Antigravity-focused feature rows below. Missing infrastructure is `Blocked`, not silently out of scope.
+`docs/regression/README.md`, the original Step 12 procedure required the complete applicable documented catalog
+cumulatively from L1 through L5, not only the Antigravity-focused feature rows below. Missing infrastructure is `Blocked`, not silently out of scope.
 
 Release matrix:
 
@@ -1077,10 +1112,12 @@ Release matrix:
 
 Per-target packaged checks (all five supported hosts):
 
-- setup before install, explicit install start/progress, archive hash verification, pair extraction/permissions, exact
-  initialize validation, activation, restart selection, clean shutdown, shutdown-triggered install abort/recovery,
-  failed update retaining the prior active runtime, and uninstall/cleanup behavior supported by shared runtime code;
-- no automatic download, no cross-plugin impact, and privacy-safe logs/errors;
+- setup with no managed installation, explicit first-install start/progress, archive hash verification, pair
+  extraction/permissions, exact initialize validation, activation, restart selection, clean shutdown,
+  shutdown-triggered install abort/recovery, and uninstall/cleanup behavior supported by shared runtime code;
+- no automatic first download when no managed installation exists; separately, bridge-start upgrades of existing
+  managed installations and failed pre-placement updates retaining supported prior runtimes;
+- no cross-plugin impact and privacy-safe logs/errors;
 - at least a smoke `session/new -> prompt -> cancel/complete -> resume/load` on the target. Full account/UI scenarios
   may use the representative hosts below, but package/process claims must execute on every advertised target.
 
@@ -1097,9 +1134,9 @@ Feature matrix:
     in logs, SSE replay, or persisted state.
   - Boundary: automated, live Google service on representative macOS arm64 and Linux x64 hosts, iOS and desktop E2E.
 - **`plugin-runtime-installation.md`**
-  - Evidence: five independently pinned digests, target-sized archive-command budgets, successful huge-package
+  - Evidence: five independently pinned digests, conservative bounded archive-command budgets, successful huge-package
     traversal preflight and extraction, sibling preservation, validation-before-activation, shutdown abort/recovery,
-    rollback, cleanup, and macOS x64 gap.
+    pre-placement prior-runtime retention, cleanup, and macOS x64 gap.
   - Boundary: automated plus packaged execution on every listed host target.
 - **`projects-and-sessions.md`**
   - Evidence: isolated-profile metadata import, DB-only ordinary reads, canonical cwd attribution, malformed metadata
@@ -1110,7 +1147,7 @@ Feature matrix:
     exact selection, stale rejection/refresh, `default` mode before prompt, session creation, and remembered defaults.
   - Boundary: automated, live agent, and client E2E.
 - **`session-turns.md`**
-  - Evidence: text/reasoning/tool/status streaming, accepted-send timing, model application, abort, stop-and-send,
+  - Evidence: text/reasoning/tool/status streaming, accepted-send ordering, model application, abort, stop-and-send,
     two-session concurrency, visible failures, and idle completion with no permission bypass.
   - Boundary: live agent and both client shells.
 - **`session-history-and-recovery.md`**
@@ -1143,9 +1180,10 @@ Feature matrix:
 - **Terms/proprietary distribution:** the registry intentionally publishes Google binaries for ACP clients, while
   Google separately controls account eligibility and terms. Fetch only from the official registry URLs after explicit
   action, link current terms, and avoid legal promises or community wrappers.
-- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Replace fixed listing and
-  extraction limits with one required per-asset command budget, then verify successful traversal preflight/extraction,
-  shutdown abort, disk/timeout failure, prior-runtime rollback, and cleanup without duplicating the shared installer.
+- **Large artifacts:** archives are hundreds of MiB and extracted pairs can exceed 1.6 GiB. Use one conservative,
+  bounded per-asset command budget for listing and extraction, then verify traversal preflight/extraction, shutdown
+  abort, disk/timeout failure, pre-placement prior-runtime retention, and cleanup without duplicating the shared
+  installer.
 - **Pair drift:** server and local harness must match. Resolve/place/lease them as one directory, then validate both
   before activation.
 - **OAuth callback security:** a pasted URL is attacker-controlled input containing a short-lived code. Pure-Dart

@@ -2,6 +2,7 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
+import "package:theme_prego/theme/primitives/prego_color_primitives.g.dart";
 
 import "../../../extensions/build_context_x.dart";
 
@@ -9,7 +10,7 @@ const double _optionHeight = 100.0;
 const double _previewHeight = 69.0;
 const double _labelGap = PregoSpacing.sm;
 const double _selectionRingWidth = 2.0;
-const double _composerHeight = 54.0;
+const double _composerHeight = 58.0;
 const double _composerWidth = 370.0;
 const double _composerInset = PregoSpacing.md;
 
@@ -94,10 +95,13 @@ class const _ChatInputModeOption({
                       size: 14,
                       color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
                     ),
-                    Text(
-                      label,
-                      style: prego.textTheme.textSm.regular.copyWith(
-                        color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
+                    Flexible(
+                      child: Text(
+                        label,
+                        textAlign: TextAlign.center,
+                        style: prego.textTheme.textSm.regular.copyWith(
+                          color: isSelected ? prego.colors.textPrimary : prego.colors.textSecondary,
+                        ),
                       ),
                     ),
                   ],
@@ -119,7 +123,7 @@ class const _ComposerPreview({required final ChatInputMode mode, required final 
       children: [
         Positioned(
           left: _composerInset,
-          top: (_previewHeight - _composerHeight) / 2,
+          top: (_previewHeight - _composerHeight) / 2 + 0.5,
           width: _composerWidth,
           height: _composerHeight,
           child: _ComposerPill(mode: mode, isSelected: isSelected),
@@ -252,22 +256,25 @@ class const _TextPreview({required final bool isSelected}) extends StatelessWidg
   Widget build(BuildContext context) {
     final prego = context.prego;
 
-    return Row(
-      mainAxisSize: MainAxisSize.min,
-      children: [
-        Container(
-          width: 2,
-          height: 20,
-          color: isSelected ? prego.colors.borderBrand : prego.colors.textTertiary,
-        ),
-        Text(
-          context.loc.settingsDefaultInputTextPreview,
-          textScaler: TextScaler.noScaling,
-          style: prego.textTheme.textMd.regular.copyWith(
-            color: isSelected ? prego.colors.textSecondary : prego.colors.textTertiary,
+    return Opacity(
+      opacity: isSelected ? 1 : 0.8,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 2,
+            height: 20,
+            color: isSelected ? PregoColorPrimitives.blue300 : prego.colors.textTertiary,
           ),
-        ),
-      ],
+          Text(
+            context.loc.settingsDefaultInputTextPreview,
+            textScaler: TextScaler.noScaling,
+            style: prego.textTheme.textMd.regular.copyWith(
+              color: isSelected ? prego.colors.textSecondary : prego.colors.textTertiary,
+            ),
+          ),
+        ],
+      ),
     );
   }
 }

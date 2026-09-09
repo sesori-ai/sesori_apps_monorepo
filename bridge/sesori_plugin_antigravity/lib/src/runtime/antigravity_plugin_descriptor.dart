@@ -1,9 +1,11 @@
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "../api/antigravity_acp_api.dart";
 import "../builders/antigravity_launch_spec_builder.dart";
@@ -25,19 +27,24 @@ import "../storage/antigravity_profile_storage.dart";
 import "../storage/antigravity_runtime_storage.dart";
 import "antigravity_authentication_composer.dart";
 import "antigravity_plugin_composer.dart";
+import "antigravity_runtime_manifest.dart";
+import "antigravity_runtime_version_validator.dart";
 
-/// Local-runtime composition root for Google's official Antigravity ACP pair.
-/// Managed installation remains a later plan gate.
+/// Composition root for Google's official local or Sesori-managed ACP pair.
 class const AntigravityPluginDescriptor({
   final PlatformTarget? target,
   final String? browserExecutable,
   final List<String>? browserPrefixArguments,
   final String? launchDirectory,
   required final HttpClient Function() callbackHttpClientFactory,
+  required final http.Client Function() runtimeDownloadHttpClientFactory,
   final Duration operationTimeout = const Duration(minutes: 2),
   final Duration connectBudget = const Duration(seconds: 15),
 }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
-  factory production() => const AntigravityPluginDescriptor(callbackHttpClientFactory: HttpClient.new);
+  factory production() => const AntigravityPluginDescriptor(
+    callbackHttpClientFactory: HttpClient.new,
+    runtimeDownloadHttpClientFactory: http.Client.new,
+  );
   static const binOption = "bin";
   static const cliOptions = [
     PluginValueOption(
@@ -67,7 +74,21 @@ class const AntigravityPluginDescriptor({
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
     ...super.managementCapabilities(config: config),
     PluginControlCapability.authentication,
+    if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
   };
+
+  bool _supportsManagedInstall({required PluginConfig config}) {
+    if (_explicitServerPath(config: config) != null) return false;
+    return const AntigravityRuntimeManifest().supportsManagedInstallOn(target: _target());
+  }
+
+  @override
+  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+    if (!_supportsManagedInstall(config: config)) return false;
+    return const ManagedRuntimeInventory(
+      manifest: AntigravityRuntimeManifest(),
+    ).hasSupersededVersion(stateDirectory: stateDirectory);
+  }
 
   String? _explicitServerPath({required PluginConfig config}) {
     final value = config.value(binOption)?.trim();
@@ -78,11 +99,9 @@ class const AntigravityPluginDescriptor({
   String _geminiHome({required String stateDirectory}) => p.join(stateDirectory, "profile");
   String? _managedServerPath({required String stateDirectory, required PlatformTarget target}) {
     if (!AntigravityRelease.supportsTarget(target: target)) return null;
-    return p.join(
-      stateDirectory,
-      AntigravityIdentity.pluginId,
-      AntigravityRelease.agentVersion,
-      AntigravityRelease.serverFileName(target: target),
+    return const AntigravityRuntimeManifest().managedServerPath(
+      stateDirectory: stateDirectory,
+      target: target,
     );
   }
 
@@ -146,6 +165,85 @@ class const AntigravityPluginDescriptor({
   }
 
   @override
+  Stream<RuntimeProvisionProgress> installRuntime({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+    required StartAbortSignal startAborted,
+    required RuntimeInUseSignal runtimeInUse,
+  }) async* {
+    if (!_supportsManagedInstall(config: config)) {
+      yield const ProvisionFailed(
+        message: "Antigravity managed installation is unavailable with this configuration or platform.",
+      );
+      return;
+    }
+
+    const manifest = AntigravityRuntimeManifest();
+    final commandExecutor = HostProcessCommandExecutor(
+      processes: processes,
+      runInShell: Platform.isWindows,
+      includeParentEnvironment: true,
+      maxCapturedOutputCharactersPerStream: null,
+    );
+    if (startAborted.isAborted) throw const PluginStartAbortedException();
+    if (_target().os == PlatformOs.linux) {
+      final extractorAvailable = await _hasLinuxZipExtractor(commands: commandExecutor, environment: environment);
+      if (startAborted.isAborted) throw const PluginStartAbortedException();
+      if (!extractorAvailable) {
+        yield const ProvisionFailed(
+          message:
+              "Antigravity installation requires Info-ZIP unzip with ZipInfo support on Linux. "
+              "Install your distribution's unzip package, then retry.",
+        );
+        return;
+      }
+    }
+    final httpClient = runtimeDownloadHttpClientFactory();
+    try {
+      final runtimeService = _runtime(processes: processes, environment: environment);
+      final installer = const ManagedRuntimeComposition().createInstaller(
+        manifest: manifest,
+        commandExecutor: commandExecutor,
+        downloadClient: BinaryDownloadClient(httpClient: httpClient),
+        candidateValidator: AntigravityRuntimeVersionValidator(runtimeService: runtimeService),
+        assetResolver: ({required target}) async => manifest.assetFor(target: target),
+      );
+      yield* installer.install(
+        environment: environment,
+        stateDirectory: stateDirectory,
+        startAborted: startAborted,
+        runtimeInUse: runtimeInUse,
+      );
+    } finally {
+      httpClient.close();
+    }
+  }
+
+  Future<bool> _hasLinuxZipExtractor({
+    required CommandExecutor commands,
+    required Map<String, String> environment,
+  }) async {
+    try {
+      final result = await commands.run(
+        "unzip",
+        const ["-Z", "-h"],
+        environment: environment,
+        timeout: const Duration(seconds: 10),
+      );
+      if (result.exitCode == 0) return true;
+      Log.w("[antigravity] Linux unzip ZipInfo preflight failed", result);
+      return false;
+    } on PluginStartAbortedException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      Log.w("[antigravity] Linux unzip ZipInfo preflight failed", error, stackTrace);
+      return false;
+    }
+  }
+
+  @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,
     required HostProcessService processes,
@@ -166,6 +264,7 @@ class const AntigravityPluginDescriptor({
       environment: environment,
       target: selectedTarget,
       geminiHome: _geminiHome(stateDirectory: stateDirectory),
+      managedInstallAvailable: _supportsManagedInstall(config: config),
     );
   }
 

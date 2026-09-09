@@ -692,6 +692,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
+  String get settingsSectionSessions => 'Sessions';
+
+  @override
+  String get settingsSectionPreferences => 'Preferences';
+
+  @override
+  String get settingsDefaultInputDescription => 'Choose how you default talk to Sesori.';
+
+  @override
   String get settingsDefaultInputTitle => 'Default input';
 
   @override
@@ -839,6 +848,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailRetry => 'Retry';
+
+  @override
+  String get sessionDetailRecheck => 'Recheck';
 
   @override
   String get sessionDetailPromptHint => 'Ask anything...';
@@ -1643,7 +1655,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailContentLoadFailedReason =>
-      'The harness is available, but chat content or options could not be loaded. Retry to continue.';
+      'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.';
 
   @override
   String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';

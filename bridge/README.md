@@ -81,8 +81,8 @@ local cross-compilation.
 
 Every registered plugin is eligible unless its ID appears in
 `plugins.disabled` in bridge settings. Setup-ready plugins start independently,
-and the first operational plugin in case-insensitive display-name order is the
-current default for new clients. This default is separate from legacy missing
+and OpenCode is the default when selectable; otherwise the first selectable
+plugin in case-insensitive display-name order is the default for new clients. This default is separate from legacy missing
 identity: released payloads without `pluginId` always mean OpenCode, not the
 current default.
 
@@ -97,23 +97,47 @@ they are started, monitored, failed, and stopped independently. A plugin failure
 disables controls routed to that plugin but does not stop the relay, catalog
 browsing, or another plugin.
 
-### Antigravity local runtime
+### Antigravity official runtime
 
 Antigravity support uses Google's proprietary official ACP runtime pair. Review
 [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/) before using it.
-This release does not install or update the pair: place `agy_acp_server.par` and
-`localharness_external` together on macOS arm64 or Linux x64/arm64 (the `.exe`
-pair on Windows x64/arm64). macOS x64 is unsupported. Either make the server
-discoverable on PATH or pass
-`--antigravity-bin <path-to-server>`. The sibling harness is mandatory and an
-explicit server path is authoritative.
+The pin is ACP registry package `1.0.0`, with exact runtime identity
+`agy_acp_server_20260818_01_RC01`. Sesori can install the official pair from
+harness detail after showing download guidance, then update existing managed
+installations on bridge start. Linux requires Info-ZIP `unzip` with ZipInfo;
+installation checks it before downloading. See [INSTALL.md](INSTALL.md).
+
+For manual setup, place `agy_acp_server.par` and `localharness_external`
+together on macOS arm64 or Linux x64/arm64; on Windows x64/arm64 use
+`agy_acp_server.exe` and `localharness_external.exe`. Both POSIX files must be
+executable. macOS x64 is unsupported, including an explicit binary path.
+Either make the server discoverable on PATH or pass
+`--antigravity-bin <path-to-server>`. The sibling harness is mandatory; an
+explicit server path is authoritative and disables managed Install/upgrade.
+Otherwise resolution prefers a validated PATH pair, then an installed managed
+pair. Setup inspection itself remains inert and does not validate the runtime.
 
 Authentication supports personal Google OAuth only and must be started from a
-current Sesori mobile or desktop app; there is no bridge-CLI fallback. Sesori
-uses an isolated Antigravity profile below bridge plugin state and never imports
-ambient Google credentials. Local session deletion removes Sesori's record but
-does not mutate Google's retained conversation/profile files.
+current Sesori mobile or desktop app; there is no bridge-CLI fallback. For a
+remote browser, submit its final loopback return URL through the active Sesori
+challenge. Sesori uses an isolated Antigravity profile below bridge plugin
+state and never imports ambient Google credentials.
+
+Prompts stay in supervised `default` mode; persistent and warning-bearing
+approvals are excluded. One primary agent is available; until a real
+new/load/resume discovers models in a fresh process, new sessions use the
+account default.
+Later model selection, replay and image content use the existing shared ACP
+boundaries. Provider-local image paths are never fetched. Local session deletion
+removes Sesori's record but not Google's retained conversation/profile files.
+
+The [Antigravity operator guide](../docs/ANTIGRAVITY.md) covers complete setup,
+remote login, retained history and limits. Native macOS arm64 managed installation
+has been checked; native Linux/Windows and authenticated end-to-end behavior
+remain unverified. Do not confuse implemented capabilities with completed L5 QA.
+
+### Catalog reads
 
 Normal project, root-session, session-detail, and child reads use the durable
 database catalog only; external harness work enters through an explicit,

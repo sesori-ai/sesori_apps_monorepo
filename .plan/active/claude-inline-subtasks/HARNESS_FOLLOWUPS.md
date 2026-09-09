@@ -7,10 +7,13 @@
   and Cursor, merge, then moved back)
 - **Plan date:** 2026-09-02
 - **Base:** `main` at `6e9028c4c6`
-- **Delivery:** PRs titled `<emoji> [claude-inline-subtasks] <description>` with
-  no step counters. The four harness chains run in parallel; within a
-  chain PRs stack. E2E testing happens after each PR merges, not before.
-  Progress is tracked in `TRACKER.md` "Harness Follow-Ups".
+- **Delivery:** one open PR at a time, following current repository rules.
+  Codex now has nine steps: merged metadata, child-session, historical prompt
+  preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
+  step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped stop 8/9, and
+  coverage 9/9. Historical PR titles are unchanged. Progress is tracked in
+  `TRACKER.md` "Harness Follow-Ups". The DeepSeek phone handoff is recorded in
+  `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
 ## Goal
 
@@ -236,11 +239,13 @@ confirmation, no child session or partial stop) and gets that subset.
   status, and the `subtask` part
   (`messageID` = the activity item id, `childSessionID` = `agentThreadId`,
   description from `agentPath` or the resolved nickname, `taskState` running)
-  renders once the prompt is known, because the part requires one and the
-  activity item carries none: the child's first `userMessage` item under the
-  child thread id supplies it, and when the child streams no such item the
-  `thread/read` result (the child's turns) is used instead; the tile PR
-  verifies which source 0.148.0 provides. The child's own `turn/completed` completes it, a
+  renders from child-owned rollout input when a valid plaintext `NEW_TASK`
+  payload exists. On the normal encrypted 0.153.4 path, it uses only the exact
+  nonblank `message` from the `spawn_agent` call whose call id matches the
+  activity id. This user-approved fallback is delegated task text, not a parent
+  `user_message`; parent history, task names, child order, and timing are never
+  prompt provenance. `thread/read(includeTurns: false)` remains metadata-only.
+  The child's own `turn/completed` completes it, a
   child `turn/interrupt` cancels it, and `thread/closed` cancels it only while
   it is pending or running; a prior completed, failed, interrupted, or errored
   terminal state wins over the later close. A child turn failure errors it,
@@ -276,16 +281,26 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### PRs
 
-| Emoji | Description | Scope |
-|---|---|---|
-| 🌿 | `codex: parse sub-agent thread and item metadata` | DTO fields, collab/activity parser and enums, fixtures from the probe |
-| ⚙️ | `codex: sub-agent threads become child sessions` | repository/mapper/service child-session flow, `parentID` live and from the catalog, roots-only listing, service-owned `getChildSessions` merge, directory attribution, summary rolls busy children into the root. Fixes the root-leak defect |
-| 🚧 | `codex: inline subtask tiles for spawned agents` | service-coordinated tracker, mapper cases, cancel on close/disconnect, call-id replacement of the generic spawn card in rollout-tail and full-history replay, child-rollout terminal join |
-| ⚙️ | `codex: scoped stop for sub-agent threads` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe, `interruptActiveWork` covers children |
-| 🌱 | `docs: record Codex sub-agent coverage` | matrix footnote ³ resolved, regression docs |
+| Step | Emoji | Description | Scope |
+|---|---|---|---|
+| 1/9 | 🌿 | `codex: parse sub-agent thread and item metadata` | Merged historical title unchanged; DTO fields, collab/activity parser and enums, fixtures from the probe |
+| 2/9 | ⚙️ | `codex: sub-agent threads become child sessions` | Merged historical title unchanged; repository/mapper/service child-session flow, roots-only listing, and busy-child summaries |
+| 3/9 | ⚙️ | `codex: parse typed child prompts from thread reads [step 3/6]` | PR #1387 merged under this historical title; preparation superseded by 0.153.4 evidence |
+| 4/9 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | PR #1396 merged at `7f6fb8cb50`; metadata-only `thread/read`, no discarded cache |
+| 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | PR #1398 open, awaiting merge; typed DTOs and repository facts only, no tile activation |
+| 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | Local successor; full live/replay production integration, lifecycle, busy accounting, and focused tests |
+| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Local successor; write-path coverage and capability/regression documentation; no production changes |
+| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
+| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | matrix closure after live plugin QA |
 
-### Probe results (0.148.0, 2026-09-02, details in `followups/codex-probe.md`)
+### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 
+- Current 0.153.4 rollouts persist activity as
+  `event_msg/item_completed/item/SubAgentActivity`; its item id equals the
+  matching `spawn_agent.call_id`. Normal child input is an encrypted
+  `response_item/agent_message` after `inter_agent_communication_metadata`,
+  while `thread/read` exposes no initial child user item. Existing rollout
+  tails observe the append; no watcher or timer is added.
 - Children never emit `thread/started`; a child first appears as
   `thread/status/changed` followed by the parent's `subAgentActivity started`
   (`agentThreadId`, `agentPath`). No `spawnAgent` collab item was emitted, only

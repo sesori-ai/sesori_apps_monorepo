@@ -380,7 +380,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
       interaction: interaction,
       historyUnavailable: historyUnavailable,
       onOpenHarnessSettings: SessionDetailPresentationScope.read(context).openHarnessSettings,
-      onRetry: () => unawaited(context.read<SessionDetailCubit>().retryHarnessAvailability()),
+      onRecheck: () => unawaited(context.read<SessionDetailCubit>().recheckHarnessAvailability()),
     );
   }
 

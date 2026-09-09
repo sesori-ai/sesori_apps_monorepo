@@ -753,7 +753,7 @@ class _CommandActionRowState() extends State<_CommandActionRow> {
     reportCopied(cubit);
     popupAlertPresenter.show(
       title: loc.projectsOnboardingCommandCopied,
-      variant: PregoPopupAlertsNotificationsVariant.success,
+      variant: PregoPopupAlertsNotificationsVariant.info,
     );
   }
 

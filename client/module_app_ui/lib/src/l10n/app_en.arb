@@ -368,6 +368,9 @@
   "@settingsAppearanceSystem": {
     "description": "Theme option that follows the device appearance setting"
   },
+  "settingsSectionSessions": "Sessions",
+  "settingsSectionPreferences": "Preferences",
+  "settingsDefaultInputDescription": "Choose how you default talk to Sesori.",
   "settingsDefaultInputTitle": "Default input",
   "@settingsDefaultInputTitle": {
     "description": "Settings entry and page title for choosing the default session composer input"
@@ -464,6 +467,10 @@
     "description": "Label on a transcript message injected by session automation rather than authored by the user or agent."
   },
   "sessionDetailRetry": "Retry",
+  "sessionDetailRecheck": "Recheck",
+  "@sessionDetailRecheck": {
+    "description": "Action that refreshes harness availability after authentication may have been restored elsewhere."
+  },
   "sessionDetailPromptHint": "Ask anything...",
   "sessionDetailHoldToTalk": "Hold to talk",
   "@sessionDetailHoldToTalk": {
@@ -917,7 +924,7 @@
   "@sessionDetailHarnessUnknownReason": {"placeholders": {"harnessName": {"type": "String"}}},
   "sessionDetailHarnessMissingReason": "This session’s harness is not available on the connected bridge.",
   "sessionDetailHarnessCheckFailedReason": "Couldn’t check whether this session’s harness is available.",
-  "sessionDetailContentLoadFailedReason": "The harness is available, but chat content or options could not be loaded. Retry to continue.",
+  "sessionDetailContentLoadFailedReason": "The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.",
   "sessionDetailHarnessCheckingReason": "Checking whether this session’s harness is available…",
   "sessionDetailHarnessHistoryUnavailable": "Chat history cannot be loaded until the harness is available.",
   "sessionDetailHarnessRefreshWarning": "Harness status could not be refreshed. The last known status is shown.",
