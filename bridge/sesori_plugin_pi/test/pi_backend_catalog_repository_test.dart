@@ -208,6 +208,12 @@ void main() {
       models: const [],
       ignoreModels: true,
     );
+    final timedOutAfterDiagnostic = _ProbeHarness(
+      stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
+      models: const [],
+      ignoreModels: true,
+      stderr: PiRpcClient.noModelsDiagnosticPrefix,
+    );
 
     expect(await noModel.probeResult(), isA<PiCatalogProbeNoModels>());
     expect(await auth.probeResult(), isA<PiCatalogProbeNoModels>());
@@ -222,12 +228,34 @@ void main() {
         ),
       ),
     );
-    await expectLater(
-      timedOut.probeResult(timeout: const Duration(milliseconds: 20)),
-      throwsA(
-        isA<PiCatalogProbeException>().having((error) => error.cause, "cause", isA<TimeoutException>()),
-      ),
-    );
+    for (final harness in [timedOut, timedOutAfterDiagnostic]) {
+      await expectLater(
+        harness.probeResult(timeout: const Duration(milliseconds: 20)),
+        throwsA(
+          isA<PiCatalogProbeException>().having((error) => error.cause, "cause", isA<TimeoutException>()),
+        ),
+      );
+    }
+  });
+
+  test("malformed model catalogs remain diagnostic failures", () async {
+    for (final models in <Object?>[
+      null,
+      "not-a-list",
+      const ["not-a-model"],
+    ]) {
+      final harness = _ProbeHarness(
+        stateModel: _model(provider: "openai", id: "gpt", reasoning: false),
+        models: models,
+      );
+
+      await expectLater(
+        harness.probeResult(),
+        throwsA(
+          isA<PiCatalogProbeException>().having((error) => error.cause, "cause", isA<FormatException>()),
+        ),
+      );
+    }
   });
 }
 
@@ -257,7 +285,7 @@ final class const _CommandExecutor() implements CommandExecutor {
 
 class _ProbeHarness({
   required final Map<String, Object?>? stateModel,
-  required final List<Map<String, Object?>> models,
+  required final Object? models,
   final List<String> thinking = const ["off", "high"],
   final List<Map<String, Object?>> commands = const [],
   final bool emitDialogs = false,

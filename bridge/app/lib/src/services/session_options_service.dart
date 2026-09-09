@@ -399,6 +399,15 @@ class SessionOptionsService({
       case SessionOptionsCaptureInactive():
         return const SessionOptionsAutomaticNoOp();
       case SessionOptionsCaptureAuthenticationRequired(:final actionHint):
+        if (!await _isCurrentInvalidationEpoch(key: resolved.key, expected: invalidationEpoch)) {
+          return _invalidatedRefreshOutcome(automatic: automatic);
+        }
+        if (!await _isCurrentResolution(resolved: resolved)) {
+          return _movedProjectOutcome(automatic: automatic);
+        }
+        if (!await _isCurrentInvalidationEpoch(key: resolved.key, expected: invalidationEpoch)) {
+          return _invalidatedRefreshOutcome(automatic: automatic);
+        }
         return SessionOptionsAuthenticationRequired(actionHint: actionHint);
       case SessionOptionsCaptureFailed():
         return await _captureFailure(
