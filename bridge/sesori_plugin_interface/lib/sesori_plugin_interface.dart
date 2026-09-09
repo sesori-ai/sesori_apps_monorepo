@@ -35,6 +35,7 @@ export "src/models/catalog_strength_order.dart";
 export "src/models/plugin_abort.dart";
 export "src/models/plugin_active_session.dart";
 export "src/models/plugin_agent.dart";
+export "src/models/plugin_catalog_snapshot.dart";
 export "src/models/plugin_command.dart";
 export "src/models/plugin_message.dart";
 export "src/models/plugin_pending_permission.dart";

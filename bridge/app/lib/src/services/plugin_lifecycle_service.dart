@@ -1427,7 +1427,7 @@ class PluginLifecycleService({
     final currentIds = snapshots.map((snapshot) => snapshot.pluginId).toSet();
     _idleTimers.keys.where((pluginId) => !currentIds.contains(pluginId)).toList().forEach(_cancelIdleTimer);
     for (final snapshot in snapshots) {
-      final timeoutMins = _suspensionIdleTimeoutMins(snapshot.pluginId);
+      final timeoutMins = _suspensionIdleTimeoutMins(snapshot);
       if (!_supportsIdleSuspension(pluginId: snapshot.pluginId) || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) {
         _cancelIdleTimer(snapshot.pluginId);
         continue;
@@ -1474,14 +1474,19 @@ class PluginLifecycleService({
 
   /// The timeout driving whole-plugin idle suspension; `0` disables it.
   ///
+  /// Positive configured timeouts are capped at five minutes while a generation
+  /// remains import-only, then normal residency restores the configured value.
   /// Resident plugins are never suspended: they either attach to an external
   /// backend the bridge does not own (OpenCode attach mode) or own idle
   /// reclamation internally (Claude's per-session process reap).
-  int _suspensionIdleTimeoutMins(String pluginId) {
-    final residencyPolicy = _residencyPolicyById[pluginId];
+  int _suspensionIdleTimeoutMins(PluginRuntimeSnapshot snapshot) {
+    final residencyPolicy = _residencyPolicyById[snapshot.pluginId];
     if (residencyPolicy == null) throw StateError("Plugin lifecycle has not been registered.");
     if (residencyPolicy == PluginResidencyPolicy.resident) return 0;
-    return _effectiveIdleTimeoutMins(pluginId);
+    final configured = _effectiveIdleTimeoutMins(snapshot.pluginId);
+    return configured > 0 && snapshot.generationResidency == PluginGenerationResidency.importOnly
+        ? configured.clamp(1, 5)
+        : configured;
   }
 
   Future<void> _stopAfterIdleWindow({
@@ -1492,7 +1497,7 @@ class PluginLifecycleService({
     _idleTimers.remove(pluginId);
     if (!_supportsIdleSuspension(pluginId: pluginId)) return;
     final snapshot = _lifecycleRepository.snapshot.where((entry) => entry.pluginId == pluginId).firstOrNull;
-    final timeoutMins = _suspensionIdleTimeoutMins(pluginId);
+    final timeoutMins = snapshot == null ? 0 : _suspensionIdleTimeoutMins(snapshot);
     if (snapshot == null || timeoutMins <= 0 || !_isIdleCandidate(snapshot)) return;
     Log.d('Plugin "$pluginId" idle timeout elapsed (${timeoutMins}m); requesting safe suspension');
     try {

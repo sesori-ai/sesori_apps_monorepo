@@ -13,9 +13,15 @@ import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+Future<PluginCatalogSnapshotResult> _unavailableCatalogSnapshot({
+  required PluginConfig config,
+  required Map<String, String> environment,
+  required PluginCatalogCancellationSignal cancellation,
+}) async => const PluginCatalogSnapshotUnavailable();
+
 void main() {
   group("OpenCodePluginDescriptor.needsManagedRuntimeUpgrade", () {
-    const descriptor = OpenCodePluginDescriptor();
+    final descriptor = OpenCodePluginDescriptor.production();
     const config = PluginConfig(values: {"no-auto-start": false, "bin": null});
     late Directory stateDir;
 
@@ -69,7 +75,7 @@ void main() {
   });
 
   group("OpenCodePluginDescriptor static surface", () {
-    const descriptor = OpenCodePluginDescriptor();
+    final descriptor = OpenCodePluginDescriptor.production();
 
     test("declares the OpenCode CLI options with bare names", () {
       expect(descriptor.id, equals("opencode"));
@@ -431,6 +437,7 @@ void main() {
     OpenCodePluginDescriptor descriptor({Object? initializeError}) {
       apiRecorder.initializeError = initializeError;
       return OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         candidatePorts: const <int>[51000],
@@ -765,6 +772,7 @@ void main() {
     test("attaches to a reachable server as Ready without owning it", () async {
       final host = attachHost();
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -794,6 +802,7 @@ void main() {
         ),
       );
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -820,6 +829,7 @@ void main() {
         ),
       );
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -836,6 +846,7 @@ void main() {
       final host = attachHost();
       apiRecorder.initializeError = const SocketException("connection refused");
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );
@@ -851,6 +862,7 @@ void main() {
 
     test("normalizes the password option like the legacy flow (trim, blank to null)", () async {
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
       );
@@ -895,6 +907,7 @@ void main() {
       // start() hangs under the bridge's cross-instance startup mutex.
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("", 200)),
         coldStartBudget: const Duration(milliseconds: 200),
@@ -915,6 +928,7 @@ void main() {
       // probe has already failed.
       apiRecorder.neverCompleteInitialize = true;
       final descriptor = OpenCodePluginDescriptor(
+        catalogSnapshotReader: _unavailableCatalogSnapshot,
         buildApi: apiRecorder.build,
         probeClientFactory: () => MockClient((_) async => http.Response("nope", 503)),
       );

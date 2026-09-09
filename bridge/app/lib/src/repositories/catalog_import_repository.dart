@@ -25,12 +25,12 @@ import "random_hex_id.dart";
 typedef SessionBackendActivity = ({String sessionId, int activityAt});
 
 class CatalogImportRepository({
-    required final PluginRuntime _runtime,
-    required final ProjectsDao _projectsDao,
-    required final SessionDao _sessionDao,
-    required final CatalogHydrationsDao _catalogHydrationsDao,
-    required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
-  }) {
+  required final PluginRuntime _runtime,
+  required final ProjectsDao _projectsDao,
+  required final SessionDao _sessionDao,
+  required final CatalogHydrationsDao _catalogHydrationsDao,
+  required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
+}) {
   /// Invalidates every durable hydration marker written by an earlier version.
   ///
   /// The marker at a given version means "this plugin's catalog was fully
@@ -74,20 +74,21 @@ class CatalogImportRepository({
   }) async* {
     final publicationFinished = Completer<void>();
     ({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})? result;
+    var cancelledEmitted = false;
     try {
-      await for (final event in _runtime.useStream<Object>(
+      await for (final event in _runtime.useCatalogImportStream<Object>(
         pluginId: pluginId,
         operation: _CatalogOperation.importCatalog,
-        body: (plugin, generation) => _enumerateCatalog(
+        cancellation: control,
+        body: (source) => _enumerateCatalog(
           pluginId: pluginId,
-          generation: generation,
-          control: control,
-          plugin: plugin,
+          source: source,
           publicationFinished: publicationFinished.future,
         ),
       )) {
         switch (event) {
           case final CatalogImportProgress progress:
+            if (progress is CatalogImportCancelled) cancelledEmitted = true;
             yield progress;
           case final _CatalogImportObservation ready:
             try {
@@ -96,14 +97,10 @@ class CatalogImportRepository({
                 projectsSeen: ready.observedProjects.length,
                 sessionsSeen: ready.sessionsSeen,
               );
-              if (control.cancellationRequested) {
+              if (ready.cancellation.isCancelled) {
+                cancelledEmitted = true;
                 yield CatalogImportProgress.cancelled(pluginId: pluginId);
               } else {
-                _runtime.requireCurrentGeneration(
-                  pluginId: pluginId,
-                  generation: ready.generation,
-                  operation: _CatalogOperation.importCatalog,
-                );
                 result = await _publishCatalog(observation: ready, control: control);
               }
             } finally {
@@ -115,7 +112,10 @@ class CatalogImportRepository({
       if (!publicationFinished.isCompleted) publicationFinished.complete();
     }
     final completed = result;
-    if (completed == null) return;
+    if (completed == null) {
+      if (!cancelledEmitted) yield CatalogImportProgress.cancelled(pluginId: pluginId);
+      return;
+    }
     yield CatalogImportProgress.completed(
       pluginId: pluginId,
       projectsImported: completed.projectsImported,
@@ -127,14 +127,13 @@ class CatalogImportRepository({
 
   Stream<Object> _enumerateCatalog({
     required String pluginId,
-    required int generation,
-    required CatalogImportControl control,
-    required BridgePluginApi plugin,
+    required PluginCatalogImportSource source,
     required Future<void> publicationFinished,
   }) async* {
     final importStartedAt = DateTime.now().millisecondsSinceEpoch;
     final observedProjects = <String, _ObservedProject>{};
     final observedSessions = <String, _ObservedSession>{};
+    final cancellation = source.cancellation;
     var derivedProjectPathsByBackendId = const <String, String>{};
     String? derivedLaunchDirectory;
 
@@ -143,148 +142,192 @@ class CatalogImportRepository({
       projectsSeen: 0,
       sessionsSeen: 0,
     );
-    if (control.cancellationRequested) {
+    if (cancellation.isCancelled) {
       yield CatalogImportProgress.cancelled(pluginId: pluginId);
       return;
     }
 
-    switch (plugin) {
-      case NativeProjectsPluginApi():
-        final projects = await plugin.getProjects();
-        if (control.cancellationRequested) {
-          yield CatalogImportProgress.cancelled(pluginId: pluginId);
-          return;
-        }
-        for (final project in projects) {
-          final path = _normalizeRequiredPath(project.directory);
+    final BridgePluginApi? plugin;
+    switch (source) {
+      case PluginCatalogImportSnapshotSource(:final snapshot):
+        plugin = null;
+        for (final family in snapshot.projects) {
+          final project = family.project;
+          final projectPath = _normalizeRequiredPath(project.directory);
           _mergeObservedProject(
             observedProjects,
             _ObservedProject(
               preferredId: project.id,
-              path: path,
+              path: projectPath,
               displayName: _usefulText(project.name),
               createdAt: project.activity?.createdAt,
               updatedAt: project.activity?.updatedAt,
             ),
           );
+          for (final session in family.sessions) {
+            _recordObservedSession(
+              observedSessions,
+              _ObservedSession(
+                session: session,
+                rootProjectPath: session.parentID == null ? projectPath : null,
+              ),
+            );
+            if (observedSessions.length % _responsivenessBatchSize == 0) {
+              if (cancellation.isCancelled) {
+                yield CatalogImportProgress.cancelled(pluginId: pluginId);
+                return;
+              }
+              await Future<void>.delayed(Duration.zero);
+            }
+          }
         }
         yield CatalogImportProgress.enumerating(
           pluginId: pluginId,
           projectsSeen: observedProjects.length,
           sessionsSeen: observedSessions.length,
         );
-
-        for (final project in projects) {
-          if (control.cancellationRequested) {
-            yield CatalogImportProgress.cancelled(pluginId: pluginId);
-            return;
-          }
-          final projectPath = _normalizeRequiredPath(project.directory);
-          final roots = await plugin.getSessions(projectId: projectPath, start: null, limit: null);
-          if (control.cancellationRequested) {
-            yield CatalogImportProgress.cancelled(pluginId: pluginId);
-            return;
-          }
-          final pendingChildren = Queue<PluginSession>();
-          for (final session in roots) {
-            _recordObservedSession(
-              observedSessions,
-              _ObservedSession(session: session, rootProjectPath: projectPath),
-            );
-            pendingChildren.add(session);
-            if (observedSessions.length % _responsivenessBatchSize == 0) {
-              await Future<void>.delayed(Duration.zero);
-            }
-          }
-          yield CatalogImportProgress.enumerating(
-            pluginId: pluginId,
-            projectsSeen: observedProjects.length,
-            sessionsSeen: observedSessions.length,
-          );
-
-          final expanded = <String>{};
-          while (pendingChildren.isNotEmpty) {
-            final parent = pendingChildren.removeFirst();
-            if (!expanded.add(parent.id)) continue;
-            if (control.cancellationRequested) {
+      case PluginCatalogImportLiveSource(:final api):
+        plugin = api;
+        switch (api) {
+          case NativeProjectsPluginApi():
+            final plugin = api;
+            final projects = await plugin.getProjects();
+            if (cancellation.isCancelled) {
               yield CatalogImportProgress.cancelled(pluginId: pluginId);
               return;
             }
-            final children = await plugin.getChildSessions(parent.id);
-            if (control.cancellationRequested) {
-              yield CatalogImportProgress.cancelled(pluginId: pluginId);
-              return;
-            }
-            for (final child in children) {
-              final observedChild = child.copyWith(parentID: parent.id);
-              _recordObservedSession(
-                observedSessions,
-                _ObservedSession(session: observedChild, rootProjectPath: null),
+            for (final project in projects) {
+              final path = _normalizeRequiredPath(project.directory);
+              _mergeObservedProject(
+                observedProjects,
+                _ObservedProject(
+                  preferredId: project.id,
+                  path: path,
+                  displayName: _usefulText(project.name),
+                  createdAt: project.activity?.createdAt,
+                  updatedAt: project.activity?.updatedAt,
+                ),
               );
-              pendingChildren.add(observedChild);
             }
             yield CatalogImportProgress.enumerating(
               pluginId: pluginId,
               projectsSeen: observedProjects.length,
               sessionsSeen: observedSessions.length,
             );
-          }
+
+            for (final project in projects) {
+              if (cancellation.isCancelled) {
+                yield CatalogImportProgress.cancelled(pluginId: pluginId);
+                return;
+              }
+              final projectPath = _normalizeRequiredPath(project.directory);
+              final roots = await plugin.getSessions(projectId: projectPath, start: null, limit: null);
+              if (cancellation.isCancelled) {
+                yield CatalogImportProgress.cancelled(pluginId: pluginId);
+                return;
+              }
+              final pendingChildren = Queue<PluginSession>();
+              for (final session in roots) {
+                _recordObservedSession(
+                  observedSessions,
+                  _ObservedSession(session: session, rootProjectPath: projectPath),
+                );
+                pendingChildren.add(session);
+                if (observedSessions.length % _responsivenessBatchSize == 0) {
+                  await Future<void>.delayed(Duration.zero);
+                }
+              }
+              yield CatalogImportProgress.enumerating(
+                pluginId: pluginId,
+                projectsSeen: observedProjects.length,
+                sessionsSeen: observedSessions.length,
+              );
+
+              final expanded = <String>{};
+              while (pendingChildren.isNotEmpty) {
+                final parent = pendingChildren.removeFirst();
+                if (!expanded.add(parent.id)) continue;
+                if (cancellation.isCancelled) {
+                  yield CatalogImportProgress.cancelled(pluginId: pluginId);
+                  return;
+                }
+                final children = await plugin.getChildSessions(parent.id);
+                if (cancellation.isCancelled) {
+                  yield CatalogImportProgress.cancelled(pluginId: pluginId);
+                  return;
+                }
+                for (final child in children) {
+                  final observedChild = child.copyWith(parentID: parent.id);
+                  _recordObservedSession(
+                    observedSessions,
+                    _ObservedSession(session: observedChild, rootProjectPath: null),
+                  );
+                  pendingChildren.add(observedChild);
+                }
+                yield CatalogImportProgress.enumerating(
+                  pluginId: pluginId,
+                  projectsSeen: observedProjects.length,
+                  sessionsSeen: observedSessions.length,
+                );
+              }
+            }
+          case BridgeDerivedProjectsPluginApi():
+            final plugin = api;
+            final storedProjects = await _projectsDao.getAllProjects();
+            if (cancellation.isCancelled) {
+              yield CatalogImportProgress.cancelled(pluginId: pluginId);
+              return;
+            }
+            final storedSessionPaths = await _sessionDao.getSessionProjectPaths(pluginId: pluginId);
+            if (cancellation.isCancelled) {
+              yield CatalogImportProgress.cancelled(pluginId: pluginId);
+              return;
+            }
+            final launchDirectory = _normalizeRequiredPath(plugin.launchDirectory);
+            derivedLaunchDirectory = launchDirectory;
+            derivedProjectPathsByBackendId = {
+              for (final row in storedSessionPaths) row.backendSessionId: _normalizeRequiredPath(row.projectPath),
+            };
+            final knownDirectories = <String>{
+              launchDirectory,
+              for (final project in storedProjects) _normalizeRequiredPath(project.path),
+              for (final row in storedSessionPaths) _normalizeRequiredPath(row.projectPath),
+              for (final row in storedSessionPaths)
+                if (_usefulText(row.worktreePath) case final worktreePath?) _normalizeRequiredPath(worktreePath),
+            };
+            _mergeObservedProject(
+              observedProjects,
+              _ObservedProject(
+                preferredId: launchDirectory,
+                path: launchDirectory,
+                displayName: null,
+                createdAt: null,
+                updatedAt: null,
+              ),
+            );
+            final sessions = await plugin.listAllSessions(knownDirectories: knownDirectories);
+            if (cancellation.isCancelled) {
+              yield CatalogImportProgress.cancelled(pluginId: pluginId);
+              return;
+            }
+            for (final session in sessions) {
+              _recordObservedSession(
+                observedSessions,
+                _ObservedSession(
+                  session: session,
+                  rootProjectPath: session.parentID == null ? _normalizeRequiredPath(session.directory) : null,
+                ),
+              );
+              if (observedSessions.length % _responsivenessBatchSize == 0) {
+                await Future<void>.delayed(Duration.zero);
+              }
+            }
+            yield CatalogImportProgress.enumerating(
+              pluginId: pluginId,
+              projectsSeen: observedProjects.length,
+              sessionsSeen: observedSessions.length,
+            );
         }
-      case BridgeDerivedProjectsPluginApi():
-        final storedProjects = await _projectsDao.getAllProjects();
-        if (control.cancellationRequested) {
-          yield CatalogImportProgress.cancelled(pluginId: pluginId);
-          return;
-        }
-        final storedSessionPaths = await _sessionDao.getSessionProjectPaths(pluginId: pluginId);
-        if (control.cancellationRequested) {
-          yield CatalogImportProgress.cancelled(pluginId: pluginId);
-          return;
-        }
-        final launchDirectory = _normalizeRequiredPath(plugin.launchDirectory);
-        derivedLaunchDirectory = launchDirectory;
-        derivedProjectPathsByBackendId = {
-          for (final row in storedSessionPaths) row.backendSessionId: _normalizeRequiredPath(row.projectPath),
-        };
-        final knownDirectories = <String>{
-          launchDirectory,
-          for (final project in storedProjects) _normalizeRequiredPath(project.path),
-          for (final row in storedSessionPaths) _normalizeRequiredPath(row.projectPath),
-          for (final row in storedSessionPaths)
-            if (_usefulText(row.worktreePath) case final worktreePath?) _normalizeRequiredPath(worktreePath),
-        };
-        _mergeObservedProject(
-          observedProjects,
-          _ObservedProject(
-            preferredId: launchDirectory,
-            path: launchDirectory,
-            displayName: null,
-            createdAt: null,
-            updatedAt: null,
-          ),
-        );
-        final sessions = await plugin.listAllSessions(knownDirectories: knownDirectories);
-        if (control.cancellationRequested) {
-          yield CatalogImportProgress.cancelled(pluginId: pluginId);
-          return;
-        }
-        for (final session in sessions) {
-          _recordObservedSession(
-            observedSessions,
-            _ObservedSession(
-              session: session,
-              rootProjectPath: session.parentID == null ? _normalizeRequiredPath(session.directory) : null,
-            ),
-          );
-          if (observedSessions.length % _responsivenessBatchSize == 0) {
-            await Future<void>.delayed(Duration.zero);
-          }
-        }
-        yield CatalogImportProgress.enumerating(
-          pluginId: pluginId,
-          projectsSeen: observedProjects.length,
-          sessionsSeen: observedSessions.length,
-        );
     }
 
     // Reject malformed ancestry before publication work starts. Tombstones are
@@ -321,10 +364,12 @@ class CatalogImportRepository({
 
     yield _CatalogImportObservation(
       pluginId: pluginId,
-      generation: generation,
+      authority: source.authority,
+      cancellation: cancellation,
       projectOwnership: switch (plugin) {
         NativeProjectsPluginApi() => PluginProjectOwnership.native,
         BridgeDerivedProjectsPluginApi() => PluginProjectOwnership.bridgeDerived,
+        null => PluginProjectOwnership.native,
       },
       importStartedAt: importStartedAt,
       observedProjects: observedProjects,
@@ -346,16 +391,21 @@ class CatalogImportRepository({
     final derivedLaunchDirectory = observation.derivedLaunchDirectory;
     final importStartedAt = observation.importStartedAt;
     void requireCurrentGeneration() {
-      _runtime.requireCurrentGeneration(
-        pluginId: pluginId,
-        generation: observation.generation,
+      _runtime.requireCatalogImportAuthority(
+        authority: observation.authority,
         operation: _CatalogOperation.importCatalog,
       );
+      if (observation.cancellation.isCancelled) {
+        throw PluginOperationException(
+          _CatalogOperation.importCatalog.name,
+          statusCode: 503,
+          message: "catalog import was cancelled during durable commit",
+        );
+      }
     }
 
-    return _runtime.commitCurrentGeneration(
-      pluginId: pluginId,
-      generation: observation.generation,
+    return _runtime.commitCatalogImport(
+      authority: observation.authority,
       operation: _CatalogOperation.importCatalog,
       commit: () => _sessionDao.attachedDatabase.transaction(() async {
         final currentProjects = await _projectsDao.getAllProjects();
@@ -693,25 +743,28 @@ class CatalogImportRepository({
   }
 }
 
-enum _CatalogOperation() { importCatalog }
+enum _CatalogOperation() {
+  importCatalog,
+}
 
 class _ObservedProject({
-    required final String preferredId,
-    required final String path,
-    required var String? displayName,
-    required var int? createdAt,
-    required var int? updatedAt,
-  });
+  required final String preferredId,
+  required final String path,
+  required var String? displayName,
+  required var int? createdAt,
+  required var int? updatedAt,
+});
 
 class _ObservedSession({required final PluginSession session, required var String? rootProjectPath});
 
 class const _CatalogImportObservation({
-    required final String pluginId,
-    required final int generation,
-    required final PluginProjectOwnership projectOwnership,
-    required final int importStartedAt,
-    required final Map<String, _ObservedProject> observedProjects,
-    required final Map<String, _ObservedSession> observedSessions,
-    required final String? derivedLaunchDirectory,
-    required final int sessionsSeen,
-  });
+  required final String pluginId,
+  required final PluginCatalogImportAuthority authority,
+  required final PluginCatalogCancellationSignal cancellation,
+  required final PluginProjectOwnership projectOwnership,
+  required final int importStartedAt,
+  required final Map<String, _ObservedProject> observedProjects,
+  required final Map<String, _ObservedSession> observedSessions,
+  required final String? derivedLaunchDirectory,
+  required final int sessionsSeen,
+});

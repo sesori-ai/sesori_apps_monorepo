@@ -63,6 +63,20 @@ They do not claim that a harness's native CLI could never implement an equivalen
 | Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
 | Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
 
+## Pre-start catalog import
+
+| Capability | OpenCode |
+|---|---|
+| Metadata-only import before harness startup | ✅ |
+
+OpenCode can read a safely identified local SQLite database as a coherent,
+read-only snapshot. The reader consumes the pinned v1.18.19 project,
+project-directory, and session schema and safely falls back to live import when
+that contract is absent or invalid. Other harnesses retain their existing
+plugin-backed import; no pre-start capability claim is made for them.
+All harnesses cold-started only by import fallback use the shared five-minute
+import-only idle residency cap.
+
 ## Option pickers
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
