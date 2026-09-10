@@ -126,6 +126,7 @@ void main() {
           sessionId: "session-1",
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -193,6 +194,7 @@ void main() {
           sessionId: "session-1",
           limit: SessionDetailLoadService.initialPageSize,
           before: null,
+          storedOnly: false,
         ),
       ).called(1);
     });
@@ -305,6 +307,7 @@ void main() {
           sessionId: "session-1",
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       when(
@@ -342,6 +345,7 @@ void main() {
           sessionId: "session-1",
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
     });
@@ -386,6 +390,53 @@ void main() {
       );
     });
 
+    test("a blocked load reads the store alone and carries its freshness", () async {
+      connectionStatus.add(connectedStatus);
+      _stubRepositorySnapshot(repository: repository);
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
+      when(
+        () => repository.getMessages(
+          sessionId: "session-1",
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: true,
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [_messageWithParts()],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+            awaitingHarnessSync: true,
+          ),
+        ),
+      );
+
+      final metadata = await service.loadMetadata(sessionId: "session-1");
+      final result = await service.loadWithoutHarness(
+        session: (metadata as SessionDetailMetadataFound).session,
+        projectId: "project-1",
+      );
+
+      // The whole point of the blocked open: the bridge must not be asked for
+      // anything that could wake the harness the user has not enabled.
+      verify(
+        () => repository.getMessages(
+          sessionId: "session-1",
+          limit: SessionDetailLoadService.initialPageSize,
+          before: null,
+          storedOnly: true,
+        ),
+      ).called(1);
+      expect((result as SessionDetailLoadResultLoaded).snapshot.awaitingHarnessSync, isTrue);
+    });
+
     test("failed metadata retains its cause and never starts plugin history", () async {
       connectionStatus.add(connectedStatus);
       final error = ApiError.generic();
@@ -397,6 +448,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       );
     });
@@ -412,6 +464,7 @@ void _stubRepositorySnapshot({
       sessionId: "session-1",
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) async => ApiResponse.success(

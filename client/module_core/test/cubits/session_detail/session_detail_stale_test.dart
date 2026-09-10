@@ -156,6 +156,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -179,6 +180,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         );
         verifyNever(() => mockSessionService.getPendingQuestions(sessionId: sessionId));
@@ -223,6 +225,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -246,6 +249,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
@@ -399,6 +403,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -479,6 +484,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) => messagesCompleter.future);
       when(
@@ -551,6 +557,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -584,6 +591,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) => messagesCompleter.future);
 
@@ -597,6 +605,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
@@ -635,6 +644,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
@@ -650,6 +660,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
       expect(cubit.state, isA<SessionDetailFailed>());
@@ -679,6 +690,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenThrow(error);
 
@@ -735,6 +747,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) async {
           messageLoads++;
@@ -831,6 +844,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) {
           messageLoads++;
@@ -883,6 +897,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) => messagesCompleter.future);
       when(
@@ -940,6 +955,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
@@ -987,6 +1003,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -998,6 +1015,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1008,6 +1026,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         );
 
@@ -1039,6 +1058,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) => messagesCompleter.future);
 
@@ -1050,6 +1070,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1062,6 +1083,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1090,6 +1112,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1119,6 +1142,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) => messagesCompleter.future);
 
@@ -1132,6 +1156,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1143,6 +1168,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1168,6 +1194,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1200,6 +1227,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1212,6 +1240,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         );
 
@@ -1223,6 +1252,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1233,6 +1263,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         );
 
@@ -1262,6 +1293,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) async {
           messageLoads++;
@@ -1321,6 +1353,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) => messagesCompleter.future);
 
@@ -1333,6 +1366,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1349,6 +1383,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1374,6 +1409,7 @@ void main() {
             sessionId: any(named: "sessionId"),
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
 
@@ -1389,6 +1425,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(

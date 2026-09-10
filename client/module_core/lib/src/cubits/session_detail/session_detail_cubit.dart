@@ -253,7 +253,14 @@ class SessionDetailCubit(
 
   Future<void> recheckHarnessAvailability() async {
     await _pluginManagementService.refresh();
-    if (isClosed || !_interaction.canInteract) return;
+    if (isClosed) return;
+    if (!_interaction.canInteract) {
+      // A blocked reload reads store-only, so it cannot wake the harness. From
+      // the unavailable shell that makes Recheck the user's retry as well: the
+      // read may have failed for a reason enabling the harness would not fix.
+      if (state is SessionDetailHarnessUnavailable) await reload();
+      return;
+    }
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
     } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
@@ -274,17 +281,26 @@ class SessionDetailCubit(
     final parkEpochAtFetch = _parkEpoch;
     late final SessionDetailMetadataLoadResult metadataResult;
     SessionDetailLoadResult? result;
+    // The interaction as the content load saw it. A block only refuses sending;
+    // an already-synced transcript still serves from the bridge store, so the
+    // load is attempted either way. Options come from the harness, so a blocked
+    // load can never require them.
+    var interactionAtLoad = _interaction;
     try {
       metadataResult = await _loadService.loadMetadata(sessionId: _sessionId);
       if (metadataResult case SessionDetailMetadataFound(:final session)
           when !isClosed && connectionGeneration == _connectionGeneration) {
         _sessionMetadata = session;
         _interaction = _calculateInteraction(session: session);
-        if (_interaction.canInteract) {
-          result = isReload
-              ? await _loadService.reload(session: session, projectId: _projectId)
-              : await _loadService.load(session: session, projectId: _projectId);
-        }
+        interactionAtLoad = _interaction;
+        result = switch ((reload: isReload, canInteract: interactionAtLoad.canInteract)) {
+          (reload: true, canInteract: true) => await _loadService.reload(session: session, projectId: _projectId),
+          (reload: false, canInteract: true) => await _loadService.load(session: session, projectId: _projectId),
+          (reload: _, canInteract: false) => await _loadService.loadWithoutHarness(
+            session: session,
+            projectId: _projectId,
+          ),
+        };
       }
     } finally {
       final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
@@ -333,77 +349,126 @@ class SessionDetailCubit(
         }
         return _SessionRefreshResult.failed;
       case SessionDetailMetadataFound(:final session):
-        if (result == null || !_interaction.canInteract) {
-          _waitingForConnection = false;
-          final current = state;
-          final retained = current is SessionDetailLoaded ? current : previous;
-          if (retained is SessionDetailLoaded) {
-            emit(retained.copyWith(interaction: _interaction));
+        switch (result) {
+          // Unreachable: the content load runs for every metadata-found outcome
+          // that gets here, because the guards that skip it (cubit closed,
+          // connection generation moved) already returned above. The arm exists
+          // only to make the switch exhaustive over the nullable local.
+          case null:
+            return _SessionRefreshResult.closed;
+          case SessionDetailLoadResultLoaded(:final snapshot):
+            _waitingForConnection = false;
+            // Nothing stored and the bridge says the harness still owes it: an
+            // empty chat would claim this session has no history, when the
+            // truth is that reading it needs the harness the user must enable.
+            // Eligibility that arrived meanwhile makes it retryable instead,
+            // and the recovery refresh below does exactly that.
+            if (snapshot.awaitingHarnessSync && snapshot.messages.isEmpty && !_interaction.canInteract) {
+              _clearBufferedEvents();
+              if (_projectViewClaim case final claim?) {
+                _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+              }
+              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              return _SessionRefreshResult.applied;
+            }
+            _deferredPartEvents.discardForMessagesThrough(
+              messageIds: snapshot.messages.map((message) => message.info.id),
+              sequence: deferredPartEventSequence,
+            );
+            // A load that ran blocked tolerated missing harness-owned options,
+            // so it must not open the composer even if eligibility arrived
+            // meanwhile. The recovery refresh below reloads them strictly first.
+            final becameAvailable = !interactionAtLoad.canInteract && _interaction.canInteract;
+            emit(
+              _buildLoadedState(
+                snapshot: snapshot,
+                parkEpochAtFetch: parkEpochAtFetch,
+                interaction: becameAvailable ? interactionAtLoad : _interaction,
+              ),
+            );
+            if (becameAvailable) {
+              _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+            } else if (_interaction.canInteract) {
+              // A stale-options refresh captures through the plugin runtime.
+              // While blocked the options are unusable anyway, and restored
+              // eligibility already runs a strict refresh that reloads them.
+              _refreshStaleOptions(snapshot: snapshot);
+            }
+            final effectiveProjectId = snapshot.projectId;
+            if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
+              if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+            } else if (_projectViewClaim case final claim?) {
+              _projectViewingService.markClaimReady(
+                claim: claim,
+                projectId: effectiveProjectId,
+              );
+            }
+            // Declare the view only now that the transcript has actually loaded —
+            // a load that fails or waits for connection must not mark the session
+            // read (clearing its bold globally) while the user only saw a
+            // loading/error state.
+            _declareViewingSessionIfVisible();
             _drainPendingEvents();
             _drainDeferredPartsForLoadedMessages();
-          } else {
-            if (_projectViewClaim case final claim?) {
-              _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+            _tryDrainQueue();
+            return _SessionRefreshResult.applied;
+          case SessionDetailLoadResultWaitingForConnection():
+            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+            _waitingForConnection = true;
+            if (_connectionService.currentStatus is ConnectionConnected) {
+              _waitingForConnection = false;
+              _logRefresh(
+                action: _SessionRefreshAction.observed,
+                trigger: _SessionRefreshTrigger.waitingForConnection,
+              );
+              unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.waitingForConnection));
             }
-            emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
-          }
-          return _SessionRefreshResult.applied;
+            return _SessionRefreshResult.waitingForConnection;
+          case SessionDetailLoadResultFailed(:final error, :final stackTrace):
+            _waitingForConnection = false;
+            // Serving stored history can still need a harness-backed backfill
+            // when the bridge has no complete snapshot for this session. While
+            // the harness is blocked that backfill cannot run, so report the
+            // block rather than a generic failure the user cannot act on.
+            // Classified against the current interaction, not the one the load
+            // started with: eligibility that arrived meanwhile makes this an
+            // ordinary retryable failure, and a block that arrived meanwhile
+            // explains one.
+            if (!_interaction.canInteract) {
+              logw("Session detail load failed while the harness was blocked", error, stackTrace);
+              // A block racing a refresh must not blank an already-rendered
+              // transcript; only a session with nothing to keep falls back to
+              // the unavailable-history state.
+              if (previous is SessionDetailLoaded) {
+                emit(previous.copyWith(interaction: _interaction));
+                _drainPendingEvents();
+                _drainDeferredPartsForLoadedMessages();
+                return _SessionRefreshResult.applied;
+              }
+              _clearBufferedEvents();
+              if (_projectViewClaim case final claim?) {
+                _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+              }
+              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              return _SessionRefreshResult.applied;
+            }
+            _clearBufferedEvents();
+            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+            loge("Session detail load failed", error, stackTrace);
+            emit(
+              SessionDetailState.failed(
+                reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+              ),
+            );
+            return _SessionRefreshResult.failed;
         }
     }
+  }
 
-    switch (result) {
-      case SessionDetailLoadResultLoaded(:final snapshot):
-        _waitingForConnection = false;
-        _deferredPartEvents.discardForMessagesThrough(
-          messageIds: snapshot.messages.map((message) => message.info.id),
-          sequence: deferredPartEventSequence,
-        );
-        emit(_buildLoadedState(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch));
-        _refreshStaleOptions(snapshot: snapshot);
-        final effectiveProjectId = snapshot.projectId;
-        if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
-          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
-        } else if (_projectViewClaim case final claim?) {
-          _projectViewingService.markClaimReady(
-            claim: claim,
-            projectId: effectiveProjectId,
-          );
-        }
-        // Declare the view only now that the transcript has actually loaded —
-        // a load that fails or waits for connection must not mark the session
-        // read (clearing its bold globally) while the user only saw a
-        // loading/error state.
-        _declareViewingSessionIfVisible();
-        _drainPendingEvents();
-        _drainDeferredPartsForLoadedMessages();
-        _tryDrainQueue();
-        return _SessionRefreshResult.applied;
-      case SessionDetailLoadResultWaitingForConnection():
-        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
-        _waitingForConnection = true;
-        if (_connectionService.currentStatus is ConnectionConnected) {
-          _waitingForConnection = false;
-          _logRefresh(
-            action: _SessionRefreshAction.observed,
-            trigger: _SessionRefreshTrigger.waitingForConnection,
-          );
-          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.waitingForConnection));
-        }
-        return _SessionRefreshResult.waitingForConnection;
-      case SessionDetailLoadResultFailed(:final error, :final stackTrace):
-        _waitingForConnection = false;
-        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
-        _pendingSessionEvents.clear();
-        _pendingGlobalEvents.clear();
-        _deferredPartEvents.clear();
-        loge("Session detail load failed", error, stackTrace);
-        emit(
-          SessionDetailState.failed(
-            reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
-          ),
-        );
-        return _SessionRefreshResult.failed;
-    }
+  void _clearBufferedEvents() {
+    _pendingSessionEvents.clear();
+    _pendingGlobalEvents.clear();
+    _deferredPartEvents.clear();
   }
 
   Future<void> reload() async {
@@ -420,14 +485,16 @@ class SessionDetailCubit(
     final cursor = current.olderMessagesCursor;
     // A refresh replaces the newest page, so a page requested against the
     // outgoing transcript could only splice unrelated history onto it.
-    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing || !current.interaction.canInteract) {
-      return;
-    }
+    if (cursor == null || current.isLoadingOlderMessages || current.isRefreshing) return;
 
     final generation = _transcriptGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     emit(current.copyWith(isLoadingOlderMessages: true));
-    final page = await _loadService.loadOlderMessages(sessionId: _sessionId, before: cursor);
+    final page = await _loadService.loadOlderMessages(
+      sessionId: _sessionId,
+      before: cursor,
+      storedOnly: !_interaction.canInteract,
+    );
     if (isClosed) return;
 
     final latest = state;
@@ -636,10 +703,24 @@ class SessionDetailCubit(
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
 
+  /// Re-declares the bridge-side view a resume or reconnect released.
+  ///
+  /// A blocked chat keeps its transcript on screen, so its refresh being a
+  /// no-op must not leave it undeclared; otherwise the chat the user is reading
+  /// keeps marking its own updates unread.
+  void _reassertViewIfPending() {
+    if (!_reassertViewAfterRefresh || !_routeVisible) return;
+    _reassertViewAfterRefresh = false;
+    _sessionViewingService.setViewingSession(_sessionId);
+  }
+
   Future<_SessionRefreshResult> _doSilentRefresh() async {
     final current = state;
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
-    if (!_interaction.canInteract) return _SessionRefreshResult.applied;
+    if (!_interaction.canInteract) {
+      _reassertViewIfPending();
+      return _SessionRefreshResult.applied;
+    }
     final connectionGeneration = _connectionGeneration;
     final optionsGeneration = _optionsGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -686,6 +767,7 @@ class SessionDetailCubit(
         _emitRefreshEnded();
         final latest = state;
         if (latest is SessionDetailLoaded) emit(latest.copyWith(interaction: _interaction));
+        _reassertViewIfPending();
         return _SessionRefreshResult.applied;
       }
       final result = await _loadService.reload(session: session, projectId: _projectId);
@@ -705,8 +787,6 @@ class SessionDetailCubit(
           if (latest is! SessionDetailLoaded) return _SessionRefreshResult.closed;
           final messages = _transcript.reconcile(before: before, live: latest.messages, fetched: snapshot.messages);
           _retireStreamingPartsCoveredBy(messages: messages);
-          final preservedSelectedAgent = latest.selectedAgent;
-          final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
           // An options reload that landed while this snapshot was in flight read
           // the cache more recently than the snapshot did, so it wins.
@@ -714,6 +794,38 @@ class SessionDetailCubit(
           final availableAgents = optionsSuperseded ? latest.availableAgents : derived.agents;
           final availableProviders = optionsSuperseded ? latest.availableProviders : derived.providers;
           final availableCommands = optionsSuperseded ? latest.availableCommands : snapshot.commands;
+          // A refresh normally keeps the user's selection, but a blocked open
+          // with no options cache shows a placeholder agent nobody chose.
+          // Carrying that into the recovered catalog would open the composer on
+          // an agent the plugin never advertised, so an empty catalog reconciles
+          // against the refreshed one instead.
+          // The replacement agent's own model leads: the placeholder was never a
+          // catalog entry, so nothing about the model beside it was a preference
+          // the recovered agent should inherit. The session's model still
+          // follows, for a recovered agent that declares none.
+          final recoveredAgent = latest.availableAgents.isEmpty && availableAgents.isNotEmpty
+              ? _selection.validatedAgentName(agents: availableAgents, candidates: [latest.selectedAgent])
+              : null;
+          final recovered = recoveredAgent == null
+              ? null
+              : _selection.reconcile(
+                  agents: availableAgents,
+                  providers: availableProviders,
+                  agentNameCandidates: [recoveredAgent],
+                  modelCandidates: [
+                    availableAgents.firstWhereOrNull((agent) => agent.name == recoveredAgent)?.model,
+                    latest.selectedAgentModel,
+                  ],
+                  retainedModel: null,
+                );
+          final preservedSelectedAgent = switch (recovered) {
+            null => latest.selectedAgent,
+            final reconciled => reconciled.agentName ?? _fallbackAgentName,
+          };
+          final preservedSelectedAgentModel = switch (recovered) {
+            null => latest.selectedAgentModel,
+            final reconciled => reconciled.model,
+          };
           final availableVariants = _selection.availableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
@@ -770,13 +882,9 @@ class SessionDetailCubit(
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
           _tryDrainQueue();
-          if (_reassertViewAfterRefresh && _routeVisible) {
-            // A resume/reconnect requested this refresh; the refreshed
-            // transcript has rendered, so it is safe to re-declare the view
-            // (which marks the session seen on the bridge).
-            _reassertViewAfterRefresh = false;
-            _sessionViewingService.setViewingSession(_sessionId);
-          }
+          // The refreshed transcript has rendered, so it is safe to re-declare
+          // the view (which marks the session seen on the bridge).
+          _reassertViewIfPending();
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
           return _SessionRefreshResult.applied;
@@ -2572,7 +2680,11 @@ class SessionDetailCubit(
     return (latestAssistant: latestAssistant, assistantAgentModel: assistantAgentModel);
   }
 
-  SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
+  SessionDetailLoaded _buildLoadedState({
+    required SessionDetailSnapshot snapshot,
+    required int parkEpochAtFetch,
+    required SessionInteractionState interaction,
+  }) {
     _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
     final derived = _deriveSnapshot(snapshot);
     final childSessions = derived.children;
@@ -2598,7 +2710,7 @@ class SessionDetailCubit(
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
-      interaction: _interaction,
+      interaction: interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
       streamingText: const {},

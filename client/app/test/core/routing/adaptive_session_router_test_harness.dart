@@ -387,6 +387,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
     supportsPromptAttachments: false,
     messages: const [],
     olderMessagesCursor: null,
+    awaitingHarnessSync: false,
     pendingQuestions: const [],
     pendingPermissions: const [],
     childSessions: childSessionsBySession[sessionId] ?? const [],

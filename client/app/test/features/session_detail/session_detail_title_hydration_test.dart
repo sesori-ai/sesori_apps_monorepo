@@ -64,6 +64,7 @@ SessionDetailLoadResult _loadedResult() {
       supportsPromptAttachments: false,
       messages: [],
       olderMessagesCursor: null,
+      awaitingHarnessSync: false,
       pendingQuestions: [],
       pendingPermissions: [],
       childSessions: [],
@@ -89,6 +90,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       supportsPromptAttachments: false,
       messages: const [],
       olderMessagesCursor: null,
+      awaitingHarnessSync: false,
       pendingQuestions: const [],
       pendingPermissions: const [],
       childSessions: const [],
@@ -114,6 +116,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       supportsPromptAttachments: false,
       messages: [],
       olderMessagesCursor: null,
+      awaitingHarnessSync: false,
       pendingQuestions: [
         PendingQuestion(
           id: "question-1",

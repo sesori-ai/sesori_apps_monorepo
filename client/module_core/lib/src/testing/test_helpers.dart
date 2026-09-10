@@ -419,12 +419,14 @@ void delegateSessionRepository({
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (invocation) => source.getMessages(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       limit: _namedArgument<int?>(invocation: invocation, name: #limit),
       before: _namedArgument<int?>(invocation: invocation, name: #before),
+      storedOnly: _namedArgument<bool>(invocation: invocation, name: #storedOnly),
     ),
   );
   when(

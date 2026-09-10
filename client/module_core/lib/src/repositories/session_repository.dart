@@ -99,8 +99,9 @@ class SessionRepository({
     required String sessionId,
     required int? limit,
     required int? before,
+    required bool storedOnly,
   }) {
-    return _api.getMessages(sessionId: sessionId, limit: limit, before: before);
+    return _api.getMessages(sessionId: sessionId, limit: limit, before: before, storedOnly: storedOnly);
   }
 
   Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions({required String sessionId}) {
