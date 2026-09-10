@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { pathToFileURL } from "node:url";
 
-import { describeError, DispatchFailure, GitHubDispatcher, type DispatchResult } from "./github_dispatcher.ts";
+import { DispatchFailure, GitHubDispatcher, type DispatchResult } from "./github_dispatcher.ts";
 
 type LogEntry = Record<string, string | number>;
 type LogWriter = (entry: LogEntry) => void;
@@ -87,7 +87,12 @@ export function startServer(): void {
 
 function safeFailureLog(error: unknown): LogEntry {
   if (!(error instanceof DispatchFailure)) {
-    return { operation: "dispatch", code: "unexpected_error", ...describeError({ error, redactions: [] }) };
+    // Only the owning I/O boundary knows which credentials to redact.
+    return {
+      operation: "dispatch",
+      code: "unexpected_error",
+      error_name: error instanceof Error ? error.name : typeof error,
+    };
   }
   const entry: LogEntry = {
     operation: error.operation,

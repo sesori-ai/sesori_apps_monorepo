@@ -175,8 +175,9 @@ Logs contain successful workflow run ID/API URL/web URL, or failure
 operation/status/GitHub request ID plus diagnostic error/cause names, codes,
 messages, and stack traces. The key-signing and HTTP boundaries redact their
 actual credentials. JSON parser diagnostics omit message/stack text because it
-may quote upstream response bodies. JWTs, installation tokens, PEMs, and upstream
-response bodies remain excluded.
+may quote upstream response bodies. Unexpected exceptions outside those I/O
+boundaries log only operation, code, and error type. JWTs, installation tokens,
+PEMs, and upstream response bodies remain excluded.
 
 ```bash
 # Pause or resume hourly automatic opportunities.

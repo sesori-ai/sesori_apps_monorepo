@@ -84,6 +84,25 @@ test("dispatch failure omits secret and upstream response body details", async (
   assert.doesNotMatch(JSON.stringify(logs) + responseBody, /private-key|upstream-body/);
 });
 
+test("unexpected exceptions log only non-content metadata", async (context) => {
+  const logs: Array<Record<string, string | number>> = [];
+  const server = await serve(context, {
+    dispatch: async () => { throw new Error("unexpected-credential-or-upstream-body"); },
+    writeLog: (entry) => logs.push(entry),
+  });
+
+  const response = await fetch(`${server}/dispatch`, { method: "POST" });
+  assert.equal(response.status, 502);
+  assert.deepEqual(logs, [{
+    severity: "ERROR",
+    message: "GitHub workflow dispatch failed",
+    operation: "dispatch",
+    code: "unexpected_error",
+    error_name: "Error",
+  }]);
+  assert.doesNotMatch(await response.text(), /unexpected-credential-or-upstream-body/);
+});
+
 test("malformed absolute-form targets return 404 without rejecting the handler", async (context) => {
   const server = await serve(context, {
     dispatch: async () => assert.fail("Unknown routes must not dispatch"),

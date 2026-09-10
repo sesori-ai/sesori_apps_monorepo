@@ -243,7 +243,7 @@ function responseFailure(options: {
 
 // Native fetch errors retain DNS/TLS details in cause. Redact credentials at
 // the boundary that owns them, without discarding useful messages or frames.
-export function describeError(options: { error: unknown; redactions: readonly string[] }): Record<string, string> {
+function describeError(options: { error: unknown; redactions: readonly string[] }): Record<string, string> {
   const diagnostics: Record<string, string> = {};
   const errors = [options.error, options.error instanceof Error ? options.error.cause : undefined];
   for (const [index, error] of errors.entries()) {
