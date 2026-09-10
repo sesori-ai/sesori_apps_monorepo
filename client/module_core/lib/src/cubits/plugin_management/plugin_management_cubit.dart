@@ -670,7 +670,6 @@ class PluginManagementCubit({
   /// terminal state still carries no ids, and an idle one covers nothing.
   Set<String> get _scanningPluginIds => switch (_catalogRescanService.state.value) {
     CatalogRescanPreparingOne(:final pluginIds) ||
-    CatalogRescanPreparingMany(:final pluginIds) ||
     CatalogRescanStarting(:final pluginIds) ||
     CatalogRescanReading(:final pluginIds) ||
     CatalogRescanSaving(:final pluginIds) => pluginIds,
@@ -731,7 +730,6 @@ class PluginManagementCubit({
     CatalogRescanFailed() => const CatalogRescanOutcome.failed(),
     CatalogRescanIdle() ||
     CatalogRescanPreparingOne() ||
-    CatalogRescanPreparingMany() ||
     CatalogRescanStarting() ||
     CatalogRescanReading() ||
     CatalogRescanSaving() ||

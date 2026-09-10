@@ -1982,32 +1982,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanPullCaption => 'Keep pulling to find new sessions';
 
   @override
-  String get catalogScanRunningTitle => 'Scanning all harnesses';
+  String catalogScanRunningTitle(int finished, int total) {
+    return 'Scanning · $finished of $total finished';
+  }
 
   @override
   String catalogScanPreparingOneDetail(String harness) {
     return 'Preparing $harness scan…';
-  }
-
-  @override
-  String catalogScanPreparingManyDetail(String harnesses) {
-    return 'Preparing $harnesses scans…';
-  }
-
-  @override
-  String catalogScanTwoHarnesses(String first, String second) {
-    return '$first and $second';
-  }
-
-  @override
-  String catalogScanHarnessesWithOthers(String first, String second, int others) {
-    String _temp0 = intl.Intl.pluralLogic(
-      others,
-      locale: localeName,
-      other: '$others others',
-      one: '1 other',
-    );
-    return '$first, $second, and $_temp0';
   }
 
   @override
@@ -2037,8 +2018,8 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String catalogScanWaitingTitle(String harness) {
-    return 'Waiting for $harness';
+  String catalogScanWaitingTitle(String harness, int finished, int total) {
+    return 'Waiting for $harness · $finished of $total finished';
   }
 
   @override

@@ -42,7 +42,7 @@ void main() {
     expect(find.text("Projects"), findsOneWidget);
     expect(find.text("MacBook-Pro"), findsOneWidget);
     expect(find.text("Landing"), findsOneWidget);
-    expect(find.text("Scanning all harnesses"), findsNothing);
+    expect(find.text("Scanning · 0 of 3 finished"), findsNothing);
 
     final gesture = await tester.startGesture(const Offset(200, 320));
     var sawInvitation = false;
@@ -63,17 +63,18 @@ void main() {
 
     await gesture.up();
     await tester.pump();
-    expect(find.text("Preparing Claude Code, Codex, and 1 other scans…", skipOffstage: false), findsOneWidget);
-    expect(find.text("Scanning all harnesses", skipOffstage: false), findsOneWidget);
+    expect(find.text("Preparing Claude Code scan…", skipOffstage: false), findsOneWidget);
+    expect(find.text("Scanning · 0 of 3 finished", skipOffstage: false), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 650));
-    expect(find.text("Reading Codex sessions…"), findsOneWidget);
+    expect(find.text("Reading Claude Code sessions…"), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 750));
-    expect(find.text("Codex — 3 sessions found"), findsOneWidget);
+    expect(find.text("Claude Code — 3 sessions found"), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 800));
-    expect(find.text("OpenCode — 8 sessions found"), findsOneWidget);
+    expect(find.text("Codex — 8 sessions found"), findsOneWidget);
+    expect(find.text("Scanning · 1 of 3 finished"), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.text("Scan complete"), findsOneWidget);
