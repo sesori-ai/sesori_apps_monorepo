@@ -799,15 +799,25 @@ class SessionDetailCubit(
           // Carrying that into the recovered catalog would open the composer on
           // an agent the plugin never advertised, so an empty catalog reconciles
           // against the refreshed one instead.
-          final recovered = latest.availableAgents.isEmpty && availableAgents.isNotEmpty
-              ? _selection.reconcile(
+          // The replacement agent's own model leads: the placeholder was never a
+          // catalog entry, so nothing about the model beside it was a preference
+          // the recovered agent should inherit. The session's model still
+          // follows, for a recovered agent that declares none.
+          final recoveredAgent = latest.availableAgents.isEmpty && availableAgents.isNotEmpty
+              ? _selection.validatedAgentName(agents: availableAgents, candidates: [latest.selectedAgent])
+              : null;
+          final recovered = recoveredAgent == null
+              ? null
+              : _selection.reconcile(
                   agents: availableAgents,
                   providers: availableProviders,
-                  agentNameCandidates: [latest.selectedAgent],
-                  modelCandidates: [latest.selectedAgentModel],
+                  agentNameCandidates: [recoveredAgent],
+                  modelCandidates: [
+                    availableAgents.firstWhereOrNull((agent) => agent.name == recoveredAgent)?.model,
+                    latest.selectedAgentModel,
+                  ],
                   retainedModel: null,
-                )
-              : null;
+                );
           final preservedSelectedAgent = switch (recovered) {
             null => latest.selectedAgent,
             final reconciled => reconciled.agentName ?? _fallbackAgentName,
