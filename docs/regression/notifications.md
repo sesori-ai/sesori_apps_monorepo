@@ -19,7 +19,8 @@ external.
   with background sub-agents stays busy until the last one and its wake-up turn
   settle, so completion fires once for the whole span; a main-agent-only stop
   (`keep`) does not suppress the completion the kept sub-agents later earn,
-  while a full stop does.
+  while a full stop does. A Codex root likewise defers idle and completion while
+  any tracked child runs, then releases them once after the last child settles.
 - A child prompt is attributed to its display (root) session. Rate limiting is per category plus session, so a
   throttled completion never suppresses a more urgent question, and every notification for a session collapses to one
   identity derived identically by bridge, server, and client.
@@ -66,7 +67,7 @@ external.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because external notification delivery is not a product heartbeat. |
-| L2 Routine | Automated and headless bridge, representative plugin, fake push client: current event-to-payload content mapping, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. Desktop unit/widget coverage: focused/disabled suppression and resume, asked/resolved classification, title lookup, category-only content, serialized multi-request writes and in-flight cancellation, initialization retry/Linux callback ordering, persisted toggle, locally-restorable and account-bound open routing, account-ending cleanup, and service-owned logout settle-before-cancel ordering. |
+| L2 Routine | Automated and headless bridge, representative plugin, fake push client: current event-to-payload content mapping, collapse identity, project attribution, completion debounce, pending-interaction blocking, abort suppression, per-category rate limits, maintenance step isolation. Codex live write-path lifecycle coverage: the root stays busy while children run and emits one deferred idle after the last child settles. Desktop unit/widget coverage: focused/disabled suppression and resume, asked/resolved classification, title lookup, category-only content, serialized multi-request writes and in-flight cancellation, initialization retry/Linux callback ordering, persisted toggle, locally-restorable and account-bound open routing, account-ending cleanup, and service-owned logout settle-before-cancel ordering. |
 | L3 Release | Mobile client end to end on the release-target platform with a fake messaging source: registration including the device ID, token refresh, logout, preference-gated foreground rendering, per-account persistence, notification-open routing including deferral, cancellation on open. Desktop automated coverage: hidden/unfocused local alert, click-to-focus/session navigation, resolve cancellation, toggle silence, logout isolation, and no push registration. |
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
@@ -84,7 +85,9 @@ provider because current payload content leaves the encrypted channel.
 - A completion arrives while a question or permission is pending, or after a
   full abort; a Claude session with a running background sub-agent fires a
   completion before the sub-agent's wake-up turn settles, or fires twice; a
-  main-agent-only stop suppresses the completion of the kept sub-agents.
+  main-agent-only stop suppresses the completion of the kept sub-agents; a
+  Codex root completes while a tracked child still runs or completes twice when
+  its deferred idle is released.
 - Notifications for one session do not collapse, or a tap opens the wrong session or a child instead of its root.
 - A question is suppressed by an unrelated completion cooldown.
 - Delivery continues after logout, or a new account receives the prior account's notifications. Desktop registers a

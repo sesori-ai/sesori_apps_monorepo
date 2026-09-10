@@ -22,8 +22,9 @@
   `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice. Codex
   now uses nine steps after automatic size-based splitting: #1387 remains
   historical preparation, and cleanup #1396 is merged. Native facts are step
-  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9,
-  lifecycle coverage 7/9, scoped stop 8/9, and final coverage 9/9. Historical merged PR titles
+  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9
+  (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 is current, scoped
+  stop 8/9 is next, and final coverage 9/9 remains uncompleted. Historical merged PR titles
   remain unchanged. Overall harness plan remains active.
 
 ## Goal

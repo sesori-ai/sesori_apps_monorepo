@@ -46,6 +46,18 @@ signal that a tool changed files.
   as `cancelled`.
   Process exit — natural or an explicit stop — cancels every running task.
   OpenCode subtask parts keep a null lifecycle and the child-status fallback.
+- Codex replaces a generic `spawn_agent` tool by exact call id with one subtask
+  tile linked to the direct child thread. A complete child-owned plaintext
+  `NEW_TASK` input owns prompt provenance for the initial child turn; normally
+  encrypted input instead retains only the exact nonblank message from the
+  matching parent `spawn_agent` call. Parent history, labels, order, timing,
+  envelope headers, encrypted content, later resumed input, and metadata-only
+  `thread/read` never supply prompt text. Child completion, failure,
+  interruption, close, and disconnect settle the tile, with the initial turn's
+  first terminal state winning. Parent spawn completion and parent turn
+  completion do not settle it. Replay performs the same exact-id replacement
+  and takes provenance-safe prompt and terminal facts from the catalogued child
+  rollout, never live tracker state.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
   identity, bounded presenter output, terminal result/error state, and diff
   content. Presenter failure degrades to a generic bounded tool card instead of
@@ -129,6 +141,9 @@ one permission-gated mutation and one repeated terminal update.
   result overwrites a notification-set status, tapping the tile opens the wrong
   or no child transcript, or the tile shows placeholder text before its input
   is complete.
+- A Codex spawn remains both a generic tool and subtask tile, pairs by label or
+  order instead of exact call id, uses copied parent history as its prompt,
+  ignores later native child text, or loses child terminal state after reload.
 
 ## Known Limitations
 

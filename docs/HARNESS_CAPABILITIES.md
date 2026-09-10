@@ -206,18 +206,23 @@ its observed-child snapshot retains legacy client fanout.
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
 matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
-rollout and absent from `thread/read`. Live/replayed tiles now join by exact
-parent-local call ID and use that spawn call's message for encrypted input;
-validated initial child plaintext `NEW_TASK` can override it. Missing activity
+rollout and absent from `thread/read`. Live/replayed tiles join by exact
+parent-local call ID and use that spawn call's exact nonblank message for the
+encrypted-input fallback; they never use parent user history, task names,
+labels, order, timing, or the encrypted envelope header. Validated initial
+child-owned plaintext `NEW_TASK` can override the fallback. Missing activity
 leaves the generic tool card. Native-plugin QA verified forked/nonforked tiles,
-cold replay, busy-root handling, and disconnect cleanup. Direct app-server
-`turn/start` input to v2 sub-agents is **not supported** by Codex 0.153.4;
-differently-terminal resumed-child live QA remains unexecuted.
-Sesori exposes child threads under their direct parent. Metadata-only
+cold replay, busy-root handling, and disconnect cleanup. Duplicate display
+names, plaintext input, and a differently-terminal resumed child were not run
+live. Direct app-server `turn/start` input to v2 sub-agents is **not supported**
+by Codex 0.153.4; this does not establish a parent-mediated messaging limit.
+Sesori exposes child threads under their direct parent and keeps running
+descendants in root busy state. Metadata-only
 `thread/read(includeTurns: false)` retains parent and nickname enrichment.
 Raw task paths are formatted for display, not used for tile correlation.
 `turn/interrupt` works per child with its `turnId`, while parent interrupt
-leaves children running, so main-agent-only is supportable.
+leaves children running, so main-agent-only is supportable; scoped stop remains
+unimplemented.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,
