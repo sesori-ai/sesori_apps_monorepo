@@ -10,6 +10,9 @@ on:
       - '.github/scripts/test_check_internal_release.py'
       - '.github/workflows/release-all-platforms.yml'
       - '.github/workflows/release-workflow-ci.yml'
+      - 'client/app/fastlane/**'
+      - 'client/app/ios/fastlane/Fastfile'
+      - 'client/app/android/fastlane/Fastfile'
   pull_request:
     paths:
       - '.github/actions/**'
@@ -18,6 +21,9 @@ on:
       - '.github/scripts/test_check_internal_release.py'
       - '.github/workflows/release-all-platforms.yml'
       - '.github/workflows/release-workflow-ci.yml'
+      - 'client/app/fastlane/**'
+      - 'client/app/ios/fastlane/Fastfile'
+      - 'client/app/android/fastlane/Fastfile'
 
 permissions:
   contents: read
@@ -32,3 +38,12 @@ jobs:
         run: shellcheck .github/scripts/check_internal_release.sh
       - name: Test scheduled release decisions and attempt recording
         run: python3 .github/scripts/test_check_internal_release.py
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Check store lane syntax
+        run: |
+          ruby -c client/app/ios/fastlane/Fastfile
+          ruby -c client/app/android/fastlane/Fastfile
+      - name: Test batched store release notes and length limits
+        run: ruby client/app/fastlane/test_build_changelog.rb
