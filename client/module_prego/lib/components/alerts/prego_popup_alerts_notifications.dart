@@ -4,6 +4,7 @@ import "package:material_ui/material_ui.dart";
 
 import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_tappable.dart";
+import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
 import "../navigation/prego_top_bar_inset.dart";
@@ -273,7 +274,8 @@ final class PregoPopupAlertPresenter._({
   static PregoPopupAlertPresenter fromOverlayState(OverlayState overlay) {
     return PregoPopupAlertPresenter._(
       overlay: overlay,
-      topInset: pregoRootTopBarInsetFor(overlay) ??
+      topInset:
+          pregoRootTopBarInsetFor(overlay) ??
           pregoTopBarInsetOf(
             context: overlay.context,
             fallbackTopPadding: MediaQuery.paddingOf(overlay.context).top,
@@ -361,19 +363,30 @@ class const _PregoPopupAlertOverlay({
   State<_PregoPopupAlertOverlay> createState() => _PregoPopupAlertOverlayState();
 }
 
-class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with SingleTickerProviderStateMixin {
+class _PregoPopupAlertOverlayState()
+    extends State<_PregoPopupAlertOverlay>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  static const Curve _motionCurve = Cubic(0.23, 1, 0.32, 1);
+
   late final AnimationController _controller;
+  late final Animation<Offset> _position;
+  late final Animation<double> _scale;
   Timer? _timer;
   bool _dismissing = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 220),
       reverseDuration: const Duration(milliseconds: 160),
-    )..forward();
+      animationBehavior: AnimationBehavior.preserve,
+    );
+    _position = _controller.drive(Tween<Offset>(begin: const Offset(0, -0.12), end: Offset.zero));
+    _scale = _controller.drive(Tween<double>(begin: 0.96, end: 1));
+    _controller.animateTo(1, curve: _motionCurve);
     widget.presentation.dismissAnimated = _dismiss;
     if (widget.duration case final duration?) {
       _timer = Timer(duration, _dismiss);
@@ -381,7 +394,14 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
   }
 
   @override
+  void didChangeAccessibilityFeatures() {
+    // iOS Reduce Motion is not carried by MediaQuery.
+    setState(() {});
+  }
+
+  @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     _timer?.cancel();
     widget.presentation.dismissAnimated = null;
     _controller.dispose();
@@ -393,7 +413,8 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
     _dismissing = true;
     _timer?.cancel();
     try {
-      await _controller.reverse().orCancel;
+      // Ease from the current painted value, including an interrupted entrance.
+      await _controller.animateBack(0, curve: _motionCurve).orCancel;
     } on TickerCanceled {
       return;
     }
@@ -410,39 +431,46 @@ class _PregoPopupAlertOverlayState() extends State<_PregoPopupAlertOverlay> with
 
   @override
   Widget build(BuildContext context) {
+    final reducedMotion = prefersReducedMotion(context);
     return PositionedDirectional(
       top: widget.topInset + PregoSpacing.xl,
       start: PregoSpacing.xl,
       end: PregoSpacing.xl,
       child: SafeArea(
-          top: false,
-          bottom: false,
-          child: Center(
-            child: FadeTransition(
-              opacity: CurvedAnimation(parent: _controller, curve: Curves.easeOut),
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, -0.12),
-                  end: Offset.zero,
-                ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic)),
+        top: false,
+        bottom: false,
+        child: Center(
+          child: FadeTransition(
+            opacity: _controller,
+            child: SlideTransition(
+              position: reducedMotion ? const AlwaysStoppedAnimation(Offset.zero) : _position,
+              child: ScaleTransition(
+                scale: reducedMotion ? const AlwaysStoppedAnimation(1) : _scale,
+                alignment: Alignment.topCenter,
                 child: Dismissible(
                   key: const ValueKey("prego_popup_alert"),
                   direction: DismissDirection.up,
                   resizeDuration: null,
                   onDismissed: (_) => _dismissBySwipe(),
-                  child: PregoPopupAlertsNotifications(
-                    title: widget.title,
-                    message: widget.message,
-                    variant: widget.variant,
-                    primaryAction: widget.primaryAction,
-                    secondaryAction: widget.secondaryAction,
-                    onClose: widget.showCloseButton ? _dismiss : null,
+                  child: RepaintBoundary(
+                    child: Semantics(
+                      liveRegion: true,
+                      child: PregoPopupAlertsNotifications(
+                        title: widget.title,
+                        message: widget.message,
+                        variant: widget.variant,
+                        primaryAction: widget.primaryAction,
+                        secondaryAction: widget.secondaryAction,
+                        onClose: widget.showCloseButton ? _dismiss : null,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
         ),
+      ),
     );
   }
 }

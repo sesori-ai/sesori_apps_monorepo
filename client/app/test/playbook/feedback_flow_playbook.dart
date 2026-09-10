@@ -1,0 +1,1443 @@
+// Local feedback prototype. Voice and submission are simulated; the positive
+// choice requests native iOS/Android rating through a debug-only channel.
+// The microphone-permission scenario opens real iOS/Android permissions/settings.
+import "dart:async";
+import "dart:math" as math;
+
+import "package:flutter/foundation.dart";
+import "package:flutter/services.dart";
+import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_motion_tuning/sesori_motion_tuning.dart";
+
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/module_prego.dart";
+
+import "feedback_motion_spec.dart";
+import "feedback_rating_motion.dart";
+
+void main() => runApp(const FeedbackFlowPlaybook(openOnLaunch: true));
+
+enum FeedbackPreviewScenario({required final String label}) {
+  success(label: "Successful feedback"),
+  submissionRetry(label: "Submission fails once"),
+  microphoneDenied(label: "Microphone permission / settings"),
+  transcriptionRetry(label: "Transcription fails once"),
+}
+
+enum _PreviewOutcome() {
+  privateFeedback,
+  nativeReview,
+}
+
+enum _FeedbackStage() {
+  choosing,
+  celebrating,
+  privateFeedback,
+}
+
+enum _InputMode() {
+  voice,
+  keyboard,
+}
+
+enum _VoiceStage() {
+  idle,
+  requestingPermission,
+  awaitingPermissionAfterRelease,
+  recording,
+  cancelling,
+  transcribing,
+}
+
+enum _SubmissionStage() {
+  editing,
+  submitting,
+  failed,
+}
+
+const _sampleTranscript =
+    "The design is clean, but I kept getting lost in the navigation. "
+    "It would help to make it easier to find my recent tasks.";
+
+const _feedbackIssues = [
+  "Hard to navigate",
+  "Connection drops",
+  "Notifications don’t arirve",
+  "App feels slow",
+];
+
+/// Run with `flutter run -t test/playbook/feedback_flow_playbook.dart`.
+/// The launcher labels the simulation; the sheets preserve the product copy.
+class const FeedbackFlowPlaybook({super.key, required final bool openOnLaunch}) extends StatefulWidget {
+  @override
+  State<FeedbackFlowPlaybook> createState() => _FeedbackFlowPlaybookState();
+}
+
+class _FeedbackFlowPlaybookState() extends State<FeedbackFlowPlaybook> {
+  ThemeMode _theme = ThemeMode.dark;
+
+  @override
+  Widget build(BuildContext context) => MaterialApp(
+    key: ValueKey(FeedbackMotionScope.maybeOf(context: context)?.revision ?? 0),
+    builder: (context, child) => FeedbackMotionScope.maybeOf(context: context) == null
+        ? child ?? const SizedBox.shrink()
+        : MotionTuningOverlay(child: child ?? const SizedBox.shrink()),
+    title: "Sesori feedback preview",
+    debugShowCheckedModeBanner: false,
+    theme: buildPregoThemeData(brightness: Brightness.light),
+    darkTheme: buildPregoThemeData(brightness: Brightness.dark),
+    themeMode: _theme,
+    localizationsDelegates: AppLocalizations.localizationsDelegates,
+    supportedLocales: AppLocalizations.supportedLocales,
+    home: _PreviewLauncher(
+      openOnLaunch: widget.openOnLaunch,
+      onToggleTheme: () => setState(() => _theme = _theme == ThemeMode.dark ? ThemeMode.light : ThemeMode.dark),
+    ),
+  );
+}
+
+class const _PreviewLauncher({
+  required final bool openOnLaunch,
+  required final VoidCallback onToggleTheme,
+}) extends StatefulWidget {
+  @override
+  State<_PreviewLauncher> createState() => _PreviewLauncherState();
+}
+
+class _PreviewLauncherState()
+    extends State<_PreviewLauncher>
+    with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  FeedbackPreviewScenario _scenario = FeedbackPreviewScenario.success;
+  bool _presenting = false;
+  late final AnimationController _sheetAnimation = AnimationController(vsync: this);
+  final _sheetKey = GlobalKey<_FeedbackSheetState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _sheetAnimation.addStatusListener(_replayAfterOpening);
+    if (widget.openOnLaunch) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) unawaited(_openFeedback());
+      });
+    }
+  }
+
+  @override
+  void didChangeAccessibilityFeatures() => setState(_syncSheetMotion);
+
+  void _replayAfterOpening(AnimationStatus status) {
+    if (status != AnimationStatus.completed || FeedbackMotionScope.maybeOf(context: context)?.scene == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _sheetKey.currentState?._replayMotion();
+    });
+  }
+
+  void _syncSheetMotion() {
+    final reducedMotion = prefersReducedMotion(context);
+    _sheetAnimation.duration = reducedMotion
+        ? Duration.zero
+        : FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackSheetOpenDuration);
+    _sheetAnimation.reverseDuration = reducedMotion
+        ? Duration.zero
+        : FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackSheetCloseDuration);
+    if (reducedMotion && _sheetAnimation.isAnimating) {
+      _sheetAnimation.value = _sheetAnimation.status == AnimationStatus.reverse ? 0 : 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _sheetAnimation.dispose();
+    super.dispose();
+  }
+
+  Future<void> _openFeedback() async {
+    if (_presenting) return;
+    _syncSheetMotion();
+    final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
+    popupAlertPresenter.dismiss();
+    setState(() => _presenting = true);
+    final scenario = _scenario;
+    ModalRoute<_PreviewOutcome>? sheetRoute;
+    final result = await showModalBottomSheet<_PreviewOutcome>(
+      context: context,
+      isScrollControlled: true,
+      useSafeArea: true,
+      backgroundColor: Colors.transparent,
+      barrierColor: Colors.black.withValues(alpha: 0.62),
+      transitionAnimationController: _sheetAnimation,
+      sheetAnimationStyle: AnimationStyle(
+        curve: FeedbackMotionScope.valuesOf(context: context).easing(parameter: feedbackSheetCurve).curve,
+        reverseCurve: FeedbackMotionScope.valuesOf(context: context)
+            .easing(parameter: feedbackSheetReverseCurve)
+            .curve
+            .flipped,
+      ),
+      builder: (context) {
+        sheetRoute = ModalRoute.of<_PreviewOutcome>(context);
+        return _FeedbackSheet(key: _sheetKey, scenario: scenario);
+      },
+    );
+    // A popped sheet's result completes before its closing animation does.
+    await sheetRoute?.completed;
+    if (!mounted) return;
+    switch (result) {
+      case _PreviewOutcome.privateFeedback:
+        popupAlertPresenter.show(
+          title: "Feedback sent. Thank you!",
+          variant: PregoPopupAlertsNotificationsVariant.success,
+        );
+      case _PreviewOutcome.nativeReview:
+        if (FeedbackMotionScope.maybeOf(context: context) != null) {
+          popupAlertPresenter.show(title: "Native rating skipped during motion preview.");
+          break;
+        }
+        try {
+          await const MethodChannel("com.sesori.app/feedback_preview").invokeMethod<void>("requestReview");
+        } on MissingPluginException {
+          if (mounted) {
+            popupAlertPresenter.show(title: "Native rating is available in the iOS and Android debug preview.");
+          }
+        } on PlatformException {
+          if (mounted) popupAlertPresenter.show(title: "Couldn’t open native rating. Please try again.");
+        }
+      case null:
+        break;
+    }
+    if (mounted) setState(() => _presenting = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return PregoGlassScaffold(
+      title: "Sesori_app_monorepo",
+      titleMode: PregoTopNavigationTitleMode.backLeading,
+      automaticallyImplyLeading: false,
+      subtitle: MediaQuery.textScalerOf(context).scale(14) > 18
+          ? null
+          : const PregoNavSubtitle(text: "sesori-ai/sesori_app_monorepo", icon: TablerRegular.brand_github),
+      actions: [
+        PregoButtonsIconGlass(
+          icon: Theme.of(context).brightness == Brightness.dark ? TablerRegular.sun : TablerRegular.moon,
+          semanticLabel: "Toggle preview theme",
+          onPressed: widget.onToggleTheme,
+        ),
+      ],
+      slivers: [
+        SliverPadding(
+          padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 20),
+          sliver: SliverList.list(
+            children: [
+              const _BackdropLine(icon: TablerRegular.terminal_2, label: "OpenCode"),
+              const SizedBox(height: 20),
+              const _BackdropLine(icon: TablerRegular.git_branch, label: "main"),
+              const SizedBox(height: 20),
+              Text("Dedicated workspace", style: prego.textTheme.textMd.regular),
+              const SizedBox(height: 52),
+              Text("Feedback preview", style: prego.textTheme.textXl.medium),
+              const SizedBox(height: 8),
+              Text(
+                FeedbackMotionScope.maybeOf(context: context) != null
+                    ? "Voice and feedback submission are simulated. Native rating is skipped while tuning motion."
+                    : "Voice and feedback submission are simulated. Yes, love it! requests native rating in iOS and Android debug builds.",
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "The microphone permission scenario opens real iOS or Android permission/settings screens.",
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+              ),
+              const SizedBox(height: 24),
+              DropdownButtonFormField<FeedbackPreviewScenario>(
+                initialValue: _scenario,
+                isExpanded: true,
+                decoration: const InputDecoration(labelText: "Preview scenario"),
+                items: [
+                  for (final scenario in FeedbackPreviewScenario.values)
+                    DropdownMenuItem(value: scenario, child: Text(scenario.label)),
+                ],
+                onChanged: (value) {
+                  if (value != null) setState(() => _scenario = value);
+                },
+              ),
+              const SizedBox(height: 24),
+              PregoButtonsSolid(
+                label: "Open feedback",
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                size: PregoButtonsSolidSize.xl,
+                fullWidth: true,
+                onPressed: _presenting ? null : _openFeedback,
+              ),
+              const SizedBox(height: 14),
+              Text(
+                FeedbackMotionScope.maybeOf(context: context) == null
+                    ? "Try Could be better for private feedback, or Yes, love it! for native rating. "
+                          "Dismiss to change the scenario or theme."
+                    : "Motion preview uses simulated feedback and skips native rating. "
+                          "Dismiss to change the scenario or theme.",
+                style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+              ),
+              const SizedBox(height: 40),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
+class const _BackdropLine({required final IconData icon, required final String label}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Row(
+    children: [
+      Icon(icon, size: 20, color: context.prego.colors.textSecondary),
+      const SizedBox(width: 8),
+      Text(label, style: context.prego.textTheme.textMd.regular),
+      const SizedBox(width: 6),
+      Icon(TablerRegular.selector, size: 16, color: context.prego.colors.textTertiary),
+    ],
+  );
+}
+
+/// Retire outgoing controls without leaving duplicate hit targets or semantics.
+class const _FeedbackContentTransition({
+  required final Widget child,
+  final AnimatedSwitcherLayoutBuilder layoutBuilder = AnimatedSwitcher.defaultLayoutBuilder,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = prefersReducedMotion(context);
+    return AnimatedSwitcher(
+      duration: FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackContentDuration),
+      reverseDuration: FeedbackMotionScope.valuesOf(context: context)
+          .duration(parameter: feedbackContentReverseDuration),
+      switchInCurve: FeedbackMotionScope.valuesOf(context: context).easing(parameter: feedbackContentCurve).curve,
+      switchOutCurve: FeedbackMotionScope.valuesOf(context: context)
+          .easing(parameter: feedbackContentCurve)
+          .curve
+          .flipped,
+      layoutBuilder: (current, previous) => layoutBuilder(
+        current,
+        [for (final child in previous) IgnorePointer(child: ExcludeSemantics(child: child))],
+      ),
+      transitionBuilder: (child, animation) => FadeTransition(
+        opacity: animation,
+        child: SlideTransition(
+          position: Tween<Offset>(
+            begin: reducedMotion
+                ? Offset.zero
+                : Offset(0, FeedbackMotionScope.valuesOf(context: context).number(parameter: feedbackContentOffset)),
+            end: Offset.zero,
+          ).animate(animation),
+          child: child,
+        ),
+      ),
+      child: child,
+    );
+  }
+}
+
+// Size the incoming step immediately so its fade and the shell resize share
+// one transition. Outgoing artwork keeps its intrinsic size while fading out.
+Widget _feedbackStepLayout({required Widget? current, required List<Widget> previous}) => Stack(
+  alignment: Alignment.topCenter,
+  clipBehavior: Clip.none,
+  children: [
+    for (final child in previous)
+      Positioned.fill(
+        child: OverflowBox(
+          alignment: Alignment.topCenter,
+          minHeight: 0,
+          maxHeight: double.infinity,
+          child: child,
+        ),
+      ),
+    ?current,
+  ],
+);
+
+/// This bounded width reveal keeps the voice label and adjacent action together.
+class const _FeedbackActionTransition({required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final reducedMotion = prefersReducedMotion(context);
+    return AnimatedSwitcher(
+      duration: FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlDuration),
+      reverseDuration: FeedbackMotionScope.valuesOf(context: context)
+          .duration(parameter: feedbackControlReverseDuration),
+      switchInCurve: FeedbackMotionScope.valuesOf(context: context).easing(parameter: feedbackControlCurve).curve,
+      switchOutCurve: FeedbackMotionScope.valuesOf(context: context)
+          .easing(parameter: feedbackControlCurve)
+          .curve
+          .flipped,
+      layoutBuilder: (current, previous) => AnimatedSwitcher.defaultLayoutBuilder(
+        current,
+        [for (final child in previous) IgnorePointer(child: ExcludeSemantics(child: child))],
+      ),
+      transitionBuilder: (child, animation) {
+        final content = FadeTransition(
+          opacity: animation,
+          child: ScaleTransition(
+            scale: Tween<double>(
+              begin: reducedMotion
+                  ? 1
+                  : FeedbackMotionScope.valuesOf(context: context).number(parameter: feedbackActionScale),
+              end: 1,
+            ).animate(animation),
+            child: child,
+          ),
+        );
+        if (reducedMotion) return content;
+        // Reserve the animated width without clipping the native press growth.
+        return AnimatedBuilder(
+          animation: animation,
+          builder: (context, child) => Align(
+            alignment: Alignment.topCenter,
+            widthFactor: animation.value,
+            heightFactor: 1,
+            child: child,
+          ),
+          child: content,
+        );
+      },
+      child: child,
+    );
+  }
+}
+
+/// Pointer feedback only: semantic activation and typing never trigger scale.
+class const _FeedbackPress({super.key, required final bool enabled, required final Widget child})
+    extends StatefulWidget {
+  @override
+  State<_FeedbackPress> createState() => _FeedbackPressState();
+}
+
+class _FeedbackPressState() extends State<_FeedbackPress> {
+  bool _pressed = false;
+
+  Future<void> _replay() async {
+    setState(() => _pressed = true);
+    await Future<void>.delayed(
+      FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlDuration),
+    );
+    if (mounted) setState(() => _pressed = false);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final pressed = widget.enabled && _pressed;
+    return Listener(
+      onPointerDown: widget.enabled ? (_) => setState(() => _pressed = true) : null,
+      onPointerUp: (_) => setState(() => _pressed = false),
+      onPointerCancel: (_) => setState(() => _pressed = false),
+      child: AnimatedScale(
+        scale: pressed && !prefersReducedMotion(context)
+            ? FeedbackMotionScope.valuesOf(context: context).number(parameter: feedbackPressScale)
+            : 1,
+        duration: prefersReducedMotion(context)
+            ? Duration.zero
+            : pressed
+            ? FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlDuration)
+            : FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlReverseDuration),
+        curve: FeedbackMotionScope.valuesOf(context: context).easing(parameter: feedbackControlCurve).curve,
+        child: AnimatedOpacity(
+          opacity: pressed ? FeedbackMotionScope.valuesOf(context: context).number(parameter: feedbackPressOpacity) : 1,
+          duration: FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackPressFadeDuration),
+          child: widget.child,
+        ),
+      ),
+    );
+  }
+}
+
+/// Grabber-only Figma sheet: the production PregoBottomSheet has a navigation
+/// header. Keep this preview chrome local instead of changing that component.
+class const _FeedbackSheet({super.key, required final FeedbackPreviewScenario scenario}) extends StatefulWidget {
+  @override
+  State<_FeedbackSheet> createState() => _FeedbackSheetState();
+}
+
+class _FeedbackSheetState() extends State<_FeedbackSheet> with SingleTickerProviderStateMixin, WidgetsBindingObserver {
+  _FeedbackStage _stage = _FeedbackStage.choosing;
+  late final AnimationController _celebration = AnimationController(vsync: this);
+  // Keep the first 1.2s of Figma's 2s sequence at its authored pace. Only the
+  // quiet tail is compressed into 300ms, leaving 200ms for sheet closure.
+  late final Animation<double> _celebrationTimeline = _celebration.drive(
+    TweenSequence([
+      TweenSequenceItem(tween: Tween<double>(begin: 0, end: 0.6), weight: 80),
+      TweenSequenceItem(tween: Tween<double>(begin: 0.6, end: 1), weight: 20),
+    ]),
+  );
+  final _privateFeedbackKey = GlobalKey<_PrivateFeedbackStepState>();
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _celebration.addStatusListener(_celebrationStatusChanged);
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final scene = FeedbackMotionScope.maybeOf(context: context)?.scene;
+    if (_stage == _FeedbackStage.choosing &&
+        (scene == FeedbackMotionScene.composer ||
+            scene == FeedbackMotionScene.issues ||
+            scene == FeedbackMotionScene.voice)) {
+      _stage = _FeedbackStage.privateFeedback;
+    }
+    _celebration.duration = FeedbackMotionScope.valuesOf(context: context)
+        .duration(parameter: feedbackCelebrationDuration);
+  }
+
+  void _replayMotion() {
+    switch (FeedbackMotionScope.maybeOf(context: context)?.scene) {
+      case FeedbackMotionScene.celebration:
+        _chooseLove();
+      case FeedbackMotionScene.step || FeedbackMotionScene.flow:
+        _chooseImprove();
+      case FeedbackMotionScene.composer || FeedbackMotionScene.issues || FeedbackMotionScene.voice:
+        _privateFeedbackKey.currentState?._replayMotion();
+      case FeedbackMotionScene.sheetClose:
+        Navigator.of(context).pop();
+      case FeedbackMotionScene.notice:
+        Navigator.of(context).pop(_PreviewOutcome.privateFeedback);
+      case FeedbackMotionScene.sheetOpen || null:
+        break;
+    }
+  }
+
+  @override
+  void didChangeAccessibilityFeatures() {
+    setState(() {});
+    // MediaQuery has not rebuilt yet when this platform callback arrives.
+    final features = View.of(context).platformDispatcher.accessibilityFeatures;
+    if ((features.disableAnimations || features.reduceMotion) && _celebration.isAnimating) {
+      // Finish this same request when Reduce Motion is enabled mid-flight.
+      _celebration.value = 1;
+    }
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    _celebration.dispose();
+    super.dispose();
+  }
+
+  void _chooseImprove() {
+    if (_stage != _FeedbackStage.choosing) return;
+    setState(() => _stage = _FeedbackStage.privateFeedback);
+  }
+
+  void _chooseLove() {
+    if (_stage != _FeedbackStage.choosing) return;
+    setState(() => _stage = _FeedbackStage.celebrating);
+    if (prefersReducedMotion(context)) {
+      _finishCelebration();
+    } else {
+      _celebration.forward();
+    }
+  }
+
+  void _celebrationStatusChanged(AnimationStatus status) {
+    if (status == AnimationStatus.completed) _finishCelebration();
+  }
+
+  void _finishCelebration() {
+    // A swipe, barrier tap, or close can finish before this controller does.
+    if (!mounted ||
+        ModalRoute.of(context)?.isCurrent != true ||
+        FeedbackMotionScope.maybeOf(context: context)?.scene == FeedbackMotionScene.celebration) {
+      return;
+    }
+    Navigator.of(context).pop(_PreviewOutcome.nativeReview);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+    final ratingStep = _stage != _FeedbackStage.privateFeedback;
+    final reducedMotion = prefersReducedMotion(context);
+    final step = ratingStep
+        ? _RatingStep(
+            animation: reducedMotion ? const AlwaysStoppedAnimation(0) : _celebrationTimeline,
+            onLove: _stage == _FeedbackStage.choosing ? _chooseLove : null,
+            onImprove: _stage == _FeedbackStage.choosing ? _chooseImprove : null,
+          )
+        : _PrivateFeedbackStep(key: _privateFeedbackKey, scenario: widget.scenario);
+    final content = feedbackMotionRegion(
+      context: context,
+      scene: FeedbackMotionScene.step,
+      child: _FeedbackContentTransition(
+        layoutBuilder: (current, previous) => _feedbackStepLayout(current: current, previous: previous),
+        child: KeyedSubtree(key: ValueKey(ratingStep), child: step),
+      ),
+    );
+    return feedbackMotionRegion(
+      context: context,
+      scene: FeedbackMotionScene.sheetOpen,
+      child: feedbackMotionRegion(
+        context: context,
+        scene: FeedbackMotionScene.sheetClose,
+        child: Material(
+          color: context.prego.colors.bgSurface2,
+          borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x8l)),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: EdgeInsets.only(bottom: keyboard),
+            child: SingleChildScrollView(
+              keyboardDismissBehavior: ScrollViewKeyboardDismissBehavior.onDrag,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    height: 16,
+                    child: Center(
+                      child: Container(
+                        width: 36,
+                        height: 5,
+                        decoration: BoxDecoration(
+                          color: context.prego.colors.textPrimary,
+                          borderRadius: BorderRadius.circular(PregoRadius.full),
+                        ),
+                      ),
+                    ),
+                  ),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: reducedMotion
+                        ? content
+                        : AnimatedSize(
+                            duration: FeedbackMotionScope.valuesOf(context: context)
+                                .duration(parameter: feedbackContentDuration),
+                            curve: FeedbackMotionScope.valuesOf(context: context)
+                                .easing(parameter: feedbackContentCurve)
+                                .curve,
+                            alignment: Alignment.topCenter,
+                            child: content,
+                          ),
+                  ),
+                  SizedBox(height: keyboard > 0 ? 12 : math.max(32, MediaQuery.paddingOf(context).bottom + 16)),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class const _RatingStep({
+  required final Animation<double> animation,
+  required final VoidCallback? onLove,
+  required final VoidCallback? onImprove,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return feedbackMotionRegion(
+      context: context,
+      scene: FeedbackMotionScene.celebration,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Stack(
+            children: [
+              FeedbackRatingHero(animation: animation),
+              Positioned(
+                right: -2,
+                top: -1,
+                child: IconButton(
+                  key: const ValueKey("feedback-close"),
+                  constraints: const BoxConstraints.tightFor(width: 52, height: 52),
+                  icon: Icon(
+                    TablerRegular.x,
+                    size: 20,
+                    color: prego.colors.textTertiary,
+                    semanticLabel: "Close feedback",
+                  ),
+                  onPressed: () => Navigator.of(context).pop(),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 18),
+          ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 67),
+            child: Align(
+              alignment: Alignment.topCenter,
+              child: Text(
+                "Are you enjoying Sesori?",
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textXl.medium,
+              ),
+            ),
+          ),
+          FeedbackLoveButton(animation: animation, onPressed: onLove),
+          const SizedBox(height: 12),
+          TextButton(
+            key: const ValueKey("feedback-improve"),
+            onPressed: onImprove,
+            // This Figma instance uses bgSurface4; the shared secondary
+            // button's bgSecondary belongs to other existing screens.
+            style: TextButton.styleFrom(
+              backgroundColor: prego.colors.bgSurface4,
+              disabledBackgroundColor: prego.colors.bgSurface4,
+              foregroundColor: prego.colors.textSecondary,
+              disabledForegroundColor: prego.colors.textSecondary,
+              textStyle: prego.textTheme.textMd.bold,
+              minimumSize: const Size(double.infinity, 52),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 12),
+              shape: StadiumBorder(side: BorderSide(color: prego.colors.borderSecondary)),
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+            ),
+            child: const Text("Could be better"),
+          ),
+          const SizedBox(height: 12),
+        ],
+      ),
+    );
+  }
+}
+
+class const _PrivateFeedbackStep({super.key, required final FeedbackPreviewScenario scenario}) extends StatefulWidget {
+  @override
+  State<_PrivateFeedbackStep> createState() => _PrivateFeedbackStepState();
+}
+
+class _PrivateFeedbackStepState() extends State<_PrivateFeedbackStep> {
+  final _text = TextEditingController();
+  final _focus = FocusNode();
+  final _issues = <String>{};
+  final _issuePressKey = GlobalKey<_FeedbackPressState>();
+  final _cancelRecordingKey = GlobalKey();
+  final _cancelProgress = ValueNotifier<double>(0);
+  _InputMode _mode = _InputMode.voice;
+  _VoiceStage _voice = _VoiceStage.idle;
+  _SubmissionStage _submission = _SubmissionStage.editing;
+  bool _submissionFailedOnce = false;
+  bool _transcriptionFailedOnce = false;
+
+  bool get _canSend =>
+      _submission != _SubmissionStage.submitting &&
+      _voice != _VoiceStage.requestingPermission &&
+      _voice != _VoiceStage.awaitingPermissionAfterRelease &&
+      _voice != _VoiceStage.recording &&
+      _voice != _VoiceStage.cancelling &&
+      _voice != _VoiceStage.transcribing;
+
+  bool get _recording => _voice == _VoiceStage.recording || _voice == _VoiceStage.cancelling;
+
+  @override
+  void initState() {
+    super.initState();
+    _text.addListener(_refresh);
+    _focus.addListener(_refresh);
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted && FeedbackMotionScope.maybeOf(context: context)?.scene == FeedbackMotionScene.flow) {
+        unawaited(_replaySequence());
+      }
+    });
+  }
+
+  void _replayMotion() {
+    switch (FeedbackMotionScope.maybeOf(context: context)?.scene) {
+      case FeedbackMotionScene.composer:
+        _typeFeedback();
+      case FeedbackMotionScene.issues:
+        setState(() => _issues.add(_feedbackIssues.first));
+        unawaited(_issuePressKey.currentState?._replay());
+      case FeedbackMotionScene.voice:
+        unawaited(_replayVoice());
+      case FeedbackMotionScene.sheetOpen ||
+          FeedbackMotionScene.sheetClose ||
+          FeedbackMotionScene.celebration ||
+          FeedbackMotionScene.step ||
+          FeedbackMotionScene.notice ||
+          FeedbackMotionScene.flow ||
+          null:
+        break;
+    }
+  }
+
+  Future<void> _replayVoice() async {
+    // Replay stays local even when the permission-denied scenario is selected.
+    setState(() => _voice = _VoiceStage.recording);
+    await Future<void>.delayed(
+      FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlDuration),
+    );
+    if (mounted) await _transcribe();
+  }
+
+  Future<void> _replaySequence() async {
+    final values = FeedbackMotionScope.valuesOf(context: context);
+    await Future<void>.delayed(
+      Duration(
+        milliseconds: math.max(
+          values.duration(parameter: feedbackContentDuration).inMilliseconds,
+          values.duration(parameter: feedbackContentReverseDuration).inMilliseconds,
+        ),
+      ),
+    );
+    if (!mounted) return;
+    setState(() => _issues.add(_feedbackIssues.first));
+    await Future<void>.delayed(values.duration(parameter: feedbackControlDuration));
+    if (mounted) await _submit();
+  }
+
+  void _refresh() => setState(() {});
+
+  @override
+  void dispose() {
+    _text.removeListener(_refresh);
+    _focus.removeListener(_refresh);
+    _text.dispose();
+    _focus.dispose();
+    _cancelProgress.dispose();
+    super.dispose();
+  }
+
+  void _typeFeedback() {
+    setState(() {
+      _mode = _InputMode.keyboard;
+      _voice = _VoiceStage.idle;
+    });
+    _focus.requestFocus();
+  }
+
+  Future<void> _startRecording() async {
+    if (!_canSend) return;
+    _focus.unfocus();
+    if (widget.scenario == FeedbackPreviewScenario.microphoneDenied) {
+      setState(() => _voice = _VoiceStage.requestingPermission);
+      try {
+        // True means access was already authorized, so no OS UI interrupted
+        // this gesture. Any permission/settings round trip returns false.
+        final canContinue =
+            await const MethodChannel("com.sesori.app/feedback_preview")
+                .invokeMethod<bool>("requestMicrophoneAccess") ??
+            false;
+        if (!mounted) return;
+        if (!canContinue || _voice == _VoiceStage.awaitingPermissionAfterRelease) {
+          setState(() => _voice = _VoiceStage.idle);
+          return;
+        }
+      } on MissingPluginException {
+        if (mounted) {
+          _showVoiceError(message: "Microphone settings are available in the iOS and Android debug preview.");
+          setState(() => _voice = _VoiceStage.idle);
+        }
+        return;
+      } on PlatformException {
+        if (mounted) {
+          _showVoiceError(message: "Couldn’t open microphone settings. Please try again.");
+          setState(() => _voice = _VoiceStage.idle);
+        }
+        return;
+      }
+    }
+    _cancelProgress.value = 0;
+    setState(() {
+      _mode = _InputMode.voice;
+      _voice = _VoiceStage.recording;
+    });
+  }
+
+  void _cancelRecording() {
+    _cancelProgress.value = 0;
+    setState(() => _voice = _VoiceStage.idle);
+  }
+
+  void _dragRecording({required Offset position}) {
+    if (!_recording) return;
+    final target = _cancelRecordingKey.currentContext?.findRenderObject();
+    if (target is! RenderBox) return;
+    final distance = (position - target.localToGlobal(target.size.center(Offset.zero))).distance;
+    _cancelProgress.value = (1 - (distance - 44) / (170 - 44)).clamp(0.0, 1.0);
+    final next = _cancelProgress.value == 1 ? _VoiceStage.cancelling : _VoiceStage.recording;
+    if (_voice != next) setState(() => _voice = next);
+  }
+
+  void _finishRecording() {
+    if (_voice == _VoiceStage.requestingPermission) {
+      setState(() => _voice = _VoiceStage.awaitingPermissionAfterRelease);
+    } else if (_voice == _VoiceStage.cancelling) {
+      _cancelRecording();
+    } else {
+      unawaited(_transcribe());
+    }
+  }
+
+  void _showVoiceError({required String message}) => PregoPopupAlertPresenter.of(context).show(
+    title: message,
+    variant: PregoPopupAlertsNotificationsVariant.error,
+  );
+
+  Future<void> _transcribe() async {
+    if (_voice != _VoiceStage.recording) return;
+    _cancelProgress.value = 0;
+    setState(() => _voice = _VoiceStage.transcribing);
+    await Future<void>.delayed(const Duration(milliseconds: 900));
+    if (!mounted || _voice != _VoiceStage.transcribing) return;
+    if (widget.scenario == FeedbackPreviewScenario.transcriptionRetry && !_transcriptionFailedOnce) {
+      setState(() {
+        _transcriptionFailedOnce = true;
+        _voice = _VoiceStage.idle;
+      });
+      _showVoiceError(message: "Couldn’t transcribe that. Please try again.");
+      return;
+    }
+    setState(() => _voice = _VoiceStage.idle);
+    _text.text = _text.text.trim().isEmpty ? _sampleTranscript : "${_text.text.trim()} $_sampleTranscript";
+  }
+
+  Future<void> _submit() async {
+    if (!_canSend) return;
+    _focus.unfocus();
+    setState(() => _submission = _SubmissionStage.submitting);
+    await Future<void>.delayed(const Duration(milliseconds: 850));
+    if (!mounted) return;
+    if (widget.scenario == FeedbackPreviewScenario.submissionRetry && !_submissionFailedOnce) {
+      setState(() {
+        _submissionFailedOnce = true;
+        _submission = _SubmissionStage.failed;
+      });
+      return;
+    }
+    Navigator.of(context).pop(_PreviewOutcome.privateFeedback);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final busy = _submission == _SubmissionStage.submitting;
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        const SizedBox(height: 18),
+        Text("What should we improve?", textAlign: TextAlign.center, style: prego.textTheme.textXl.medium),
+        const SizedBox(height: 18),
+        feedbackMotionRegion(
+          context: context,
+          scene: FeedbackMotionScene.issues,
+          child: Align(
+            alignment: Alignment.centerLeft,
+            child: Wrap(
+              spacing: 12,
+              runSpacing: 5,
+              children: [
+                for (final issue in _feedbackIssues)
+                  _IssuePill(
+                    pressKey: issue == _feedbackIssues.first ? _issuePressKey : null,
+                    label: issue,
+                    selected: _issues.contains(issue),
+                    onTap: busy
+                        ? null
+                        : () => setState(() {
+                            if (!_issues.add(issue)) _issues.remove(issue);
+                          }),
+                  ),
+              ],
+            ),
+          ),
+        ),
+        const SizedBox(height: 18),
+        _FeedbackContentTransition(
+          child: _recording
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: PregoSpacing.x3l),
+                  child: Text(
+                    _voice == _VoiceStage.cancelling ? "Release to cancel" : "Release to transcribe",
+                    textAlign: TextAlign.center,
+                    style: prego.textTheme.textMd.regular.copyWith(
+                      color: _voice == _VoiceStage.cancelling
+                          ? prego.colors.textErrorPrimary
+                          : prego.colors.textPrimary,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        _buildComposer(context: context),
+        _FeedbackContentTransition(
+          child: Column(
+            key: ValueKey(_submission == _SubmissionStage.failed),
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              if (_submission == _SubmissionStage.failed) ...[
+                const SizedBox(height: 12),
+                _InlineMessage(
+                  message: "Couldn’t send feedback. Your draft is still here.",
+                  action: "Retry",
+                  onAction: _submit,
+                ),
+              ],
+            ],
+          ),
+        ),
+        const SizedBox(height: 12),
+        _DismissButton(
+          label: "Cancel",
+          onPressed: () => Navigator.of(context).pop(),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildComposer({required BuildContext context}) {
+    final prego = context.prego;
+    final hasText = _text.text.isNotEmpty;
+    final keyboardMode = _mode == _InputMode.keyboard;
+    final busy = _submission == _SubmissionStage.submitting;
+    final expanded = hasText || keyboardMode;
+    final controls = _buildComposerControls(context: context);
+    final radius = BorderRadius.vertical(
+      top: const Radius.circular(PregoRadius.x3l),
+      bottom: Radius.circular(keyboardMode ? PregoRadius.x5l : PregoRadius.x6l),
+    );
+
+    // Figma 5035:11030: the voice pill sits 6px inside the expanded editor.
+    // DecoratedBox keeps the border out of that measured content inset.
+    return feedbackMotionRegion(
+      context: context,
+      scene: FeedbackMotionScene.composer,
+      child: feedbackMotionRegion(
+        context: context,
+        scene: FeedbackMotionScene.voice,
+        child: TweenAnimationBuilder<Decoration>(
+          key: const ValueKey("feedback-composer"),
+          duration: prefersReducedMotion(context)
+              ? Duration.zero
+              : FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlDuration),
+          curve: FeedbackMotionScope.valuesOf(context: context).easing(parameter: feedbackControlCurve).curve,
+          tween: DecorationTween(
+            end: expanded
+                ? pregoComposerSurfaceDecoration(
+                    prego: prego,
+                    style: _focus.hasFocus ? PregoComposerSurfaceStyle.emphasized : PregoComposerSurfaceStyle.subtle,
+                    borderRadius: radius,
+                  ).copyWith(
+                    boxShadow: _focus.hasFocus
+                        ? [
+                            BoxShadow(color: prego.colors.focusRing, spreadRadius: 4),
+                            BoxShadow(color: prego.colors.bgSurface1, spreadRadius: 2),
+                          ]
+                        : const [],
+                  )
+                : const BoxDecoration(),
+          ),
+          builder: (context, decoration, child) => DecoratedBox(decoration: decoration, child: child),
+          child: Padding(
+            padding: EdgeInsets.all(expanded ? PregoSpacing.sm : 0),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                _FeedbackContentTransition(
+                  child: expanded
+                      ? TextField(
+                          key: const ValueKey("feedback-text"),
+                          controller: _text,
+                          focusNode: _focus,
+                          readOnly: !keyboardMode || busy,
+                          onTap: busy ? null : _typeFeedback,
+                          keyboardType: TextInputType.multiline,
+                          textInputAction: TextInputAction.newline,
+                          // Reserve the editing area before typing; longer drafts scroll.
+                          minLines: 3,
+                          maxLines: 3,
+                          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary),
+                          cursorColor: prego.colors.borderBrand,
+                          decoration: InputDecoration(
+                            isCollapsed: true,
+                            hintText: "Example: Hard to navigate",
+                            hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+                            border: InputBorder.none,
+                            enabledBorder: InputBorder.none,
+                            focusedBorder: InputBorder.none,
+                            contentPadding: const EdgeInsetsDirectional.fromSTEB(
+                              PregoSpacing.xs,
+                              PregoSpacing.md,
+                              PregoSpacing.xs + 27,
+                              PregoSpacing.md,
+                            ),
+                          ),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+                if (expanded) const SizedBox(height: PregoSpacing.md),
+                if (keyboardMode)
+                  controls
+                else
+                  DecoratedBox(
+                    key: const ValueKey("feedback-voice-pill"),
+                    decoration: pregoComposerSurfaceDecoration(
+                      prego: prego,
+                      style: PregoComposerSurfaceStyle.subtle,
+                      borderRadius: BorderRadius.circular(PregoRadius.full),
+                    ).copyWith(boxShadow: const []),
+                    child: Stack(
+                      children: [
+                        Positioned.fill(
+                          child: IgnorePointer(
+                            child: ValueListenableBuilder<double>(
+                              valueListenable: _cancelProgress,
+                              builder: (context, progress, child) => Opacity(opacity: progress, child: child),
+                              child: DecoratedBox(
+                                decoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(PregoRadius.full),
+                                  gradient: LinearGradient(
+                                    colors: [
+                                      prego.colors.bgDestructivePressedAlt.withValues(alpha: 0.5),
+                                      prego.colors.bgDestructivePressedAlt.withValues(alpha: 0),
+                                    ],
+                                    stops: const [0, 0.28],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
+                        Padding(padding: const EdgeInsets.all(PregoSpacing.sm), child: controls),
+                      ],
+                    ),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildComposerControls({required BuildContext context}) {
+    final prego = context.prego;
+    final voiceLabelStyle = prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary);
+    final hasText = _text.text.isNotEmpty;
+    final keyboardMode = _mode == _InputMode.keyboard;
+    final busy = _submission == _SubmissionStage.submitting;
+    final voiceBusy =
+        _recording ||
+        _voice == _VoiceStage.transcribing ||
+        _voice == _VoiceStage.requestingPermission ||
+        _voice == _VoiceStage.awaitingPermissionAfterRelease;
+    final transcriptReady = hasText && !keyboardMode && !_recording;
+    return Row(
+      children: [
+        _FeedbackActionTransition(
+          child: _recording
+              ? Padding(
+                  padding: const EdgeInsetsDirectional.only(end: PregoSpacing.md),
+                  child: Semantics(
+                    label: "Cancel recording",
+                    button: true,
+                    child: PregoButtonsSolid.iconOnly(
+                      key: _cancelRecordingKey,
+                      leadingIcon: TablerRegular.x,
+                      hierarchy: PregoButtonsSolidHierarchy.primary,
+                      size: PregoButtonsSolidSize.lg,
+                      type: PregoButtonsSolidType.destructive,
+                      onPressed: _cancelRecording,
+                    ),
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        if (!keyboardMode)
+          Expanded(
+            child: Semantics(
+              button: true,
+              label: _recording
+                  ? "Finish recording"
+                  : hasText
+                  ? "Hold to talk more"
+                  : "Hold to talk to give feedback",
+              excludeSemantics: true,
+              onTap: busy ? null : () => _recording ? _finishRecording() : _startRecording(),
+              child: GestureDetector(
+                key: const ValueKey("feedback-voice"),
+                behavior: HitTestBehavior.opaque,
+                onTap: busy ? null : () => _recording ? _finishRecording() : _startRecording(),
+                onLongPressStart: busy ? null : (_) => _startRecording(),
+                onLongPressMoveUpdate: busy ? null : (details) => _dragRecording(position: details.globalPosition),
+                onLongPressEnd: busy ? null : (_) => _finishRecording(),
+                child: _FeedbackPress(
+                  enabled: !busy && _voice != _VoiceStage.transcribing,
+                  child: SizedBox(
+                    height: 44,
+                    child: Center(
+                      child: _FeedbackContentTransition(
+                        child: KeyedSubtree(
+                          key: ValueKey((_recording ? _VoiceStage.recording : _voice, hasText)),
+                          child: switch (_voice) {
+                            _VoiceStage.recording ||
+                            _VoiceStage.cancelling => _RecordingPreview(flattenProgress: _cancelProgress),
+                            _VoiceStage.requestingPermission || _VoiceStage.awaitingPermissionAfterRelease => Text(
+                              "Microphone access…",
+                              style: prego.textTheme.textMd.regular,
+                            ),
+                            _VoiceStage.transcribing => PregoShimmer(
+                              appearDelay: Duration.zero,
+                              highlightColor: prego.colors.textPlaceholderSubtle,
+                              semanticLabel: "Transcribing…",
+                              child: Text("Transcribing…", style: voiceLabelStyle),
+                            ),
+                            _ => Padding(
+                              // Balance the trailing 44px Send action, as in Figma.
+                              padding: EdgeInsetsDirectional.only(start: transcriptReady ? 44 : 0),
+                              child: Text(
+                                hasText ? "Hold to talk more" : "Hold to talk to give feedback",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: voiceLabelStyle,
+                              ),
+                            ),
+                          },
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          )
+        else
+          const Spacer(),
+        _FeedbackActionTransition(
+          child: transcriptReady
+              ? Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                  child: _ComposerButton(
+                    label: "Send feedback",
+                    icon: TablerRegular.arrow_up,
+                    primary: true,
+                    loading: busy,
+                    onPressed: _canSend ? _submit : null,
+                  ),
+                )
+              : !voiceBusy
+              ? Padding(
+                  padding: EdgeInsetsDirectional.only(start: keyboardMode ? 0 : PregoSpacing.md),
+                  child: _ComposerButton(
+                    label: keyboardMode ? "Use voice input" : "Use keyboard",
+                    icon: keyboardMode ? TablerRegular.microphone : TablerRegular.keyboard,
+                    primary: false,
+                    loading: false,
+                    onPressed: busy
+                        ? null
+                        : keyboardMode
+                        ? () {
+                            _focus.unfocus();
+                            setState(() => _mode = _InputMode.voice);
+                          }
+                        : _typeFeedback,
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+        _FeedbackActionTransition(
+          child: !transcriptReady && !_recording
+              ? Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.sm),
+                  child: _ComposerButton(
+                    label: "Send feedback",
+                    icon: TablerRegular.arrow_up,
+                    primary: true,
+                    loading: busy,
+                    onPressed: _canSend ? _submit : null,
+                  ),
+                )
+              : const SizedBox.shrink(),
+        ),
+      ],
+    );
+  }
+}
+
+class const _IssuePill({
+  required final Key? pressKey,
+  required final String label,
+  required final bool selected,
+  required final VoidCallback? onTap,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final selectionTint = prego.colors.bgBrandHover;
+    final selectedFill = Color.alphaBlend(
+      Theme.of(context).brightness == Brightness.dark
+          ? selectionTint
+          : selectionTint.withValues(alpha: selectionTint.a / 2),
+      prego.colors.bgSurface2,
+    );
+    return Semantics(
+      label: label,
+      checked: selected,
+      enabled: onTap != null,
+      excludeSemantics: true,
+      onTap: onTap,
+      child: GestureDetector(
+        onTap: onTap,
+        behavior: HitTestBehavior.opaque,
+        child: _FeedbackPress(
+          key: pressKey,
+          enabled: onTap != null,
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(minHeight: 44),
+            child: Center(
+              widthFactor: 1,
+              heightFactor: 1,
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: selected ? 1 : 0, end: selected ? 1 : 0),
+                duration: FeedbackMotionScope.valuesOf(context: context).duration(parameter: feedbackControlDuration),
+                curve: FeedbackMotionScope.valuesOf(context: context).easing(parameter: feedbackControlCurve).curve,
+                builder: (context, progress, _) => Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  decoration: BoxDecoration(
+                    color: Color.lerp(prego.colors.bgSurface5, selectedFill, progress),
+                    borderRadius: BorderRadius.circular(PregoRadius.full),
+                    border: Border.all(color: prego.colors.borderSecondary),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: BoxDecoration(
+                          color: Color.lerp(prego.colors.bgSurface1, prego.colors.bgBrandSolid, progress),
+                          borderRadius: BorderRadius.circular(PregoRadius.xs),
+                          border: Border.all(
+                            color: Color.lerp(prego.colors.borderPrimary, prego.colors.borderBrand, progress)!,
+                          ),
+                        ),
+                        child: Opacity(
+                          opacity: progress,
+                          child: Icon(TablerRegular.check, size: 13, color: prego.colors.textWhite),
+                        ),
+                      ),
+                      const SizedBox(width: 4),
+                      Flexible(
+                        child: Text(
+                          label,
+                          style: prego.textTheme.textMd.medium.copyWith(
+                            color: prego.colors.textSecondary,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class const _ComposerButton({
+  required final String label,
+  required final IconData icon,
+  required final bool primary,
+  required final bool loading,
+  required final VoidCallback? onPressed,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Semantics(
+    label: label,
+    button: true,
+    enabled: onPressed != null,
+    excludeSemantics: true,
+    onTap: onPressed,
+    child: PregoButtonsSolid.iconOnly(
+      leadingIcon: icon,
+      hierarchy: primary ? PregoButtonsSolidHierarchy.primaryAlt : PregoButtonsSolidHierarchy.secondary,
+      size: PregoButtonsSolidSize.lg,
+      isLoading: loading,
+      onPressed: onPressed,
+    ),
+  );
+}
+
+/// Figma uses secondary text on its ghost dismiss buttons.
+class const _DismissButton({required final String label, required final VoidCallback onPressed})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => SizedBox(
+    width: double.infinity,
+    child: TextButton(
+      onPressed: onPressed,
+      style: TextButton.styleFrom(
+        minimumSize: const Size(44, 52),
+        foregroundColor: context.prego.colors.textSecondary,
+        textStyle: context.prego.textTheme.textMd.bold,
+      ),
+      child: Text(label),
+    ),
+  );
+}
+
+class const _InlineMessage({
+  required final String message,
+  required final String action,
+  required final VoidCallback onAction,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => Semantics(
+    liveRegion: true,
+    child: Column(
+      children: [
+        Text(
+          message,
+          textAlign: TextAlign.center,
+          style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textErrorPrimary),
+        ),
+        PregoButtonsSolid(
+          label: action,
+          hierarchy: PregoButtonsSolidHierarchy.link,
+          size: PregoButtonsSolidSize.lg,
+          onPressed: onAction,
+        ),
+      ],
+    ),
+  );
+}
+
+class const _RecordingPreview({required final ValueListenable<double> flattenProgress}) extends StatefulWidget {
+  @override
+  State<_RecordingPreview> createState() => _RecordingPreviewState();
+}
+
+class _RecordingPreviewState() extends State<_RecordingPreview> {
+  late final Stream<double> _samples = Stream<double>.periodic(
+    const Duration(milliseconds: 100),
+    (index) => 0.2 + math.sin(index * 1.7).abs() * 0.65,
+  );
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsetsDirectional.only(end: PregoSpacing.sm),
+    child: ShaderMask(
+      blendMode: BlendMode.dstIn,
+      shaderCallback: (bounds) => const LinearGradient(
+        colors: [Colors.transparent, Colors.white, Colors.white, Colors.transparent],
+        stops: [0, 0.08, 0.92, 1],
+      ).createShader(bounds),
+      child: PregoVoiceWaveform(
+        amplitudeStream: _samples,
+        barColor: context.prego.colors.textPrimary,
+        dotColor: context.prego.colors.fgQuaternary,
+        flattenProgress: widget.flattenProgress,
+      ),
+    ),
+  );
+}

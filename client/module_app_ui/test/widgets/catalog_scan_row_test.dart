@@ -20,6 +20,7 @@ void main() {
   Widget harness(
     CatalogRescanState scan, {
     bool reducedMotion = false,
+    CatalogScanRowMotion motion = CatalogScanRowMotion.standard,
     PregoDesignSystem? designSystem,
     TextScaler textScaler = TextScaler.noScaling,
     double? width,
@@ -28,6 +29,7 @@ void main() {
     final row = RepaintBoundary(
       key: const ValueKey("catalog-scan-row-boundary"),
       child: CatalogScanRow(
+        motion: motion,
         scan: scan,
         onCancel: () => cancelCount++,
         onDismiss: () => dismissCount++,
@@ -317,6 +319,58 @@ void main() {
       expect(entranceScale(tester), closeTo(1, 0.0001));
       expect(find.byKey(const ValueKey("catalog-scan-row-entrance-blur")), findsNothing);
       expect(fade.opacity.value, closeTo(1, 0.0001));
+    });
+
+    testWidgets("updated motion controls both entrance and collapse on the mounted row", (tester) async {
+      const tuned = CatalogScanRowMotion(
+        entranceDuration: Duration(milliseconds: 1000),
+        collapseDuration: Duration(milliseconds: 800),
+        entranceCurve: Curves.linear,
+        collapseCurve: Curves.linear,
+        entranceScaleFrom: 0.8,
+        entranceBlurSigma: 4,
+      );
+      await tester.pumpWidget(harness(const CatalogRescanState.idle()));
+      await tester.pumpWidget(
+        harness(const CatalogRescanState.starting(pluginIds: {"codex"}), motion: tuned),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+
+      final size = tester.widget<SizeTransition>(
+        find.descendant(of: find.byType(CatalogScanRow), matching: find.byType(SizeTransition)),
+      );
+      expect(size.sizeFactor.value, closeTo(0.5, 0.001));
+      expect(entranceScale(tester), closeTo(0.9, 0.001));
+      final blur = tester.widget<ImageFiltered>(find.byKey(const ValueKey("catalog-scan-row-entrance-blur")));
+      expect(blur.imageFilter, ui.ImageFilter.blur(sigmaX: 2, sigmaY: 2));
+
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.pumpWidget(harness(const CatalogRescanState.idle(), motion: tuned));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(size.sizeFactor.value, closeTo(0.5, 0.001));
+      await tester.pump(const Duration(milliseconds: 416));
+      expect(find.byKey(const ValueKey("prego-deep-scan-card")), findsNothing);
+    });
+
+    testWidgets("reduced motion overrides custom timing and entrance effects", (tester) async {
+      const tuned = CatalogScanRowMotion(
+        entranceDuration: Duration(seconds: 2),
+        collapseDuration: Duration(seconds: 2),
+        entranceCurve: Curves.linear,
+        collapseCurve: Curves.linear,
+        entranceScaleFrom: 0.8,
+        entranceBlurSigma: 4,
+      );
+      await tester.pumpWidget(harness(const CatalogRescanState.idle(), motion: tuned, reducedMotion: true));
+      await tester.pumpWidget(
+        harness(const CatalogRescanState.starting(pluginIds: {"codex"}), motion: tuned, reducedMotion: true),
+      );
+      await tester.pump();
+      expect(entranceScale(tester), 1);
+      expect(find.byKey(const ValueKey("catalog-scan-row-entrance-blur")), findsNothing);
+      await tester.pumpWidget(harness(const CatalogRescanState.idle(), motion: tuned, reducedMotion: true));
+      await tester.pump();
+      expect(find.byKey(const ValueKey("prego-deep-scan-card")), findsNothing);
     });
 
     testWidgets("does not replay the entrance for progress updates or exit", (tester) async {
@@ -846,6 +900,7 @@ void main() {
               builder: (context) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(disableAnimations: true),
                 child: CatalogScanRow(
+                  motion: CatalogScanRowMotion.standard,
                   scan: const CatalogRescanState.idle(),
                   onCancel: () => cancelCount++,
                   onDismiss: () => dismissCount++,
@@ -867,10 +922,8 @@ void main() {
               builder: (context) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(disableAnimations: true),
                 child: CatalogScanRow(
-                  scan: const CatalogRescanState.preparingOne(
-                    pendingPluginName: "Codex",
-                    pluginIds: {"codex"},
-                  ),
+                  motion: CatalogScanRowMotion.standard,
+                  scan: const CatalogRescanState.starting(pluginIds: {"codex"}),
                   onCancel: () => cancelCount++,
                   onDismiss: () => dismissCount++,
                 ),

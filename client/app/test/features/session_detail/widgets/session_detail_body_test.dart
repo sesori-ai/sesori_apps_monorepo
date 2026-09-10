@@ -2109,10 +2109,13 @@ void main() {
     await tester.tap(find.byTooltip("Cancel transcription"));
     await tester.pump();
 
+    // The default Android button emits its normal tap pulse before the voice
+    // interaction emits a fresh dismiss tick.
     expect(feedback, [
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
       "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
     ]);
 
@@ -2123,6 +2126,7 @@ void main() {
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
       "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.selectionClick",
     ]);
   });

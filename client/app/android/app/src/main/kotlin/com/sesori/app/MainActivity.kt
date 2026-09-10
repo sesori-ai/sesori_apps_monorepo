@@ -15,7 +15,7 @@ import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.embedding.engine.renderer.FlutterUiDisplayListener
 import io.flutter.plugin.common.MethodChannel
 
-class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
+open class MainActivity : FlutterActivity(), FlutterUiDisplayListener {
     private var recorderPrewarmService: RecorderPrewarmService? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {

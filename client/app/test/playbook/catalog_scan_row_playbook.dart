@@ -5,6 +5,7 @@ import "package:flutter/widgets.dart";
 import "package:material_ui/material_ui.dart" as material;
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_motion_tuning/sesori_motion_tuning.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 import "package:widgetbook/widgetbook.dart";
@@ -88,6 +89,13 @@ WidgetbookComponent buildCatalogScanRowComponent() => WidgetbookComponent(
     WidgetbookUseCase(name: "In action · Pull to scan", builder: _buildInAction),
     WidgetbookUseCase(name: "All states and variants", builder: _buildStateMatrix),
     WidgetbookUseCase(name: "State picker", builder: _buildPlayground),
+    WidgetbookUseCase(
+      name: "Motion tuning",
+      builder: (context) => CatalogScanRowMotionPreview(
+        designSystem: context.prego,
+        reducedMotion: context.knobs.boolean(label: "Reduce motion"),
+      ),
+    ),
     ...catalogScanRowScenarios.map(
       (scenario) => WidgetbookUseCase(
         name: scenario.name,
@@ -547,7 +555,12 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
       },
       slivers: [
         SliverToBoxAdapter(
-          child: CatalogScanRow(scan: _scan, onCancel: _cancelScan, onDismiss: _dismissScan),
+          child: CatalogScanRow(
+            motion: CatalogScanRowMotion.standard,
+            scan: _scan,
+            onCancel: _cancelScan,
+            onDismiss: _dismissScan,
+          ),
         ),
         SliverList.list(
           children: [
@@ -707,6 +720,7 @@ class _InteractiveScenarioState() extends State<_InteractiveScenario> {
       mainAxisSize: MainAxisSize.min,
       children: [
         CatalogScanRow(
+          motion: CatalogScanRowMotion.standard,
           scan: widget.scenario.scan,
           onCancel: () => _record(CatalogScanRowAction.cancel),
           onDismiss: () => _record(CatalogScanRowAction.dismiss),
@@ -737,4 +751,161 @@ class const _PlaybookSurface({
     color: context.prego.colors.bgSurface2,
     child: Align(alignment: alignment, child: child),
   );
+}
+
+const _scanMotionSource = "client/module_app_ui/lib/src/widgets/catalog_scan_row_motion.dart";
+
+const scanEntranceDuration = MotionDuration(
+  id: "scan.entrance.duration",
+  label: "Entrance duration",
+  source: "$_scanMotionSource · entranceDuration",
+  initialValue: Duration(milliseconds: 260),
+  min: Duration.zero,
+  max: Duration(milliseconds: 2000),
+);
+const scanEntranceCurve = MotionCurve(
+  id: "scan.entrance.curve",
+  label: "Entrance easing",
+  source: "$_scanMotionSource · entranceCurve",
+  initialValue: MotionEasing.smooth,
+);
+const scanEntranceScale = MotionNumber(
+  id: "scan.entrance.scale",
+  label: "Starting scale",
+  source: "$_scanMotionSource · entranceScaleFrom",
+  initialValue: 0.97,
+  min: 0.8,
+  max: 1,
+  step: 0.01,
+);
+const scanEntranceBlur = MotionNumber(
+  id: "scan.entrance.blur",
+  label: "Starting blur",
+  source: "$_scanMotionSource · entranceBlurSigma",
+  initialValue: 2,
+  min: 0,
+  max: 8,
+  step: 0.1,
+);
+const scanCollapseDuration = MotionDuration(
+  id: "scan.collapse.duration",
+  label: "Collapse duration",
+  source: "$_scanMotionSource · collapseDuration",
+  initialValue: Duration(milliseconds: 260),
+  min: Duration.zero,
+  max: Duration(milliseconds: 2000),
+);
+const scanCollapseCurve = MotionCurve(
+  id: "scan.collapse.curve",
+  label: "Collapse easing",
+  source: "$_scanMotionSource · collapseCurve",
+  initialValue: MotionEasing.smooth,
+);
+
+const scanEntranceTarget = MotionTarget(
+  id: "scan.entrance",
+  label: "Scan row · Entrance",
+  parameters: [scanEntranceDuration, scanEntranceCurve, scanEntranceScale, scanEntranceBlur],
+);
+const scanCollapseTarget = MotionTarget(
+  id: "scan.collapse",
+  label: "Scan row · Collapse",
+  parameters: [scanCollapseDuration, scanCollapseCurve],
+);
+
+/// An independent second consumer of the same editor used by feedback.
+/// Replay only changes local fixture state; no scan service is involved.
+class const CatalogScanRowMotionPreview({
+  super.key,
+  required final PregoDesignSystem designSystem,
+  required final bool reducedMotion,
+}) extends StatefulWidget {
+  @override
+  State<CatalogScanRowMotionPreview> createState() => _CatalogScanRowMotionPreviewState();
+}
+
+class _CatalogScanRowMotionPreviewState() extends State<CatalogScanRowMotionPreview> {
+  MotionSnapshot _values = const MotionSnapshot();
+  CatalogRescanState _scan = const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"});
+  int _replay = 0;
+
+  void _replayMotion({required MotionTarget target, required MotionSnapshot values}) {
+    final replay = ++_replay;
+    final entering = target.id == scanEntranceTarget.id;
+    setState(() {
+      _values = values;
+      // Remount at the opposite endpoint so every replay starts consistently.
+      _scan =
+          entering
+              ? const CatalogRescanState.idle()
+              : const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"});
+    });
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || replay != _replay) return;
+      setState(() {
+        _scan =
+            entering
+                ? const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"})
+                : const CatalogRescanState.idle();
+      });
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = CatalogScanRowMotion(
+      entranceDuration: _values.duration(parameter: scanEntranceDuration),
+      collapseDuration: _values.duration(parameter: scanCollapseDuration),
+      entranceCurve: _values.easing(parameter: scanEntranceCurve).curve,
+      collapseCurve: _values.easing(parameter: scanCollapseCurve).curve,
+      entranceScaleFrom: _values.number(parameter: scanEntranceScale),
+      entranceBlurSigma: _values.number(parameter: scanEntranceBlur),
+    );
+    return MotionTuningHost(
+      fixtureId: "catalog-scan-row",
+      targets: const [scanEntranceTarget, scanCollapseTarget],
+      onReplay: _replayMotion,
+      child: material.MaterialApp(
+        debugShowCheckedModeBanner: false,
+        theme: _buildPregoTheme(designSystem: widget.designSystem),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        builder: (context, child) => MediaQuery(
+          data: MediaQuery.of(context).copyWith(disableAnimations: widget.reducedMotion),
+          child: MotionTuningOverlay(child: child!),
+        ),
+        home: material.Scaffold(
+          body: SafeArea(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Padding(
+                  padding: const EdgeInsets.all(16),
+                  child: Text(
+                    "Scan row motion\nSelect the row or choose a transition, adjust, then replay.",
+                    style: widget.designSystem.textTheme.textSm.regular.copyWith(
+                      color: widget.designSystem.colors.textSecondary,
+                    ),
+                  ),
+                ),
+                MotionTargetRegion(
+                  targetId: scanEntranceTarget.id,
+                  child: MotionTargetRegion(
+                    targetId: scanCollapseTarget.id,
+                    child: CatalogScanRow(
+                      key: ValueKey(_replay),
+                      motion: motion,
+                      scan: _scan,
+                      onCancel: () => _replayMotion(target: scanCollapseTarget, values: _values),
+                      onDismiss: () => _replayMotion(target: scanCollapseTarget, values: _values),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
