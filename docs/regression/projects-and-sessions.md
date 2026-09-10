@@ -188,6 +188,15 @@ state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- Regular and archived session rows omit the subtitle line and its spacing
+  when no branch, pull request, or status label is shown. Title-only rows are
+  48px at standard text size; a populated subtitle retains the 70px row height.
+  Running and unread sparkles alone do not reserve a subtitle. Both layouts
+  grow with accessibility text rather than clipping. Regular rows show a
+  Running section first, then idle rows grouped by updated-time date buckets;
+  archived rows retain archive-time date buckets. Awaiting-input-only rows stay
+  in their updated-time bucket, and missing timestamps use an Unknown date
+  heading rather than an invented epoch.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.
@@ -332,6 +341,11 @@ disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
+For session-row sizing and grouping, compare regular and archived title-only
+rows against branch-only, PR-only, and status-only subtitles. Toggle subtitle
+content and check compact spacing, preserved swipe/menu actions, and enlarged
+text. Verify regular Running-first ordering, awaiting-only date grouping,
+updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
@@ -401,6 +415,11 @@ leave the surface that started one. Restore harness eligibility afterwards.
   navigation loses project/session/read-only identity, the New task or root
   file-changes action cannot reach its typed route, or desktop renders dead
   voice/attachment controls instead of honoring declared capabilities.
+- A title-only session row reserves an empty subtitle line, or a populated
+  subtitle is clipped or loses its spacing in regular or archived lists.
+- Regular session rows lose their Running-first section, promote awaiting-only
+  rows into it, use archive time instead of updated time, or render an epoch
+  date when a timestamp is missing.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its

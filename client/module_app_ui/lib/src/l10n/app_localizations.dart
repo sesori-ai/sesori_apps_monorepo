@@ -1645,6 +1645,12 @@ abstract class AppLocalizations {
   /// **'Untitled session'**
   String get sessionListUntitled;
 
+  /// Heading for sessions whose updated or archive timestamp is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown date'**
+  String get sessionListUnknownDate;
+
   /// No description provided for @sessionListRefreshSuccess.
   ///
   /// In en, this message translates to:

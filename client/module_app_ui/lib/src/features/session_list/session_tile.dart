@@ -131,7 +131,7 @@ class const SessionTile({
                     spacing: PregoSpacing.xxs,
                     children: [
                       _titleRow(context: context),
-                      _footerRow(context: context),
+                      ?_footerRow(context: context),
                     ],
                   ),
                 ),
@@ -331,13 +331,12 @@ class const SessionTile({
   /// The row's second line, indented under the title: branch, pull request and
   /// any state that needs words. When the session last changed is told by the
   /// title line's trailing slot, not here.
-  Widget _footerRow({required BuildContext context}) {
+  Widget? _footerRow({required BuildContext context}) {
     final status = _statusLabel(context: context);
+    if (session.branchName == null && session.pullRequest == null && status == null) return null;
 
-    // The line box is held open even when there is nothing to say, so a quiet
-    // session doesn't shrink its row out of the list's pitch. A minimum rather
-    // than a fixed height: scaled-up accessibility text grows the row instead
-    // of being cropped to the 1x line box.
+    // A minimum rather than a fixed height: scaled-up accessibility text grows
+    // a populated footer instead of being cropped to the 1x line box.
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: _footerLineHeight),
       child: Padding(

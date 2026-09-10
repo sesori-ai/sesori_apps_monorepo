@@ -459,6 +459,10 @@
     "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
   },
   "sessionListUntitled": "Untitled session",
+  "sessionListUnknownDate": "Unknown date",
+  "@sessionListUnknownDate": {
+    "description": "Heading for sessions whose updated or archive timestamp is unavailable."
+  },
   "sessionListRefreshSuccess": "Sessions updated",
   "sessionListRefreshFailed": "Could not refresh sessions",
   "sessionListErrorTitle": "Failed to load sessions",
