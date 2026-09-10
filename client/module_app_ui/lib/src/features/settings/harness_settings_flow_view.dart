@@ -90,7 +90,8 @@ class const HarnessSettingsFlowView({super.key, required final Widget child}) ex
                   (prior == null ||
                       next is PluginAuthenticationPresentationStarting &&
                           (prior is PluginAuthenticationPresentationSucceeded ||
-                              prior is PluginAuthenticationPresentationCancelled));
+                              prior is PluginAuthenticationPresentationCancelled ||
+                              prior is PluginAuthenticationPresentationFailed));
             },
             listener: (context, state) {
               final challenge = _authenticationChallenge(state: state);

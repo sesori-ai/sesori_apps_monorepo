@@ -331,6 +331,229 @@ void main() {
       );
     });
 
+    test("cancel cleanup bridge replacement fences DELETE from the replacement attempt", () async {
+      final cleanup = Completer<PluginAuthenticationBrowserFlowFailed?>();
+      final browserResult = Completer<PluginAuthenticationBrowserFlowResult>();
+      final challenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://provider.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+      );
+      final replacementChallenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://provider.example/replacement"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1:43121/callback"),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial", bridgeId: "br_a")))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: replacementChallenge));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final browserService = _MockPluginAuthenticationBrowserService();
+      when(browserService.cancelActive).thenAnswer((_) => cleanup.future);
+      when(
+        () => browserService.authenticate(
+          challenge: any(named: "challenge"),
+          isLocalBridge: any(named: "isLocalBridge"),
+          reuseActiveListener: any(named: "reuseActiveListener"),
+          onPhase: any(named: "onPhase"),
+          onDetachedFailure: any(named: "onDetachedFailure"),
+        ),
+      ).thenAnswer((_) => browserResult.future);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+        authenticationBrowserService: browserService,
+        activeBridgeLocality: const _RemoteBridgeLocality(),
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      await service.startAuthentication(pluginId: "one");
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+
+      final cancellation = service.cancelAuthentication(pluginId: "one");
+      await _pump();
+      connection.emitStatus(const ConnectionDisconnected());
+      repository.queueLoad(_supported(_response(token: "replacement", bridgeId: "br_b")));
+      connection.emitStatus(_connected);
+      await _waitFor(() => service.authenticationChallenges.value.isEmpty);
+      expect(terminals.single.progress, isA<PluginAuthenticationUnknownProgress>());
+      expect(await service.startAuthentication(pluginId: "one"), isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["one"], same(replacementChallenge));
+      cleanup.complete(null);
+
+      expect(await cancellation, isA<PluginAuthenticationCancelFailed>());
+      expect(repository.authenticationCancelCalls, isZero);
+      expect(service.authenticationChallenges.value["one"], same(replacementChallenge));
+      expect(terminals, hasLength(1));
+    });
+
+    test("late cancellation response cannot settle a replacement bridge attempt", () async {
+      final cancellationResponse = Completer<PluginAuthenticationCancelResult>();
+      const challenge = PluginAuthenticationUnsupportedChallenge();
+      final replacementChallenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://provider.example/replacement"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1:43121/callback"),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial", bridgeId: "br_a")))
+        ..queueAuthenticationStart(const PluginAuthenticationStartResult.challenge(challenge: challenge))
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: replacementChallenge))
+        ..queueAuthenticationCancel(cancellationResponse.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      await service.startAuthentication(pluginId: "one");
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+
+      final cancellation = service.cancelAuthentication(pluginId: "one");
+      await _waitFor(() => repository.authenticationCancelCalls == 1);
+      connection.emitStatus(const ConnectionDisconnected());
+      repository.queueLoad(_supported(_response(token: "replacement", bridgeId: "br_b")));
+      connection.emitStatus(_connected);
+      await _waitFor(() => service.authenticationChallenges.value.isEmpty);
+      expect(terminals.single.progress, isA<PluginAuthenticationUnknownProgress>());
+      await service.startAuthentication(pluginId: "one");
+      expect(service.authenticationChallenges.value["one"], same(replacementChallenge));
+
+      cancellationResponse.complete(const PluginAuthenticationCancelResult.success());
+
+      expect(await cancellation, isA<PluginAuthenticationCancelFailed>());
+      expect(service.authenticationChallenges.value["one"], same(replacementChallenge));
+      expect(terminals, hasLength(1));
+    });
+
+    for (final browserResult in <PluginAuthenticationBrowserFlowResult>[
+      const PluginAuthenticationBrowserFlowCancelled(),
+      PluginAuthenticationBrowserFlowFailed(
+        innerError: TimeoutException("synthetic timeout"),
+        stackTrace: StackTrace.current,
+        retryableWithActiveListener: false,
+      ),
+    ]) {
+      test("$browserResult reissues cancellation only after same-bridge reconnect verification", () async {
+        final browser = Completer<PluginAuthenticationBrowserFlowResult>();
+        final challenge = PluginAuthenticationBrowserChallenge(
+          authorizationUri: Uri.parse("https://provider.example/authorize"),
+          expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+        );
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+          ..queueAuthenticationCancel(const PluginAuthenticationCancelResult.success());
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final browserService = _MockPluginAuthenticationBrowserService();
+        when(browserService.cancelActive).thenAnswer((_) async => null);
+        when(
+          () => browserService.authenticate(
+            challenge: any(named: "challenge"),
+            isLocalBridge: any(named: "isLocalBridge"),
+            reuseActiveListener: any(named: "reuseActiveListener"),
+            onPhase: any(named: "onPhase"),
+            onDetachedFailure: any(named: "onDetachedFailure"),
+          ),
+        ).thenAnswer((_) => browser.future);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+          authenticationBrowserService: browserService,
+          activeBridgeLocality: const _RemoteBridgeLocality(),
+        );
+        addTearDown(service.onDispose);
+        await _waitFor(() => service.snapshots.hasValue);
+        await service.startAuthentication(pluginId: "one");
+
+        connection.emitStatus(const ConnectionDisconnected());
+        browser.complete(browserResult);
+        await _pump();
+        expect(repository.authenticationCancelCalls, isZero);
+
+        repository.queueLoad(
+          _supported(
+            _response(token: "reconnected").copyWith(
+              plugins: [
+                _conflict([]).current.copyWith(authenticationState: PluginAuthenticationState.inProgress),
+              ],
+            ),
+          ),
+        );
+        connection.emitStatus(_connected);
+        await _waitFor(() => repository.authenticationCancelCalls == 1);
+
+        expect(service.authenticationChallenges.value["one"], same(challenge));
+        expect(
+          service.authenticationBrowserStates.value["one"],
+          browserResult is PluginAuthenticationBrowserFlowFailed
+              ? isA<PluginAuthenticationBrowserFatalFailure>()
+              : isA<PluginAuthenticationBrowserCancelling>(),
+        );
+      });
+    }
+
+    for (final cancelResult in <PluginAuthenticationCancelResult>[
+      PluginAuthenticationCancelResult.failed(
+        failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
+      ),
+      const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()),
+    ]) {
+      test("native cancellation maps $cancelResult without leaving ambiguous cancelling state", () async {
+        final challenge = PluginAuthenticationBrowserChallenge(
+          authorizationUri: Uri.parse("https://provider.example/authorize"),
+          expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+        );
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+          ..queueAuthenticationCancel(cancelResult);
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final browserService = _MockPluginAuthenticationBrowserService();
+        when(browserService.cancelActive).thenAnswer((_) async => null);
+        when(
+          () => browserService.authenticate(
+            challenge: any(named: "challenge"),
+            isLocalBridge: any(named: "isLocalBridge"),
+            reuseActiveListener: any(named: "reuseActiveListener"),
+            onPhase: any(named: "onPhase"),
+            onDetachedFailure: any(named: "onDetachedFailure"),
+          ),
+        ).thenAnswer((_) async => const PluginAuthenticationBrowserFlowCancelled());
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+          authenticationBrowserService: browserService,
+          activeBridgeLocality: const _RemoteBridgeLocality(),
+        );
+        addTearDown(service.onDispose);
+        await _waitFor(() => service.snapshots.hasValue);
+        final terminals = <PluginAuthenticationTerminalUpdate>[];
+        service.authenticationTerminal.listen(terminals.add);
+
+        await service.startAuthentication(pluginId: "one");
+        await _waitFor(() => repository.authenticationCancelCalls == 1);
+        await _pump();
+
+        if (cancelResult case PluginAuthenticationCancelFailed(failure: PluginAuthenticationFailureUncertain())) {
+          expect(terminals, isEmpty);
+          expect(
+            service.authenticationBrowserStates.value["one"],
+            isA<PluginAuthenticationBrowserCancellingUncertain>(),
+          );
+          expect(service.authenticationChallenges.value["one"], same(challenge));
+        } else {
+          expect(terminals.single.progress, isA<PluginAuthenticationFailedProgress>());
+          expect(service.authenticationChallenges.value, isEmpty);
+        }
+      });
+    }
+
     test("serializes browser redirects and preserves a response across terminal progress", () async {
       final continuation = Completer<PluginAuthenticationContinuationResult>();
       final repository = _FakePluginRepository()
@@ -588,6 +811,58 @@ void main() {
       repository.queueLoad(_supported(_response(token: "reconnected")));
       connection.emitStatus(_connected);
       await _waitFor(() => service.authenticationChallenges.value.isEmpty);
+    });
+
+    test("reconnect blocks lifecycle and timeout mutations until same-bridge identity is verified", () async {
+      final refresh = Completer<PluginManagementLoadResult>();
+      final active = _conflict([]).current.copyWith(authenticationState: PluginAuthenticationState.inProgress);
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial").copyWith(plugins: [active])))
+        ..queueAuthenticationStart(
+          const PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationUnsupportedChallenge(),
+          ),
+        );
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      await service.startAuthentication(pluginId: "one");
+
+      connection.emitStatus(const ConnectionDisconnected());
+      repository.queueLoad(refresh.future);
+      connection.emitStatus(_connected);
+      await _waitFor(() => repository.loadCalls == 2);
+
+      expect(
+        await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()),
+        isA<PluginManagementMutationResultFailure>(),
+      );
+      expect(
+        await service.updateIdleTimeout(
+          request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 20),
+        ),
+        isA<PluginManagementMutationResultFailure>(),
+      );
+      expect(repository.mutationCalls, isZero);
+
+      refresh.complete(
+        _supported(_response(token: "verified").copyWith(plugins: [active])),
+      );
+      await _waitFor(() => _supportedResponse(service).snapshotToken == "verified");
+      repository
+        ..queueMutation(PluginManagementMutationResult.failure(error: ApiError.generic()))
+        ..queueMutation(PluginManagementMutationResult.failure(error: ApiError.generic()));
+
+      await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+      await service.updateIdleTimeout(
+        request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 20),
+      );
+      expect(repository.mutationCalls, 2);
     });
 
     test("fast terminal settles authorship before the start response returns", () async {

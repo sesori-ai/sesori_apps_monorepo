@@ -398,6 +398,10 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationFailed() => throw StateError("Expected active authentication"),
     };
     final status = switch (presentation) {
+      PluginAuthenticationPresentationChallenge(
+        challenge: PluginAuthenticationUpdateRequiredPresentation(),
+      ) =>
+        loc.harnessAuthenticationUpdateRequired,
       PluginAuthenticationPresentationBrowserOpening() => loc.harnessAuthenticationOpening,
       PluginAuthenticationPresentationBrowserWaiting() => loc.harnessAuthenticationWaitingForBrowser,
       PluginAuthenticationPresentationBrowserFinalizing() => loc.harnessAuthenticationFinalizing,
@@ -412,6 +416,7 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationFailed() => throw StateError("Expected active authentication"),
     };
     final deviceCode = challenge is PluginAuthenticationDeviceCodeChallenge;
+    final updateRequired = challenge is PluginAuthenticationUnsupportedChallenge;
     final retry = presentation is PluginAuthenticationPresentationBrowserLaunchFailedState;
     final ongoingBrowser =
         presentation is PluginAuthenticationPresentationBrowserOpening ||
@@ -424,11 +429,17 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Semantics(
-            label: deviceCode
-                ? loc.harnessAuthenticationSecuritySemantics
-                : loc.harnessAuthenticationBrowserInstructions,
+            label: switch ((deviceCode, updateRequired)) {
+              (true, _) => loc.harnessAuthenticationSecuritySemantics,
+              (_, true) => loc.harnessAuthenticationUpdateRequired,
+              _ => loc.harnessAuthenticationBrowserInstructions,
+            },
             child: Text(
-              deviceCode ? loc.harnessAuthenticationSecurityDescription : loc.harnessAuthenticationBrowserInstructions,
+              switch ((deviceCode, updateRequired)) {
+                (true, _) => loc.harnessAuthenticationSecurityDescription,
+                (_, true) => loc.harnessAuthenticationUpdateRequired,
+                _ => loc.harnessAuthenticationBrowserInstructions,
+              },
               style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
             ),
           ),
@@ -459,13 +470,14 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
             ),
             const SizedBox(height: PregoSpacing.md),
           ],
-          Text(
-            status,
-            textAlign: TextAlign.center,
-            style: context.prego.textTheme.textSm.regular.copyWith(
-              color: retry ? context.prego.colors.textErrorPrimary : context.prego.colors.textSecondary,
+          if (!updateRequired)
+            Text(
+              status,
+              textAlign: TextAlign.center,
+              style: context.prego.textTheme.textSm.regular.copyWith(
+                color: retry ? context.prego.colors.textErrorPrimary : context.prego.colors.textSecondary,
+              ),
             ),
-          ),
           if (deviceCode || retry) ...[
             const SizedBox(height: PregoSpacing.x2l),
             PregoButtonsSolid(

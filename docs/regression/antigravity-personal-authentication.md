@@ -54,14 +54,22 @@ credentials/token contents.
   callback survive sheet dismissal and a proactive mobile resume reconnect. Callback forwarding pauses while bridge
   identity is unknown. A fresh exact same bridge id plus in-progress authentication rebases only that attempt and
   forwards once; another bridge, missing plugin, or inactive authentication discards the callback and never claims
-  success.
+  success. Reconnect also gates lifecycle and idle-timeout mutations until the fresh management response verifies the
+  bridge id; retained snapshots never authorize a mutation while identity is unknown.
 - One five-minute lifetime begins before callback binding and covers pending bind, browser return, callback receipt,
   and same-listener launch retry. Cancellation, terminal progress, timeout, or service disposal fences pending bind,
-  closes a late session, and cannot launch a browser afterward. Only a launch failure with its original listener alive
-  may retry the issued challenge. Invalid native return, timeout, bind/callback failure, or expired listener is fatal:
-  the client retains a typed cause for privacy-safe diagnostics and cancels the backend attempt before a fresh
-  challenge.
-  Terminal events for another plugin never cancel the owned browser flow.
+  closes a late session, and cannot launch a browser afterward. Cancellation retains its original connection/bridge
+  fence across asynchronous listener cleanup, so a reconnect cannot dispatch or apply DELETE against another bridge
+  or attempt. Native cancellation and fatal browser failures preserve pending cancellation while disconnected. Exact
+  same-bridge reconciliation with in-progress authentication reissues it; bridge replacement discards it. A definite
+  DELETE failure becomes an explicit recoverable failure, while an uncertain result remains visible and waits for
+  terminal bridge progress. Only a launch failure with its original listener alive may retry the issued challenge.
+  Invalid native return, timeout, bind/callback failure, or expired listener is fatal: the client retains a typed cause
+  for privacy-safe diagnostics and cancels the backend attempt before a fresh challenge. Terminal events for another
+  plugin never cancel the owned browser flow.
+- An unsupported retained challenge shows only update-required guidance plus cancellation; it never shows browser
+  verification instructions or an Open button. A dismissed terminal failure followed by a new start reopens the
+  preparation sheet, matching success/cancel restart behavior.
 - Event-stream cancellation aborts the attempt and waits for ACP, callback, and peer cleanup. Normal completion also
   waits for a callback already in flight, rather than aborting it when ACP finishes first. Closed attempts reject
   callbacks; their closures cannot dispatch through another attempt's services.
@@ -88,11 +96,13 @@ credentials/token contents.
 - Client core loopback/browser/service tests use real synthetic loopback I/O to verify bind-before-open, exact path,
   nonce-only bounce, bind failure with zero browser opens, pending-bind cancellation, one bounded lifetime, valid
   same-listener retry, fatal invalid-return/timeout behavior, unrelated-plugin isolation, service-owned launch after
-  presentation disposal, typed failure retention, one-shot encrypted forwarding, same-bridge reconnect retention, and
+  presentation disposal, typed failure retention, one-shot encrypted forwarding, fence-safe delayed cleanup,
+  same-bridge cancellation reissue, identity-gated management mutations, same-bridge reconnect retention, and
   different-bridge discard.
 - Mobile/desktop adapter and settings widget tests cover native cancellation mapping, immediate preparation, automatic
-  browser phases with visible activity, no manual redirect controls, explicit success/cancellation, terminal-sheet
-  dismissal followed by a fresh login, launch retry, and device-code preservation.
+  browser phases with visible activity, no manual redirect controls, update-required unsupported challenges, explicit
+  success/cancellation, terminal-sheet dismissal followed by a fresh login or preparation retry, launch retry, and
+  device-code preservation.
   The generic `plugin_api_test.dart` retains typed challenge/redirect/cancel wire contracts and start timeout coverage.
 - `antigravity_authentication_operation_test.dart`: shared environment/budget, one-shot continuation, same-host
   completion, runtime rejection, callback/authorization failure, timeout/process exit, cancellation while cleanup or
@@ -102,6 +112,8 @@ credentials/token contents.
 - `antigravity_acp_api_test.dart`: delayed probe/auth spawn cancellation waits for release and reaping without initialize.
 - Bridge `plugin_lifecycle_service_test.dart`: representative browser terminal event cannot trigger setup reinspection
   until stream closure; cancelled attempts also refresh setup after settling.
-- Synthetic iOS Simulator and Android emulator runs verified system auth browser navigation from local fake authorize
-  endpoint through raw HTTP loopback and nonce-only custom-scheme return. No Google endpoint or account was used.
-  Real Google OAuth and final L5 Full remain unverified.
+- The synthetic native integration target uses the production browser adapter, browser service, and loopback server;
+  only its local fake authorization endpoint is test-owned. It asserts captured OAuth query values and a nonce-only
+  native return URI. This production-path target passed on iOS Simulator and Android emulator, verifying system auth
+  browser navigation, callback capture, and native return without a Google endpoint or account. Real Google OAuth and
+  final L5 Full remain unverified.
