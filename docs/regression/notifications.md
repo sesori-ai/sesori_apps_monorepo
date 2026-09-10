@@ -22,7 +22,8 @@ external.
   while a full stop does. A Codex root likewise defers idle and completion while
   any tracked child runs, then releases them once after the last child settles.
   Codex `keep` leaves retained descendants eligible for that later completion;
-  full scoped stop suppresses completion for the stopped scope.
+  full scoped stop suppresses the next completion for the root session group,
+  including when the stopped scope is a named child.
 - A child prompt is attributed to its display (root) session. Rate limiting is per category plus session, so a
   throttled completion never suppresses a more urgent question, and every notification for a session collapses to one
   identity derived identically by bridge, server, and client.
