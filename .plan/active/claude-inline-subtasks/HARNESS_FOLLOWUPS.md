@@ -12,8 +12,8 @@
   preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
   step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
   stop 8/9, and coverage 9/9. Step 8 merged as PR #1421 at `77165f784f`;
-  Step 9 actual-plugin policy QA passed against managed 0.153.4; its
-  documentation step is current and remains unchecked until merge. Historical
+  Step 9 merged as PR #1424 at `b945755bfe` after actual-plugin policy QA
+  passed against managed 0.153.4. Historical
   PR titles are unchanged. Progress is tracked in
   `TRACKER.md` "Harness Follow-Ups". The DeepSeek phone handoff is recorded in
   `followups/deepseek-phone-qa.md`; desktop remains deferred.
@@ -84,28 +84,15 @@ confirmation, no child session or partial stop) and gets that subset.
      deleted (siblings under other roots keep their busy state and cancel
      targets), and calls `clear()` only on process exit. The child directory
      is `directoryForSession(root)`, never the launch directory.
-  2. A protected tool-call classification method on `AcpEventMapper` returns a
-     sealed `AcpToolCallClassification`: render as a tool card, suppress because
-     a lifecycle-derived tile represents the same work, defer a permission-
-     gated decision, or track a tile-only task. A Layer-2
-     `AcpDeferredToolCallTracker`
-     (`bridge/sesori_plugin_acp/lib/src/repositories/trackers/acp_deferred_tool_call_tracker.dart`)
-     is constructed at the harness composition point and injected into
-     `AcpEventMapper`. For `defer`, that tracker—not the mapper—owns the typed
-     standard call by session and tool call id and resolves it from the later
-     permission/tool update; denial or cancellation can then emit and
-     terminally settle the generic card even when no child is spawned. The
-     mapper only classifies each update and delegates the state transition.
-     `AcpPlugin` forgets one session's deferred calls on deletion and clears the
-     tracker on disconnect and process exit. The tile-only outcome carries the
-     stable tool call id, prompt,
-     agent/description, and observed tool state; the generic standard-update
-     path feeds that typed fact into `AcpChildSessionTracker` instead of
-     rendering a card. A session-backed tile is still opened only from a
-     lifecycle event that carries the child id. Grok uses `defer` because its
-     tool call and child lifecycle share no id; Cursor uses the tile-only
-     outcome because its standard and extension frames do. Neither path matches
-     by description or arrival order, so concurrent spawns stay deterministic.
+  2. `AcpEventMapper.isSubagentSpawnToolCall` is the current narrow live
+     classifier: exact backend metadata may suppress a generic card when a
+     lifecycle-derived tile owns presentation. Grok uses this because its
+     standard call and child lifecycle share no id. No deferred permission
+     tracker or permission-outcome model exists; a denied Grok generic card may
+     be absent after replay. Replay has a separate typed suppression callback,
+     while DeepSeek's existing nullable replacement callback keeps null meaning
+     “retain generic.” Cursor's future tile-only mapping must land with its own
+     production need rather than prebuilding unused classification machinery.
   3. The scoped-stop policy, once, in `AcpPlugin.abortSession`: `confirm` with
      running children is side-effect free and rejects with their count,
      `mainAgentRunning` from pending prompts or an active named child, and `mainAgentOnlySupported` true only
@@ -353,14 +340,9 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ## Grok Build (1.0.5, ACP stdio)
 
-Implementation status: PR #1426 delivers replay-local collectors and streamed
-child-owned prompt preparation, with no deferred-permission tracker or outcome
-model. The design prose below is the pre-implementation plan; Step 4/6 reconciles
-it with the reviewed implementation and complete coverage.
+### Verified facts (native 1.0.5 probes)
 
-### Verified facts (binary string survey)
-
-- Extension notification `x.ai/session_notification` wraps an internally
+- Extension notification `_x.ai/session_notification` wraps an internally
   tagged `SessionUpdate` (`sessionUpdate` key, snake_case) including
   `subagent_spawned` (`subagent_id`, `parent_session_id`,
   `child_session_id`, `subagent_type`, `capability_mode`, `persona`,
@@ -368,11 +350,10 @@ it with the reviewed implementation and complete coverage.
   (`duration_ms`, `turn_count`, `tool_call_count`, ...),
   `subagent_finished` (`tool_calls`, `turns`, ...), plus `task_backgrounded`
   and `task_completed` with `tool_call_id`.
-- Extension request `x.ai/subagent/cancel` with `subagentId`. The kill tool
+- Extension request `_x.ai/subagent/cancel` with `subagentId`. The kill tool
   sends cancel and shutdown to subagents. Nesting depth is one.
-- A turn cancel does not cancel subagents ("background tasks, subagents, and
-  the rest of the queue keep running"); `cancel_subagents_on_turn_cancel` is a
-  TUI-side preference, not agent behavior Sesori can toggle.
+- `session/cancel` on the root cancels foreground and background children on
+  the ACP seam Sesori drives. Main-agent-only stop is therefore unsupported.
 - Root and child directories persist in the normal sessions tree. A child's
   `summary.json` carries `session_kind: "subagent"` and `agent_name` but no
   parent id; the root's `updates.jsonl` carries `subagent_spawned` records with
@@ -380,24 +361,23 @@ it with the reviewed implementation and complete coverage.
 
 ### Current plugin
 
-- `acp_event_mapper.dart` routes non-`session/update` methods to
-  `mapExtension`, whose base returns `[]`; Grok uses the base mapper, so every
-  `x.ai/*` notification is dropped. Child updates, if they arrive, lack a
-  preceding `session.created` and are discarded by the bridge binding.
-- `acp_plugin.dart`: `abortSession` ignores the policy and sends
-  `session/cancel`; `getChildSessions` returns `[]`; `childSessionIds` are
-  empty; work state derives from `pending` only. `sessionParentId` is an
-  overridable hook (DeepSeek already overrides it).
-- History replays `session/load` through `AcpReplayCollector`, which knows only
-  standard updates.
+- `GrokEventMapper` parses both Grok lifecycle methods into the shared
+  `AcpChildSessionTracker`; children render live, roll into root activity, and
+  survive restart through the persisted catalog chain.
+- `GrokSessionStoreApi` already reads typed session summaries/updates for
+  catalog recovery. It never reads credential or configuration files.
+- Scoped stop remains unimplemented. History continues to use inherited ACP
+  `session/load`; this step adds extension-aware root projection without a
+  second transport.
 
 ### Design
 
 - **Ownership.** `GrokEventMapper extends AcpEventMapper` overrides
-  `mapExtension`; Freezed DTOs parse the snake_case payloads into a sealed
-  `GrokSubagentUpdate` (`spawned | progress | finished`) with a closed status
-  enum and push into `AcpChildSessionTracker` (Shared Rules, seam 1). This
-  chain introduces the five shared seams.
+  `mapExtension`; Freezed DTOs parse snake_case payloads into a sealed
+  `GrokSubagentUpdate` and push into the existing `AcpChildSessionTracker`.
+  History adds only an extension-aware ACP replay collector plus typed immutable
+  context preparation; child tracking, busy ownership, generic replay
+  replacement, and scoped-stop policy seams already exist.
 - **Tiles.** `subagent_spawned` emits the child session (`parentID` = root,
   title = description, directory = root's) and busy status; the `subtask` part
   (`agent` = subagent type, `childSessionID` = child session id, running)
@@ -405,36 +385,22 @@ it with the reviewed implementation and complete coverage.
   the spawn notification lacks and arrives under the child id right after
   the spawn (merged in PR #1270 as `appendPrompt`).
   `subagent_progress` is ignored. `subagent_finished` completes, errors, or
-  cancels and sets the child idle. Tiles are lifecycle-derived only. For the
-  earlier standard `spawn_subagent` call, which shares no id with
-  `subagent_spawned`, the Grok classifier returns seam 2's deferred outcome
-  while permission is pending. `AcpDeferredToolCallTracker` owns the buffered
-  call; the mapper delegates the same tool call's permission/tool update to
-  resolve it. Approval suppresses it before the lifecycle tile arrives, while
-  denial or cancellation emits and terminally settles the generic card because
-  no child will exist.
-  This never pairs a standard call with a lifecycle event, so concurrent spawns
-  cannot duplicate or cross-bind tiles.
-- **Child history and streaming.** Child `session/update`s flow through the
-  existing mapper once the child exists, and `session/load` accepts child ids
-  (probe). A root load replays `subagent_spawned` and `subagent_finished` as
-  `_x.ai/session/update`, but the spawn still has no prompt and the standard
-  `spawn_subagent` call shares no id. The child-history PR first adds a bounded
-  denied/cancelled `session/load` capture. If Grok replays a typed permission
-  outcome, `GrokSessionHistoryRepository` includes it in the prepared replay
-  context and the replay-local deferred tracker retains the terminal generic
-  card. If no outcome is persisted, successful and denied calls cannot be
-  correlated safely: replay suppresses every standard spawn card to preserve
-  one tile per actual child, and a denied attempt remains visible live but is
-  absent after reload. That cosmetic omission is accepted rather than adding
-  Sesori-owned persistence for Grok history. Before the collector materialises
-  the root, `GrokSessionService` asks the Layer-2
-  `GrokSessionHistoryRepository` (backed only by Layer-1
-  `GrokSessionStoreApi`) for immutable replay context containing each
-  discovered child's initial `user_message_chunk`, keyed by child id. The pure
-  Grok projection receives that context and feeds spawn, prompt, and finish
-  into its replay-local tracker. The rebuilt tile is therefore deterministic
-  and never depends on description or ordering.
+  cancels and sets the child idle. Tiles are lifecycle-derived only. The exact
+  typed `_meta["x.ai/tool"].name == spawn_subagent` classifier suppresses the
+  generic card; there is no tool-call/lifecycle id join, deferred permission
+  tracker, description matching, or ordering correlation. Denied generic-card
+  replay may therefore be absent; native denial persistence remains unverified.
+- **Child history and streaming.** Child ids use inherited `session/load` and
+  replay their own standard prompt/tool/text stream. For root replay,
+  `GrokSessionStoreApi` preserves typed persisted records in file order;
+  `GrokSessionHistoryRepository` extracts only each exact spawned child's first
+  non-empty child-owned user-message run; `GrokSessionService` resolves the
+  canonical directory and returns immutable context; and pure
+  `GrokSessionReplayCollector` inserts/settles deterministic tiles without reading
+  live state. Unknown non-user updates end the first run. Both Grok lifecycle
+  methods are consumed through the existing post-response quiet drain. Missing
+  prompts produce no tile. No permission outcome, persistence, or deferred
+  machinery is implemented.
 - **Busy accounting.** Through seam 1: root idle is deferred while
   `busyChildIds` is non-empty. `GrokEventMapper` alone parses
   `subagent_finished.will_wake` and recognizes the matching root
@@ -471,11 +437,12 @@ it with the reviewed implementation and complete coverage.
 
 | Emoji | Description | Scope |
 |---|---|---|
-| ⚙️ | `grok: parse sub-agent lifecycle notifications` | DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker` (seam 1), `AcpDeferredToolCallTracker` plus deferred classification and denied/cancelled generic-card retention (seam 2), mapper/tracker lifecycle fixtures including forget/disconnect/exit cleanup |
-| ⚙️ | `acp: child sessions keep the root busy` | typed tracker-change stream and owned subscription teardown; `AcpPlugin` composes tracker statuses, idle/wake-up deferral, summary `childSessionIds`, and exit cleanup; `GrokSessionStoreApi` → `GrokSessionCatalogRepository` returns persisted children and Layer-3 `GrokSessionService` merges them with the tracker for `getChildSessions` |
-| 🌿 | `grok: child session history` | `session/load` for child ids plus denied/cancelled replay probe; seam 5 replay context and pure Grok projection; `GrokSessionStoreApi` → `GrokSessionHistoryRepository` → `GrokSessionService` prepares child prompts and any persisted permission outcomes |
-| ⚙️ | `grok: scoped stop for sub-agents` | policy in `AcpPlugin.abortSession` (seam 3), including side-effect-free unsupported-`keep` rejection and child-only `keep`; `cancelChild` seam and its Grok request (seam 4); `interruptActiveWork` uses stop |
-| 🌱 | `docs: record Grok Build sub-agent coverage` | matrix footnote ¹⁰ resolved, regression docs |
+| ⚙️ | `grok: parse sub-agent lifecycle notifications` | Historical original title unchanged (now step 1/6); DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker`, exact metadata-based generic spawn suppression, and lifecycle cleanup |
+| ⚙️ | `acp: child sessions keep the root busy` | Historical original title unchanged (now step 2/6); typed tracker-change stream and owned subscription teardown, persisted children, and Layer-3 catalog/live merging |
+| 🚧 | `grok: child session history [step 3/6]` | full root/child replay production, generated DTOs, essential ACP and Grok integration/regression coverage, and supported-behavior docs |
+| 🌿 | `grok: cover child session history [step 4/6]` | supplemental collector/repository/service regressions plus detailed probe, matrix, and regression reconciliation |
+| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | policy in `AcpPlugin.abortSession` (seam 3), including side-effect-free unsupported-`keep` rejection and child-only `keep`; `cancelChild` seam and its Grok request (seam 4); `interruptActiveWork` uses stop |
+| 🌱 | `docs: record Grok Build sub-agent coverage [step 6/6]` | final actual-plugin/client matrix and regression reconciliation |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 

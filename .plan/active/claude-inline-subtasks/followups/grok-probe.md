@@ -80,12 +80,26 @@ ordering, and enum values are recorded; no prompt or transcript text.
 
 ## Replay of the extension frames
 
-`session/load` does **not** replay `_x.ai/session_notification`. The same
-sub-agent facts come back under a different method, `_x.ai/session/update`
+Persisted `session/load` facts normally replay under `_x.ai/session/update`
 (same `{sessionId, update: {sessionUpdate, ...}}` shape): a root load replays
 `subagent_spawned`, `subagent_finished`, and `turn_completed`; a child load
 replays the child's `turn_completed`. Standard frames (`user_message_chunk`,
 `tool_call` with its terminal status) replay as ordinary `session/update`.
+A bounded 2026-09-10 cancellation probe added one ordering case: after a loaded
+unfinished episode returned its load response, authoritative settlement arrived
+through `_x.ai/session_notification`. Replay therefore consumes both Grok
+methods until the existing quiet-window drain completes.
+
+## 2026-09-10 cancellation and denial follow-up
+
+A root cancelled immediately after its spawn call still persisted typed
+`subagent_spawned` and terminal `subagent_finished {status: cancelled}`. The
+cancelled child's own fresh `session/load` succeeded but replayed no
+`user_message_chunk` or `turn_completed`; without a child-owned prompt, Sesori
+must not fabricate a tile. Intended denied/cancelled-permission attempts exposed
+zero `session/request_permission` frames because the unchanged runtime/config
+resolved interaction automatically. Denial persistence is therefore unverified:
+no permission-outcome model or generic-card replay guarantee is justified.
 
 ## Consequences for the design
 

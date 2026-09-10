@@ -86,12 +86,14 @@ signal that a tool changed files.
   decisions are process-local and are not part of replay. Backend tool names
   remain presentation data rather than shared behavior.
 - Grok uses that standard ACP lifecycle with exact live permission linkage.
-  Root history suppresses only metadata-identified `spawn_subagent` cards and
-  inserts one deterministic child-linked tile from exact child prompt and typed
-  lifecycle facts. Ordinary tools remain generic and ordered; missing prompts
+  Root history replaces only metadata-identified `spawn_subagent` tools with one
+  deterministic child-linked subtask tile, using the exact child's persisted
+  first user-message run as prompt and typed lifecycle for terminal state/output.
+  Ordinary tools remain generic and ordered around the tile; missing prompts
   produce neither a fabricated tile nor an empty assistant message. Tool-call
-  identity, terminal state, bounded output or error, and diff content otherwise
-  converge between live events and `session/load`.
+  identity, pending-to-terminal status, bounded output or error, and diff content
+  otherwise converge between live events and `session/load`; Grok tool names
+  remain presentation data and never become shared domain vocabulary.
 
 ## Regression Levels
 
@@ -115,7 +117,10 @@ verify permission linkage against the live call, then cold-replay the resulting
 call identity, terminal tool state, bounded output, and diff without expecting
 its process-local permission decision to replay. For Grok, compare read-only,
 mutating, failing, and long-output tools live and after `session/load`, including
-one permission-gated mutation and one repeated terminal update.
+one permission-gated mutation and one repeated terminal update. Reload a root
+with completed/cancelled children and each child transcript; verify prompt
+provenance, tile order, and both lifecycle extension methods. Denial remains
+unverified and carries no replay guarantee.
 
 ## Failure Signals
 
@@ -137,8 +142,10 @@ one permission-gated mutation and one repeated terminal update.
   terminal status, bounded output, or diff changes when reopened through ACP
   history.
 - A Grok tool loses live permission correlation, changes call identity or status
-  after replay, exposes unbounded output, loses diff content, or emits the wrong
-  number of file-change invalidations.
+  after replay, exposes unbounded output, loses diff content, emits the wrong
+  number of file-change invalidations, leaves a generic spawn beside its tile,
+  binds by description/order instead of child id, crosses the first prompt-run
+  boundary, or leaves an empty message after spawn suppression.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.
 - A Claude sub-agent renders as a generic `Agent` tool card, its tile stays

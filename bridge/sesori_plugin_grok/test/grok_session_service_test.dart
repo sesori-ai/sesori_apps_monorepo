@@ -111,6 +111,39 @@ void main() {
       expect(sessions.last.directory, persistedDirectory);
     });
 
+    test("history context uses persisted directory and excludes live-only children", () async {
+      File(p.join(sessionDirectory(persistedChildId), "updates.jsonl")).writeAsStringSync(
+        jsonEncode({
+          "method": "session/update",
+          "params": {
+            "sessionId": persistedChildId,
+            "update": {
+              "sessionUpdate": "user_message_chunk",
+              "content": {"type": "text", "text": "Persisted prompt"},
+            },
+          },
+        }),
+      );
+      tracker.spawn(
+        sessionId: rootId,
+        spawn: const AcpChildSpawn(
+          childSessionId: "live-only",
+          description: "Live child",
+          agent: "general-purpose",
+          prompt: "Live prompt",
+          isBackground: false,
+        ),
+        directory: persistedDirectory,
+      );
+
+      final context = await service.prepareReplayContext(
+        sessionId: rootId,
+        fallbackDirectory: "/launch-directory",
+      );
+
+      expect(context.childPrompts, {persistedChildId: "Persisted prompt"});
+    });
+
     test("derived all-session enumeration repairs a root directory even when it has no children", () {
       File(p.join(sessionDirectory(rootId), "updates.jsonl")).writeAsStringSync("");
 
