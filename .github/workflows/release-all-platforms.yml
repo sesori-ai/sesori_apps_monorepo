@@ -2,6 +2,10 @@ name: Release All Platforms
 
 run-name: "release · build ${{ github.sha }}"
 
+# Triggered by Alex's Google Cloud Scheduler at :45 UTC through the private
+# sesori-release-scheduler Cloud Run service in sesori-ai/europe-west1:
+# https://console.cloud.google.com/cloudscheduler?project=sesori-ai
+#
 # Hourly internal release: uploads iOS to TestFlight and Android to the
 # Play internal track, builds the 6-platform bridge archives, and — only when
 # EVERYTHING succeeded (all-or-nothing) — pushes a `v<X>-internal.<N>` tag and
@@ -15,10 +19,12 @@ run-name: "release · build ${{ github.sha }}"
 
 on:
   workflow_dispatch:
-  schedule:
-    # GitHub schedules use UTC and may start late. Each run builds its immutable
-    # main SHA; later merges wait for the next run.
-    - cron: '45 * * * *'
+    inputs:
+      automatic:
+        description: Apply automatic release skip guards
+        required: true
+        default: false
+        type: boolean
 
 concurrency:
   group: release-all-${{ github.ref }}
@@ -38,11 +44,16 @@ jobs:
       - uses: actions/checkout@v6
         with:
           fetch-depth: 0
+          ref: ${{ github.sha }}
 
       # Persist the attempt before version validation or store calls. Failed or
-      # cancelled builds are not retried hourly; workflow_dispatch can retry.
+      # cancelled builds are not retried automatically; a manual dispatch can retry.
       - name: Check and record release attempt
         id: gate
+        env:
+          # workflow_dispatch inputs are booleans in the inputs context. GitHub
+          # renders this environment value as the explicit string true/false.
+          RELEASE_AUTOMATIC: ${{ inputs.automatic }}
         run: bash .github/scripts/check_internal_release.sh
 
       # Fail the WHOLE run (mobile and bridge) when the committed version was

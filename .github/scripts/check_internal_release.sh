@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 # Run after a full checkout (including tags), inside release-all's concurrency
 # group. Only this workflow's main runs own the rolling attempt marker.
+# RELEASE_AUTOMATIC=true applies duplicate, released, and batch-path guards;
+# false preserves the explicit manual retry path.
 set -euo pipefail
 
 ATTEMPT_TAG="internal-release-attempt"
@@ -13,7 +15,16 @@ skip_release() {
   exit 0
 }
 
-if [[ "$GITHUB_EVENT_NAME" == "schedule" ]]; then
+case "${RELEASE_AUTOMATIC:-}" in
+  true) AUTOMATIC=true ;;
+  false) AUTOMATIC=false ;;
+  *)
+    echo "::error::RELEASE_AUTOMATIC must be 'true' or 'false'." >&2
+    exit 2
+    ;;
+esac
+
+if [[ "$AUTOMATIC" == true ]]; then
   RELEASE_TAGS=$(git tag --points-at "$GITHUB_SHA" --list 'v[0-9]*')
   if [[ -n "$RELEASE_TAGS" ]]; then
     skip_release "Commit ${GITHUB_SHA} already has a release tag: ${RELEASE_TAGS//$'\n'/, }."
@@ -64,5 +75,5 @@ fi
 echo "should_release=true" >> "$GITHUB_OUTPUT"
 {
   echo "## Internal release attempt"
-  echo "Building commit ${GITHUB_SHA}. Manual runs bypass the scheduled skip checks."
+  echo "Building commit ${GITHUB_SHA}. Manual runs bypass the automatic skip checks."
 } >> "$GITHUB_STEP_SUMMARY"
