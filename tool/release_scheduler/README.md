@@ -171,9 +171,12 @@ Cloud Run console:
 <https://console.cloud.google.com/run/detail/europe-west1/sesori-release-scheduler/metrics?project=sesori-ai>.
 Logs:
 <https://console.cloud.google.com/logs/query?project=sesori-ai>.
-Logs contain successful workflow run ID/API URL/web URL, or bounded failure
-operation/status/GitHub request ID. They omit JWTs, installation tokens, PEMs,
-exception text, and upstream response bodies.
+Logs contain successful workflow run ID/API URL/web URL, or failure
+operation/status/GitHub request ID plus diagnostic error/cause names, codes,
+messages, and stack traces. The key-signing and HTTP boundaries redact their
+actual credentials. JSON parser diagnostics omit message/stack text because it
+may quote upstream response bodies. JWTs, installation tokens, PEMs, and upstream
+response bodies remain excluded.
 
 ```bash
 # Pause or resume hourly automatic opportunities.

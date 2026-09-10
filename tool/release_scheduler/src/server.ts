@@ -1,7 +1,7 @@
 import { createServer, type IncomingMessage, type ServerResponse } from "node:http";
 import { pathToFileURL } from "node:url";
 
-import { DispatchFailure, GitHubDispatcher, type DispatchResult } from "./github_dispatcher.ts";
+import { describeError, DispatchFailure, GitHubDispatcher, type DispatchResult } from "./github_dispatcher.ts";
 
 type LogEntry = Record<string, string | number>;
 type LogWriter = (entry: LogEntry) => void;
@@ -14,8 +14,8 @@ type HandlerOptions = {
 
 export function createRequestHandler(options: HandlerOptions) {
   return async (request: IncomingMessage, response: ServerResponse): Promise<void> => {
-    const url = new URL(request.url ?? "/", "http://localhost");
-    if (url.pathname === "/health") {
+    const path = request.url?.split("?", 1)[0];
+    if (path === "/health") {
       if (request.method !== "GET") {
         writeJson({ response, status: 405, body: { status: "method_not_allowed" }, allow: "GET" });
         return;
@@ -24,7 +24,7 @@ export function createRequestHandler(options: HandlerOptions) {
       return;
     }
 
-    if (url.pathname !== "/dispatch") {
+    if (path !== "/dispatch") {
       writeJson({ response, status: 404, body: { status: "not_found" } });
       return;
     }
@@ -87,11 +87,12 @@ export function startServer(): void {
 
 function safeFailureLog(error: unknown): LogEntry {
   if (!(error instanceof DispatchFailure)) {
-    return { operation: "dispatch", code: "unexpected_error" };
+    return { operation: "dispatch", code: "unexpected_error", ...describeError({ error, redactions: [] }) };
   }
   const entry: LogEntry = {
     operation: error.operation,
     code: error.code,
+    ...error.diagnostics,
   };
   if (error.status !== undefined) {
     entry.status = error.status;

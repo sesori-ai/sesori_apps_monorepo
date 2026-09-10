@@ -8,6 +8,7 @@ export const GITHUB_REF = "main";
 
 const GITHUB_APP_ID = "4897384";
 const GITHUB_INSTALLATION_ID = "160598508";
+// This version removes return_run_details and always returns 200 with run IDs.
 const GITHUB_API_VERSION = "2026-03-10";
 const GITHUB_API_ROOT = "https://api.github.com";
 const PRIVATE_KEY_PATH = "/secrets/github-app-key.pem";
@@ -34,6 +35,7 @@ type DispatchFailureOptions = {
   status?: number | undefined;
   requestId?: string | undefined;
   cause?: unknown;
+  diagnostics: Record<string, string>;
 };
 
 export class DispatchFailure extends Error {
@@ -41,6 +43,7 @@ export class DispatchFailure extends Error {
   readonly code: string;
   readonly status: number | undefined;
   readonly requestId: string | undefined;
+  readonly diagnostics: Record<string, string>;
 
   constructor(options: DispatchFailureOptions) {
     super(`GitHub operation failed: ${options.operation}`, { cause: options.cause });
@@ -49,6 +52,7 @@ export class DispatchFailure extends Error {
     this.code = options.code;
     this.status = options.status;
     this.requestId = options.requestId;
+    this.diagnostics = options.diagnostics;
   }
 }
 
@@ -82,6 +86,7 @@ export class GitHubDispatcher {
         operation: "read_private_key",
         code: "private_key_unavailable",
         cause: error,
+        diagnostics: describeError({ error, redactions: [] }),
       });
     }
   }
@@ -154,6 +159,10 @@ export class GitHubDispatcher {
         operation: options.operation,
         code: "request_failed",
         cause: error,
+        diagnostics: describeError({
+          error,
+          redactions: [new Headers(options.init.headers).get("Authorization")!.replace(/^Bearer /, "")],
+        }),
       });
     }
     if (!response.ok) {
@@ -172,11 +181,20 @@ export function createAppJwt(options: { appId: string; nowSeconds: number; priva
     iss: options.appId,
   });
   const unsignedToken = `${header}.${payload}`;
-  const signer = createSign("RSA-SHA256");
-  signer.update(unsignedToken);
-  signer.end();
-  const signature = signer.sign(options.privateKey, "base64url");
-  return `${unsignedToken}.${signature}`;
+  try {
+    const signer = createSign("RSA-SHA256");
+    signer.update(unsignedToken);
+    signer.end();
+    const signature = signer.sign(options.privateKey, "base64url");
+    return `${unsignedToken}.${signature}`;
+  } catch (error: unknown) {
+    throw new DispatchFailure({
+      operation: "sign_app_jwt",
+      code: "private_key_invalid",
+      cause: error,
+      diagnostics: describeError({ error, redactions: [options.privateKey] }),
+    });
+  }
 }
 
 function githubHeaders(options: { authorization: string }): Record<string, string> {
@@ -203,6 +221,8 @@ async function parseJson(options: { operation: string; response: Response }): Pr
       status: options.response.status,
       requestId: readRequestId(options.response),
       cause: error,
+      // JSON parser messages may quote the response body, including a token.
+      diagnostics: { error_name: error instanceof Error ? error.name : typeof error },
     });
   }
 }
@@ -217,7 +237,32 @@ function responseFailure(options: {
     code: options.code,
     status: options.response.status,
     requestId: readRequestId(options.response),
+    diagnostics: {},
   });
+}
+
+// Native fetch errors retain DNS/TLS details in cause. Redact credentials at
+// the boundary that owns them, without discarding useful messages or frames.
+export function describeError(options: { error: unknown; redactions: readonly string[] }): Record<string, string> {
+  const diagnostics: Record<string, string> = {};
+  const errors = [options.error, options.error instanceof Error ? options.error.cause : undefined];
+  for (const [index, error] of errors.entries()) {
+    if (!(error instanceof Error)) continue;
+    const prefix = index === 0 ? "error" : "cause";
+    const fields: Record<string, string> = { name: error.name, message: error.message };
+    if (error.stack !== undefined) fields.stack = error.stack;
+    if ("code" in error && (typeof error.code === "string" || typeof error.code === "number")) {
+      fields.code = String(error.code);
+    }
+    for (const [field, value] of Object.entries(fields)) {
+      let redacted = value;
+      for (const secret of options.redactions) {
+        if (secret.length > 0) redacted = redacted.replaceAll(secret, "[REDACTED]");
+      }
+      diagnostics[`${prefix}_${field}`] = redacted;
+    }
+  }
+  return diagnostics;
 }
 
 function readRequestId(response: Response): string | undefined {

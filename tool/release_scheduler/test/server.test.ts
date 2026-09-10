@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { createServer, type Server } from "node:http";
+import { createServer, request as httpRequest, type Server } from "node:http";
 import type { AddressInfo } from "node:net";
 import test, { type TestContext } from "node:test";
 
@@ -57,6 +57,7 @@ test("dispatch failure omits secret and upstream response body details", async (
         status: 401,
         requestId: "ABCD:1234",
         cause: new Error("private-key-and-upstream-body-must-not-appear"),
+        diagnostics: { error_name: "TypeError", cause_code: "ENOTFOUND", cause_message: "api.github.com [REDACTED]" },
       });
     },
     writeLog: (entry) => logs.push(entry),
@@ -75,9 +76,30 @@ test("dispatch failure omits secret and upstream response body details", async (
       code: "http_error",
       status: 401,
       request_id: "ABCD:1234",
+      error_name: "TypeError",
+      cause_code: "ENOTFOUND",
+      cause_message: "api.github.com [REDACTED]",
     },
   ]);
   assert.doesNotMatch(JSON.stringify(logs) + responseBody, /private-key|upstream-body/);
+});
+
+test("malformed absolute-form targets return 404 without rejecting the handler", async (context) => {
+  const server = await serve(context, {
+    dispatch: async () => assert.fail("Unknown routes must not dispatch"),
+    writeLog: () => undefined,
+  });
+
+  const status = await new Promise<number | undefined>((resolve, reject) => {
+    const request = httpRequest(server, { path: "http://[", method: "GET" }, (response) => {
+      response.resume();
+      resolve(response.statusCode);
+    });
+    request.on("error", reject);
+    request.end();
+  });
+  assert.equal(status, 404);
+  assert.equal((await fetch(`${server}/health?probe=1`)).status, 200);
 });
 
 type HandlerOptions = Parameters<typeof createRequestHandler>[0];
