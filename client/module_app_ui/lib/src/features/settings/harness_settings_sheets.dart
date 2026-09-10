@@ -398,10 +398,6 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       PluginAuthenticationPresentationFailed() => throw StateError("Expected active authentication"),
     };
     final status = switch (presentation) {
-      PluginAuthenticationPresentationChallenge(
-        challenge: PluginAuthenticationUpdateRequiredPresentation(),
-      ) =>
-        loc.harnessAuthenticationUpdateRequired,
       PluginAuthenticationPresentationBrowserOpening() => loc.harnessAuthenticationOpening,
       PluginAuthenticationPresentationBrowserWaiting() => loc.harnessAuthenticationWaitingForBrowser,
       PluginAuthenticationPresentationBrowserFinalizing() => loc.harnessAuthenticationFinalizing,

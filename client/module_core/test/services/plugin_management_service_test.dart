@@ -813,6 +813,111 @@ void main() {
       await _waitFor(() => service.authenticationChallenges.value.isEmpty);
     });
 
+    test("late old-bridge start challenge cannot replace an active replacement challenge", () async {
+      final oldStart = Completer<PluginAuthenticationStartResult>();
+      final replacementChallenge = PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/replacement"),
+        userCode: "B-CHALLENGE",
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial", bridgeId: "br_a")))
+        ..queueAuthenticationStart(oldStart.future)
+        ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: replacementChallenge));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+
+      final oldResult = service.startAuthentication(pluginId: "one");
+      connection.emitStatus(const ConnectionDisconnected());
+      repository.queueLoad(_supported(_response(token: "replacement", bridgeId: "br_b")));
+      connection.emitStatus(_connected);
+      await _waitFor(() => terminals.isNotEmpty);
+      expect(terminals.single.progress, isA<PluginAuthenticationUnknownProgress>());
+      expect(await service.startAuthentication(pluginId: "one"), isA<PluginAuthenticationStartChallenge>());
+      expect(service.authenticationChallenges.value["one"], same(replacementChallenge));
+
+      oldStart.complete(
+        const PluginAuthenticationStartResult.challenge(
+          challenge: PluginAuthenticationUnsupportedChallenge(),
+        ),
+      );
+
+      expect(
+        await oldResult,
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUncertain>(),
+        ),
+      );
+      expect(service.authenticationChallenges.value["one"], same(replacementChallenge));
+      expect(terminals, hasLength(1));
+    });
+
+    test("late old-bridge start failure cannot steal pending replacement terminal coordination", () async {
+      final oldStart = Completer<PluginAuthenticationStartResult>();
+      final replacementStart = Completer<PluginAuthenticationStartResult>();
+      final replacementChallenge = PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/replacement"),
+        userCode: "B-CHALLENGE",
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial", bridgeId: "br_a")))
+        ..queueAuthenticationStart(oldStart.future)
+        ..queueAuthenticationStart(replacementStart.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(service.onDispose);
+      await _waitFor(() => service.snapshots.hasValue);
+      final terminals = <PluginAuthenticationTerminalUpdate>[];
+      service.authenticationTerminal.listen(terminals.add);
+
+      final oldResult = service.startAuthentication(pluginId: "one");
+      connection.emitStatus(const ConnectionDisconnected());
+      repository.queueLoad(_supported(_response(token: "replacement", bridgeId: "br_b")));
+      connection.emitStatus(_connected);
+      await _waitFor(() => terminals.isNotEmpty);
+      final replacementResult = service.startAuthentication(pluginId: "one");
+
+      oldStart.complete(
+        PluginAuthenticationStartResult.failed(
+          failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
+        ),
+      );
+      expect(
+        await oldResult,
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUncertain>(),
+        ),
+      );
+
+      repository.queueLoad(_supported(_response(token: "replacement-terminal", bridgeId: "br_b")));
+      connection.emitAuthenticationProgress(
+        pluginId: "one",
+        progress: const PluginAuthenticationProgress.completed(),
+      );
+      await _pump();
+      replacementStart.complete(PluginAuthenticationStartResult.challenge(challenge: replacementChallenge));
+
+      expect(await replacementResult, isA<PluginAuthenticationStartChallenge>());
+      await _waitFor(() => terminals.length == 2);
+      expect(terminals.last.progress, const PluginAuthenticationProgress.completed());
+      expect(service.authenticationChallenges.value, isEmpty);
+    });
+
     test("reconnect blocks lifecycle and timeout mutations until same-bridge identity is verified", () async {
       final refresh = Completer<PluginManagementLoadResult>();
       final active = _conflict([]).current.copyWith(authenticationState: PluginAuthenticationState.inProgress);

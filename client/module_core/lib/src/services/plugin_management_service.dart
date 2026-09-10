@@ -224,13 +224,22 @@ class PluginManagementService({
     _authenticationRequestOwners[pluginId] = (token: requestOwner, fence: captured.fence);
     _authenticationFences[pluginId] = captured.fence;
     final result = await _pluginRepository.startAuthentication(pluginId: pluginId);
-    if (identical(_authenticationRequestOwners[pluginId]?.token, requestOwner)) {
-      _authenticationRequestOwners.remove(pluginId);
-    }
-    if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
-      _forgetAuthentication(pluginId: pluginId);
+    final requestOwnership = _authenticationRequestOwners[pluginId];
+    final currentFence = _authenticationFences[pluginId];
+    final ownsStartResult =
+        identical(requestOwnership?.token, requestOwner) &&
+        requestOwnership?.fence == captured.fence &&
+        _selfStartedAuthentications.contains(pluginId) &&
+        currentFence != null &&
+        _isConnectionFenceCurrent(currentFence) &&
+        _activeBridgeIdentityKnown &&
+        captured.fence.bridgeId == _activeBridgeId &&
+        currentFence.bridgeId == captured.fence.bridgeId;
+    if (!ownsStartResult) {
+      if (identical(requestOwnership?.token, requestOwner)) _forgetAuthentication(pluginId: pluginId);
       return const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain());
     }
+    _authenticationRequestOwners.remove(pluginId);
 
     switch (result) {
       case PluginAuthenticationStartChallenge(:final challenge)
