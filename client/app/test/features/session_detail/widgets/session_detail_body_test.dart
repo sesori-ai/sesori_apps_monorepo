@@ -1013,6 +1013,33 @@ void main() {
     );
   });
 
+  for (final (name, interaction) in [
+    ("legacy", const SessionInteractionState.legacyUnverified()),
+    ("refresh-error", SessionInteractionState.available(refreshError: ApiError.generic())),
+  ]) {
+    testWidgets("archiving hides the $name harness warning", (tester) async {
+      final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        interaction: interaction,
+      );
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(cubit, states.stream, initialState: loaded);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("session_harness_settings")), findsOneWidget);
+      expect(find.byType(PromptInput), findsOneWidget);
+
+      states.add(loaded.copyWith(isArchived: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+      expect(find.text("This session is archived and read-only."), findsOneWidget);
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets("covered current routes suppress questions, permissions and notices", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();
     final permissions = StreamController<SesoriPermissionAsked>.broadcast();

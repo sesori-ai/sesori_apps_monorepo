@@ -2618,7 +2618,8 @@ class SessionDetailCubit(
   /// Under `stop` every busy child session is aborted too — plugins whose
   /// children are real sessions keep today's stop-everything behavior.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
-    if (_refuseWhenInteractionBlocked(action: "stop the session")) {
+    // A scope dialog can outlive an archive event from another surface.
+    if (_refuseWhenArchived(action: "stop the session") || _refuseWhenInteractionBlocked(action: "stop the session")) {
       return const SessionAbortOutcome.failed();
     }
     try {

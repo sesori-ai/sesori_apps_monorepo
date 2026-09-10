@@ -19,6 +19,7 @@ import "package:sesori_dart_core/src/foundation/models/session_options/session_o
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
@@ -1208,6 +1209,52 @@ void main() {
         ).called(1);
       },
     );
+
+    test("abort refuses every scope after archiving while stop confirmation is pending", () async {
+      const rejection = SessionAbortRejection(runningSubAgentCount: 2, mainAgentRunning: true);
+      when(
+        () => mockSessionRepository.abortSession(sessionId: sessionId, subAgents: SessionAbortSubAgentPolicy.confirm),
+      ).thenThrow(SessionAbortRejectedException(rejection: rejection, innerError: StateError("409")));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm), isA<SessionAbortRejected>());
+      clearInteractions(mockSessionRepository);
+      clearInteractions(mockProductAnalyticsService);
+
+      // Another surface archives the session while the scope dialog is open.
+      sessionEvents.add(
+        SesoriSessionUpdated(
+          info: testSession(id: sessionId, archivedAt: DateTime.utc(2026)),
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.isArchived,
+        description: "session archived during stop confirmation",
+      );
+      final archivedState = cubit.state;
+      expect((archivedState as SessionDetailLoaded).interaction.canInteract, isTrue);
+
+      for (final policy in SessionAbortSubAgentPolicy.values) {
+        expect(await cubit.abort(subAgents: policy), isA<SessionAbortFailed>());
+      }
+
+      expect(cubit.state, same(archivedState));
+      verifyNever(
+        () => mockSessionRepository.abortSession(
+          sessionId: any(named: "sessionId"),
+          subAgents: any(named: "subAgents"),
+        ),
+      );
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionAbortSucceeded(),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
 
     test("abort skips legacy descendant fanout after bridge acknowledgment", () async {
       const childId = "child-1";
