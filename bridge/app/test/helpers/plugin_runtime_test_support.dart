@@ -245,6 +245,60 @@ class TestPluginRuntime({
   }
 
   @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) {
+    final plugin = _plugins[pluginId];
+    if (plugin == null) {
+      return Stream.error(
+        PluginOperationException(operation.name, statusCode: 503, message: "plugin $pluginId is not running"),
+      );
+    }
+    return body(
+      PluginCatalogImportLiveSource(
+        authority: const _TestCatalogAuthority(),
+        cancellation: cancellation,
+        api: plugin,
+      ),
+    );
+  }
+
+  @override
+  void requireCatalogImportAuthority({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+  }) {
+    requireCurrentGeneration(
+      pluginId: _plugins.keys.single,
+      generation: currentGeneration,
+      operation: operation,
+    );
+  }
+
+  @override
+  Future<R> commitCatalogImport<R>({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) async {
+    requireCurrentGeneration(
+      pluginId: _plugins.keys.single,
+      generation: currentGeneration,
+      operation: operation,
+    );
+    final result = await commit();
+    requireCurrentGeneration(
+      pluginId: _plugins.keys.single,
+      generation: currentGeneration,
+      operation: operation,
+    );
+    return result;
+  }
+
+  @override
   Stream<T> useStream<T>({
     required String pluginId,
     required Enum operation,
@@ -288,6 +342,7 @@ class TestPluginRuntime({
       workState: PluginWorkState.idle,
       leaseCount: 0,
       transition: _transitions[plugin.id] ?? PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
   }
 }
@@ -309,6 +364,8 @@ class _AlwaysCurrentTestPluginRuntime() extends TestPluginRuntime {
   }) => generation == 1;
 }
 
+class const _TestCatalogAuthority() implements PluginCatalogImportAuthority;
+
 class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   @override
   Future<void> enforceBridgeOwnership() async {}
@@ -317,6 +374,7 @@ class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   Stream<PluginGenerationStartEvent> start({
     required PluginRuntimeRegistration registration,
     required StartAbortSignal startAborted,
+    required PluginGenerationResidencyController residency,
   }) => throw UnsupportedError("test runtime is already active");
 }
 

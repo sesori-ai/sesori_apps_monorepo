@@ -5,6 +5,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../foundation/antigravity_authentication_budget.dart";
 import "../models/antigravity_authentication.dart";
+import "../models/antigravity_profile.dart";
 import "../models/antigravity_runtime_resolution.dart";
 import "../services/antigravity_authentication_service.dart";
 import "../services/antigravity_profile_service.dart";
@@ -112,6 +113,11 @@ class AntigravityAuthenticationOperation({
       if (redirect case _RedirectSubmitted(:final settled)) await settled;
       _budget.remaining;
     } on Object catch (error, stackTrace) {
+      // Profile exceptions keep output out of their presentation. Preserve the
+      // underlying bounded preflight/storage diagnostics in the local log.
+      if (error case AntigravityProfileException(:final cause?)) {
+        Log.w("[antigravity] authentication profile preparation failed", cause, stackTrace);
+      }
       _fail(error: error, stackTrace: stackTrace);
     } finally {
       final redirect = _redirect;

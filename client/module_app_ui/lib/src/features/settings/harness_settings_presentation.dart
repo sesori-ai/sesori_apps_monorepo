@@ -9,7 +9,11 @@ enum _HarnessGroup() {
 
 _HarnessGroup _group({required PluginManagementMetadata plugin, required PluginInstallState? install}) {
   if (install is PluginInstallInProgress) return _HarnessGroup.notInstalled;
-  if (plugin.runtimeState == PluginRuntimeState.disabled) return _HarnessGroup.disabled;
+  // A stopping harness is winding down, not asking for attention. Group it with
+  // disabled harnesses so a toggled-off harness lands where it will settle.
+  if (plugin.runtimeState == PluginRuntimeState.disabled || plugin.runtimeState == PluginRuntimeState.stopping) {
+    return _HarnessGroup.disabled;
+  }
   if (plugin.setup.state == PluginSetupState.runtimeMissing) return _HarnessGroup.notInstalled;
   if (plugin.setup.state == PluginSetupState.ready &&
       (plugin.runtimeState == PluginRuntimeState.dormant ||
@@ -32,7 +36,9 @@ bool _canInstall({required PluginManagementMetadata plugin}) =>
     (plugin.setup.state == PluginSetupState.runtimeMissing || plugin.setup.state == PluginSetupState.unavailable);
 
 bool _showOverviewStatus({required PluginManagementMetadata plugin, required PluginInstallState? install}) {
-  if (_group(plugin: plugin, install: install) == _HarnessGroup.disabled) return false;
+  if (_group(plugin: plugin, install: install) == _HarnessGroup.disabled) {
+    return plugin.runtimeState == PluginRuntimeState.stopping;
+  }
   if (install != null || plugin.setup.state != PluginSetupState.ready) return true;
   return plugin.runtimeState != PluginRuntimeState.dormant &&
       (plugin.runtimeState != PluginRuntimeState.active || plugin.workState != PluginManagementWorkState.idle);
@@ -97,6 +103,7 @@ class const _HarnessStatus({
 class const _HarnessSwitch({
   required final PluginManagementMetadata plugin,
   required final PluginManagementActionState action,
+  required final bool blocked,
   required final PluginInstallState? install,
 }) extends StatelessWidget {
   @override
@@ -126,7 +133,6 @@ class const _HarnessSwitch({
         ),
       );
     }
-    final blocked = _controlsBlocked(action) || install is PluginInstallInProgress;
     Future<void> setEnabled({required bool enabled}) => enabled
         ? context.read<PluginManagementCubit>().enable(pluginId: plugin.setup.id)
         : context.read<PluginManagementCubit>().disable(pluginId: plugin.setup.id);

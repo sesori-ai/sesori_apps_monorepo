@@ -8,13 +8,17 @@ import "package:sesori_dart_core/src/capabilities/server_connection/connection_s
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/plugin_management/plugin_management_cubit.dart";
+import "package:sesori_dart_core/src/cubits/plugin_management/plugin_management_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/services/models/plugin_install_state.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -25,6 +29,8 @@ enum _ReconciliationInvalidation() {
   disposal,
   unsupported,
 }
+
+class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 
@@ -629,6 +635,48 @@ void main() {
       });
     }
 
+    test("cubit overlaps through the real service without losing either acknowledgment", () async {
+      final one = Completer<PluginManagementMutationResult>();
+      final two = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "initial")))
+        ..queueLoad(_supported(_response(token: "authoritative")))
+        ..queueMutation(one.future)
+        ..queueMutation(two.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      final scan = FakeCatalogRescanService();
+      final cubit = PluginManagementCubit(
+        service: service,
+        urlLauncher: _MockUrlLauncher(),
+        catalogRescanService: scan,
+      );
+      addTearDown(() async {
+        await cubit.close();
+        await scan.onDispose();
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => cubit.state is PluginManagementReady);
+      final first = cubit.enable(pluginId: "one");
+      final second = cubit.enable(pluginId: "two");
+      expect(repository.mutationCalls, 2);
+      two.complete(_success(_response(token: "second-command")));
+      await second;
+      expect((cubit.state as PluginManagementReady).harnessActions.keys, ["one"]);
+      one.complete(_success(_response(token: "stale-first-command")));
+      await first;
+      await _pump();
+      final ready = cubit.state as PluginManagementReady;
+      expect(ready.harnessActions, isEmpty);
+      expect(ready.response.snapshotToken, "authoritative");
+      expect(repository.loadCalls, 2);
+    });
+
     test("a failed reconciliation retains its typed error without losing the acknowledgment", () async {
       final mutation = Completer<PluginManagementMutationResult>();
       final error = ApiError.dartHttpClient(TimeoutException("management refresh"));
@@ -1174,6 +1222,37 @@ void main() {
       expect(repository.loadCalls, 1);
       // This surface only watched the install, so it is not its outcome to
       // report — otherwise the metric would count surfaces, not installs.
+      expect(reportedEvents, isEmpty);
+    });
+
+    test("authentication-required setup clears a stale install failure without starting login", () async {
+      final missing = _conflict([]).current
+          .copyWith(setup: _conflict([]).current.setup.copyWith(state: PluginSetupState.runtimeMissing));
+      final loginRequired = missing.copyWith(
+        setup: missing.setup.copyWith(state: PluginSetupState.authenticationRequired),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "two").copyWith(plugins: [loginRequired])));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = PluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect(service.installStates.value["one"], const PluginInstallState.failed());
+
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(service.authenticationChallenges.value, isEmpty);
       expect(reportedEvents, isEmpty);
     });
 

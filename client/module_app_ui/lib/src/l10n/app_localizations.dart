@@ -811,6 +811,12 @@ abstract class AppLocalizations {
   /// **'Custom timeouts must be a whole number greater than zero.'**
   String get harnessManagementTimeoutHelp;
 
+  /// No description provided for @harnessManagementReview.
+  ///
+  /// In en, this message translates to:
+  /// **'Review'**
+  String get harnessManagementReview;
+
   /// No description provided for @harnessManagementCancel.
   ///
   /// In en, this message translates to:
@@ -826,8 +832,8 @@ abstract class AppLocalizations {
   /// No description provided for @harnessManagementForceDisableTitle.
   ///
   /// In en, this message translates to:
-  /// **'Force disable harness?'**
-  String get harnessManagementForceDisableTitle;
+  /// **'Force disable {harnessName}?'**
+  String harnessManagementForceDisableTitle(String harnessName);
 
   /// No description provided for @harnessManagementForceRestartTitle.
   ///
@@ -3070,7 +3076,7 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailHarnessHistoryUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'Chat history cannot be loaded until the harness is available.'**
+  /// **'Chat history for this session still needs the harness. Enable it to load the transcript.'**
   String get sessionDetailHarnessHistoryUnavailable;
 
   /// No description provided for @sessionDetailHarnessRefreshWarning.

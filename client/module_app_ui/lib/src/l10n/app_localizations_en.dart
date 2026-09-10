@@ -408,13 +408,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementTimeoutHelp => 'Custom timeouts must be a whole number greater than zero.';
 
   @override
+  String get harnessManagementReview => 'Review';
+
+  @override
   String get harnessManagementCancel => 'Cancel';
 
   @override
   String get harnessManagementSave => 'Save';
 
   @override
-  String get harnessManagementForceDisableTitle => 'Force disable harness?';
+  String harnessManagementForceDisableTitle(String harnessName) {
+    return 'Force disable $harnessName?';
+  }
 
   @override
   String get harnessManagementForceRestartTitle => 'Force restart harness?';
@@ -1661,7 +1666,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';
 
   @override
-  String get sessionDetailHarnessHistoryUnavailable => 'Chat history cannot be loaded until the harness is available.';
+  String get sessionDetailHarnessHistoryUnavailable =>
+      'Chat history for this session still needs the harness. Enable it to load the transcript.';
 
   @override
   String get sessionDetailHarnessRefreshWarning =>

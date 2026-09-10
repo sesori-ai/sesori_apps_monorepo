@@ -33,7 +33,8 @@ class _Commands({required final List<String> events}) implements CommandExecutor
   bool timeoutPreflight = false;
   TimeoutException? timeoutFailure;
   StartAbortController? abortAfterPreflight;
-  final List<({String executable, List<String> arguments, Map<String, String>? environment})> calls = [];
+  final List<({String executable, List<String> arguments, Map<String, String>? environment, Duration? timeout})> calls =
+      [];
 
   @override
   Future<CommandResult> run(
@@ -43,7 +44,7 @@ class _Commands({required final List<String> events}) implements CommandExecutor
     Map<String, String>? environment,
     Duration? timeout,
   }) async {
-    calls.add((executable: executable, arguments: arguments, environment: environment));
+    calls.add((executable: executable, arguments: arguments, environment: environment, timeout: timeout));
     if (executable == "chmod") {
       events.add("chmod");
       expect(arguments.first, "700");
@@ -62,7 +63,7 @@ class _Commands({required final List<String> events}) implements CommandExecutor
     }
     events.add("preflight");
     expect(timeout, isNotNull);
-    expect(timeout! <= const Duration(seconds: 5), isTrue);
+    expect(timeout, greaterThan(Duration.zero));
     expect(arguments.last, AntigravityProfileService.browserPreflightUrl);
     if (timeoutPreflight) throw const ProcessException("synthetic", [], "timed out");
     if (timeoutFailure case final failure?) throw failure;
@@ -137,6 +138,29 @@ void main() {
     commands = _Commands(events: events);
   });
   tearDown(() => temp.deleteSync(recursive: true));
+
+  for (final timeout in [const Duration(seconds: 3), const Duration(minutes: 2)]) {
+    test("preflight uses the remaining $timeout operation budget without a separate cutoff", () async {
+      final operationBudget = AntigravityAuthenticationBudget(timeout: timeout, abortSignal: StartAbortSignal.never);
+      final storage = AntigravityProfileStorage(
+        geminiHome: home,
+        settingsStore: store,
+        commands: commands,
+        target: mac,
+      );
+      final before = operationBudget.remaining;
+      await storage.runBrowserPreflight(
+        budget: operationBudget,
+        executable: "/bridge",
+        arguments: [BrowserNoop.argument, AntigravityProfileService.browserPreflightUrl],
+        environment: {},
+      );
+      expect(commands.calls.single.timeout, lessThanOrEqualTo(before));
+      expect(commands.calls.single.timeout, greaterThanOrEqualTo(operationBudget.remaining));
+      expect(events, ["preflight"]);
+      expect(temp.listSync(), isEmpty);
+    });
+  }
 
   test("expired preparation does not dispatch and executor timeouts preserve identity", () async {
     final expired = AntigravityAuthenticationBudget(timeout: Duration.zero, abortSignal: StartAbortSignal.never);

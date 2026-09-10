@@ -4,10 +4,9 @@ import "package:test/test.dart";
 
 void main() {
   const calculator = SessionInteractionCalculator();
-  const connected = ConnectionStatus.connected(
-    config: ServerConnectionConfig(relayHost: "relay.example", authToken: null),
-    health: HealthResponse(healthy: true, version: "1.8.0", filesystemAccessDegraded: false),
-  );
+  const config = ServerConnectionConfig(relayHost: "relay.example", authToken: null);
+  const health = HealthResponse(healthy: true, version: "1.8.0", filesystemAccessDegraded: false);
+  const connected = ConnectionStatus.connected(config: config, health: health);
 
   for (final setup in PluginSetupState.values) {
     for (final runtime in PluginRuntimeState.values) {
@@ -86,43 +85,59 @@ void main() {
     );
   });
 
-  test("disconnect keeps a block; a reconnect waits for current management", () {
-    final blocked = calculator.calculate(
+  test("disconnect and reconnect preserve availability until management reports a result", () {
+    final previousStates = [
+      const SessionInteractionState.available(refreshError: null),
+      const SessionInteractionState.legacyUnverified(),
+      const SessionInteractionState.checking(),
+      for (final reason in SessionInteractionBlockedReason.values)
+        SessionInteractionState.blocked(
+          reason: reason,
+          displayName: "Test harness",
+          actionHint: null,
+          refreshError: null,
+        ),
+    ];
+    for (final status in [
+      const ConnectionStatus.disconnected(),
+      const ConnectionStatus.connectionLost(config: config),
+      const ConnectionStatus.reconnecting(config: config),
+      const ConnectionStatus.bridgeOffline(config: config, health: health),
+      connected,
+    ]) {
+      for (final result in <PluginManagementLoadResult?>[null, const PluginManagementLoadResult.loading()]) {
+        for (final previous in previousStates) {
+          expect(
+            calculator.calculate(
+              pluginId: "harness",
+              managementResult: result,
+              connectionStatus: status,
+              previous: previous,
+            ),
+            previous,
+            reason: "$status / $result must preserve $previous",
+          );
+        }
+      }
+    }
+  });
+
+  test("a confirmed disable after reconnect replaces previous availability", () {
+    final result = calculator.calculate(
       pluginId: "harness",
-      managementResult: managementFixture(
-        setup: PluginSetupState.authenticationRequired,
-        runtime: PluginRuntimeState.blocked,
-      ),
+      managementResult: managementFixture(setup: PluginSetupState.ready, runtime: PluginRuntimeState.disabled),
       connectionStatus: connected,
-      previous: null,
+      previous: const SessionInteractionState.available(refreshError: null),
     );
     expect(
-      calculator.calculate(
-        pluginId: "harness",
-        managementResult: const PluginManagementLoadResult.loading(),
-        connectionStatus: const ConnectionStatus.disconnected(),
-        previous: blocked,
+      result,
+      isA<SessionInteractionBlocked>().having(
+        (state) => state.reason,
+        "reason",
+        SessionInteractionBlockedReason.disabled,
       ),
-      blocked,
     );
-    expect(
-      calculator.calculate(
-        pluginId: "harness",
-        managementResult: const PluginManagementLoadResult.loading(),
-        connectionStatus: connected,
-        previous: const SessionInteractionState.available(refreshError: null),
-      ),
-      isA<SessionInteractionChecking>(),
-    );
-    expect(
-      calculator.calculate(
-        pluginId: "harness",
-        managementResult: null,
-        connectionStatus: const ConnectionStatus.disconnected(),
-        previous: const SessionInteractionState.checking(),
-      ),
-      isA<SessionInteractionChecking>(),
-    );
+    expect(result.canInteract, isFalse);
   });
 
   test("retained refresh error preserves the decision and original error", () {

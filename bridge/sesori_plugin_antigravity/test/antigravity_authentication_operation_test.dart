@@ -1,7 +1,9 @@
 import "dart:async";
+import "dart:io";
 
 import "package:antigravity_plugin/antigravity_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -24,6 +26,7 @@ class _Profile() implements AntigravityProfileService {
   AntigravityAuthenticationBudget? budget;
   final started = Completer<void>();
   Completer<void>? gate;
+  AntigravityProfileException? failure;
   @override
   Future<AntigravityPreparedProfile> prepare({
     required AntigravityAuthenticationBudget budget,
@@ -33,6 +36,7 @@ class _Profile() implements AntigravityProfileService {
     started.complete();
     await gate?.future;
     budget.remaining;
+    if (failure case final error?) throw error;
     return prepared;
   }
 
@@ -169,6 +173,36 @@ class _Attempt({final Duration timeout = const Duration(seconds: 2)}) {
 }
 
 void main() {
+  test("profile failures retain bounded local diagnostics without starting runtime or login", () async {
+    const diagnostics = CommandResult(
+      exitCode: 255,
+      stdout: "",
+      stderr: "Setting VM flags failed: Unrecognized flags: internal_browser_noop",
+    );
+    const failure = AntigravityProfileException(message: "Browser suppression preflight failed", cause: diagnostics);
+    final attempt = _Attempt();
+    attempt.profile.failure = failure;
+    final logs = BufferingStdout();
+    final previousLevel = Log.level;
+    try {
+      Log.level = LogLevel.debug;
+      await IOOverrides.runZoned(() async {
+        attempt.start();
+        await attempt.done.future;
+      }, stderr: () => logs);
+    } finally {
+      Log.level = previousLevel;
+    }
+    expect(attempt.errors.single.error, same(failure));
+    expect(failure.toString(), isNot(contains(diagnostics.stderr)));
+    expect(logs.text, contains(diagnostics.stderr));
+    expect(logs.text, contains("255"));
+    expect(logs.text, contains("antigravity_authentication_operation.dart"));
+    expect(attempt.runtime.calls, 0);
+    expect(attempt.authentication.started.isCompleted, isFalse);
+    expect(attempt.authentication.disposed, isTrue);
+  });
+
   test("prepares then probes then authenticates with one environment and budget; no challenge is required", () async {
     final attempt = _Attempt()..start();
     await attempt.authentication.started.future;

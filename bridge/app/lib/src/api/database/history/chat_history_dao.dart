@@ -7,6 +7,13 @@ import "tables/history_sync_state_table.dart";
 
 part "chat_history_dao.g.dart";
 
+/// One page's stored rows plus the freshness they were read with.
+typedef PagedHistoryRows = ({
+  HistorySyncStateTableData? syncState,
+  List<HistoryMessagesTableData> messages,
+  List<HistoryPartsTableData> parts,
+});
+
 @DriftAccessor(tables: [HistoryMessagesTable, HistoryPartsTable, HistorySyncStateTable])
 class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistoryDatabase> with _$ChatHistoryDaoMixin {
   Future<HistorySyncStateTableData?> getSyncState({required String sessionId}) {
@@ -42,6 +49,31 @@ class ChatHistoryDao(super.attachedDatabase) extends DatabaseAccessor<ChatHistor
               ..limit(limit))
             .get();
     return page.reversed.toList(growable: false);
+  }
+
+  /// The sync state and one page's raw rows, read from a single snapshot.
+  ///
+  /// A caller reading outside the history service's per-session queue can
+  /// otherwise have a backfill or purge commit between the three statements
+  /// and receive parts belonging to a different transcript than its messages.
+  /// The database runs in WAL mode, so this read transaction is a snapshot and
+  /// does not block that writer. Rows are returned raw: attachment
+  /// rehydration reads files, and holding the transaction across that would
+  /// stall unrelated database work for no added consistency.
+  Future<PagedHistoryRows> getPageRowsWithSyncState({
+    required String sessionId,
+    int? limit,
+    int? before,
+  }) {
+    return transaction(() async {
+      final syncState = await getSyncState(sessionId: sessionId);
+      final messages = await getMessages(sessionId: sessionId, limit: limit, before: before);
+      final parts = await getParts(
+        sessionId: sessionId,
+        messageIds: limit == null ? null : [for (final row in messages) row.messageId],
+      );
+      return (syncState: syncState, messages: messages, parts: parts);
+    });
   }
 
   /// Parts of [messageIds], or of the whole session when [messageIds] is null.

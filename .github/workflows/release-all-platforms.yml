@@ -2,8 +2,8 @@ name: Release All Platforms
 
 run-name: "release · build ${{ github.sha }}"
 
-# Per-merge internal release: uploads iOS to TestFlight and Android to the
-# Play internal track, builds the 5-platform bridge archives, and — only when
+# Hourly internal release: uploads iOS to TestFlight and Android to the
+# Play internal track, builds the 6-platform bridge archives, and — only when
 # EVERYTHING succeeded (all-or-nothing) — pushes a `v<X>-internal.<N>` tag and
 # rolls the single internal GitHub pre-release onto it (previous pre-release
 # objects are deleted; their tags are kept forever as the build-number→commit
@@ -15,22 +15,10 @@ run-name: "release · build ${{ github.sha }}"
 
 on:
   workflow_dispatch:
-  push:
-    branches: [main]
-    # Mobile-PRODUCT paths only (not blanket client/**) so future client/desktop
-    # PRs never trigger a mobile or bridge release — release-safety invariant #3.
-    paths:
-      - 'client/app/**'
-      - 'client/module_core/**'
-      - 'client/module_auth/**'
-      - 'client/module_prego/**'
-      - 'client/module_app_ui/**'
-      - 'client/pubspec.yaml'
-      - 'client/pubspec.lock'
-      - 'client/analysis_options.yaml'
-      - 'client/Makefile'
-      - 'shared/**'
-      - 'bridge/**'
+  schedule:
+    # GitHub schedules use UTC and may start late. Each run builds its immutable
+    # main SHA; later merges wait for the next run.
+    - cron: '45 * * * *'
 
 concurrency:
   group: release-all-${{ github.ref }}
@@ -38,13 +26,24 @@ concurrency:
 
 jobs:
   preflight:
-    name: Version guard
+    name: Release gate and version guard
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    permissions:
+      contents: write
     outputs:
+      should_release: ${{ steps.gate.outputs.should_release }}
       version: ${{ steps.check.outputs.version }}
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
+
+      # Persist the attempt before version validation or store calls. Failed or
+      # cancelled builds are not retried hourly; workflow_dispatch can retry.
+      - name: Check and record release attempt
+        id: gate
+        run: bash .github/scripts/check_internal_release.sh
 
       # Fail the WHOLE run (mobile and bridge) when the committed version was
       # already released/submitted: a `v<version>` tag is pushed by every beta
@@ -52,6 +51,7 @@ jobs:
       # a `tool/sync_versions.dart` bump PR must land before main can produce
       # new internal builds. Never auto-increment.
       - name: Verify versions are in sync and unreleased
+        if: steps.gate.outputs.should_release == 'true'
         id: check
         run: |
           set -euo pipefail
@@ -81,6 +81,7 @@ jobs:
   next-build-number:
     name: Resolve aligned build number
     needs: preflight
+    if: needs.preflight.outputs.should_release == 'true'
     uses: ./.github/workflows/_reusable-next-build-number.yml
     secrets:
       APP_STORE_CONNECT_API_KEY_ID: ${{ secrets.APP_STORE_CONNECT_API_KEY_ID }}
@@ -132,10 +133,10 @@ jobs:
       MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
       MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
 
-  # All-or-nothing: runs only when iOS, Android AND all five bridge targets
+  # All-or-nothing: runs only when iOS, Android AND all six bridge targets
   # succeeded, so every internal tag maps to a complete set (both store builds
-  # + all bridge binaries). On any failure nothing is tagged or published and
-  # the rolling pre-release keeps pointing at the previous good build.
+  # + all bridge binaries). On failure no release tag or release is published;
+  # the attempt marker remains and the pre-release stays on the previous build.
   finalize:
     name: Tag and roll internal pre-release
     runs-on: ubuntu-latest
@@ -241,5 +242,5 @@ jobs:
             echo "- **Version**: \`${VERSION}-internal.${BUILD_NUMBER}\`"
             echo "- **Tag**: \`${TAG}\`"
             echo "- **iOS (TestFlight)** / **Android (internal track)**: build ${BUILD_NUMBER} (iOS next: ${{ needs.next-build-number.outputs.ios_next }}, Android next: ${{ needs.next-build-number.outputs.android_next }})"
-            echo "- **Bridge pre-release**: rolled to \`${TAG}\` (5 platform archives + checksums)"
+            echo "- **Bridge pre-release**: rolled to \`${TAG}\` (6 platform archives + checksums)"
           } >> "$GITHUB_STEP_SUMMARY"

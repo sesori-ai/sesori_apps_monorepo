@@ -2,6 +2,7 @@ import "package:meta/meta.dart";
 
 import "../host/host_process_service.dart";
 import "../host/plugin_host.dart";
+import "../models/plugin_catalog_snapshot.dart";
 import "bridge_plugin.dart";
 import "plugin_activation_policy.dart";
 import "plugin_config.dart";
@@ -105,6 +106,18 @@ abstract class const BridgePluginDescriptor() {
     required Map<String, String> environment,
     required String stateDirectory,
   }) async => const PluginSetupReady();
+
+  /// Reads a complete metadata-only catalog without starting the plugin.
+  ///
+  /// Called only while the runtime slot is dormant. Implementations must avoid
+  /// process startup and backend mutation. Unavailable means the caller should
+  /// use the normal live plugin path. Unexpected read/schema failures throw so
+  /// the runtime can log the diagnostic before falling back.
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required PluginCatalogCancellationSignal cancellation,
+  }) async => const PluginCatalogSnapshotUnavailable();
 
   /// Installs this plugin's pinned managed runtime into [stateDirectory] and
   /// reports progress.

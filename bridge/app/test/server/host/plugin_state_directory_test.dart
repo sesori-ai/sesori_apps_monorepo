@@ -28,7 +28,7 @@ void main() {
     });
 
     test('OpenCode and Codex keep the frozen <cacheDirectory>/runtime directory', () {
-      const descriptors = [OpenCodePluginDescriptor(), CodexPluginDescriptor()];
+      final descriptors = [OpenCodePluginDescriptor.production(), const CodexPluginDescriptor()];
 
       for (final descriptor in descriptors) {
         expect(
@@ -48,7 +48,7 @@ void main() {
 
       expect(OpenCodePluginDescriptor.ownershipFileName, isNot(CodexPluginDescriptor.ownershipFileName));
       expect(
-        p.join(sharedDirectory, const OpenCodePluginDescriptor().id),
+        p.join(sharedDirectory, OpenCodePluginDescriptor.production().id),
         isNot(p.join(sharedDirectory, const CodexPluginDescriptor().id)),
       );
     });
