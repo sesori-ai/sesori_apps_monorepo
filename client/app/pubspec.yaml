@@ -79,10 +79,13 @@ dependencies:
   vector_graphics: ^1.2.3
   image_picker: ^1.2.3
   flutter_keyboard_visibility: ^7.0.1
+  flutter_web_auth_2: 5.1.0
 
 dev_dependencies:
   cryptography: ^2.9.0
   flutter_test:
+    sdk: flutter
+  integration_test:
     sdk: flutter
   widgetbook: 3.25.0
   no_slop_linter:

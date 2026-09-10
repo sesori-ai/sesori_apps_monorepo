@@ -29,6 +29,7 @@ void main() {
   late BehaviorSubject<PluginManagementLoadResult> snapshots;
   late BehaviorSubject<Map<String, PluginInstallState>> installStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
+  late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late PluginManagementCubit cubit;
   late _MockUrlLauncher urlLauncher;
@@ -37,7 +38,6 @@ void main() {
   setUpAll(() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
     registerFallbackValue(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 1));
-    registerFallbackValue(const PluginAuthenticationContinuationIntent.pasted(rawInput: "redirect"));
     registerFallbackValue(Uri.parse("https://example.com"));
     registerFallbackValue(UrlLaunchMode.externalApp);
   });
@@ -48,10 +48,12 @@ void main() {
     snapshots = BehaviorSubject();
     installStates = BehaviorSubject.seeded(const {});
     authenticationTerminal = StreamController.broadcast(sync: true);
+    authenticationBrowserStates = BehaviorSubject.seeded(const {}, sync: true);
     authenticationChallenges = BehaviorSubject.seeded(const {});
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
     when(() => service.installStates).thenAnswer((_) => installStates.stream);
     when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
+    when(() => service.authenticationBrowserStates).thenAnswer((_) => authenticationBrowserStates.stream);
     when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
     when(
@@ -74,11 +76,8 @@ void main() {
       ),
     );
     when(
-      () => service.submitAuthenticationRedirect(
-        pluginId: any(named: "pluginId"),
-        intent: any(named: "intent"),
-      ),
-    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.applied());
+      () => service.retryBrowserAuthentication(pluginId: any(named: "pluginId")),
+    ).thenAnswer((_) async {});
     when(
       () => service.cancelAuthentication(pluginId: any(named: "pluginId")),
     ).thenAnswer((_) async => const PluginAuthenticationCancelResult.success());
@@ -95,6 +94,7 @@ void main() {
     await snapshots.close();
     await installStates.close();
     await authenticationTerminal.close();
+    await authenticationBrowserStates.close();
     await authenticationChallenges.close();
   });
 
@@ -142,7 +142,7 @@ void main() {
     expect(cubit.state, const PluginManagementState.loading());
   });
 
-  test("browser authentication retains invalid input and serializes redirect submission", () async {
+  test("browser authentication maps service-owned retained phases", () async {
     final browserChallenge = PluginAuthenticationBrowserChallenge(
       authorizationUri: Uri.parse("https://accounts.example/authorize"),
       expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
@@ -151,39 +151,103 @@ void main() {
       () => service.startAuthentication(pluginId: "codex"),
     ).thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: browserChallenge));
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
-    authenticationChallenges.add({"codex": browserChallenge});
     await _settle();
+    authenticationChallenges.add({"codex": browserChallenge});
+    authenticationBrowserStates.add({"codex": const PluginAuthenticationBrowserOpening()});
 
     await cubit.startAuthentication(pluginId: "codex");
-    const invalidIntent = PluginAuthenticationContinuationIntent.pasted(rawInput: "invalid");
-    when(
-      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: invalidIntent),
-    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.invalidRedirect());
-    await cubit.submitAuthenticationRedirect(intent: invalidIntent);
-    final invalidState = (cubit.state as PluginManagementReady).authentication;
+    verifyNever(() => service.retryBrowserAuthentication(pluginId: "codex"));
     expect(
-      (invalidState as PluginAuthenticationPresentationChallenge).challenge,
-      isA<PluginAuthenticationInvalidRedirectPresentation>(),
+      (cubit.state as PluginManagementReady).authentication,
+      PluginAuthenticationPresentationState.browserOpening(pluginId: "codex", challenge: browserChallenge),
     );
-    const intent = PluginAuthenticationContinuationIntent.pasted(
-      rawInput: "http://127.0.0.1/callback?code=opaque",
+    authenticationBrowserStates.add({"codex": const PluginAuthenticationBrowserWaiting()});
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      PluginAuthenticationPresentationState.browserWaiting(pluginId: "codex", challenge: browserChallenge),
     );
-    final completion = Completer<PluginAuthenticationContinuationResult>();
-    when(
-      () => service.submitAuthenticationRedirect(pluginId: "codex", intent: intent),
-    ).thenAnswer((_) => completion.future);
-    final submitting = cubit.submitAuthenticationRedirect(intent: intent);
-    await cubit.submitAuthenticationRedirect(intent: intent);
-    verify(() => service.submitAuthenticationRedirect(pluginId: "codex", intent: intent)).called(1);
-    completion.complete(const PluginAuthenticationContinuationResult.applied());
-    await submitting;
+    authenticationBrowserStates.add({"codex": const PluginAuthenticationBrowserFinalizing()});
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      PluginAuthenticationPresentationState.browserFinalizing(pluginId: "codex", challenge: browserChallenge),
+    );
+
+    final launchFailure = PluginAuthenticationBrowserFlowFailed(
+      innerError: StateError("synthetic launch failure"),
+      stackTrace: StackTrace.current,
+      retryableWithActiveListener: true,
+    );
+    authenticationBrowserStates.add({
+      "codex": PluginAuthenticationBrowserRetryableFailure(failure: launchFailure),
+    });
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      PluginAuthenticationPresentationState.browserLaunchFailed(pluginId: "codex", challenge: browserChallenge),
+    );
+    await cubit.launchAuthenticationBrowser();
+    verify(() => service.retryBrowserAuthentication(pluginId: "codex")).called(1);
+
+    authenticationBrowserStates.add({
+      "codex": PluginAuthenticationBrowserFatalFailure(
+        failure: PluginAuthenticationBrowserFlowFailed(
+          innerError: TimeoutException("synthetic timeout"),
+          stackTrace: StackTrace.current,
+          retryableWithActiveListener: false,
+        ),
+      ),
+    });
+    expect(
+      (cubit.state as PluginManagementReady).authentication,
+      PluginAuthenticationPresentationState.cancelling(pluginId: "codex", challenge: browserChallenge),
+    );
 
     authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
     await _settle();
     expect(
       (cubit.state as PluginManagementReady).authentication,
-      const PluginAuthenticationPresentationState.idle(),
+      const PluginAuthenticationPresentationState.succeeded(pluginId: "codex"),
     );
+  });
+
+  for (final progress in [
+    const PluginAuthenticationProgress.completed(),
+    const PluginAuthenticationProgress.cancelled(),
+  ]) {
+    test("terminal $progress can start another login without pressing its sheet action", () async {
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+      authenticationChallenges.add({
+        "one": PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        ),
+      });
+
+      await cubit.startAuthentication(pluginId: "one");
+      authenticationTerminal.add((pluginId: "one", progress: progress));
+      await _settle();
+      await cubit.startAuthentication(pluginId: "one");
+
+      verify(() => service.startAuthentication(pluginId: "one")).called(2);
+    });
+  }
+
+  test("terminal success after sheet dismissal leaves the next login available", () async {
+    snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+    await _settle();
+    authenticationChallenges.add({
+      "one": PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+
+    await cubit.startAuthentication(pluginId: "one");
+    cubit.dismissAuthentication();
+    authenticationTerminal.add((pluginId: "one", progress: const PluginAuthenticationProgress.completed()));
+    await cubit.startAuthentication(pluginId: "one");
+
+    verify(() => service.startAuthentication(pluginId: "one")).called(2);
   });
 
   for (final progress in [
@@ -219,10 +283,12 @@ void main() {
       expect(ready.harnessControlsBlocked(pluginId: "one"), isFalse);
       if (progress is PluginAuthenticationFailedProgress) {
         expect(ready.authentication, isA<PluginAuthenticationPresentationFailed>());
-        cubit.dismissAuthentication();
+      } else if (progress is PluginAuthenticationCompletedProgress) {
+        expect(ready.authentication, isA<PluginAuthenticationPresentationSucceeded>());
       } else {
-        expect(ready.authentication, isA<PluginAuthenticationPresentationIdle>());
+        expect(ready.authentication, isA<PluginAuthenticationPresentationCancelled>());
       }
+      cubit.dismissAuthentication();
       // Admission is not success: a still-busy bridge can reject the retry.
       final conflict = PluginAuthenticationConflict(
         pluginId: "one",
@@ -301,7 +367,7 @@ void main() {
 
     expect(
       (cubit.state as PluginManagementReady).authentication,
-      const PluginAuthenticationPresentationState.idle(),
+      const PluginAuthenticationPresentationState.succeeded(pluginId: "codex"),
     );
   });
 
@@ -393,7 +459,7 @@ void main() {
     await _settle();
     expect(
       (cubit.state as PluginManagementReady).authentication,
-      const PluginAuthenticationPresentationState.idle(),
+      const PluginAuthenticationPresentationState.cancelled(pluginId: "codex"),
     );
   });
 
@@ -421,7 +487,7 @@ void main() {
 
     expect(
       (cubit.state as PluginManagementReady).authentication,
-      const PluginAuthenticationPresentationState.idle(),
+      const PluginAuthenticationPresentationState.cancelled(pluginId: "codex"),
     );
   });
 
@@ -581,6 +647,27 @@ void main() {
           ),
         },
       );
+    });
+
+    test("a recreated flow reattaches to the retained browser listener without restarting it", () async {
+      final challenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://accounts.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
+      );
+      authenticationChallenges.add({"one": challenge});
+      authenticationBrowserStates.add({"one": const PluginAuthenticationBrowserFinalizing()});
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+
+      final reopened = PluginManagementCubit(service: service, urlLauncher: urlLauncher, catalogRescanService: rescan);
+      addTearDown(reopened.close);
+      await _settle();
+
+      expect(
+        (reopened.state as PluginManagementReady).authentication,
+        PluginAuthenticationPresentationState.browserFinalizing(pluginId: "one", challenge: challenge),
+      );
+      verifyNever(() => service.retryBrowserAuthentication(pluginId: "one"));
     });
 
     test("retained install failure replays into a recreated flow cubit", () async {

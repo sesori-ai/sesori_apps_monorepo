@@ -146,12 +146,16 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
 | DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
 | Grok | Not implemented | `grok login` on the bridge machine. |
-| Antigravity | Implemented: personal Google browser OAuth | No local fallback; current client required. |
+| Antigravity | Implemented: automatic personal Google browser OAuth on mobile and desktop | No copy/paste fallback; current client required. |
 
 Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
-Codex uses the existing Sesori device-code UI; Antigravity implements the browser-return action:
-a current phone/desktop client opens Google's authorization page and returns
-the callback through Sesori. It permits personal Google OAuth only, suppresses
+Codex uses the existing Sesori device-code UI; Antigravity implements automatic browser return. Current iOS/Android
+clients use a system authentication browser and nonce-only app return; remote desktop uses exact loopback capture and
+a static return page, while desktop connected to its exact supervised bridge lets the bridge receive callback directly.
+Browser kickoff survives settings dismissal, retained phases replay on reopening, and the one callback-listener lifetime
+is bounded to five minutes; only launch failure can retry an issued challenge against that same live listener.
+Synthetic iOS Simulator and Android emulator coverage proves raw loopback-to-app return; real Google OAuth remains a
+manual verification gap. It permits personal Google OAuth only, suppresses
 the bridge host's browser, and uses the same isolated profile for login and live
 sessions. Ambient Google login is not imported. Neither row is a general API-key
 entry form or a claim of support for every provider authentication method.

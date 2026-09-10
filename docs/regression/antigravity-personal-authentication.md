@@ -13,9 +13,10 @@ credentials/token contents.
   silent no-op. Check between mutations, await an in-flight filesystem/atomic-store write, then reject cancellation
   or expired-budget success. Cancellation is checked before and after the bounded preflight; it does not immediately
   interrupt the helper. No instant cancellation of uninterruptible filesystem work is promised.
-- The generic client login-start request allows two minutes for preparation/backend challenge creation plus 30 seconds
-  of relay headroom because its timer starts before the bridge's operation budget. This replaces the ordinary
-  30-second request timeout; other plugin-management requests retain their existing deadlines.
+- The generic client shows a **Preparing sign-in…** sheet immediately, before the login-start request finishes. The
+  request still allows two minutes for preparation/backend challenge creation plus 30 seconds of relay headroom;
+  presentation does not claim or imply faster backend startup. Other plugin-management requests retain their existing
+  deadlines.
 - Scratch authentication validates the negotiated ACP version and selects only an advertised `oauth-personal`
   method before sending authentication. Incompatible protocols or other-only methods fail without auth dispatch.
   It uses the prepared environment with no
@@ -40,8 +41,27 @@ credentials/token contents.
   versus rejected statuses before service policy. HTTP delivery alone is not evidence of authenticated ACP completion.
 - The operation prepares the isolated profile, resolves/probes the runtime with that same environment and remaining
   budget, subscribes to authorization events, then authenticates. One challenge is exposed; a second fails closed.
-  Same-host/already-authenticated completion requires no remote dispatch. A remote callback is claimed once before
-  service validation/HTTP; failed dispatch does not permit replay. Callback HTTP success is not ACP login success.
+  Same-host desktop completion requires an online supervised helper whose bridge id exactly matches the management
+  response; it opens the system browser without binding the bridge-owned callback port. Remote mobile/desktop binds
+  the exact issued loopback endpoint before browser launch; bind failure opens no browser. Mobile returns through a
+  session-scoped `com.sesori.auth://complete/<nonce>` bounce containing no OAuth payload. Remote desktop serves a
+  static return-to-Sesori page. No manual URL, paste field, or Continue step exists. A remote callback is claimed once
+  before service validation/HTTP; failed dispatch does not permit replay. Callback receipt and HTTP success are only
+  finalization. Bridge terminal progress alone displays success.
+- Browser kickoff and lifetime belong to the service, so closing the settings flow while long-running preparation is
+  pending does not suppress launch. Recreated presentation replays the retained opening, waiting, finalizing,
+  retryable-launch-failure, or cancellation phase instead of guessing from the challenge. A client-owned listener and
+  callback survive sheet dismissal and a proactive mobile resume reconnect. Callback forwarding pauses while bridge
+  identity is unknown. A fresh exact same bridge id plus in-progress authentication rebases only that attempt and
+  forwards once; another bridge, missing plugin, or inactive authentication discards the callback and never claims
+  success.
+- One five-minute lifetime begins before callback binding and covers pending bind, browser return, callback receipt,
+  and same-listener launch retry. Cancellation, terminal progress, timeout, or service disposal fences pending bind,
+  closes a late session, and cannot launch a browser afterward. Only a launch failure with its original listener alive
+  may retry the issued challenge. Invalid native return, timeout, bind/callback failure, or expired listener is fatal:
+  the client retains a typed cause for privacy-safe diagnostics and cancels the backend attempt before a fresh
+  challenge.
+  Terminal events for another plugin never cancel the owned browser flow.
 - Event-stream cancellation aborts the attempt and waits for ACP, callback, and peer cleanup. Normal completion also
   waits for a callback already in flight, rather than aborting it when ACP finishes first. Closed attempts reject
   callbacks; their closures cannot dispatch through another attempt's services.
@@ -65,8 +85,15 @@ credentials/token contents.
   through real forced client closure. No Google endpoint is contacted.
 - `antigravity_profile_service_test.dart`: remaining-budget forwarding, executor timeout identity, no mutation after
   aborted preflight, and awaited atomic write before rejecting late success, in addition to the isolated-profile coverage.
-- Client `plugin_api_test.dart`: the generic login-start request forwards its explicit two-minute-plus-headroom timeout
-  and retains typed challenge/redirect/cancel contracts.
+- Client core loopback/browser/service tests use real synthetic loopback I/O to verify bind-before-open, exact path,
+  nonce-only bounce, bind failure with zero browser opens, pending-bind cancellation, one bounded lifetime, valid
+  same-listener retry, fatal invalid-return/timeout behavior, unrelated-plugin isolation, service-owned launch after
+  presentation disposal, typed failure retention, one-shot encrypted forwarding, same-bridge reconnect retention, and
+  different-bridge discard.
+- Mobile/desktop adapter and settings widget tests cover native cancellation mapping, immediate preparation, automatic
+  browser phases with visible activity, no manual redirect controls, explicit success/cancellation, terminal-sheet
+  dismissal followed by a fresh login, launch retry, and device-code preservation.
+  The generic `plugin_api_test.dart` retains typed challenge/redirect/cancel wire contracts and start timeout coverage.
 - `antigravity_authentication_operation_test.dart`: shared environment/budget, one-shot continuation, same-host
   completion, runtime rejection, callback/authorization failure, timeout/process exit, cancellation while cleanup or
   callback work is in flight, and isolation from subsequent attempts.
@@ -75,4 +102,6 @@ credentials/token contents.
 - `antigravity_acp_api_test.dart`: delayed probe/auth spawn cancellation waits for release and reaping without initialize.
 - Bridge `plugin_lifecycle_service_test.dart`: representative browser terminal event cannot trigger setup reinspection
   until stream closure; cancelled attempts also refresh setup after settling.
-- Real Google OAuth, cross-target native runtime execution and final L5 Full remain unverified.
+- Synthetic iOS Simulator and Android emulator runs verified system auth browser navigation from local fake authorize
+  endpoint through raw HTTP loopback and nonce-only custom-scheme return. No Google endpoint or account was used.
+  Real Google OAuth and final L5 Full remain unverified.

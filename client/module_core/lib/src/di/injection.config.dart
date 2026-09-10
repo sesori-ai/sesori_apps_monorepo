@@ -51,10 +51,14 @@ import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
 import 'package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart'
     as _i898;
+import 'package:sesori_dart_core/src/foundation/io/plugin_authentication_loopback_server.dart'
+    as _i456;
 import 'package:sesori_dart_core/src/foundation/io/temporary_directory_client.dart'
     as _i682;
 import 'package:sesori_dart_core/src/foundation/models/product_analytics/analytics_runtime_capability.dart'
     as _i684;
+import 'package:sesori_dart_core/src/foundation/platform/active_bridge_locality.dart'
+    as _i1023;
 import 'package:sesori_dart_core/src/foundation/platform/analytics_client.dart'
     as _i791;
 import 'package:sesori_dart_core/src/foundation/platform/analytics_release_cutoff_source.dart'
@@ -69,6 +73,8 @@ import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.d
     as _i65;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
     as _i957;
+import 'package:sesori_dart_core/src/foundation/platform/plugin_authentication_browser.dart'
+    as _i732;
 import 'package:sesori_dart_core/src/foundation/platform/temporary_directory_provider.dart'
     as _i800;
 import 'package:sesori_dart_core/src/platform/lifecycle_source.dart' as _i903;
@@ -151,6 +157,8 @@ import 'package:sesori_dart_core/src/services/notification_preferences_service.d
     as _i906;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
+import 'package:sesori_dart_core/src/services/plugin_authentication_browser_service.dart'
+    as _i674;
 import 'package:sesori_dart_core/src/services/plugin_management_service.dart'
     as _i110;
 import 'package:sesori_dart_core/src/services/product_analytics_preference_service.dart'
@@ -189,6 +197,9 @@ extension GetItInjectableX on _i174.GetIt {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
     gh.lazySingleton<_i64.ComposerDraftStorage>(
       () => _i64.ComposerDraftStorage(),
+    );
+    gh.lazySingleton<_i456.PluginAuthenticationLoopbackServer>(
+      () => _i456.PluginAuthenticationLoopbackServer(),
     );
     gh.lazySingleton<_i913.NewSessionSelectionTracker>(
       () => _i913.NewSessionSelectionTracker(),
@@ -245,6 +256,12 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i901.ChatInputModeStore>(
       () => _i901.ChatInputModeStore(secureStorage: gh<_i442.SecureStorage>()),
+    );
+    gh.lazySingleton<_i674.PluginAuthenticationBrowserService>(
+      () => _i674.PluginAuthenticationBrowserService(
+        loopbackServer: gh<_i456.PluginAuthenticationLoopbackServer>(),
+        browser: gh<_i732.PluginAuthenticationBrowser>(),
+      ),
     );
     gh.lazySingleton<_i258.InstalledAppBuildApi>(
       () => _i258.InstalledAppBuildApi(
@@ -491,6 +508,16 @@ extension GetItInjectableX on _i174.GetIt {
         routeSource: gh<_i366.RouteSource>(),
       ),
     );
+    gh.lazySingleton<_i110.PluginManagementService>(
+      () => _i110.PluginManagementService(
+        pluginRepository: gh<_i337.PluginRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+        authenticationBrowserService:
+            gh<_i674.PluginAuthenticationBrowserService>(),
+        activeBridgeLocality: gh<_i1023.ActiveBridgeLocality>(),
+      ),
+    );
     gh.lazySingleton<_i102.BridgeSettingsRepository>(
       () => _i102.BridgeSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
@@ -557,11 +584,11 @@ extension GetItInjectableX on _i174.GetIt {
         capture: gh<_i359.VoiceCapture>(),
       ),
     );
-    gh.lazySingleton<_i110.PluginManagementService>(
-      () => _i110.PluginManagementService(
+    gh.lazySingleton<_i572.CatalogRescanService>(
+      () => _i572.CatalogRescanService(
         pluginRepository: gh<_i337.PluginRepository>(),
+        managementService: gh<_i110.PluginManagementService>(),
         connectionService: gh<_i369.ConnectionService>(),
-        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
       ),
     );
     gh.lazySingleton<_i72.MessageThumbnailCacheService>(
@@ -570,13 +597,6 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i572.CatalogRescanService>(
-      () => _i572.CatalogRescanService(
-        pluginRepository: gh<_i337.PluginRepository>(),
-        managementService: gh<_i110.PluginManagementService>(),
-        connectionService: gh<_i369.ConnectionService>(),
-      ),
     );
     return this;
   }

@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
 import "package:rxdart/rxdart.dart";
@@ -23,6 +21,7 @@ class PluginManagementCubit({
       ..add(_service.snapshots.listen((snapshot) => _onSnapshot(snapshot: snapshot)))
       ..add(_service.installStates.listen((installs) => _onInstallStates(installs: installs)))
       ..add(_service.authenticationTerminal.listen(_onAuthenticationTerminal))
+      ..add(_service.authenticationBrowserStates.listen(_onAuthenticationBrowserStates))
       ..add(_catalogRescanService.state.listen(_onCatalogScan));
   }
 
@@ -45,7 +44,9 @@ class PluginManagementCubit({
     final current = state;
     if (isClosed || current is! PluginManagementReady) return;
     if (current.authentication is! PluginAuthenticationPresentationIdle &&
-        current.authentication is! PluginAuthenticationPresentationFailed) {
+        current.authentication is! PluginAuthenticationPresentationFailed &&
+        current.authentication is! PluginAuthenticationPresentationSucceeded &&
+        current.authentication is! PluginAuthenticationPresentationCancelled) {
       return;
     }
     if (current.harnessControlsBlocked(pluginId: pluginId)) return;
@@ -68,16 +69,7 @@ class PluginManagementCubit({
     switch (result) {
       case PluginAuthenticationStartChallenge():
         final challenge = _service.authenticationChallenges.valueOrNull?[pluginId];
-        final presentation = switch (challenge) {
-          final PluginAuthenticationDeviceCodeChallenge challenge =>
-            PluginAuthenticationChallengePresentation.deviceCode(challenge: challenge),
-          final PluginAuthenticationBrowserChallenge challenge => PluginAuthenticationChallengePresentation.browser(
-            challenge: challenge,
-          ),
-          final PluginAuthenticationUnsupportedChallenge challenge =>
-            PluginAuthenticationChallengePresentation.updateRequired(challenge: challenge),
-          null => null,
-        };
+        final presentation = challenge == null ? null : _presentationForChallenge(challenge);
         if (presentation == null) {
           _setAuthenticationFailure(
             pluginId: pluginId,
@@ -86,7 +78,13 @@ class PluginManagementCubit({
           return;
         }
         _setAuthentication(
-          PluginAuthenticationPresentationState.challenge(pluginId: pluginId, challenge: presentation),
+          challenge is PluginAuthenticationBrowserChallenge
+              ? _browserPresentation(
+                  pluginId: pluginId,
+                  challenge: challenge,
+                  browserState: _service.authenticationBrowserStates.valueOrNull?[pluginId],
+                )
+              : PluginAuthenticationPresentationState.challenge(pluginId: pluginId, challenge: presentation),
         );
       case PluginAuthenticationStartFailed(:final failure):
         _setAuthenticationFailure(
@@ -101,118 +99,38 @@ class PluginManagementCubit({
     if (isClosed || current is! PluginManagementReady) return;
     final challenge = _authenticationChallengeData(current.authentication);
     if (challenge == null) return;
-    final authorizationUri = switch (challenge.challenge) {
-      PluginAuthenticationDeviceCodeChallenge(:final verificationUri) => verificationUri,
-      PluginAuthenticationBrowserChallenge(:final authorizationUri) => authorizationUri,
-      PluginAuthenticationUnsupportedChallenge() => null,
-    };
-    if (authorizationUri == null) return;
-    final generation = _authenticationGeneration;
-    bool launched;
-    try {
-      launched = await _urlLauncher.launch(authorizationUri);
-    } on Object {
-      launched = false;
-    }
-    if (isClosed || launched || generation != _authenticationGeneration) return;
-    final latest = state;
-    if (latest is! PluginManagementReady) return;
-    final authentication = latest.authentication;
-    if (authentication case PluginAuthenticationPresentationChallenge(:final challenge)
-        when challenge is! PluginAuthenticationDeviceCodePresentation &&
-            challenge is! PluginAuthenticationBrowserPresentation &&
-            challenge is! PluginAuthenticationInvalidRedirectPresentation) {
-      return;
-    }
-    if (authentication is! PluginAuthenticationPresentationChallenge &&
-        authentication is! PluginAuthenticationPresentationBrowserLaunchFailedState) {
-      return;
-    }
-    final latestChallenge = _authenticationChallengeData(latest.authentication);
-    if (latestChallenge?.pluginId != challenge.pluginId || latestChallenge?.challenge != challenge.challenge) return;
-    _setAuthentication(
-      PluginAuthenticationPresentationState.browserLaunchFailed(
-        pluginId: challenge.pluginId,
-        challenge: challenge.challenge,
-      ),
-    );
-  }
-
-  Future<void> submitAuthenticationRedirect({required PluginAuthenticationContinuationIntent intent}) async {
-    final current = state;
-    if (isClosed || current is! PluginManagementReady) return;
-    if (current.authentication case PluginAuthenticationPresentationChallenge(
-      challenge: PluginAuthenticationRedirectSubmittingPresentation() ||
-          PluginAuthenticationRedirectSubmittedPresentation(),
-    )) {
-      return;
-    }
-    final challenge = _authenticationChallengeData(current.authentication);
-    if (challenge == null) return;
-    final browserChallenge = challenge.challenge;
-    if (browserChallenge is! PluginAuthenticationBrowserChallenge) return;
-    final generation = _authenticationGeneration;
-    final submission = _service.submitAuthenticationRedirect(pluginId: challenge.pluginId, intent: intent);
-    _setAuthentication(
-      PluginAuthenticationPresentationState.challenge(
-        pluginId: challenge.pluginId,
-        challenge: PluginAuthenticationChallengePresentation.redirectSubmitting(challenge: browserChallenge),
-      ),
-    );
-    final result = await submission;
-    if (isClosed || generation != _authenticationGeneration) return;
-    final authentication = switch (state) {
-      PluginManagementReady(:final authentication) => authentication,
-      PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => null,
-    };
-    if (authentication is! PluginAuthenticationPresentationChallenge || authentication.pluginId != challenge.pluginId) {
-      return;
-    }
-    final presentation = authentication.challenge;
-    if (presentation is! PluginAuthenticationRedirectSubmittingPresentation ||
-        presentation.challenge != browserChallenge) {
-      return;
-    }
-
-    switch (result) {
-      case PluginAuthenticationContinuationApplied() ||
-          PluginAuthenticationContinuationUncertain() ||
-          PluginAuthenticationContinuationRejected(
-            reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
-          ):
+    switch (challenge.challenge) {
+      case PluginAuthenticationBrowserChallenge():
+        if (current.authentication is PluginAuthenticationPresentationBrowserLaunchFailedState) {
+          await _service.retryBrowserAuthentication(pluginId: challenge.pluginId);
+        }
+      case PluginAuthenticationDeviceCodeChallenge(:final verificationUri):
+        final generation = _authenticationGeneration;
+        bool launched;
+        try {
+          launched = await _urlLauncher.launch(verificationUri);
+        } on Object {
+          launched = false;
+        }
+        if (isClosed || launched || generation != _authenticationGeneration) return;
+        final latest = state;
+        if (latest is! PluginManagementReady) return;
+        final latestChallenge = _authenticationChallengeData(latest.authentication);
+        if (latestChallenge?.pluginId != challenge.pluginId || latestChallenge?.challenge != challenge.challenge) {
+          return;
+        }
+        if (latest.authentication is! PluginAuthenticationPresentationChallenge &&
+            latest.authentication is! PluginAuthenticationPresentationBrowserLaunchFailedState) {
+          return;
+        }
         _setAuthentication(
-          PluginAuthenticationPresentationState.challenge(
+          PluginAuthenticationPresentationState.browserLaunchFailed(
             pluginId: challenge.pluginId,
-            challenge: PluginAuthenticationChallengePresentation.redirectSubmitted(challenge: browserChallenge),
+            challenge: challenge.challenge,
           ),
         );
-      case PluginAuthenticationContinuationInvalidRedirect():
-        _setAuthentication(
-          PluginAuthenticationPresentationState.challenge(
-            pluginId: challenge.pluginId,
-            challenge: PluginAuthenticationChallengePresentation.invalidRedirect(challenge: browserChallenge),
-          ),
-        );
-      case PluginAuthenticationContinuationNotFound():
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: const PluginAuthenticationPresentationError.notFound(),
-        );
-      case PluginAuthenticationContinuationRejected(reason: PluginAuthenticationContinuationRejection.noActive):
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: const PluginAuthenticationPresentationError.notFound(),
-        );
-      case PluginAuthenticationContinuationRejected(reason: PluginAuthenticationContinuationRejection.wrongKind):
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: const PluginAuthenticationPresentationError.invalidChallenge(),
-        );
-      case PluginAuthenticationContinuationRequestFailure(:final error):
-        _setAuthenticationFailure(
-          pluginId: challenge.pluginId,
-          error: PluginAuthenticationPresentationError.request(error: error),
-        );
+      case PluginAuthenticationUnsupportedChallenge():
+        return;
     }
   }
 
@@ -609,7 +527,7 @@ class PluginManagementCubit({
               PluginManagementReady(:final authentication) => authentication,
               PluginManagementLoading() ||
               PluginManagementUnsupported() ||
-              PluginManagementFailure() => const PluginAuthenticationPresentationState.idle(),
+              PluginManagementFailure() => _reattachedAuthentication(),
             },
             installs: installs,
             // Re-read from the service for the same reason as installs: a scan
@@ -634,6 +552,23 @@ class PluginManagementCubit({
     }
   }
 
+  PluginAuthenticationPresentationState _reattachedAuthentication() {
+    final challenges = _service.authenticationChallenges.valueOrNull;
+    if (challenges == null || challenges.isEmpty) return const PluginAuthenticationPresentationState.idle();
+    final entry = challenges.entries.first;
+    return switch (entry.value) {
+      final PluginAuthenticationBrowserChallenge challenge => _browserPresentation(
+        pluginId: entry.key,
+        challenge: challenge,
+        browserState: _service.authenticationBrowserStates.valueOrNull?[entry.key],
+      ),
+      final PluginAuthenticationChallenge challenge => PluginAuthenticationPresentationState.challenge(
+        pluginId: entry.key,
+        challenge: _presentationForChallenge(challenge),
+      ),
+    };
+  }
+
   void _onAuthenticationTerminal(PluginAuthenticationTerminalUpdate update) {
     if (isClosed) return;
     final current = state;
@@ -642,16 +577,24 @@ class PluginManagementCubit({
     final currentPluginId = switch (authentication) {
       PluginAuthenticationPresentationStarting(:final pluginId) ||
       PluginAuthenticationPresentationChallenge(:final pluginId) ||
+      PluginAuthenticationPresentationBrowserOpening(:final pluginId) ||
+      PluginAuthenticationPresentationBrowserWaiting(:final pluginId) ||
+      PluginAuthenticationPresentationBrowserFinalizing(:final pluginId) ||
       PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId) ||
       PluginAuthenticationPresentationCancelling(:final pluginId) ||
       PluginAuthenticationPresentationCancellingUncertain(:final pluginId) => pluginId,
-      PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => null,
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationSucceeded() ||
+      PluginAuthenticationPresentationCancelled() ||
+      PluginAuthenticationPresentationFailed() => null,
     };
     if (currentPluginId != update.pluginId) return;
     _authenticationGeneration++;
     switch (update.progress) {
-      case PluginAuthenticationCompletedProgress() || PluginAuthenticationCancelledProgress():
-        _setAuthentication(const PluginAuthenticationPresentationState.idle());
+      case PluginAuthenticationCompletedProgress():
+        _setAuthentication(PluginAuthenticationPresentationState.succeeded(pluginId: update.pluginId));
+      case PluginAuthenticationCancelledProgress():
+        _setAuthentication(PluginAuthenticationPresentationState.cancelled(pluginId: update.pluginId));
       case PluginAuthenticationFailedProgress(:final message):
         _setAuthenticationFailure(
           pluginId: update.pluginId,
@@ -663,6 +606,23 @@ class PluginManagementCubit({
           error: const PluginAuthenticationPresentationError.uncertain(),
         );
     }
+  }
+
+  void _onAuthenticationBrowserStates(Map<String, PluginAuthenticationBrowserState> browserStates) {
+    if (isClosed) return;
+    final current = state;
+    if (current is! PluginManagementReady) return;
+    final data = _authenticationChallengeData(current.authentication);
+    final challenge = switch (data?.challenge) {
+      final PluginAuthenticationBrowserChallenge challenge => challenge,
+      PluginAuthenticationDeviceCodeChallenge() || PluginAuthenticationUnsupportedChallenge() || null => null,
+    };
+    if (data == null || challenge == null) return;
+    final browserState = browserStates[data.pluginId];
+    if (browserState == null) return;
+    _setAuthentication(
+      _browserPresentation(pluginId: data.pluginId, challenge: challenge, browserState: browserState),
+    );
   }
 
   void _setAuthentication(PluginAuthenticationPresentationState authentication) {
@@ -771,16 +731,69 @@ class PluginManagementCubit({
     pluginId: pluginId,
     challenge: challenge.challenge,
   ),
+  PluginAuthenticationPresentationBrowserOpening(:final pluginId, :final challenge) ||
+  PluginAuthenticationPresentationBrowserWaiting(:final pluginId, :final challenge) ||
+  PluginAuthenticationPresentationBrowserFinalizing(:final pluginId, :final challenge) => (
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
   PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId, :final challenge) ||
   PluginAuthenticationPresentationCancelling(:final pluginId, :final challenge) ||
-  PluginAuthenticationPresentationCancellingUncertain(
-    :final pluginId,
-    :final challenge,
-  ) => (pluginId: pluginId, challenge: challenge),
+  PluginAuthenticationPresentationCancellingUncertain(:final pluginId, :final challenge) => (
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
   PluginAuthenticationPresentationIdle() ||
   PluginAuthenticationPresentationStarting() ||
+  PluginAuthenticationPresentationSucceeded() ||
+  PluginAuthenticationPresentationCancelled() ||
   PluginAuthenticationPresentationFailed() => null,
 };
+
+PluginAuthenticationPresentationState _browserPresentation({
+  required String pluginId,
+  required PluginAuthenticationBrowserChallenge challenge,
+  required PluginAuthenticationBrowserState? browserState,
+}) => switch (browserState) {
+  PluginAuthenticationBrowserOpening() => PluginAuthenticationPresentationState.browserOpening(
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
+  PluginAuthenticationBrowserWaiting() ||
+  null => PluginAuthenticationPresentationState.browserWaiting(pluginId: pluginId, challenge: challenge),
+  PluginAuthenticationBrowserFinalizing() => PluginAuthenticationPresentationState.browserFinalizing(
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
+  PluginAuthenticationBrowserCancelling() => PluginAuthenticationPresentationState.cancelling(
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
+  PluginAuthenticationBrowserCancellingUncertain() => PluginAuthenticationPresentationState.cancellingUncertain(
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
+  PluginAuthenticationBrowserRetryableFailure() => PluginAuthenticationPresentationState.browserLaunchFailed(
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
+  PluginAuthenticationBrowserFatalFailure() => PluginAuthenticationPresentationState.cancelling(
+    pluginId: pluginId,
+    challenge: challenge,
+  ),
+};
+
+PluginAuthenticationChallengePresentation _presentationForChallenge(PluginAuthenticationChallenge challenge) =>
+    switch (challenge) {
+      final PluginAuthenticationDeviceCodeChallenge challenge => PluginAuthenticationChallengePresentation.deviceCode(
+        challenge: challenge,
+      ),
+      final PluginAuthenticationBrowserChallenge challenge => PluginAuthenticationChallengePresentation.browser(
+        challenge: challenge,
+      ),
+      final PluginAuthenticationUnsupportedChallenge challenge =>
+        PluginAuthenticationChallengePresentation.updateRequired(challenge: challenge),
+    };
 
 /// The plugin and action a conflict may be force-retried with. Non-null only
 /// where the caller can offer that retry, so a force action can never travel
