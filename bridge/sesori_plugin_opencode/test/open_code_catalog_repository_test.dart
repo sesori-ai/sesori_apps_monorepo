@@ -133,6 +133,58 @@ void main() {
       );
     });
 
+    test("retains non-global roots outside aliases with descendants and timestamps", () async {
+      final database = sqlite3.open(databasePath);
+      _createSchema(database: database);
+      _insertProject(database: database, id: "real", worktree: "${temporaryDirectory.path}/repo");
+      database.execute(
+        "INSERT INTO session(id,project_id,parent_id,directory,title,time_created,time_updated,time_archived) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        [
+          "external-root",
+          "real",
+          null,
+          "${temporaryDirectory.path}/external-root",
+          "External root",
+          100,
+          110,
+          120,
+        ],
+      );
+      database.execute(
+        "INSERT INTO session(id,project_id,parent_id,directory,title,time_created,time_updated,time_archived) "
+        "VALUES(?,?,?,?,?,?,?,?)",
+        [
+          "external-child",
+          "real",
+          "external-root",
+          "${temporaryDirectory.path}/external-root",
+          "External child",
+          101,
+          111,
+          121,
+        ],
+      );
+      database.close();
+
+      final result = await _repository().read(
+        environment: {"OPENCODE_DB": databasePath, "HOME": temporaryDirectory.path},
+        cancellation: const _NeverCancelled(),
+      );
+
+      final family = (result as PluginCatalogSnapshotAvailable).snapshot.projects.single;
+      expect(family.project.directory, "${temporaryDirectory.path}/repo");
+      expect(family.sessions.map((session) => session.id), unorderedEquals(["external-root", "external-child"]));
+      final root = family.sessions.singleWhere((session) => session.id == "external-root");
+      expect(root.directory, "${temporaryDirectory.path}/external-root");
+      expect(root.parentID, isNull);
+      expect(root.time?.archived, 120);
+      final child = family.sessions.singleWhere((session) => session.id == "external-child");
+      expect(child.directory, "${temporaryDirectory.path}/external-root");
+      expect(child.parentID, "external-root");
+      expect(child.time?.archived, 121);
+    });
+
     test("retains archived-only global families with descendants and timestamps", () async {
       final database = sqlite3.open(databasePath);
       _createSchema(database: database);
