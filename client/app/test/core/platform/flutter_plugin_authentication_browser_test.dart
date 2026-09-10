@@ -38,6 +38,27 @@ void main() {
     );
   });
 
+  test("maps an invalid native return to a closed safe reason", () async {
+    when(
+      () => client.authenticate(
+        url: any(named: "url"),
+        callbackUrlScheme: any(named: "callbackUrlScheme"),
+      ),
+    ).thenAnswer((_) async => "http://[");
+
+    expect(
+      await browser.open(
+        authorizationUri: Uri.parse("https://provider.example/authorize"),
+        callbackScheme: "com.sesori.auth",
+      ),
+      isA<PluginAuthenticationBrowserFailed>().having(
+        (result) => result.innerError,
+        "safe reason",
+        PluginAuthenticationBrowserFailureReason.invalidNativeReturn,
+      ),
+    );
+  });
+
   test("maps native cancel distinctly from launch failure", () async {
     when(
       () => client.authenticate(

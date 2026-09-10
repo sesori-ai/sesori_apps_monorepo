@@ -212,6 +212,56 @@ void main() {
   for (final progress in [
     const PluginAuthenticationProgress.completed(),
     const PluginAuthenticationProgress.cancelled(),
+    const PluginAuthenticationProgress.failed(message: "Provider rejected authentication"),
+  ]) {
+    test("active browser login preserves terminal $progress across failed reconnect refresh", () async {
+      final browserChallenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://accounts.example/authorize"),
+        expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
+      );
+      when(
+        () => service.startAuthentication(pluginId: "codex"),
+      ).thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: browserChallenge));
+      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
+      await _settle();
+      authenticationChallenges.add({"codex": browserChallenge});
+      authenticationBrowserStates.add({"codex": const PluginAuthenticationBrowserWaiting()});
+      await cubit.startAuthentication(pluginId: "codex");
+
+      final refreshError = ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null);
+      snapshots.add(PluginManagementLoadResult.failure(error: refreshError));
+      await _settle();
+
+      final failedRefresh = cubit.state as PluginManagementReady;
+      expect(failedRefresh.refresh, PluginManagementRefreshState.failed(error: refreshError));
+      expect(failedRefresh.authentication, isA<PluginAuthenticationPresentationBrowserWaiting>());
+
+      authenticationTerminal.add((pluginId: "codex", progress: progress));
+      snapshots.add(
+        PluginManagementLoadResult.supported(
+          response: _response.copyWith(snapshotToken: "recovered"),
+          refreshError: null,
+        ),
+      );
+      await _settle();
+
+      final recovered = cubit.state as PluginManagementReady;
+      expect(recovered.response.snapshotToken, "recovered");
+      expect(
+        recovered.authentication,
+        switch (progress) {
+          PluginAuthenticationCompletedProgress() => isA<PluginAuthenticationPresentationSucceeded>(),
+          PluginAuthenticationCancelledProgress() => isA<PluginAuthenticationPresentationCancelled>(),
+          PluginAuthenticationFailedProgress() => isA<PluginAuthenticationPresentationFailed>(),
+          PluginAuthenticationUnknownProgress() => throw StateError("Unexpected test progress"),
+        },
+      );
+    });
+  }
+
+  for (final progress in [
+    const PluginAuthenticationProgress.completed(),
+    const PluginAuthenticationProgress.cancelled(),
   ]) {
     test("terminal $progress can start another login without pressing its sheet action", () async {
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));

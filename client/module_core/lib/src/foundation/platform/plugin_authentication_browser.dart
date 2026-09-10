@@ -1,3 +1,24 @@
+/// Closed client-owned failures whose synthesized descriptions are safe to log.
+/// All other browser causes must remain opaque.
+enum PluginAuthenticationBrowserFailureReason() implements Exception {
+  callbackListenerInactive,
+  callbackListenerUnavailable,
+  callbackListenerClosed,
+  invalidNativeReturn,
+  unexpectedExternalReturn,
+  bridgeRejectedCallback;
+
+  @override
+  String toString() => switch (this) {
+    callbackListenerInactive => "Authentication callback listener is no longer active",
+    callbackListenerUnavailable => "Authentication callback listener is unavailable",
+    callbackListenerClosed => "Authentication callback listener closed before receiving a callback",
+    invalidNativeReturn => "Native authentication returned an invalid callback",
+    unexpectedExternalReturn => "External browser returned an unexpected callback",
+    bridgeRejectedCallback => "Bridge rejected captured authentication callback",
+  };
+}
+
 sealed class const PluginAuthenticationBrowserResult();
 
 final class const PluginAuthenticationBrowserOpened() extends PluginAuthenticationBrowserResult;

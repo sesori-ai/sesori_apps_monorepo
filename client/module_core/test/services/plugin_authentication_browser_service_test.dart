@@ -313,9 +313,13 @@ void main() {
     );
 
     expect(first, isA<PluginAuthenticationBrowserFlowFailed>());
-    expect((first as PluginAuthenticationBrowserFlowFailed).retryableWithActiveListener, isFalse);
+    final firstFailure = first as PluginAuthenticationBrowserFlowFailed;
+    expect(firstFailure.innerError, PluginAuthenticationBrowserFailureReason.invalidNativeReturn);
+    expect(firstFailure.retryableWithActiveListener, isFalse);
     expect(retry, isA<PluginAuthenticationBrowserFlowFailed>());
-    expect((retry as PluginAuthenticationBrowserFlowFailed).retryableWithActiveListener, isFalse);
+    final retryFailure = retry as PluginAuthenticationBrowserFlowFailed;
+    expect(retryFailure.innerError, PluginAuthenticationBrowserFailureReason.callbackListenerInactive);
+    expect(retryFailure.retryableWithActiveListener, isFalse);
     expect(browser.opens, 1);
     final rebound = await ServerSocket.bind(InternetAddress.loopbackIPv4, port);
     await rebound.close();

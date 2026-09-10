@@ -365,7 +365,7 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
       case PluginAuthenticationPresentationFailed(:final pluginId, :final error):
         return _failureContent(
           context: context,
-          pluginId: pluginId,
+          pluginId: error is PluginAuthenticationPresentationUncertain ? null : pluginId,
           message: _authenticationErrorDescription(context: context, error: error),
         );
       case PluginAuthenticationPresentationIdle():

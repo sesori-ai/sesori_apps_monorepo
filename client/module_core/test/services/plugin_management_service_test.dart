@@ -12,6 +12,7 @@ import "package:sesori_dart_core/src/cubits/plugin_management/plugin_management_
 import "package:sesori_dart_core/src/cubits/plugin_management/plugin_management_state.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/platform/active_bridge_locality.dart";
+import "package:sesori_dart_core/src/foundation/platform/plugin_authentication_browser.dart";
 import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
@@ -330,6 +331,79 @@ void main() {
         ),
       );
     });
+
+    for (final diagnostic in [
+      (
+        name: "closed safe reason",
+        failure: PluginAuthenticationBrowserFlowFailed(
+          innerError: PluginAuthenticationBrowserFailureReason.callbackListenerUnavailable,
+          stackTrace: StackTrace.current,
+          retryableWithActiveListener: false,
+        ),
+        expected: "Authentication callback listener is unavailable",
+        forbidden: const <String>[],
+      ),
+      (
+        name: "opaque unknown error",
+        failure: PluginAuthenticationBrowserFlowFailed(
+          innerError: const FormatException(
+            "private-code must stay hidden",
+            "https://provider.example/callback?state=private-state",
+          ),
+          stackTrace: StackTrace.current,
+          retryableWithActiveListener: false,
+        ),
+        expected: "Authentication browser failure (FormatException)",
+        forbidden: const ["private-code", "private-state", "provider.example"],
+      ),
+    ]) {
+      test("browser diagnostics retain ${diagnostic.name}", () async {
+        final challenge = PluginAuthenticationBrowserChallenge(
+          authorizationUri: Uri.parse("https://provider.example/authorize"),
+          expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+        );
+        final repository = _FakePluginRepository()
+          ..queueLoad(_supported(_response(token: "initial")))
+          ..queueAuthenticationStart(PluginAuthenticationStartResult.challenge(challenge: challenge))
+          ..queueAuthenticationCancel(const PluginAuthenticationCancelResult.success());
+        final connection = _FakeConnectionService(initialStatus: _connected);
+        final browserService = _MockPluginAuthenticationBrowserService();
+        when(browserService.cancelActive).thenAnswer((_) async => null);
+        when(
+          () => browserService.authenticate(
+            challenge: any(named: "challenge"),
+            isLocalBridge: any(named: "isLocalBridge"),
+            reuseActiveListener: any(named: "reuseActiveListener"),
+            onPhase: any(named: "onPhase"),
+            onDetachedFailure: any(named: "onDetachedFailure"),
+          ),
+        ).thenAnswer((_) async => diagnostic.failure);
+        final service = PluginManagementService(
+          pluginRepository: repository,
+          connectionService: connection,
+          productAnalyticsService: analytics,
+          authenticationBrowserService: browserService,
+          activeBridgeLocality: const _RemoteBridgeLocality(),
+        );
+        addTearDown(service.onDispose);
+        final logs = <String>[];
+
+        await runZoned(
+          () async {
+            await _waitFor(() => service.snapshots.hasValue);
+            await service.startAuthentication(pluginId: "one");
+            await _waitFor(() => repository.authenticationCancelCalls == 1);
+          },
+          zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logs.add(line)),
+        );
+
+        final output = logs.join("\n");
+        expect(output, contains(diagnostic.expected));
+        for (final forbidden in diagnostic.forbidden) {
+          expect(output, isNot(contains(forbidden)));
+        }
+      });
+    }
 
     test("cancel cleanup bridge replacement fences DELETE from the replacement attempt", () async {
       final cleanup = Completer<PluginAuthenticationBrowserFlowFailed?>();

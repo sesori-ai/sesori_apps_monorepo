@@ -470,7 +470,7 @@ class PluginManagementService({
           PluginAuthenticationContinuationRequestFailure():
         _heldAuthenticationCallbacks.remove(pluginId);
         final failure = PluginAuthenticationBrowserFlowFailed(
-          innerError: StateError("Bridge rejected captured authentication callback"),
+          innerError: PluginAuthenticationBrowserFailureReason.bridgeRejectedCallback,
           stackTrace: StackTrace.current,
           retryableWithActiveListener: false,
         );
@@ -1258,6 +1258,7 @@ final class _AuthenticationRequestToken();
 final class _AuthenticationBrowserDiagnosticError({required final Object innerError}) {
   @override
   String toString() => switch (innerError) {
+    final PluginAuthenticationBrowserFailureReason reason => reason.toString(),
     final PluginAuthenticationBrowserPlatformException error => error.toString(),
     SocketException(:final osError, :final address, :final port) =>
       "Authentication socket failure (${osError?.toString()}; address=${address?.address}; port=${port?.toString()})",

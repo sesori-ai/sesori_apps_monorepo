@@ -54,8 +54,10 @@ credentials/token contents.
   callback survive sheet dismissal and a proactive mobile resume reconnect. Callback forwarding pauses while bridge
   identity is unknown. A fresh exact same bridge id plus in-progress authentication rebases only that attempt and
   forwards once; another bridge, missing plugin, or inactive authentication discards the callback and never claims
-  success. Reconnect also gates lifecycle and idle-timeout mutations until the fresh management response verifies the
-  bridge id; retained snapshots never authorize a mutation while identity is unknown.
+  success. A failed reconnect refresh preserves only an already-active authentication presentation, so terminal
+  success, cancellation, or failure arriving before a later supported snapshot remains visible. The service snapshot
+  stays failed: reconnect still gates lifecycle and idle-timeout mutations until a fresh management response verifies
+  the bridge id, and retained UI metadata never authorizes a mutation while identity is unknown.
 - One five-minute lifetime begins before callback binding and covers pending bind, browser return, callback receipt,
   and same-listener launch retry. Cancellation, terminal progress, timeout, or service disposal fences pending bind,
   closes a late session, and cannot launch a browser afterward. Cancellation retains its original connection/bridge
@@ -69,7 +71,8 @@ credentials/token contents.
   plugin never cancel the owned browser flow.
 - An unsupported retained challenge shows only update-required guidance plus cancellation; it never shows browser
   verification instructions or an Open button. A dismissed terminal failure followed by a new start reopens the
-  preparation sheet, matching success/cancel restart behavior.
+  preparation sheet, matching success/cancel restart behavior. An uncertain start remains owned and shows its
+  uncertainty plus Close without offering a duplicate-start Retry; definitive failures retain Retry.
 - Event-stream cancellation aborts the attempt and waits for ACP, callback, and peer cleanup. Normal completion also
   waits for a callback already in flight, rather than aborting it when ACP finishes first. Closed attempts reject
   callbacks; their closures cannot dispatch through another attempt's services.
@@ -96,13 +99,14 @@ credentials/token contents.
 - Client core loopback/browser/service tests use real synthetic loopback I/O to verify bind-before-open, exact path,
   nonce-only bounce, bind failure with zero browser opens, pending-bind cancellation, one bounded lifetime, valid
   same-listener retry, fatal invalid-return/timeout behavior, unrelated-plugin isolation, service-owned launch after
-  presentation disposal, typed failure retention, one-shot encrypted forwarding, fence-safe delayed cleanup,
-  same-bridge cancellation reissue, identity-gated management mutations, same-bridge reconnect retention, and
-  different-bridge discard.
+  presentation disposal, closed privacy-safe diagnostic reasons with opaque unknown causes, typed failure retention,
+  one-shot encrypted forwarding, fence-safe delayed cleanup, same-bridge cancellation reissue, identity-gated
+  management mutations, same-bridge reconnect retention, failed-refresh terminal presentation, and different-bridge
+  discard.
 - Mobile/desktop adapter and settings widget tests cover native cancellation mapping, immediate preparation, automatic
   browser phases with visible activity, no manual redirect controls, update-required unsupported challenges, explicit
-  success/cancellation, terminal-sheet dismissal followed by a fresh login or preparation retry, launch retry, and
-  device-code preservation.
+  success/cancellation, terminal-sheet dismissal followed by a fresh login or preparation retry, no duplicate Retry
+  for uncertain owned starts, safe invalid-native-return classification, launch retry, and device-code preservation.
   The generic `plugin_api_test.dart` retains typed challenge/redirect/cancel wire contracts and start timeout coverage.
 - `antigravity_authentication_operation_test.dart`: shared environment/budget, one-shot continuation, same-host
   completion, runtime rejection, callback/authorization failure, timeout/process exit, cancellation while cleanup or

@@ -59,7 +59,7 @@ class PluginAuthenticationBrowserService({
       final active = _active;
       if (active == null || active.challenge != challenge || active.session == null || active.ended.isCompleted) {
         return PluginAuthenticationBrowserFlowFailed(
-          innerError: StateError("Authentication callback listener is no longer active"),
+          innerError: PluginAuthenticationBrowserFailureReason.callbackListenerInactive,
           stackTrace: StackTrace.current,
           retryableWithActiveListener: false,
         );
@@ -201,7 +201,7 @@ class PluginAuthenticationBrowserService({
     final session = operation.session;
     if (session == null) {
       return PluginAuthenticationBrowserFlowFailed(
-        innerError: StateError("Authentication callback listener is unavailable"),
+        innerError: PluginAuthenticationBrowserFailureReason.callbackListenerUnavailable,
         stackTrace: StackTrace.current,
         retryableWithActiveListener: false,
       );
@@ -244,7 +244,7 @@ class PluginAuthenticationBrowserService({
           );
         case PluginAuthenticationBrowserOpened() || PluginAuthenticationBrowserReturned():
           return PluginAuthenticationBrowserFlowFailed(
-            innerError: StateError("Native authentication returned an invalid callback"),
+            innerError: PluginAuthenticationBrowserFailureReason.invalidNativeReturn,
             stackTrace: StackTrace.current,
             retryableWithActiveListener: false,
           );
@@ -263,7 +263,7 @@ class PluginAuthenticationBrowserService({
           );
         case PluginAuthenticationBrowserReturned():
           return PluginAuthenticationBrowserFlowFailed(
-            innerError: StateError("External browser returned an unexpected callback"),
+            innerError: PluginAuthenticationBrowserFailureReason.unexpectedExternalReturn,
             stackTrace: StackTrace.current,
             retryableWithActiveListener: false,
           );
@@ -277,7 +277,7 @@ class PluginAuthenticationBrowserService({
         callbackUri: uri,
       ),
       _OperationValue(value: _CallbackReceived()) => PluginAuthenticationBrowserFlowFailed(
-        innerError: StateError("Authentication callback listener closed before receiving a callback"),
+        innerError: PluginAuthenticationBrowserFailureReason.callbackListenerClosed,
         stackTrace: StackTrace.current,
         retryableWithActiveListener: false,
       ),

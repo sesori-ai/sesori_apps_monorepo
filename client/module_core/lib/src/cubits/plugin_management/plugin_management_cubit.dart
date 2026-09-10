@@ -548,7 +548,32 @@ class PluginManagementCubit({
       case PluginManagementLoadResultUnsupported():
         emit(const PluginManagementState.unsupported());
       case PluginManagementLoadResultFailure(:final error):
-        emit(PluginManagementState.failure(error: error));
+        final current = state;
+        final authenticationIsActive = switch (current) {
+          PluginManagementReady(:final authentication) => switch (authentication) {
+            PluginAuthenticationPresentationStarting() ||
+            PluginAuthenticationPresentationChallenge() ||
+            PluginAuthenticationPresentationBrowserOpening() ||
+            PluginAuthenticationPresentationBrowserWaiting() ||
+            PluginAuthenticationPresentationBrowserFinalizing() ||
+            PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+            PluginAuthenticationPresentationCancelling() ||
+            PluginAuthenticationPresentationCancellingUncertain() ||
+            PluginAuthenticationPresentationFailed(error: PluginAuthenticationPresentationUncertain()) => true,
+            PluginAuthenticationPresentationIdle() ||
+            PluginAuthenticationPresentationSucceeded() ||
+            PluginAuthenticationPresentationCancelled() ||
+            PluginAuthenticationPresentationFailed() => false,
+          },
+          PluginManagementLoading() || PluginManagementUnsupported() || PluginManagementFailure() => false,
+        };
+        if (current is PluginManagementReady && authenticationIsActive) {
+          // Keep the terminal listener attached to an active login. The service
+          // still owns the failed snapshot and rejects mutations until recovery.
+          emit(current.copyWith(refresh: PluginManagementRefreshState.failed(error: error)));
+        } else {
+          emit(PluginManagementState.failure(error: error));
+        }
     }
   }
 

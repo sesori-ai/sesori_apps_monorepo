@@ -627,6 +627,14 @@ void main() {
     expect(find.text("The provider page will open after the bridge prepares this sign-in."), findsOneWidget);
     start.complete(const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()));
     await tester.pumpAndSettle();
+
+    expect(
+      find.text("The connection changed before the result could be confirmed. Refresh before trying again."),
+      findsWidgets,
+    );
+    expect(find.byKey(const Key("harness_authentication_retry")), findsNothing);
+    expect(find.byKey(const Key("harness_authentication_close")), findsOneWidget);
+    verify(() => service.startAuthentication(pluginId: "codex")).called(1);
   });
 
   testWidgets("cancel waits and terminal cancellation remains explicit until Close", (tester) async {

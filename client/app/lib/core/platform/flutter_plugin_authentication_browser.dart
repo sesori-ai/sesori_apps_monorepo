@@ -25,7 +25,7 @@ class FlutterPluginAuthenticationBrowser({required FlutterWebAuthClient client})
       final callbackUri = Uri.tryParse(callback);
       return callbackUri == null
           ? PluginAuthenticationBrowserFailed(
-              innerError: const FormatException("Native authentication returned an invalid callback"),
+              innerError: PluginAuthenticationBrowserFailureReason.invalidNativeReturn,
               stackTrace: StackTrace.current,
             )
           : PluginAuthenticationBrowserReturned(callbackUri: callbackUri);
