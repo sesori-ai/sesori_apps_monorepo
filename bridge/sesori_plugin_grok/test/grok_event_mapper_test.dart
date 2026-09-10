@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:grok_plugin/src/api/models/grok_session_notification_dto.dart";
 import "package:grok_plugin/src/grok_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -136,7 +137,7 @@ void main() {
       expect(
         mapper.map(
           const AcpNotification(
-            method: GrokEventMapper.sessionNotificationMethod,
+            method: GrokSessionProtocol.notificationMethod,
             params: {
               "sessionId": _root,
               "update": {"sessionUpdate": "subagent_spawned", "subagent_id": "", "child_session_id": ""},
@@ -223,7 +224,7 @@ void main() {
       final tile = _subtask(
         mapper.map(
           const AcpNotification(
-            method: GrokEventMapper.sessionNotificationMethod,
+            method: GrokSessionProtocol.notificationMethod,
             params: {
               "sessionId": _root,
               "update": {
@@ -243,7 +244,7 @@ void main() {
       expect(
         mapper.map(
           const AcpNotification(
-            method: GrokEventMapper.sessionNotificationMethod,
+            method: GrokSessionProtocol.notificationMethod,
             params: {
               "sessionId": _root,
               "update": {"sessionUpdate": "turn_completed", "stop_reason": "end_turn"},
@@ -255,7 +256,7 @@ void main() {
       expect(
         mapper.map(
           const AcpNotification(
-            method: GrokEventMapper.sessionNotificationMethod,
+            method: GrokSessionProtocol.notificationMethod,
             params: {
               "sessionId": _root,
               "update": {"sessionUpdate": "subagent_spawned", "subagent_id": 7},

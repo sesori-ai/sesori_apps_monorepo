@@ -13,7 +13,7 @@ class GrokSessionService({
   required final GrokSessionHistoryRepository _historyRepository,
   required final AcpChildSessionTracker _liveTracker,
 }) {
-  GrokSessionReplayContext prepareReplayContext({
+  Future<GrokSessionReplayContext> prepareReplayContext({
     required String sessionId,
     required String fallbackDirectory,
   }) => _historyRepository.prepareReplayContext(

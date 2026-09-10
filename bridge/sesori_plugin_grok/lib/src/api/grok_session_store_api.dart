@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -104,16 +105,46 @@ class GrokSessionStoreApi({
     final file = File(p.join(_sessionDirectory(project: project, sessionId: sessionId), updatesFileName));
     if (!file.existsSync()) return const [];
     final updates = <GrokPersistedUpdateDto>[];
+    var lineNumber = 0;
     for (final line in file.readAsLinesSync()) {
+      lineNumber++;
       if (line.trim().isEmpty) continue;
-      try {
-        updates.add(GrokPersistedUpdateDto.fromJson(jsonDecodeMap(line)));
-      } on Object catch (error, stackTrace) {
-        Log.w("[$pluginId] retaining unreadable session update boundary at ${file.path}", error, stackTrace);
-        updates.add(const GrokPersistedUpdateDto.unknown());
-      }
+      updates.add(_parseUpdate(line: line, file: file, lineNumber: lineNumber));
     }
     return updates;
+  }
+
+  /// Lazily streams typed persisted updates for history consumers. Cancelling
+  /// iteration closes the file stream without reading the remaining transcript.
+  Stream<GrokPersistedUpdateDto> streamUpdates({required String cwd, required String sessionId}) async* {
+    final project = _projectDirectory(cwd: cwd);
+    if (project == null) return;
+    final file = File(p.join(_sessionDirectory(project: project, sessionId: sessionId), updatesFileName));
+    if (!file.existsSync()) return;
+    var lineNumber = 0;
+    await for (final line in file.openRead().transform(utf8.decoder).transform(const LineSplitter())) {
+      lineNumber++;
+      if (line.trim().isEmpty) continue;
+      yield _parseUpdate(line: line, file: file, lineNumber: lineNumber);
+    }
+  }
+
+  GrokPersistedUpdateDto _parseUpdate({
+    required String line,
+    required File file,
+    required int lineNumber,
+  }) {
+    try {
+      return GrokPersistedUpdateDto.fromJson(jsonDecodeMap(line));
+    } on Object catch (error, stackTrace) {
+      final safeError = error is FormatException ? FormatException(error.message, null, error.offset) : error;
+      Log.w(
+        "[$pluginId] retaining unreadable session update boundary at ${file.path}, line $lineNumber",
+        safeError,
+        stackTrace,
+      );
+      return const GrokPersistedUpdateDto.unknown();
+    }
   }
 
   /// The `subagent_spawned` records [sessionId] persisted, in file order.

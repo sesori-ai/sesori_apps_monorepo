@@ -311,11 +311,11 @@ abstract class AcpPlugin({
   /// variant state; harnesses with a session-specific variant may override.
   String? replayVariantForSession({required String sessionId}) => null;
 
-  /// Creates replay-local mapping after directory attribution is warmed but
-  /// before the dedicated replay process starts. Harnesses may prepare
+  /// Creates a replay-local collector after directory attribution is warmed
+  /// but before the dedicated replay process starts. Harnesses may prepare
   /// immutable context and wrap one correctly configured standard collector;
   /// they must not read or mutate live mapper/tracker state.
-  Future<AcpSessionReplayMapper> createSessionReplayMapper({
+  Future<AcpSessionReplayCollector> createSessionReplayCollector({
     required String sessionId,
     required AcpReplayCollectorFactory collectorFactory,
   }) async => collectorFactory(toolPartSuppression: null);
@@ -2098,8 +2098,8 @@ abstract class AcpPlugin({
           toolPartReplacement: null,
           toolPartSuppression: toolPartSuppression,
         );
-    late final AcpSessionReplayMapper replayMapper;
-    List<PluginMessageWithParts> buildReplay() => replayMapper.buildWithAssistantSelection(
+    late final AcpSessionReplayCollector replayCollector;
+    List<PluginMessageWithParts> buildReplay() => replayCollector.buildWithAssistantSelection(
       modelId: eventMapper.modelForSession(sessionId: sessionId),
       providerId: eventMapper.providerForSession(sessionId: sessionId),
       variant: replayVariantForSession(sessionId: sessionId),
@@ -2115,7 +2115,7 @@ abstract class AcpPlugin({
     }
 
     try {
-      replayMapper = await createSessionReplayMapper(
+      replayCollector = await createSessionReplayCollector(
         sessionId: sessionId,
         collectorFactory: collectorFactory,
       );
@@ -2138,7 +2138,7 @@ abstract class AcpPlugin({
       );
       sub = replayClient.notifications.listen((notification) {
         received++;
-        replayMapper.consumeNotification(notification: notification);
+        replayCollector.consumeNotification(notification: notification);
         if (notification.method == AcpMethods.sessionUpdate) {
           final update = notification.params["update"];
           if (update is Map && update["sessionUpdate"] == "available_commands_update") {

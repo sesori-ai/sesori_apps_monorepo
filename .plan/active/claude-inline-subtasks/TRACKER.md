@@ -792,3 +792,12 @@ Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-successor-ready` (`8a2952f318`) remain
 untouched. No runtime pin, native source, client/shared contract, database, or
 stop behavior changed in cleanup #1396.
+
+Grok Step 3 review follow-up renamed the new stateful replay seam and Grok
+implementation from mapper to collector, moved shared protocol classification
+below the live/replay collectors, and made history prompt discovery consume
+lazy typed records with first-run cancellation. Step 4 branch
+`claude-inline-subtasks-grok-history-coverage-step4` remains untouched at
+`fb47206bd`; before delivery it must update replay-collector file/class imports,
+await repository/service history APIs, and carry its supplemental collector,
+repository, service, malformed-boundary, and missing-prompt coverage forward.

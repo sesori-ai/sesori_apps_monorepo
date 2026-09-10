@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/grok_acp_api.dart";
 import "api/grok_session_store_api.dart";
+import "api/models/grok_session_notification_dto.dart";
 import "grok_binary.dart";
 import "grok_event_mapper.dart";
 import "grok_identity.dart";
@@ -10,7 +11,7 @@ import "repositories/grok_catalog_repository.dart";
 import "repositories/grok_session_catalog_repository.dart";
 import "repositories/grok_session_config_repository.dart";
 import "repositories/grok_session_history_repository.dart";
-import "repositories/mappers/grok_session_replay_mapper.dart";
+import "repositories/mappers/grok_session_replay_collector.dart";
 import "services/grok_session_options_service.dart";
 import "services/grok_session_service.dart";
 import "trackers/grok_catalog_tracker.dart";
@@ -128,18 +129,18 @@ class GrokPlugin._({
       _grokSessionOptionsService.reasoningEffortForSession(sessionId: sessionId);
 
   @override
-  Future<AcpSessionReplayMapper> createSessionReplayMapper({
+  Future<AcpSessionReplayCollector> createSessionReplayCollector({
     required String sessionId,
     required AcpReplayCollectorFactory collectorFactory,
   }) async {
-    final context = _sessionService.prepareReplayContext(
+    final context = await _sessionService.prepareReplayContext(
       sessionId: sessionId,
       fallbackDirectory: directoryForSession(sessionId: sessionId),
     );
-    return GrokSessionReplayMapper(
+    return GrokSessionReplayCollector(
       sessionId: sessionId,
       standardCollector: collectorFactory(
-        toolPartSuppression: GrokEventMapper.isSpawnSubagentUpdate,
+        toolPartSuppression: GrokSessionProtocol.isSpawnSubagentUpdate,
       ),
       context: context,
     );
@@ -194,8 +195,8 @@ class GrokPlugin._({
   @override
   bool isResumeReplayNotification(AcpNotification notification) =>
       super.isResumeReplayNotification(notification) ||
-      notification.method == GrokEventMapper.sessionUpdateMethod ||
-      notification.method == GrokEventMapper.sessionNotificationMethod;
+      notification.method == GrokSessionProtocol.updateMethod ||
+      notification.method == GrokSessionProtocol.notificationMethod;
 
   // Grok's `session/list` is verified to return roots only. Child parentage is
   // added by [_sessionService] after the root list is mapped, avoiding a

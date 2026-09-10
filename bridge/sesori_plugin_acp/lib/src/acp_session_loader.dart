@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "acp_event_mapper.dart" show AcpHaltNotice, AcpSessionUpdateNormalizer;
+import "acp_protocol.dart" show AcpMethods;
 import "acp_stdio_client.dart" show AcpNotification;
 import "repositories/mappers/acp_content_mapper.dart";
 import "repositories/trackers/acp_content_tracker.dart";
@@ -18,10 +19,10 @@ typedef AcpReplayCollectorFactory = AcpReplayCollector Function({
 });
 typedef _AcpReplayAssistantSelection = ({String? modelId, String? providerId, String? variant});
 
-/// Maps replay-process notifications into one immutable session history.
+/// Collects replay-process notifications into one immutable session history.
 /// Harness implementations may consume extension notifications while the
 /// default collector accepts only standard `session/update` frames.
-abstract interface class AcpSessionReplayMapper() {
+abstract interface class AcpSessionReplayCollector() {
   void consumeNotification({required AcpNotification notification});
 
   List<PluginMessageWithParts> buildWithAssistantSelection({
@@ -66,7 +67,7 @@ class AcpReplayCollector({
   /// harness-specific replay entry owns its presentation. Kept separate from
   /// [toolPartReplacement] so DeepSeek's null-means-generic contract remains.
   required final AcpReplayToolPartSuppression? toolPartSuppression,
-}) implements AcpSessionReplayMapper {
+}) implements AcpSessionReplayCollector {
   static const AcpContentMapper _contentMapper = AcpContentMapper();
 
   final List<_Draft> _drafts = [];
@@ -79,7 +80,7 @@ class AcpReplayCollector({
 
   @override
   void consumeNotification({required AcpNotification notification}) {
-    if (notification.method == "session/update") consume(notification.params);
+    if (notification.method == AcpMethods.sessionUpdate) consume(notification.params);
   }
 
   void consume(Map<String, dynamic> rawParams) {

@@ -92,8 +92,11 @@ reconnect or restart.
   before the next prompt without duplicating replay into the live stream. Sesori
   uses the public protocol and never reads Copilot credential or history files.
 - Grok history uses standard ACP `session/load` on a dedicated short-lived
-  connection. Root replay rebuilds deterministic child-linked tiles from typed
-  persisted lifecycle and each exact child's first non-empty user-message run;
+  connection. Historical `_x.ai/session/update` and standard `session/update`
+  frames are suppressed from the live stream only during the load window;
+  extension frames received outside it remain live. Root replay rebuilds
+  deterministic child-linked tiles from typed persisted lifecycle and each
+  exact child's first non-empty user-message run;
   child ids load their own standard transcript. Missing child prompts produce no
   tile. Replay stamps the loaded model/provider/effort selection and never reads
   or mutates live child state.

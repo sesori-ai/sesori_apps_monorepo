@@ -2,24 +2,23 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../api/models/grok_session_notification_dto.dart";
-import "../../grok_event_mapper.dart";
 import "../models/grok_session_replay_context.dart";
 import "grok_subagent_status_mapping.dart";
 
-/// Pure replay-local Grok lifecycle mapper. Standard ACP reconstruction stays
-/// in one collector, preserving its identity allocator across inserted tiles.
-class GrokSessionReplayMapper({
+/// Stateful replay-local Grok lifecycle collector. Standard ACP reconstruction
+/// stays in one collector, preserving its identity allocator across inserted tiles.
+class GrokSessionReplayCollector({
   required final String sessionId,
   required final AcpReplayCollector standardCollector,
   required final GrokSessionReplayContext context,
-}) implements AcpSessionReplayMapper {
+}) implements AcpSessionReplayCollector {
   final Map<String, _GrokReplayTile> _tilesByChild = {};
 
   @override
   void consumeNotification({required AcpNotification notification}) {
     standardCollector.consumeNotification(notification: notification);
-    if (notification.method != GrokEventMapper.sessionUpdateMethod &&
-        notification.method != GrokEventMapper.sessionNotificationMethod) {
+    if (notification.method != GrokSessionProtocol.updateMethod &&
+        notification.method != GrokSessionProtocol.notificationMethod) {
       return;
     }
     final GrokSessionNotificationDto dto;
@@ -39,7 +38,7 @@ class GrokSessionReplayMapper({
         _spawn(
           childSessionId: childSessionId,
           description: description,
-          agent: subagentType ?? GrokEventMapper.defaultSubagentType,
+          agent: subagentType ?? GrokSessionProtocol.defaultSubagentType,
         );
       case GrokSubagentFinished(
         :final childSessionId,

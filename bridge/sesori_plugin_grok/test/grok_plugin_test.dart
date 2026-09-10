@@ -6,7 +6,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:grok_plugin/grok_plugin.dart";
 import "package:grok_plugin/src/api/grok_acp_api.dart";
-import "package:grok_plugin/src/grok_event_mapper.dart";
+import "package:grok_plugin/src/api/models/grok_session_notification_dto.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -506,7 +506,7 @@ void main() {
       final load = await waitForFrame(method: AcpMethods.sessionLoad);
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionUpdateMethod,
+        "method": GrokSessionProtocol.updateMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -523,7 +523,7 @@ void main() {
 
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionNotificationMethod,
+        "method": GrokSessionProtocol.notificationMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -536,7 +536,7 @@ void main() {
       });
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionNotificationMethod,
+        "method": GrokSessionProtocol.notificationMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -552,7 +552,7 @@ void main() {
       expect(plugin.childSessionTracker.hasRootHold(sessionId: "stored"), isTrue);
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionUpdateMethod,
+        "method": GrokSessionProtocol.updateMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -962,7 +962,7 @@ void main() {
         })
         ..emit({
           "jsonrpc": "2.0",
-          "method": GrokEventMapper.sessionUpdateMethod,
+          "method": GrokSessionProtocol.updateMethod,
           "params": {
             "sessionId": "root",
             "update": {
@@ -982,7 +982,7 @@ void main() {
       await Future<void>.delayed(const Duration(milliseconds: 50));
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionNotificationMethod,
+        "method": GrokSessionProtocol.notificationMethod,
         "params": {
           "sessionId": "root",
           "update": {

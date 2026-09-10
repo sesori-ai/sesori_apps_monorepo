@@ -1,9 +1,34 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../../models/grok_subagent_status.dart";
 
 part "grok_session_notification_dto.freezed.dart";
 part "grok_session_notification_dto.g.dart";
+
+/// Grok session-extension protocol facts shared by live and replay collectors.
+abstract final class GrokSessionProtocol() {
+  static const String notificationMethod = "_x.ai/session_notification";
+  static const String updateMethod = "_x.ai/session/update";
+  static const String spawnSubagentToolName = "spawn_subagent";
+  static const String defaultSubagentType = "general-purpose";
+  static const String autonomousTurnPromptPrefix = "subagent-completed-";
+
+  /// Exact typed classifier for the generic tool call replaced by Grok's
+  /// lifecycle-owned subtask tile.
+  // ignore: no_slop_linter/prefer_specific_type, ACP update payload is open JSON
+  static bool isSpawnSubagentUpdate({required Map<String, dynamic> update}) {
+    final rawMeta = update["_meta"];
+    if (rawMeta is! Map) return false;
+    try {
+      // ignore: no_slop_linter/prefer_specific_type, generated DTO accepts JSON maps
+      return GrokToolCallMetaDto.fromJson(rawMeta.cast<String, dynamic>()).tool?.name == spawnSubagentToolName;
+    } on Object catch (error, stackTrace) {
+      Log.w("[grok] tool call metadata could not be parsed; rendering a tool card", error, stackTrace);
+      return false;
+    }
+  }
+}
 
 /// Params shared by Grok Build's live `_x.ai/session_notification` and
 /// replay/autonomous `_x.ai/session/update` forms: the owning session and an

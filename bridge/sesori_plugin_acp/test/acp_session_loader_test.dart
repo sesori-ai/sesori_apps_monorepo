@@ -11,6 +11,37 @@ void main() {
   group("AcpReplayCollector", () {
     Map<String, dynamic> upd(Map<String, dynamic> body) => {"update": body};
 
+    test("collects only canonical session update notifications", () {
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
+        sessionId: "s1",
+        agentId: "ACP",
+        initialUserMessageId: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: null,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      final params = {
+        "sessionId": "s1",
+        "update": {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "Prompt"},
+        },
+      };
+
+      collector
+        ..consumeNotification(
+          notification: AcpNotification(method: "foreign/update", params: params),
+        )
+        ..consumeNotification(
+          notification: AcpNotification(method: AcpMethods.sessionUpdate, params: params),
+        );
+
+      expect(collector.build(), hasLength(1));
+    });
+
     final assistantParityCases = <({String name, List<Map<String, dynamic>> updates})>[
       (
         name: "mixed content in one chunk",
