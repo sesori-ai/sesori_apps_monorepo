@@ -351,6 +351,19 @@ class SessionDetailCubit(
             return _SessionRefreshResult.closed;
           case SessionDetailLoadResultLoaded(:final snapshot):
             _waitingForConnection = false;
+            // Nothing stored and the bridge says the harness still owes it: an
+            // empty chat would claim this session has no history, when the
+            // truth is that reading it needs the harness the user must enable.
+            // Eligibility that arrived meanwhile makes it retryable instead,
+            // and the recovery refresh below does exactly that.
+            if (snapshot.awaitingHarnessSync && snapshot.messages.isEmpty && !_interaction.canInteract) {
+              _clearBufferedEvents();
+              if (_projectViewClaim case final claim?) {
+                _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+              }
+              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              return _SessionRefreshResult.applied;
+            }
             _deferredPartEvents.discardForMessagesThrough(
               messageIds: snapshot.messages.map((message) => message.info.id),
               sequence: deferredPartEventSequence,
@@ -470,7 +483,11 @@ class SessionDetailCubit(
     final generation = _transcriptGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     emit(current.copyWith(isLoadingOlderMessages: true));
-    final page = await _loadService.loadOlderMessages(sessionId: _sessionId, before: cursor);
+    final page = await _loadService.loadOlderMessages(
+      sessionId: _sessionId,
+      before: cursor,
+      storedOnly: !_interaction.canInteract,
+    );
     if (isClosed) return;
 
     final latest = state;

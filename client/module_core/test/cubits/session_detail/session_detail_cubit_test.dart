@@ -193,6 +193,7 @@ void main() {
               sessionId: any(named: "sessionId"),
               limit: any(named: "limit"),
               before: any(named: "before"),
+              storedOnly: any(named: "storedOnly"),
             ),
           ).called(greaterThanOrEqualTo(1));
         } else {
@@ -301,12 +302,14 @@ void main() {
             sessionId: sessionId,
             limit: SessionDetailLoadService.initialPageSize,
             before: null,
+            storedOnly: false,
           );
           when(
             () => mockSessionService.getMessages(
               sessionId: sessionId,
               limit: SessionDetailLoadService.initialPageSize,
               before: null,
+              storedOnly: false,
             ),
           ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
           snapshots.add(management(blocked: false));
@@ -325,6 +328,7 @@ void main() {
               sessionId: sessionId,
               limit: SessionDetailLoadService.initialPageSize,
               before: null,
+              storedOnly: false,
             ),
           ).thenAnswer((_) async => saved);
           await cubit.recheckHarnessAvailability();
@@ -339,6 +343,92 @@ void main() {
         expect((cubit.state as SessionDetailLoaded).interaction, isA<SessionInteractionAvailable>());
       });
     }
+
+    test("a blocked session the bridge stored nothing for reports the block", () async {
+      // The store-only read succeeds but has nothing to serve and says the
+      // harness still owes it. An empty chat would claim the session has no
+      // history; the truth is that reading it needs the harness enabled.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const MessageWithPartsResponse(
+            messages: <MessageWithParts>[],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+            awaitingHarnessSync: true,
+          ),
+        ),
+      );
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailHarnessUnavailable,
+        description: "unavailable history",
+      );
+    });
+
+    test("a blocked session serves the stored transcript the harness has not caught up with", () async {
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      final stored = await mockSessionService.getMessages(
+        sessionId: sessionId,
+        limit: SessionDetailLoadService.initialPageSize,
+        before: null,
+        storedOnly: false,
+      );
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: true,
+        ),
+      ).thenAnswer(
+        (_) async => switch (stored) {
+          SuccessResponse(:final data) => ApiResponse.success(data.copyWith(awaitingHarnessSync: true)),
+          ErrorResponse(:final error) => ApiResponse.error(error),
+        },
+      );
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded,
+        description: "stored transcript",
+      );
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.messages, isNotEmpty, reason: "a stale store still has history worth reading");
+      expect(loaded.interaction, isA<SessionInteractionBlocked>());
+    });
 
     test("a blocked session whose stored history cannot be served reports the block", () async {
       // Serving history can still need a harness-backed backfill when the bridge
@@ -360,6 +450,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
@@ -401,6 +492,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
       final reloading = cubit.reload();
@@ -450,6 +542,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
@@ -495,6 +588,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
@@ -523,6 +617,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(2);
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
@@ -1075,6 +1170,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) => reloadMessages.future);
       final reloading = cubit.reload();
@@ -1229,6 +1325,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1489,6 +1586,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) {
         getMessagesCallCount += 1;
@@ -1960,6 +2058,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) {
         getMessagesCallCount += 1;
@@ -2413,6 +2512,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final viewingService = stubbedSessionViewingService();
@@ -2559,6 +2659,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(greaterThanOrEqualTo(1));
       });
@@ -2646,6 +2747,7 @@ void _stubAllDefaults(
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(

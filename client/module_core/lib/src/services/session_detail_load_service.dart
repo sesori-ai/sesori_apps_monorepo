@@ -47,20 +47,23 @@ class SessionDetailLoadService({
       projectId: projectId,
       requireCompleteOptions: false,
       optionsMode: SessionOptionsRequestMode.dynamic,
+      storedOnly: false,
     );
   }
 
   /// The transcript for a session whose harness is blocked.
   ///
-  /// Options are read cache-only: dynamic discovery is served through the
-  /// bridge's may-activate path, so asking a blocked harness for them can stall
-  /// the open behind a start attempt it cannot complete.
+  /// Messages are read store-only and options cache-only: both the ordinary
+  /// history read and dynamic discovery are served through the bridge's
+  /// may-activate path, so asking a blocked harness for them can stall the open
+  /// behind a start attempt it cannot complete.
   Future<SessionDetailLoadResult> loadWithoutHarness({required Session session, required String projectId}) {
     return _loadSnapshot(
       session: session,
       projectId: projectId,
       requireCompleteOptions: false,
       optionsMode: SessionOptionsRequestMode.cacheOnly,
+      storedOnly: true,
     );
   }
 
@@ -70,6 +73,7 @@ class SessionDetailLoadService({
       projectId: projectId,
       requireCompleteOptions: true,
       optionsMode: SessionOptionsRequestMode.dynamic,
+      storedOnly: false,
     );
   }
 
@@ -81,11 +85,13 @@ class SessionDetailLoadService({
   Future<SessionMessagePage?> loadOlderMessages({
     required String sessionId,
     required int before,
+    required bool storedOnly,
   }) async {
     final response = await _repository.getMessages(
       sessionId: sessionId,
       limit: olderPageSize,
       before: before,
+      storedOnly: storedOnly,
     );
     return switch (response) {
       SuccessResponse(:final data) => (messages: data.messages, olderMessagesCursor: data.nextCursor),
@@ -101,6 +107,7 @@ class SessionDetailLoadService({
     required String projectId,
     required bool requireCompleteOptions,
     required SessionOptionsRequestMode optionsMode,
+    required bool storedOnly,
   }) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
@@ -116,6 +123,7 @@ class SessionDetailLoadService({
         sessionId: sessionId,
         limit: initialPageSize,
         before: null,
+        storedOnly: storedOnly,
       );
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
       final isArchived = session.time?.archived != null;
@@ -167,8 +175,13 @@ class SessionDetailLoadService({
         _SessionDetailOptionsAvailable(:final options) => options,
         _SessionDetailOptionsFailure(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace),
       };
-      final (messages, olderMessagesCursor, replayedPromptDefaults) = switch (messagesResponse) {
-        SuccessResponse(:final data) => (data.messages, data.nextCursor, data.replayedPromptDefaults),
+      final (messages, olderMessagesCursor, replayedPromptDefaults, awaitingHarnessSync) = switch (messagesResponse) {
+        SuccessResponse(:final data) => (
+          data.messages,
+          data.nextCursor,
+          data.replayedPromptDefaults,
+          data.awaitingHarnessSync,
+        ),
         ErrorResponse(:final error) => throw error,
       };
       final promptDefaults = replayedPromptDefaults ?? session.promptDefaults;
@@ -213,6 +226,7 @@ class SessionDetailLoadService({
           supportsPromptAttachments: supportsPromptAttachments,
           messages: messages,
           olderMessagesCursor: olderMessagesCursor,
+          awaitingHarnessSync: awaitingHarnessSync,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
           bridgeQueuedPrompts: bridgeQueuedPrompts,
@@ -384,6 +398,11 @@ class const SessionDetailSnapshot({
   /// complete — either because it all fits, or because the bridge predates
   /// pagination and always sends everything.
   required final int? olderMessagesCursor,
+
+  /// Whether the bridge answered from a store it knows is behind the harness,
+  /// so [messages] may be missing the newest ones. Only a store-only read can
+  /// see this true.
+  required final bool awaitingHarnessSync,
   required final List<PendingQuestion> pendingQuestions,
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final List<PendingPermission> pendingPermissions,

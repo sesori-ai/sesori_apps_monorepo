@@ -109,6 +109,7 @@ void main() {
         sessionId: _sessionId,
         limit: any(named: "limit"),
         before: any(named: "before"),
+        storedOnly: any(named: "storedOnly"),
       ),
     ).called(1);
   });
@@ -167,6 +168,7 @@ void main() {
           supportsPromptAttachments: false,
           messages: <MessageWithParts>[],
           olderMessagesCursor: null,
+          awaitingHarnessSync: false,
           pendingQuestions: <PendingQuestion>[],
           pendingPermissions: <PendingPermission>[],
           childSessions: <Session>[],
@@ -262,6 +264,7 @@ void main() {
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -348,6 +351,7 @@ void _stubLoadApis(MockSessionRepository service) {
       sessionId: _sessionId,
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) async => ApiResponse.success(
