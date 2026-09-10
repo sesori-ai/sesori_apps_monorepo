@@ -163,7 +163,7 @@ confirmation, no child session or partial stop) and gets that subset.
   verifies or lifts a limitation, not deferred to the coverage PR; cells
   change when the capability ships.
 
-## Codex (codex-cli 0.148.0, app-server v2)
+## Codex (codex-cli 0.153.4, app-server v2)
 
 ### Verified facts
 
@@ -171,15 +171,12 @@ confirmation, no child session or partial stop) and gets that subset.
   `agentNickname`, `agentRole`, `threadSource` (`subAgent`,
   `subAgentReview`, `subAgentCompact`, `subAgentThreadSpawn`, ...).
   `thread/list` accepts `sourceKinds` and `parentThreadId`.
-- Item `collabAgentToolCall` (`tool`: `spawnAgent | sendInput | resumeAgent |
-  wait | closeAgent`; `senderThreadId`, `receiverThreadIds`, `prompt`,
-  `status`, `agentsStates` with agent status `pendingInit | running |
-  completed | failed | interrupted | errored | shutdown | notFound`). Item
-  `subAgentActivity` (`kind`: `started | interacted | interrupted |
-  completed`; `agentThreadId`, `agentPath`). Upstream `main` has renamed the
-  item to `collabToolCall`; 0.148.0 does not carry that shape, so the parser
-  accepts only `collabAgentToolCall` and is updated when the pinned release
-  changes and a probe confirms the new shape.
+- Current 0.153.4 persisted activity is nested under
+  `event_msg/item_completed/item/SubAgentActivity`; its item id exactly
+  matches the preceding `spawn_agent.call_id`. Live app-server activity uses
+  `subAgentActivity` with `agentThreadId` and `agentPath`. Historical 0.148.0
+  probes also observed `collabAgentToolCall` wait items, but those empty
+  receiver/state fields are not current tile identity or lifecycle authority.
 - Parent-owned children reject `turn/start` and `turn/steer`
   (`direct app-server input is not allowed for multi-agent v2 sub-agents`);
   `turn/interrupt` is allowed on them. `thread/delete` and `thread/archive`
@@ -194,15 +191,18 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### Current plugin
 
-- `codex_thread_dto.dart` and `codex_thread_record.dart` have no parent
-  fields. `codex_event_mapper.dart` `mapThreadStarted` emits `parentID: null`;
-  `_itemToEvents` drops collab and activity items.
-- `codex_plugin_impl.dart`: `abortSession` ignores the policy and interrupts
-  only the named thread; `getChildSessions` returns `[]`;
-  `getActiveSessionsSummary` hard-codes `childSessionIds: const []`.
-- `codex_catalog_repository.dart` maps every rollout as a root.
-- History: `CodexMessageRepository.projectMessages` renders a persisted
-  `spawn_agent` call as a generic tool card.
+- Thread and rollout metadata preserve direct parent identity. The catalog
+  keeps children out of root lists while exposing them under their direct
+  parent, and the service merges persisted and live children.
+- `CodexSubAgentTracker` owns ancestry, exact call-correlated tile lifecycle,
+  recursive descendants, root busy roll-up, and deferred idle. Current
+  `event_msg/item_completed/item/SubAgentActivity` facts replace only the
+  matching parent-local generic `spawn_agent` card.
+- `CodexPlugin.abortSession` applies side-effect-free scoped preflight, exact
+  named-thread `keep`, and full per-thread snapshot fanout. Every accepted ACK
+  remains `subAgentsHandled: false` because Codex has no atomic subtree stop.
+- Active summaries keep named/root work distinct from busy descendants and
+  child pending input, while authoritative native notifications settle state.
 
 ### Design
 
@@ -210,7 +210,7 @@ confirmation, no child session or partial stop) and gets that subset.
   the parent, nickname, role, source, and agent-path fields. A new Freezed
   parser yields sealed `CodexCollabItem` (`spawnAgent`, `wait`, `closeAgent`,
   `sendInput`, `resumeAgent`, `unknown`) and `CodexSubAgentActivity` with
-  closed enums and `unknown` fallbacks (only the 0.148.0 item names).
+  closed enums and `unknown` fallbacks at the current boundary.
 - **Child sessions.** `CodexThreadRecord.parentId`. Children never emit
   `thread/started` (probe), so the event mapper parses the parent's
   `subAgentActivity started` into a typed fact carrying `agentThreadId` and
@@ -249,13 +249,12 @@ confirmation, no child session or partial stop) and gets that subset.
   child `turn/interrupt` cancels it, and `thread/closed` cancels it only while
   it is pending or running; a prior completed, failed, interrupted, or errored
   terminal state wins over the later close. A child turn failure errors it,
-  and a disconnect cancels open tiles. `collabAgentToolCall` items
-  (`wait`, `closeAgent`, ...) and `agentsStates` only refresh the same tile's
-  state; `spawnAgent` items and `receiverThreadIds` are not relied on because
-  0.148.0 does not emit them. The tracker survives the root's idle transition
-  because child completion arrives after the parent `turn/completed`. Replay:
-  the parent rollout persists both `spawn_agent` and `sub_agent_activity
-  started`, whose activity id equals the function call id. A pure Codex history
+  and a disconnect cancels open tiles. Historical `collabAgentToolCall`
+  wait/state fields are not relied on. The tracker survives the root's idle
+  transition because child completion arrives after the parent
+  `turn/completed`. Replay: the current parent rollout persists `spawn_agent`
+  plus `event_msg/item_completed/item/SubAgentActivity`, whose item id equals
+  the function call id. A pure Codex history
   mapper joins them by that id and replaces the generic spawn tool part with
   the one subtask tile in both rollout-tail and full-history projection.
   `CodexSessionService.prepareSessionMessageRead` also reads the catalogued
@@ -272,12 +271,15 @@ confirmation, no child session or partial stop) and gets that subset.
   reaper and safe stops never kill a running child and the completion push
   fires once. Summary iterates roots; `childSessionIds` are the busy children;
   `mainAgentRunning` is the root's own turn.
-- **Scoped stop.** `confirm` with busy children rejects with the count,
-  `mainAgentRunning`, and `mainAgentOnlySupported: true` (children survive a
-  parent interrupt, probe). `stop` interrupts the root then each busy child
-  with the child's `turnId` tracked from its `turn/started`. `keep`
-  interrupts the root only and returns `workKept: true`. Busy state and cancel
-  targets roll descendants up to the root.
+- **Scoped stop.** `confirm` with running descendants rejects before effects
+  with the exact count, named-thread `mainAgentRunning`, and
+  `mainAgentOnlySupported: true`. `keep` interrupts only a running named
+  thread. `stop` initiates exact interrupts for the named thread plus every
+  active or pending-input descendant in the immutable known scope, including
+  pending admissions whose `turnId` arrives later; ancestors and siblings are
+  excluded. The 0.153.4 probe proves each interrupt is exact-thread, not atomic
+  subtree authority, so every accepted result reports
+  `subAgentsHandled: false` and retains client fallback.
 
 ### PRs
 
@@ -289,9 +291,9 @@ confirmation, no child session or partial stop) and gets that subset.
 | 4/9 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | PR #1396 merged at `7f6fb8cb50`; metadata-only `thread/read`, no discarded cache |
 | 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | PR #1398 merged at `d801d722f2`; typed DTOs and repository facts only, no tile activation |
 | 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | PR #1399 merged at `db2b71134d`; full live/replay production integration, lifecycle, busy accounting, focused tests, and behavior docs |
-| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Current local coverage; write-path/lifecycle regressions, test-seam cleanup, and remaining capability/regression documentation; no production behavior changes |
-| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | next; policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
-| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | final matrix remains outstanding after scoped stop |
+| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | PR #1420 merged at `ae2a9297e3`; write-path/lifecycle regressions and documentation |
+| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | current, unchecked until merge; per-thread policy, pending-admission fencing, and automated isolation/failure coverage |
+| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | final coverage incomplete; actual-plugin scoped-stop policy QA remains unexecuted |
 
 ### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 
@@ -313,10 +315,10 @@ confirmation, no child session or partial stop) and gets that subset.
   `mainAgentOnlySupported` is true for Codex. A child `turn/interrupt`
   requires `turnId`, which arrives on the same connection in the child's
   `turn/started` and is tracked per child.
-- Parent rollouts persist the `spawn_agent`/`wait_agent` function calls and
-  `sub_agent_activity started` only; child rollouts copy the parent history
-  only with `fork_turns: true`. Replay opens tiles from `sub_agent_activity
-  started` and closes them from the child rollout's state.
+- Current parent rollouts persist `spawn_agent`/`wait_agent` function calls
+  and nested `event_msg/item_completed/item/SubAgentActivity`; child rollouts
+  copy parent history only with `fork_turns: true`. Replay opens tiles from the
+  nested activity item and closes them from the child rollout's state.
 - `thread/list {parentThreadId}` returned nothing; catalog children come from
   rollout metadata.
 
@@ -325,10 +327,12 @@ confirmation, no child session or partial stop) and gets that subset.
 1. Resolved: children never emit `thread/started` and `receiverThreadIds` is
    always empty; the child is learned from `subAgentActivity.agentThreadId`
    and read through the API/repository/service chain.
-2. Does interrupting the parent interrupt or shut down its children? Does a
-   child `turn/interrupt` need a turn id we may never receive?
-3. Do 0.148.0 parent rollouts persist collab and activity items, and do child
-   rollouts still copy the parent history?
+2. Resolved on 0.153.4: parent interrupt leaves direct and nested children
+   running. Exact child interrupt works with the child `turnId` received on the
+   same connection and leaves sibling/grandchild work untouched.
+3. Resolved for current shape: parent rollouts persist
+   `event_msg/item_completed/item/SubAgentActivity`; child rollouts still copy
+   parent history only when forked.
 4. Existing bridge-originated children already sit in users' lists as roots.
    Proposed: accept the re-parenting on the next catalog import; no migration.
 

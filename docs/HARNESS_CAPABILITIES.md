@@ -189,9 +189,9 @@ prompt, and skill commands remain available.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
 Plugins that report a scoped-stop rejection declare whether "main agent only"
 is honored through `mainAgentOnlySupported`; the app offers the action only
@@ -225,8 +225,12 @@ descendants in root busy state. Metadata-only
 `thread/read(includeTurns: false)` retains parent and nickname enrichment.
 Raw task paths are formatted for display, not used for tile correlation.
 `turn/interrupt` works per child with its `turnId`, while parent interrupt
-leaves children running, so main-agent-only is supportable; scoped stop remains
-unimplemented.
+leaves children running, so main-agent-only stop is implemented. Full scoped
+stop snapshots the named thread's known running descendants and fans out exact
+per-thread interrupts; it is not atomic subtree authority, so accepted results
+deliberately report `subAgentsHandled: false` and retain client fallback. Codex
+policy/isolation is implemented and automated; actual-plugin scoped-stop policy
+QA remains Step 9 coverage, not evidence of atomicity.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,

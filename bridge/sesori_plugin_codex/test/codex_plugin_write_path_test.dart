@@ -82,6 +82,61 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.busy);
     }
 
+    void writeScopedThread({required String id, required String? parentId}) {
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/09/08/rollout-2026-09-08T12-00-00-$id.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {
+            "id": id,
+            "timestamp": "2026-09-08T12:00:00Z",
+            "cwd": "/work/sample",
+            "parent_thread_id": ?parentId,
+            if (parentId != null) "thread_source": "subagent",
+          },
+        })}\n",
+      );
+    }
+
+    Future<void> connectWithScopedTree({
+      required Set<String> activeSessionIds,
+      Set<String> pendingInputSessionIds = const {},
+    }) async {
+      writeScopedThread(id: _scopeAncestorId, parentId: null);
+      writeScopedThread(id: _scopeRootId, parentId: _scopeAncestorId);
+      writeScopedThread(id: _scopeChildId, parentId: _scopeRootId);
+      writeScopedThread(id: _scopeGrandchildId, parentId: _scopeChildId);
+      writeScopedThread(id: _scopeInactiveChildId, parentId: _scopeRootId);
+      writeScopedThread(id: _scopeSiblingId, parentId: _scopeAncestorId);
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.healthCheck();
+      for (final sessionId in activeSessionIds) {
+        fake.pushNotification("turn/started", {
+          "threadId": sessionId,
+          "turn": {"id": "turn-$sessionId"},
+        });
+      }
+      var requestId = 500;
+      for (final sessionId in pendingInputSessionIds) {
+        fake.pushServerRequest(
+          id: requestId++,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            "threadId": sessionId,
+            "turnId": "turn-$sessionId",
+            "itemId": "approval-$sessionId",
+            "command": "ls",
+          },
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+
     for (final running in [true, false]) {
       test("async question answers reach the owning ${running ? 'running' : 'completed'} conversation", () async {
         fake.respondInOrder([const _Response(result: _initOk)]);
@@ -1374,6 +1429,283 @@ void main() {
         fake.sentMethods,
         equals(["initialize", "thread/start", "turn/start", "thread/resume", "turn/start"]),
       );
+    });
+
+    test("scoped confirm rejects before effects with exact descendant and named-thread state", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {_scopeRootId, _scopeChildId, _scopeGrandchildId},
+        pendingInputSessionIds: {_scopeRootId, _scopeChildId},
+      );
+
+      final runningRoot = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId, _scopeInactiveChildId},
+      );
+
+      expect(
+        runningRoot,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 2)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isTrue)
+            .having((result) => result.mainAgentOnlySupported, "mainAgentOnlySupported", isTrue),
+      );
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID).toSet(),
+        {_scopeRootId, _scopeChildId},
+      );
+
+      fake.pushNotification("turn/completed", {
+        "threadId": _scopeRootId,
+        "turn": {"id": "turn-$_scopeRootId"},
+      });
+      PluginAbortResult idleRoot = runningRoot;
+      for (var attempt = 0; attempt < 100; attempt++) {
+        idleRoot = await plugin.abortSession(
+          sessionId: _scopeRootId,
+          subAgents: PluginAbortSubAgentPolicy.confirm,
+          useAtomicStop: false,
+          knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId, _scopeInactiveChildId},
+        );
+        if (idleRoot case PluginAbortRejectedSubAgentsRunning(mainAgentRunning: false)) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(
+        idleRoot,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 2)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isFalse)
+            .having((result) => result.mainAgentOnlySupported, "mainAgentOnlySupported", isTrue),
+      );
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID).toSet(),
+        {_scopeRootId, _scopeChildId},
+      );
+    });
+
+    test("scoped keep stops only a running named thread and preserves descendant work", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {_scopeRootId, _scopeChildId, _scopeGrandchildId, _scopeSiblingId},
+        pendingInputSessionIds: {_scopeRootId, _scopeChildId},
+      );
+      fake.respondInOrder([const _Response(result: null)]);
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId, _scopeInactiveChildId},
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: true, subAgentsHandled: false));
+      expect(fake.sentParamsForAll(method: "turn/interrupt"), [
+        {"threadId": _scopeRootId, "turnId": "turn-$_scopeRootId"},
+      ]);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID),
+        [_scopeChildId],
+      );
+      final statuses = await plugin.getSessionStatuses();
+      expect(statuses[_scopeChildId], isA<PluginSessionStatusBusy>());
+      expect(statuses[_scopeGrandchildId], isA<PluginSessionStatusBusy>());
+      expect(statuses[_scopeSiblingId], isA<PluginSessionStatusBusy>());
+    });
+
+    test("scoped stop fans out across active and pending-input descendants but excludes outside scope", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {
+          _scopeAncestorId,
+          _scopeRootId,
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeSiblingId,
+        },
+        pendingInputSessionIds: {
+          _scopeAncestorId,
+          _scopeRootId,
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeInactiveChildId,
+          _scopeSiblingId,
+        },
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": _scopeBridgeKnownId,
+        "turn": {"id": "turn-$_scopeBridgeKnownId"},
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      fake.respondInOrder(List.filled(4, const _Response(result: null)));
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: {
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeInactiveChildId,
+          _scopeBridgeKnownId,
+        },
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
+        {_scopeRootId, _scopeChildId, _scopeGrandchildId, _scopeBridgeKnownId},
+      );
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeAncestorId))
+            .map((permission) => permission.sessionID)
+            .toSet(),
+        {_scopeAncestorId, _scopeSiblingId},
+      );
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]),
+        isNot(contains(_scopeInactiveChildId)),
+      );
+    });
+
+    test("named-child policy scopes confirmation and stop to its own descendants", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {
+          _scopeAncestorId,
+          _scopeRootId,
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeSiblingId,
+        },
+      );
+
+      final confirmation = await plugin.abortSession(
+        sessionId: _scopeChildId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeGrandchildId},
+      );
+      expect(
+        confirmation,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 1)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isTrue),
+      );
+      fake.respondInOrder(List.filled(2, const _Response(result: null)));
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeChildId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeGrandchildId},
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
+        {_scopeChildId, _scopeGrandchildId},
+      );
+    });
+
+    test("scoped stop starts every snapshot interrupt and surfaces the original failure", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {_scopeRootId, _scopeChildId, _scopeGrandchildId},
+      );
+      fake.respondInOrder([
+        const _Response(error: {"code": -32603, "message": "root interrupt failed"}),
+        const _Response(result: null),
+        const _Response(result: null),
+      ]);
+
+      await expectLater(
+        plugin.abortSession(
+          sessionId: _scopeRootId,
+          subAgents: PluginAbortSubAgentPolicy.stop,
+          useAtomicStop: true,
+          knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId},
+        ),
+        throwsA(
+          isA<CodexRpcException>()
+              .having((error) => error.code, "code", -32603)
+              .having((error) => error.message, "message", "root interrupt failed"),
+        ),
+      );
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
+        {_scopeRootId, _scopeChildId, _scopeGrandchildId},
+      );
+    });
+
+    test("stop and headless interruption fence an in-flight root turn admission", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "root-pending-turn", "cwd": "/work/sample"},
+          },
+        ),
+      ]);
+      await plugin.healthCheck();
+      fake.holdNextResponse("turn/start");
+      final send = plugin.sendPrompt(
+        promptId: "prompt-pending-turn",
+        sessionId: "root-pending-turn",
+        parts: const [PluginPromptPart.text(text: "long task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      for (var attempt = 0; attempt < 100 && !fake.sentMethods.contains("turn/start"); attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(
+        await plugin.abortSession(
+          sessionId: "root-pending-turn",
+          subAgents: PluginAbortSubAgentPolicy.stop,
+          useAtomicStop: false,
+          knownSubAgentSessionIds: const {},
+        ),
+        const PluginAbortAccepted(workKept: false, subAgentsHandled: false),
+      );
+      expect(fake.sentMethods, isNot(contains("turn/interrupt")));
+      var headlessFinished = false;
+      final headless = plugin
+          .interruptActiveWork(budget: const Duration(seconds: 2))
+          .whenComplete(() => headlessFinished = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(headlessFinished, isFalse);
+
+      fake.respondInOrder([const _Response(result: null)]);
+      fake.respondToHeld(
+        "turn/start",
+        const _Response(
+          result: {
+            "turn": {"id": "pending-turn-id"},
+          },
+        ),
+      );
+      await send;
+      fake.pushNotification("turn/started", {
+        "threadId": "root-pending-turn",
+        "turn": {"id": "pending-turn-id"},
+      });
+      for (var attempt = 0; attempt < 100 && !fake.sentMethods.contains("turn/interrupt"); attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(fake.sentParamsFor("turn/interrupt"), {
+        "threadId": "root-pending-turn",
+        "turnId": "pending-turn-id",
+      });
+      expect(headlessFinished, isFalse);
+
+      fake.pushNotification("turn/completed", {
+        "threadId": "root-pending-turn",
+        "turn": {"id": "pending-turn-id"},
+      });
+      expect(await headless, {"root-pending-turn"});
+      expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
     test("abortSession calls turn/interrupt on the active turn", () async {
@@ -3454,6 +3786,14 @@ void main() {
     });
   });
 }
+
+const String _scopeAncestorId = "019a0000-1111-2222-3333-000000000001";
+const String _scopeRootId = "019a0000-1111-2222-3333-000000000002";
+const String _scopeChildId = "019a0000-1111-2222-3333-000000000003";
+const String _scopeGrandchildId = "019a0000-1111-2222-3333-000000000004";
+const String _scopeInactiveChildId = "019a0000-1111-2222-3333-000000000005";
+const String _scopeSiblingId = "019a0000-1111-2222-3333-000000000006";
+const String _scopeBridgeKnownId = "019a0000-1111-2222-3333-000000000007";
 
 const Map<String, dynamic> _initOk = {
   "userAgent": "codex-cli/0.121.0",
