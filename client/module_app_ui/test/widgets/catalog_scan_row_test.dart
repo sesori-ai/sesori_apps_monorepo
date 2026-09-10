@@ -425,7 +425,7 @@ void main() {
       expect(find.text("Saving Claude scan results…"), findsOneWidget);
     });
 
-    testWidgets("explains a prolonged confirmed harness startup after ten seconds", (tester) async {
+    testWidgets("explains a prolonged confirmed harness startup after three seconds", (tester) async {
       await tester.pumpWidget(
         harness(
           const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"}),
@@ -436,7 +436,7 @@ void main() {
 
       expect(find.text("Scanning all harnesses"), findsOneWidget);
       expect(find.text("Starting Codex…"), findsOneWidget);
-      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(seconds: 2));
       expect(find.text("Waiting for Codex"), findsNothing);
 
       await tester.pump(const Duration(seconds: 1));
@@ -460,7 +460,7 @@ void main() {
         harness(const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex", "claude"})),
       );
       await tester.pump();
-      await tester.pump(const Duration(seconds: 9));
+      await tester.pump(const Duration(seconds: 2));
 
       await tester.pumpWidget(
         harness(const CatalogRescanState.starting(activePluginName: "Claude", pluginIds: {"codex", "claude"})),
@@ -469,7 +469,7 @@ void main() {
       expect(find.text("Waiting for Claude"), findsNothing);
       expect(find.text("Starting Claude…"), findsOneWidget);
 
-      await tester.pump(const Duration(seconds: 8));
+      await tester.pump(const Duration(seconds: 1));
       expect(find.text("Waiting for Claude"), findsOneWidget);
     });
 

@@ -78,7 +78,7 @@ state.
   startup from catalog reading, reports found-session counts during enumeration,
   and says when results are being saved. Startup wording is driven only by a
   fresh management snapshot for the same bridge; unknown or older metadata does
-  not infer it. After the same harness remains confirmed as starting for ten
+  not infer it. After the same harness remains confirmed as starting for three
   seconds, the row explains that scanning is waiting for startup and that the
   user can keep browsing. This one-shot presentation timer resets on any phase
   or harness change and never polls or changes bridge work. It offers to cancel

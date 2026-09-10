@@ -19,7 +19,7 @@ const double _entranceScaleFrom = 0.97;
 const double _entranceBlurSigma = 2;
 // Keep the leading footprint identical when loading becomes a result.
 const double _scanMarkSize = 20;
-const Duration _startupWaitThreshold = Duration(seconds: 10);
+const Duration _startupWaitThreshold = Duration(seconds: 3);
 
 /// The catalog scan reported as one quiet row above a list.
 ///
