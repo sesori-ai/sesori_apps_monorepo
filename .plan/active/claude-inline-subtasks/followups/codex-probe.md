@@ -41,8 +41,22 @@ grandchild remained busy; later exact cleanup interrupts settled both. This
 confirms main-agent-only support and exact per-thread child interruption, but
 rules out atomic native subtree authority. Scoped full stop must fan out over a
 known snapshot and report `subAgentsHandled: false`. Step 8 automated policy
-coverage implements that behavior; actual-plugin policy QA remains unexecuted
-until Step 9.
+coverage implements that behavior.
+
+Step 9 actual-plugin policy QA on 2026-09-10 used the same managed 0.153.4
+entrypoint through `CodexPlugin.composed` and production WebSocket transport.
+Three newly owned trees verified root confirmation (three running descendants,
+main running, main-only supported) and named-child confirmation (one nested
+descendant) with zero abort/status/input effects; root `keep` aborted only the
+root and a later confirmation accurately reported main idle with three running
+descendants; named-child full stop aborted that child and its grandchild while
+its ancestor and sibling remained busy; root full stop aborted the root, both
+direct children, and nested grandchild. Every selected target had persisted
+`turn_aborted` and non-busy plugin status, every accepted atomic-opt-in response
+retained `subAgentsHandled: false`, and the owned runtime survived each case.
+No pending question or permission surfaced, so live pending-input policy was
+unexecuted; focused Step 8 automation remains its evidence. Natural sleep
+expiry, runtime death, and disconnect were excluded as stop proof.
 
 Raw probe payloads remain private under the owned `/tmp` artifacts. Native source
 was pinned to Codex commit `3d2ee51ca2d5db578f328aa75e20aa22c0197c9a`.

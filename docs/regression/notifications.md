@@ -21,6 +21,8 @@ external.
   (`keep`) does not suppress the completion the kept sub-agents later earn,
   while a full stop does. A Codex root likewise defers idle and completion while
   any tracked child runs, then releases them once after the last child settles.
+  Codex `keep` leaves retained descendants eligible for that later completion;
+  full scoped stop suppresses completion for the stopped scope.
 - A child prompt is attributed to its display (root) session. Rate limiting is per category plus session, so a
   throttled completion never suppresses a more urgent question, and every notification for a session collapses to one
   identity derived identically by bridge, server, and client.
@@ -86,8 +88,9 @@ provider because current payload content leaves the encrypted channel.
   full abort; a Claude session with a running background sub-agent fires a
   completion before the sub-agent's wake-up turn settles, or fires twice; a
   main-agent-only stop suppresses the completion of the kept sub-agents; a
-  Codex root completes while a tracked child still runs or completes twice when
-  its deferred idle is released.
+  Codex `keep` suppresses retained-child completion, a full scoped stop emits
+  completion for cancelled work, or a Codex root completes while a tracked
+  child still runs or completes twice when its deferred idle is released.
 - Notifications for one session do not collapse, or a tap opens the wrong session or a child instead of its root.
 - A question is suppressed by an unrelated completion cooldown.
 - Delivery continues after logout, or a new account receives the prior account's notifications. Desktop registers a
