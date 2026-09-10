@@ -1,7 +1,48 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../models/grok_subagent_status.dart";
+
 part "grok_protocol_dto.freezed.dart";
 part "grok_protocol_dto.g.dart";
+
+/// Exact child target accepted by Grok's sub-agent cancellation extension.
+@freezed
+sealed class GrokSubagentCancelRequestDto with _$GrokSubagentCancelRequestDto {
+  const factory({required String subagentId}) = _GrokSubagentCancelRequestDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelRequestDtoFromJson(json);
+}
+
+/// Closed cancellation outcomes observed from Grok Build 1.0.5.
+enum GrokSubagentCancelOutcomeKind() {
+  cancelled,
+  @JsonValue("already_finished")
+  alreadyFinished,
+  unknown,
+}
+
+/// Native outcome returned for one exact Grok child cancellation request.
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokSubagentCancelOutcomeDto with _$GrokSubagentCancelOutcomeDto {
+  const factory({
+    @JsonKey(unknownEnumValue: GrokSubagentCancelOutcomeKind.unknown) required GrokSubagentCancelOutcomeKind kind,
+    @JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) required GrokSubagentStatus? status,
+  }) = _GrokSubagentCancelOutcomeDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelOutcomeDtoFromJson(json);
+}
+
+/// Typed response from Grok's sub-agent cancellation extension.
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokSubagentCancelResponseDto with _$GrokSubagentCancelResponseDto {
+  const factory({
+    required String subagentId,
+    required bool cancelled,
+    required GrokSubagentCancelOutcomeDto outcome,
+  }) = _GrokSubagentCancelResponseDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelResponseDtoFromJson(json);
+}
 
 /// One reasoning-effort option advertised in a Grok model's ACP metadata.
 @freezed

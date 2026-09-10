@@ -189,8 +189,8 @@ prompt, and skill commands remain available.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
 Plugins that report a scoped-stop rejection declare whether "main agent only"
@@ -283,10 +283,16 @@ persisted/live children, loads child transcripts by exact native id, and rebuild
 root tiles from each exact child's first user-message run only when that run is
 nonblank, without reading live tracker state. A blank or missing first run
 produces no tile; later runs never substitute. Permission denial persistence is
-unverified and has no outcome model. Grok exposes `_x.ai/subagent/cancel` per
-child, but scoped-stop integration remains unimplemented. A root
-`session/cancel` cancels background children too, so main-agent-only is not
-supported.
+unverified and has no outcome model. Grok scoped stop snapshots the named
+scope before mutation, sends root `session/cancel` first, and fans out exact
+`_x.ai/subagent/cancel {subagentId}` requests for its running children. This is
+not complete native subtree authority: accepted results deliberately report
+`subAgentsHandled: false` and retain current-client fallback. Main-agent-only
+stop is unsupported because root cancellation stopped every observed child;
+idle-root child-only `keep` remains side-effect free. Automated coverage proves
+rejection, fanout, outcome mapping, lifecycle-only settlement, and exact pending
+permission/queue isolation. Actual-plugin, phone, and live pending-input coverage
+remain unexecuted for Step 6; Grok question support is not claimed.
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the

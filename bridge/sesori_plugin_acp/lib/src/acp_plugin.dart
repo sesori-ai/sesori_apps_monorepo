@@ -1752,6 +1752,9 @@ abstract class AcpPlugin({
   /// Capability opt-in: standard ACP alone cannot promise scoped child stops.
   bool get supportsScopedStop => false;
 
+  /// Complete native subtree authority, distinct from per-child cancellation.
+  bool get supportsAtomicScopedStop => false;
+
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
     required String sessionId,
@@ -1830,32 +1833,78 @@ abstract class AcpPlugin({
     }
 
     if (useAtomicStop && subAgents != PluginAbortSubAgentPolicy.keep) {
-      for (final targetSessionId in {sessionId, ...allDescendantSessionIds}) {
-        _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
+      if (supportsAtomicScopedStop) {
+        for (final targetSessionId in {sessionId, ...allDescendantSessionIds}) {
+          _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
+        }
+        final client = _client;
+        if (client == null) {
+          return const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
+        }
+        final parentSessionId = childSessionTracker.parentOf(sessionId: sessionId);
+        final targets = <AcpScopedStopTarget>[
+          if (_residentSessions.contains(sessionId))
+            AcpScopedStopSessionTarget(sessionId: sessionId)
+          else if (parentSessionId != null)
+            AcpScopedStopChildTarget(parentSessionId: parentSessionId, childSessionId: sessionId),
+          for (final descendantSessionId in independentResidentSessionIds)
+            AcpScopedStopSessionTarget(sessionId: descendantSessionId),
+        ];
+        // Calling every hook constructs and dispatches every native request before
+        // Future.wait observes a response. Its default behavior still waits for
+        // every already-dispatched request when one fails.
+        final stopFutures = [
+          for (final target in targets) stopScopedTree(client: client, target: target),
+        ];
+        final results = await Future.wait(stopFutures);
+        return PluginAbortAccepted(
+          workKept: results.any((result) => result.workKept),
+          subAgentsHandled: true,
+        );
       }
-      final client = _client;
-      if (client == null) {
-        return const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
+
+      final targetBySessionId = <String, ({String sessionId, String? parentSessionId})>{
+        sessionId: (
+          sessionId: sessionId,
+          parentSessionId: childSessionTracker.parentOf(sessionId: sessionId),
+        ),
+        for (final child in children)
+          child.childSessionId: (
+            sessionId: child.childSessionId,
+            parentSessionId: child.parentSessionId,
+          ),
+      };
+      for (final residentSessionId in independentResidentSessionIds) {
+        targetBySessionId.putIfAbsent(
+          residentSessionId,
+          () => (
+            sessionId: residentSessionId,
+            parentSessionId: childSessionTracker.parentOf(sessionId: residentSessionId),
+          ),
+        );
       }
-      final parentSessionId = childSessionTracker.parentOf(sessionId: sessionId);
-      final targets = <AcpScopedStopTarget>[
-        if (_residentSessions.contains(sessionId))
-          AcpScopedStopSessionTarget(sessionId: sessionId)
-        else if (parentSessionId != null)
-          AcpScopedStopChildTarget(parentSessionId: parentSessionId, childSessionId: sessionId),
-        for (final descendantSessionId in independentResidentSessionIds)
-          AcpScopedStopSessionTarget(sessionId: descendantSessionId),
+      final targets = List<({String sessionId, String? parentSessionId})>.unmodifiable(targetBySessionId.values);
+
+      // Fence every accepted queue, prompt write, and pending interaction in
+      // the named scope before the first native cancellation is issued.
+      final preparationFutures = [
+        for (final targetSessionId in {sessionId, ...allDescendantSessionIds})
+          _abortSession(sessionId: targetSessionId, sendSessionCancel: false),
       ];
-      // Calling every hook constructs and dispatches every native request before
-      // Future.wait observes a response. Its default behavior still waits for
-      // every already-dispatched request when one fails.
-      final stopFutures = [
-        for (final target in targets) stopScopedTree(client: client, target: target),
+      await Future.wait(preparationFutures);
+      // Root is first in insertion order. Construct all futures before waiting
+      // so one failed request cannot prevent another selected target's attempt.
+      final cancelFutures = [
+        for (final target in targets)
+          _cancelPreparedScopedSession(
+            sessionId: target.sessionId,
+            parentSessionId: target.parentSessionId,
+          ),
       ];
-      final results = await Future.wait(stopFutures);
+      final results = await Future.wait(cancelFutures);
       return PluginAbortAccepted(
-        workKept: results.any((result) => result.workKept),
-        subAgentsHandled: true,
+        workKept: results.any((result) => result == AcpChildCancelResult.notCancellable),
+        subAgentsHandled: false,
       );
     }
 
@@ -1879,7 +1928,20 @@ abstract class AcpPlugin({
     final standardCancel = _residentSessions.contains(sessionId);
     await _abortSession(sessionId: sessionId, sendSessionCancel: standardCancel);
     if (standardCancel || parentSessionId == null) return AcpChildCancelResult.interrupted;
+    return await _cancelPreparedScopedSession(sessionId: sessionId, parentSessionId: parentSessionId);
+  }
+
+  Future<AcpChildCancelResult> _cancelPreparedScopedSession({
+    required String sessionId,
+    required String? parentSessionId,
+  }) async {
+    final standardCancel = _residentSessions.contains(sessionId);
     final client = _client;
+    if (standardCancel) {
+      client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
+      return AcpChildCancelResult.interrupted;
+    }
+    if (parentSessionId == null) return AcpChildCancelResult.interrupted;
     if (client == null) return AcpChildCancelResult.unknownChild;
     try {
       return await cancelChild(client: client, sessionId: parentSessionId, childSessionId: sessionId);

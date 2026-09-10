@@ -40,6 +40,9 @@ class DeepSeekPlugin({
   bool get supportsScopedStop => true;
 
   @override
+  bool get supportsAtomicScopedStop => true;
+
+  @override
   Future<AcpScopedStopResult> stopScopedTree({
     required AcpStdioClient client,
     required AcpScopedStopTarget target,

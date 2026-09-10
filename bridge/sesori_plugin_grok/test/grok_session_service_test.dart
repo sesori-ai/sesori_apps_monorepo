@@ -2,8 +2,10 @@ import "dart:convert";
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:grok_plugin/src/api/grok_acp_api.dart";
 import "package:grok_plugin/src/api/grok_session_store_api.dart";
 import "package:grok_plugin/src/repositories/grok_session_catalog_repository.dart";
+import "package:grok_plugin/src/repositories/grok_session_control_repository.dart";
 import "package:grok_plugin/src/repositories/grok_session_history_repository.dart";
 import "package:grok_plugin/src/services/grok_session_service.dart";
 import "package:path/path.dart" as p;
@@ -38,6 +40,13 @@ void main() {
       final repository = GrokSessionCatalogRepository(api: storeApi);
       service = GrokSessionService(
         catalogRepository: repository,
+        controlRepository: GrokSessionControlRepository(
+          api: GrokAcpApi(
+            binaryPath: "grok",
+            processFactory: (_) => throw StateError("unused"),
+            environment: const {},
+          ),
+        ),
         historyRepository: GrokSessionHistoryRepository(api: storeApi),
         liveTracker: tracker,
       );

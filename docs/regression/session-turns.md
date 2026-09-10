@@ -141,15 +141,15 @@ defaults and queued client sends coherent.
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
   render in the sub-agent's child session, never as a root turn.
-- Claude tasks and OpenCode child sessions expose scoped stop. The client
-  first asks with `confirm`; while sub-agents
+- Claude tasks, OpenCode child sessions, and Grok children expose scoped stop.
+  The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is
   mid-turn, and the app shows a confirmation: with the main agent idle, "Stop N
   sub-agents"; with the main agent running, "Stop main agent and N sub-agents".
   Dismissing leaves everything running. "Stop main agent only" (`keep`) is
   offered only when the rejection declares `mainAgentOnlySupported`; neither
   of these harnesses can interrupt a running main agent without its sub-agents,
-  so both report false and refuse `keep` during a live main turn with the
+  so all three report false and refuse `keep` during a live main turn with the
   running count. With the main agent idle `keep` is honored: the Claude process
   stays resident, the sub-agents continue, their later wake-up turn renders,
   and the completion push is not suppressed. `stop` interrupts and tears
@@ -157,7 +157,12 @@ defaults and queued client sends coherent.
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
   OpenCode retains legacy client fallback: its observed-child snapshot does not
-  prove atomic subtree completion across separate HTTP/SSE channels.
+  prove atomic subtree completion across separate HTTP/SSE channels. Grok also
+  reports false atomic authority: current clients receive root-first native
+  cancellation plus exact per-child snapshot fanout, then retain their fallback.
+  `cancelled` and `already_finished` ACKs mean work was not retained, but only
+  native `subagent_finished` and turn completion settle lifecycle state. Named
+  child stop excludes its root and siblings.
 - Codex supports the same side-effect-free `confirm` preflight for any named
   root or child thread. It reports the exact active descendant count, including
   pending-input-only work, plus the named thread's own running state, and offers
@@ -298,8 +303,12 @@ defaults and queued client sends coherent.
   matching `turn_completed` prompt `subagent-completed-<child id>`. A new user
   prompt cancels that autonomous turn and waits for the hold to clear before its
   ACP prompt frame is dispatched. Spawn and non-final finish changes invalidate
-  the project summary. Deletion refuses a running child or root with active
-  child work until that work is stopped or finishes; global interruption,
+  the project summary. Scoped `confirm` and unsupported active-root `keep`
+  reject before cancellation or local input mutation. Idle-root child-only
+  `keep` writes nothing. Named stop fences only that child's queue and pending
+  ACP interaction; full stop fences the immutable named scope before root-first
+  and per-child cancellation. Deletion refuses a running child or root with
+  active child work until that work is stopped or finishes; global interruption,
   process exit, and disposal cancel or clear child activity and holds without
   leaving the root busy or delivering tracker changes to a closed event stream.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session

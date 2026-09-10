@@ -82,8 +82,14 @@ reaches the backend so the turn continues.
   Standard ACP permissions preserve the exact session, tool call, and offered
   option IDs; Once, Reject, and every scope the request actually advertises stay
   phone-mediated unless an existing explicit bridge auto-approval rule applies.
-  Abort, process exit, and disposal cancel pending Grok requests rather than
-  broadening or silently approving them.
+  Scoped-stop preflight preserves pending Grok requests when `confirm` rejects,
+  when active-root `keep` is unsupported, and when idle-root child-only `keep`
+  succeeds. Accepted named-child stop cancels only that child's pending ACP
+  interaction; full snapshot stop cancels root and selected-child interactions.
+  Process exit and disposal also cancel pending Grok requests rather than
+  broadening or silently approving them. These guarantees have automated
+  fixture coverage only; actual-plugin pending input remains unexecuted, and no
+  native Grok question channel is claimed.
 - A sessionless ACP request first resolves its top-level or nested
   `toolCall.toolCallId` against tracked calls. An exact match retains its session;
   an ambiguous match cancels rather than falling back to another active turn.

@@ -121,6 +121,55 @@ void main() {
       expect(await connecting, isTrue);
     }
 
+    Future<Map<String, dynamic>> startPrompt({required String sessionId}) async {
+      plugin.primeSessionDirectory(sessionId: sessionId, directory: "/repo");
+      await plugin.sendPrompt(
+        promptId: "prompt-$sessionId",
+        sessionId: sessionId,
+        parts: const [PluginPromptPart.text(text: "Work")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond(method: AcpMethods.sessionLoad, result: {"sessionId": sessionId, "models": _modelState});
+      return await waitForFrame(method: AcpMethods.sessionPrompt);
+    }
+
+    Future<void> spawnChild({required String parentSessionId, required String childSessionId}) async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokSessionProtocol.notificationMethod,
+        "params": {
+          "sessionId": parentSessionId,
+          "update": {
+            "sessionUpdate": "subagent_spawned",
+            "subagent_id": childSessionId,
+            "child_session_id": childSessionId,
+            "description": "Child $childSessionId",
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    Future<void> finishChild({required String parentSessionId, required String childSessionId}) async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokSessionProtocol.notificationMethod,
+        "params": {
+          "sessionId": parentSessionId,
+          "update": {
+            "sessionUpdate": "subagent_finished",
+            "subagent_id": childSessionId,
+            "child_session_id": childSessionId,
+            "status": "cancelled",
+            "will_wake": false,
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+    }
+
     test("child sessions and parentage come from the live sub-agent tracker", () async {
       plugin.childSessionTracker.spawn(
         sessionId: "root",
@@ -755,6 +804,301 @@ void main() {
       fake.emit({
         "jsonrpc": "2.0",
         "id": prompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+    });
+
+    test("scoped confirm and unsupported keep reject without side effects", () async {
+      await connect();
+      final rootPrompt = await startPrompt(sessionId: "root");
+      await spawnChild(parentSessionId: "root", childSessionId: "child");
+
+      for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
+        final before = fake.written.length;
+        final result = await plugin.abortSession(
+          sessionId: "root",
+          subAgents: policy,
+          useAtomicStop: true,
+          knownSubAgentSessionIds: const {"child"},
+        );
+        expect(
+          result,
+          isA<PluginAbortRejectedSubAgentsRunning>()
+              .having((value) => value.runningSubAgentCount, "child count", 1)
+              .having((value) => value.mainAgentRunning, "main running", true)
+              .having((value) => value.mainAgentOnlySupported, "main-only support", false),
+        );
+        expect(fake.written, hasLength(before));
+      }
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": rootPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      final beforeKeep = fake.written.length;
+      final idleRootKeep = await plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: const {"child"},
+      );
+      expect(
+        idleRootKeep,
+        isA<PluginAbortAccepted>()
+            .having((value) => value.workKept, "child kept", true)
+            .having((value) => value.subAgentsHandled, "handled", true),
+      );
+      expect(fake.written, hasLength(beforeKeep));
+      expect(plugin.childSessionTracker.busyChildIds(sessionId: "root"), {"child"});
+      await finishChild(parentSessionId: "root", childSessionId: "child");
+    });
+
+    test("named child stop is exact and lifecycle remains settlement authority", () async {
+      await connect();
+      final rootPrompt = await startPrompt(sessionId: "root");
+      await spawnChild(parentSessionId: "root", childSessionId: "child");
+      await spawnChild(parentSessionId: "root", childSessionId: "sibling");
+
+      final stopping = plugin.abortSession(
+        sessionId: "child",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: const {},
+      );
+      final cancel = await waitForFrame(method: GrokAcpApi.subagentCancelMethod);
+      expect(cancel["params"], {"subagentId": "child"});
+      expect(fake.written.where((frame) => frame["method"] == AcpMethods.sessionCancel), isEmpty);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": cancel["id"],
+        "result": {
+          "subagentId": "child",
+          "cancelled": true,
+          "outcome": {"kind": "cancelled"},
+        },
+      });
+      expect(
+        await stopping,
+        isA<PluginAbortAccepted>()
+            .having((value) => value.workKept, "kept", false)
+            .having((value) => value.subAgentsHandled, "atomic authority", false),
+      );
+      expect(plugin.childSessionTracker.busyChildIds(sessionId: "root"), {"child", "sibling"});
+
+      await finishChild(parentSessionId: "root", childSessionId: "child");
+      expect(plugin.childSessionTracker.busyChildIds(sessionId: "root"), {"sibling"});
+      await finishChild(parentSessionId: "root", childSessionId: "sibling");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": rootPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+    });
+
+    test("current atomic opt-in fans out but returns false authority", () async {
+      await connect();
+      final rootPrompt = await startPrompt(sessionId: "root");
+      await spawnChild(parentSessionId: "root", childSessionId: "first");
+      await spawnChild(parentSessionId: "root", childSessionId: "second");
+
+      final stopping = plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: const {"first", "second"},
+      );
+      final rootCancel = await waitForFrame(method: AcpMethods.sessionCancel);
+      final firstCancel = await waitForFrame(method: GrokAcpApi.subagentCancelMethod);
+      final secondCancel = await waitForFrame(method: GrokAcpApi.subagentCancelMethod);
+      expect(
+        [firstCancel, secondCancel].map((frame) => (frame["params"] as Map)["subagentId"]),
+        unorderedEquals(["first", "second"]),
+      );
+      expect(fake.written.indexOf(rootCancel), lessThan(fake.written.indexOf(firstCancel)));
+      expect(fake.written.indexOf(rootCancel), lessThan(fake.written.indexOf(secondCancel)));
+
+      for (final frame in [firstCancel, secondCancel]) {
+        final childId = (frame["params"] as Map)["subagentId"] as String;
+        fake.emit({
+          "jsonrpc": "2.0",
+          "id": frame["id"],
+          "result": {
+            "subagentId": childId,
+            "cancelled": childId == "first",
+            "outcome": {
+              "kind": childId == "first" ? "cancelled" : "already_finished",
+              if (childId == "second") "status": "completed",
+            },
+          },
+        });
+      }
+      expect(
+        await stopping,
+        isA<PluginAbortAccepted>()
+            .having((value) => value.workKept, "kept", false)
+            .having((value) => value.subAgentsHandled, "atomic authority", false),
+      );
+      expect(plugin.childSessionTracker.busyChildIds(sessionId: "root"), {"first", "second"});
+
+      await finishChild(parentSessionId: "root", childSessionId: "first");
+      await finishChild(parentSessionId: "root", childSessionId: "second");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": rootPrompt["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+    });
+
+    test("partial child failure still attempts and waits for full snapshot", () async {
+      await connect();
+      final rootPrompt = await startPrompt(sessionId: "root");
+      await spawnChild(parentSessionId: "root", childSessionId: "first");
+      await spawnChild(parentSessionId: "root", childSessionId: "second");
+      var completed = false;
+      final stopping = plugin
+          .abortSession(
+            sessionId: "root",
+            subAgents: PluginAbortSubAgentPolicy.stop,
+            useAtomicStop: true,
+            knownSubAgentSessionIds: const {"first", "second"},
+          )
+          .whenComplete(() => completed = true);
+      final failure = expectLater(stopping, throwsA(isA<PluginOperationException>()));
+      await waitForFrame(method: AcpMethods.sessionCancel);
+      final firstCancel = await waitForFrame(method: GrokAcpApi.subagentCancelMethod);
+      final secondCancel = await waitForFrame(method: GrokAcpApi.subagentCancelMethod);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": firstCancel["id"],
+        "error": {"code": -32603, "message": "cancel failed"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(completed, isFalse);
+      final secondId = (secondCancel["params"] as Map)["subagentId"] as String;
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": secondCancel["id"],
+        "result": {
+          "subagentId": secondId,
+          "cancelled": true,
+          "outcome": {"kind": "cancelled"},
+        },
+      });
+      await failure;
+      expect(
+        fake.written.where((frame) => frame["method"] == GrokAcpApi.subagentCancelMethod),
+        hasLength(2),
+      );
+
+      await finishChild(parentSessionId: "root", childSessionId: "first");
+      await finishChild(parentSessionId: "root", childSessionId: "second");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": rootPrompt["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+    });
+
+    test("released-client opt-out preserves root-only cancellation", () async {
+      await connect();
+      final rootPrompt = await startPrompt(sessionId: "root");
+      await spawnChild(parentSessionId: "root", childSessionId: "child");
+
+      final result = await plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {"child"},
+      );
+      expect(result, isA<PluginAbortAccepted>().having((value) => value.subAgentsHandled, "handled", false));
+      expect(fake.written.where((frame) => frame["method"] == AcpMethods.sessionCancel), hasLength(1));
+      expect(fake.written.where((frame) => frame["method"] == GrokAcpApi.subagentCancelMethod), isEmpty);
+
+      await finishChild(parentSessionId: "root", childSessionId: "child");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": rootPrompt["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+    });
+
+    test("named stop preserves sibling pending permission and unrelated queued turn", () async {
+      await connect();
+      final rootPrompt = await startPrompt(sessionId: "root");
+      await spawnChild(parentSessionId: "root", childSessionId: "child");
+      await spawnChild(parentSessionId: "root", childSessionId: "sibling");
+      plugin.primeSessionDirectory(sessionId: "unrelated", directory: "/repo");
+      await plugin.sendPrompt(
+        promptId: "queued-unrelated",
+        sessionId: "unrelated",
+        parts: const [PluginPromptPart.text(text: "Queued work")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final unrelatedLoad = await waitForFrame(method: AcpMethods.sessionLoad);
+      for (final entry in const [(id: 901, sessionId: "child"), (id: 902, sessionId: "sibling")]) {
+        fake.emit({
+          "jsonrpc": "2.0",
+          "id": entry.id,
+          "method": AcpMethods.sessionRequestPermission,
+          "params": {
+            "sessionId": entry.sessionId,
+            "toolCall": {"toolCallId": "tool-${entry.sessionId}", "title": "Run", "kind": "execute"},
+            "options": [
+              {"optionId": "allow", "name": "Allow", "kind": "allow_once"},
+              {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+            ],
+          },
+        });
+      }
+      await Future<void>.delayed(Duration.zero);
+      final siblingPermission = (await plugin.getPendingPermissions(sessionId: "sibling")).single;
+
+      final stopping = plugin.abortSession(
+        sessionId: "child",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: const {},
+      );
+      final cancel = await waitForFrame(method: GrokAcpApi.subagentCancelMethod);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": cancel["id"],
+        "result": {
+          "subagentId": "child",
+          "cancelled": true,
+          "outcome": {"kind": "cancelled"},
+        },
+      });
+      await stopping;
+      expect(await plugin.getPendingPermissions(sessionId: "child"), isEmpty);
+      expect(await plugin.getPendingPermissions(sessionId: "sibling"), hasLength(1));
+      expect(fake.written.singleWhere((frame) => frame["id"] == 901)["result"], {
+        "outcome": {"outcome": "cancelled"},
+      });
+      expect(fake.written.where((frame) => frame["id"] == 902), isEmpty);
+
+      await plugin.replyToPermission(
+        requestId: siblingPermission.id,
+        sessionId: "sibling",
+        reply: PluginPermissionReply.once,
+      );
+      fake.emit({"jsonrpc": "2.0", "id": unrelatedLoad["id"], "result": const <String, dynamic>{}});
+      final unrelatedPrompt = await waitForFrame(method: AcpMethods.sessionPrompt);
+      expect((unrelatedPrompt["params"] as Map)["sessionId"], "unrelated");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": unrelatedPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      await finishChild(parentSessionId: "root", childSessionId: "child");
+      await finishChild(parentSessionId: "root", childSessionId: "sibling");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": rootPrompt["id"],
         "result": {"stopReason": "end_turn"},
       });
     });

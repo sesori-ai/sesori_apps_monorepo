@@ -338,6 +338,10 @@ Map<String, dynamic> _jsonFixture({required String name}) {
 }
 
 class _FakeGrokAcpApi() implements GrokAcpApi {
+  @override
+  Future<Never> cancelSubagent({required AcpStdioClient client, required String subagentId}) =>
+      throw StateError("unused");
+
   final List<Future<AcpInitializeResult> Function()> probes = [];
   final List<({String sessionId, String modelId, String? reasoningEffort})> selections = [];
   int probeCount = 0;

@@ -6,9 +6,10 @@
   `.plan/active` until the four coverage PRs, Codex, Grok Build, DeepSeek,
   and Cursor, merge, then moved back)
 - **Plan date:** 2026-09-02
-- **Base:** `main` at `6e9028c4c6`
+- **Base:** `main` at merged Grok history coverage `4d0d8de7e3` (#1427).
 - **Delivery:** one open PR at a time, following current repository rules.
-  Codex now has nine steps: merged metadata, child-session, historical prompt
+  Grok Step 5 scoped-stop implementation is current; Step 6 actual-plugin and
+  phone coverage remains unexecuted. Codex has nine steps: merged metadata, child-session, historical prompt
   preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
   step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
   stop 8/9, and coverage 9/9. Step 8 merged as PR #1421 at `77165f784f`;
@@ -102,18 +103,21 @@ confirmation, no child session or partial stop) and gets that subset.
      main turn is running but
      `mainAgentOnlySupported` is false, it returns the typed rejection before
      any side effect, so a stale or direct caller cannot silently cancel
-     children; otherwise `keep` sends `session/cancel` only. `stop` sends
-     `session/cancel` plus `cancelChild` with each child's direct parent.
-     Outcomes are typed; no `canCancel` field is invented. Foreground children
+     children; otherwise `keep` sends `session/cancel` only. Current atomic
+     opt-in `stop` either invokes declared complete native authority or snapshots
+     and fans out named plus exact child targets; released-client opt-out keeps
+     root/named cancellation and client fanout. Outcomes are typed; no
+     `canCancel` field is invented. Foreground children
      are covered by cancellation of their parent; directly targeting a child
      with no effective interrupt retains that child without cancelling siblings.
      `workKept` means retained work, not pending lifecycle delivery. Unknown-child
      responses do not fabricate either retained work or terminal state.
      `interruptActiveWork` uses `stop` and waits for authoritative lifecycle.
   4. Capability opt-in `supportsScopedStop` plus a typed `AcpPlugin.cancelChild`
-     hook matches current composition (the per-harness APIs are standalone).
-     DeepSeek supplies its typed request/response API; other ACP harnesses keep
-     their existing behavior until their transport seam lands. A child with a
+     hook matches current composition. Separate `supportsAtomicScopedStop`
+     defaults false and means complete native subtree authority; DeepSeek alone
+     opts in. Grok keeps it false and supplies its typed per-child API. Other ACP
+     harnesses keep existing behavior until their transport seam lands. A child with a
      bridge-owned standard prompt uses `session/cancel`, not its former ancestry.
   5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into
@@ -342,16 +346,12 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### Verified facts (native 1.0.5 probes)
 
-- Extension notification `_x.ai/session_notification` wraps an internally
-  tagged `SessionUpdate` (`sessionUpdate` key, snake_case) including
-  `subagent_spawned` (`subagent_id`, `parent_session_id`,
-  `child_session_id`, `subagent_type`, `capability_mode`, `persona`,
-  `resumed_from`, `workflow_run_id`, ...), `subagent_progress`
-  (`duration_ms`, `turn_count`, `tool_call_count`, ...),
-  `subagent_finished` (`tool_calls`, `turns`, ...), plus `task_backgrounded`
-  and `task_completed` with `tool_call_id`.
-- Extension request `_x.ai/subagent/cancel` with `subagentId`. The kill tool
-  sends cancel and shutdown to subagents. Nesting depth is one.
+- Extension notification `_x.ai/session_notification` wraps internally tagged
+  `subagent_spawned`, `subagent_progress`, and `subagent_finished` updates.
+  Captured lifecycle carried exact parent/child ids and `will_wake`, but no
+  background flag or task-background/task-completion lifecycle variants.
+- Extension request `_x.ai/subagent/cancel` takes exact `subagentId`. The probe
+  established exact child isolation; it did not establish nested-depth support.
 - `session/cancel` on the root cancels foreground and background children on
   the ACP seam Sesori drives. Main-agent-only stop is therefore unsupported.
 - Root and child directories persist in the normal sessions tree. A child's
@@ -366,9 +366,10 @@ confirmation, no child session or partial stop) and gets that subset.
   survive restart through the persisted catalog chain.
 - `GrokSessionStoreApi` already reads typed session summaries/updates for
   catalog recovery. It never reads credential or configuration files.
-- Scoped stop remains unimplemented. History continues to use inherited ACP
-  `session/load`; this step adds extension-aware root projection without a
-  second transport.
+- Scoped stop uses ACP-owned policy and immutable snapshot fanout. Exact child
+  cancellation stays behind Grok API → control repository → session service →
+  plugin layers; native ACKs never settle lifecycle. History uses inherited ACP
+  `session/load` plus extension-aware root projection without a second transport.
 
 ### Design
 
@@ -425,13 +426,16 @@ confirmation, no child session or partial stop) and gets that subset.
   by `GrokPlugin.getChildSessions`. Replayed tiles then resolve their
   `childSessionID` to a stored session without looking for a nonexistent parent
   field in the child summary.
-- **Scoped stop.** Through seam 3; `GrokAcpApi.cancelChild` sends
+- **Scoped stop.** Through seam 3; `GrokAcpApi.cancelSubagent` sends
   `_x.ai/subagent/cancel {subagentId}` (leading underscore, as probed) with
-  the child session id, which the probe showed equals `subagent_id` in every
-  frame. `isBackground` comes from the spawn
-  payload; if it exposes no background flag and the probe shows a foreground
-  child dying with the parent tool call, every child is recorded as
-  foreground, so `mainAgentOnlySupported` is false as for OpenCode.
+  the child session id, which equalled `subagent_id` in every captured frame.
+  Lifecycle exposes no background flag, so every child is recorded as
+  foreground and active-root main-agent-only stop is unsupported. Current
+  clients get root-first cancellation plus every exact running-child request
+  from one pre-mutation snapshot; all futures are constructed before failures
+  are observed. This is non-atomic and reports `subAgentsHandled: false`.
+  `cancelled` and `already_finished` are non-retained outcomes; lifecycle alone
+  settles tracker state. Released-client `useAtomicStop: false` stays root-only.
 
 ### PRs
 
@@ -440,9 +444,9 @@ confirmation, no child session or partial stop) and gets that subset.
 | ⚙️ | `grok: parse sub-agent lifecycle notifications` | Historical original title unchanged (now step 1/6); DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker`, exact metadata-based generic spawn suppression, and lifecycle cleanup |
 | ⚙️ | `acp: child sessions keep the root busy` | Historical original title unchanged (now step 2/6); typed tracker-change stream and owned subscription teardown, persisted children, and Layer-3 catalog/live merging |
 | 🚧 | `grok: child session history [step 3/6]` | full root/child replay production, generated DTOs, essential ACP and Grok integration/regression coverage, and supported-behavior docs |
-| 🌿 | `grok: cover child session history [step 4/6]` | supplemental collector/repository/service regressions plus detailed probe, matrix, and regression reconciliation |
-| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | policy in `AcpPlugin.abortSession` (seam 3), including side-effect-free unsupported-`keep` rejection and child-only `keep`; `cancelChild` seam and its Grok request (seam 4); `interruptActiveWork` uses stop |
-| 🌱 | `docs: record Grok Build sub-agent coverage [step 6/6]` | final actual-plugin/client matrix and regression reconciliation |
+| 🌿 | `grok: cover child session history [step 4/6]` | PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
+| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | Current implementation: ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, typed layered Grok child cancellation, and automated isolation/failure coverage |
+| 🌱 | `docs: record Grok Build sub-agent coverage [step 6/6]` | Unexecuted: actual-plugin, phone, and any surfaced live pending-permission coverage plus final reconciliation |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 
@@ -467,8 +471,8 @@ confirmation, no child session or partial stop) and gets that subset.
   triggers a wake-up turn without a client prompt.
 - A root `session/cancel` cancels foreground and background children alike
   (`subagent_finished {status: cancelled}`), so every Grok child is recorded
-  as foreground and `mainAgentOnlySupported` is false. `_x.ai/subagent/cancel
-  {subagentId}` cancels one child without touching siblings or the root turn
+  as foreground and `mainAgentOnlySupported` is false. `_x.ai/subagent/cancel`
+  with `{subagentId}` cancels one child without touching siblings or the root turn
   and returns `{subagentId, cancelled, outcome: cancelled | already_finished}`.
 
 ### Open questions (resolved by the probe)
@@ -481,7 +485,7 @@ confirmation, no child session or partial stop) and gets that subset.
 3. Do `session/load` and `session/list` accept or return child ids with a
    parent marker?
 4. Fate of a foreground child on `session/cancel`; response shape of
-   `x.ai/subagent/cancel` and the resulting `subagent_finished` status.
+   `_x.ai/subagent/cancel` and the resulting `subagent_finished` status.
 5. Is `spawn_subagent` also surfaced as a standard `tool_call`; does a
    background finish trigger a wake-up turn?
 

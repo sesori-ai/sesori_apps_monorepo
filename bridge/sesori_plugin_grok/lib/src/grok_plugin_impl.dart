@@ -10,6 +10,7 @@ import "grok_identity.dart";
 import "repositories/grok_catalog_repository.dart";
 import "repositories/grok_session_catalog_repository.dart";
 import "repositories/grok_session_config_repository.dart";
+import "repositories/grok_session_control_repository.dart";
 import "repositories/grok_session_history_repository.dart";
 import "repositories/mappers/grok_session_replay_collector.dart";
 import "services/grok_session_options_service.dart";
@@ -83,6 +84,7 @@ class GrokPlugin._({
       grokSessionOptionsService: grokSessionOptionsService,
       sessionService: GrokSessionService(
         catalogRepository: sessionCatalogRepository,
+        controlRepository: GrokSessionControlRepository(api: api),
         historyRepository: GrokSessionHistoryRepository(api: sessionStoreApi),
         liveTracker: childSessionTracker,
       ),
@@ -96,6 +98,20 @@ class GrokPlugin._({
       );
 
   final GrokSessionOptionsService _grokSessionOptionsService = grokSessionOptionsService;
+
+  @override
+  bool get supportsScopedStop => true;
+
+  @override
+  Future<AcpChildCancelResult> cancelChild({
+    required AcpStdioClient client,
+    required String sessionId,
+    required String childSessionId,
+  }) => _sessionService.cancelChild(
+    client: client,
+    parentSessionId: sessionId,
+    childSessionId: childSessionId,
+  );
 
   @override
   Set<String> get authMethodAllowlist => GrokAcpApi.headlessAuthMethodIds;
