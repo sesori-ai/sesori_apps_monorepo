@@ -86,9 +86,12 @@ signal that a tool changed files.
   decisions are process-local and are not part of replay. Backend tool names
   remain presentation data rather than shared behavior.
 - Grok uses that standard ACP lifecycle with exact live permission linkage.
-  Tool-call identity, pending-to-terminal status, bounded output or error, and
-  diff content converge between live events and `session/load`; Grok tool names
-  remain presentation data and never become shared domain vocabulary.
+  Root history suppresses only metadata-identified `spawn_subagent` cards and
+  inserts one deterministic child-linked tile from exact child prompt and typed
+  lifecycle facts. Ordinary tools remain generic and ordered; missing prompts
+  produce neither a fabricated tile nor an empty assistant message. Tool-call
+  identity, terminal state, bounded output or error, and diff content otherwise
+  converge between live events and `session/load`.
 
 ## Regression Levels
 

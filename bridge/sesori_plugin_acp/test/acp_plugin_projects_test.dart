@@ -72,8 +72,13 @@ void main() {
     // which zero-duration pumps never outlast.
     Future<Map<String, dynamic>> waitForFrame(String method) async {
       for (var i = 0; i < 400; i++) {
-        final matches = fake().written.where((f) => f["method"] == method && !answered.contains((fake(), f["id"])));
-        if (matches.isNotEmpty) return matches.last;
+        if (fakes.isNotEmpty) {
+          final currentFake = fake();
+          final matches = currentFake.written.where(
+            (f) => f["method"] == method && !answered.contains((currentFake, f["id"])),
+          );
+          if (matches.isNotEmpty) return matches.last;
+        }
         await Future<void>.delayed(const Duration(milliseconds: 5));
       }
       throw StateError("agent never wrote a '$method' frame");

@@ -187,8 +187,8 @@ prompt, and skill commands remain available.
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
@@ -273,12 +273,13 @@ configured catalog; it does not upgrade that harness or fetch a live provider ca
 Native `web_search` and `web_fetch` tools are enabled: outbound requests occur
 when invoked, without a Web BFF, HTTP listener, extra process, or telemetry exporter.
 
-¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
-`subagent_finished` with parent and child session ids as
-`_x.ai/session_notification` extension notifications, streams child updates
-under the child id, and exposes `_x.ai/subagent/cancel` per child. A root
-`session/cancel` cancels background children too, so main-agent-only is not
-supported.
+¹⁰ Grok Build (1.0.5, probed 2026-09-03 and 2026-09-10) sends
+`subagent_spawned`/`subagent_progress`/`subagent_finished` with parent and child
+session ids as extension notifications and streams child updates under the child
+id. Sesori loads exact child transcripts and rebuilds root tiles from persisted
+lifecycle plus each exact child's first prompt. Missing prompts produce no tile.
+Scoped stop remains unimplemented. A root `session/cancel` cancels background
+children too, so main-agent-only is not supported.
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the

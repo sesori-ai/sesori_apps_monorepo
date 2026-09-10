@@ -91,6 +91,7 @@ void main() {
           messageTimeResolver: null,
           haltClassifier: null,
           toolPartReplacement: null,
+          toolPartSuppression: null,
         );
         final liveEvents = <BridgeSseEvent>[];
 
@@ -138,6 +139,7 @@ void main() {
                   messageTimeResolver: null,
                   haltClassifier: null,
                   toolPartReplacement: null,
+                  toolPartSuppression: null,
                 )
                 ..consume(
                   upd({
@@ -183,6 +185,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -244,6 +247,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -282,6 +286,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -322,6 +327,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -368,6 +374,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -403,6 +410,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -429,6 +437,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -463,6 +472,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -504,6 +514,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -531,6 +542,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -558,6 +570,7 @@ void main() {
         messageTimeResolver: null,
         haltClassifier: null,
         toolPartReplacement: null,
+        toolPartSuppression: null,
       );
 
       expect(
@@ -577,6 +590,7 @@ void main() {
         messageTimeResolver: null,
         haltClassifier: null,
         toolPartReplacement: null,
+        toolPartSuppression: null,
       );
       final output = _captureWarnings(() {
         for (var index = 0; index < 2; index++) {
@@ -606,6 +620,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -719,6 +734,7 @@ void main() {
                 messageTimeResolver: null,
                 haltClassifier: null,
                 toolPartReplacement: null,
+                toolPartSuppression: null,
               )
               ..consume(
                 upd({
@@ -774,6 +790,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -816,6 +833,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -848,6 +866,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -880,6 +899,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -927,6 +947,7 @@ void main() {
             haltClassifier: ({required text}) =>
                 text.trim() == "Check your settings to continue" ? const AcpHaltNotice(errorName: "cursor_gate") : null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -957,6 +978,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -979,6 +1001,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1014,6 +1037,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1040,6 +1064,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1080,6 +1105,7 @@ void main() {
                 childSessionID: "child-1",
               );
             },
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",

@@ -6,7 +6,7 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:grok_plugin/grok_plugin.dart";
 import "package:grok_plugin/src/api/grok_acp_api.dart";
-import "package:grok_plugin/src/grok_event_mapper.dart";
+import "package:grok_plugin/src/api/models/grok_session_notification_dto.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -506,7 +506,7 @@ void main() {
       final load = await waitForFrame(method: AcpMethods.sessionLoad);
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionUpdateMethod,
+        "method": GrokSessionProtocol.updateMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -523,7 +523,7 @@ void main() {
 
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionNotificationMethod,
+        "method": GrokSessionProtocol.notificationMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -536,7 +536,7 @@ void main() {
       });
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionNotificationMethod,
+        "method": GrokSessionProtocol.notificationMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -552,7 +552,7 @@ void main() {
       expect(plugin.childSessionTracker.hasRootHold(sessionId: "stored"), isTrue);
       fake.emit({
         "jsonrpc": "2.0",
-        "method": GrokEventMapper.sessionUpdateMethod,
+        "method": GrokSessionProtocol.updateMethod,
         "params": {
           "sessionId": "stored",
           "update": {
@@ -832,6 +832,180 @@ void main() {
       }
       expect(fake.written.where((frame) => frame["method"] == GrokAcpApi.sessionSetModelMethod), isEmpty);
       expect(fake.written.where((frame) => frame["method"] == AcpMethods.sessionPrompt), isEmpty);
+    });
+
+    test("direct child history uses inherited session/load and replays its own transcript", () async {
+      plugin.primeSessionDirectory(sessionId: "child", directory: "/repo");
+
+      final replaying = plugin.getSessionMessages("child");
+      await respond(method: AcpMethods.initialize, result: _initializeResult);
+      final authenticate = await waitForFrame(method: AcpMethods.authenticate);
+      fake.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
+      final load = await waitForFrame(method: AcpMethods.sessionLoad);
+      expect(load["params"], {"sessionId": "child", "cwd": "/repo", "mcpServers": <Object>[]});
+      fake
+        ..emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {
+            "sessionId": "child",
+            "update": {
+              "sessionUpdate": "user_message_chunk",
+              "content": {"type": "text", "text": "Child prompt"},
+            },
+          },
+        })
+        ..emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {
+            "sessionId": "child",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "read",
+              "title": "Read file",
+              "status": "completed",
+            },
+          },
+        })
+        ..emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {
+            "sessionId": "child",
+            "update": {
+              "sessionUpdate": "agent_message_chunk",
+              "content": {"type": "text", "text": "Child response"},
+            },
+          },
+        })
+        ..emit({
+          "jsonrpc": "2.0",
+          "id": load["id"],
+          "result": const {"sessionId": "child", "models": _modelState},
+        });
+
+      final messages = await replaying;
+      expect(messages.map((message) => message.info.sessionID), everyElement("child"));
+      expect(messages.expand((message) => message.parts).whereType<PluginMessagePartText>(), hasLength(2));
+      expect(messages.expand((message) => message.parts).whereType<PluginMessagePartTool>(), hasLength(1));
+    });
+
+    test("root history maps persisted child context and drains late lifecycle without live state", () async {
+      final home = Directory.systemTemp.createTempSync("grok-history-home-");
+      addTearDown(() => home.deleteSync(recursive: true));
+      await plugin.dispose();
+      fake = FakeAcpProcess();
+      handledFrameIds.clear();
+      plugin = GrokPlugin(
+        binaryPath: "grok",
+        launchDirectory: "/fallback",
+        environment: {"HOME": home.path},
+        processFactory: (_) async => fake,
+      );
+      final project = "${home.path}/.grok/sessions/${Uri.encodeComponent("/repo")}";
+      final rootDirectory = Directory("$project/root")..createSync(recursive: true);
+      final childDirectory = Directory("$project/child")..createSync(recursive: true);
+      File("${rootDirectory.path}/summary.json").writeAsStringSync(
+        jsonEncode({
+          "info": {"id": "root", "cwd": "/repo"},
+        }),
+      );
+      File("${rootDirectory.path}/updates.jsonl").writeAsStringSync(
+        jsonEncode({
+          "method": "_x.ai/session/update",
+          "params": {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "subagent_spawned",
+              "subagent_id": "child",
+              "child_session_id": "child",
+              "subagent_type": "general-purpose",
+              "description": "Child task",
+            },
+          },
+        }),
+      );
+      File("${childDirectory.path}/updates.jsonl").writeAsStringSync(
+        jsonEncode({
+          "method": "session/update",
+          "params": {
+            "sessionId": "child",
+            "update": {
+              "sessionUpdate": "user_message_chunk",
+              "content": {"type": "text", "text": "Child-owned prompt"},
+            },
+          },
+        }),
+      );
+      plugin.primeSessionDirectory(sessionId: "root", directory: "/repo");
+
+      final replaying = plugin.getSessionMessages("root");
+      await respond(method: AcpMethods.initialize, result: _initializeResult);
+      final authenticate = await waitForFrame(method: AcpMethods.authenticate);
+      fake.emit({"jsonrpc": "2.0", "id": authenticate["id"], "result": <String, dynamic>{}});
+      final load = await waitForFrame(method: AcpMethods.sessionLoad);
+      fake
+        ..emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "spawn",
+              "_meta": {
+                "x.ai/tool": {"name": "spawn_subagent", "kind": "task"},
+              },
+            },
+          },
+        })
+        ..emit({
+          "jsonrpc": "2.0",
+          "method": GrokSessionProtocol.updateMethod,
+          "params": {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "subagent_spawned",
+              "subagent_id": "child",
+              "child_session_id": "child",
+              "subagent_type": "general-purpose",
+              "description": "Child task",
+            },
+          },
+        })
+        ..emit({
+          "jsonrpc": "2.0",
+          "id": load["id"],
+          "result": const {"sessionId": "root", "models": _betaModelState},
+        });
+      await Future<void>.delayed(const Duration(milliseconds: 50));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokSessionProtocol.notificationMethod,
+        "params": {
+          "sessionId": "root",
+          "update": {
+            "sessionUpdate": "subagent_finished",
+            "subagent_id": "child",
+            "child_session_id": "child",
+            "status": "completed",
+            "output": "Child result",
+            "will_wake": false,
+          },
+        },
+      });
+
+      final messages = await replaying;
+      expect(messages, hasLength(1));
+      final tile = messages.single.parts.single as PluginMessagePartSubtask;
+      expect(tile.prompt, "Child-owned prompt");
+      expect(tile.childSessionID, "child");
+      expect(tile.taskState!.status, PluginToolStatus.completed);
+      expect(tile.taskState!.output, "Child result");
+      expect((messages.single.info as PluginMessageAssistant).modelID, "opaque/provider:model-beta");
+      expect(plugin.childSessionTracker.isChild(sessionId: "child"), isFalse);
+      expect((await plugin.getSessionStatuses()).containsKey("child"), isFalse);
     });
 
     test("history replay stamps the loaded selection without replacing live defaults", () async {

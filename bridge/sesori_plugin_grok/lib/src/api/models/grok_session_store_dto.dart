@@ -43,9 +43,10 @@ sealed class GrokSessionSummaryInfoDto with _$GrokSessionSummaryInfoDto {
   factory fromJson(Map<String, dynamic> json) => _$GrokSessionSummaryInfoDtoFromJson(json);
 }
 
-/// One line of `<session>/updates.jsonl`. The target update method receives a
-/// fully typed notification; every other persisted method is an unknown variant
-/// and is ignored without weakening target-record validation.
+/// One line of `<session>/updates.jsonl`. Grok extension lifecycle and
+/// standard ACP updates stay typed and ordered; every other persisted method
+/// remains an explicit boundary so repository logic cannot accidentally merge
+/// user-message runs across unknown records.
 @Freezed(
   unionKey: "method",
   fallbackUnion: "unknown",
@@ -54,11 +55,59 @@ sealed class GrokSessionSummaryInfoDto with _$GrokSessionSummaryInfoDto {
 )
 sealed class GrokPersistedUpdateDto with _$GrokPersistedUpdateDto {
   @FreezedUnionValue("_x.ai/session/update")
-  const factory sessionUpdate({
+  const factory grokSessionUpdate({
     required GrokSessionNotificationDto params,
-  }) = GrokPersistedSessionUpdateDto;
+  }) = GrokPersistedGrokSessionUpdateDto;
+
+  @FreezedUnionValue("session/update")
+  const factory acpSessionUpdate({
+    required GrokPersistedAcpNotificationDto params,
+  }) = GrokPersistedAcpSessionUpdateDto;
 
   const factory unknown() = GrokPersistedUpdateUnknownDto;
 
   factory fromJson(Map<String, dynamic> json) => _$GrokPersistedUpdateDtoFromJson(json);
+}
+
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokPersistedAcpNotificationDto with _$GrokPersistedAcpNotificationDto {
+  const factory({
+    required String sessionId,
+    required GrokPersistedAcpUpdateDto update,
+  }) = _GrokPersistedAcpNotificationDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokPersistedAcpNotificationDtoFromJson(json);
+}
+
+/// Standard ACP update kinds needed by history preparation. Unknown updates
+/// remain typed boundaries; known content variants can evolve independently.
+@Freezed(
+  unionKey: "sessionUpdate",
+  unionValueCase: FreezedUnionCase.snake,
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class GrokPersistedAcpUpdateDto with _$GrokPersistedAcpUpdateDto {
+  const factory userMessageChunk({
+    required GrokPersistedContentDto content,
+  }) = GrokPersistedUserMessageChunkDto;
+
+  const factory unknown() = GrokPersistedAcpUpdateUnknownDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokPersistedAcpUpdateDtoFromJson(json);
+}
+
+@Freezed(
+  unionKey: "type",
+  fallbackUnion: "unknown",
+  fromJson: true,
+  toJson: false,
+)
+sealed class GrokPersistedContentDto with _$GrokPersistedContentDto {
+  const factory text({required String text}) = GrokPersistedTextContentDto;
+
+  const factory unknown() = GrokPersistedContentUnknownDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokPersistedContentDtoFromJson(json);
 }

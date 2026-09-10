@@ -311,6 +311,15 @@ abstract class AcpPlugin({
   /// variant state; harnesses with a session-specific variant may override.
   String? replayVariantForSession({required String sessionId}) => null;
 
+  /// Creates a replay-local collector after directory attribution is warmed
+  /// but before the dedicated replay process starts. Harnesses may prepare
+  /// immutable context and wrap one correctly configured standard collector;
+  /// they must not read or mutate live mapper/tracker state.
+  Future<AcpSessionReplayCollector> createSessionReplayCollector({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async => collectorFactory(toolPartSuppression: null);
+
   /// Whether [notification] is historical output from a resume `session/load`
   /// and must stay out of the live event stream while its session is in the
   /// suppression window. Standard session updates are replayable except the
@@ -2071,23 +2080,26 @@ abstract class AcpPlugin({
     // History via `session/load` replay on a dedicated short-lived client so
     // replayed updates don't interleave with the live session's stream.
     final replayClient = _createClient(logTag: "$id-replay");
-    final collector = AcpReplayCollector(
-      sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
-      sessionId: sessionId,
-      // Replayed messages must carry the same `agent` the live mapper stamps,
-      // or a reloaded session reports a different agent than the live one did.
-      agentId: eventMapper.pluginId,
-      initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
-          ? AcpEventMapper.initialUserMessageId(sessionId)
-          : null,
-      messageIdOverride: null,
-      messageTimeResolver: null,
-      // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
-      // the live stream does, so reloaded history renders it identically.
-      haltClassifier: eventMapper.classifyHaltNotice,
-      toolPartReplacement: null,
-    );
-    List<PluginMessageWithParts> buildReplay() => collector.buildWithAssistantSelection(
+    AcpReplayCollector collectorFactory({required AcpReplayToolPartSuppression? toolPartSuppression}) =>
+        AcpReplayCollector(
+          sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
+          sessionId: sessionId,
+          // Replayed messages must carry the same `agent` the live mapper stamps,
+          // or a reloaded session reports a different agent than the live one did.
+          agentId: eventMapper.pluginId,
+          initialUserMessageId: _syntheticInitialPromptSessions.contains(sessionId)
+              ? AcpEventMapper.initialUserMessageId(sessionId)
+              : null,
+          messageIdOverride: null,
+          messageTimeResolver: null,
+          // Reclassify a halt notice (e.g. Cursor's account/plan gate) the same way
+          // the live stream does, so reloaded history renders it identically.
+          haltClassifier: eventMapper.classifyHaltNotice,
+          toolPartReplacement: null,
+          toolPartSuppression: toolPartSuppression,
+        );
+    late final AcpSessionReplayCollector replayCollector;
+    List<PluginMessageWithParts> buildReplay() => replayCollector.buildWithAssistantSelection(
       modelId: eventMapper.modelForSession(sessionId: sessionId),
       providerId: eventMapper.providerForSession(sessionId: sessionId),
       variant: replayVariantForSession(sessionId: sessionId),
@@ -2103,6 +2115,10 @@ abstract class AcpPlugin({
     }
 
     try {
+      replayCollector = await createSessionReplayCollector(
+        sessionId: sessionId,
+        collectorFactory: collectorFactory,
+      );
       await replayClient.connect();
       final replayInit = await _initialize(replayClient);
       if (!replayInit.agentCapabilities.loadSession) {
@@ -2121,9 +2137,9 @@ abstract class AcpPlugin({
         tracker: _commandTracker,
       );
       sub = replayClient.notifications.listen((notification) {
+        received++;
+        replayCollector.consumeNotification(notification: notification);
         if (notification.method == AcpMethods.sessionUpdate) {
-          received++;
-          collector.consume(notification.params);
           final update = notification.params["update"];
           if (update is Map && update["sessionUpdate"] == "available_commands_update") {
             deferredCommandRefresh = eventMapper.map(notification);

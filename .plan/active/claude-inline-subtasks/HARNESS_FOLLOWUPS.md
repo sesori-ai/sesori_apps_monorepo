@@ -353,6 +353,11 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ## Grok Build (1.0.5, ACP stdio)
 
+Implementation status: PR #1426 delivers replay-local collectors and streamed
+child-owned prompt preparation, with no deferred-permission tracker or outcome
+model. The design prose below is the pre-implementation plan; Step 4/6 reconciles
+it with the reviewed implementation and complete coverage.
+
 ### Verified facts (binary string survey)
 
 - Extension notification `x.ai/session_notification` wraps an internally
