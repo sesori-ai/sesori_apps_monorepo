@@ -132,28 +132,33 @@ void main() {
 
     // The Figma loading component reserves both text lines before a harness
     // reports, so the row does not shove the list down on the first event.
-    testWidgets("keeps the same height from starting through running", (tester) async {
+    testWidgets("keeps the same height from preparing through reading", (tester) async {
       Future<double> heightFor(CatalogRescanState scan) async {
         await pumpRow(tester, scan);
         return tester.getSize(find.byType(CatalogScanRow)).height;
       }
 
-      final starting = await heightFor(const CatalogRescanState.starting(pluginIds: {"codex"}));
-      final running = await heightFor(
-        const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
+      final preparing = await heightFor(
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
+      final reading = await heightFor(
+        const CatalogRescanState.reading(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
       );
 
-      expect(starting, greaterThan(0));
-      expect(running, starting);
+      expect(preparing, greaterThan(0));
+      expect(reading, preparing);
     });
 
     for (final textScale in [1.0, 2.0]) {
       testWidgets("keeps scan marks and text in place across states at ${textScale}x text", (tester) async {
         final loc = await AppLocalizations.delegate.load(const Locale("en"));
         final states = [
-          (const CatalogRescanState.starting(pluginIds: {"codex"}), loc.catalogScanRunningTitle),
           (
-            const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
+            const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+            loc.catalogScanRunningTitle,
+          ),
+          (
+            const CatalogRescanState.reading(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
             loc.catalogScanRunningTitle,
           ),
           (
@@ -196,7 +201,10 @@ void main() {
     }
 
     testWidgets("reports the scan before any harness has reported progress", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
+      await pumpRow(
+        tester,
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
 
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(find.text(loc.catalogScanRunningTitle), findsOneWidget);
@@ -207,7 +215,7 @@ void main() {
     testWidgets("matches the 402 by 101 Figma loading geometry", (tester) async {
       await pumpRow(
         tester,
-        const CatalogRescanState.starting(pluginIds: {"codex"}),
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
         designSystem: PregoDesignSystem.dark,
         width: 402,
       );
@@ -233,7 +241,7 @@ void main() {
     testWidgets("keeps the scan graphic visible in the light theme", (tester) async {
       await tester.pumpWidget(
         harness(
-          const CatalogRescanState.starting(pluginIds: {"codex"}),
+          const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"}),
           designSystem: PregoDesignSystem.light,
           width: 402,
         ),
@@ -257,7 +265,7 @@ void main() {
     testWidgets("repeats both loading motions on one ten-second timeline", (tester) async {
       await tester.pumpWidget(
         harness(
-          const CatalogRescanState.starting(pluginIds: {"codex"}),
+          const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
           width: 402,
         ),
       );
@@ -288,7 +296,7 @@ void main() {
       await tester.pump();
 
       await tester.pumpWidget(
-        harness(const CatalogRescanState.starting(pluginIds: {"codex"})),
+        harness(const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"})),
       );
 
       expect(entranceScale(tester), closeTo(0.97, 0.0001));
@@ -312,12 +320,15 @@ void main() {
     });
 
     testWidgets("does not replay the entrance for progress updates or exit", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
+      await pumpRow(
+        tester,
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
       expect(entranceScale(tester), 1);
 
       await tester.pumpWidget(
         harness(
-          const CatalogRescanState.running(
+          const CatalogRescanState.reading(
             activePluginName: "Codex",
             sessionsSeen: 4,
             pluginIds: {"codex"},
@@ -333,7 +344,10 @@ void main() {
     });
 
     testWidgets("stops the looping scan graphic when a terminal outcome replaces it", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
+      await pumpRow(
+        tester,
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
 
       expect(find.byKey(const ValueKey("prego-deep-scan-loader")), findsOneWidget);
       expect(find.byKey(const ValueKey("prego-deep-scan-beam")), findsOneWidget);
@@ -357,26 +371,26 @@ void main() {
     testWidgets("names the harness being scanned and what it has seen", (tester) async {
       await pumpRow(
         tester,
-        const CatalogRescanState.running(
+        const CatalogRescanState.reading(
           activePluginName: "Codex",
           sessionsSeen: 148,
           pluginIds: {"codex"},
         ),
       );
 
-      expect(find.text("Codex — 148 sessions"), findsOneWidget);
+      expect(find.text("Codex — 148 sessions found"), findsOneWidget);
     });
 
     testWidgets("uses localized singular copy for live and completed counts", (tester) async {
       await pumpRow(
         tester,
-        const CatalogRescanState.running(
+        const CatalogRescanState.reading(
           activePluginName: "Codex",
           sessionsSeen: 1,
           pluginIds: {"codex"},
         ),
       );
-      expect(find.text("Codex — 1 session"), findsOneWidget);
+      expect(find.text("Codex — 1 session found"), findsOneWidget);
 
       await pumpRow(
         tester,
@@ -388,10 +402,81 @@ void main() {
       expect(find.text("1 new session in 1 new project"), findsOneWidget);
     });
 
+    testWidgets("renders preparing, reading, and saving phase copy", (tester) async {
+      await pumpRow(
+        tester,
+        const CatalogRescanState.preparingMany(
+          pendingPluginNames: ["Codex", "Claude", "Cursor"],
+          pluginIds: {"codex", "claude", "cursor"},
+        ),
+      );
+      expect(find.text("Preparing Codex, Claude, and 1 other scans…"), findsOneWidget);
+
+      await pumpRow(
+        tester,
+        const CatalogRescanState.reading(activePluginName: "Claude", sessionsSeen: 0, pluginIds: {"claude"}),
+      );
+      expect(find.text("Reading Claude sessions…"), findsOneWidget);
+
+      await pumpRow(
+        tester,
+        const CatalogRescanState.saving(activePluginName: "Claude", pluginIds: {"claude"}),
+      );
+      expect(find.text("Saving Claude scan results…"), findsOneWidget);
+    });
+
+    testWidgets("explains a prolonged confirmed harness startup after ten seconds", (tester) async {
+      await tester.pumpWidget(
+        harness(
+          const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"}),
+          width: 402,
+        ),
+      );
+      await tester.pump();
+
+      expect(find.text("Scanning all harnesses"), findsOneWidget);
+      expect(find.text("Starting Codex…"), findsOneWidget);
+      await tester.pump(const Duration(seconds: 9));
+      expect(find.text("Waiting for Codex"), findsNothing);
+
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text("Waiting for Codex"), findsOneWidget);
+      expect(
+        find.text("Codex must finish starting before scanning can continue. You can keep browsing."),
+        findsOneWidget,
+      );
+      final explanation = tester.widget<Text>(
+        find.text("Codex must finish starting before scanning can continue. You can keep browsing."),
+      );
+      expect(explanation.maxLines, isNull);
+      expect(explanation.overflow, isNull);
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+      await tester.tap(find.bySemanticsLabel(loc.catalogScanCancel));
+      expect(cancelCount, 1);
+    });
+
+    testWidgets("restarts the prolonged startup threshold when the harness changes", (tester) async {
+      await tester.pumpWidget(
+        harness(const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex", "claude"})),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 9));
+
+      await tester.pumpWidget(
+        harness(const CatalogRescanState.starting(activePluginName: "Claude", pluginIds: {"codex", "claude"})),
+      );
+      await tester.pump(const Duration(seconds: 2));
+      expect(find.text("Waiting for Claude"), findsNothing);
+      expect(find.text("Starting Claude…"), findsOneWidget);
+
+      await tester.pump(const Duration(seconds: 8));
+      expect(find.text("Waiting for Claude"), findsOneWidget);
+    });
+
     testWidgets("cancels the scan in flight from the running row", (tester) async {
       await pumpRow(
         tester,
-        const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 1, pluginIds: {"codex"}),
+        const CatalogRescanState.reading(activePluginName: "Codex", sessionsSeen: 1, pluginIds: {"codex"}),
       );
 
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
@@ -411,7 +496,7 @@ void main() {
     testWidgets("focuses and activates Cancel from the keyboard", (tester) async {
       await pumpRow(
         tester,
-        const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 1, pluginIds: {"codex"}),
+        const CatalogRescanState.reading(activePluginName: "Codex", sessionsSeen: 1, pluginIds: {"codex"}),
       );
 
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
@@ -702,7 +787,7 @@ void main() {
       expect(find.text(loc.catalogScanNoHarnessDetail), findsOneWidget);
     });
 
-    // The running row's session count changes with every enumerated session, so
+    // The reading row's session count changes with every enumerated session, so
     // announcing it would interrupt a screen reader throughout a long scan.
     testWidgets("announces every state except the one whose count keeps moving", (tester) async {
       Future<bool?> announcesFor(CatalogRescanState scan) async {
@@ -715,11 +800,16 @@ void main() {
             .liveRegion;
       }
 
-      expect(await announcesFor(const CatalogRescanState.starting(pluginIds: {"codex"})), isTrue);
+      expect(
+        await announcesFor(
+          const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"}),
+        ),
+        isTrue,
+      );
       expect(await announcesFor(const CatalogRescanState.failed(harnessCount: 1)), isTrue);
       expect(
         await announcesFor(
-          const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 9, pluginIds: {"codex"}),
+          const CatalogRescanState.reading(activePluginName: "Codex", sessionsSeen: 9, pluginIds: {"codex"}),
         ),
         isFalse,
       );
@@ -777,7 +867,10 @@ void main() {
               builder: (context) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(disableAnimations: true),
                 child: CatalogScanRow(
-                  scan: const CatalogRescanState.starting(pluginIds: {"codex"}),
+                  scan: const CatalogRescanState.preparingOne(
+                    pendingPluginName: "Codex",
+                    pluginIds: {"codex"},
+                  ),
                   onCancel: () => cancelCount++,
                   onDismiss: () => dismissCount++,
                 ),
@@ -812,7 +905,7 @@ void main() {
       await tester.pumpWidget(harness(const CatalogRescanState.idle()));
       await tester.pump();
       await tester.pumpWidget(
-        harness(const CatalogRescanState.starting(pluginIds: {"codex"})),
+        harness(const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"})),
       );
       await tester.pump(const Duration(milliseconds: 16));
 
@@ -832,7 +925,7 @@ void main() {
       await tester.pumpWidget(harness(const CatalogRescanState.idle()));
       await tester.pump();
       await tester.pumpWidget(
-        harness(const CatalogRescanState.starting(pluginIds: {"codex"})),
+        harness(const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"})),
       );
       await tester.pump(const Duration(milliseconds: 80));
       expect(entranceScale(tester), isNot(1));
@@ -884,12 +977,12 @@ void main() {
 
       await pumpRow(
         tester,
-        const CatalogRescanState.starting(pluginIds: {"codex"}),
+        const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"}),
         textScaler: textScaler,
         width: 402,
       );
       expect(tester.getSize(find.byType(CatalogScanRow)).height, greaterThan(101));
-      for (final label in [loc.catalogScanRunningTitle, loc.catalogScanStartingDetail]) {
+      for (final label in [loc.catalogScanRunningTitle, loc.catalogScanStartingDetail("Codex")]) {
         final text = tester.widget<Text>(find.text(label));
         expect(text.maxLines, isNull);
         expect(text.overflow, isNull);

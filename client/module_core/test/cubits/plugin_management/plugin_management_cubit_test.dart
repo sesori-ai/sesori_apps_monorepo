@@ -1287,7 +1287,12 @@ void main() {
     test("names the harnesses a live scan covers, whoever started it", () async {
       await ready();
 
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex", "claude"}));
+      rescan.emit(
+        const CatalogRescanState.preparingMany(
+          pendingPluginNames: ["Codex", "Claude"],
+          pluginIds: {"codex", "claude"},
+        ),
+      );
       await _settle();
       expect((cubit.state as PluginManagementReady).scanningPluginIds, {"codex", "claude"});
 
@@ -1313,7 +1318,9 @@ void main() {
       await cubit.startCatalogScanFor(pluginId: "codex");
       expect((cubit.state as PluginManagementReady).scanRejections, isNotEmpty);
 
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
       await _settle();
 
       expect((cubit.state as PluginManagementReady).scanRejections, isEmpty);
@@ -1324,7 +1331,9 @@ void main() {
       rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
       await cubit.startCatalogScanFor(pluginId: "codex");
 
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"claude"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(pendingPluginName: "Claude", pluginIds: {"claude"}),
+      );
       await _settle();
 
       expect(
@@ -1340,7 +1349,9 @@ void main() {
       rescan.stubStartResult(
         CatalogRescanStartResult.failed(cause: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
       );
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
       await _settle();
 
       await cubit.startCatalogScanFor(pluginId: "codex");
@@ -1490,7 +1501,9 @@ void main() {
     test("a second harness being refused leaves the first one's claim alone", () async {
       await ready();
       await cubit.startCatalogScanFor(pluginId: "codex");
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
       await _settle();
 
       rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
@@ -1531,7 +1544,9 @@ void main() {
       await ready();
       rescan.stubStartResult(const CatalogRescanStartResult.unsupported());
       await cubit.startCatalogScanFor(pluginId: "codex");
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"claude"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(pendingPluginName: "Claude", pluginIds: {"claude"}),
+      );
       await _settle();
 
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
@@ -1543,7 +1558,9 @@ void main() {
     });
 
     test("a cubit created mid-scan seeds its members from the service", () async {
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"codex"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+      );
       await _settle();
 
       final reopened = PluginManagementCubit(

@@ -73,25 +73,30 @@ state.
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
   attach/no-auto-start mode always retains its existing server path.
-- One scan is one row above the list, however many harnesses take part. Between
-  dispatch and the first progress event it can name neither a harness nor a
-  count and says only that it is starting; from that event on it names the
-  harness being read and how many sessions it has seen so far. It offers to
-  cancel while it runs. Starting and running share the same Deep Scan
-  loading-card geometry, so the first progress event does not move the list, and
-  the row scrolls with the list rather than pinning. The entrance animation plays
-  once when a pull first reveals the row; later updates do not replay it, and the
-  scan indicator keeps animating until a terminal outcome replaces it. Android
-  Remove Animations and iOS Reduce Motion both hold the intentional first frame
-  without the entrance bounce, and the pull-caption invitation keeps only its
-  gentle opacity transition. Finished outcomes use the shared PREGO result-card
-  geometry, expanding rather than clipping at accessibility text sizes: a
-  success, warning, or error glow rises from the lower edge and the matching
-  tinted Dismiss action remains available until the result clears. Loading and
-  every result state use a vertically centered 20px leading mark with identical
-  edge inset and icon-to-text gap. Titles do not shift horizontally between
-  states; at standard text size, icon and title positions stay fixed vertically
-  too. Enlarged text may grow the card without changing those horizontal insets.
+- One scan is one row above the list, however many harnesses take part. It names
+  only unfinished harnesses while preparing, distinguishes confirmed harness
+  startup from catalog reading, reports found-session counts during enumeration,
+  and says when results are being saved. Startup wording is driven only by a
+  fresh management snapshot for the same bridge; unknown or older metadata does
+  not infer it. After the same harness remains confirmed as starting for ten
+  seconds, the row explains that scanning is waiting for startup and that the
+  user can keep browsing. This one-shot presentation timer resets on any phase
+  or harness change and never polls or changes bridge work. It offers to cancel
+  throughout live work. Every live phase shares the same Deep Scan loading-card
+  treatment, and the row scrolls with the list rather than pinning. The entrance
+  animation plays once when a pull first reveals the row; later updates do not
+  replay it, and the scan indicator keeps animating until a terminal outcome
+  replaces it. Android Remove Animations and iOS Reduce Motion both hold the
+  intentional first frame without the entrance bounce, and the pull-caption
+  invitation keeps only its gentle opacity transition. Finished outcomes use the
+  shared PREGO result-card geometry, expanding rather than clipping at
+  accessibility text sizes: a success, warning, or error glow rises from the
+  lower edge and the matching tinted Dismiss action remains available until the
+  result clears. Loading and every result state use a vertically centered 20px
+  leading mark with identical edge inset and icon-to-text gap. Titles do not
+  shift horizontally between states; at standard text size, icon and title
+  positions stay fixed vertically too. Enlarged text may grow the card without
+  changing those horizontal insets.
 - A scan the pull started is reported by that row alone: the pull raises no
   confirmation of its own, having run no ordinary refresh. A scan started from
   harness settings is the exception, because that surface has no row — it

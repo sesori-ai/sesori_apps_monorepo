@@ -2545,7 +2545,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         fakeCatalogRescanService.emit(
-          const CatalogRescanState.running(
+          const CatalogRescanState.reading(
             activePluginName: "Codex",
             sessionsSeen: 148,
             pluginIds: {"codex"},
@@ -2555,7 +2555,7 @@ void main() {
 
         expect(
           (cubit.state as ProjectListLoaded).catalogScan,
-          isA<CatalogRescanRunning>().having((s) => s.sessionsSeen, "sessionsSeen", 148),
+          isA<CatalogRescanReading>().having((s) => s.sessionsSeen, "sessionsSeen", 148),
         );
       });
 

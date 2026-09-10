@@ -1959,17 +1959,65 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanRunningTitle => 'Scanning all harnesses';
 
   @override
-  String get catalogScanStartingDetail => 'Starting…';
+  String catalogScanPreparingOneDetail(String harness) {
+    return 'Preparing $harness scan…';
+  }
 
   @override
-  String catalogScanRunningDetail(String harness, int sessions) {
+  String catalogScanPreparingManyDetail(String harnesses) {
+    return 'Preparing $harnesses scans…';
+  }
+
+  @override
+  String catalogScanTwoHarnesses(String first, String second) {
+    return '$first and $second';
+  }
+
+  @override
+  String catalogScanHarnessesWithOthers(String first, String second, int others) {
+    String _temp0 = intl.Intl.pluralLogic(
+      others,
+      locale: localeName,
+      other: '$others others',
+      one: '1 other',
+    );
+    return '$first, $second, and $_temp0';
+  }
+
+  @override
+  String catalogScanStartingDetail(String harness) {
+    return 'Starting $harness…';
+  }
+
+  @override
+  String catalogScanReadingDetail(String harness) {
+    return 'Reading $harness sessions…';
+  }
+
+  @override
+  String catalogScanReadingCountDetail(String harness, int sessions) {
     String _temp0 = intl.Intl.pluralLogic(
       sessions,
       locale: localeName,
-      other: '$sessions sessions',
-      one: '1 session',
+      other: '$sessions sessions found',
+      one: '1 session found',
     );
     return '$harness — $_temp0';
+  }
+
+  @override
+  String catalogScanSavingDetail(String harness) {
+    return 'Saving $harness scan results…';
+  }
+
+  @override
+  String catalogScanWaitingTitle(String harness) {
+    return 'Waiting for $harness';
+  }
+
+  @override
+  String catalogScanWaitingDetail(String harness) {
+    return '$harness must finish starting before scanning can continue. You can keep browsing.';
   }
 
   @override
