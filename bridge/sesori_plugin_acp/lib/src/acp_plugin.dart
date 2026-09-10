@@ -1828,7 +1828,9 @@ abstract class AcpPlugin({
         mainAgentOnlySupported: mainOnlySupported,
       );
     }
-    if (subAgents == PluginAbortSubAgentPolicy.keep && activeSubAgentSessionIds.isNotEmpty && !mainRunning) {
+    final hasRetainedSubAgentWork =
+        activeSubAgentSessionIds.isNotEmpty || childSessionTracker.hasActiveWorkForRoot(sessionId: sessionId);
+    if (subAgents == PluginAbortSubAgentPolicy.keep && hasRetainedSubAgentWork && !mainRunning) {
       return const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
     }
 

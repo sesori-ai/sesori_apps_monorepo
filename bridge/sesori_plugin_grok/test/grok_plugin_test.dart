@@ -855,6 +855,66 @@ void main() {
       await finishChild(parentSessionId: "root", childSessionId: "child");
     });
 
+    test("keep retains a terminal child's autonomous root hold", () async {
+      await connect();
+      final rootPrompt = await startPrompt(sessionId: "root");
+      await spawnChild(parentSessionId: "root", childSessionId: "child");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": rootPrompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
+      await Future<void>.delayed(Duration.zero);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokSessionProtocol.notificationMethod,
+        "params": {
+          "sessionId": "root",
+          "update": {
+            "sessionUpdate": "subagent_finished",
+            "subagent_id": "child",
+            "child_session_id": "child",
+            "status": "completed",
+            "will_wake": true,
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.childSessionTracker.busyChildIds(sessionId: "root"), isEmpty);
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: "root"), isTrue);
+
+      final beforeKeep = fake.written.length;
+      final result = await plugin.abortSession(
+        sessionId: "root",
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: const {"child"},
+      );
+      expect(
+        result,
+        isA<PluginAbortAccepted>()
+            .having((value) => value.workKept, "hold kept", true)
+            .having((value) => value.subAgentsHandled, "handled", true),
+      );
+      expect(fake.written, hasLength(beforeKeep));
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: "root"), isTrue);
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": GrokSessionProtocol.updateMethod,
+        "params": {
+          "sessionId": "root",
+          "update": {
+            "sessionUpdate": "turn_completed",
+            "prompt_id": "${GrokSessionProtocol.autonomousTurnPromptPrefix}child",
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      expect(plugin.childSessionTracker.hasRootHold(sessionId: "root"), isFalse);
+      expect((await plugin.getSessionStatuses())["root"], const PluginSessionStatus.idle());
+    });
+
     test("named child stop is exact and lifecycle remains settlement authority", () async {
       await connect();
       final rootPrompt = await startPrompt(sessionId: "root");
