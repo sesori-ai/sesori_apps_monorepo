@@ -160,6 +160,39 @@ void main() {
       );
     });
 
+    for (final (label, outcome, finishedHarnessCount, pluginIds) in [
+      ("unavailable", const CatalogImportMutationResult.unavailable(), 0, const {"claude"}),
+      ("not found", const CatalogImportMutationResult.notFound(), 0, const {"claude"}),
+      (
+        "failure",
+        CatalogImportMutationResult.failure(error: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
+        1,
+        const {"codex", "claude"},
+      ),
+    ]) {
+      test("hands focus off after $label while another start is pending", () async {
+        final pendingStart = Completer<CatalogImportMutationResult>();
+        repository.resultFor["codex"] = outcome;
+        repository.pendingFor["claude"] = pendingStart.future;
+
+        final starting = service.startAll();
+        await pumpEventQueue();
+
+        expect(repository.startedPluginIds, ["codex", "claude"]);
+        expect(
+          service.state.value,
+          isA<CatalogRescanPreparingOne>()
+              .having((s) => s.pendingPluginName, "pendingPluginName", "Claude")
+              .having((s) => s.finishedHarnessCount, "finishedHarnessCount", finishedHarnessCount)
+              .having((s) => s.pluginIds, "pluginIds", pluginIds),
+          reason: "the first definitive response must update focus/counts without waiting for the batch",
+        );
+
+        pendingStart.complete(const CatalogImportMutationResult.accepted());
+        await starting;
+      });
+    }
+
     test("counts failed and cancelled members as finished", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex", "claude": "Claude", "cursor": "Cursor"}));
       await service.startAll();

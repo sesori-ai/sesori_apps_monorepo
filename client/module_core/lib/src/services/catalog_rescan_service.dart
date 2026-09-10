@@ -258,6 +258,9 @@ class CatalogRescanService({
       for (final pluginId in pluginIds)
         _pluginRepository.startCatalogImport(pluginId: pluginId).then((outcome) {
           results[pluginId] = _applyStartOutcome(pluginId: pluginId, outcome: outcome);
+          // A rejected start can change focus/counts while another response
+          // is still pending. Do not hold that update behind the batch wait.
+          _publishLive();
         }),
     ];
     _pendingStarts.addAll(dispatched);
