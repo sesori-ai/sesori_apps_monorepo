@@ -338,6 +338,64 @@ void main() {
       });
     }
 
+    test("reconnect keeps a loaded chat interactive until a confirmed harness block", () async {
+      final connected = mockConnectionService.currentStatus;
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(setup: PluginSetupState.ready, runtime: PluginRuntimeState.active, pluginId: "plugin-1"),
+      );
+      addTearDown(snapshots.close);
+      final managementService = MockPluginManagementService();
+      when(() => managementService.snapshots).thenAnswer((_) => snapshots);
+      when(managementService.refresh).thenAnswer((_) async {});
+      final cubit = buildCubit(pluginManagementService: managementService);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      final states = <SessionDetailState>[];
+      final subscription = cubit.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      for (final status in [
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+        ),
+        const ConnectionStatus.reconnecting(
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+        ),
+        connected,
+      ]) {
+        when(() => mockConnectionService.currentStatus).thenReturn(status);
+        connectionStatus.add(status);
+        snapshots.add(const PluginManagementLoadResult.loading());
+        await Future<void>.delayed(Duration.zero);
+        await _awaitNotRefreshing(cubit);
+        expect((cubit.state as SessionDetailLoaded).interaction.canInteract, isTrue);
+      }
+      expect(states, isNotEmpty);
+      expect(
+        states,
+        everyElement(
+          isA<SessionDetailLoaded>().having((state) => state.interaction.canInteract, "interactive", isTrue),
+        ),
+      );
+
+      snapshots.add(
+        managementFixture(setup: PluginSetupState.ready, runtime: PluginRuntimeState.disabled, pluginId: "plugin-1"),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+        description: "confirmed disable after reconnect",
+      );
+      expect(
+        (cubit.state as SessionDetailLoaded).interaction,
+        isA<SessionInteractionBlocked>().having(
+          (state) => state.reason,
+          "reason",
+          SessionInteractionBlockedReason.disabled,
+        ),
+      );
+    });
+
     test("metadata refresh failure preserves the loaded transcript and buffered events", () async {
       final cubit = buildCubit();
       addTearDown(cubit.close);
