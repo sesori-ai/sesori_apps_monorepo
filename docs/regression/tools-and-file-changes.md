@@ -60,8 +60,11 @@ signal that a tool changed files.
   rollout, never live tracker state.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
   identity, bounded presenter output, terminal result/error state, and diff
-  content. Presenter failure degrades to a generic bounded tool card instead of
-  dropping the call or result. With adapter 0.1.3 and protocol v2, correlated
+  content. Its native `web_search` and `web_fetch` tools use the same tool lifecycle;
+  they make outbound requests when invoked, without starting a Web BFF, HTTP
+  listener, or another process. Telemetry remains disabled. Presenter failure
+  degrades to a generic bounded tool card instead of dropping the call or result.
+  With protocol v2, correlated
   sub-agent starts replace exact `subagent`/`subagent_fork` cards with one child-linked tile;
   identifiable updates arriving before their call are deferred too. Start/end
   events retain the direct parent's transcript and keep root activity busy.

@@ -15,7 +15,7 @@ class const DeepSeekSessionService({
       throw const FormatException("DeepSeek adapter reported an invalid adapter version");
     }
     if (adapterVersion.compareTo(minimumAdapterVersion) < 0) {
-      throw const FormatException("DeepSeek adapter does not support atomic scoped stop");
+      throw FormatException("DeepSeek requires adapter ${minimumAdapterVersion.toString()} or newer");
     }
   }
 

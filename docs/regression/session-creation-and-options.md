@@ -90,7 +90,11 @@ variant, and worktree mode, and creating the session with its first input.
   header resolves that opaque identity through the loaded provider catalog and
   shows the model name when available. Catalog reads use the connected adapter
   without creating a session or model request; selection is session-local and
-  never writes normal `DSH_HOME` settings.
+  never writes normal `DSH_HOME` settings. The default native catalog includes
+  DeepSeek V4.1 Flash (`deepseek-flash`) with image input and reasoning controls.
+  Refresh rereads the installed harness's configured catalog, not a live provider
+  model endpoint; discovering models added by a newer harness requires updating
+  the runtime. Explicit user model configuration remains authoritative.
 - Grok exposes one primary agent and one provider group from initialize-owned
   model state. Model IDs and canonical reasoning-effort values remain exact and
   opaque; declared defaults stay distinct from the current selection. Explicit
@@ -313,6 +317,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 - A dedicated workspace name comes from generated metadata, is not lowercase
   `color-animal` form, or collides with an existing branch or path.
 - Bridge-owned context renders as the user's own message or command arguments.
+- DeepSeek's default catalog omits V4.1 Flash after installing the target runtime,
+  or selecting it sends a different upstream model ID.
 - A DeepSeek catalog loses sound providers because one provider failed, parses
   an opaque model ID, exposes a catalog-resolvable opaque ID in the session
   header, dispatches before both requested config writes settle, or records a
