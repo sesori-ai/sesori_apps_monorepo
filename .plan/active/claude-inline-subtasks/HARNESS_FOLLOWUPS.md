@@ -211,7 +211,9 @@ confirmation, no child session or partial stop) and gets that subset.
   managed 0.153.4, and only owned `/tmp` work. Root and named-child confirmation
   had zero effects and exact counts; root `keep`, named-child subtree stop, and
   root full stop preserved their scope. Every selected target produced
-  `turn_aborted` and settled in plugin status while the runtime survived; every
+  `turn_aborted`; full-stop targets became non-busy in plugin status. After root
+  `keep`, its own turn stopped but effective root status stayed busy for retained
+  descendants. The runtime survived each case; every
   atomic-opt-in accepted response retained `subAgentsHandled: false`. Executed
   policy scope passed. Live matrix remains partial because no pending input
   surfaced; that case is unexecuted live and remains covered by focused

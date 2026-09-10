@@ -232,8 +232,10 @@ deliberately report `subAgentsHandled: false` and retain client fallback.
 Managed-0.153.4 actual-plugin QA on 2026-09-10 passed its executed scope:
 side-effect-free root and named-child confirmation, accurate descendant counts
 and named-thread state, root-only `keep`, named-child subtree isolation,
-full-root snapshot fanout, authoritative `turn_aborted` plus plugin settlement
-for every selected target, and a surviving runtime. Live matrix is partial: no
+full-root snapshot fanout, authoritative `turn_aborted` for every selected
+target, and a surviving runtime. Full-stop targets became non-busy in plugin
+status; root `keep` stopped its own turn while effective root status remained
+busy for retained descendants. Live matrix is partial: no
 pending-input request surfaced, so that case remains automated rather than
 live-plugin coverage.
 

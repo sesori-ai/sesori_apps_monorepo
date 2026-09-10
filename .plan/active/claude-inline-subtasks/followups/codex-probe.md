@@ -52,8 +52,11 @@ root and a later confirmation accurately reported main idle with three running
 descendants; named-child full stop aborted that child and its grandchild while
 its ancestor and sibling remained busy; root full stop aborted the root, both
 direct children, and nested grandchild. Every selected target had persisted
-`turn_aborted` and non-busy plugin status, every accepted atomic-opt-in response
-retained `subAgentsHandled: false`, and the owned runtime survived each case.
+`turn_aborted`. Named-child and full-root stop targets became non-busy in plugin
+status; after root `keep`, only its own turn stopped (`mainAgentRunning: false`),
+while effective root status stayed busy for retained descendants. Every accepted
+atomic-opt-in response retained `subAgentsHandled: false`, and the owned runtime
+survived each case.
 No pending question or permission surfaced, so live pending-input policy was
 unexecuted; focused Step 8 automation remains its evidence. Natural sleep
 expiry, runtime death, and disconnect were excluded as stop proof.
