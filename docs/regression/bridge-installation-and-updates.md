@@ -9,12 +9,16 @@ reconciliation, periodic check, in-place apply, and explicit update command.
 ## Required Behavior
 
 - Internal releases check main hourly at `:45` UTC and build one immutable commit
-  across TestFlight, Play internal, and bridge archives. Released or already-attempted
-  commits skip before store queries; desktop-only and unrelated documentation batches
-  skip, but product changes before an unrelated tip commit still qualify.
-  A rolling `internal-release-attempt` tag is written before version validation or
-  builds, preventing hourly retries after failure or cancellation. Manual dispatch
-  can retry; release tags and the all-platform success requirement stay unchanged.
+  across TestFlight, Play internal, and bridge archives. They are triggered by Alex's
+  Google Cloud Scheduler job `sesori-internal-release` in project `sesori-ai`, location
+  `europe-west1` ([Scheduler console](https://console.cloud.google.com/cloudscheduler?project=sesori-ai)),
+  through a private Cloud Run dispatcher and repository-limited GitHub App. Released or
+  already-attempted commits skip before store queries; desktop-only and unrelated
+  documentation batches skip, but product changes before an unrelated tip commit still
+  qualify. A rolling `internal-release-attempt` tag is written before version validation
+  or builds, preventing automatic retries after failure or cancellation. Manual GitHub
+  dispatch with `automatic=false` can retry; release tags, branch checkpoint behavior,
+  serialized release concurrency, and all-platform success requirement stay unchanged.
 - TestFlight and Play internal notes list commit subjects since the nearest
   `v*` release tag on the build's first-parent history, newest first, and retain
   the build SHA. Failed attempts do not reset this range. With no release tag,
@@ -93,8 +97,11 @@ after apply. Use a throwaway machine when mutating an install root.
 
 ## Known Limitations
 
-- GitHub can delay cron starts. Hourly opportunities are not a strict daily upload
-  quota; manual runs and delayed uploads can still hit store limits.
+- Cloud Scheduler delivery and GitHub dispatch acceptance do not report build
+  completion. Google Cloud alert policy `2058247532448449377` covers Scheduler and
+  dispatcher error logs, not GitHub build failures; GitHub Actions owns build status and
+  failed-action notifications. Hourly opportunities are not a strict daily upload quota;
+  manual runs and delayed uploads can still hit store limits.
 - Genuine distribution claims need real published artifacts; a local build proves policy
   and reconciliation only, and signing is verifiable only against CI-produced binaries.
 - The bootstrap and the updater share no lock; an apply-window collision is accepted.
@@ -104,7 +111,7 @@ after apply. Use a throwaway machine when mutating an install root.
 ## Sources
 
 - `.github/workflows/release-all-platforms.yml`, `.github/scripts/check_internal_release.sh`,
-  `.github/scripts/test_check_internal_release.py`
+  `.github/scripts/test_check_internal_release.py`, `tool/release_scheduler/README.md`
 - `client/app/fastlane/build_changelog.rb`, `client/app/fastlane/test_build_changelog.rb`,
   `client/app/{ios,android}/fastlane/Fastfile`
 - `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
