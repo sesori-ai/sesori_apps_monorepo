@@ -169,11 +169,11 @@ void main() {
 
     await emitScan(
       tester,
-      const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
+      const CatalogRescanState.reading(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
     );
 
     expect(find.text(loc.catalogScanRunningTitle), findsOneWidget);
-    expect(find.text("Codex — 148 sessions"), findsOneWidget);
+    expect(find.text("Codex — 148 sessions found"), findsOneWidget);
     expect(find.text("My Project"), findsOneWidget);
   });
 
@@ -181,7 +181,10 @@ void main() {
     await pumpLoadedList(tester);
 
     final loc = await AppLocalizations.delegate.load(const Locale("en"));
-    await emitScan(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
+    await emitScan(
+      tester,
+      const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+    );
     expect(find.text(loc.catalogScanRunningTitle), findsOneWidget);
 
     await emitScan(tester, const CatalogRescanState.idle());
@@ -192,7 +195,10 @@ void main() {
   testWidgets("cancels the scan from the row it is reported in", (tester) async {
     final loc = await pumpLoadedList(tester);
 
-    await emitScan(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
+    await emitScan(
+      tester,
+      const CatalogRescanState.preparingOne(pendingPluginName: "Codex", pluginIds: {"codex"}),
+    );
     await tester.tap(find.bySemanticsLabel(loc.catalogScanCancel));
 
     expect(rescanService.cancelCalls, 1);

@@ -860,13 +860,26 @@ void main() {
         explicitImportRequested: true,
         hydrationMarkerRequested: true,
       );
-      final result = repository.importCatalog(pluginId: "snapshot", control: control).toList();
+      final statuses = <CatalogImportProgress>[];
+      final completed = Completer<void>();
+      final subscription = repository
+          .importCatalog(pluginId: "snapshot", control: control)
+          .listen(
+            statuses.add,
+            onDone: completed.complete,
+          );
+      addTearDown(subscription.cancel);
       await runtime.descriptorReadStarted.future;
 
+      expect(
+        statuses,
+        [isA<CatalogImportEnumerating>()],
+        reason: "progress must be visible before runtime acquisition finishes",
+      );
       control.cancellationRequested = true;
-      final statuses = await result;
+      await completed.future;
 
-      expect(statuses, [isA<CatalogImportCancelled>()]);
+      expect(statuses, [isA<CatalogImportEnumerating>(), isA<CatalogImportCancelled>()]);
       expect(await database.projectsDao.getAllProjects(), isEmpty);
       expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNull);
     });
@@ -891,7 +904,7 @@ void main() {
           )
           .toList();
 
-      expect(statuses, [isA<CatalogImportCancelled>()]);
+      expect(statuses, [isA<CatalogImportEnumerating>(), isA<CatalogImportCancelled>()]);
       expect(await database.projectsDao.getAllProjects(), isEmpty);
       expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNull);
     });

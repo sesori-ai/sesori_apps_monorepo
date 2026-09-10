@@ -684,7 +684,11 @@ class PluginManagementCubit({
   /// Only a live operation names members worth disabling an action for: a
   /// terminal state still carries no ids, and an idle one covers nothing.
   Set<String> get _scanningPluginIds => switch (_catalogRescanService.state.value) {
-    CatalogRescanStarting(:final pluginIds) || CatalogRescanRunning(:final pluginIds) => pluginIds,
+    CatalogRescanPreparingOne(:final pluginIds) ||
+    CatalogRescanPreparingMany(:final pluginIds) ||
+    CatalogRescanStarting(:final pluginIds) ||
+    CatalogRescanReading(:final pluginIds) ||
+    CatalogRescanSaving(:final pluginIds) => pluginIds,
     CatalogRescanIdle() ||
     CatalogRescanSucceeded() ||
     CatalogRescanPartlyFailed() ||
@@ -741,8 +745,11 @@ class PluginManagementCubit({
     ),
     CatalogRescanFailed() => const CatalogRescanOutcome.failed(),
     CatalogRescanIdle() ||
+    CatalogRescanPreparingOne() ||
+    CatalogRescanPreparingMany() ||
     CatalogRescanStarting() ||
-    CatalogRescanRunning() ||
+    CatalogRescanReading() ||
+    CatalogRescanSaving() ||
     CatalogRescanUnsupported() ||
     CatalogRescanNoHarness() => null,
   };

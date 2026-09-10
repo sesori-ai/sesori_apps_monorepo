@@ -3589,17 +3589,65 @@ abstract class AppLocalizations {
   /// **'Scanning all harnesses'**
   String get catalogScanRunningTitle;
 
-  /// Supporting line on the scan row between dispatch and the first progress event, when no harness has reported yet. Holds the line's place so the row does not change height when the real detail arrives.
+  /// Supporting line before one pending harness reports catalog progress.
   ///
   /// In en, this message translates to:
-  /// **'Starting…'**
-  String get catalogScanStartingDetail;
+  /// **'Preparing {harness} scan…'**
+  String catalogScanPreparingOneDetail(String harness);
 
-  /// Supporting line on the running scan row: the harness currently being scanned and how many sessions it has reported so far.
+  /// Supporting line before multiple pending harnesses report catalog progress. The harnesses placeholder is a bounded localized name summary.
   ///
   /// In en, this message translates to:
-  /// **'{harness} — {sessions, plural, =1{1 session} other{{sessions} sessions}}'**
-  String catalogScanRunningDetail(String harness, int sessions);
+  /// **'Preparing {harnesses} scans…'**
+  String catalogScanPreparingManyDetail(String harnesses);
+
+  /// Joins two pending harness display names in scan progress copy.
+  ///
+  /// In en, this message translates to:
+  /// **'{first} and {second}'**
+  String catalogScanTwoHarnesses(String first, String second);
+
+  /// Bounded summary for three or more pending harnesses in scan progress copy.
+  ///
+  /// In en, this message translates to:
+  /// **'{first}, {second}, and {others, plural, =1{1 other} other{{others} others}}'**
+  String catalogScanHarnessesWithOthers(String first, String second, int others);
+
+  /// Supporting line while a fresh management snapshot authoritatively reports the named harness as starting.
+  ///
+  /// In en, this message translates to:
+  /// **'Starting {harness}…'**
+  String catalogScanStartingDetail(String harness);
+
+  /// Supporting line while the named harness is enumerating but has not found a session yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading {harness} sessions…'**
+  String catalogScanReadingDetail(String harness);
+
+  /// Supporting line while the named harness enumerates sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} — {sessions, plural, =1{1 session found} other{{sessions} sessions found}}'**
+  String catalogScanReadingCountDetail(String harness, int sessions);
+
+  /// Supporting line while the named harness commits its catalog snapshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving {harness} scan results…'**
+  String catalogScanSavingDetail(String harness);
+
+  /// Title after one harness has remained authoritatively in startup for three seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {harness}'**
+  String catalogScanWaitingTitle(String harness);
+
+  /// Wrapped explanation after one harness has remained authoritatively in startup for three seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} must finish starting before scanning can continue. You can keep browsing.'**
+  String catalogScanWaitingDetail(String harness);
 
   /// Action on the running scan row that stops the catalog scan in flight.
   ///

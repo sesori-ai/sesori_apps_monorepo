@@ -1827,7 +1827,12 @@ void main() {
       await openHarnesses(tester);
       final row = find.byKey(const Key("harness_management_scan_future-harness"));
       await tester.ensureVisible(row);
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"future-harness"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(
+          pendingPluginName: "Future Harness",
+          pluginIds: {"future-harness"},
+        ),
+      );
       // Fixed pumps rather than settling: the row's spinner never stops.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));

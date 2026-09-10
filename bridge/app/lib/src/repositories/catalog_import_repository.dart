@@ -75,6 +75,15 @@ class CatalogImportRepository({
     final publicationFinished = Completer<void>();
     ({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})? result;
     var cancelledEmitted = false;
+    yield CatalogImportProgress.enumerating(
+      pluginId: pluginId,
+      projectsSeen: 0,
+      sessionsSeen: 0,
+    );
+    if (control.isCancelled) {
+      yield CatalogImportProgress.cancelled(pluginId: pluginId);
+      return;
+    }
     try {
       await for (final event in _runtime.useCatalogImportStream<Object>(
         pluginId: pluginId,
@@ -137,11 +146,6 @@ class CatalogImportRepository({
     var derivedProjectPathsByBackendId = const <String, String>{};
     String? derivedLaunchDirectory;
 
-    yield CatalogImportProgress.enumerating(
-      pluginId: pluginId,
-      projectsSeen: 0,
-      sessionsSeen: 0,
-    );
     if (cancellation.isCancelled) {
       yield CatalogImportProgress.cancelled(pluginId: pluginId);
       return;

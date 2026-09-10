@@ -1158,13 +1158,76 @@
   "@catalogScanRunningTitle": {
     "description": "Title of the row above a list while a catalog scan is in flight across every enabled harness."
   },
-  "catalogScanStartingDetail": "Starting…",
-  "@catalogScanStartingDetail": {
-    "description": "Supporting line on the scan row between dispatch and the first progress event, when no harness has reported yet. Holds the line's place so the row does not change height when the real detail arrives."
+  "catalogScanPreparingOneDetail": "Preparing {harness} scan…",
+  "@catalogScanPreparingOneDetail": {
+    "description": "Supporting line before one pending harness reports catalog progress.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
   },
-  "catalogScanRunningDetail": "{harness} — {sessions, plural, =1{1 session} other{{sessions} sessions}}",
-  "@catalogScanRunningDetail": {
-    "description": "Supporting line on the running scan row: the harness currently being scanned and how many sessions it has reported so far.",
+  "catalogScanPreparingManyDetail": "Preparing {harnesses} scans…",
+  "@catalogScanPreparingManyDetail": {
+    "description": "Supporting line before multiple pending harnesses report catalog progress. The harnesses placeholder is a bounded localized name summary.",
+    "placeholders": {
+      "harnesses": {
+        "type": "String",
+        "example": "Codex and Claude"
+      }
+    }
+  },
+  "catalogScanTwoHarnesses": "{first} and {second}",
+  "@catalogScanTwoHarnesses": {
+    "description": "Joins two pending harness display names in scan progress copy.",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      }
+    }
+  },
+  "catalogScanHarnessesWithOthers": "{first}, {second}, and {others, plural, =1{1 other} other{{others} others}}",
+  "@catalogScanHarnessesWithOthers": {
+    "description": "Bounded summary for three or more pending harnesses in scan progress copy.",
+    "placeholders": {
+      "first": {
+        "type": "String"
+      },
+      "second": {
+        "type": "String"
+      },
+      "others": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanStartingDetail": "Starting {harness}…",
+  "@catalogScanStartingDetail": {
+    "description": "Supporting line while a fresh management snapshot authoritatively reports the named harness as starting.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
+  },
+  "catalogScanReadingDetail": "Reading {harness} sessions…",
+  "@catalogScanReadingDetail": {
+    "description": "Supporting line while the named harness is enumerating but has not found a session yet.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
+  },
+  "catalogScanReadingCountDetail": "{harness} — {sessions, plural, =1{1 session found} other{{sessions} sessions found}}",
+  "@catalogScanReadingCountDetail": {
+    "description": "Supporting line while the named harness enumerates sessions.",
     "placeholders": {
       "harness": {
         "type": "String",
@@ -1172,6 +1235,36 @@
       },
       "sessions": {
         "type": "int"
+      }
+    }
+  },
+  "catalogScanSavingDetail": "Saving {harness} scan results…",
+  "@catalogScanSavingDetail": {
+    "description": "Supporting line while the named harness commits its catalog snapshot.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
+  },
+  "catalogScanWaitingTitle": "Waiting for {harness}",
+  "@catalogScanWaitingTitle": {
+    "description": "Title after one harness has remained authoritatively in startup for three seconds.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
+  },
+  "catalogScanWaitingDetail": "{harness} must finish starting before scanning can continue. You can keep browsing.",
+  "@catalogScanWaitingDetail": {
+    "description": "Wrapped explanation after one harness has remained authoritatively in startup for three seconds.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
       }
     }
   },
