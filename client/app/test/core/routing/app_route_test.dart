@@ -1,4 +1,5 @@
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
@@ -161,12 +162,26 @@ void main() {
 
     // A CupertinoPage, so the bottom-up modal slide is the same on Android,
     // whose default page transition ignores fullscreenDialog.
-    test("settings route builds SettingsScreen inside a fullscreen-dialog page", () {
-      final page = AppRouteDef.settings.toGoRoute().pageBuilder!(_FakeBuildContext(), _FakeGoRouterState());
+    testWidgets("settings route builds SettingsScreen inside a fullscreen-dialog page", (tester) async {
+      final creatorRecording = StubCreatorRecordingCubit();
+      addTearDown(creatorRecording.close);
+      late Page<void> page;
+      await tester.pumpWidget(
+        BlocProvider<CreatorRecordingCubit>.value(
+          value: creatorRecording,
+          child: Builder(
+            builder: (context) {
+              page = AppRouteDef.settings.toGoRoute().pageBuilder!(context, _FakeGoRouterState());
+              return const SizedBox.shrink();
+            },
+          ),
+        ),
+      );
       expect(page, isA<CupertinoPage<void>>());
       final settingsPage = page as CupertinoPage<void>;
       expect(settingsPage.fullscreenDialog, isTrue);
       expect(settingsPage.child, isA<SettingsScreen>());
+      expect((settingsPage.child as SettingsScreen).onOpenCreatorRecording, isNull);
     });
 
     test("harness-only shell is a sibling of Settings with overview ancestry", () {

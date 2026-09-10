@@ -2,6 +2,8 @@
 
 ## Capability
 
+This feature is internal-only and has not shipped in a public production release.
+
 The iOS mobile app records its own screen together with a movable circular front-camera preview and microphone narration. Capture remains local to the device. A completed recording persists as a composited movie plus clean screen, camera, audio, movement-timeline, and manifest layers that the user can explicitly share or delete. No bridge or coding plugin participates.
 
 ## Required Behavior

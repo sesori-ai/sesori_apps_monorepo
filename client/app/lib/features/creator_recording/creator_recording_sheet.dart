@@ -151,7 +151,7 @@ class const _CaptureControls({required final CreatorRecordingCaptureState captur
 
 class const _FailureControls({
   required final CreatorRecordingFailure failure,
-  required final Future<Object?> Function() retry,
+  required final Future<bool> Function() retry,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
