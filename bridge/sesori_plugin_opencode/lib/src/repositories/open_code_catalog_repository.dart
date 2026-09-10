@@ -170,13 +170,11 @@ class OpenCodeCatalogRepository({
 
     for (final root in sessionsById.values.where((session) => session.parentId == null)) {
       final familyId = _bestFamilyFor(directory: root.directory, aliasesByProjectId: aliasesByProjectId);
-      if (familyId == null) {
-        if (root.projectId != _globalProjectId) {
-          throw const OpenCodeCatalogDatabaseException(
-            message: "OpenCode root session is outside its project directories",
-            cause: null,
-          );
-        }
+      if (familyId == null && root.projectId != _globalProjectId) {
+        // The project id was validated above, so retain roots whose directory
+        // no longer appears in OpenCode's recorded project aliases.
+        families[root.projectId]!.roots.add(root);
+      } else if (familyId == null) {
         final virtualId = "virtual:${_normalizedPath(root.directory)}";
         families.putIfAbsent(
           virtualId,

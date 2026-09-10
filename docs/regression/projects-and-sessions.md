@@ -60,9 +60,10 @@ state.
   The consumed schema is OpenCode v1.18.19's `project`, `project_directory`, and
   `session` table shapes: additive columns are allowed, while incompatible required
   columns, types, or values trigger the live-import fallback.
-  Complete discovery includes real global roots stored in ancestor directories;
-  unlike the old project-list API, it does not exclude them from their best matching
-  project family.
+  Complete discovery includes real global roots stored in ancestor directories and
+  retains non-global roots under their validated `project_id` when no recorded
+  directory alias matches; unlike the old project-list API, it does not exclude
+  global roots from their best matching project family.
   The complete read-only transaction runs in a short-lived worker isolate so the
   bridge isolate remains responsive to cancellation and bounded force-stop while
   native SQLite finishes. The connection uses the live database and WAL normally
