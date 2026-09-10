@@ -256,10 +256,11 @@ defaults and queued client sends coherent.
   call form-elicitation or unadvertised session-close methods to complete an
   ordinary turn.
 - Antigravity uses the shared ACP per-session lanes, prompt acceptance,
-  cancellation, command delivery and idle recovery. Before each prompt it
-  validates any known-catalog model, applies an exact requested model when present, then forces
-  mode `default`; it never selects `auto_edit` or `yolo`. Live and replay updates share the same bounded provider
-  normalizer, and an agent-process exit clears connection-scoped state before one lazy reconnect restores residency.
+  cancellation, command delivery and idle recovery. Before each prompt it validates the normalized model/variant tuple,
+  maps it to the exact account-advertised native model ID, applies that ID, then forces mode `default`; it never selects
+  `auto_edit` or `yolo`. Live and replay assistant, tool and error envelopes carry the same normalized model plus
+  High/Medium/Low variant. Updates share the bounded provider normalizer, and an agent-process exit clears
+  connection-scoped catalog state before one lazy reconnect restores residency.
 - GitHub Copilot runs through the same standard ACP normalization for text,
   reasoning when emitted, tools, statuses, commands, cancellation, and image
   parts. Its complete model/mode/reasoning selection is validated before
@@ -462,9 +463,8 @@ agent/model, aborting early versus late, sending while busy to steer at a tool
 boundary where supported or stop-and-send over ACP, sending a command or
 selection change that must wait, cancelling before dispatch, leaving and
 reopening while an entry is visible, turn length, and client count. For
-Antigravity, vary first-turn account defaults, exact-model turns after catalog
-capture, slash commands, early and late abort, two sessions, process exit and
-lazy reconnect. For Hermes,
+Antigravity, vary first-turn account defaults, normalized model plus High/Medium/Low variants, exact native dispatch,
+live/replay metadata, slash commands, early and late abort, two sessions, process exit and lazy reconnect. For Hermes,
 include text and image prompts, tool updates, a permission decision, cold history
 replay, and abort after output has started. For DeepSeek, include busy
 stop-and-send around tool use or pending input. For Copilot, include prose, an
@@ -577,8 +577,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   without asking, the scope dialog appears when none run, a confirmed stop leaves a sub-agent running or the
   session stuck busy, a killed sub-agent leaves the session busy or the stop
   request hanging, or dismissing the dialog stops anything.
-- An Antigravity turn uses a stale/normalized model ID, omits `default` mode, dispatches after failed selection, applies
-  an unsafe mode, loses normalized output between live and replay, or reconnects without clearing connection state.
+- An Antigravity turn accepts a stale or mismatched model/variant tuple, sends a normalized rather than exact native
+  model ID, omits `default` mode, dispatches after failed selection, applies an unsafe mode, loses normalized
+  model/variant or output between live and replay, or reconnects without clearing connection state.
 - A Grok turn dispatches before exact model/effort selection settles, accepts a
   stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
   loses text, reasoning, tool, status, or terminal failure output. A child lets

@@ -58,6 +58,46 @@ void main() {
       expect(delta.field, "text");
     });
 
+    test("session variant reaches live assistant tool and error envelopes", () {
+      configurationTracker.setSessionSelection(
+        sessionId: "s1",
+        modelId: "model-family",
+        providerId: "cursor",
+        variantId: "high",
+      );
+      mapper.beginTurn(sessionId: "s1", messageId: null);
+      final assistant =
+          mapper
+                  .map(
+                    update({
+                      "sessionUpdate": "agent_message_chunk",
+                      "content": {"type": "text", "text": "Hello"},
+                    }),
+                  )
+                  .whereType<BridgeSseMessageUpdated>()
+                  .single
+                  .info
+              as PluginMessageAssistant;
+      final tool =
+          mapper
+                  .map(
+                    update({
+                      "sessionUpdate": "tool_call",
+                      "toolCallId": "tool-variant",
+                      "status": "pending",
+                    }),
+                  )
+                  .whereType<BridgeSseMessageUpdated>()
+                  .single
+                  .info
+              as PluginMessageAssistant;
+      final error = mapper.mapPromptError(sessionId: "s1", message: "failed").info as PluginMessageError;
+
+      expect((assistant.modelID, assistant.variant), ("model-family", "high"));
+      expect((tool.modelID, tool.variant), ("model-family", "high"));
+      expect((error.modelID, error.variant), ("model-family", "high"));
+    });
+
     test("accepted prompt ids keep id-less replies unique across mapper restarts", () {
       String assistantId({required AcpEventMapper target, required String promptId}) {
         target.beginTurn(

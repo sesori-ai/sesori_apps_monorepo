@@ -7,11 +7,15 @@ and prepared isolated profile, not ambient credentials. Activation adds no datab
 managed installation, OAuth attempt or Google history deletion.
 
 - One existing ACP lifecycle owns live processes, turn lanes, pending input and replay clients. Composition injects
-  required peers; options use the actual connection's configuration repository per call. No scratch session is used.
-- Fresh options expose one primary agent and no models. Real new sessions establish the picker default; load/resume
-  do not redefine it. Explicit models are checked before admission when the catalog is known. After reset, real
-  residency restores the catalog; strict dispatch validation still precedes model/mode/prompt writes. Every turn uses
-  mode `default`. Reset clears picker state. Descriptor composition stamps model/provider metadata live and on replay.
+  required peers; one connection-scoped catalog repository wraps standard list/new/resume requests. The options service
+  owns coalescing, reserved-session identity, catalog state and reset fencing; the plugin owns live-client composition
+  and final session filtering. No second process or parallel API/service stack is used.
+- Fresh options create or recover one retained no-prompt native discovery session in the reserved conversations cwd.
+  Reuse is inert and refresh resumes its exact ID. Every matching reserved-cwd session is hidden from enumeration and
+  metadata recovery; native files remain because deletion is unavailable. Exact paired High/Medium/Low entries become
+  one model with variants; ambiguous shapes remain raw. Selection writes the exact native ID, then mode `default`, while
+  normalized model/variant metadata is stamped live and on replay. Reset clears picker state and fences late discovery;
+  failed or malformed refresh retains last-good state.
 - Metadata recovery runs once per new live connection before it is advertised, not during ordinary enumeration or DB
   catalog reads. Imports consume those warmed hints. DB/live bindings override recovery regardless of arrival order. Live residency prefers advertised resume, otherwise load; replay always uses load.
 - Cancellation/deletion settle the target's pending input without altering other sessions. Local deletion never removes
@@ -30,12 +34,15 @@ managed installation, OAuth attempt or Google history deletion.
 
 ## Failure signals and coverage
 
-Wrong cwd, repeated metadata scans during enumeration, replay leaking into live state, stale model dispatch,
-invented approvals, lost original failure stacks,
-secret log output, auth gates accumulating image lines, or deletion touching Google files are regressions.
+Wrong discovery cwd, duplicate routine discovery artifacts, a prompt sent to the reserved session, reserved-session
+catalog/recovery leakage, replay leaking into live state, normalized native dispatch, stale model/variant acceptance,
+invented approvals, lost original failure stacks, secret log output, auth gates accumulating image lines, or deletion
+touching Google files are regressions.
 
-- **L1/L2:** `antigravity_plugin_test.dart`: inert options; pre-queue model rejection; personal handshake/new/mode/model
-  writes; once-per-connection recovery and DB precedence; both residency paths; 121-message replay/two sessions.
+- **L1/L2:** `antigravity_session_options_service_test.dart` covers grouping ambiguity, exact variant dispatch,
+  coalescing/reuse/refresh/recovery, failure retention and reset fencing. `antigravity_plugin_test.dart` covers hidden
+  no-prompt cold discovery, exact refresh reuse, personal handshake/new/mode/model writes, normalized live/replay
+  metadata, once-per-connection recovery and DB precedence, both residency paths, and 121-message replay/two sessions.
 - **L3/L4:** same composed tests cover exact questions, active cancellation/delete isolation, crash/reset/reconnect,
   global interruption, idempotent dispose, late-spawn reaping, enterprise rejection and live/replay stale-auth privacy.
   `antigravity_output_composer_test.dart` covers all auth-line splits and large valid image-bearing JSON;

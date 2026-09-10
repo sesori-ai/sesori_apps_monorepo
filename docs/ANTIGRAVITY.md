@@ -89,10 +89,13 @@ needs no browser of its own, but does need a current connected client for initia
 - **Supervision:** prompts use mode `default`, never `auto_edit` or `yolo`. Ordinary permissions offer only
   safe advertised once-kind choices. Persistent approvals and every warning-bearing choice are excluded independently.
   Supported single-choice questions retain the provider's options; malformed or ambiguous requests cancel, not guess.
-- **Models:** one primary agent is exposed. Until a real new/load/resume response supplies a catalog in a fresh process,
-  there is no model picker and the first new session uses the account default. Sesori does not create scratch sessions
-  just to discover models. Later choices use exact advertised model IDs; stale choices reject before dispatch when the
-  catalog is known. Reconnect clears the catalog and restores real session residency before strict selection checks.
+- **Models:** one primary agent is exposed. Before the first chat, Sesori discovers the account catalog through one
+  retained no-prompt native session under `GEMINI_HOME/antigravity-acp/conversations`. Reuse performs no ACP work;
+  refresh resumes that same session, and restart recovers it through standard `session/list`. The artifact remains in
+  Google's profile because the pinned runtime has no delete capability, but Sesori hides its cwd from list, project,
+  import and metadata-recovery results. Exact paired `-high`/`-medium`/`-low` IDs and matching label suffixes become
+  variants of one picker model; ambiguous or future shapes stay separate. Dispatch always sends the exact native ID,
+  while live and replay metadata records the normalized model and variant. Failed refresh retains the last-good catalog.
 - **History:** replay uses ACP load; live continuation prefers advertised resume. Both use the same normalized updates.
   Explicit import can recover bounded session/cwd metadata from the isolated profile's `.meta` files, once per cold
   live connection. Normal catalog reads use Sesori's database, not repeated provider scans; bridge/live attribution wins
@@ -102,15 +105,15 @@ needs no browser of its own, but does need a current connected client for initia
   output is bounded and normalized consistently for live/replay; a nonzero exit note is not an ACP protocol failure.
 - **Deletion:** the pinned runtime has no standard close/delete capability. Deleting in Sesori removes its own catalog
   and transcript data and retains a tombstone against re-import; it does not erase Google's conversation/profile files.
-- **Presentation:** settings and chooser surfaces use the descriptor name **Antigravity**. ID-only surfaces may show
-  `antigravity` with the generic plug icon. That fallback is intentional, not a missing runtime or login indication.
+- **Presentation:** shared harness settings and chooser surfaces show **Antigravity** with Google's official full-colour
+  mark in light and dark themes. Older clients without the bundled artwork use their generic plug fallback.
 
 ## Verification status and further contracts
 
 Implementation is not a claim of completed cross-platform end-to-end verification. Official archive integrity was
 checked for all five targets. Native initialize-only and managed-pipeline correctness has been exercised on macOS arm64
-in disposable state. Native Linux/Windows installation, real personal OAuth, full authenticated session/image/history
-flows and the final cumulative L1–L5 matrix remain unverified.
+in disposable state. Native Linux/Windows installation, real personal OAuth, authenticated discovery-session
+creation/resume, full session/image/history flows and the final cumulative L1–L5 matrix remain unverified.
 Missing test infrastructure is a blocked result, not a pass.
 
 The implementation plan was retired under the owner's
