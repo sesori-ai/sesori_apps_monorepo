@@ -65,16 +65,18 @@ Antigravity app or a separately authenticated Google CLI is not a substitute for
 Sesori account login pairs your devices; Antigravity login is a separate Google authorization for the harness.
 
 1. Start authentication from Antigravity's harness settings in a **current** mobile or desktop client.
-2. Follow the Google authorization link offered by Sesori and complete personal-account authorization in the browser.
-3. If the browser is on the bridge host, the loopback callback can complete directly.
-4. If the browser is on another device, its final loopback page may fail to load because the listener is on the bridge.
-   Copy the complete final return URL from that browser into Sesori's authentication sheet and submit it there.
-5. Wait for Sesori's authenticated result. Opening the browser or delivering a callback is not itself success.
+2. Sesori opens the Google authorization page automatically; complete personal-account authorization in the browser.
+3. Desktop connected to its exact local supervised bridge lets that bridge receive its own loopback callback. Remote
+   desktop and mobile bind the exact issued callback on the client before opening the browser.
+4. Mobile returns to Sesori through a session-scoped native callback containing only a random nonce. OAuth state and
+   code remain in the captured loopback request. Remote desktop shows a static return-to-Sesori page.
+5. Sesori forwards the captured callback once. The bridge validates its issued endpoint and state, then exchanges the
+   code. Wait for bridge-confirmed authentication; browser return or callback delivery alone is not success.
 
-Paste the return URL only into the active Sesori challenge. It contains a short-lived credential: do not post it to
-chat, issues, screenshots or logs. The bridge accepts only the issued loopback endpoint and matching state for that
-attempt; it never follows callback redirects. An expired/cancelled attempt requires a new login.
-Use the authentication sheet's cancel action to stop an attempt; merely dismissing the sheet does not cancel it.
+There is no URL copy/paste or manual fallback. Do not post callback URLs to chat, issues, screenshots or logs. The
+bridge accepts only the issued loopback endpoint and matching state for that attempt and never follows callback
+redirects. An expired/cancelled attempt requires a fresh login. Use the authentication sheet's cancel action to stop an
+attempt; merely dismissing the sheet does not cancel it.
 
 There is no bridge-CLI login or automatic bridge-host browser fallback. An older client unable to show the browser
 challenge must update; an already-authenticated profile can still be used without that login UI. A headless bridge

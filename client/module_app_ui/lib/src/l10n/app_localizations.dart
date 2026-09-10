@@ -901,11 +901,11 @@ abstract class AppLocalizations {
   /// **'Log in'**
   String get harnessAuthenticationLogIn;
 
-  /// No description provided for @harnessAuthenticationContinue.
+  /// No description provided for @harnessAuthenticationViewProgress.
   ///
   /// In en, this message translates to:
-  /// **'Continue login'**
-  String get harnessAuthenticationContinue;
+  /// **'View sign-in'**
+  String get harnessAuthenticationViewProgress;
 
   /// No description provided for @harnessAuthenticationDescription.
   ///
@@ -934,14 +934,68 @@ abstract class AppLocalizations {
   /// No description provided for @harnessAuthenticationBrowserInstructions.
   ///
   /// In en, this message translates to:
-  /// **'Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.'**
+  /// **'Only continue if you started this login. Verify the provider\'s website address before signing in. Sesori will return automatically when authorization finishes.'**
   String get harnessAuthenticationBrowserInstructions;
 
-  /// No description provided for @harnessAuthenticationRedirectLabel.
+  /// No description provided for @harnessAuthenticationPreparing.
   ///
   /// In en, this message translates to:
-  /// **'Redirect URL'**
-  String get harnessAuthenticationRedirectLabel;
+  /// **'Preparing sign-in…'**
+  String get harnessAuthenticationPreparing;
+
+  /// No description provided for @harnessAuthenticationPreparingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider page will open after the bridge prepares this sign-in.'**
+  String get harnessAuthenticationPreparingDescription;
+
+  /// No description provided for @harnessAuthenticationOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the secure provider page…'**
+  String get harnessAuthenticationOpening;
+
+  /// No description provided for @harnessAuthenticationWaitingForBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete sign-in in the provider page. Sesori will return automatically.'**
+  String get harnessAuthenticationWaitingForBrowser;
+
+  /// No description provided for @harnessAuthenticationFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing sign-in with the bridge…'**
+  String get harnessAuthenticationFinalizing;
+
+  /// No description provided for @harnessAuthenticationSucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in completed successfully.'**
+  String get harnessAuthenticationSucceeded;
+
+  /// No description provided for @harnessAuthenticationCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was cancelled. No account was connected.'**
+  String get harnessAuthenticationCancelled;
+
+  /// No description provided for @harnessAuthenticationRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get harnessAuthenticationRetry;
+
+  /// No description provided for @harnessAuthenticationDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get harnessAuthenticationDone;
+
+  /// No description provided for @harnessAuthenticationClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get harnessAuthenticationClose;
 
   /// No description provided for @harnessAuthenticationCodeLabel.
   ///
@@ -1038,12 +1092,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
   String get harnessAuthenticationInvalidChallenge;
-
-  /// No description provided for @harnessAuthenticationInvalidRedirect.
-  ///
-  /// In en, this message translates to:
-  /// **'Paste the full redirect URL from the local callback page.'**
-  String get harnessAuthenticationInvalidRedirect;
 
   /// No description provided for @harnessAuthenticationBrowserFailed.
   ///

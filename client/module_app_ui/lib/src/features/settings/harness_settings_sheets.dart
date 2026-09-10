@@ -307,18 +307,6 @@ class const _AuthenticationSheet() extends StatefulWidget {
 }
 
 class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
-  final _redirectController = TextEditingController();
-
-  @override
-  void dispose() {
-    _redirectController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _submitRedirect() => context.read<PluginManagementCubit>().submitAuthenticationRedirect(
-    intent: PluginAuthenticationContinuationIntent.pasted(rawInput: _redirectController.text),
-  );
-
   Future<void> _copyCode({required BuildContext context, required String code}) async {
     if (!await copyTextToClipboard(text: code, operation: "authentication code") || !context.mounted) return;
     PregoPopupAlertPresenter.of(context).show(
@@ -327,13 +315,13 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
     );
   }
 
+  void _close() {
+    context.read<PluginManagementCubit>().dismissAuthentication();
+    context.pop();
+  }
+
   @override
   Widget build(BuildContext context) {
-    if (_authenticationChallenge(state: context.read<PluginManagementCubit>().state) == null) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (context.mounted && (ModalRoute.of(context)?.isCurrent ?? false)) context.pop();
-      });
-    }
     return BlocListener<PluginManagementCubit, PluginManagementState>(
       listenWhen: (previous, current) =>
           _authenticationChallenge(state: previous) != null && _authenticationChallenge(state: current) == null,
@@ -346,37 +334,90 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
 
   Widget _buildContent({required BuildContext context}) {
     final loc = context.loc;
-    final state = context.watch<PluginManagementCubit>().state;
-    final challenge = _authenticationChallenge(state: state);
-    if (challenge == null) {
-      return const Padding(
-        padding: EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-        child: Center(child: PregoActivityIndicator(color: null)),
-      );
-    }
+    final presentation = _authenticationChallenge(state: context.watch<PluginManagementCubit>().state);
+    if (presentation == null) return const Center(child: PregoActivityIndicator(color: null));
 
-    final operationChallenge = switch (challenge) {
+    switch (presentation) {
+      case PluginAuthenticationPresentationStarting():
+        return _messageContent(
+          context: context,
+          description: loc.harnessAuthenticationPreparingDescription,
+          message: loc.harnessAuthenticationPreparing,
+          loading: true,
+          action: null,
+        );
+      case PluginAuthenticationPresentationSucceeded():
+        return _messageContent(
+          context: context,
+          description: loc.harnessAuthenticationSucceeded,
+          message: null,
+          loading: false,
+          action: (key: const Key("harness_authentication_done"), label: loc.harnessAuthenticationDone),
+        );
+      case PluginAuthenticationPresentationCancelled():
+        return _messageContent(
+          context: context,
+          description: loc.harnessAuthenticationCancelled,
+          message: null,
+          loading: false,
+          action: (key: const Key("harness_authentication_close"), label: loc.harnessAuthenticationClose),
+        );
+      case PluginAuthenticationPresentationFailed(:final pluginId, :final error):
+        return _failureContent(
+          context: context,
+          pluginId: error is PluginAuthenticationPresentationUncertain ? null : pluginId,
+          message: _authenticationErrorDescription(context: context, error: error),
+        );
+      case PluginAuthenticationPresentationIdle():
+        return const Center(child: PregoActivityIndicator(color: null));
+      case PluginAuthenticationPresentationChallenge() ||
+          PluginAuthenticationPresentationBrowserOpening() ||
+          PluginAuthenticationPresentationBrowserWaiting() ||
+          PluginAuthenticationPresentationBrowserFinalizing() ||
+          PluginAuthenticationPresentationBrowserLaunchFailedState() ||
+          PluginAuthenticationPresentationCancelling() ||
+          PluginAuthenticationPresentationCancellingUncertain():
+        return _activeContent(context: context, presentation: presentation);
+    }
+  }
+
+  Widget _activeContent({required BuildContext context, required PluginAuthenticationPresentationState presentation}) {
+    final loc = context.loc;
+    final challenge = switch (presentation) {
       PluginAuthenticationPresentationChallenge(:final challenge) => challenge.challenge,
+      PluginAuthenticationPresentationBrowserOpening(:final challenge) ||
+      PluginAuthenticationPresentationBrowserWaiting(:final challenge) ||
+      PluginAuthenticationPresentationBrowserFinalizing(:final challenge) => challenge,
       PluginAuthenticationPresentationBrowserLaunchFailedState(:final challenge) ||
       PluginAuthenticationPresentationCancelling(:final challenge) ||
       PluginAuthenticationPresentationCancellingUncertain(:final challenge) => challenge,
       PluginAuthenticationPresentationIdle() ||
       PluginAuthenticationPresentationStarting() ||
-      PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
+      PluginAuthenticationPresentationSucceeded() ||
+      PluginAuthenticationPresentationCancelled() ||
+      PluginAuthenticationPresentationFailed() => throw StateError("Expected active authentication"),
     };
-    final browserChallenge = operationChallenge is PluginAuthenticationBrowserChallenge ? operationChallenge : null;
-    final securityDescription = switch (operationChallenge) {
-      PluginAuthenticationDeviceCodeChallenge() => loc.harnessAuthenticationSecurityDescription,
-      PluginAuthenticationBrowserChallenge() => loc.harnessAuthenticationBrowserInstructions,
-      PluginAuthenticationUnsupportedChallenge() => loc.harnessAuthenticationUpdateRequired,
+    final status = switch (presentation) {
+      PluginAuthenticationPresentationBrowserOpening() => loc.harnessAuthenticationOpening,
+      PluginAuthenticationPresentationBrowserWaiting() => loc.harnessAuthenticationWaitingForBrowser,
+      PluginAuthenticationPresentationBrowserFinalizing() => loc.harnessAuthenticationFinalizing,
+      PluginAuthenticationPresentationBrowserLaunchFailedState() => loc.harnessAuthenticationBrowserFailed,
+      PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancellingUncertain,
+      PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
+      PluginAuthenticationPresentationChallenge() => loc.harnessAuthenticationWaiting,
+      PluginAuthenticationPresentationIdle() ||
+      PluginAuthenticationPresentationStarting() ||
+      PluginAuthenticationPresentationSucceeded() ||
+      PluginAuthenticationPresentationCancelled() ||
+      PluginAuthenticationPresentationFailed() => throw StateError("Expected active authentication"),
     };
-    final redirectPresentation = challenge is PluginAuthenticationPresentationChallenge ? challenge.challenge : null;
-    final canSubmitRedirect =
-        browserChallenge != null &&
-        redirectPresentation is! PluginAuthenticationRedirectSubmittingPresentation &&
-        redirectPresentation is! PluginAuthenticationRedirectSubmittedPresentation &&
-        challenge is! PluginAuthenticationPresentationCancelling &&
-        challenge is! PluginAuthenticationPresentationCancellingUncertain;
+    final deviceCode = challenge is PluginAuthenticationDeviceCodeChallenge;
+    final updateRequired = challenge is PluginAuthenticationUnsupportedChallenge;
+    final retry = presentation is PluginAuthenticationPresentationBrowserLaunchFailedState;
+    final ongoingBrowser =
+        presentation is PluginAuthenticationPresentationBrowserOpening ||
+        presentation is PluginAuthenticationPresentationBrowserWaiting ||
+        presentation is PluginAuthenticationPresentationBrowserFinalizing;
     return Padding(
       padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
       child: Column(
@@ -384,16 +425,22 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Semantics(
-            label: operationChallenge is PluginAuthenticationDeviceCodeChallenge
-                ? loc.harnessAuthenticationSecuritySemantics
-                : securityDescription,
+            label: switch ((deviceCode, updateRequired)) {
+              (true, _) => loc.harnessAuthenticationSecuritySemantics,
+              (_, true) => loc.harnessAuthenticationUpdateRequired,
+              _ => loc.harnessAuthenticationBrowserInstructions,
+            },
             child: Text(
-              securityDescription,
+              switch ((deviceCode, updateRequired)) {
+                (true, _) => loc.harnessAuthenticationSecurityDescription,
+                (_, true) => loc.harnessAuthenticationUpdateRequired,
+                _ => loc.harnessAuthenticationBrowserInstructions,
+              },
               style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
             ),
           ),
-          const SizedBox(height: PregoSpacing.xl),
-          if (operationChallenge case PluginAuthenticationDeviceCodeChallenge(:final userCode))
+          if (challenge case PluginAuthenticationDeviceCodeChallenge(:final userCode)) ...[
+            const SizedBox(height: PregoSpacing.xl),
             PregoGroupedRows(
               children: [
                 PregoGroupedRow(
@@ -409,108 +456,130 @@ class _AuthenticationSheetState() extends State<_AuthenticationSheet> {
                   ),
                 ),
               ],
-            )
-          else if (browserChallenge != null)
-            PregoInputField(
-              key: const Key("harness_authentication_redirect_input"),
-              controller: _redirectController,
-              label: loc.harnessAuthenticationRedirectLabel,
-              isRequired: true,
-              autofocus: false,
-              autocorrect: false,
-              keyboardType: TextInputType.url,
-              textInputAction: TextInputAction.done,
-              onSubmitted: canSubmitRedirect ? (_) => unawaited(_submitRedirect()) : null,
             ),
+          ],
           const SizedBox(height: PregoSpacing.xl),
-          if (challenge is PluginAuthenticationPresentationBrowserLaunchFailedState ||
-              redirectPresentation is PluginAuthenticationInvalidRedirectPresentation) ...[
-            Text(
-              challenge is PluginAuthenticationPresentationBrowserLaunchFailedState
-                  ? loc.harnessAuthenticationBrowserFailed
-                  : loc.harnessAuthenticationInvalidRedirect,
-              textAlign: TextAlign.center,
-              style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textErrorPrimary),
+          if (ongoingBrowser) ...[
+            const RepaintBoundary(
+              key: Key("harness_authentication_activity"),
+              child: Center(child: PregoActivityIndicator(color: null)),
             ),
             const SizedBox(height: PregoSpacing.md),
           ],
-          Text(
-            switch (challenge) {
-              PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancellingUncertain,
-              PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
-              PluginAuthenticationPresentationChallenge() ||
-              PluginAuthenticationPresentationBrowserLaunchFailedState() => loc.harnessAuthenticationWaiting,
-              PluginAuthenticationPresentationIdle() ||
-              PluginAuthenticationPresentationStarting() ||
-              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
-            },
-            textAlign: TextAlign.center,
-            style: context.prego.textTheme.textSm.regular.copyWith(color: context.prego.colors.textSecondary),
-          ),
-          const SizedBox(height: PregoSpacing.x2l),
-          PregoButtonsSolid(
-            key: const Key("harness_authentication_open_browser"),
-            label: loc.harnessAuthenticationOpenBrowser,
-            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-            size: PregoButtonsSolidSize.lg,
-            fullWidth: true,
-            onPressed: switch (challenge) {
-              PluginAuthenticationPresentationCancelling() ||
-              PluginAuthenticationPresentationCancellingUncertain() => null,
-              PluginAuthenticationPresentationChallenge() ||
-              PluginAuthenticationPresentationBrowserLaunchFailedState() =>
-                operationChallenge is PluginAuthenticationUnsupportedChallenge
-                    ? null
-                    : context.read<PluginManagementCubit>().launchAuthenticationBrowser,
-              PluginAuthenticationPresentationIdle() ||
-              PluginAuthenticationPresentationStarting() ||
-              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
-            },
-          ),
-          if (browserChallenge != null) ...[
-            const SizedBox(height: PregoSpacing.md),
+          if (!updateRequired)
+            Text(
+              status,
+              textAlign: TextAlign.center,
+              style: context.prego.textTheme.textSm.regular.copyWith(
+                color: retry ? context.prego.colors.textErrorPrimary : context.prego.colors.textSecondary,
+              ),
+            ),
+          if (deviceCode || retry) ...[
+            const SizedBox(height: PregoSpacing.x2l),
             PregoButtonsSolid(
-              key: const Key("harness_authentication_submit_redirect"),
-              label: loc.harnessAuthenticationContinue,
-              hierarchy: PregoButtonsSolidHierarchy.primary,
+              key: const Key("harness_authentication_open_browser"),
+              label: retry ? loc.harnessAuthenticationRetry : loc.harnessAuthenticationOpenBrowser,
+              hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
               size: PregoButtonsSolidSize.lg,
               fullWidth: true,
-              isLoading: redirectPresentation is PluginAuthenticationRedirectSubmittingPresentation,
-              onPressed: canSubmitRedirect ? _submitRedirect : null,
+              onPressed:
+                  presentation is PluginAuthenticationPresentationCancelling ||
+                      presentation is PluginAuthenticationPresentationCancellingUncertain
+                  ? null
+                  : context.read<PluginManagementCubit>().launchAuthenticationBrowser,
             ),
           ],
           const SizedBox(height: PregoSpacing.md),
           PregoButtonsSolid(
             key: const Key("harness_authentication_cancel"),
-            label: switch (challenge) {
-              PluginAuthenticationPresentationCancelling() => loc.harnessAuthenticationCancelling,
-              PluginAuthenticationPresentationChallenge() ||
-              PluginAuthenticationPresentationBrowserLaunchFailedState() ||
-              PluginAuthenticationPresentationCancellingUncertain() => loc.harnessAuthenticationCancel,
-              PluginAuthenticationPresentationIdle() ||
-              PluginAuthenticationPresentationStarting() ||
-              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
-            },
+            label: presentation is PluginAuthenticationPresentationCancelling
+                ? loc.harnessAuthenticationCancelling
+                : loc.harnessAuthenticationCancel,
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.lg,
             type: PregoButtonsSolidType.destructive,
             fullWidth: true,
-            isLoading: challenge is PluginAuthenticationPresentationCancelling,
-            onPressed: switch (challenge) {
-              PluginAuthenticationPresentationCancelling() => null,
-              PluginAuthenticationPresentationChallenge() ||
-              PluginAuthenticationPresentationBrowserLaunchFailedState() ||
-              PluginAuthenticationPresentationCancellingUncertain() =>
-                context.read<PluginManagementCubit>().cancelAuthentication,
-              PluginAuthenticationPresentationIdle() ||
-              PluginAuthenticationPresentationStarting() ||
-              PluginAuthenticationPresentationFailed() => throw StateError("Expected an authentication challenge"),
-            },
+            isLoading: presentation is PluginAuthenticationPresentationCancelling,
+            onPressed: presentation is PluginAuthenticationPresentationCancelling
+                ? null
+                : context.read<PluginManagementCubit>().cancelAuthentication,
           ),
         ],
       ),
     );
   }
+
+  Widget _messageContent({
+    required BuildContext context,
+    required String description,
+    required String? message,
+    required bool loading,
+    required ({Key key, String label})? action,
+  }) => Padding(
+    padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+    child: Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        Text(description, textAlign: TextAlign.center),
+        if (loading) ...[
+          const SizedBox(height: PregoSpacing.xl),
+          const Center(child: PregoActivityIndicator(color: null)),
+        ],
+        if (message != null) ...[
+          const SizedBox(height: PregoSpacing.md),
+          Text(message, textAlign: TextAlign.center),
+        ],
+        if (action != null) ...[
+          const SizedBox(height: PregoSpacing.x2l),
+          PregoButtonsSolid(
+            key: action.key,
+            label: action.label,
+            hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+            size: PregoButtonsSolidSize.lg,
+            fullWidth: true,
+            onPressed: _close,
+          ),
+        ],
+      ],
+    ),
+  );
+
+  Widget _failureContent({required BuildContext context, required String? pluginId, required String message}) =>
+      Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Text(
+              message,
+              textAlign: TextAlign.center,
+              style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textErrorPrimary),
+            ),
+            if (pluginId != null) ...[
+              const SizedBox(height: PregoSpacing.x2l),
+              PregoButtonsSolid(
+                key: const Key("harness_authentication_retry"),
+                label: context.loc.harnessAuthenticationRetry,
+                hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
+              ),
+            ],
+            const SizedBox(height: PregoSpacing.md),
+            PregoButtonsSolid(
+              key: const Key("harness_authentication_close"),
+              label: context.loc.harnessAuthenticationClose,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.lg,
+              fullWidth: true,
+              onPressed: _close,
+            ),
+          ],
+        ),
+      );
 }
 
 String _authenticationErrorDescription({

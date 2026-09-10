@@ -229,6 +229,7 @@ void main() {
   late BehaviorSubject<Map<String, PluginInstallState>> installStates;
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
+  late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late _MockUrlLauncher urlLauncher;
   late FakeCatalogRescanService rescan;
 
@@ -236,7 +237,6 @@ void main() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
     registerFallbackValue(const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 10));
     registerFallbackValue(const PluginManagementIdleTimeoutInput.noTimeout());
-    registerFallbackValue(const PluginAuthenticationContinuationIntent.pasted(rawInput: "redirect"));
     registerFallbackValue(_conflict);
     registerFallbackValue(PluginManagementForceAction.disable);
     registerFallbackValue(Uri.parse("https://example.com"));
@@ -252,10 +252,12 @@ void main() {
     installStates = BehaviorSubject.seeded(const {});
     authenticationChallenges = BehaviorSubject.seeded(const {});
     authenticationTerminal = StreamController.broadcast(sync: true);
+    authenticationBrowserStates = BehaviorSubject.seeded(const {}, sync: true);
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
     when(() => service.installStates).thenAnswer((_) => installStates.stream);
     when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
+    when(() => service.authenticationBrowserStates).thenAnswer((_) => authenticationBrowserStates.stream);
     when(() => service.refresh()).thenAnswer((_) async {});
     when(() => service.onDispose()).thenAnswer((_) async {});
     when(
@@ -278,11 +280,8 @@ void main() {
       ),
     );
     when(
-      () => service.submitAuthenticationRedirect(
-        pluginId: any(named: "pluginId"),
-        intent: any(named: "intent"),
-      ),
-    ).thenAnswer((_) async => const PluginAuthenticationContinuationResult.applied());
+      () => service.retryBrowserAuthentication(pluginId: any(named: "pluginId")),
+    ).thenAnswer((_) async {});
     when(
       () => service.cancelAuthentication(pluginId: any(named: "pluginId")),
     ).thenAnswer((_) async => const PluginAuthenticationCancelResult.success());
@@ -338,6 +337,7 @@ void main() {
     await installStates.close();
     await authenticationChallenges.close();
     await authenticationTerminal.close();
+    await authenticationBrowserStates.close();
   });
 
   testWidgets("renders loading, unsupported, and initial failure treatments", (tester) async {
@@ -415,6 +415,9 @@ void main() {
     await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pump();
+    expect(find.text("Preparing sign-in…"), findsOneWidget);
+    await tester.tapAt(const Offset(10, 10));
+    await tester.pumpAndSettle();
 
     await _showDetail(tester, "claude");
     expect(
@@ -453,13 +456,13 @@ void main() {
         refreshError: null,
       ),
     );
+    await tester.pumpAndSettle();
     authenticationChallenges.add({
       "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
     });
-    await tester.pumpAndSettle();
 
     await _showDetail(tester, "codex");
     await _showDetail(tester, "codex");
@@ -525,7 +528,7 @@ void main() {
     expect(find.text("Code copied"), findsOneWidget);
   });
 
-  testWidgets("browser authentication launches and submits a pasted redirect", (tester) async {
+  testWidgets("retained unsupported challenge shows update-required guidance only", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app());
     snapshots.add(
@@ -535,45 +538,106 @@ void main() {
       ),
     );
     authenticationChallenges.add({
-      "codex": PluginAuthenticationBrowserChallenge(
-        authorizationUri: Uri.parse("https://accounts.example/authorize"),
-        expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
-      ),
+      "codex": const PluginAuthenticationUnsupportedChallenge(),
     });
     await tester.pumpAndSettle();
+
     await _showDetail(tester, "codex");
     await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));
     await tester.pumpAndSettle();
 
-    final redirectField = find.descendant(
-      of: find.byKey(const Key("harness_authentication_redirect_input")),
-      matching: find.byType(TextFormField),
-    );
-    expect(redirectField, findsOneWidget);
-    tester.widget<PregoButtonsSolid>(find.byKey(const Key("harness_authentication_open_browser"))).onPressed!();
-    await tester.pump();
-    await tester.enterText(redirectField, "http://127.0.0.1/callback?code=opaque");
-    await tester.ensureVisible(find.byKey(const Key("harness_authentication_submit_redirect")));
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key("harness_authentication_submit_redirect")));
-    await tester.pump();
-
-    verify(
-      () => urlLauncher.launch(Uri.parse("https://accounts.example/authorize"), mode: UrlLaunchMode.externalApp),
-    ).called(1);
-    final captured =
-        verify(
-              () => service.submitAuthenticationRedirect(
-                pluginId: "codex",
-                intent: captureAny(named: "intent"),
-              ),
-            ).captured.single
-            as PluginAuthenticationPastedContinuationIntent;
-    expect(captured.rawInput, "http://127.0.0.1/callback?code=opaque");
+    expect(find.text("Update Sesori to continue this harness login."), findsOneWidget);
+    expect(find.textContaining("Verify the provider's website address"), findsNothing);
+    expect(find.byKey(const Key("harness_authentication_open_browser")), findsNothing);
+    expect(find.byKey(const Key("harness_authentication_cancel")), findsOneWidget);
+    verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
   });
 
-  testWidgets("cancel waits and terminal completion closes the authentication sheet", (tester) async {
+  testWidgets("browser authentication opens automatically without manual redirect controls", (tester) async {
+    _useTallSurface(tester);
+    final browserChallenge = PluginAuthenticationBrowserChallenge(
+      authorizationUri: Uri.parse("https://accounts.example/authorize"),
+      expectedCallbackUri: Uri.parse("http://127.0.0.1/callback"),
+    );
+    when(
+      () => service.startAuthentication(pluginId: "codex"),
+    ).thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: browserChallenge));
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    authenticationChallenges.add({"codex": browserChallenge});
+    authenticationBrowserStates.add({"codex": const PluginAuthenticationBrowserOpening()});
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pump();
+
+    verifyNever(() => service.retryBrowserAuthentication(pluginId: "codex"));
+    expect(find.byKey(const Key("harness_authentication_redirect_input")), findsNothing);
+    expect(find.byKey(const Key("harness_authentication_submit_redirect")), findsNothing);
+
+    await tester.pump();
+    expect(
+      BlocProvider.of<PluginManagementCubit>(
+        tester.element(find.byKey(const Key("harness_authentication_cancel"))),
+      ).state,
+      isA<PluginManagementReady>().having(
+        (state) => state.authentication,
+        "authentication",
+        isA<PluginAuthenticationPresentationBrowserOpening>(),
+      ),
+    );
+    expect(find.text("Opening the secure provider page…"), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_activity")), findsOneWidget);
+    authenticationBrowserStates.add({"codex": const PluginAuthenticationBrowserWaiting()});
+    await tester.pump();
+    expect(find.text("Complete sign-in in the provider page. Sesori will return automatically."), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_activity")), findsOneWidget);
+    authenticationBrowserStates.add({"codex": const PluginAuthenticationBrowserFinalizing()});
+    await tester.pump();
+    expect(find.text("Finishing sign-in with the bridge…"), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_activity")), findsOneWidget);
+    verifyNever(() => urlLauncher.launch(any(), mode: any(named: "mode")));
+  });
+
+  testWidgets("shows preparing sheet before authentication start completes", (tester) async {
+    _useTallSurface(tester);
+    final start = Completer<PluginAuthenticationStartResult>();
+    when(() => service.startAuthentication(pluginId: "codex")).thenAnswer((_) => start.future);
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pump();
+
+    expect(find.text("Preparing sign-in…"), findsOneWidget);
+    expect(find.text("The provider page will open after the bridge prepares this sign-in."), findsOneWidget);
+    start.complete(const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()));
+    await tester.pumpAndSettle();
+
+    expect(
+      find.text("The connection changed before the result could be confirmed. Refresh before trying again."),
+      findsWidgets,
+    );
+    expect(find.byKey(const Key("harness_authentication_retry")), findsNothing);
+    expect(find.byKey(const Key("harness_authentication_close")), findsOneWidget);
+    verify(() => service.startAuthentication(pluginId: "codex")).called(1);
+  });
+
+  testWidgets("cancel waits and terminal cancellation remains explicit until Close", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app());
     snapshots.add(
@@ -602,10 +666,172 @@ void main() {
     authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.cancelled()));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text("Sign-in was cancelled. No account was connected."), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_close")), findsOneWidget);
+    await tester.tap(find.byKey(const Key("harness_authentication_close")));
+    await tester.pumpAndSettle();
     expect(find.text("Log in to harness"), findsNothing);
   });
 
-  testWidgets("terminal failure closes the authentication sheet and remains visible", (tester) async {
+  testWidgets("completed authentication shows success until Done", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+
+    authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Sign-in completed successfully."), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_done")), findsOneWidget);
+    await tester.tap(find.byKey(const Key("harness_authentication_done")));
+    await tester.pumpAndSettle();
+    expect(find.text("Log in to harness"), findsNothing);
+  });
+
+  for (final progress in [
+    const PluginAuthenticationProgress.completed(),
+    const PluginAuthenticationProgress.cancelled(),
+  ]) {
+    testWidgets("barrier dismissal after $progress permits another login", (tester) async {
+      _useTallSurface(tester);
+      await tester.pumpWidget(_app());
+      snapshots.add(
+        PluginManagementLoadResult.supported(
+          response: _response.copyWith(plugins: [_authenticationRequired]),
+          refreshError: null,
+        ),
+      );
+      await tester.pumpAndSettle();
+      authenticationChallenges.add({
+        "codex": PluginAuthenticationDeviceCodeChallenge(
+          verificationUri: Uri.parse("https://auth.example/device"),
+          userCode: "ABCD-EFGH",
+        ),
+      });
+      await _showDetail(tester, "codex");
+      await _showDetail(tester, "codex");
+      await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+      await tester.pumpAndSettle();
+
+      authenticationTerminal.add((pluginId: "codex", progress: progress));
+      await tester.pumpAndSettle();
+      await tester.tap(find.byType(ModalBarrier).last);
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+      await tester.pumpAndSettle();
+
+      verify(() => service.startAuthentication(pluginId: "codex")).called(2);
+      expect(find.text("ABCD-EFGH"), findsOneWidget);
+    });
+  }
+
+  testWidgets("success delivered while sheet is dismissed permits another login", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    authenticationChallenges.add({
+      "codex": PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      ),
+    });
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+    await tester.binding.handlePopRoute();
+    await tester.pumpAndSettle();
+
+    authenticationTerminal.add((pluginId: "codex", progress: const PluginAuthenticationProgress.completed()));
+    await tester.pumpAndSettle();
+    final detailContext = tester.element(find.byKey(const Key("harness_authentication_codex")));
+    expect(
+      BlocProvider.of<PluginManagementCubit>(detailContext).state,
+      isA<PluginManagementReady>().having(
+        (state) => state.authentication,
+        "authentication",
+        isA<PluginAuthenticationPresentationSucceeded>(),
+      ),
+    );
+    final row = tester.widget<PregoGroupedRow>(find.byKey(const Key("harness_authentication_codex")));
+    final startAnotherLogin = row.onTap;
+    expect(startAnotherLogin, isNotNull);
+    startAnotherLogin?.call();
+    await tester.pumpAndSettle();
+
+    verify(() => service.startAuthentication(pluginId: "codex")).called(2);
+    expect(find.text("ABCD-EFGH"), findsOneWidget);
+  });
+
+  testWidgets("dismissed failure reopens preparation when a fresh start begins", (tester) async {
+    _useTallSurface(tester);
+    final retryStart = Completer<PluginAuthenticationStartResult>();
+    var starts = 0;
+    when(() => service.startAuthentication(pluginId: "codex")).thenAnswer((_) {
+      if (starts++ == 0) {
+        return Future.value(
+          PluginAuthenticationStartResult.challenge(
+            challenge: PluginAuthenticationDeviceCodeChallenge(
+              verificationUri: Uri.parse("https://auth.example/device"),
+              userCode: "ABCD-EFGH",
+            ),
+          ),
+        );
+      }
+      return retryStart.future;
+    });
+    await tester.pumpWidget(_app());
+    snapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _response.copyWith(plugins: [_authenticationRequired]),
+        refreshError: null,
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _showDetail(tester, "codex");
+    await _showDetail(tester, "codex");
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pumpAndSettle();
+    authenticationTerminal.add((
+      pluginId: "codex",
+      progress: const PluginAuthenticationProgress.failed(message: "Authorization expired."),
+    ));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(ModalBarrier).last);
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("harness_authentication_codex")));
+    await tester.pump();
+
+    expect(find.text("Preparing sign-in…"), findsOneWidget);
+    verify(() => service.startAuthentication(pluginId: "codex")).called(2);
+    retryStart.complete(const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain()));
+    await tester.pumpAndSettle();
+  });
+
+  testWidgets("terminal failure remains in the authentication sheet with retry", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app());
     snapshots.add(
@@ -632,9 +858,9 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text("Log in to harness"), findsNothing);
-    expect(find.byKey(const Key("harness_authentication_error")), findsOneWidget);
-    expect(find.text("Authorization expired."), findsOneWidget);
+    expect(find.text("Log in to harness"), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_retry")), findsOneWidget);
+    expect(find.text("Authorization expired."), findsWidgets);
   });
 
   testWidgets("terminal failure before sheet attachment does not leave an empty sheet", (tester) async {
@@ -663,9 +889,9 @@ void main() {
     ));
     await tester.pumpAndSettle();
 
-    expect(find.text("Log in to harness"), findsNothing);
-    expect(find.byKey(const Key("harness_authentication_error")), findsOneWidget);
-    expect(find.text("Authorization expired."), findsOneWidget);
+    expect(find.text("Log in to harness"), findsOneWidget);
+    expect(find.byKey(const Key("harness_authentication_retry")), findsOneWidget);
+    expect(find.text("Authorization expired."), findsWidgets);
   });
 
   testWidgets("cancellation disables browser launch and uncertain cancellation enables retry", (tester) async {
@@ -681,13 +907,13 @@ void main() {
         refreshError: null,
       ),
     );
+    await tester.pumpAndSettle();
     authenticationChallenges.add({
       "codex": PluginAuthenticationDeviceCodeChallenge(
         verificationUri: Uri.parse("https://auth.example/device"),
         userCode: "ABCD-EFGH",
       ),
     });
-    await tester.pumpAndSettle();
     await _showDetail(tester, "codex");
     await _showDetail(tester, "codex");
     await tester.tap(find.byKey(const Key("harness_authentication_codex")));

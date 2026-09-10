@@ -70,16 +70,22 @@ import 'package:sesori_mobile/core/platform/flutter_local_notification_client.da
     as _i636;
 import 'package:sesori_mobile/core/platform/flutter_oauth_device_descriptor_provider.dart'
     as _i363;
+import 'package:sesori_mobile/core/platform/flutter_plugin_authentication_browser.dart'
+    as _i987;
 import 'package:sesori_mobile/core/platform/flutter_secure_storage_adapter.dart'
     as _i816;
 import 'package:sesori_mobile/core/platform/flutter_url_launcher.dart' as _i10;
 import 'package:sesori_mobile/core/platform/flutter_voice_capture.dart'
     as _i698;
+import 'package:sesori_mobile/core/platform/flutter_web_auth_client.dart'
+    as _i489;
 import 'package:sesori_mobile/core/platform/gal_client.dart' as _i227;
 import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
 import 'package:sesori_mobile/core/platform/go_router_route_source.dart'
     as _i597;
+import 'package:sesori_mobile/core/platform/mobile_active_bridge_locality.dart'
+    as _i877;
 import 'package:sesori_mobile/core/platform/package_info_client.dart' as _i1024;
 import 'package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart'
     as _i186;
@@ -132,6 +138,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i441.ApplicationSupportDirectoryClient(),
     );
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
+    gh.lazySingleton<_i489.FlutterWebAuthClient>(
+      () => _i489.FlutterWebAuthClient(),
+    );
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i1024.PackageInfoClient>(
       () => _i1024.PackageInfoClient(),
@@ -155,6 +164,9 @@ extension GetItInjectableX on _i174.GetIt {
         audioFormat: gh<_i430.AudioFormatConfig>(),
         temporaryDirectoryClient: gh<_i948.TemporaryDirectoryClient>(),
       ),
+    );
+    gh.lazySingleton<_i948.ActiveBridgeLocality>(
+      () => _i877.MobileActiveBridgeLocality(),
     );
     gh.singleton<_i948.RouteSource>(() => _i597.MobileGoRouterRouteSource());
     gh.lazySingleton<_i948.LocalNotificationClient>(
@@ -266,6 +278,11 @@ extension GetItInjectableX on _i174.GetIt {
       () => registerModule.imageSaver(
         galClient: gh<_i227.GalClient>(),
         fileSaveClient: gh<_i223.FileSaveClient>(),
+      ),
+    );
+    gh.lazySingleton<_i948.PluginAuthenticationBrowser>(
+      () => _i987.FlutterPluginAuthenticationBrowser(
+        client: gh<_i489.FlutterWebAuthClient>(),
       ),
     );
     gh.lazySingleton<_i948.PushMessagingSource>(

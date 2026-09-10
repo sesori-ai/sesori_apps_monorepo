@@ -6,6 +6,7 @@ import FlutterMacOS
 import Foundation
 
 import app_links
+import desktop_webview_window
 import device_info_plus
 import file_selector_macos
 import firebase_analytics
@@ -15,6 +16,7 @@ import firebase_messaging
 import firebase_remote_config
 import flutter_local_notifications
 import flutter_secure_storage_darwin
+import flutter_web_auth_2
 import gal
 import package_info_plus
 import pasteboard
@@ -24,9 +26,11 @@ import sign_in_with_apple
 import theme_prego
 import url_launcher_macos
 import wakelock_plus
+import window_to_front
 
 func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   AppLinksMacosPlugin.register(with: registry.registrar(forPlugin: "AppLinksMacosPlugin"))
+  DesktopWebviewWindowPlugin.register(with: registry.registrar(forPlugin: "DesktopWebviewWindowPlugin"))
   DeviceInfoPlusMacosPlugin.register(with: registry.registrar(forPlugin: "DeviceInfoPlusMacosPlugin"))
   FileSelectorPlugin.register(with: registry.registrar(forPlugin: "FileSelectorPlugin"))
   FirebaseAnalyticsPlugin.register(with: registry.registrar(forPlugin: "FirebaseAnalyticsPlugin"))
@@ -36,6 +40,7 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   FirebaseRemoteConfigPlugin.register(with: registry.registrar(forPlugin: "FirebaseRemoteConfigPlugin"))
   FlutterLocalNotificationsPlugin.register(with: registry.registrar(forPlugin: "FlutterLocalNotificationsPlugin"))
   FlutterSecureStorageDarwinPlugin.register(with: registry.registrar(forPlugin: "FlutterSecureStorageDarwinPlugin"))
+  FlutterWebAuth2Plugin.register(with: registry.registrar(forPlugin: "FlutterWebAuth2Plugin"))
   GalPlugin.register(with: registry.registrar(forPlugin: "GalPlugin"))
   FPPPackageInfoPlusPlugin.register(with: registry.registrar(forPlugin: "FPPPackageInfoPlusPlugin"))
   PasteboardPlugin.register(with: registry.registrar(forPlugin: "PasteboardPlugin"))
@@ -45,4 +50,5 @@ func RegisterGeneratedPlugins(registry: FlutterPluginRegistry) {
   ThemePregoPlugin.register(with: registry.registrar(forPlugin: "ThemePregoPlugin"))
   UrlLauncherPlugin.register(with: registry.registrar(forPlugin: "UrlLauncherPlugin"))
   WakelockPlusMacosPlugin.register(with: registry.registrar(forPlugin: "WakelockPlusMacosPlugin"))
+  WindowToFrontPlugin.register(with: registry.registrar(forPlugin: "WindowToFrontPlugin"))
 }
