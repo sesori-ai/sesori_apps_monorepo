@@ -20,6 +20,7 @@ class const SessionListPanel({
   required final Widget archivedEmptyState,
   required final VoidCallback? onNewSession,
   required final VoidCallback? onBack,
+  required final VoidCallback? onOpenArchived,
 }) extends StatelessWidget {
   /// Header width below which the labelled "New session" button collapses to an
   /// icon-only button so the title keeps a usable width.
@@ -38,7 +39,7 @@ class const SessionListPanel({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
-    final showArchived = state is SessionListLoaded && state.showArchived;
+    final showArchived = state is SessionListLoaded && (state.filter != SessionListFilter.active);
     final baseBranch = state is SessionListLoaded ? state.baseBranch : null;
 
     return Column(
@@ -74,9 +75,7 @@ class const SessionListPanel({
                       IconButton(
                         icon: Icon(showArchived ? Icons.archive : Icons.archive_outlined),
                         tooltip: loc.sessionListToggleArchived,
-                        onPressed: state is SessionListLoaded
-                            ? () => context.read<SessionListCubit>().toggleArchived()
-                            : null,
+                        onPressed: onOpenArchived,
                       ),
                       if (onNewSession != null) ...[
                         const SizedBox(width: 8),

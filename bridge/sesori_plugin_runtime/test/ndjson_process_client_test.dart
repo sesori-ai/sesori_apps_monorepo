@@ -30,6 +30,7 @@ void main() {
   test("dispatch completes after write acceptance before response", () async {
     final fixture = _Fixture();
     final dispatched = await fixture.client.dispatch(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1));
+    await fixture.process.stdin.flush();
     expect(fixture.process.frames, ['{"id":1}']);
     var completed = false;
     unawaited(dispatched.response.then((_) => completed = true));
@@ -40,13 +41,73 @@ void main() {
     await fixture.dispose();
   });
 
-  test("dispatch preserves synchronous write error", () async {
+  test("real IOSink admits concurrent requests and notifications in FIFO order", () async {
+    final writeGate = Completer<void>();
+    final fixture = _Fixture(candidate: _FakeProcess(writeGate: writeGate));
+
+    final firstStop = fixture.client.dispatch(
+      id: 1,
+      frame: {"id": 1, "method": "stop"},
+      timeout: const Duration(seconds: 1),
+    );
+    fixture.client.sendFrame(frame: {"method": "cancel-input"});
+    final secondStop = fixture.client.dispatch(
+      id: 2,
+      frame: {"id": 2, "method": "stop"},
+      timeout: const Duration(seconds: 1),
+    );
+    final prompt = fixture.client.dispatch(
+      id: 3,
+      frame: {"id": 3, "method": "prompt"},
+      timeout: const Duration(seconds: 1),
+    );
+    final dispatched = await Future.wait([firstStop, secondStop, prompt]);
+
+    writeGate.complete();
+    await fixture.process.stdin.flush();
+    expect(fixture.process.frames, [
+      '{"id":1,"method":"stop"}',
+      '{"method":"cancel-input"}',
+      '{"id":2,"method":"stop"}',
+      '{"id":3,"method":"prompt"}',
+    ]);
+    for (var id = 1; id <= 3; id++) {
+      fixture.process.emit('{"id":$id}');
+    }
+    await Future.wait(dispatched.map((dispatch) => dispatch.response));
+    await fixture.dispose();
+  });
+
+  test("asynchronous IOSink failure preserves the error for pending responses", () async {
     final error = StateError("broken pipe");
     final fixture = _Fixture(candidate: _FakeProcess(writeError: error));
-    await expectLater(
-      fixture.client.dispatch(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1)),
-      throwsA(same(error)),
+    final dispatched = await fixture.client.dispatch(
+      id: 1,
+      frame: {"id": 1},
+      timeout: const Duration(seconds: 1),
     );
+
+    await expectLater(dispatched.response, throwsA(same(error)));
+    await fixture.dispose();
+  });
+
+  test("synchronous IOSink failure does not leave an unhandled pending error", () async {
+    final fixture = _Fixture(candidate: _FakeProcess(autoExitOnClose: false));
+    await fixture.process.stdin.close();
+    final unhandled = <Object>[]; // ignore: no_slop_linter/prefer_specific_type
+
+    await runZonedGuarded<Future<void>>(
+      () async {
+        await expectLater(
+          fixture.client.dispatch(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1)),
+          throwsA(isA<StateError>().having((error) => error.message, "message", "StreamSink is closed")),
+        );
+        await _pump();
+      },
+      (error, _) => unhandled.add(error),
+    );
+
+    expect(unhandled, isEmpty);
     await fixture.dispose();
   });
 
@@ -100,7 +161,7 @@ void main() {
   test("superseded attach reaps late process", () async {
     final client = _client(reapTimeout: const Duration(seconds: 1));
     final token = client.beginAttach();
-    await client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
     final late = _FakeProcess(autoExitOnForce: false);
     final attach = client.attach(token: token, process: late);
     var completed = false;
@@ -116,7 +177,7 @@ void main() {
   test("old generation stdout and exit cannot affect replacement", () async {
     final first = _FakeProcess(autoExitOnClose: false);
     final fixture = _Fixture(candidate: first);
-    await fixture.client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
     final second = _FakeProcess();
     await fixture.client.attach(token: fixture.client.beginAttach(), process: second);
     final pending = fixture.client.request(id: 2, frame: {"id": 2}, timeout: const Duration(seconds: 1));
@@ -127,11 +188,49 @@ void main() {
     await fixture.dispose();
   });
 
+  test("old generation stdin failure cannot affect replacement", () async {
+    final writeGate = Completer<void>();
+    final first = _FakeProcess(writeError: StateError("stale stdin"), writeGate: writeGate);
+    final fixture = _Fixture(candidate: first);
+    final old = await fixture.client.dispatch(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1));
+    old.response.ignore();
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
+
+    final second = _FakeProcess();
+    await fixture.client.attach(token: fixture.client.beginAttach(), process: second);
+    final pending = fixture.client.request(id: 2, frame: {"id": 2}, timeout: const Duration(seconds: 1));
+    writeGate.complete();
+    await _pump();
+    second.emit('{"id":2,"result":"current"}');
+
+    expect((await pending)["result"], "current");
+    await fixture.dispose();
+  });
+
+  test("reset preserves a caught stack or captures the explicit-reset stack", () async {
+    for (final original in [null, StackTrace.fromString("synthetic original source")]) {
+      final fixture = _Fixture();
+      final reason = StateError("reset reason");
+      final request = fixture.client.request(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1));
+      final checked = request.then<void>(
+        (_) => fail("reset must fail pending"),
+        onError: (Object error, StackTrace stack) {
+          expect(error, same(reason));
+          expect(stack.toString(), original == null ? contains("NdjsonProcessClient._teardown") : original.toString());
+        },
+      );
+      await _pump();
+      await fixture.client.reset(reason: reason, stackTrace: original, gracefulTimeout: Duration.zero);
+      await checked;
+      await fixture.dispose();
+    }
+  });
+
   test("reset keeps notifications open and dispose closes them", () async {
     final fixture = _Fixture();
     var done = false;
     fixture.client.notifications.listen((_) {}, onDone: () => done = true);
-    await fixture.client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
     expect(done, isFalse);
     await fixture.client.dispose(reason: StateError("done"), gracefulTimeout: Duration.zero);
     expect(done, isTrue);
@@ -141,7 +240,7 @@ void main() {
     final fixture = _Fixture();
     final exit = fixture.client.exit;
 
-    await fixture.client.reset(reason: StateError("reset"), gracefulTimeout: Duration.zero);
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
 
     expect(await exit.timeout(const Duration(seconds: 1)), 0);
     await fixture.dispose();
@@ -206,6 +305,7 @@ final class _Fixture({
 
 final class _FakeProcess({
   final Object? writeError, // ignore: no_slop_linter/prefer_specific_type
+  final Completer<void>? writeGate,
   final Object? closeError, // ignore: no_slop_linter/prefer_specific_type
   final Object? gracefulKillError, // ignore: no_slop_linter/prefer_specific_type
   final bool autoExitOnClose = true,
@@ -245,6 +345,7 @@ final class _FakeProcess({
 final class _RecordingConsumer({required final _FakeProcess process}) implements StreamConsumer<List<int>> {
   @override
   Future<void> addStream(Stream<List<int>> stream) async {
+    await process.writeGate?.future;
     if (process.writeError != null) throw process.writeError!;
     await for (final bytes in stream) {
       process.frames.add(String.fromCharCodes(bytes).trim());

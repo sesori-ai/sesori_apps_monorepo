@@ -27,6 +27,10 @@ typedef RuntimeAssetResolver = Future<RuntimeAsset?> Function({required Platform
 final class const ArchiveRuntimeAsset({
   required super.assetName,
   required final ArchiveFormat format,
+
+  /// Per-command deadline for archive member listing and extraction. This is
+  /// not a combined download, extraction, or validation operation budget.
+  required final Duration archiveCommandTimeout,
   required super.sha256,
 
   /// The entry executable's name inside the extracted archive. For

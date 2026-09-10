@@ -1,4 +1,5 @@
 import "package:codex_plugin/src/api/models/codex_rollout_dto.dart";
+import "package:codex_plugin/src/api/models/codex_sub_agent_item_dto.dart";
 import "package:codex_plugin/src/api/models/codex_thread_dto.dart";
 import "package:test/test.dart";
 
@@ -57,6 +58,92 @@ void main() {
       expect(envelope.thread?.id, "root-1");
       expect(envelope.thread?.parentThreadId, isNull);
       expect(envelope.thread?.threadSource, isNull);
+    });
+  });
+
+  group("Codex rollout 0.153.4 sub-agent records", () {
+    test("decodes nested completed SubAgentActivity", () {
+      final line = CodexRolloutLineDto.fromJson(const {
+        "timestamp": "2026-09-05T12:00:00Z",
+        "type": "event_msg",
+        "payload": {
+          "type": "item_completed",
+          "thread_id": "root-1",
+          "turn_id": "turn-1",
+          "item": {
+            "type": "SubAgentActivity",
+            "id": "call-spawn",
+            "kind": "started",
+            "agent_thread_id": "child-1",
+            "agent_path": "/root/worker",
+          },
+          "started_at_ms": 1,
+          "completed_at_ms": 2,
+        },
+      });
+
+      final event = (line as CodexRolloutEventMessageLineDto).payload as CodexRolloutItemCompletedEventDto;
+      final item = event.item as CodexRolloutCompletedSubAgentActivityDto;
+      expect(event.threadId, "root-1");
+      expect(event.turnId, "turn-1");
+      expect(item.id, "call-spawn");
+      expect(item.kind, CodexSubAgentActivityKind.started);
+      expect(item.agentThreadId, "child-1");
+      expect(item.agentPath, "/root/worker");
+    });
+
+    test("decodes communication marker and plaintext plus encrypted agent content", () {
+      final marker = CodexRolloutLineDto.fromJson(const {
+        "type": "inter_agent_communication_metadata",
+        "payload": {"trigger_turn": true},
+      });
+      expect(
+        (marker as CodexRolloutInterAgentCommunicationMetadataLineDto).payload.triggerTurn,
+        isTrue,
+      );
+
+      final message = CodexRolloutLineDto.fromJson(const {
+        "type": "response_item",
+        "payload": {
+          "type": "agent_message",
+          "id": "amsg-1",
+          "author": "/root",
+          "recipient": "/root/worker",
+          "content": [
+            {"type": "input_text", "text": "header"},
+            {"type": "encrypted_content", "encrypted_content": "opaque"},
+          ],
+          "internal_chat_message_metadata_passthrough": {"turn_id": "turn-1"},
+        },
+      });
+      final payload = (message as CodexRolloutResponseItemLineDto).payload as CodexRolloutAgentMessageDto;
+      expect(payload.author, "/root");
+      expect(payload.recipient, "/root/worker");
+      expect(payload.metadata?.turnId, "turn-1");
+      expect(payload.content.first, isA<CodexRolloutAgentMessageInputTextDto>());
+      expect(payload.content.last, isA<CodexRolloutAgentMessageEncryptedContentDto>());
+    });
+
+    test("unknown nested items and agent content stay typed unknown", () {
+      final event = CodexRolloutEventDto.fromJson(const {
+        "type": "item_completed",
+        "thread_id": "root-1",
+        "turn_id": "turn-1",
+        "item": {"type": "FutureItem", "value": true},
+      }) as CodexRolloutItemCompletedEventDto;
+      expect(event.item, isA<CodexRolloutUnknownCompletedItemDto>());
+
+      final response = CodexRolloutResponseItemDto.fromJson(const {
+        "type": "agent_message",
+        "id": "amsg-1",
+        "author": "/root",
+        "recipient": "/root/worker",
+        "content": [
+          {"type": "future_content", "value": true},
+        ],
+        "internal_chat_message_metadata_passthrough": {"turn_id": "turn-1"},
+      }) as CodexRolloutAgentMessageDto;
+      expect(response.content.single, isA<CodexRolloutUnknownAgentMessageContentDto>());
     });
   });
 

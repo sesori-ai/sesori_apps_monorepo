@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../repositories/deepseek_session_repository.dart";
@@ -6,7 +7,23 @@ import "../repositories/deepseek_session_repository.dart";
 class const DeepSeekSessionService({
   required final DeepSeekSessionRepository repository,
   required final AcpChildSessionTracker childSessions,
+  required final SemanticVersion minimumAdapterVersion,
 }) {
+  void validateInitializeResult(AcpInitializeResult initializeResult) {
+    final adapterVersion = repository.parseInitializeAdapterVersion(initializeResult);
+    if (adapterVersion == null) {
+      throw const FormatException("DeepSeek adapter reported an invalid adapter version");
+    }
+    if (adapterVersion.compareTo(minimumAdapterVersion) < 0) {
+      throw const FormatException("DeepSeek adapter does not support atomic scoped stop");
+    }
+  }
+
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => repository.stopScopedTree(client: client, target: target);
+
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
     required String sessionId,

@@ -6,6 +6,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 import "../../api/models/codex_image_bearing_item_dto.dart";
 import "../../api/models/codex_rollout_dto.dart";
 import "../models/codex_projected_tool.dart";
+import "../models/codex_sub_agent_rollout_fact.dart";
 import "codex_image_attachment_mapper.dart";
 
 class const CodexRolloutToolCall({
@@ -83,6 +84,7 @@ class const CodexRolloutToolMapper({
     return switch (payload) {
       CodexRolloutFunctionCallDto(:final name) => name.toLowerCase() == "exec_command",
       CodexRolloutMessageDto() ||
+      CodexRolloutAgentMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
       CodexRolloutCustomToolCallDto() ||
@@ -252,6 +254,7 @@ class const CodexRolloutToolMapper({
           input: input,
         ),
       CodexRolloutMessageDto() ||
+      CodexRolloutAgentMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
       CodexRolloutCustomToolCallOutputDto() ||
@@ -274,6 +277,7 @@ class const CodexRolloutToolMapper({
       CodexRolloutCustomToolCallDto(:final name, :final input) =>
         name.toLowerCase() == "exec" && _isGeneratedImageInvocation(input),
       CodexRolloutMessageDto() ||
+      CodexRolloutAgentMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
       CodexRolloutCustomToolCallOutputDto() ||
@@ -281,6 +285,25 @@ class const CodexRolloutToolMapper({
       CodexRolloutImageGenerationDto() ||
       CodexRolloutUnknownResponseItemDto() => false,
     };
+  }
+
+  CodexSubAgentSpawnFact? mapSubAgentSpawn({
+    required CodexRolloutResponseItemDto payload,
+  }) {
+    if (payload case CodexRolloutFunctionCallDto(:final callId, :final name, :final arguments)
+        when name == "spawn_agent") {
+      final decoded = _tryDecodeToolArguments(raw: arguments);
+      final usefulCallId = _usefulText(callId);
+      final exactMessage = _exactNonBlank(decoded?.message);
+      if (usefulCallId != null && exactMessage != null) {
+        return CodexSubAgentSpawnFact(
+          callId: usefulCallId,
+          agent: _usefulText(decoded?.agentType) ?? "codex",
+          message: exactMessage,
+        );
+      }
+    }
+    return null;
   }
 
   CodexRolloutWaitCall? mapWaitCall({
@@ -315,6 +338,7 @@ class const CodexRolloutToolMapper({
     return switch (payload) {
       CodexRolloutFunctionCallDto(:final callId) || CodexRolloutCustomToolCallDto(:final callId) => _usefulText(callId),
       CodexRolloutMessageDto() ||
+      CodexRolloutAgentMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallOutputDto() ||
       CodexRolloutCustomToolCallOutputDto() ||
@@ -334,21 +358,13 @@ class const CodexRolloutToolMapper({
     final usefulId = _usefulText(callId) ?? _usefulText(id);
     if (usefulId == null) return null;
     final usefulName = _usefulText(name) ?? "tool";
-    final arguments = usefulName == "spawn_agent" ? _tryDecodeToolArguments(raw: input) : null;
     final fileChangePatch = usefulName.toLowerCase() == "exec" ? _codeModeFileChangePatch(input: input) : null;
     return CodexRolloutToolCall(
       id: usefulId,
       turnId: _usefulText(turnId),
       tool: fileChangePatch == null ? normalizeToolName(usefulName) : "edit",
       title: fileChangePatch == null ? toolCallTitle(input) : _fileChangeTitle(patch: fileChangePatch),
-      presentation: usefulName == "spawn_agent"
-          ? CodexSubtaskPresentation(
-              taskName: _usefulText(arguments?.taskName),
-              prompt: _usefulText(arguments?.message),
-              agent: _usefulText(arguments?.agentType) ?? "codex",
-              childSessionId: null,
-            )
-          : const CodexOrdinaryToolPresentation(),
+      presentation: const CodexOrdinaryToolPresentation(),
     );
   }
 
@@ -386,6 +402,7 @@ class const CodexRolloutToolMapper({
       CodexRolloutFunctionCallOutputDto(:final callId, :final output) ||
       CodexRolloutCustomToolCallOutputDto(:final callId, :final output) => (callId: callId, content: output),
       CodexRolloutMessageDto() ||
+      CodexRolloutAgentMessageDto() ||
       CodexRolloutReasoningDto() ||
       CodexRolloutFunctionCallDto() ||
       CodexRolloutCustomToolCallDto() ||
@@ -645,6 +662,8 @@ class const CodexRolloutToolMapper({
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : trimmed;
   }
+
+  String? _exactNonBlank(String? value) => value == null || value.trim().isEmpty ? null : value;
 }
 
 final RegExp _generatedImageInvocationPrefixPattern = RegExp(

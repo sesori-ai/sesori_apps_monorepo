@@ -36,7 +36,7 @@ void main() {
     });
 
     test("asks for an upgrade when a superseded version is installed", () {
-      installedVersion("0.1.2");
+      installedVersion("0.1.3");
 
       expect(
         const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
@@ -48,7 +48,7 @@ void main() {
     });
 
     test("declines with an explicit binary override", () {
-      installedVersion("0.1.2");
+      installedVersion("0.1.3");
 
       expect(
         const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
@@ -156,7 +156,7 @@ void main() {
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.2 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.3 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -193,12 +193,12 @@ void main() {
     );
   });
 
-  test("ensureRuntime replaces a protocol-v1 PATH adapter with the exact managed release", () async {
+  test("ensureRuntime replaces an outdated PATH adapter with the exact managed release", () async {
     final processes = _ProcessService(
       probes: [
         _ProbeProcess(
           pid: 1,
-          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.2 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.3 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),

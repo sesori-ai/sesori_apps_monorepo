@@ -205,17 +205,20 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     action: CatalogScanRowAction.none,
   ),
   CatalogScanRowScenario(
-    id: "starting",
-    name: "Starting / Awaiting progress",
-    description: "The request was dispatched, but no harness has reported yet.",
-    scan: CatalogRescanState.starting(pluginIds: {"codex", "opencode"}),
+    id: "preparing",
+    name: "Preparing / Awaiting progress",
+    description: "Requests were dispatched, but no harness has reported yet.",
+    scan: CatalogRescanState.preparingMany(
+      pendingPluginNames: ["Codex", "OpenCode"],
+      pluginIds: {"codex", "opencode"},
+    ),
     action: CatalogScanRowAction.cancel,
   ),
   CatalogScanRowScenario(
     id: "running-zero",
     name: "Running / Zero sessions",
     description: "Codex is active but has not reported a session yet.",
-    scan: CatalogRescanState.running(
+    scan: CatalogRescanState.reading(
       activePluginName: "Codex",
       sessionsSeen: 0,
       pluginIds: {"codex", "opencode"},
@@ -226,7 +229,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     id: "running-singular",
     name: "Running / One session",
     description: "The singular live-count branch is visible while Codex scans.",
-    scan: CatalogRescanState.running(
+    scan: CatalogRescanState.reading(
       activePluginName: "Codex",
       sessionsSeen: 1,
       pluginIds: {"codex", "opencode"},
@@ -237,7 +240,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     id: "running-large-count",
     name: "Running / Large count",
     description: "A long-running scan with a representative three-digit count.",
-    scan: CatalogRescanState.running(
+    scan: CatalogRescanState.reading(
       activePluginName: "Claude Code",
       sessionsSeen: 148,
       pluginIds: {"claude-code", "codex", "opencode"},
@@ -585,11 +588,14 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
     if (widget.selection is! CatalogScanGestureDemo) return;
     _cancelTimers();
     setState(() {
-      _scan = const CatalogRescanState.starting(pluginIds: {"claude-code", "codex", "opencode"});
+      _scan = const CatalogRescanState.preparingMany(
+        pendingPluginNames: ["Claude Code", "Codex", "OpenCode"],
+        pluginIds: {"claude-code", "codex", "opencode"},
+      );
     });
     _schedule(
       const Duration(milliseconds: 650),
-      const CatalogRescanState.running(
+      const CatalogRescanState.reading(
         activePluginName: "Codex",
         sessionsSeen: 0,
         pluginIds: {"claude-code", "codex", "opencode"},
@@ -597,7 +603,7 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
     );
     _schedule(
       const Duration(milliseconds: 1400),
-      const CatalogRescanState.running(
+      const CatalogRescanState.reading(
         activePluginName: "Codex",
         sessionsSeen: 3,
         pluginIds: {"claude-code", "codex", "opencode"},
@@ -605,7 +611,7 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
     );
     _schedule(
       const Duration(milliseconds: 2200),
-      const CatalogRescanState.running(
+      const CatalogRescanState.reading(
         activePluginName: "OpenCode",
         sessionsSeen: 8,
         pluginIds: {"claude-code", "codex", "opencode"},

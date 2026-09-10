@@ -27,12 +27,17 @@ class SessionAbortService({
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
   }) {
     final operation = _dispatcher.dispatch<SessionAbortResult>(
       sessionId: sessionId,
       operation: SessionOperation.abortSession,
       body: () async {
-        final result = await _sessionRepository.abortSession(sessionId: sessionId, subAgents: subAgents);
+        final result = await _sessionRepository.abortSession(
+          sessionId: sessionId,
+          subAgents: subAgents,
+          useAtomicStop: useAtomicStop,
+        );
         // Decided by what the plugin actually did, not by the requested policy:
         // a `keep` with nothing to keep is a full stop.
         if (result case SessionAborted(workKept: false)) {

@@ -8,24 +8,33 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_attachment.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
+import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
+import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
+import "../../services/session_interaction_calculator_test.dart" show managementFixture;
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
 
@@ -74,7 +83,6 @@ void main() {
       );
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
-        projectRepository: mockProjectRepository,
         pluginRepository: mockPluginRepository,
         connectionService: mockConnectionService,
       );
@@ -129,11 +137,16 @@ void main() {
     /// Only the viewing services and the lifecycle source differ between cases,
     /// so each test names just the seam it exercises.
     SessionDetailCubit buildCubit({
+      bool claimProjectView = true,
       SessionViewingService? sessionViewingService,
       ProjectViewingService? projectViewingService,
       LifecycleSource? lifecycleSource,
+      PluginManagementService? pluginManagementService,
     }) => SessionDetailCubit(
       mockConnectionService,
+      claimProjectView: claimProjectView,
+      pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
+      interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
@@ -154,6 +167,476 @@ void main() {
       await connectionStatus.close();
     });
 
+    for (final initialBlocked in [true, false]) {
+      test("harness gate blocks input and restores interaction (cold: $initialBlocked)", () async {
+        PluginManagementLoadResult management({required bool blocked}) => managementFixture(
+          pluginId: "plugin-1",
+          setup: blocked ? PluginSetupState.authenticationRequired : PluginSetupState.ready,
+          runtime: blocked ? PluginRuntimeState.blocked : PluginRuntimeState.dormant,
+        );
+        final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(management(blocked: initialBlocked));
+        addTearDown(snapshots.close);
+        final service = MockPluginManagementService();
+        when(() => service.snapshots).thenAnswer((_) => snapshots);
+        when(service.refresh).thenAnswer((_) async {});
+        final cubit = buildCubit(pluginManagementService: service);
+        addTearDown(cubit.close);
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) =>
+              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
+          description: "initial harness state",
+        );
+        final before = cubit.state;
+        if (initialBlocked) {
+          // History comes from the bridge database, so a blocked harness still
+          // shows the transcript; only interaction is refused.
+          verify(
+            () => mockSessionService.getMessages(
+              sessionId: any(named: "sessionId"),
+              limit: any(named: "limit"),
+              before: any(named: "before"),
+              storedOnly: any(named: "storedOnly"),
+            ),
+          ).called(greaterThanOrEqualTo(1));
+        } else {
+          when(
+            () => mockSessionService.sendMessage(
+              promptId: any(named: "promptId"),
+              attachments: const [],
+              sessionId: sessionId,
+              text: any(named: "text"),
+              agent: any(named: "agent"),
+              model: any(named: "model"),
+              variant: any(named: "variant"),
+              command: null,
+            ),
+          ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+          await cubit.sendMessage(
+            text: "cancel locally",
+            command: null,
+            inputMode: ComposerInputMode.typed,
+            attachments: const [],
+          );
+          expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+          final savedMetadata = await mockSessionRepository.getSession(sessionId: sessionId);
+          final metadata = Completer<ApiResponse<Session>>();
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+          final reloading = cubit.reload();
+          expect(cubit.state, isA<SessionDetailLoading>());
+          snapshots.add(management(blocked: true));
+          sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()));
+          metadata.complete(savedMetadata);
+          await reloading;
+          when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) async => savedMetadata);
+          await awaitState(
+            cubit: cubit,
+            predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+            description: "live block",
+          );
+          expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
+          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy());
+          cubit.cancelQueuedMessage(0);
+          expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+          await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
+          verifyNever(() => mockSessionRepository.cancelQueuedPrompt(sessionId: sessionId, promptId: "remote-prompt"));
+        }
+        clearInteractions(mockSessionRepository);
+        clearInteractions(mockPermissionRepository);
+        clearInteractions(mockProductAnalyticsService);
+        final blockedState = cubit.state;
+        cubit.selectAgent("coder");
+        cubit.selectModel(providerID: "blocked-provider", modelID: "blocked-model");
+        cubit.selectVariant(const SessionVariant(id: "blocked-variant"));
+        cubit.stageCommand(testCommandInfo());
+        cubit.clearStagedCommand();
+        await cubit.loadOlderMessages();
+        await cubit.sendMessage(
+          text: "must not send",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        );
+        expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop), isA<SessionAbortFailed>());
+        verifyNever(
+          () => mockSessionRepository.abortSession(sessionId: sessionId, subAgents: SessionAbortSubAgentPolicy.stop),
+        );
+        expect(await cubit.replyToQuestion(requestId: "question", sessionId: sessionId, answers: const []), isFalse);
+        expect(
+          await cubit.replyToPermission(requestId: "permission", sessionId: sessionId, reply: PermissionReply.once),
+          isFalse,
+        );
+        verifyNever(
+          () => mockPermissionRepository.replyToPermission(
+            requestId: any(named: "requestId"),
+            sessionId: any(named: "sessionId"),
+            reply: any(named: "reply"),
+          ),
+        );
+        expect(await cubit.rejectQuestion("question"), isFalse);
+        verifyNever(
+          () => mockSessionRepository.rejectQuestion(
+            requestId: any(named: "requestId"),
+            sessionId: any(named: "sessionId"),
+          ),
+        );
+        verifyNever(
+          () => mockSessionRepository.sendMessage(
+            promptId: any(named: "promptId"),
+            attachments: any(named: "attachments"),
+            sessionId: any(named: "sessionId"),
+            text: any(named: "text"),
+            agent: any(named: "agent"),
+            model: any(named: "model"),
+            variant: any(named: "variant"),
+            command: any(named: "command"),
+          ),
+        );
+        verifyNever(
+          () => mockProductAnalyticsService.logEvent(
+            event: any(named: "event"),
+            occurredAtUtc: any(named: "occurredAtUtc"),
+          ),
+        );
+        expect(cubit.state, same(blockedState));
+        if (cubit.state case SessionDetailLoaded(:final queuedMessages)) expect(queuedMessages, isEmpty);
+        if (!initialBlocked) {
+          final saved = await mockSessionService.getMessages(
+            sessionId: sessionId,
+            limit: SessionDetailLoadService.initialPageSize,
+            before: null,
+            storedOnly: false,
+          );
+          when(
+            () => mockSessionService.getMessages(
+              sessionId: sessionId,
+              limit: SessionDetailLoadService.initialPageSize,
+              before: null,
+              storedOnly: false,
+            ),
+          ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+          snapshots.add(management(blocked: false));
+          await awaitState(
+            cubit: cubit,
+            predicate: (state) =>
+                state is SessionDetailLoaded &&
+                state.interaction is SessionInteractionBlocked &&
+                (state.interaction as SessionInteractionBlocked).reason ==
+                    SessionInteractionBlockedReason.contentLoadFailed,
+            description: "recovery refresh failure",
+          );
+          expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
+          when(
+            () => mockSessionService.getMessages(
+              sessionId: sessionId,
+              limit: SessionDetailLoadService.initialPageSize,
+              before: null,
+              storedOnly: false,
+            ),
+          ).thenAnswer((_) async => saved);
+          await cubit.recheckHarnessAvailability();
+        } else {
+          snapshots.add(management(blocked: false));
+        }
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract && !state.isRefreshing,
+          description: "available without reopening",
+        );
+        expect((cubit.state as SessionDetailLoaded).interaction, isA<SessionInteractionAvailable>());
+      });
+    }
+
+    test("recovered options replace the placeholder agent the blocked load showed", () async {
+      // A blocked open with no options cache has no catalog to select from and
+      // falls back to a placeholder name. Carrying that into the enabled
+      // composer would arm the next prompt with an agent the plugin never
+      // advertised.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+        description: "blocked transcript",
+      );
+      expect((cubit.state as SessionDetailLoaded).availableAgents, isEmpty);
+
+      snapshots.add(
+        managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) =>
+            state is SessionDetailLoaded && state.interaction.canInteract && state.availableAgents.isNotEmpty,
+        description: "recovered catalog",
+      );
+      final recovered = cubit.state as SessionDetailLoaded;
+      expect(recovered.selectedAgent, testAgentInfo().name);
+    });
+
+    test("a blocked session the bridge stored nothing for reports the block", () async {
+      // The store-only read succeeds but has nothing to serve and says the
+      // harness still owes it. An empty chat would claim the session has no
+      // history; the truth is that reading it needs the harness enabled.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          const MessageWithPartsResponse(
+            messages: <MessageWithParts>[],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+            awaitingHarnessSync: true,
+          ),
+        ),
+      );
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailHarnessUnavailable,
+        description: "unavailable history",
+      );
+    });
+
+    test("a blocked session serves the stored transcript the harness has not caught up with", () async {
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      final stored = await mockSessionService.getMessages(
+        sessionId: sessionId,
+        limit: SessionDetailLoadService.initialPageSize,
+        before: null,
+        storedOnly: false,
+      );
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: true,
+        ),
+      ).thenAnswer(
+        (_) async => switch (stored) {
+          SuccessResponse(:final data) => ApiResponse.success(data.copyWith(awaitingHarnessSync: true)),
+          ErrorResponse(:final error) => ApiResponse.error(error),
+        },
+      );
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded,
+        description: "stored transcript",
+      );
+      final loaded = cubit.state as SessionDetailLoaded;
+      expect(loaded.messages, isNotEmpty, reason: "a stale store still has history worth reading");
+      expect(loaded.interaction, isA<SessionInteractionBlocked>());
+    });
+
+    test("a blocked session whose stored history cannot be served reports the block", () async {
+      // Serving history can still need a harness-backed backfill when the bridge
+      // has no complete snapshot, and that backfill is exactly what the block
+      // prevents. The user must see the block, not a generic failure.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailHarnessUnavailable,
+        description: "unavailable history",
+      );
+      final blocked = cubit.state as SessionDetailHarnessUnavailable;
+      expect(blocked.interaction, isA<SessionInteractionBlocked>());
+      expect(
+        (blocked.interaction as SessionInteractionBlocked).reason,
+        SessionInteractionBlockedReason.authenticationRequired,
+      );
+    });
+
+    test("a block racing a reload keeps the rendered transcript instead of the unavailable shell", () async {
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+      );
+      addTearDown(snapshots.close);
+      final management = MockPluginManagementService();
+      when(() => management.snapshots).thenAnswer((_) => snapshots);
+      when(management.refresh).thenAnswer((_) async {});
+      final cubit = buildCubit(pluginManagementService: management);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      final before = cubit.state as SessionDetailLoaded;
+
+      // The block lands after metadata resolves, and the content request then
+      // fails because serving it would need the backfill the block prevents.
+      final metadata = Completer<ApiResponse<Session>>();
+      final saved = await mockSessionRepository.getSession(sessionId: sessionId);
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+      final reloading = cubit.reload();
+      snapshots.add(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      metadata.complete(saved);
+      await reloading;
+
+      final after = cubit.state;
+      expect(after, isA<SessionDetailLoaded>());
+      expect((after as SessionDetailLoaded).messages, before.messages);
+      expect(after.interaction.canInteract, isFalse);
+    });
+
+    test("reconnect keeps a loaded chat interactive until a confirmed harness block", () async {
+      final connected = mockConnectionService.currentStatus;
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(setup: PluginSetupState.ready, runtime: PluginRuntimeState.active, pluginId: "plugin-1"),
+      );
+      addTearDown(snapshots.close);
+      final managementService = MockPluginManagementService();
+      when(() => managementService.snapshots).thenAnswer((_) => snapshots);
+      when(managementService.refresh).thenAnswer((_) async {});
+      final cubit = buildCubit(pluginManagementService: managementService);
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      final states = <SessionDetailState>[];
+      final subscription = cubit.stream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      for (final status in [
+        const ConnectionStatus.connectionLost(
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+        ),
+        const ConnectionStatus.reconnecting(
+          config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+        ),
+        connected,
+      ]) {
+        when(() => mockConnectionService.currentStatus).thenReturn(status);
+        connectionStatus.add(status);
+        snapshots.add(const PluginManagementLoadResult.loading());
+        await Future<void>.delayed(Duration.zero);
+        await _awaitNotRefreshing(cubit);
+        expect((cubit.state as SessionDetailLoaded).interaction.canInteract, isTrue);
+      }
+      expect(states, isNotEmpty);
+      expect(
+        states,
+        everyElement(
+          isA<SessionDetailLoaded>().having((state) => state.interaction.canInteract, "interactive", isTrue),
+        ),
+      );
+
+      snapshots.add(
+        managementFixture(setup: PluginSetupState.ready, runtime: PluginRuntimeState.disabled, pluginId: "plugin-1"),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+        description: "confirmed disable after reconnect",
+      );
+      expect(
+        (cubit.state as SessionDetailLoaded).interaction,
+        isA<SessionInteractionBlocked>().having(
+          (state) => state.reason,
+          "reason",
+          SessionInteractionBlockedReason.disabled,
+        ),
+      );
+    });
+
+    test("metadata refresh failure preserves the loaded transcript and buffered events", () async {
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+      final before = cubit.state as SessionDetailLoaded;
+      final metadata = Completer<ApiResponse<Session>>();
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+      final reloading = cubit.reload();
+      expect(cubit.state, isA<SessionDetailLoading>());
+      sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()));
+      metadata.complete(ApiResponse.error(ApiError.generic()));
+      await reloading;
+      final after = cubit.state as SessionDetailLoaded;
+      expect(after.messages, before.messages);
+      expect(after.interaction.canInteract, isTrue);
+      expect(after.sessionStatus, const SessionStatus.busy());
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "initial load success emits SessionDetailLoaded",
       build: buildCubit,
@@ -166,6 +649,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(1);
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
@@ -211,6 +695,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
 
@@ -239,6 +724,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(2);
         verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(2);
@@ -724,6 +1210,148 @@ void main() {
       },
     );
 
+    test("abort refuses every scope after archiving while stop confirmation is pending", () async {
+      const rejection = SessionAbortRejection(runningSubAgentCount: 2, mainAgentRunning: true);
+      when(
+        () => mockSessionRepository.abortSession(sessionId: sessionId, subAgents: SessionAbortSubAgentPolicy.confirm),
+      ).thenThrow(SessionAbortRejectedException(rejection: rejection, innerError: StateError("409")));
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await _awaitLoaded(cubit);
+
+      expect(await cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm), isA<SessionAbortRejected>());
+      clearInteractions(mockSessionRepository);
+      clearInteractions(mockProductAnalyticsService);
+
+      // Another surface archives the session while the scope dialog is open.
+      sessionEvents.add(
+        SesoriSessionUpdated(
+          info: testSession(id: sessionId, archivedAt: DateTime.utc(2026)),
+        ),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && state.isArchived,
+        description: "session archived during stop confirmation",
+      );
+      final archivedState = cubit.state;
+      expect((archivedState as SessionDetailLoaded).interaction.canInteract, isTrue);
+
+      for (final policy in SessionAbortSubAgentPolicy.values) {
+        expect(await cubit.abort(subAgents: policy), isA<SessionAbortFailed>());
+      }
+
+      expect(cubit.state, same(archivedState));
+      verifyNever(
+        () => mockSessionRepository.abortSession(
+          sessionId: any(named: "sessionId"),
+          subAgents: any(named: "subAgents"),
+        ),
+      );
+      verifyNever(
+        () => mockProductAnalyticsService.logEvent(
+          event: const ProductAnalyticsEvent.sessionAbortSucceeded(),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
+    test("abort skips legacy descendant fanout after bridge acknowledgment", () async {
+      const childId = "child-1";
+      when(() => mockSessionService.getChildren(sessionId: sessionId)).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [testSession(id: childId, parentID: sessionId)],
+          ),
+        ),
+      );
+      when(() => mockSessionService.getSessionStatuses()).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SessionStatusResponse(statuses: {childId: SessionStatus.busy()}),
+        ),
+      );
+      when(
+        () => mockSessionService.abortSession(
+          sessionId: sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(true));
+      final cubit = buildCubit();
+      await _awaitLoaded(cubit);
+
+      final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+
+      expect(outcome, isA<SessionAbortAccepted>());
+      verifyNever(
+        () => mockSessionService.abortSession(
+          sessionId: childId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      );
+      await cubit.close();
+    });
+
+    test("old bridge fallback retains the request snapshot while detail reloads", () async {
+      const childId = "child-1";
+      when(() => mockSessionService.getChildren(sessionId: sessionId)).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [testSession(id: childId, parentID: sessionId)],
+          ),
+        ),
+      );
+      when(() => mockSessionService.getSessionStatuses()).thenAnswer(
+        (_) async => ApiResponse.success(
+          const SessionStatusResponse(statuses: {childId: SessionStatus.busy()}),
+        ),
+      );
+      final rootAbort = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionService.abortSession(
+          sessionId: sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).thenAnswer((_) => rootAbort.future);
+      final cubit = buildCubit();
+      await _awaitLoaded(cubit);
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+      await Future<void>.delayed(Duration.zero);
+
+      final reloadMessages = Completer<ApiResponse<MessageWithPartsResponse>>();
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: sessionId,
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer((_) => reloadMessages.future);
+      final reloading = cubit.reload();
+      await Future<void>.delayed(Duration.zero);
+      expect(cubit.state, isA<SessionDetailLoading>());
+
+      rootAbort.complete(ApiResponse.success(false));
+      expect(await aborting, isA<SessionAbortAccepted>());
+      verify(
+        () => mockSessionService.abortSession(
+          sessionId: childId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).called(1);
+
+      reloadMessages.complete(
+        ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: [testMessageWithParts()],
+            nextCursor: null,
+            replayedPromptDefaults: null,
+          ),
+        ),
+      );
+      await reloading;
+      await cubit.close();
+    });
+
     blocTest<SessionDetailCubit, SessionDetailState>(
       "replyToQuestion optimistically removes pending question and calls API",
       build: () {
@@ -808,6 +1436,9 @@ void main() {
     test("clearNotifications is a no-op when the shell has no notification integration", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
+        claimProjectView: true,
+        pluginManagementService: stubbedPluginManagementService(),
+        interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
@@ -847,6 +1478,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1107,6 +1739,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) {
         getMessagesCallCount += 1;
@@ -1578,6 +2211,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) {
         getMessagesCallCount += 1;
@@ -1985,6 +2619,20 @@ void main() {
     );
 
     group("viewing declaration", () {
+      test("audit detail loads without acquiring, readying or releasing a live project claim", () async {
+        final projectViewing = stubbedProjectViewingService();
+        final cubit = buildCubit(projectViewingService: projectViewing, claimProjectView: false);
+        await _awaitLoaded(cubit);
+        await cubit.close();
+        verifyNever(() => projectViewing.beginDetailClaim(projectId: any(named: "projectId")));
+        verifyNever(
+          () => projectViewing.markClaimReady(
+            claim: any(named: "claim"),
+            projectId: any(named: "projectId"),
+          ),
+        );
+        verifyNever(() => projectViewing.releaseClaim(claim: any(named: "claim")));
+      });
       test("declares the view once the transcript loads and clears it on close", () async {
         final viewingService = stubbedSessionViewingService();
         final projectViewingService = stubbedProjectViewingService();
@@ -2017,6 +2665,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final viewingService = stubbedSessionViewingService();
@@ -2081,6 +2730,58 @@ void main() {
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
       });
 
+      test("a blocked chat still re-asserts the view its resume released", () async {
+        // The blocked transcript stays on screen, so its refresh being a no-op
+        // must not leave the chat undeclared and marking its own updates unread.
+        final viewingService = stubbedSessionViewingService();
+        final lifecycle = MockLifecycleSource();
+        final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+          managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+        );
+        addTearDown(snapshots.close);
+        final management = MockPluginManagementService();
+        when(() => management.snapshots).thenAnswer((_) => snapshots);
+        when(management.refresh).thenAnswer((_) async {});
+        when(() => mockConnectionService.currentStatus).thenReturn(
+          const ConnectionStatus.connected(
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            health: HealthResponse(healthy: true, version: "1", filesystemAccessDegraded: false),
+          ),
+        );
+        final cubit = buildCubit(
+          sessionViewingService: viewingService,
+          lifecycleSource: lifecycle,
+          pluginManagementService: management,
+        );
+        addTearDown(cubit.close);
+        await _awaitLoaded(cubit);
+
+        snapshots.add(
+          managementFixture(
+            pluginId: "plugin-1",
+            setup: PluginSetupState.authenticationRequired,
+            runtime: PluginRuntimeState.blocked,
+          ),
+        );
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+          description: "blocked while loaded",
+        );
+        clearInteractions(viewingService);
+
+        // Backgrounding released the bridge-side view; the resume refresh has
+        // nothing to fetch while blocked, but must still re-declare it.
+        lifecycle.emitState(LifecycleState.paused);
+        lifecycle.emitState(LifecycleState.resumed);
+        // The blocked refresh never sets isRefreshing, so let it settle instead.
+        for (var turn = 0; turn < 5; turn++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        verify(() => viewingService.setViewingSession(sessionId)).called(1);
+      });
+
       test("resume refreshes and re-asserts the view only after the refresh renders", () async {
         final viewingService = stubbedSessionViewingService();
         final lifecycle = MockLifecycleSource();
@@ -2111,6 +2812,7 @@ void main() {
             sessionId: sessionId,
             limit: any(named: "limit"),
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         ).called(greaterThanOrEqualTo(1));
       });
@@ -2198,6 +2900,7 @@ void _stubAllDefaults(
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(
@@ -2310,7 +3013,7 @@ void _stubAllDefaults(
       sessionId: any(named: "sessionId"),
       subAgents: any(named: "subAgents"),
     ),
-  ).thenAnswer((_) async => ApiResponse.success(null));
+  ).thenAnswer((_) async => ApiResponse.success(false));
   when(
     () => service.replyToQuestion(
       requestId: any(named: "requestId"),

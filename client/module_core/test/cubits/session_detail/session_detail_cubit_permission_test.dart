@@ -14,6 +14,7 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -56,7 +57,6 @@ void main() {
       mockProjectRepository = MockProjectRepository();
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
-        projectRepository: mockProjectRepository,
         pluginRepository: stubbedPluginRepository(),
         connectionService: mockConnectionService,
       );
@@ -305,6 +305,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
@@ -427,7 +428,7 @@ void main() {
           sessionId: any(named: "sessionId"),
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer((_) async => ApiResponse<void>.success(null));
+      ).thenAnswer((_) async => ApiResponse<bool>.success(false));
       final analyticsService = stubbedProductAnalyticsService();
       final cubit = _buildCubit(
         sessionId: sessionId,
@@ -474,6 +475,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) => messagesCompleter.future);
 
@@ -790,6 +792,9 @@ SessionDetailCubit _buildCubit({
 }) {
   return SessionDetailCubit(
     connectionService,
+    claimProjectView: true,
+    pluginManagementService: stubbedPluginManagementService(),
+    interactionCalculator: const SessionInteractionCalculator(),
     loadService: loadService,
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
@@ -811,6 +816,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(

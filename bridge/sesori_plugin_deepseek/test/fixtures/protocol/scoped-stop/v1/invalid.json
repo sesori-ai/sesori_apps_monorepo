@@ -1,0 +1,63 @@
+[
+  {
+    "definition": "sessionStopRequest",
+    "value": {
+      "sessionId": "root"
+    }
+  },
+  {
+    "definition": "sessionStopRequest",
+    "value": {
+      "kind": "child",
+      "sessionId": "root"
+    }
+  },
+  {
+    "definition": "sessionStopRequest",
+    "value": {
+      "kind": "session",
+      "sessionId": "root",
+      "childSessionId": "child"
+    }
+  },
+  {
+    "definition": "sessionStopRequest",
+    "value": {
+      "kind": "session",
+      "sessionId": "\nroot"
+    }
+  },
+  {
+    "definition": "sessionStopRequest",
+    "value": {
+      "kind": "session",
+      "sessionId": "  "
+    }
+  },
+  {
+    "definition": "sessionStopResponse",
+    "value": {
+      "workKept": "false"
+    }
+  },
+  {
+    "definition": "sessionStopResponse",
+    "value": {
+      "workKept": false,
+      "sessionIds": []
+    }
+  },
+  {
+    "definition": "inputCancelRequest",
+    "value": {
+      "sessionId": "root",
+      "questionId": "q"
+    }
+  },
+  {
+    "definition": "inputCancelResponse",
+    "value": {
+      "ok": true
+    }
+  }
+]

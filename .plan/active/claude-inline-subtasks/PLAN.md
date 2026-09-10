@@ -14,14 +14,17 @@
 - **Delivery:** eight PRs: plan, contract + client tile, Claude lifecycle,
   Claude child sessions, Claude live sub-agent streaming, scoped stop,
   regression docs, retirement
-- **DeepSeek consumer split (2026-09-04):** supersede oversized PR #1293 with
-  five sequential, approximately 1,500-line slices. Exact scopes, titles,
-  budgets, and the verbatim-fixture exception are in `HARNESS_FOLLOWUPS.md`;
-  progress is in `TRACKER.md`. Preserve intended behavior and valid review
-  fixes; improve the implementation where worthwhile within each slice's budget.
-  User-directed release change (2026-09-05): publish adapter 0.1.3 before
-  slice 4 merges, then pin it and require v2 in that same PR instead of retaining
-  temporary v1 compatibility. Replay remains slice 5; final coverage gates stand.
+- **DeepSeek follow-up (2026-09-06):** PR #1356 was closed without merge and
+  superseded by two simpler slices: step 4/5 pins and consumes the published
+  v0.1.4 native contract/input cancellation; step 5/5 completes ACP-owned stop.
+  Both slices merged (#1363, #1370). Agent-run phone QA found the transport
+  crash fixed by #1379; requested phone stop/input checks then passed. See
+  `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice. Codex
+  now uses nine steps after automatic size-based splitting: #1387 remains
+  historical preparation, and cleanup #1396 is merged. Native facts are step
+  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9,
+  lifecycle coverage 7/9, scoped stop 8/9, and final coverage 9/9. Historical merged PR titles
+  remain unchanged. Overall harness plan remains active.
 
 ## Goal
 

@@ -989,15 +989,27 @@ class SessionRepository({
   Future<SessionAbortResult> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
   }) => _useSessionPlugin(
     sessionId: sessionId,
     operation: SessionOperation.abortSession,
-    body: (plugin, binding) async => switch (await plugin.abortSession(
-      sessionId: binding.backendSessionId,
-      subAgents: subAgents.toPlugin(),
-    )) {
-      PluginAbortAccepted(:final workKept) => SessionAborted(workKept: workKept),
-      final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
+    body: (plugin, binding) async {
+      final knownSubAgentSessionIds = {
+        for (final descendant in (await _getSessionSubtree(root: binding)).skip(1))
+          if (descendant.pluginId == binding.pluginId) descendant.backendSessionId,
+      };
+      return switch (await plugin.abortSession(
+        sessionId: binding.backendSessionId,
+        subAgents: subAgents.toPlugin(),
+        useAtomicStop: useAtomicStop,
+        knownSubAgentSessionIds: knownSubAgentSessionIds,
+      )) {
+        PluginAbortAccepted(:final workKept, :final subAgentsHandled) => SessionAborted(
+          workKept: workKept,
+          subAgentsHandled: subAgentsHandled,
+        ),
+        final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
+      };
     },
   );
 

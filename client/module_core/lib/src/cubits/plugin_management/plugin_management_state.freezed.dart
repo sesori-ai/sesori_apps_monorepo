@@ -2085,17 +2085,24 @@ $ApiErrorCopyWith<$Res> get error {
 
 
 class PluginManagementReady implements PluginManagementState {
-  const PluginManagementReady({required this.response, required this.refresh, required this.action, required this.authentication, required  Map<String, PluginInstallProgress> installs, required  Set<String> scanningPluginIds, required  Map<String, CatalogRescanStartResult> scanRejections, required this.scanOutcome}): _installs = installs,_scanningPluginIds = scanningPluginIds,_scanRejections = scanRejections;
+  const PluginManagementReady({required this.response, required this.refresh, required this.globalAction, required  Map<String, PluginManagementActionState> harnessActions, required this.authentication, required  Map<String, PluginInstallState> installs, required  Set<String> scanningPluginIds, required  Map<String, CatalogRescanStartResult> scanRejections, required this.scanOutcome}): _harnessActions = harnessActions,_installs = installs,_scanningPluginIds = scanningPluginIds,_scanRejections = scanRejections;
   
 
  final  PluginManagementResponse response;
  final  PluginManagementRefreshState refresh;
- final  PluginManagementActionState action;
+ final  PluginManagementActionState globalAction;
+ final  Map<String, PluginManagementActionState> _harnessActions;
+ Map<String, PluginManagementActionState> get harnessActions {
+  if (_harnessActions is EqualUnmodifiableMapView) return _harnessActions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableMapView(_harnessActions);
+}
+
  final  PluginAuthenticationPresentationState authentication;
-/// In-flight managed runtime installs, keyed by plugin id.
- final  Map<String, PluginInstallProgress> _installs;
-/// In-flight managed runtime installs, keyed by plugin id.
- Map<String, PluginInstallProgress> get installs {
+/// In-progress installs and retained terminal failures, keyed by plugin id.
+ final  Map<String, PluginInstallState> _installs;
+/// In-progress installs and retained terminal failures, keyed by plugin id.
+ Map<String, PluginInstallState> get installs {
   if (_installs is EqualUnmodifiableMapView) return _installs;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_installs);
@@ -2143,16 +2150,16 @@ $PluginManagementReadyCopyWith<PluginManagementReady> get copyWith => _$PluginMa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.action, action) || other.action == action)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other._installs, _installs)&&const DeepCollectionEquality().equals(other._scanningPluginIds, _scanningPluginIds)&&const DeepCollectionEquality().equals(other._scanRejections, _scanRejections)&&(identical(other.scanOutcome, scanOutcome) || other.scanOutcome == scanOutcome));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.globalAction, globalAction) || other.globalAction == globalAction)&&const DeepCollectionEquality().equals(other._harnessActions, _harnessActions)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other._installs, _installs)&&const DeepCollectionEquality().equals(other._scanningPluginIds, _scanningPluginIds)&&const DeepCollectionEquality().equals(other._scanRejections, _scanRejections)&&(identical(other.scanOutcome, scanOutcome) || other.scanOutcome == scanOutcome));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,response,refresh,action,authentication,const DeepCollectionEquality().hash(_installs),const DeepCollectionEquality().hash(_scanningPluginIds),const DeepCollectionEquality().hash(_scanRejections),scanOutcome);
+int get hashCode => Object.hash(runtimeType,response,refresh,globalAction,const DeepCollectionEquality().hash(_harnessActions),authentication,const DeepCollectionEquality().hash(_installs),const DeepCollectionEquality().hash(_scanningPluginIds),const DeepCollectionEquality().hash(_scanRejections),scanOutcome);
 
 @override
 String toString() {
-  return 'PluginManagementState.ready(response: $response, refresh: $refresh, action: $action, authentication: $authentication, installs: $installs, scanningPluginIds: $scanningPluginIds, scanRejections: $scanRejections, scanOutcome: $scanOutcome)';
+  return 'PluginManagementState.ready(response: $response, refresh: $refresh, globalAction: $globalAction, harnessActions: $harnessActions, authentication: $authentication, installs: $installs, scanningPluginIds: $scanningPluginIds, scanRejections: $scanRejections, scanOutcome: $scanOutcome)';
 }
 
 
@@ -2163,11 +2170,11 @@ abstract mixin class $PluginManagementReadyCopyWith<$Res> implements $PluginMana
   factory $PluginManagementReadyCopyWith(PluginManagementReady value, $Res Function(PluginManagementReady) _then) = _$PluginManagementReadyCopyWithImpl;
 @useResult
 $Res call({
- PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState action, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallProgress> installs, Set<String> scanningPluginIds, Map<String, CatalogRescanStartResult> scanRejections, CatalogRescanOutcome? scanOutcome
+ PluginManagementResponse response, PluginManagementRefreshState refresh, PluginManagementActionState globalAction, Map<String, PluginManagementActionState> harnessActions, PluginAuthenticationPresentationState authentication, Map<String, PluginInstallState> installs, Set<String> scanningPluginIds, Map<String, CatalogRescanStartResult> scanRejections, CatalogRescanOutcome? scanOutcome
 });
 
 
-$PluginManagementResponseCopyWith<$Res> get response;$PluginManagementRefreshStateCopyWith<$Res> get refresh;$PluginManagementActionStateCopyWith<$Res> get action;$PluginAuthenticationPresentationStateCopyWith<$Res> get authentication;$CatalogRescanOutcomeCopyWith<$Res>? get scanOutcome;
+$PluginManagementResponseCopyWith<$Res> get response;$PluginManagementRefreshStateCopyWith<$Res> get refresh;$PluginManagementActionStateCopyWith<$Res> get globalAction;$PluginAuthenticationPresentationStateCopyWith<$Res> get authentication;$CatalogRescanOutcomeCopyWith<$Res>? get scanOutcome;
 
 }
 /// @nodoc
@@ -2180,14 +2187,15 @@ class _$PluginManagementReadyCopyWithImpl<$Res>
 
 /// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? action = null,Object? authentication = null,Object? installs = null,Object? scanningPluginIds = null,Object? scanRejections = null,Object? scanOutcome = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? response = null,Object? refresh = null,Object? globalAction = null,Object? harnessActions = null,Object? authentication = null,Object? installs = null,Object? scanningPluginIds = null,Object? scanRejections = null,Object? scanOutcome = freezed,}) {
   return _then(PluginManagementReady(
 response: null == response ? _self.response : response // ignore: cast_nullable_to_non_nullable
 as PluginManagementResponse,refresh: null == refresh ? _self.refresh : refresh // ignore: cast_nullable_to_non_nullable
-as PluginManagementRefreshState,action: null == action ? _self.action : action // ignore: cast_nullable_to_non_nullable
-as PluginManagementActionState,authentication: null == authentication ? _self.authentication : authentication // ignore: cast_nullable_to_non_nullable
+as PluginManagementRefreshState,globalAction: null == globalAction ? _self.globalAction : globalAction // ignore: cast_nullable_to_non_nullable
+as PluginManagementActionState,harnessActions: null == harnessActions ? _self._harnessActions : harnessActions // ignore: cast_nullable_to_non_nullable
+as Map<String, PluginManagementActionState>,authentication: null == authentication ? _self.authentication : authentication // ignore: cast_nullable_to_non_nullable
 as PluginAuthenticationPresentationState,installs: null == installs ? _self._installs : installs // ignore: cast_nullable_to_non_nullable
-as Map<String, PluginInstallProgress>,scanningPluginIds: null == scanningPluginIds ? _self._scanningPluginIds : scanningPluginIds // ignore: cast_nullable_to_non_nullable
+as Map<String, PluginInstallState>,scanningPluginIds: null == scanningPluginIds ? _self._scanningPluginIds : scanningPluginIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,scanRejections: null == scanRejections ? _self._scanRejections : scanRejections // ignore: cast_nullable_to_non_nullable
 as Map<String, CatalogRescanStartResult>,scanOutcome: freezed == scanOutcome ? _self.scanOutcome : scanOutcome // ignore: cast_nullable_to_non_nullable
 as CatalogRescanOutcome?,
@@ -2216,10 +2224,10 @@ $PluginManagementRefreshStateCopyWith<$Res> get refresh {
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PluginManagementActionStateCopyWith<$Res> get action {
+$PluginManagementActionStateCopyWith<$Res> get globalAction {
   
-  return $PluginManagementActionStateCopyWith<$Res>(_self.action, (value) {
-    return _then(_self.copyWith(action: value));
+  return $PluginManagementActionStateCopyWith<$Res>(_self.globalAction, (value) {
+    return _then(_self.copyWith(globalAction: value));
   });
 }/// Create a copy of PluginManagementState
 /// with the given fields replaced by the non-null parameter values.

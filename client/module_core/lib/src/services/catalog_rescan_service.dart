@@ -61,9 +61,14 @@ class CatalogRescanService({
   /// The live operation's members, or empty when none is live.
   final Set<String> _members = {};
 
-  /// Display names for the current bridge's harnesses, so a running row can
-  /// name the harness rather than echo its id.
+  /// Display names and runtime states from the current bridge's latest
+  /// management snapshot.
   Map<String, String> _displayNames = const {};
+  Map<String, PluginRuntimeState> _runtimeStates = const {};
+
+  /// Bridge identity whose management snapshot opened the live operation.
+  /// Runtime state can describe its phases only while this still matches.
+  String? _operationBridgeId;
 
   /// True when the live operation was discovered rather than started here.
   bool _observed = false;
@@ -104,6 +109,16 @@ class CatalogRescanService({
   /// Rescans every harness this bridge can import from.
   Future<void> startAll() async {
     if (_disposed) return;
+    // CatalogRescanService is lazy and can first exist at the pull gesture.
+    // Bootstrap one authoritative management read before deciding there is no
+    // harness; PluginManagementService fences this refresh to its connection
+    // and bridge identity. A current terminal snapshot needs no async gap, so
+    // an immediate cancel can still see the operation before this call returns.
+    if (_managementService.snapshots.valueOrNull
+        case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null) {
+      await _managementService.refresh();
+      if (_disposed) return;
+    }
     switch (_managementService.snapshots.valueOrNull) {
       // Without a management snapshot there are no harness ids to fan out to,
       // so no request is made and no `404` would ever come back to reveal the
@@ -121,7 +136,11 @@ class CatalogRescanService({
           if (_members.isEmpty) _publish(const CatalogRescanState.noHarness());
           return;
         }
-        await _start(pluginIds: pluginIds, coversEveryHarness: true);
+        await _start(
+          pluginIds: pluginIds,
+          coversEveryHarness: true,
+          operationBridgeId: response.bridgeId,
+        );
       // No snapshot to fan out over. Reported rather than returned silently,
       // because the caller is a gesture that has already told the user a scan
       // started, and a failed snapshot keeps answering this way until it is
@@ -137,13 +156,29 @@ class CatalogRescanService({
   /// harness can report a rejection instead of silently skipping it.
   Future<CatalogRescanStartResult> start({required String pluginId}) async {
     if (_disposed) return const CatalogRescanStartResult.notImportable();
+    if (_managementService.snapshots.valueOrNull
+        case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null) {
+      await _managementService.refresh();
+      if (_disposed) return const CatalogRescanStartResult.notImportable();
+    }
     if (_managementService.snapshots.valueOrNull is PluginManagementLoadResultUnsupported) {
       // Tell the caller either way, but never overwrite a run in flight with a
       // state that reads as terminal.
       if (_members.isEmpty) _publish(const CatalogRescanState.unsupported());
       return const CatalogRescanStartResult.unsupported();
     }
-    final results = await _start(pluginIds: [pluginId], coversEveryHarness: false);
+    final operationBridgeId = switch (_managementService.snapshots.valueOrNull) {
+      PluginManagementLoadResultSupported(:final response) => response.bridgeId,
+      PluginManagementLoadResultLoading() ||
+      PluginManagementLoadResultUnsupported() ||
+      PluginManagementLoadResultFailure() ||
+      null => null,
+    };
+    final results = await _start(
+      pluginIds: [pluginId],
+      coversEveryHarness: false,
+      operationBridgeId: operationBridgeId,
+    );
     return results[pluginId] ?? const CatalogRescanStartResult.notImportable();
   }
 
@@ -202,6 +237,7 @@ class CatalogRescanService({
   Future<Map<String, CatalogRescanStartResult>> _start({
     required List<String> pluginIds,
     required bool coversEveryHarness,
+    required String? operationBridgeId,
   }) async {
     // Never begin inside a cancellation's window: its DELETEs are already
     // aimed at these plugin ids and would cancel this run instead. Guarded
@@ -212,7 +248,11 @@ class CatalogRescanService({
       await cancelling;
       if (_disposed) return {};
     }
-    _openOrJoin(pluginIds: pluginIds, observed: false);
+    _openOrJoin(
+      pluginIds: pluginIds,
+      observed: false,
+      operationBridgeId: operationBridgeId,
+    );
     final results = <String, CatalogRescanStartResult>{};
     final dispatched = [
       for (final pluginId in pluginIds)
@@ -288,11 +328,16 @@ class CatalogRescanService({
     }
   }
 
-  void _openOrJoin({required List<String> pluginIds, required bool observed}) {
+  void _openOrJoin({
+    required List<String> pluginIds,
+    required bool observed,
+    required String? operationBridgeId,
+  }) {
     if (_members.isEmpty) {
       _clearTimer?.cancel();
       _clearTimer = null;
       _progressByPluginId.clear();
+      _operationBridgeId = operationBridgeId;
       _observed = observed;
     } else if (observed) {
       // A harness someone else started joined a run this client owned. The
@@ -329,7 +374,11 @@ class CatalogRescanService({
       // sessions still reach the lists, but as an observed operation, which
       // claims no summary.
       if (_isTerminal(progress) || _cancellingPluginIds.contains(pluginId)) return;
-      _openOrJoin(pluginIds: [pluginId], observed: true);
+      _openOrJoin(
+        pluginIds: [pluginId],
+        observed: true,
+        operationBridgeId: _activeBridgeId,
+      );
     }
     // Someone else cancelled a member of this run. That is intervention, not
     // failure, and it means this client no longer saw the whole operation, so
@@ -356,24 +405,71 @@ class CatalogRescanService({
 
   void _publishLive() {
     if (_members.isEmpty) return;
+    final pluginIds = Set<String>.unmodifiable(_members);
     final active = _activeProgress();
+    if (active != null) {
+      final pluginName = _displayName(pluginId: active.pluginId);
+      final next = switch (active) {
+        CatalogImportEnumerating(:final sessionsSeen)
+            when sessionsSeen == 0 && _isConfirmedStarting(pluginId: active.pluginId) =>
+          CatalogRescanState.starting(activePluginName: pluginName, pluginIds: pluginIds),
+        CatalogImportEnumerating(:final sessionsSeen) => CatalogRescanState.reading(
+          activePluginName: pluginName,
+          sessionsSeen: sessionsSeen,
+          pluginIds: pluginIds,
+        ),
+        CatalogImportCommitting() => CatalogRescanState.saving(
+          activePluginName: pluginName,
+          pluginIds: pluginIds,
+        ),
+        // Unreachable: _activeProgress returns only non-terminal statuses. The
+        // exhaustive switch keeps any new transport phase visible here.
+        CatalogImportCompleted() ||
+        CatalogImportCancelled() ||
+        CatalogImportFailed() => throw StateError("Terminal catalog progress cannot be active"),
+      };
+      _publish(next);
+      return;
+    }
+
+    final pendingPluginIds = [
+      for (final pluginId in _members)
+        if (_progressByPluginId[pluginId] == null) pluginId,
+    ];
+    for (final pluginId in pendingPluginIds) {
+      if (_isConfirmedStarting(pluginId: pluginId)) {
+        _publish(
+          CatalogRescanState.starting(
+            activePluginName: _displayName(pluginId: pluginId),
+            pluginIds: pluginIds,
+          ),
+        );
+        return;
+      }
+    }
+    if (pendingPluginIds.isEmpty) return;
+    final pendingPluginNames = List<String>.unmodifiable(
+      pendingPluginIds.map((pluginId) => _displayName(pluginId: pluginId)),
+    );
     _publish(
-      active == null
-          ? CatalogRescanState.starting(pluginIds: Set<String>.unmodifiable(_members))
-          : CatalogRescanState.running(
-              activePluginName: _displayNames[active.pluginId] ?? active.pluginId,
-              sessionsSeen: switch (active) {
-                CatalogImportEnumerating(:final sessionsSeen) => sessionsSeen,
-                CatalogImportCommitting(:final sessionsSeen) => sessionsSeen,
-                // Unreachable: _activeProgress only returns a non-terminal
-                // status, and the switch stays exhaustive so a new phase is a
-                // compile error rather than a silent zero.
-                CatalogImportCompleted() || CatalogImportCancelled() || CatalogImportFailed() => 0,
-              },
-              pluginIds: Set<String>.unmodifiable(_members),
+      pendingPluginNames.length == 1
+          ? CatalogRescanState.preparingOne(
+              pendingPluginName: pendingPluginNames.first,
+              pluginIds: pluginIds,
+            )
+          : CatalogRescanState.preparingMany(
+              pendingPluginNames: pendingPluginNames,
+              pluginIds: pluginIds,
             ),
     );
   }
+
+  String _displayName({required String pluginId}) => _displayNames[pluginId] ?? pluginId;
+
+  bool _isConfirmedStarting({required String pluginId}) =>
+      _operationBridgeId != null &&
+      _operationBridgeId == _activeBridgeId &&
+      _runtimeStates[pluginId] == PluginRuntimeState.starting;
 
   /// The harness whose progress the row names, preferring whichever is still
   /// working over one that already settled.
@@ -448,6 +544,7 @@ class CatalogRescanService({
   void _closeOperation(CatalogRescanState next) {
     _members.clear();
     _progressByPluginId.clear();
+    _operationBridgeId = null;
     _observed = false;
     _publish(next);
     if (next is CatalogRescanSucceeded) {
@@ -462,6 +559,7 @@ class CatalogRescanService({
     _clearTimer = null;
     _members.clear();
     _progressByPluginId.clear();
+    _operationBridgeId = null;
     _observed = false;
     _publish(const CatalogRescanState.idle());
   }
@@ -472,15 +570,29 @@ class CatalogRescanService({
     if (nextConnected == _connected) return;
     _connected = nextConnected;
     _reset();
+    _activeBridgeId = null;
+    _runtimeStates = const {};
     if (nextConnected) unawaited(_recoverInFlight());
   }
 
   void _onManagementSnapshot(PluginManagementLoadResult snapshot) {
     if (_disposed) return;
-    if (snapshot is! PluginManagementLoadResultSupported) return;
+    if (snapshot is! PluginManagementLoadResultSupported) {
+      // Loading, failed, and legacy snapshots cannot authoritatively describe
+      // a runtime phase. Keep known names for stable fallback copy, but never
+      // carry a prior bridge's `starting` attribution across them.
+      _runtimeStates = const {};
+      if (_members.isNotEmpty) _publishLive();
+      return;
+    }
     _displayNames = {
       for (final plugin in snapshot.response.plugins) plugin.setup.id: plugin.setup.displayName,
     };
+    _runtimeStates = snapshot.refreshError == null
+        ? {
+            for (final plugin in snapshot.response.plugins) plugin.setup.id: plugin.runtimeState,
+          }
+        : const {};
     final bridgeId = snapshot.response.bridgeId;
     if (_activeBridgeId != null && _activeBridgeId != bridgeId) {
       _reset();
@@ -493,6 +605,7 @@ class CatalogRescanService({
       return;
     }
     _activeBridgeId = bridgeId;
+    if (_members.isNotEmpty) _publishLive();
   }
 
   /// Adopts a rescan that was already running when this client connected.
@@ -511,6 +624,7 @@ class CatalogRescanService({
         _openOrJoin(
           pluginIds: [for (final status in inFlight) status.pluginId],
           observed: true,
+          operationBridgeId: _activeBridgeId,
         );
         for (final status in inFlight) {
           _progressByPluginId[status.pluginId] = status;

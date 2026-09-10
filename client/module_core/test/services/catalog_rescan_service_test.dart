@@ -55,7 +55,23 @@ void main() {
       expect(repository.startedPluginIds, unorderedEquals(["codex", "claude"]));
       expect(
         service.state.value,
-        isA<CatalogRescanStarting>().having((s) => s.pluginIds, "pluginIds", {"codex", "claude"}),
+        isA<CatalogRescanPreparingMany>()
+            .having((s) => s.pendingPluginNames, "pendingPluginNames", ["Codex", "Claude"])
+            .having((s) => s.pluginIds, "pluginIds", {"codex", "claude"}),
+      );
+    });
+
+    test("bootstraps management before deciding which harnesses to scan", () async {
+      build(snapshot: const PluginManagementLoadResult.loading());
+      management.nextRefreshSnapshot = _snapshot(routable: const {"codex": "Codex"});
+
+      await service.startAll();
+
+      expect(management.refreshCalls, 1);
+      expect(repository.startedPluginIds, ["codex"]);
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>().having((s) => s.pendingPluginName, "pendingPluginName", "Codex"),
       );
     });
 
@@ -72,9 +88,94 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanRunning>()
+        isA<CatalogRescanReading>()
             .having((s) => s.activePluginName, "activePluginName", "Codex")
             .having((s) => s.sessionsSeen, "sessionsSeen", 42),
+      );
+    });
+
+    test("uses fresh management state only to confirm harness startup", () async {
+      build(
+        snapshot: _runtimeSnapshot(
+          pluginId: "codex",
+          name: "Codex",
+          state: PluginRuntimeState.dormant,
+          refreshError: null,
+        ),
+      );
+      await service.startAll();
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 0,
+          sessionsSeen: 0,
+        ),
+      );
+      expect(service.state.value, isA<CatalogRescanReading>());
+
+      management.emit(
+        _runtimeSnapshot(
+          pluginId: "codex",
+          name: "Codex",
+          state: PluginRuntimeState.starting,
+          refreshError: null,
+        ),
+      );
+      await pumpEventQueue();
+      expect(
+        service.state.value,
+        isA<CatalogRescanStarting>().having((s) => s.activePluginName, "activePluginName", "Codex"),
+      );
+
+      management.emit(
+        _runtimeSnapshot(
+          pluginId: "codex",
+          name: "Codex",
+          state: PluginRuntimeState.active,
+          refreshError: null,
+        ),
+      );
+      await pumpEventQueue();
+      expect(service.state.value, isA<CatalogRescanReading>());
+    });
+
+    test("does not infer startup from a retained snapshot after refresh failure", () async {
+      build(
+        snapshot: _runtimeSnapshot(
+          pluginId: "codex",
+          name: "Codex",
+          state: PluginRuntimeState.starting,
+          refreshError: ApiError.generic(),
+        ),
+      );
+      await service.startAll();
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 0,
+          sessionsSeen: 0,
+        ),
+      );
+      await pumpEventQueue();
+
+      expect(service.state.value, isA<CatalogRescanReading>());
+    });
+
+    test("reports the committing harness as saving", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
+      await service.startAll();
+
+      connection.emitProgress(
+        const CatalogImportProgress.committing(
+          pluginId: "codex",
+          projectsSeen: 2,
+          sessionsSeen: 8,
+        ),
+      );
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanSaving>().having((s) => s.activePluginName, "activePluginName", "Codex"),
       );
     });
 
@@ -192,7 +293,7 @@ void main() {
 
         expect(
           service.state.value,
-          isA<CatalogRescanStarting>(),
+          isA<CatalogRescanPreparingMany>(),
           reason: "the previous success timer must not reset the new run",
         );
       });
@@ -209,23 +310,27 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanStarting>(),
+        isA<CatalogRescanPreparingMany>(),
         reason: "retained progress from the previous run must be cleared",
       );
       connection.emitProgress(_completed("codex", newProjects: 0, newSessions: 0));
-      expect(service.state.value, isA<CatalogRescanStarting>(), reason: "claude has not settled");
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>().having((s) => s.pendingPluginName, "pendingPluginName", "Claude"),
+        reason: "claude has not settled",
+      );
     });
 
     test("a targeted start joins the live operation instead of replacing it", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
       await service.startAll();
-      expect((service.state.value as CatalogRescanStarting).pluginIds, {"codex"});
+      expect((service.state.value as CatalogRescanPreparingOne).pluginIds, {"codex"});
 
       final result = await service.start(pluginId: "claude");
 
       expect(result, isA<CatalogRescanStartAccepted>());
       expect(
-        (service.state.value as CatalogRescanStarting).pluginIds,
+        (service.state.value as CatalogRescanPreparingMany).pluginIds,
         {"codex", "claude"},
         reason: "codex must stay in aggregation and cancellation",
       );
@@ -236,7 +341,7 @@ void main() {
 
       await service.startAll();
 
-      expect((service.state.value as CatalogRescanStarting).pluginIds, {"codex"});
+      expect((service.state.value as CatalogRescanPreparingOne).pluginIds, {"codex"});
       connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 0));
       expect(
         service.state.value,
@@ -300,7 +405,7 @@ void main() {
 
       expect(result, isA<CatalogRescanStartUnsupported>());
       expect(
-        (service.state.value as CatalogRescanStarting).pluginIds,
+        (service.state.value as CatalogRescanPreparingOne).pluginIds,
         {"codex"},
         reason: "one unknown harness must not be read as a bridge without the route",
       );
@@ -348,14 +453,18 @@ void main() {
           sessionsSeen: 9,
         ),
       );
-      expect((service.state.value as CatalogRescanRunning).activePluginName, "Claude");
+      expect((service.state.value as CatalogRescanReading).activePluginName, "Claude");
 
       connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
 
       expect(
         service.state.value,
-        isA<CatalogRescanStarting>(),
-        reason: "codex has reported nothing yet, so no harness can be named",
+        isA<CatalogRescanPreparingOne>().having(
+          (s) => s.pendingPluginName,
+          "pendingPluginName",
+          "Codex",
+        ),
+        reason: "only the unfinished harness remains in preparing copy",
       );
     });
 
@@ -435,7 +544,7 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanStarting>(),
+        isA<CatalogRescanPreparingOne>(),
         reason: "the run in flight is still the truth about what is happening",
       );
     });
@@ -463,7 +572,7 @@ void main() {
 
     test("cancel fans out one request per member, including while starting", () async {
       await service.startAll();
-      expect(service.state.value, isA<CatalogRescanStarting>());
+      expect(service.state.value, isA<CatalogRescanPreparingMany>());
 
       await service.cancel();
 
@@ -482,7 +591,7 @@ void main() {
           sessionsSeen: 4,
         ),
       );
-      expect(service.state.value, isA<CatalogRescanRunning>());
+      expect(service.state.value, isA<CatalogRescanReading>());
 
       connection.emitProgress(_completed("codex", newProjects: 5, newSessions: 5));
 
@@ -644,7 +753,7 @@ void main() {
       );
       connection.emitStatus(_connected);
       await pumpEventQueue();
-      expect(service.state.value, isA<CatalogRescanRunning>());
+      expect(service.state.value, isA<CatalogRescanReading>());
 
       // The management snapshot for the newly connected bridge arrives after
       // the recovery read and reports a different identity.
@@ -653,7 +762,7 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanRunning>().having((s) => s.sessionsSeen, "sessionsSeen", 6),
+        isA<CatalogRescanReading>().having((s) => s.sessionsSeen, "sessionsSeen", 6),
         reason: "the reset for the new identity must be followed by another read",
       );
     });
@@ -730,7 +839,7 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanRunning>().having((s) => s.sessionsSeen, "sessionsSeen", 5),
+        isA<CatalogRescanReading>().having((s) => s.sessionsSeen, "sessionsSeen", 5),
       );
     });
 
@@ -747,7 +856,7 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanRunning>().having((s) => s.sessionsSeen, "sessionsSeen", 7),
+        isA<CatalogRescanReading>().having((s) => s.sessionsSeen, "sessionsSeen", 7),
       );
     });
 
@@ -770,7 +879,7 @@ void main() {
       final catalogChanges = <void>[];
       service.catalogChanged.listen(catalogChanges.add);
       await service.startAll();
-      expect(service.state.value, isA<CatalogRescanStarting>());
+      expect(service.state.value, isA<CatalogRescanPreparingMany>());
 
       connection.emitStatus(const ConnectionStatus.disconnected());
       await pumpEventQueue();
@@ -835,6 +944,40 @@ PluginManagementLoadResult _snapshot({
   );
 }
 
+PluginManagementLoadResult _runtimeSnapshot({
+  required String pluginId,
+  required String name,
+  required PluginRuntimeState state,
+  required ApiError? refreshError,
+}) {
+  return PluginManagementLoadResult.supported(
+    response: PluginManagementResponse(
+      snapshotToken: "runtime-$state",
+      bridgeId: "bridge-1",
+      defaultPluginId: null,
+      defaultIdleTimeoutMins: 10,
+      plugins: [
+        PluginManagementMetadata(
+          setup: PluginSetupMetadata(
+            id: pluginId,
+            displayName: name,
+            state: PluginSetupState.ready,
+            runtimeVersion: null,
+            actionHint: null,
+          ),
+          runtimeState: state,
+          workState: PluginManagementWorkState.idle,
+          idleTimeoutMins: 10,
+          hasIdleTimeoutOverride: false,
+          managementCapabilities: const {PluginManagementCapability.lifecycle},
+          actionHint: null,
+        ),
+      ],
+    ),
+    refreshError: refreshError,
+  );
+}
+
 class _FakePluginRepository() implements PluginRepository {
   final Map<String, CatalogImportMutationResult> resultFor = {};
   final Map<String, Future<CatalogImportMutationResult>> pendingFor = {};
@@ -865,8 +1008,17 @@ class _FakePluginRepository() implements PluginRepository {
 class _FakeManagementService(PluginManagementLoadResult initial) implements PluginManagementService {
   final BehaviorSubject<PluginManagementLoadResult> _snapshots = BehaviorSubject.seeded(initial);
 
+  PluginManagementLoadResult? nextRefreshSnapshot;
+  int refreshCalls = 0;
+
   @override
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
+
+  @override
+  Future<void> refresh() async {
+    refreshCalls++;
+    if (nextRefreshSnapshot case final snapshot?) emit(snapshot);
+  }
 
   void emit(PluginManagementLoadResult snapshot) => _snapshots.add(snapshot);
 

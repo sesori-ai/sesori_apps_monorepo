@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
+import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
@@ -1498,6 +1499,70 @@ void main() {
       expect(statuses.unavailablePluginIds, ["setup-blocked"]);
     });
 
+    test("abort forwards one recursive backend descendant snapshot and acknowledgment", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const projectId = "abort-project";
+      await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]);
+      await db.sessionDao.insertSession(
+        sessionId: "root",
+        backendSessionId: "backend-root",
+        projectId: projectId,
+        isDedicated: false,
+        createdAt: 1,
+        worktreePath: null,
+        branchName: null,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        pluginId: plugin.id,
+        preservePullRequestScope: false,
+      );
+      for (final child in const [
+        (id: "child", backendId: "backend-child", parentId: "root"),
+        (id: "grandchild", backendId: "backend-grandchild", parentId: "child"),
+      ]) {
+        await db.sessionDao.insertObservedChild(
+          sessionId: child.id,
+          backendSessionId: child.backendId,
+          projectId: projectId,
+          parentSessionId: child.parentId,
+          directory: projectId,
+          catalogTitle: null,
+          archivedAt: null,
+          createdAt: 1,
+          updatedAt: 1,
+          projectionUpdatedAt: 1,
+          pluginId: plugin.id,
+        );
+      }
+      plugin.abortResult = const PluginAbortAccepted(workKept: true, subAgentsHandled: true);
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      final result = await repository.abortSession(
+        sessionId: "root",
+        subAgents: SessionAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+      );
+
+      expect(plugin.lastAbortSessionId, "backend-root");
+      expect(plugin.lastAbortUseAtomicStop, isTrue);
+      expect(plugin.lastAbortKnownSubAgentSessionIds, {"backend-child", "backend-grandchild"});
+      expect(
+        result,
+        isA<SessionAborted>()
+            .having((result) => result.workKept, "kept", true)
+            .having((result) => result.subAgentsHandled, "handled", true),
+      );
+    });
+
     test("unknown sessions reject message and abort operations", () async {
       final db = createTestDatabase();
       addTearDown(db.close);
@@ -1514,7 +1579,7 @@ void main() {
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       await expectLater(
-        repository.abortSession(sessionId: "unknown", subAgents: SessionAbortSubAgentPolicy.stop),
+        repository.abortSession(sessionId: "unknown", subAgents: SessionAbortSubAgentPolicy.stop, useAtomicStop: false),
         throwsA(isA<PluginOperationException>().having((error) => error.isNotFound, "isNotFound", isTrue)),
       );
       expect(plugin.lastGetMessagesSessionId, isNull);
@@ -2326,7 +2391,11 @@ void main() {
         ),
         () async => await repository.getSessionMessages(sessionId: "gone"),
         () => repository.notifySessionArchived(sessionId: "gone"),
-        () => repository.abortSession(sessionId: "gone", subAgents: SessionAbortSubAgentPolicy.stop),
+        () => repository.abortSession(
+          sessionId: "gone",
+          subAgents: SessionAbortSubAgentPolicy.stop,
+          useAtomicStop: false,
+        ),
         () async => await repository.getChildSessions(sessionId: "gone"),
       ];
       for (final operation in guardedOperations) {
@@ -2622,6 +2691,9 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   int getSessionsFailuresRemaining = 0;
   int sendPromptCalls = 0;
   String? lastAbortSessionId;
+  bool? lastAbortUseAtomicStop;
+  Set<String>? lastAbortKnownSubAgentSessionIds;
+  PluginAbortResult abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   List<PluginProjectActivitySummary> activitySummaries = const [];
   Set<String> failingProjectIds = const {};
   Map<String, PluginProject> projectsByDirectory = const {};
@@ -2739,9 +2811,13 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi {
   Future<PluginAbortResult> abortSession({
     required String sessionId,
     required PluginAbortSubAgentPolicy subAgents,
+    required bool useAtomicStop,
+    required Set<String> knownSubAgentSessionIds,
   }) async {
     lastAbortSessionId = sessionId;
-    return const PluginAbortAccepted(workKept: false);
+    lastAbortUseAtomicStop = useAtomicStop;
+    lastAbortKnownSubAgentSessionIds = knownSubAgentSessionIds;
+    return abortResult;
   }
 
   @override

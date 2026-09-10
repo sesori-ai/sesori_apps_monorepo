@@ -16,23 +16,33 @@ variant, and worktree mode, and creating the session with its first input.
 - Claude's catalog drops the CLI's own `default` model entry and names the
   selection instead: Opus is the default model and `high` the default effort, so
   every picker entry states what will actually run.
-- Claude stamps assistant and error messages with the picker id and effort the
-  turn ran with (`fable` / `high`), never the API name the stream reports
-  (`claude-fable-5-1`), so a reopened session keeps its model and variants
-  selected. Replayed transcripts map the API name through the catalog's
-  `resolvedModel`; a name the catalog does not know stays as recorded.
+- Claude stamps assistant and error messages with the catalog picker id and
+  effort the turn ran with, so a reopened session keeps its model and variants
+  selected. Replayed transcripts and live turns without an explicit selection
+  map resolved names (`claude-fable-5-1`) and short family/context aliases
+  (`fable[1m]`) through the current catalog; an unknown name stays as recorded.
 - No picker offers an unnamed "Default" option. Plugins declare effort variants
   in picker order and may name a default; when switching models, an existing
   compatible variant is kept; otherwise a model that offers variants uses the
   agent's declared variant when valid, then the model's declared default when
   offered, then the first listed. Selecting a variant is therefore a switch
   between named levels, never a reset to unset.
-- Claude and Codex list models and effort variants strongest first (Claude:
-  Fable, Opus, Sonnet, Haiku with `max` down to `low`; Codex: newest GPT
-  generation first, then Astra, Sol, Terra, Luna, the bare model, and other
-  suffixes such as Mini, with `ultra` down to `low`). OpenCode lists models
-  newest release first, undated last, ties by name. The model picker never
-  reorders models: it shows each plugin's declared order.
+- Every plugin that exposes effort variants lists them strongest first on one
+  shared ladder (`ultra`, `max`/`highest`, `xhigh`, `high`, `medium`/`mid`,
+  `low`, `minimal`/`min`, then `off`/`none`; unknown names a plugin retains
+  follow in backend order) and declares the default separately: the backend's
+  own default where it names one (Claude `high`, Codex, DeepSeek, Grok),
+  otherwise the variant the backend listed first, so reordering never changes
+  what runs. Hermes exposes none, and Claude and Pi drop names outside their
+  own closed level sets before ordering.
+- Every plugin ranks Anthropic and OpenAI models strongest first from the model
+  id through one shared rule: newest generation first, then Fable, Opus,
+  Sonnet, Haiku, or Astra, Sol, Terra, Luna, the bare GPT model, then other
+  suffixes such as Mini, then the fuller version. Models of other vendors keep
+  the plugin's own order after them: OpenCode newest release first, undated
+  last, ties by name; other plugins backend order. DeepSeek model ids are opaque,
+  so its models keep DeepSeek's order. The model picker never reorders models:
+  it shows each plugin's declared order.
 - One rule decides what a selection reconciles to, on every surface. A model the
   backend reports unavailable is treated as absent everywhere: it is neither
   selectable nor a source of variants, whether the screen is New Session or a
@@ -91,6 +101,14 @@ variant, and worktree mode, and creating the session with its first input.
   and applied through Grok's plugin-local `session/set_model` extension; a failed
   write preserves the prior tracked selection and dispatches no prompt. An
   effort-only load waits for the session's exact loaded model before validation.
+- Antigravity exposes one primary agent and discovers selectable models before the first chat through one retained,
+  hidden, no-prompt native session at `GEMINI_HOME/antigravity-acp/conversations`. Missing-cache reads and refreshes
+  coalesce; reuse is inert, refresh resumes the reserved ID, and a restart recovers the first sorted matching ID through
+  standard `session/list`, creating only when none exists. List, project, import and metadata recovery hide every session
+  in the reserved cwd. Failures create no replacement after a known ID and retain the last-good catalog. Exact paired
+  High/Medium/Low ID and label suffixes become variants; ambiguous entries remain raw. Standard ACP configuration gets
+  the exact native ID, then mode `default`; tracked live/replay selection uses normalized model plus variant. Connection
+  reset clears catalog and attribution state and fences late discovery results while retaining the reserved ID hint.
 - GitHub Copilot discovers model, mode, model-specific reasoning, and slash-command
   options through a bounded isolated ACP session while retaining the user's normal
   Copilot configuration for login, settings, and BYOK. The probe closes its own
@@ -216,10 +234,20 @@ variant, and worktree mode, and creating the session with its first input.
   logged-in providers remain complete so they can replace an older complete cache.
   Model values remain exact even when the model ID contains slashes, and the configured
   pre-sweep model remains the default. A rejected or partially applied selection fails
-  before prompting.
+  before prompting. Finding no usable model returns project-scoped authentication-required
+  state with local login guidance; it does not mark the whole OMP runtime unauthenticated.
 - Pi likewise discovers every advertised model and its available thinking levels within
   the existing total probe deadline, so catalog size alone never makes a healthy refresh
-  partial or leaves an older complete cache in place.
+  partial or leaves an older complete cache in place. A missing model catalog returns the
+  same scoped authentication-required state rather than an empty successful snapshot or
+  a global runtime failure. Its bounded action directs the user to Pi's local `/login`;
+  provider diagnostics and local paths never enter that guidance.
+- Authentication-required discovery preserves any last-good durable options without
+  reporting them as a successful refresh. `/session/options` carries the condition as a
+  typed response. New Session keeps retained options visible but disables creation, keeps
+  refresh available, and shows inline and warning-popup guidance titled from the selected
+  plugin's display name. A session-detail stale-option recovery also shows the bounded
+  guidance and parks the prompt instead of retrying with unavailable options.
 
 ## Regression Levels
 
@@ -227,7 +255,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders launch status at the unresolved route, blocks duplicate submit, and replaces with the durable session; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state while the refresh action spins in place rather than vanishing; refreshing on the New Session screen updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render. Scoped authentication-required discovery keeps Refresh available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains voice capture; desktop remains text-first with voice omitted and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -242,7 +270,9 @@ matching-remote, colliding, and rollback-failing branches while confirming the
 directory stays fixed and title application does not wait for branch refinement.
 For launch behavior, vary in-route versus background completion, success versus
 definitive rejection versus response loss, navigation before completion, and
-reconnect or option refresh while restoration is pending. For Copilot, vary the
+reconnect or option refresh while restoration is pending. For Antigravity, vary cold discovery versus reuse, concurrent reads, reserved-session
+restart recovery, explicit refresh, account default versus normalized High/Medium/Low selection, malformed catalog
+retention, cold reset/residency, and a stale model or mismatched variant rejected before dispatch. For Copilot, vary the
 account's default and explicit model/mode/reasoning choices, a model change whose
 reasoning catalog differs, no advertised mode, an exact slash command, stale
 selection rejection, and authentication failure during discovery. For Grok,
@@ -252,8 +282,11 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
 
 ## Failure Signals
 
-- Options are empty or stale where a discovery failure should be an explicit
-  error, or a partial observation overwrites a complete cache.
+- Options are empty or reported successfully where authentication-required
+  discovery should be explicit, a partial observation overwrites a complete
+  cache, Create remains enabled, Refresh becomes unavailable, the plugin runtime
+  becomes globally blocked, or Pi reports no models without local `/login` guidance.
+- Options are stale where a discovery failure should be an explicit error.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a
@@ -284,6 +317,11 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   an opaque model ID, exposes a catalog-resolvable opaque ID in the session
   header, dispatches before both requested config writes settle, or records a
   partially applied selection as successful.
+- Antigravity creates more than one reserved discovery session during normal reuse/refresh, prompts that session,
+  exposes its cwd through catalog/import/recovery, groups an unpaired or ambiguous suffix, sends a normalized ID to ACP,
+  loses normalized model/variant attribution live or on replay, replaces a last-good catalog after failure, accepts an
+  unknown/stale tuple, retains a catalog after connection reset, applies a mode other than `default`, or prompts after
+  failed configuration.
 - A Copilot catalog invents an option, validates reasoning against another model,
   overlaps unlike probes, replaces a coherent cache after authentication failure,
   or accepts a stale selection before applying every requested config value.
@@ -314,6 +352,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   but still needs a live desktop release exercise.
 - Prompt attachments are capability-gated, so absence is expected, not failure.
 - Only plugins registered in the build under test count.
+- Antigravity intentionally retains one Google-owned empty `.db`/`.meta` discovery artifact because the pinned runtime
+  has no session deletion capability. Rare older duplicates in the reserved cwd are hidden but not cleaned up.
 - Copilot's ACP catalog probe closes its scratch session, but the pinned CLI has
   no deletion method; low-impact upstream history residue can remain in the
   user's normal Copilot home.
@@ -332,12 +372,15 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   `bridge/sesori_plugin_deepseek/lib/src/services/`, and package tests
 - Copilot: `bridge/sesori_plugin_copilot/lib/src/services/` and
   `bridge/sesori_plugin_copilot/lib/src/repositories/`, and package tests
+- Antigravity: `bridge/sesori_plugin_antigravity/lib/src/services/antigravity_session_options_service.dart`,
+  its catalog tracker, protocol mapper, composed plugin and tests
 - Grok: `bridge/sesori_plugin_grok/lib/src/services/`,
   `bridge/sesori_plugin_grok/lib/src/repositories/`,
   `bridge/sesori_plugin_grok/lib/src/trackers/`, and package tests
-- Contract:
+- Contracts: `bridge/sesori_plugin_interface/lib/src/models/plugin_session_options.dart`,
   `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin_descriptor.dart`,
-  `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin.dart`
+  `bridge/sesori_plugin_interface/lib/src/lifecycle/bridge_plugin.dart`, and
+  `shared/sesori_shared/lib/src/models/sesori/session_options_error_response.dart`
 - Client: `client/module_core/lib/src/services/session_selection_calculator.dart`
   (the single owner of selection reconciliation),
   `client/module_core/lib/src/services/new_session_options_service.dart`,

@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-Internal, unregistered interaction foundations. These tests exercise injected connection-scoped peers, not a live
-Antigravity plugin. Shared ACP registry integration belongs to Step 8; activation belongs to Step 9. No new client
-contract, database change, persistent approval, OAuth execution, or credential/history access is included.
+Registered local-runtime behavior over the connection-scoped interaction peers and shared ACP registry integration.
+Activation adds no client contract or database change and deliberately adds no persistent approval. Synthetic tests do
+not execute OAuth or access credentials/history.
 
 ## Required behavior
 
@@ -47,7 +47,5 @@ contract, database change, persistent approval, OAuth execution, or credential/h
   duplicate replies; malformed answers; duplicate labels/IDs and unsafe choices; bounded/invalid DTO fields;
   unknown methods; cancellation/disposal and stream detachment; independent connection dispatch; tool-kind fallback;
   and useful decoder field/type/cause evidence without malformed-value disclosure.
-- Owning package analysis and focused tests cover these foundations; this slice does not activate or verify shared
-  ACP registry wiring or live Google tools.
-- Step 8 must introduce the narrow neutral registry integration seam, preserve existing ACP consumers, and exercise
-  Antigravity composition there. Live harness, client-to-bridge execution and the final L5 Full matrix remain unverified.
+- Owning package analysis and focused tests cover the policy and composed registry wiring without live Google tools.
+  Live harness, client-to-bridge execution and the final L5 Full matrix remain unverified.

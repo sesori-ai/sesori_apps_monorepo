@@ -62,12 +62,15 @@ class SessionRepository({
   }
 
   /// Throws [SessionAbortRejectedException] for a refused `confirm`.
-  Future<ApiResponse<void>> abortSession({
+  Future<ApiResponse<bool>> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
   }) async {
     try {
-      return await _api.abortSession(sessionId: sessionId, subAgents: subAgents);
+      return switch (await _api.abortSession(sessionId: sessionId, subAgents: subAgents)) {
+        SuccessResponse(:final data) => ApiResponse.success(data.subAgentsHandled),
+        ErrorResponse(:final error) => ApiResponse.error(error),
+      };
     } on SessionAbortApiRejectedException catch (error, stackTrace) {
       Error.throwWithStackTrace(
         SessionAbortRejectedException(rejection: error.rejection, innerError: error),
@@ -96,8 +99,9 @@ class SessionRepository({
     required String sessionId,
     required int? limit,
     required int? before,
+    required bool storedOnly,
   }) {
-    return _api.getMessages(sessionId: sessionId, limit: limit, before: before);
+    return _api.getMessages(sessionId: sessionId, limit: limit, before: before, storedOnly: storedOnly);
   }
 
   Future<ApiResponse<PendingQuestionResponse>> getPendingQuestions({required String sessionId}) {
@@ -218,9 +222,13 @@ class SessionRepository({
       if (rawErrorString != null) {
         try {
           final response = SessionOptionsErrorResponse.fromJson(jsonDecodeMap(rawErrorString));
+          final actionHint = response.actionHint?.trim();
           return switch (response.code) {
             SessionOptionsErrorCode.cacheUnavailable => const SessionOptionsRepositoryCacheUnavailable(),
             SessionOptionsErrorCode.projectNotFound => SessionOptionsRepositoryProjectNotFound(error: error),
+            SessionOptionsErrorCode.authenticationRequired when actionHint != null && actionHint.isNotEmpty =>
+              SessionOptionsRepositoryAuthenticationRequired(actionHint: actionHint),
+            SessionOptionsErrorCode.authenticationRequired => SessionOptionsRepositoryFailure(error: error),
             SessionOptionsErrorCode.refreshFailedRetained => const SessionOptionsRepositoryRefreshFailedRetained(),
             SessionOptionsErrorCode.refreshFailedUnavailable =>
               const SessionOptionsRepositoryRefreshFailedUnavailable(),

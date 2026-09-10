@@ -327,10 +327,15 @@ class SessionApi({required final RelayHttpApiClient _client}) {
 
   /// A page of the session's messages. A null [limit] requests the whole
   /// transcript, which is also what an older bridge always returns.
+  ///
+  /// [storedOnly] asks the bridge to answer from its own store without waking
+  /// the harness, for a session the client knows it cannot start. An older
+  /// bridge ignores the flag and backfills as usual.
   Future<ApiResponse<MessageWithPartsResponse>> getMessages({
     required String sessionId,
     required int? limit,
     required int? before,
+    required bool storedOnly,
   }) {
     return _client.post(
       "/session/messages",
@@ -340,20 +345,21 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         limit: limit,
         before: before,
         attachmentDelivery: MessageAttachmentDelivery.storedReference,
+        storedOnly: storedOnly,
       ),
     );
   }
 
   /// Stops a session with the given sub-agent scope. A 409 carrying a
   /// [SessionAbortRejection] surfaces as [SessionAbortApiRejectedException].
-  Future<ApiResponse<SuccessEmptyResponse>> abortSession({
+  Future<ApiResponse<SessionAbortResponse>> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
   }) async {
     final response = await _client.post(
       "/session/abort",
-      fromJson: SuccessEmptyResponse.fromJson,
-      body: AbortSessionRequest(sessionId: sessionId, subAgents: subAgents),
+      fromJson: SessionAbortResponse.fromJson,
+      body: AbortSessionRequest(sessionId: sessionId, subAgents: subAgents, useAtomicStop: true),
     );
     if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final String rawBody))) {
       final SessionAbortRejection rejection;

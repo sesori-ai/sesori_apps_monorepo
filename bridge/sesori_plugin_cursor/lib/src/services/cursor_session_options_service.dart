@@ -113,17 +113,24 @@ class CursorSessionOptionsService({
           id: _providerId,
           name: "Cursor",
           authType: PluginProviderAuthType.unknown,
-          models: [
-            for (final model in models)
-              PluginModel(
-                id: model.value,
-                name: model.name,
-                variants: _catalogTracker.variantsForModel(modelId: model.value),
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
+          models: CatalogStrengthOrder.models(
+            [
+              for (final model in models)
+                PluginModel(
+                  id: model.value,
+                  name: model.name,
+                  // Strongest first; Cursor's first-listed level stays the default.
+                  variants: CatalogStrengthOrder.variants(_catalogTracker.variantsForModel(modelId: model.value)),
+                  defaultVariant: CatalogStrengthOrder.backendDefault(
+                    _catalogTracker.variantsForModel(modelId: model.value),
+                  ),
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
+            ],
+            idOf: (model) => model.id,
+          ),
           defaultModelID: _catalogTracker.currentModelId ?? _catalogTracker.firstModelId,
         ),
       ],

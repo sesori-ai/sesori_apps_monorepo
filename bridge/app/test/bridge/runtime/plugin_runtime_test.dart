@@ -1895,6 +1895,231 @@ void main() {
     expect(sourced.event, isA<BridgeSseProjectUpdated>());
   });
 
+  test("dormant catalog snapshot completes without starting a generation", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final descriptor = _FakeDescriptor(
+      catalogSnapshot: () async => const PluginCatalogSnapshotAvailable(
+        snapshot: PluginCatalogSnapshot(projects: []),
+      ),
+    );
+    final runtime = _runtime(factory: factory, descriptor: descriptor);
+    addTearDown(runtime.dispose);
+
+    final sources = await runtime
+        .useCatalogImportStream<String>(
+          pluginId: "one",
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (source) async* {
+            expect(source, isA<PluginCatalogImportSnapshotSource>());
+            await runtime.commitCatalogImport(
+              authority: source.authority,
+              operation: _TestOperation.read,
+              commit: () async {},
+            );
+            yield "snapshot";
+          },
+        )
+        .toList();
+
+    expect(sources, ["snapshot"]);
+    expect(factory.startCount, 0);
+    expect(runtime.snapshot.single.generation, isNull);
+  });
+
+  test("unavailable catalog snapshot cold-starts import-only and normal use promotes it", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        catalogSnapshot: () async => const PluginCatalogSnapshotUnavailable(),
+      ),
+    );
+    addTearDown(runtime.dispose);
+
+    await runtime
+        .useCatalogImportStream<void>(
+          pluginId: "one",
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (source) async* {
+            expect(source, isA<PluginCatalogImportLiveSource>());
+          },
+        )
+        .drain<void>();
+
+    expect(factory.startCount, 1);
+    expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.importOnly);
+    await runtime.useIfActive<void>(
+      pluginId: "one",
+      operation: _TestOperation.activeRead,
+      body: (_, _) async {},
+    );
+    expect(
+      runtime.snapshot.single.generationResidency,
+      PluginGenerationResidency.importOnly,
+      reason: "passive no-start reads must not extend import-only residency",
+    );
+    await runtime.use<void>(
+      pluginId: "one",
+      operation: _TestOperation.use,
+      body: (_) async {},
+    );
+    expect(runtime.snapshot.single.generationResidency, PluginGenerationResidency.normal);
+    expect(factory.startCount, 1);
+  });
+
+  test("force stop cancels snapshot body and releases permit without publication", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        catalogSnapshot: () async => const PluginCatalogSnapshotAvailable(
+          snapshot: PluginCatalogSnapshot(projects: []),
+        ),
+      ),
+    );
+    addTearDown(runtime.dispose);
+    final bodyStarted = Completer<void>();
+    var catalogPublished = false;
+    var hydrationPublished = false;
+    final importDone = runtime
+        .useCatalogImportStream<void>(
+          pluginId: "one",
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (source) async* {
+            bodyStarted.complete();
+            while (!source.cancellation.isCancelled) {
+              await Future<void>.delayed(Duration.zero);
+            }
+            if (source.cancellation.isCancelled) return;
+            catalogPublished = true;
+            hydrationPublished = true;
+          },
+        )
+        .drain<void>();
+    await bodyStarted.future;
+
+    final result = await runtime.stop(pluginId: "one", intent: PluginStopIntent.force);
+    await importDone;
+
+    expect(result, isA<PluginRuntimeCommandApplied>());
+    expect(catalogPublished, isFalse);
+    expect(hydrationPublished, isFalse);
+    expect(factory.startCount, 0);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.leaseCount, 0);
+  });
+
+  test("force stop bounds a pending snapshot read and fences its late result", () async {
+    final descriptorReadStarted = Completer<void>();
+    final descriptorReadGate = Completer<void>();
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        catalogSnapshot: () async {
+          descriptorReadStarted.complete();
+          await descriptorReadGate.future;
+          return const PluginCatalogSnapshotAvailable(
+            snapshot: PluginCatalogSnapshot(projects: []),
+          );
+        },
+      ),
+      shutdownBudget: const Duration(milliseconds: 20),
+    );
+    addTearDown(runtime.dispose);
+    var published = false;
+    final importDone = runtime
+        .useCatalogImportStream<void>(
+          pluginId: "one",
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (_) async* {
+            published = true;
+          },
+        )
+        .drain<void>();
+    await descriptorReadStarted.future;
+
+    final elapsed = Stopwatch()..start();
+    final result = await runtime.stop(pluginId: "one", intent: PluginStopIntent.force);
+    elapsed.stop();
+
+    expect(result, isA<PluginRuntimeCommandApplied>());
+    expect(elapsed.elapsed, lessThan(const Duration(seconds: 1)));
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(factory.startCount, 0);
+    expect(published, isFalse);
+
+    descriptorReadGate.complete();
+    await importDone;
+    expect(published, isFalse);
+    expect(runtime.snapshot.single.leaseCount, 0);
+  });
+
+  test("start reports in-flight conflict while dormant snapshot permit is held", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(
+        catalogSnapshot: () async => const PluginCatalogSnapshotAvailable(
+          snapshot: PluginCatalogSnapshot(projects: []),
+        ),
+      ),
+    );
+    addTearDown(runtime.dispose);
+    final bodyStarted = Completer<void>();
+    final bodyGate = Completer<void>();
+    final importDone = runtime
+        .useCatalogImportStream<void>(
+          pluginId: "one",
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (source) async* {
+            bodyStarted.complete();
+            await bodyGate.future;
+          },
+        )
+        .drain<void>();
+    await bodyStarted.future;
+
+    final result = await runtime.start(pluginId: "one");
+
+    expect(result, isA<PluginRuntimeCommandConflict>());
+    expect((result as PluginRuntimeCommandConflict).reasons, [PluginRuntimeConflictReason.inFlight]);
+    expect(result.snapshot.state, PluginRuntimeState.dormant);
+    expect(result.snapshot.leaseCount, 1);
+    expect(factory.startCount, 0);
+    bodyGate.complete();
+    await importDone;
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+  });
+
+  test("snapshot failure logs and falls back to one live import start", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(
+      factory: factory,
+      descriptor: _FakeDescriptor(catalogSnapshot: () async => throw StateError("schema drift")),
+    );
+    addTearDown(runtime.dispose);
+
+    final sources = await runtime
+        .useCatalogImportStream<String>(
+          pluginId: "one",
+          operation: _TestOperation.read,
+          cancellation: const _NeverCancelled(),
+          body: (source) async* {
+            yield source.runtimeType.toString();
+          },
+        )
+        .toList();
+
+    expect(sources, ["PluginCatalogImportLiveSource"]);
+    expect(factory.startCount, 1);
+  });
+
   test("backend events emitted before the bridge listener attaches are replayed", () async {
     final factory = _FakeGenerationFactory(startGate: Future<void>.value());
     final runtime = _runtime(factory: factory);
@@ -1984,6 +2209,7 @@ class _FakeGenerationFactory({
   Stream<PluginGenerationStartEvent> start({
     required PluginRuntimeRegistration registration,
     required StartAbortSignal startAborted,
+    required PluginGenerationResidencyController residency,
   }) async* {
     startCount++;
     await startGate;
@@ -1995,8 +2221,14 @@ class _FakeGenerationFactory({
   }
 }
 
+class const _NeverCancelled() implements PluginCatalogCancellationSignal {
+  @override
+  bool get isCancelled => false;
+}
+
 class const _FakeDescriptor({
   final Future<PluginSetupStatus> Function()? inspect,
+  final Future<PluginCatalogSnapshotResult> Function()? catalogSnapshot,
   final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted, RuntimeInUseSignal runtimeInUse)?
   install,
   final bool Function({required PluginConfig config, required String stateDirectory})? upgradeNeeded,
@@ -2024,6 +2256,15 @@ class const _FakeDescriptor({
     required String stateDirectory,
   }) {
     return inspect?.call() ?? Future.value(const PluginSetupReady());
+  }
+
+  @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginConfig config,
+    required Map<String, String> environment,
+    required PluginCatalogCancellationSignal cancellation,
+  }) {
+    return catalogSnapshot?.call() ?? Future.value(const PluginCatalogSnapshotUnavailable());
   }
 
   @override

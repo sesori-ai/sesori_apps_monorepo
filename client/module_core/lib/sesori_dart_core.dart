@@ -26,6 +26,7 @@ export "package:sesori_auth/sesori_auth.dart"
         JsonParsingError,
         NonSuccessCodeError,
         NotAuthenticatedError;
+
 export "package:sesori_auth/sesori_auth.dart" show ApiResponse, ErrorResponse, SuccessResponse;
 export "package:sesori_auth/sesori_auth.dart" show HttpApiClient;
 export "package:sesori_auth/sesori_auth.dart" show HttpMethod, SafeApiClient;
@@ -116,6 +117,7 @@ export "src/foundation/models/product_analytics/attribution_event.dart";
 export "src/foundation/models/product_analytics/installation_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_event.dart";
 export "src/foundation/models/product_analytics/product_analytics_preference.dart";
+export "src/foundation/models/session_interaction_state.dart";
 export "src/foundation/platform/analytics_client.dart";
 export "src/foundation/platform/analytics_release_cutoff_source.dart";
 export "src/foundation/platform/attachment_thumbnail_storage.dart";
@@ -183,8 +185,10 @@ export "src/services/models/catalog_rescan_state.dart";
 export "src/services/models/new_session_backend_scope.dart";
 export "src/services/models/new_session_options_source.dart";
 export "src/services/models/new_session_selection_intent.dart";
+export "src/services/models/plugin_install_state.dart";
 export "src/services/models/product_analytics_state.dart";
 export "src/services/models/session_activity_info.dart";
+export "src/services/models/session_list_filter.dart";
 export "src/services/new_session_options_service.dart";
 export "src/services/new_session_plugin_service.dart";
 export "src/services/new_session_selection_tracker.dart";
@@ -196,6 +200,7 @@ export "src/services/project_list_service.dart";
 export "src/services/project_viewing_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/session_detail_load_service.dart";
+export "src/services/session_interaction_calculator.dart";
 export "src/services/session_list_service.dart";
 export "src/services/session_selection_calculator.dart";
 export "src/services/session_unseen_tracker.dart";

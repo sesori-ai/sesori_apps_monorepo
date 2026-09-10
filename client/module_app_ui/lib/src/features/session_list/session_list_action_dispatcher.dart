@@ -34,13 +34,14 @@ class const SessionListActionDispatcher({required final SessionDeletedRouteHandl
     final isUnseen = _isUnseen(cubit: cubit, session: session);
 
     return [
-      PregoMenuItem(
-        leadingIcon: TablerRegular.pencil,
-        title: loc.rename,
-        subtitle: null,
-        isSelected: false,
-        onTap: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
-      ),
+      if (!isArchived)
+        PregoMenuItem(
+          leadingIcon: TablerRegular.pencil,
+          title: loc.rename,
+          subtitle: null,
+          isSelected: false,
+          onTap: () => showRenameSessionDialog(context: context, session: session, cubit: cubit),
+        ),
       PregoMenuItem(
         leadingIcon: isUnseen ? TablerRegular.mail_opened : TablerRegular.mail,
         title: isUnseen ? loc.sessionListMarkRead : loc.sessionListMarkUnread,

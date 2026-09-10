@@ -5,11 +5,11 @@ import "package:test/test.dart";
 void main() {
   test("configuration tracker owns process defaults and per-session overrides", () {
     final tracker = AcpSessionConfigurationTracker()
-      ..setProcessDefaults(modelId: "default-model", providerId: "provider")
+      ..setProcessDefaults(modelId: " default-model ", providerId: " provider ")
       ..setSessionOverride(
         sessionId: "session",
-        modelId: "session-model",
-        providerId: "session-provider",
+        modelId: " session-model ",
+        providerId: " session-provider ",
       );
     final mapper = AcpEventMapper(
       launchDirectory: "/repo",
@@ -23,12 +23,14 @@ void main() {
     final defaultMessage = defaultEvents.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
     final overrideMessage = overrideEvents.whereType<BridgeSseMessageUpdated>().single.info as PluginMessageAssistant;
 
-    expect((defaultMessage.modelID, defaultMessage.providerID), ("default-model", "provider"));
-    expect((overrideMessage.modelID, overrideMessage.providerID), ("session-model", "session-provider"));
+    expect((defaultMessage.modelID, defaultMessage.providerID), (" default-model ", "provider"));
+    expect((overrideMessage.modelID, overrideMessage.providerID), (" session-model ", "session-provider"));
 
     tracker.forgetSession(sessionId: "session");
-    expect(mapper.modelForSession(sessionId: "session"), "default-model");
+    expect(mapper.modelForSession(sessionId: "session"), " default-model ");
     expect(mapper.providerForSession(sessionId: "session"), "provider");
+    tracker.setProcessDefaults(modelId: " \t ", providerId: null);
+    expect(tracker.processDefaults.modelId, isNull);
   });
 
   test("configuration tracker keeps explicit null variant distinct from no session override", () {

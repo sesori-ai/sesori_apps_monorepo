@@ -167,6 +167,8 @@ import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
     as _i84;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
     as _i709;
+import 'package:sesori_dart_core/src/services/session_interaction_calculator.dart'
+    as _i414;
 import 'package:sesori_dart_core/src/services/session_list_service.dart'
     as _i763;
 import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
@@ -193,6 +195,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i84.SessionActivityCalculator>(
       () => const _i84.SessionActivityCalculator(),
+    );
+    gh.lazySingleton<_i414.SessionInteractionCalculator>(
+      () => const _i414.SessionInteractionCalculator(),
     );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
@@ -471,6 +476,13 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
     );
+    gh.lazySingleton<_i709.SessionDetailLoadService>(
+      () => _i709.SessionDetailLoadService(
+        repository: gh<_i7.SessionRepository>(),
+        pluginRepository: gh<_i337.PluginRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
     gh.lazySingleton<_i413.ProjectViewingService>(
       () => _i413.ProjectViewingService(
         viewRepository: gh<_i143.ViewDeclarationRepository>(),
@@ -550,14 +562,6 @@ extension GetItInjectableX on _i174.GetIt {
         pluginRepository: gh<_i337.PluginRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
-      ),
-    );
-    gh.lazySingleton<_i709.SessionDetailLoadService>(
-      () => _i709.SessionDetailLoadService(
-        repository: gh<_i7.SessionRepository>(),
-        projectRepository: gh<_i80.ProjectRepository>(),
-        pluginRepository: gh<_i337.PluginRepository>(),
-        connectionService: gh<_i369.ConnectionService>(),
       ),
     );
     gh.lazySingleton<_i72.MessageThumbnailCacheService>(

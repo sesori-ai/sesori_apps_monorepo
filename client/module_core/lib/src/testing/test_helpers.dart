@@ -26,6 +26,7 @@ import "../platform/url_launcher.dart";
 import "../repositories/bridge_repository.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/models/plugin_discovery_snapshot.dart";
+import "../repositories/models/plugin_management_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/plugin_preference_repository.dart";
@@ -38,6 +39,7 @@ import "../services/catalog_rescan_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
+import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_viewing_service.dart";
 import "../services/registered_bridges_service.dart";
@@ -68,6 +70,20 @@ class FakeLifecycleSource() implements LifecycleSource {
   }
 
   Future<void> dispose() => close();
+}
+
+class MockPluginManagementService() extends Mock implements PluginManagementService;
+
+/// Legacy management support keeps unrelated session tests focused on their
+/// existing behavior. Availability tests supply an explicit management stream.
+MockPluginManagementService stubbedPluginManagementService() {
+  final mock = MockPluginManagementService();
+  const result = PluginManagementLoadResult.unsupported();
+  final snapshots = Stream.value(result).shareValueSeeded(result);
+  when(() => mock.snapshots).thenAnswer((_) => snapshots);
+  when(mock.refresh).thenAnswer((_) async {});
+  when(mock.onDispose).thenAnswer((_) async {});
+  return mock;
 }
 
 class MockSessionViewingService() extends Mock implements SessionViewingService;
@@ -403,12 +419,14 @@ void delegateSessionRepository({
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (invocation) => source.getMessages(
       sessionId: _namedArgument<String>(invocation: invocation, name: #sessionId),
       limit: _namedArgument<int?>(invocation: invocation, name: #limit),
       before: _namedArgument<int?>(invocation: invocation, name: #before),
+      storedOnly: _namedArgument<bool>(invocation: invocation, name: #storedOnly),
     ),
   );
   when(
@@ -554,6 +572,7 @@ void registerCoreFallbackValues() {
   registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
+  registerFallbackValue(testSession());
   registerFallbackValue(SessionAbortSubAgentPolicy.stop);
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
   registerFallbackValue(AccountStatus.existing);
@@ -674,7 +693,20 @@ class MockRelayHttpApiClient() extends Mock implements RelayHttpApiClient;
 
 class MockAuthSession() extends Mock implements AuthSession;
 
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
+class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService {
+  this {
+    when(() => loadMetadata(sessionId: any(named: "sessionId"))).thenAnswer(
+      (invocation) async => SessionDetailMetadataLoadResult.found(
+        session: testSession(
+          id: switch (invocation.namedArguments[#sessionId]) {
+            final String id => id,
+            _ => throw StateError("Missing test session id"),
+          },
+        ),
+      ),
+    );
+  }
+}
 
 class MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
 

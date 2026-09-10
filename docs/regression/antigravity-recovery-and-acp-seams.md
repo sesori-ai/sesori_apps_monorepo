@@ -2,9 +2,9 @@
 
 ## Status and scope
 
-Step 8.a foundations only. Antigravity remains unregistered; follow-up Step 8 composition adds its concrete
-plugin/descriptor and calls recovery at import/cold activation. No ordinary-read scan, database migration, history deletion, OAuth, token
-inspection, ambient credential access, managed installation or user-visible capability is introduced here.
+Registered local-runtime behavior over the Step 8 recovery and ACP seams, consumed once per cold live connection.
+No ordinary-read scan, database migration, history deletion, token inspection, ambient credential access or managed
+installation is introduced by activation.
 
 ## Supported behavior
 
@@ -48,4 +48,4 @@ inspection, ambient credential access, managed installation or user-visible capa
   authority in both arrival orders without spawning, actual load/resume cwd after a persisted prime, deletion of
   recovery fallbacks, non-stock routing/pending lifecycle, and fresh live/replay stdout/stderr policies.
 - Existing ACP approval/project/resume/reconnect/replay/output tests and Cursor/DeepSeek registry tests retain their
-  owning behavior. Concrete Antigravity lifecycle integration and final L5 Full are later gates, not claimed here.
+  owning behavior. Composed fake lifecycle evidence is indexed in `antigravity-persistent-composition.md`; final L5 Full remains a later gate.

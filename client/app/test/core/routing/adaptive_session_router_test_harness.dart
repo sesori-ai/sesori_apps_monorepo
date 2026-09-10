@@ -21,7 +21,15 @@ class MockPermissionRepository() extends Mock implements PermissionRepository;
 
 class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
 
-class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService;
+class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadService {
+  this {
+    when(() => loadMetadata(sessionId: any(named: "sessionId"))).thenAnswer(
+      (invocation) async => SessionDetailMetadataLoadResult.found(
+        session: testSession(id: invocation.namedArguments[#sessionId] as String),
+      ),
+    );
+  }
+}
 
 class MockPluginRepository() extends Mock implements PluginRepository;
 
@@ -182,7 +190,7 @@ class AdaptiveSessionRouterTestHarness() {
 
     Future<SessionDetailLoadResult> loadSnapshot(Invocation invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
-      final sessionId = invocation.namedArguments[#sessionId]! as String;
+      final sessionId = (invocation.namedArguments[#session]! as Session).id;
       return SessionDetailLoadResult.loaded(
         snapshot: _buildDetailSnapshot(
           projectId: projectId,
@@ -195,13 +203,13 @@ class AdaptiveSessionRouterTestHarness() {
 
     when(
       () => sessionDetailLoadService.load(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(loadSnapshot);
     when(
       () => sessionDetailLoadService.reload(
-        sessionId: any(named: "sessionId"),
+        session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
     ).thenAnswer(loadSnapshot);
@@ -265,6 +273,8 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<FailureReporter>(failureReporter);
     getIt.registerSingleton<PermissionRepository>(permissionRepository);
     getIt.registerSingleton<SessionDetailLoadService>(sessionDetailLoadService);
+    getIt.registerSingleton<PluginManagementService>(stubbedPluginManagementService());
+    getIt.registerSingleton<SessionInteractionCalculator>(const SessionInteractionCalculator());
     getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
     getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
@@ -377,6 +387,7 @@ SessionDetailSnapshot _buildDetailSnapshot({
     supportsPromptAttachments: false,
     messages: const [],
     olderMessagesCursor: null,
+    awaitingHarnessSync: false,
     pendingQuestions: const [],
     pendingPermissions: const [],
     childSessions: childSessionsBySession[sessionId] ?? const [],

@@ -21,6 +21,8 @@ class const SessionListScreen({
     final rootNavigator = Navigator.of(context, rootNavigator: true);
 
     return SessionListScaffold(
+      onOpenArchived: () =>
+          context.pushRoute(AppRoute.archivedSessions(projectId: projectId, projectName: projectName)),
       projectName: projectName,
       // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
       onBack: rootNavigator.canPop() ? () => rootNavigator.pop() : null,

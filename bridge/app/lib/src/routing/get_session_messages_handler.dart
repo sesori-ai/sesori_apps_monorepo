@@ -33,11 +33,13 @@ class GetSessionMessagesHandler({required final ChatHistoryService _chatHistoryS
       limit: body.limit,
       before: body.before,
       attachmentDelivery: body.attachmentDelivery,
+      storedOnly: body.storedOnly,
     );
     return MessageWithPartsResponse(
       messages: page.messages,
       nextCursor: page.nextCursor,
       replayedPromptDefaults: page.replayedPromptDefaults,
+      awaitingHarnessSync: page.awaitingHarnessSync,
     );
   }
 }

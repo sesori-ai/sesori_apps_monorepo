@@ -97,35 +97,6 @@ class _PromptOrderedChildMapper({
   }
 }
 
-class _FlushControlledAcpProcess() extends FakeAcpProcess {
-  final _FlushControlledIOSink _controlledStdin = _FlushControlledIOSink();
-
-  @override
-  _FlushControlledIOSink get stdin => _controlledStdin;
-
-  @override
-  List<Map<String, dynamic>> get written => _controlledStdin.frames;
-
-  Completer<void> holdNextFlush() => _controlledStdin.holdNextFlush();
-}
-
-class _FlushControlledIOSink() extends CapturingIOSink {
-  Completer<void>? _nextFlush;
-
-  Completer<void> holdNextFlush() {
-    final gate = Completer<void>();
-    _nextFlush = gate;
-    return gate;
-  }
-
-  @override
-  Future<void> flush() {
-    final gate = _nextFlush;
-    _nextFlush = null;
-    return gate?.future ?? Future<void>.value();
-  }
-}
-
 /// Turn-lifecycle robustness:
 ///
 ///  - prompts on one session are serialized (agents reject or drop overlapping
@@ -140,7 +111,7 @@ class _FlushControlledIOSink() extends CapturingIOSink {
 ///    turn is in flight.
 void main() {
   group("AcpPlugin turn serialization", () {
-    late _FlushControlledAcpProcess fake;
+    late FakeAcpProcess fake;
     late AcpPlugin plugin;
     final emitted = <BridgeSseEvent>[];
     final streamErrors = <Object>[];
@@ -148,7 +119,7 @@ void main() {
     var promptSequence = 0;
 
     setUp(() {
-      fake = _FlushControlledAcpProcess();
+      fake = FakeAcpProcess();
       plugin = composeTestAcpPlugin(processFactory: (_) async => fake, launchDirectory: cwd);
       emitted.clear();
       streamErrors.clear();
@@ -311,59 +282,11 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("a prompt remains queued until its ACP frame flushes", () async {
+    test("agent output after prompt admission follows the accepted user message", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
-      final flush = fake.holdNextFlush();
-      final promptId = await sendPrompt(sessionId, "wait for flush");
-      final prompt = await waitForFrame("session/prompt");
-      await pump();
-
-      expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, promptId);
-      expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where(
-          (event) => switch (event.info) {
-            PluginMessageUser(promptId: final id) => id == promptId,
-            _ => false,
-          },
-        ),
-        isEmpty,
-      );
-      expect(
-        await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: promptId),
-        isFalse,
-        reason: "the frame write has started and can no longer be withdrawn",
-      );
-
-      flush.complete();
-      for (var i = 0; i < 20 && (await plugin.getQueuedPrompts(sessionId: sessionId)).isNotEmpty; i++) {
-        await pump();
-      }
-
-      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
-      expect(
-        emitted
-            .whereType<BridgeSseMessageUpdated>()
-            .singleWhere(
-              (event) => switch (event.info) {
-                PluginMessageUser(promptId: final id) => id == promptId,
-                _ => false,
-              },
-            )
-            .info,
-        isA<PluginMessageUser>().having((info) => info.promptId, "promptId", promptId),
-      );
-      respondTo(prompt, {"stopReason": "end_turn"});
-    });
-
-    test("agent output racing the prompt flush follows the accepted user message", () async {
-      await connect();
-      final sessionId = await createSession(cwd, "s1");
-      emitted.clear();
-
-      final flush = fake.holdNextFlush();
       final promptId = await sendPrompt(sessionId, "ordered prompt");
       final prompt = await waitForFrame("session/prompt");
       fake.emit({
@@ -377,11 +300,6 @@ void main() {
           },
         },
       });
-      await pump();
-
-      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
-
-      flush.complete();
       for (var i = 0; i < 20 && emitted.whereType<BridgeSseMessageUpdated>().length < 2; i++) {
         await pump();
       }
@@ -394,12 +312,11 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("a permission racing the prompt flush follows its accepted user and tool", () async {
+    test("a permission after prompt admission follows its accepted user and tool", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
-      final flush = fake.holdNextFlush();
       await sendPrompt(sessionId, "permission ordering");
       final prompt = await waitForFrame("session/prompt");
       fake.emit({
@@ -428,13 +345,6 @@ void main() {
           ],
         },
       });
-      await pump();
-
-      expect(emitted.whereType<BridgeSseMessageUpdated>(), isEmpty);
-      expect(emitted.whereType<BridgeSseMessagePartUpdated>(), isEmpty);
-      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
-
-      flush.complete();
       for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
         await pump();
       }
@@ -455,12 +365,11 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("aborting a writing turn settles its buffered permission after the flush", () async {
+    test("aborting an accepted turn settles its pending permission", () async {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
 
-      final flush = fake.holdNextFlush();
       await sendPrompt(sessionId, "cancel permission");
       final prompt = await waitForFrame("session/prompt");
       fake.emit({
@@ -475,11 +384,16 @@ void main() {
           ],
         },
       });
-      await pump();
-      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
+        await pump();
+      }
 
-      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
-      flush.complete();
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       for (var i = 0; i < 20 && !fake.written.any((frame) => frame["id"] == 92); i++) {
         await pump();
       }
@@ -527,7 +441,6 @@ void main() {
       await connect();
       final sessionId = await createSession(cwd, "s1");
       emitted.clear();
-      final flush = fake.holdNextFlush();
       await sendPrompt(sessionId, "start a child");
       final prompt = await waitForFrame("session/prompt");
       fake.emit({
@@ -535,10 +448,6 @@ void main() {
         "method": _PromptOrderedChildMapper.childMethod,
         "params": {"sessionId": sessionId, "childSessionId": "child"},
       });
-      await pump();
-      expect(emitted.whereType<BridgeSseSessionCreated>(), isEmpty);
-
-      flush.complete();
       for (var index = 0; index < 20 && emitted.whereType<BridgeSseSessionCreated>().isEmpty; index++) {
         await pump();
       }
@@ -554,13 +463,12 @@ void main() {
       respondTo(prompt, {"stopReason": "end_turn"});
     });
 
-    test("a buffered sessionless permission keeps its writing-turn attribution", () async {
+    test("a sessionless permission keeps its active-turn attribution", () async {
       await connect();
       final firstSessionId = await createSession(cwd, "s1");
       final secondSessionId = await createSession(cwd, "s2");
       emitted.clear();
 
-      final flush = fake.holdNextFlush();
       await sendPrompt(firstSessionId, "first session");
       final firstPrompt = await waitForFrameCount("session/prompt", 1);
       fake.emit({
@@ -574,19 +482,14 @@ void main() {
           ],
         },
       });
-      await pump();
-      expect(emitted.whereType<BridgeSsePermissionAsked>(), isEmpty);
+      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
+        await pump();
+      }
+      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
 
       await sendPrompt(secondSessionId, "second session");
       final secondPrompt = await waitForFrameCount("session/prompt", 2);
       await pump();
-
-      flush.complete();
-      for (var i = 0; i < 20 && emitted.whereType<BridgeSsePermissionAsked>().isEmpty; i++) {
-        await pump();
-      }
-
-      final permission = emitted.whereType<BridgeSsePermissionAsked>().single;
       expect(permission.sessionID, firstSessionId);
       await plugin.replyToPermission(
         requestId: permission.requestID,
@@ -742,33 +645,6 @@ void main() {
 
       expect(firstPromptId, isNot(secondPromptId));
       respondTo(second, {"stopReason": "end_turn"});
-    });
-
-    test("a failed ACP frame flush never marks the prompt sent", () async {
-      await connect();
-      final sessionId = await createSession(cwd, "s1");
-      emitted.clear();
-
-      final flush = fake.holdNextFlush();
-      final promptId = await sendPrompt(sessionId, "broken pipe");
-      await waitForFrame("session/prompt");
-      flush.completeError(StateError("broken pipe"));
-      for (var i = 0; i < 20 && idleCount() == 0; i++) {
-        await pump();
-      }
-
-      expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
-      expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where(
-          (event) => switch (event.info) {
-            PluginMessageUser(promptId: final id) => id == promptId,
-            _ => false,
-          },
-        ),
-        isEmpty,
-      );
-      expect(emitted.whereType<BridgeSseSessionError>(), hasLength(1));
-      expect(streamErrors, isEmpty);
     });
 
     test("an initial create prompt emits its user-visible text only once", () async {
@@ -1158,7 +1034,12 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
       await sendPrompt(sessionId, "queued");
 
-      await plugin.abortSession(sessionId: sessionId, subAgents: PluginAbortSubAgentPolicy.stop);
+      await plugin.abortSession(
+        sessionId: sessionId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       expect(
         frames("session/cancel"),
         hasLength(2),
@@ -1302,7 +1183,12 @@ void main() {
       for (var i = 0; i < 5; i++) {
         await pump();
       }
-      await gated.abortSession(sessionId: "s1", subAgents: PluginAbortSubAgentPolicy.stop);
+      await gated.abortSession(
+        sessionId: "s1",
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
       gate.complete();
       for (var i = 0; i < 10; i++) {
         await pump();
@@ -1317,17 +1203,24 @@ void main() {
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
-      final flush = fake.holdNextFlush();
       final promptId = await sendPrompt(sessionId, "hi");
       final promptFrame = await waitForFrame("session/prompt");
+      final acceptedMessageCount = emitted
+          .whereType<BridgeSseMessageUpdated>()
+          .where(
+            (event) => switch (event.info) {
+              PluginMessageUser(promptId: final id) => id == promptId,
+              _ => false,
+            },
+          )
+          .length;
 
       await plugin.deleteSession(sessionId);
       expect(frames("session/cancel"), hasLength(1));
       final queueUpdateCount = emitted.whereType<BridgeSseQueuedPromptsUpdated>().length;
 
-      // The prompt flushes and settles after the delete: neither dispatch nor
-      // accounting may publish lifecycle events for the detached session.
-      flush.complete();
+      // The accepted prompt settles after the delete; accounting must not
+      // publish lifecycle events for the detached session.
       await pump();
       respondTo(promptFrame, {"stopReason": "cancelled"});
       for (var i = 0; i < 10; i++) {
@@ -1336,13 +1229,16 @@ void main() {
       expect(await plugin.getSessionStatuses(), isEmpty);
       expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
       expect(
-        emitted.whereType<BridgeSseMessageUpdated>().where(
-          (event) => switch (event.info) {
-            PluginMessageUser(promptId: final id) => id == promptId,
-            _ => false,
-          },
-        ),
-        isEmpty,
+        emitted
+            .whereType<BridgeSseMessageUpdated>()
+            .where(
+              (event) => switch (event.info) {
+                PluginMessageUser(promptId: final id) => id == promptId,
+                _ => false,
+              },
+            )
+            .length,
+        acceptedMessageCount,
       );
       expect(emitted.whereType<BridgeSseQueuedPromptsUpdated>(), hasLength(queueUpdateCount));
     });

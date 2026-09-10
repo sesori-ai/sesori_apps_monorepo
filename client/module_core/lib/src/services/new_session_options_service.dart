@@ -55,6 +55,15 @@ final class const NewSessionOptionsUnavailable() extends NewSessionOptionsLoadRe
 
 final class const NewSessionOptionsLoadFailureUnavailable() extends NewSessionOptionsLoadResult;
 
+final class const NewSessionOptionsAuthenticationRequiredUnavailable({required final String actionHint})
+    extends NewSessionOptionsLoadResult;
+
+final class const NewSessionOptionsAuthenticationRequiredRetained({
+  required final String actionHint,
+  required final NewSessionOptionsData options,
+  required final NewSessionOptionsSource source,
+}) extends NewSessionOptionsLoadResult;
+
 final class const NewSessionOptionsFailureRetained({
   required final NewSessionOptionsData options,
   required final NewSessionOptionsSource source,
@@ -124,6 +133,14 @@ class NewSessionOptionsService({
         error: error,
         source: NewSessionOptionsSource.aggregate,
       ),
+      SessionOptionsRepositoryAuthenticationRequired(:final actionHint) =>
+        previousOptions == null
+            ? NewSessionOptionsAuthenticationRequiredUnavailable(actionHint: actionHint)
+            : NewSessionOptionsAuthenticationRequiredRetained(
+                actionHint: actionHint,
+                options: previousOptions,
+                source: NewSessionOptionsSource.aggregate,
+              ),
       SessionOptionsRepositoryRefreshFailedRetained() =>
         previousOptions == null
             ? const NewSessionOptionsRefreshFailureUnavailable()

@@ -81,6 +81,7 @@ const _message = MessageWithParts(
 
 SessionDetailLoaded _loadedState() {
   return const SessionDetailLoaded(
+    interaction: SessionInteractionState.available(refreshError: null),
     messages: [_message],
     olderMessagesCursor: null,
     streamingText: {},
@@ -123,6 +124,7 @@ Widget _composerScope({required Widget child, required ComposerCapabilityProvide
 void main() {
   testWidgets("desktop renders the transcript and text-first composer", (tester) async {
     final cubit = _MockSessionDetailCubit();
+    when(() => cubit.isRouteVisible).thenReturn(true);
     final state = _loadedState();
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -158,6 +160,7 @@ void main() {
               return _MockImageClipboard();
             },
             child: DesktopSessionDetailView(
+              onOpenHarnessSettings: () {},
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",
@@ -230,6 +233,7 @@ void main() {
 
   testWidgets("desktop delegates Back and child-session navigation", (tester) async {
     final cubit = _MockSessionDetailCubit();
+    when(() => cubit.isRouteVisible).thenReturn(true);
     final state = _loadedState();
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -251,6 +255,7 @@ void main() {
           home: _composerScope(
             imageClipboard: _MockImageClipboard.new,
             child: DesktopSessionDetailView(
+              onOpenHarnessSettings: () {},
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Desktop session",

@@ -45,6 +45,10 @@ typedef SessionMessagesPage = ({
   List<MessageWithParts> messages,
   int? nextCursor,
   SessionPromptDefaults? replayedPromptDefaults,
+
+  /// Whether the store served this page while behind the harness, so newer
+  /// messages may be missing. Only a store-only read can report this.
+  bool awaitingHarnessSync,
 });
 
 /// The single writer of the chat history store.
@@ -70,13 +74,27 @@ class ChatHistoryService({
   /// The store is preferred only when a backfill has completed *and* no
   /// backend activity has been observed past the captured watermark, so a
   /// session advanced outside Sesori still reads correctly.
+  ///
+  /// [storedOnly] hands the whole read to [_storedOnlyPage] instead, which
+  /// answers from the store alone. Callers that cannot wake the harness —
+  /// because it is disabled, needs authentication, or is slow right after a
+  /// start — ask for that instead of a page they may never receive.
   Future<SessionMessagesPage> getSessionMessages({
     required String sessionId,
     int? limit,
     int? before,
     required MessageAttachmentDelivery attachmentDelivery,
+    required bool storedOnly,
   }) async {
     final attachmentProjection = _attachmentProjectionFor(delivery: attachmentDelivery);
+    if (storedOnly) {
+      return await _storedOnlyPage(
+        sessionId: sessionId,
+        limit: limit,
+        before: before,
+        attachmentProjection: attachmentProjection,
+      );
+    }
     // The archive check, the freshness decision, and the read all run inside
     // the session queue, so they observe one state. Deciding outside it would
     // let queued work — an observed import, or a failed capture clearing
@@ -163,13 +181,76 @@ class ChatHistoryService({
     return _messagesPage(page: page, replayedPromptDefaults: replayedPromptDefaults);
   }
 
+  /// One page answered by the store alone: no backfill, no harness contact,
+  /// and — deliberately — no session queue.
+  ///
+  /// Staying out of the queue is the point. A store-only read exists for a
+  /// caller that cannot wake the harness, so queueing behind another read's
+  /// in-flight backfill would make it wait on exactly the thing it opted out
+  /// of, and a backfill that fails or stalls would take the stored transcript
+  /// down with it. Consistency comes from the database instead: the rows and
+  /// the sync marker are read in one snapshot, so a backfill or purge lands
+  /// wholly before or wholly after them.
+  ///
+  /// Dead open tool parts are not swept here for the same reason: the sweep is
+  /// a queued write, and repairing a tool tile left spinning by a bridge death
+  /// does not justify reintroducing that wait. The next ordinary read sweeps.
+  Future<SessionMessagesPage> _storedOnlyPage({
+    required String sessionId,
+    required int? limit,
+    required int? before,
+    required MessageAttachmentProjection attachmentProjection,
+  }) async {
+    final stored = await _sessionRepository.getStoredSession(sessionId: sessionId);
+    // The bridge holds no row for this session at all, and a store-only read
+    // has no backfill with which to create one.
+    if (stored == null) {
+      return (
+        messages: const <MessageWithParts>[],
+        nextCursor: null,
+        replayedPromptDefaults: null,
+        awaitingHarnessSync: true,
+      );
+    }
+    final storageScope = _storageScopeFor(session: stored);
+    if (stored.archivedAt != null) {
+      final archived = await _chatHistoryRepository.getArchivedSessionMessages(
+        sessionId: sessionId,
+        storageScope: storageScope,
+        limit: limit,
+        before: before,
+        attachmentProjection: attachmentProjection,
+      );
+      // An audit file is the whole transcript of a session the harness can no
+      // longer advance, so it owes nothing.
+      if (archived != null) return _messagesPage(page: archived, replayedPromptDefaults: null);
+    }
+
+    // One snapshot for the marker and the rows: outside the queue a backfill
+    // or purge could otherwise commit between them and hand back a page whose
+    // parts belong to a different transcript than its messages, or a freshness
+    // verdict describing neither.
+    final read = await _chatHistoryRepository.getSessionMessagesWithSyncState(
+      sessionId: sessionId,
+      storageScope: storageScope,
+      limit: limit,
+      before: before,
+      attachmentProjection: attachmentProjection,
+    );
+    final state = read.syncState;
+    final synced = state != null && state.syncedAt != null && state.watermark >= state.backendActivityAt;
+    return _messagesPage(page: read.page, replayedPromptDefaults: null, awaitingHarnessSync: !synced);
+  }
+
   SessionMessagesPage _messagesPage({
     required ChatHistoryPage page,
     required SessionPromptDefaults? replayedPromptDefaults,
+    bool awaitingHarnessSync = false,
   }) => (
     messages: page.messages,
     nextCursor: page.nextCursor,
     replayedPromptDefaults: replayedPromptDefaults,
+    awaitingHarnessSync: awaitingHarnessSync,
   );
 
   MessageAttachmentProjection _attachmentProjectionFor({required MessageAttachmentDelivery delivery}) =>

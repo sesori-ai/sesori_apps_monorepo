@@ -40,6 +40,12 @@ class DeepSeekPlugin({
   bool get supportsScopedStop => true;
 
   @override
+  Future<AcpScopedStopResult> stopScopedTree({
+    required AcpStdioClient client,
+    required AcpScopedStopTarget target,
+  }) => deepSeekSessionService.stopScopedTree(client: client, target: target);
+
+  @override
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
     required String sessionId,
@@ -50,14 +56,7 @@ class DeepSeekPlugin({
   void captureLiveInitializeResult(AcpInitializeResult result) => mapper.resetLiveState();
 
   @override
-  void validateInitializeResult(AcpInitializeResult result) {
-    final metadata = result.raw["_meta"];
-    final deepSeekMetadata = metadata is Map ? metadata[DeepSeekAcpApi.initializeMetadataKey] : null;
-    // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
-    if (deepSeekMetadata is! Map) throw const FormatException("DeepSeek initialize metadata is missing");
-    // ignore: no_slop_linter/prefer_specific_type, ACP metadata values are heterogeneous
-    api.parseInitializeMetadata(deepSeekMetadata.cast<String, dynamic>());
-  }
+  void validateInitializeResult(AcpInitializeResult result) => deepSeekSessionService.validateInitializeResult(result);
 
   @override
   void captureSessionConfig(

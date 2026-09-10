@@ -10,6 +10,9 @@ class AppLocalizationsEn extends AppLocalizations {
   AppLocalizationsEn([String locale = 'en']) : super(locale);
 
   @override
+  String get sessionDetailHarnessLegacyWarning => 'Update your bridge to check harness availability.';
+
+  @override
   String get appTitle => 'Sesori Mobile';
 
   @override
@@ -324,20 +327,19 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
 
   @override
-  String get harnessManagementDefaultsSection => 'Bridge Default';
+  String get harnessManagementDefaultsSection => 'Global harness settings';
 
   @override
   String get harnessManagementDefaultTimeout => 'Default idle timeout';
 
   @override
-  String get harnessManagementDefaultTimeoutDescription =>
-      'Apply this timeout to every harness that supports idle-timeout control.';
+  String get harnessManagementDefaultTimeoutDescription => 'Apply to all harnesses and replace individual overrides.';
 
   @override
   String get harnessManagementEnabled => 'Enabled';
 
   @override
-  String get harnessManagementRefreshSetup => 'Refresh setup';
+  String get harnessManagementRefreshSetup => 'Check setup';
 
   @override
   String get harnessManagementInstall => 'Install runtime';
@@ -367,7 +369,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementInstallInProgress => 'Installing…';
 
   @override
-  String get harnessManagementRestart => 'Restart';
+  String get harnessManagementRestart => 'Restart harness';
 
   @override
   String get harnessManagementIdleTimeout => 'Idle timeout';
@@ -406,13 +408,18 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementTimeoutHelp => 'Custom timeouts must be a whole number greater than zero.';
 
   @override
+  String get harnessManagementReview => 'Review';
+
+  @override
   String get harnessManagementCancel => 'Cancel';
 
   @override
   String get harnessManagementSave => 'Save';
 
   @override
-  String get harnessManagementForceDisableTitle => 'Force disable harness?';
+  String harnessManagementForceDisableTitle(String harnessName) {
+    return 'Force disable $harnessName?';
+  }
 
   @override
   String get harnessManagementForceRestartTitle => 'Force restart harness?';
@@ -690,6 +697,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsAppearanceSystem => 'System';
 
   @override
+  String get settingsSectionSessions => 'Sessions';
+
+  @override
+  String get settingsSectionPreferences => 'Preferences';
+
+  @override
+  String get settingsDefaultInputDescription => 'Choose how you default talk to Sesori.';
+
+  @override
   String get settingsDefaultInputTitle => 'Default input';
 
   @override
@@ -837,6 +853,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailRetry => 'Retry';
+
+  @override
+  String get sessionDetailRecheck => 'Recheck';
 
   @override
   String get sessionDetailPromptHint => 'Ask anything...';
@@ -1139,6 +1158,9 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get sessionDetailPromptOptionsRecoveryFailed =>
       'Couldn’t apply updated prompt options. Your message remains queued.';
+
+  @override
+  String get sessionDetailAuthenticationRequired => 'Provider login required';
 
   @override
   String get sessionDetailCommandUnavailable =>
@@ -1563,6 +1585,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionOptionsRefresh => 'Refresh options';
 
   @override
+  String newSessionAuthenticationRequiredTitle(String plugin) {
+    return '$plugin login required';
+  }
+
+  @override
   String get newSessionProjectUnavailable =>
       'Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.';
 
@@ -1594,6 +1621,68 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionDetailArchivedNotice => 'This session is archived and read-only.';
+
+  @override
+  String get sessionDetailHarnessFallbackName => 'This harness';
+
+  @override
+  String sessionDetailHarnessDisabledReason(String harnessName) {
+    return '$harnessName is disabled.';
+  }
+
+  @override
+  String sessionDetailHarnessAuthenticationReason(String harnessName) {
+    return 'Sign in to $harnessName to continue.';
+  }
+
+  @override
+  String sessionDetailHarnessRuntimeMissingReason(String harnessName) {
+    return '$harnessName is not installed or cannot be used.';
+  }
+
+  @override
+  String sessionDetailHarnessUnavailableReason(String harnessName) {
+    return '$harnessName is unavailable.';
+  }
+
+  @override
+  String sessionDetailHarnessStoppingReason(String harnessName) {
+    return '$harnessName is stopping.';
+  }
+
+  @override
+  String sessionDetailHarnessNotInspectedReason(String harnessName) {
+    return '$harnessName has not been checked yet.';
+  }
+
+  @override
+  String sessionDetailHarnessUnknownReason(String harnessName) {
+    return '$harnessName reported an unknown status.';
+  }
+
+  @override
+  String get sessionDetailHarnessMissingReason => 'This session’s harness is not available on the connected bridge.';
+
+  @override
+  String get sessionDetailHarnessCheckFailedReason => 'Couldn’t check whether this session’s harness is available.';
+
+  @override
+  String get sessionDetailContentLoadFailedReason =>
+      'The harness is available, but chat content or options could not be loaded. Reopen the chat to try again.';
+
+  @override
+  String get sessionDetailHarnessCheckingReason => 'Checking whether this session’s harness is available…';
+
+  @override
+  String get sessionDetailHarnessHistoryUnavailable =>
+      'Chat history for this session still needs the harness. Enable it to load the transcript.';
+
+  @override
+  String get sessionDetailHarnessRefreshWarning =>
+      'Harness status could not be refreshed. The last known status is shown.';
+
+  @override
+  String get sessionDetailOpenHarnessSettings => 'Open Harness Settings';
 
   @override
   String get sessionListArchiveConfirmTitle => 'Archive session?';
@@ -1870,17 +1959,65 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanRunningTitle => 'Scanning all harnesses';
 
   @override
-  String get catalogScanStartingDetail => 'Starting…';
+  String catalogScanPreparingOneDetail(String harness) {
+    return 'Preparing $harness scan…';
+  }
 
   @override
-  String catalogScanRunningDetail(String harness, int sessions) {
+  String catalogScanPreparingManyDetail(String harnesses) {
+    return 'Preparing $harnesses scans…';
+  }
+
+  @override
+  String catalogScanTwoHarnesses(String first, String second) {
+    return '$first and $second';
+  }
+
+  @override
+  String catalogScanHarnessesWithOthers(String first, String second, int others) {
+    String _temp0 = intl.Intl.pluralLogic(
+      others,
+      locale: localeName,
+      other: '$others others',
+      one: '1 other',
+    );
+    return '$first, $second, and $_temp0';
+  }
+
+  @override
+  String catalogScanStartingDetail(String harness) {
+    return 'Starting $harness…';
+  }
+
+  @override
+  String catalogScanReadingDetail(String harness) {
+    return 'Reading $harness sessions…';
+  }
+
+  @override
+  String catalogScanReadingCountDetail(String harness, int sessions) {
     String _temp0 = intl.Intl.pluralLogic(
       sessions,
       locale: localeName,
-      other: '$sessions sessions',
-      one: '1 session',
+      other: '$sessions sessions found',
+      one: '1 session found',
     );
     return '$harness — $_temp0';
+  }
+
+  @override
+  String catalogScanSavingDetail(String harness) {
+    return 'Saving $harness scan results…';
+  }
+
+  @override
+  String catalogScanWaitingTitle(String harness) {
+    return 'Waiting for $harness';
+  }
+
+  @override
+  String catalogScanWaitingDetail(String harness) {
+    return '$harness must finish starting before scanning can continue. You can keep browsing.';
   }
 
   @override
@@ -1984,7 +2121,8 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessManagementScan => 'Scan for sessions';
 
   @override
-  String get harnessManagementScanDescription => 'Import projects and sessions this harness has on disk';
+  String get harnessManagementScanDescription =>
+      'Find sessions created or moved outside Sesori and reload their latest messages.';
 
   @override
   String get harnessManagementScanNotReady => 'This harness cannot be scanned right now';
@@ -1997,4 +2135,121 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get catalogScanDismiss => 'Dismiss';
+
+  @override
+  String get harnessManagementRefreshSetupDescription => 'Recheck installation, sign-in and runtime status.';
+
+  @override
+  String harnessManagementRestartDescription(String name) {
+    return 'Restart $name. Active sessions need your confirmation.';
+  }
+
+  @override
+  String get harnessManagementIdleTimeoutDescription =>
+      'Stop this harness after the selected time without an active session.';
+
+  @override
+  String get harnessesNeedsAttention => 'Needs attention';
+
+  @override
+  String get harnessesNotInstalled => 'Not installed';
+
+  @override
+  String get harnessesStatusSetupSection => 'Status & setup';
+
+  @override
+  String get harnessesActionsSection => 'Actions';
+
+  @override
+  String get harnessesAutomationSection => 'Automation';
+
+  @override
+  String get harnessesStatusLabel => 'Status';
+
+  @override
+  String get harnessesVersionLabel => 'Version';
+
+  @override
+  String get harnessesActivityLabel => 'Activity';
+
+  @override
+  String get harnessesInstallingStatus => 'Installing';
+
+  @override
+  String harnessesInstallTitle(String name) {
+    return 'Install $name';
+  }
+
+  @override
+  String harnessesInstallingTitle(String name) {
+    return 'Installing $name';
+  }
+
+  @override
+  String get harnessesInstallDescription => 'Install this harness on your connected computer to use it in Sesori.';
+
+  @override
+  String get harnessesStartInstallation => 'Start installation';
+
+  @override
+  String get harnessesRestartInstallation => 'Restart installation';
+
+  @override
+  String get harnessesInstallationFailed => 'Installation failed';
+
+  @override
+  String get harnessesInstallationFailedDescription => 'Start the installation again when you’re ready.';
+
+  @override
+  String harnessesEnabledLabel(String name) {
+    return '$name enabled';
+  }
+
+  @override
+  String harnessesUpdatingLabel(String name) {
+    return 'Updating $name';
+  }
+
+  @override
+  String harnessesForceRestartTitle(String name) {
+    return 'Restart $name?';
+  }
+
+  @override
+  String harnessesForceRestartDescription(String name) {
+    return '$name may be active in a session. Force restarting can interrupt active work.';
+  }
+
+  @override
+  String get harnessesForceRestartAction => 'Force restart';
+
+  @override
+  String get harnessesStatusIdle => 'Idle';
+
+  @override
+  String get harnessesStatusRunning => 'Running';
+
+  @override
+  String get archivedSessionsTitle => 'Archived tasks';
+
+  @override
+  String get archivedSessionsClose => 'Close archived sessions';
+
+  @override
+  String get archivedSessionsToday => 'Today';
+
+  @override
+  String get archivedSessionsYesterday => 'Yesterday';
+
+  @override
+  String get archivedSessionsThisWeek => 'This week';
+
+  @override
+  String get archivedSessionsLastWeek => 'Last week';
+
+  @override
+  String get archivedSessionsThisMonth => 'This month';
+
+  @override
+  String get archivedSessionsLastMonth => 'One month ago';
 }

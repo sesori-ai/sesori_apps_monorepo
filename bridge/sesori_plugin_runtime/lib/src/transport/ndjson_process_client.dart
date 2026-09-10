@@ -103,8 +103,17 @@ final class NdjsonProcessClient({
     _process = process;
     _exit = Completer<int>();
     final exit = _exit;
-    unawaited(process.stdin.done.catchError((Object _) {}));
     final generation = token.generation;
+    unawaited(
+      process.stdin.done.then<void>(
+        (_) {},
+        onError: (Object error, StackTrace stackTrace) {
+          if (generation != _generation) return;
+          Log.w("[$_logTag] stdin stream error", error, stackTrace);
+          _failPending(error: error, stackTrace: stackTrace);
+        },
+      ),
+    );
     _stdoutSubscription = process.stdoutLines.listen(
       (line) {
         if (generation == _generation) _handleLine(line: line);
@@ -190,27 +199,20 @@ final class NdjsonProcessClient({
     required Duration timeout,
     required NdjsonActivityMatcher? activityMatcher,
   }) async {
-    final process = _requireProcess();
+    _requireProcess();
     final pending = _PendingResponse(
       completer: Completer<JsonObject>(),
       timeout: timeout,
       activityMatcher: activityMatcher,
     );
+    final response = pending.completer.future;
+    response.ignore();
     _pending[id] = pending;
     _armTimeout(id: id, pending: pending);
     try {
+      // IOSink.add admits bytes synchronously to its FIFO controller. A per-frame
+      // flush binds the sink until I/O drains and makes concurrent adds throw.
       sendFrame(frame: frame);
-    } on Object catch (error, stackTrace) {
-      final failed = _removePending(id);
-      if (failed != null && !failed.completer.isCompleted) {
-        failed.completer.completeError(error, stackTrace);
-      }
-      rethrow;
-    }
-    final response = pending.completer.future;
-    response.ignore();
-    try {
-      await process.stdin.flush();
     } on Object catch (error, stackTrace) {
       final failed = _removePending(id);
       if (failed != null && !failed.completer.isCompleted) {
@@ -324,10 +326,16 @@ final class NdjsonProcessClient({
   Future<void> reset({
     // Teardown reasons remain opaque so callers can preserve typed failures.
     required Object reason, // ignore: no_slop_linter/prefer_specific_type
+    required StackTrace? stackTrace,
     required Duration gracefulTimeout,
   }) {
     if (_disposed) return Future.value();
-    return _startTeardown(reason: reason, gracefulTimeout: gracefulTimeout, closeNotifications: false);
+    return _startTeardown(
+      reason: reason,
+      stackTrace: stackTrace,
+      gracefulTimeout: gracefulTimeout,
+      closeNotifications: false,
+    );
   }
 
   Future<void> dispose({
@@ -336,12 +344,13 @@ final class NdjsonProcessClient({
     required Duration gracefulTimeout,
   }) {
     _disposed = true;
-    return _startTeardown(reason: reason, gracefulTimeout: gracefulTimeout, closeNotifications: true);
+    return _startTeardown(reason: reason, stackTrace: null, gracefulTimeout: gracefulTimeout, closeNotifications: true);
   }
 
   Future<void> _startTeardown({
     // Teardown reasons remain opaque so callers can preserve typed failures.
     required Object reason, // ignore: no_slop_linter/prefer_specific_type
+    required StackTrace? stackTrace,
     required Duration gracefulTimeout,
     required bool closeNotifications,
   }) {
@@ -349,7 +358,7 @@ final class NdjsonProcessClient({
     if (active != null) {
       return closeNotifications ? active.whenComplete(_closeNotifications) : active;
     }
-    final teardown = _teardown(reason: reason, gracefulTimeout: gracefulTimeout);
+    final teardown = _teardown(reason: reason, stackTrace: stackTrace, gracefulTimeout: gracefulTimeout);
     _teardownFuture = teardown;
     return teardown.whenComplete(() async {
       _teardownFuture = null;
@@ -364,6 +373,7 @@ final class NdjsonProcessClient({
   Future<void> _teardown({
     // Teardown reasons remain opaque so callers can preserve typed failures.
     required Object reason, // ignore: no_slop_linter/prefer_specific_type
+    required StackTrace? stackTrace,
     required Duration gracefulTimeout,
   }) async {
     _generation++;
@@ -373,7 +383,7 @@ final class NdjsonProcessClient({
     _stdoutSubscription = null;
     final stderrSubscription = _stderrSubscription;
     _stderrSubscription = null;
-    _failPending(error: reason, stackTrace: StackTrace.current);
+    _failPending(error: reason, stackTrace: stackTrace ?? StackTrace.current);
     if (process != null) {
       try {
         await process.stdin.close().timeout(gracefulTimeout);

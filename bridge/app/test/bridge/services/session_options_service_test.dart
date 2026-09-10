@@ -815,6 +815,82 @@ void main() {
       );
     });
 
+    test("authentication-required refresh preserves cache but does not serve it as success", () async {
+      const key = SessionOptionsCacheKey.project(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        projectPath: "/projects/one",
+      );
+      final retained = _entry(
+        key: key,
+        response: _response(marker: "retained"),
+        capturedAt: now,
+      );
+      final repository = _FakeSessionOptionsRepository()
+        ..projectPaths["project-1"] = "/projects/one"
+        ..captureResult = const SessionOptionsCaptureAuthenticationRequired(
+          actionHint: "Authenticate locally.",
+        )
+        ..put(retained);
+      final service = _service(repository: repository, now: now);
+
+      final outcome = await service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+
+      expect(
+        outcome,
+        isA<SessionOptionsAuthenticationRequired>().having(
+          (value) => value.actionHint,
+          "action hint",
+          "Authenticate locally.",
+        ),
+      );
+      expect(repository.stored(key), retained);
+      expect(repository.commitCalls, isEmpty);
+      expect(repository.deletedKeys, isEmpty);
+    });
+
+    test("authentication-required capture is fenced by stale-send invalidation", () async {
+      final capture = Completer<SessionOptionsCaptureResult>();
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/one";
+      repository.captureHandler = (_) => capture.future;
+      final service = _service(repository: repository, now: now);
+
+      final refresh = service.refreshExplicit(pluginId: "plugin-1", projectId: "project-1");
+      await _waitFor(condition: () => repository.captureCalls.length == 1);
+      await service.invalidateRejectedSelection(pluginId: "plugin-1", projectId: "project-1");
+      capture.complete(
+        const SessionOptionsCaptureAuthenticationRequired(
+          actionHint: "Authenticate locally.",
+        ),
+      );
+
+      expect(await refresh, isA<SessionOptionsRefreshFailedUnavailable>());
+      expect(repository.commitCalls, isEmpty);
+    });
+
+    test("authentication-required capture is fenced when its project moves", () async {
+      final capture = Completer<SessionOptionsCaptureResult>();
+      final repository = _FakeSessionOptionsRepository()..projectPaths["project-1"] = "/projects/old";
+      repository.captureHandler = (_) => capture.future;
+      final service = _service(repository: repository, now: now);
+
+      final refresh = service.refreshActiveOnly(
+        pluginId: "plugin-1",
+        projectId: "project-1",
+        generation: 7,
+      );
+      await _waitFor(condition: () => repository.captureCalls.length == 1);
+      repository.projectPaths["project-1"] = "/projects/new";
+      capture.complete(
+        const SessionOptionsCaptureAuthenticationRequired(
+          actionHint: "Authenticate locally.",
+        ),
+      );
+
+      expect(await refresh, isA<SessionOptionsAutomaticNoOp>());
+      expect(repository.commitCalls, isEmpty);
+    });
+
     test("stale-send invalidation deletes the rejected row before client discovery", () async {
       const key = SessionOptionsCacheKey.project(
         pluginId: "plugin-1",

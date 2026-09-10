@@ -15,6 +15,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.d
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
+import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -81,6 +82,9 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
+        claimProjectView: true,
+        pluginManagementService: stubbedPluginManagementService(),
+        interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
         promptDispatcher: mockSessionRepository,
         permissionRepository: mockPermissionRepository,
@@ -104,7 +108,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => completer.future);
@@ -140,6 +144,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -187,7 +192,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -200,6 +205,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: [],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: [],
             pendingPermissions: [],
             childSessions: [],
@@ -247,7 +253,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => completer.future);
@@ -287,6 +293,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -315,7 +322,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => loadCompleter.future);
@@ -357,6 +364,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -389,7 +397,7 @@ void main() {
       );
       verifyNever(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       );
@@ -399,7 +407,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -412,6 +420,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -484,6 +493,7 @@ void main() {
           supportsPromptAttachments: supportsPromptAttachments,
           messages: const <MessageWithParts>[],
           olderMessagesCursor: null,
+          awaitingHarnessSync: false,
           pendingQuestions: const <PendingQuestion>[],
           pendingPermissions: const <PendingPermission>[],
           childSessions: const <Session>[],
@@ -500,7 +510,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -510,7 +520,7 @@ void main() {
       );
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -526,7 +536,7 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await untilCalled(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       );
@@ -552,6 +562,7 @@ void main() {
         supportsPromptAttachments: true,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -566,7 +577,7 @@ void main() {
       );
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -576,7 +587,7 @@ void main() {
       );
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) {
@@ -655,7 +666,7 @@ void main() {
       final accepted = Completer<ApiResponse<void>>();
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -668,6 +679,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -732,6 +744,7 @@ void main() {
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -746,7 +759,7 @@ void main() {
       );
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -756,7 +769,7 @@ void main() {
       );
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -819,6 +832,7 @@ void main() {
         supportsPromptAttachments: true,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -839,6 +853,7 @@ void main() {
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -853,7 +868,7 @@ void main() {
       );
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -864,7 +879,7 @@ void main() {
       final refreshes = <Completer<SessionDetailLoadResult>>[];
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) {
@@ -963,6 +978,7 @@ void main() {
         supportsPromptAttachments: true,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -977,7 +993,7 @@ void main() {
       );
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -988,7 +1004,7 @@ void main() {
       final refreshes = <Completer<SessionDetailLoadResult>>[];
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) {
@@ -1034,7 +1050,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => completer.future);
@@ -1073,7 +1089,7 @@ void main() {
       final reloadedCompleter = Completer<SessionDetailLoadResult>();
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => reloadedCompleter.future);
@@ -1090,6 +1106,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -1116,7 +1133,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1152,7 +1169,7 @@ void main() {
       final reloadedCompleter = Completer<SessionDetailLoadResult>();
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => reloadedCompleter.future);
@@ -1169,6 +1186,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -1195,7 +1213,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1208,6 +1226,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -1280,6 +1299,7 @@ void main() {
         supportsPromptAttachments: false,
         messages: messages,
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: const <PendingQuestion>[],
         pendingPermissions: const <PendingPermission>[],
         childSessions: const <Session>[],
@@ -1295,7 +1315,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1305,7 +1325,7 @@ void main() {
       );
       when(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => refresh.future);
@@ -1323,7 +1343,7 @@ void main() {
       mockConnectionService.emitDataMayBeStale();
       await untilCalled(
         () => mockLoadService.reload(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       );
@@ -1379,13 +1399,13 @@ void main() {
         final refresh = Completer<SessionDetailLoadResult>();
         when(
           () => mockLoadService.load(
-            sessionId: _sessionId,
+            session: any(named: "session"),
             projectId: any(named: "projectId"),
           ),
         ).thenAnswer((_) async => SessionDetailLoadResult.loaded(snapshot: initial));
         when(
           () => mockLoadService.reload(
-            sessionId: _sessionId,
+            session: any(named: "session"),
             projectId: any(named: "projectId"),
           ),
         ).thenAnswer((_) => refresh.future);
@@ -1394,7 +1414,7 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         await untilCalled(
           () => mockLoadService.reload(
-            sessionId: _sessionId,
+            session: any(named: "session"),
             projectId: any(named: "projectId"),
           ),
         );
@@ -1515,6 +1535,7 @@ void main() {
           () => loadService.loadOlderMessages(
             sessionId: _sessionId,
             before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
           ),
         );
         await completeRefresh(
@@ -1541,7 +1562,7 @@ void main() {
           final refresh = Completer<SessionDetailLoadResult>();
           when(
             () => mockLoadService.load(
-              sessionId: _sessionId,
+              session: any(named: "session"),
               projectId: any(named: "projectId"),
             ),
           ).thenAnswer(
@@ -1551,7 +1572,7 @@ void main() {
           );
           when(
             () => mockLoadService.reload(
-              sessionId: _sessionId,
+              session: any(named: "session"),
               projectId: any(named: "projectId"),
             ),
           ).thenAnswer((_) => refresh.future);
@@ -1562,7 +1583,7 @@ void main() {
           mockConnectionService.emitDataMayBeStale();
           await untilCalled(
             () => mockLoadService.reload(
-              sessionId: _sessionId,
+              session: any(named: "session"),
               projectId: any(named: "projectId"),
             ),
           );
@@ -1670,7 +1691,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1683,6 +1704,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -1733,7 +1755,7 @@ void main() {
       final mockLoadService = MockSessionDetailLoadService();
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1746,6 +1768,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -1820,7 +1843,7 @@ void main() {
       );
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1833,6 +1856,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[newest],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -1896,7 +1920,7 @@ void main() {
       );
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1909,6 +1933,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[assistant],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -1972,7 +1997,7 @@ void main() {
       ];
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer(
@@ -1985,6 +2010,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: messages,
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -2027,7 +2053,7 @@ void main() {
 
       when(
         () => mockLoadService.load(
-          sessionId: _sessionId,
+          session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
       ).thenAnswer((_) => completer.future);
@@ -2054,6 +2080,7 @@ void main() {
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
             olderMessagesCursor: null,
+            awaitingHarnessSync: false,
             pendingQuestions: <PendingQuestion>[],
             pendingPermissions: <PendingPermission>[],
             childSessions: <Session>[],
@@ -2162,6 +2189,7 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? 
       supportsPromptAttachments: false,
       messages: messages,
       olderMessagesCursor: olderMessagesCursor,
+      awaitingHarnessSync: false,
       pendingQuestions: const <PendingQuestion>[],
       pendingPermissions: const <PendingPermission>[],
       childSessions: const <Session>[],

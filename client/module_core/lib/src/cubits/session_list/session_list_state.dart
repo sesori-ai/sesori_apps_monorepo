@@ -5,6 +5,7 @@ import "../../errors/remote_failure_reason.dart";
 import "../../repositories/models/repo_provider.dart";
 import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/models/session_list_filter.dart";
 
 part "session_list_state.freezed.dart";
 
@@ -14,7 +15,7 @@ sealed class SessionListState with _$SessionListState {
 
   const factory loaded({
     required List<Session> sessions,
-    @Default(false) bool showArchived,
+    @Default(SessionListFilter.active) SessionListFilter filter,
 
     /// Map of active session ID -> activity info.
     ///

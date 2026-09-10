@@ -8,6 +8,22 @@ reconciliation, periodic check, in-place apply, and explicit update command.
 
 ## Required Behavior
 
+- Internal releases check main hourly at `:45` UTC and build one immutable commit
+  across TestFlight, Play internal, and bridge archives. Released or already-attempted
+  commits skip before store queries; desktop-only and unrelated documentation batches
+  skip, but product changes before an unrelated tip commit still qualify.
+  A rolling `internal-release-attempt` tag is written before version validation or
+  builds, preventing hourly retries after failure or cancellation. Manual dispatch
+  can retry; release tags and the all-platform success requirement stay unchanged.
+- TestFlight and Play internal notes list commit subjects since the nearest
+  `v*` release tag on the build's first-parent history, newest first, and retain
+  the build SHA. Failed attempts do not reset this range. With no release tag,
+  notes cover all history; rebuilding an already-tagged commit shows its SHA only.
+  Store checkouts include full history and tags. Notes keep complete entries
+  within 4,000 characters for TestFlight and the existing conservative 400 for
+  Play, ending with `+ X others` when entries are omitted (including an oversized
+  first entry). Production store copy and GitHub's stable-release-based notes
+  remain unchanged.
 - Installers and the npm bootstrap produce the same managed install, expose the
   `sesori-bridge` launcher, and report the version; installers take the newest
   non-prerelease release carrying the platform archive and its basename-keyed checksum
@@ -26,6 +42,9 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   release in place; the running process stays on its old code until the next start. Its
   track is stable by default, internal also takes pre-releases, and a change applies after restart.
   Transient auto-update outages stay quiet and retry on the next cycle.
+- Self-update archive extraction supplies an explicit two-minute per-command budget to the
+  shared extractor, covering both member listing and extraction where separate. Traversal,
+  symlink rejection and timeout diagnostics remain enforced before an update can be adopted.
 - Applying happens in place under a cross-process lock with a durable attempt record and
   log, and can roll back; startup reconciliation is local and network-free, reports the
   prior attempt, and never fails startup. Residue sweeping is best-effort: lock
@@ -40,7 +59,7 @@ reconciliation, periodic check, in-place apply, and explicit update command.
 |---|---|
 | L1 Smoke | Not included. Distribution work is expensive and is not a per-run heartbeat. |
 | L2 Routine | Update-skip policy and startup reconciliation on a non-managed run: a build-tree or opted-out bridge neither rewrites itself nor fails startup, and reconciliation is silent with no pending attempt. Headless bridge; no plugin. |
-| L3 Release | The release artifact set and checksum manifest for the tag are complete and basename-keyed, and a managed install on the release-target bridge host reports the expected version and starts. Packaged or external. |
+| L3 Release | Scheduled-release gate tests cover batched changes, tagged/attempted skips, failure suppression, manual retries, and marker-write failure without store calls. Store-note tests cover release ranges, failed attempts, immutable targets, Unicode, and exact omission counts at both length limits. The release artifact set and checksum manifest for the tag are complete and basename-keyed, and a managed install on the release-target bridge host reports the expected version and starts. Packaged or external. |
 | L4 Extended | Interrupted or failed apply reconciled at a later start, including lock-contended and deletion-failed residue retained observably for another retry; rollback; refused checksum mismatch; unavailable release service staying quiet; track switch; periodic cycle applying in place and reporting pending activation; and an alternate bridge host. Packaged or external for the install; headless bridge for policy. |
 | L5 Full | Both installers and the npm bootstrap on every supported platform and architecture, the npm fallback to the tagged release asset, an end-to-end upgrade from a prior release on both tracks, the update command including force, and the documented uninstall contract. Packaged or external. |
 
@@ -53,6 +72,14 @@ after apply. Use a throwaway machine when mutating an install root.
 
 ## Failure Signals
 
+- Store builds starting on every merge, repeated automatic uploads for the same
+  attempted commit, an unrelated batch consuming uploads, or a relevant change
+  hidden behind an unrelated tip commit being missed.
+- A build starting before its attempt marker is persisted, a manual branch run
+  moving main's marker, or an incomplete all-platform build being promoted as a release.
+- Store notes showing only the tip commit of a batch, losing commits after a failed
+  attempt, exceeding store limits, cutting entries mid-message, or reporting an
+  incorrect omitted-commit count.
 - An installer selecting a pre-release, a release missing or mis-keying its manifest, or
   an artifact installed without verification.
 - Auto-update running for a supervised run, npm payload, CI, or opted-out process, or a
@@ -66,6 +93,8 @@ after apply. Use a throwaway machine when mutating an install root.
 
 ## Known Limitations
 
+- GitHub can delay cron starts. Hourly opportunities are not a strict daily upload
+  quota; manual runs and delayed uploads can still hit store limits.
 - Genuine distribution claims need real published artifacts; a local build proves policy
   and reconciliation only, and signing is verifiable only against CI-produced binaries.
 - The bootstrap and the updater share no lock; an apply-window collision is accepted.
@@ -74,6 +103,10 @@ after apply. Use a throwaway machine when mutating an install root.
 
 ## Sources
 
+- `.github/workflows/release-all-platforms.yml`, `.github/scripts/check_internal_release.sh`,
+  `.github/scripts/test_check_internal_release.py`
+- `client/app/fastlane/build_changelog.rb`, `client/app/fastlane/test_build_changelog.rb`,
+  `client/app/{ios,android}/fastlane/Fastfile`
 - `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
 - `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;

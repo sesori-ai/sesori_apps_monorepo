@@ -9,16 +9,18 @@ final class const ClaudeBackendCatalog({
   required final PluginProvidersResult providers,
   required final List<PluginCommand> commands,
 
-  /// Picker id per catalog `resolvedModel` (`claude-opus-5[1m]` → `opus[1m]`).
-  required final Map<String, String> modelIdsByResolvedModel,
+  /// Picker id per API-reported model token. Includes catalog
+  /// `resolvedModel` values and short family/context aliases such as
+  /// `fable[1m]`.
+  required final Map<String, String> modelIdsByApiModel,
 }) {
   /// The picker id behind an API model name, or null when the catalog has no
-  /// such model. The stream reports `claude-opus-5` for both `opus` and
-  /// `opus[1m]`, so a bare match takes the first entry sharing the name.
+  /// such model. Claude can omit a context suffix from a resolved name, so a
+  /// bare match takes the first entry sharing the name.
   String? catalogModelId({required String apiModel}) {
-    if (modelIdsByResolvedModel[apiModel] case final id?) return id;
+    if (modelIdsByApiModel[apiModel] case final id?) return id;
     final bare = _bareModel(apiModel);
-    for (final entry in modelIdsByResolvedModel.entries) {
+    for (final entry in modelIdsByApiModel.entries) {
       if (_bareModel(entry.key) == bare) return entry.value;
     }
     return null;
@@ -37,25 +39,21 @@ final class const ClaudeBackendCatalogRepository() {
   static const String _cliDefaultModelId = "default";
 
   /// Sesori's default selection, named explicitly in place of [_cliDefaultModelId].
-  static const String _defaultModelIdPrefix = "opus";
-  static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
+  static const String _defaultModelFamily = "opus";
 
-  /// Model families strongest first, as the picker lists them. The CLI's own
-  /// order is kept within a family and for families not listed here, which
-  /// follow the known ones.
-  static const List<String> _familiesByStrength = ["fable", "opus", "sonnet", "haiku"];
+  /// The families Claude ids carry, used to recognize a model's family and to
+  /// build its short alias. Picker order comes from [CatalogStrengthOrder].
+  static const List<String> _families = ["fable", "opus", "sonnet", "haiku"];
+  static const ClaudeEffortLevel _defaultEffort = ClaudeEffortLevel.high;
 
   ClaudeBackendCatalog map({required Map<String, Object?> handshake}) {
     final dto = ClaudeBackendCatalogDto.fromJson(handshake);
-    final unranked = [
-      for (final model in dto.models) ?_model(model),
-    ];
-    final models = [
-      for (final family in _familiesByStrength) ...unranked.where((model) => model.id.startsWith(family)),
-      ...unranked.where((model) => !_familiesByStrength.any(model.id.startsWith)),
-    ];
+    final models = CatalogStrengthOrder.models(
+      [for (final model in dto.models) ?_model(model)],
+      idOf: (model) => model.id,
+    );
     final defaultModel =
-        models.where((model) => model.id.startsWith(_defaultModelIdPrefix)).firstOrNull ?? models.firstOrNull;
+        models.where((model) => _family(modelId: model.id) == _defaultModelFamily).firstOrNull ?? models.firstOrNull;
     final agentModel = defaultModel == null
         ? null
         : PluginAgentModel(
@@ -91,12 +89,44 @@ final class const ClaudeBackendCatalogRepository() {
       commands: List.unmodifiable([
         for (final command in dto.commands) ?_command(command),
       ]),
-      modelIdsByResolvedModel: Map.unmodifiable({
-        for (final model in dto.models)
-          if (_model(model) case final mapped? when model.resolvedModel?.trim().isNotEmpty ?? false)
-            model.resolvedModel!.trim(): mapped.id,
-      }),
+      modelIdsByApiModel: Map.unmodifiable(_modelIdsByApiModel(dto.models)),
     );
+  }
+
+  Map<String, String> _modelIdsByApiModel(List<ClaudeModelDto> models) {
+    final mappedModels = [
+      for (final dto in models)
+        if (_model(dto) case final model?) (dto: dto, model: model),
+    ];
+    final ids = <String, String>{};
+    for (final entry in mappedModels) {
+      if (entry.dto.resolvedModel?.trim() case final resolved? when resolved.isNotEmpty) {
+        ids[resolved] = entry.model.id;
+      }
+    }
+    for (final entry in mappedModels) {
+      if (_familyAlias(modelId: entry.model.id) case final alias?) {
+        ids.putIfAbsent(alias, () => entry.model.id);
+      }
+    }
+    return ids;
+  }
+
+  String? _family({required String modelId}) {
+    final bare = ClaudeBackendCatalog._bareModel(modelId);
+    for (final family in _families) {
+      if (bare == family || bare.startsWith("$family-") || bare.contains("-$family-") || bare.endsWith("-$family")) {
+        return family;
+      }
+    }
+    return null;
+  }
+
+  String? _familyAlias({required String modelId}) {
+    final family = _family(modelId: modelId);
+    if (family == null) return null;
+    final bare = ClaudeBackendCatalog._bareModel(modelId);
+    return "$family${modelId.substring(bare.length)}";
   }
 
   PluginModel? _model(ClaudeModelDto dto) {
@@ -104,15 +134,10 @@ final class const ClaudeBackendCatalogRepository() {
     if (id == null || id.isEmpty || id == _cliDefaultModelId) return null;
     final displayName = dto.displayName?.trim();
     final resolvedModel = dto.resolvedModel?.trim();
-    final supported = {
-      for (final raw in dto.supportedEffortLevels) ?ClaudeEffortLevel.tryParse(raw),
-    };
-    // Strongest first, as the picker lists them.
     final variants = dto.supportsEffort ?? false
-        ? [
-            for (final level in ClaudeEffortLevel.values.reversed)
-              if (supported.contains(level)) level.wireValue,
-          ]
+        ? CatalogStrengthOrder.variants({
+            for (final raw in dto.supportedEffortLevels) ?ClaudeEffortLevel.tryParse(raw)?.wireValue,
+          })
         : <String>[];
     return PluginModel(
       id: id,

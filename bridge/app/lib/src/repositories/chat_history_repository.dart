@@ -125,6 +125,59 @@ class ChatHistoryRepository({
       sessionId: sessionId,
       messageIds: limit == null ? null : [for (final row in messageRows) row.messageId],
     );
+    return await _assemblePage(
+      messageRows: messageRows,
+      partRows: partRows,
+      storageScope: storageScope,
+      limit: limit,
+      attachmentProjection: attachmentProjection,
+    );
+  }
+
+  /// The session's freshness and one page of its transcript, read together.
+  ///
+  /// For a caller that must read outside the history service's per-session
+  /// queue: the rows and the sync marker come from one database snapshot, so
+  /// the page cannot mix two transcripts and its freshness cannot describe a
+  /// different one. Attachments rehydrate afterwards, outside the snapshot.
+  Future<({ChatHistorySyncState? syncState, ChatHistoryPage page})> getSessionMessagesWithSyncState({
+    required String sessionId,
+    required AttachmentStorageScope storageScope,
+    int? limit,
+    int? before,
+    required MessageAttachmentProjection attachmentProjection,
+  }) async {
+    final rows = await _chatHistoryDao.getPageRowsWithSyncState(
+      sessionId: sessionId,
+      limit: limit,
+      before: before,
+    );
+    final syncState = rows.syncState;
+    return (
+      syncState: syncState == null
+          ? null
+          : (
+              watermark: syncState.watermark,
+              backendActivityAt: syncState.backendActivityAt,
+              syncedAt: syncState.syncedAt,
+            ),
+      page: await _assemblePage(
+        messageRows: rows.messages,
+        partRows: rows.parts,
+        storageScope: storageScope,
+        limit: limit,
+        attachmentProjection: attachmentProjection,
+      ),
+    );
+  }
+
+  Future<ChatHistoryPage> _assemblePage({
+    required List<HistoryMessagesTableData> messageRows,
+    required List<HistoryPartsTableData> partRows,
+    required AttachmentStorageScope storageScope,
+    required int? limit,
+    required MessageAttachmentProjection attachmentProjection,
+  }) async {
     final partJsonByMessage = <String, List<String>>{};
     for (final row in partRows) {
       partJsonByMessage.putIfAbsent(row.messageId, () => []).add(row.partJson);

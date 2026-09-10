@@ -1,3 +1,4 @@
+import "package:antigravity_plugin/antigravity_plugin.dart" show AntigravityPluginDescriptor;
 import "package:claude_plugin/claude_plugin.dart" show ClaudePluginDescriptor;
 import "package:codex_plugin/codex_plugin.dart" show CodexPluginDescriptor;
 import "package:copilot_plugin/copilot_plugin.dart" show CopilotPluginDescriptor;
@@ -15,7 +16,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 /// Descriptors are const and side-effect free. Registration does not imply
 /// setup readiness, eligibility, or a running backend generation.
 final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
-  const OpenCodePluginDescriptor(),
+  OpenCodePluginDescriptor.production(),
+  AntigravityPluginDescriptor.production(),
   const CodexPluginDescriptor(),
   CopilotPluginDescriptor.production(),
   const CursorPluginDescriptor(),
@@ -29,4 +31,4 @@ final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
 
 /// Product-preferred default when OpenCode is selectable. Lifecycle policy
 /// falls back to the first selectable registration when it is not.
-String get preferredDefaultPluginId => const OpenCodePluginDescriptor().id;
+String get preferredDefaultPluginId => OpenCodePluginDescriptor.production().id;

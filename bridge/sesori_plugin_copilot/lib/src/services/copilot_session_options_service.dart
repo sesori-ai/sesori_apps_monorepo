@@ -352,25 +352,32 @@ class CopilotSessionOptionsService({
           id: _providerId,
           name: CopilotPluginIdentity.displayName,
           authType: PluginProviderAuthType.unknown,
-          models: [
-            for (final model in models)
-              PluginModel(
-                id: model.value,
-                name: model.name,
-                variants: [
-                  for (final thoughtLevel in _reasoningByModel[model.value]?.options ?? const <CopilotCatalogOption>[])
-                    thoughtLevel.value,
-                ],
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
+          models: CatalogStrengthOrder.models(
+            [
+              for (final model in models)
+                PluginModel(
+                  id: model.value,
+                  name: model.name,
+                  // Strongest first; Copilot's first-listed level stays the default.
+                  variants: CatalogStrengthOrder.variants(_reasoningLevels(modelValue: model.value)),
+                  defaultVariant: CatalogStrengthOrder.backendDefault(_reasoningLevels(modelValue: model.value)),
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
+            ],
+            idOf: (model) => model.id,
+          ),
           defaultModelID: defaultModel,
         ),
       ],
     );
   }
+
+  List<String> _reasoningLevels({required String modelValue}) => [
+    for (final thoughtLevel in _reasoningByModel[modelValue]?.options ?? const <CopilotCatalogOption>[])
+      thoughtLevel.value,
+  ];
 
   void _captureReasoning(CopilotSessionConfigSnapshot snapshot) {
     final model = snapshot.currentModelValue;

@@ -3,7 +3,6 @@ import "dart:math";
 
 import "package:get_it/get_it.dart";
 import "package:injectable/injectable.dart";
-import "package:meta/meta.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -16,6 +15,7 @@ import "../logging/logging.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/models/plugin_management_result.dart";
 import "../repositories/plugin_repository.dart";
+import "models/plugin_install_state.dart";
 import "product_analytics_service.dart";
 
 typedef _ManagementRequestFence = ({
@@ -35,13 +35,13 @@ typedef PluginAuthenticationTerminalUpdate = ({String pluginId, PluginAuthentica
 sealed class const PluginManagementIdleTimeoutInput() {
   const factory noTimeout() = PluginManagementIdleTimeoutInputNoTimeout;
 
-  const factory custom({required String input}) =
-      PluginManagementIdleTimeoutInputCustom;
+  const factory custom({required String input}) = PluginManagementIdleTimeoutInputCustom;
 }
 
 final class const PluginManagementIdleTimeoutInputNoTimeout() extends PluginManagementIdleTimeoutInput;
 
-final class const PluginManagementIdleTimeoutInputCustom({required final String input}) extends PluginManagementIdleTimeoutInput;
+final class const PluginManagementIdleTimeoutInputCustom({required final String input})
+    extends PluginManagementIdleTimeoutInput;
 
 sealed class const PluginAuthenticationContinuationIntent() {
   const factory pasted({required String rawInput}) = PluginAuthenticationPastedContinuationIntent;
@@ -52,10 +52,10 @@ final class const PluginAuthenticationPastedContinuationIntent({required final S
 
 @lazySingleton
 class PluginManagementService({
-    required final PluginRepository _pluginRepository,
-    required final ConnectionService _connectionService,
-    required final ProductAnalyticsService _productAnalyticsService,
-  }) with Disposable {
+  required final PluginRepository _pluginRepository,
+  required final ConnectionService _connectionService,
+  required final ProductAnalyticsService _productAnalyticsService,
+}) with Disposable {
   this {
     _subscriptions
       ..add(_connectionService.status.listen(_onConnectionStatus))
@@ -64,7 +64,7 @@ class PluginManagementService({
   }
 
   final BehaviorSubject<PluginManagementLoadResult> _snapshots = BehaviorSubject();
-  final BehaviorSubject<Map<String, PluginInstallProgress>> _installProgress = BehaviorSubject.seeded(const {});
+  final BehaviorSubject<Map<String, PluginInstallState>> _installStates = BehaviorSubject.seeded(const {});
   final BehaviorSubject<Map<String, PluginAuthenticationChallenge>> _authenticationChallenges = BehaviorSubject.seeded(
     const {},
   );
@@ -107,9 +107,8 @@ class PluginManagementService({
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
 
-  /// In-flight managed runtime installs, keyed by plugin id. An entry appears
-  /// when the bridge reports progress and disappears when the install settles.
-  ValueStream<Map<String, PluginInstallProgress>> get installProgress => _installProgress.stream;
+  /// Replayed in-progress installs and failures, scoped to this connection.
+  ValueStream<Map<String, PluginInstallState>> get installStates => _installStates.stream;
 
   ValueStream<Map<String, PluginAuthenticationChallenge>> get authenticationChallenges =>
       _authenticationChallenges.stream;
@@ -133,7 +132,7 @@ class PluginManagementService({
     if (isInstall) {
       _selfStartedInstalls.add(pluginId);
       _installRequestsInFlight.add(pluginId);
-      _publishInstallProgress(_installProgress.value);
+      _publishInstallStates(Map<String, PluginInstallState>.from(_installStates.value)..remove(pluginId));
     }
     final result = await _runMutation(
       request: () => _pluginRepository.command(pluginId: pluginId, request: request),
@@ -182,7 +181,9 @@ class PluginManagementService({
 
   Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
     if (_disposed || !_connected || !_activeBridgeIdentityKnown) {
-      return PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.request(error: ApiError.generic()));
+      return PluginAuthenticationStartResult.failed(
+        failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
+      );
     }
     final captured = _captureRequest(staleGeneration: _staleGeneration);
     _selfStartedAuthentications.add(pluginId);
@@ -258,7 +259,9 @@ class PluginManagementService({
 
     _authenticationRedirectClaims[pluginId] = fence;
     final result = await _pluginRepository.submitAuthenticationRedirect(pluginId: pluginId, redirectUri: redirectUri);
-    if (!_isConnectionFenceCurrent(fence) || !_activeBridgeIdentityKnown || _activeBridgeId != fence.bridgeId ||
+    if (!_isConnectionFenceCurrent(fence) ||
+        !_activeBridgeIdentityKnown ||
+        _activeBridgeId != fence.bridgeId ||
         _authenticationFences[pluginId] != null && _authenticationFences[pluginId] != fence) {
       return const PluginAuthenticationContinuationResult.uncertain();
     }
@@ -274,7 +277,9 @@ class PluginManagementService({
 
   Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {
     if (_disposed || !_connected || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
-      return PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.request(error: ApiError.generic()));
+      return PluginAuthenticationCancelResult.failed(
+        failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
+      );
     }
     _authenticationRequestsInFlight.add(pluginId);
     final result = await _pluginRepository.cancelAuthentication(pluginId: pluginId);
@@ -459,14 +464,15 @@ class PluginManagementService({
     required PluginInstallPhase phase,
     required int? percent,
   }) {
-    if (_disposed || _installProgress.isClosed) return;
-    final next = Map<String, PluginInstallProgress>.from(_installProgress.value);
+    if (_disposed || _installStates.isClosed) return;
+    final next = Map<String, PluginInstallState>.from(_installStates.value);
     switch (phase) {
       case PluginInstallPhase.completed || PluginInstallPhase.failed:
-        // The terminal outcome is carried by the refreshed snapshot (and, on
-        // failure, the harness' unchanged setup state), so the transient
-        // progress entry is dropped here.
-        next.remove(pluginId);
+        if (phase == PluginInstallPhase.failed) {
+          next[pluginId] = const PluginInstallState.failed();
+        } else {
+          next.remove(pluginId);
+        }
         // The bridge's terminal event is the authoritative outcome, so report
         // it here rather than at the tap — but only for an install this app
         // started, since every connected surface sees the same event. While
@@ -481,38 +487,43 @@ class PluginManagementService({
           PluginInstallPhase.verifying ||
           PluginInstallPhase.extracting ||
           PluginInstallPhase.finalizing:
-        next[pluginId] = PluginInstallProgress(phase: phase, percent: percent);
+        next[pluginId] = PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: phase, percent: percent),
+        );
       case PluginInstallPhase.unknown:
         // A newer bridge phase: keep the row in an in-progress state without
         // claiming a phase this app can name.
-        next[pluginId] = const PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null);
+        next[pluginId] = const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+        );
     }
-    _publishInstallProgress(next);
+    _publishInstallStates(next);
   }
 
   /// Drops [pluginId]'s progress entry so its Install row is tappable again.
   /// Only meaningful once authorship has been released, since
-  /// [_publishInstallProgress] re-adds a synthetic entry for tracked installs.
+  /// [_publishInstallStates] re-adds a synthetic entry for tracked installs.
   void _releaseInstallRow({required String pluginId}) {
-    _publishInstallProgress(
-      Map<String, PluginInstallProgress>.from(_installProgress.value)..remove(pluginId),
-    );
+    if (_installStates.value[pluginId] is! PluginInstallInProgress) return;
+    _publishInstallStates(Map<String, PluginInstallState>.from(_installStates.value)..remove(pluginId));
   }
 
   /// Publishes [progress] plus a synthetic entry for every install this app
   /// started that the bridge has not reported on yet, so the row stays busy for
   /// the whole window between the tap and the first progress event — which
   /// spans the command's own round trip and the gap after it.
-  void _publishInstallProgress(Map<String, PluginInstallProgress> progress) {
-    if (_disposed || _installProgress.isClosed) return;
-    final next = Map<String, PluginInstallProgress>.from(progress);
+  void _publishInstallStates(Map<String, PluginInstallState> progress) {
+    if (_disposed || _installStates.isClosed) return;
+    final next = Map<String, PluginInstallState>.from(progress);
     for (final pluginId in _selfStartedInstalls) {
       next.putIfAbsent(
         pluginId,
-        () => const PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+        () => const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+        ),
       );
     }
-    _installProgress.add(Map<String, PluginInstallProgress>.unmodifiable(next));
+    _installStates.add(Map<String, PluginInstallState>.unmodifiable(next));
   }
 
   void _reportInstallOutcome({required PluginInstallPhase phase}) {
@@ -539,7 +550,7 @@ class PluginManagementService({
     );
   }
 
-  void _clearInstallProgress() {
+  void _clearInstallStates() {
     // A new connection or bridge identity makes any pending outcome
     // unattributable, so authorship is forgotten with the progress itself. The
     // in-flight set goes too, otherwise a command still awaiting its response
@@ -547,8 +558,8 @@ class PluginManagementService({
     _selfStartedInstalls.clear();
     _pendingInstallOutcomes.clear();
     _installRequestsInFlight.clear();
-    if (_disposed || _installProgress.isClosed || _installProgress.value.isEmpty) return;
-    _installProgress.add(const {});
+    if (_disposed || _installStates.isClosed || _installStates.value.isEmpty) return;
+    _installStates.add(const {});
   }
 
   void _markStale() {
@@ -621,7 +632,7 @@ class PluginManagementService({
     final captured = _captureRequest(staleGeneration: _staleGeneration);
     final result = await request();
     if (!_isConnectionFenceCurrent(captured.fence)) {
-      await _refreshAfterUncertainMutation();
+      await _refreshAfterMutation();
       return const PluginManagementMutationResult.uncertain();
     }
     switch (result) {
@@ -632,13 +643,21 @@ class PluginManagementService({
           consumeStalenessThrough: captured.fence.staleGeneration,
           retainSupportedOnFailure: false,
         );
-        if (publication != _PublicationOutcome.applied) {
-          await _refreshAfterUncertainMutation();
-          return const PluginManagementMutationResult.uncertain();
+        if (publication == _PublicationOutcome.applied) return result;
+
+        await _refreshAfterMutation();
+        // An intervening publication rejects this snapshot, not the correlated
+        // acknowledgment. Recheck identity after reconciliation: that GET can
+        // itself discover a replacement bridge, or outlive the connection.
+        if (publication == _PublicationOutcome.superseded &&
+            _isConnectionFenceCurrent(captured.fence) &&
+            _activeBridgeIdentityKnown &&
+            _activeBridgeId == response.bridgeId) {
+          return result;
         }
-        return result;
+        return const PluginManagementMutationResult.uncertain();
       case PluginManagementMutationResultUncertain():
-        await _refreshAfterUncertainMutation();
+        await _refreshAfterMutation();
         return result;
       case PluginManagementMutationResultNotFound() ||
           PluginManagementMutationResultConflict() ||
@@ -647,7 +666,7 @@ class PluginManagementService({
     }
   }
 
-  Future<void> _refreshAfterUncertainMutation() async {
+  Future<void> _refreshAfterMutation() async {
     _markStale();
     await (_refreshTail ?? Future<void>.value());
   }
@@ -682,6 +701,14 @@ class PluginManagementService({
     required bool retainSupportedOnFailure,
   }) {
     if (!_isConnectionFenceCurrent(captured.fence)) return _PublicationOutcome.fenced;
+    // Identity changes invalidate every captured request, even when a newer
+    // publication already prevents this response from replacing the snapshot.
+    if (candidate case PluginManagementLoadResultSupported(:final response)
+        when _responseIdentitySupersedesRequest(response: response, captured: captured)) {
+      _invalidateBridgeIdentityFence();
+      _rearmStale();
+      return _PublicationOutcome.identitySuperseded;
+    }
     if (_publicationGeneration != captured.fence.publicationGeneration) {
       _rearmStale();
       return _PublicationOutcome.superseded;
@@ -692,13 +719,20 @@ class PluginManagementService({
       case PluginManagementLoadResultLoading():
         break;
       case PluginManagementLoadResultSupported(:final response):
-        if (_responseIdentitySupersedesRequest(response: response, captured: captured)) {
-          _invalidateBridgeIdentityFence();
-          _rearmStale();
-          return _PublicationOutcome.identitySuperseded;
-        }
         _activeBridgeIdentityKnown = true;
         _activeBridgeId = response.bridgeId;
+        final installs = Map<String, PluginInstallState>.from(_installStates.value);
+        for (final plugin in response.plugins) {
+          final runtimeInstalled =
+              plugin.setup.state == PluginSetupState.ready ||
+              plugin.setup.state == PluginSetupState.authenticationRequired;
+          if (runtimeInstalled && installs[plugin.setup.id] is PluginInstallFailed) {
+            installs.remove(plugin.setup.id);
+          }
+        }
+        if (installs.length != _installStates.value.length) {
+          _publishInstallStates(installs);
+        }
       case PluginManagementLoadResultUnsupported():
         _forgetActiveBridgeIdentity();
       case PluginManagementLoadResultFailure(:final error):
@@ -751,7 +785,7 @@ class PluginManagementService({
     _publicationGeneration++;
     // Progress belongs to the bridge connection that reported it; a new
     // connection or bridge identity re-reports whatever is still running.
-    _clearInstallProgress();
+    _clearInstallStates();
     _clearAuthentications();
     _snapshots.add(const PluginManagementLoadResult.loading());
   }
@@ -764,7 +798,7 @@ class PluginManagementService({
     await _subscriptions.dispose();
     await _refreshTail;
     await _snapshots.close();
-    await _installProgress.close();
+    await _installStates.close();
     await _authenticationChallenges.close();
     await _authenticationTerminalController.close();
   }
@@ -780,20 +814,6 @@ int? _parseIdleTimeoutMins({required PluginManagementIdleTimeoutInput input}) {
   };
 }
 
-/// One harness' in-flight managed runtime install, as last reported.
-@immutable
-class const PluginInstallProgress({
-  required final PluginInstallPhase phase,
-  /// Download completion, only present while downloading with a known total.
-  required final int? percent,
-}) {
-  @override
-  bool operator ==(Object other) => other is PluginInstallProgress && other.phase == phase && other.percent == percent;
-
-  @override
-  int get hashCode => Object.hash(phase, percent);
-}
-
 bool _isLoopbackHost(String host) {
   final normalized = host.toLowerCase();
   if (normalized == "localhost" || normalized == "::1") return true;
@@ -805,9 +825,19 @@ bool _isLoopbackHost(String host) {
   });
 }
 
-enum _RefreshOutcome() { applied, failed, superseded, fenced }
+enum _RefreshOutcome() {
+  applied,
+  failed,
+  superseded,
+  fenced,
+}
 
-enum _PublicationOutcome() { applied, fenced, superseded, identitySuperseded }
+enum _PublicationOutcome() {
+  applied,
+  fenced,
+  superseded,
+  identitySuperseded,
+}
 
 sealed class const PluginManagementCommandPlan() {
   const factory request({
@@ -817,11 +847,15 @@ sealed class const PluginManagementCommandPlan() {
   const factory invalidInput() = PluginManagementCommandPlanInvalidInput;
 }
 
-final class const PluginManagementCommandPlanRequest({required final PluginIdleTimeoutUpdateRequest request}) extends PluginManagementCommandPlan;
+final class const PluginManagementCommandPlanRequest({required final PluginIdleTimeoutUpdateRequest request})
+    extends PluginManagementCommandPlan;
 
 final class const PluginManagementCommandPlanInvalidInput() extends PluginManagementCommandPlan;
 
-enum PluginManagementForceAction() { disable, restart }
+enum PluginManagementForceAction() {
+  disable,
+  restart,
+}
 
 sealed class const PluginManagementForceAssessment() {
   const factory requiresConfirmation({
@@ -831,7 +865,9 @@ sealed class const PluginManagementForceAssessment() {
   const factory notForceable() = PluginManagementForceAssessmentNotForceable;
 }
 
-final class const PluginManagementForceAssessmentRequiresConfirmation({required final PluginLifecycleCommandRequest request}) extends PluginManagementForceAssessment;
+final class const PluginManagementForceAssessmentRequiresConfirmation({
+  required final PluginLifecycleCommandRequest request,
+}) extends PluginManagementForceAssessment;
 
 final class const PluginManagementForceAssessmentNotForceable() extends PluginManagementForceAssessment;
 

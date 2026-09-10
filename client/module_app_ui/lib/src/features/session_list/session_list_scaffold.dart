@@ -21,6 +21,7 @@ class const SessionListScaffold({
   required final Widget archivedEmptyState,
   required final VoidCallback? onNewSession,
   required final VoidCallback? onBack,
+  required final VoidCallback? onOpenArchived,
   required final Widget? connectionBanner,
 }) extends StatelessWidget {
   static const double _newTaskButtonBaseClearance = 96;
@@ -46,7 +47,7 @@ class const SessionListScaffold({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = context.watch<SessionListCubit>().state;
-    final showArchived = state is SessionListLoaded && state.showArchived;
+    final showArchived = state is SessionListLoaded && (state.filter != SessionListFilter.active);
     final isRefreshing = state is SessionListLoaded && state.isRefreshing;
     final catalogScan = state is SessionListLoaded ? state.catalogScan : const CatalogRescanState.idle();
 
@@ -68,12 +69,7 @@ class const SessionListScaffold({
           // variant), replacing the old filled/outlined Material toggle.
           iconColor: showArchived ? context.prego.colors.bgBrandSolid : null,
           semanticLabel: loc.sessionListToggleArchived,
-          onPressed: () {
-            final cubit = context.read<SessionListCubit>();
-            if (cubit.state is SessionListLoaded) {
-              cubit.toggleArchived();
-            }
-          },
+          onPressed: onOpenArchived,
         ),
       ],
       floatingActionButton: onNewSession == null

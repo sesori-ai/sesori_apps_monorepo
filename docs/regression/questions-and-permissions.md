@@ -56,6 +56,11 @@ reaches the backend so the turn continues.
   persist process-local dialog promises. Decorative extension UI is ignored;
   bounded `notify` messages use the existing toast event attributed to their
   owning session, so another session or an unrelated route does not present them.
+- Antigravity converts valid `interaction_` permission requests into one single-choice question while preserving exact
+  advertised labels and opaque option IDs; duplicate labels fail closed. Ordinary permissions expose exactly one
+  unambiguous warning-free `allow_once` and an optional warning-free `reject_once`. Persistent `allow_always` choices
+  are always excluded as a separate policy, and any choice of any kind with non-null `agy.security.warning` metadata is
+  independently excluded. Invalid or ambiguous input cancels instead of guessing, escalating, or leaving hidden work.
 - GitHub Copilot uses standard ACP permission requests correlated to their tool
   call. The client always presents Once and Reject for a pending permission and
   presents Always only when the request offers `allow_always`. The registry maps
@@ -70,8 +75,9 @@ reaches the backend so the turn continues.
   v1 does not offer allow-always.
   DeepSeek extension questions preserve ordered question IDs, single/multiple/
   custom answer variants, plan-review fixed choices, and supplemental free-form
-  detail. Abort, process exit, and disposal cancel pending requests and reject
-  late replies.
+  detail. Native input cancellation clears only earlier requests on the ordered
+  stream; later requests survive even when they reuse a question ID. Abort,
+  process exit, and disposal cancel pending requests and reject late replies.
 - Grok runs in its normal ask mode without `--always-approve` or `--yolo`.
   Standard ACP permissions preserve the exact session, tool call, and offered
   option IDs; Once, Reject, and every scope the request actually advertises stay
@@ -121,15 +127,21 @@ reaches the backend so the turn continues.
   that session, sends replies through the owning session cubit, and dismisses it
   when the pending request settles; shell routing must not duplicate or bypass
   that ownership.
+- When management blocks the session's harness, pending banners and new response
+  dialogs are hidden. A dialog already open on either surface closes without
+  answering or rejecting; its pending model remains until an authoritative
+  refresh or settlement event. Cubit reply and rejection seams independently
+  refuse stale callbacks,
+  including completions from another surface, until interaction is usable again.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
-| L2 Routine | Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, abort, late reply, and disposal. |
+| L1 Smoke | Automated shared presentation and desktop shell coverage: question and permission modals render through the shared session-detail owner, and a pending desktop question opens over its session. A blocked fixture exposes no pending banner/dialog; changing a loaded state to blocked closes an open dialog without a response. Live plugin, one representative plugin: a permission raised by a real turn appears as pending and one reply lets the turn proceed. |
+| L2 Routine | Automated client: blocked question-answer and permission-reply entry points return refusal without remote dispatch. Live plugin, representative: question variants (single, multiple, custom, reject), typed ACP scalar forms where supported, unsupported-form decline, abort cancellation, per-session and per-project pending listing, repeated or unknown request ids answered without corrupting state. Automated Codex coverage: structured multi-question choices, explicit secret-input refusal, async answers during a turn and after completion, retry after failed submission, child routing, teardown, and async acknowledgement omission from history. Automated Pi coverage: select/confirm/input/editor prompt placement, exact replies, and timeout cleanup. Automated DeepSeek coverage: exact two-session question correlation, permission once/reject, ordered multi/custom/free-form and plan-review answers, invalid-answer settlement, old-input → cancel → later-input ordering with reused question IDs and held prompt writes, abort, late reply, and disposal. |
 | L3 Release | Client end to end on each release-target client surface that exposes session detail, every supporting production plugin: every request kind the plugin exposes, per-plugin "always" availability, child attribution, archived-session refusal, and pending requests suppressing completion notifications until resolved. Copilot covers the always-visible Once/Reject actions, Always only when advertised, exact selected-or-cancelled ACP outcomes, and an honestly absent question capability. Grok covers a real ask-mode tool request, Once and Reject plus every advertised scope, exact session/tool correlation, abort cleanup, and no implicit auto-approval. |
-| L4 Extended | Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
+| L4 Extended | Client end to end on both product surfaces: disable/restart or invalidate authentication from the other surface while a question or permission dialog is open; no answer is sent, both surfaces converge on read-only, and refreshed pending state returns only after recovery. Relay integration, every supporting production plugin: per-session empty lists while stopped or terminally failed, project-wide question unavailability with no active plugin, pending state re-read after restart, competing replies to one request, two logical clients observing one request and its retirement, and reconnect inside the replay window. |
 | L5 Full | Headless bridge and live plugin for malformed requests and degenerate option sets; packaged or external on alternate client platforms for an older bridge not declaring "always". Every supporting production plugin where applicable. |
 
 ## Exploration Guidance
@@ -138,7 +150,10 @@ Vary which backend raises the request and how it is provoked, the answer kind,
 the answer order when several are outstanding, and whether the answer comes from
 the request's own session view, a parent view, or a second client. Vary whether
 the session is fresh, resumed after a bridge restart, or reopened cold. Prefer a
-different combination than the previous recorded run. For Copilot, provoke a
+different combination than the previous recorded run. For Antigravity, vary an
+ordinary permission and `interaction_` question, warning-bearing once/reject
+options, persistent options without warnings, duplicate labels/IDs, malformed
+answers, two sessions and process cleanup. For Copilot, provoke a
 real tool permission, exercise Once and Reject plus Always when surfaced, include
 an upstream option set lacking `allow_once` or reject to confirm safe
 cancellation, abort with a request pending, and confirm the management/session
@@ -146,9 +161,18 @@ capability surfaces do not claim questions. For Grok, provoke permissions from
 an ordinary text turn, exercise Once and Reject plus every scope actually
 advertised, vary two sessions and tool calls, abort with a request pending, and
 repeat after process restart without enabling approval-bypass launch flags.
+For DeepSeek, abort with input pending, immediately provoke another question,
+and confirm the later request remains answerable. Automated stream fixtures also
+exercise reused question IDs and old-input → cancel → later-input ordering while
+the prompt write is held, proving cancellation does not remove the later request.
 
 ## Failure Signals
 
+- A blocked chat shows a pending banner, opens a response dialog, or accepts a
+  late answer/rejection callback. A dialog remains open through the transition,
+  closes by answering, clears pending data before either an authoritative
+  settlement event or refresh, or reappears before interaction prerequisites
+  recover.
 - A permission or question reply stalls behind a prompt sent to the same busy
   session instead of the accepted bridge send releasing its session lane
   immediately. For DeepSeek, the underlying `session/prompt` remains pending
@@ -168,7 +192,8 @@ repeat after process restart without enabling approval-bypass launch flags.
   prefill; replies with the wrong wire variant; survives timeout/process cleanup;
   or appears outside its imported display root or owning project.
 - A DeepSeek question loses supplemental detail, changes answer ordering or
-  scope, accepts custom plan-review input, or survives abort/process cleanup.
+  scope, accepts custom plan-review input, survives abort/process cleanup, or
+  an ordered input cancellation clears a later reused-ID question.
 - A resolved request stays visible, keeps suppressing notifications, or returns
   after reconnect.
 - One failed backend resolution prevents another pending prompt from clearing,
@@ -183,6 +208,8 @@ repeat after process restart without enabling approval-bypass launch flags.
   marker, or an auto-approved permission reply advances it.
 - Reading pending state starts an intentionally stopped backend.
 - An archived session accepts a reply.
+- Antigravity displays or dispatches a persistent choice, displays any warning-bearing choice, escalates Once, changes
+  an opaque option ID, guesses an ambiguous label, or leaves malformed input pending after cancellation/cleanup.
 - Copilot offers a question surface or waits for a Sesori answer to an upstream
   `ask_user` interaction that the CLI did not forward over ACP.
 - A Grok request is silently approved by launch policy, loses its session or tool
@@ -199,6 +226,8 @@ repeat after process restart without enabling approval-bypass launch flags.
   is not a failure.
 - GitHub Copilot CLI currently does not forward `ask_user` over ACP
   (`github/copilot-cli#2109`); only its standard permission requests are in scope.
+- Antigravity intentionally omits persistent approvals and independently filters every non-null security-warning
+  choice. This is a Sesori safety policy, not a claim that the upstream method or scope is unsupported.
 - Grok permission scopes are tool/account dependent. A scope not advertised by
   the live request is absent capability, not failed coverage; Once and Reject
   remain required.
@@ -214,10 +243,13 @@ repeat after process restart without enabling approval-bypass launch flags.
 
 - Bridge pending-interaction and archived-validator services; per-plugin
   approval registries; shared pending permission/question and reply models.
-- Shared client permission and question surfaces and their auto-dismiss behavior:
+- Shared client permission and question surfaces, availability gating and
+  auto-dismiss behavior: `client/module_core/lib/src/cubits/session_detail/` and
   `client/module_app_ui/lib/src/features/session_detail/`, composed by
   `client/app/lib/features/session_detail/` and
   `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`.
+- `bridge/sesori_plugin_antigravity/lib/src/services/antigravity_interaction_service.dart`, its mapper/registry tests,
+  and the shared ACP pending registry.
 - `bridge/sesori_plugin_copilot/lib/src/copilot_plugin_impl.dart`,
   `bridge/sesori_plugin_grok/`, and the shared ACP approval registry.
 - Owning tests for pending interaction, reply routes, and pending state without

@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter/foundation.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -20,13 +18,19 @@ class const DesktopSessionDetailScreen({
   required final VoidCallback onBack,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+  required final VoidCallback onOpenHarnessSettings,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createSessionDetailCubit(locator: getIt, sessionId: sessionId, projectId: projectId),
+      create: (_) =>
+          createSessionDetailCubit(claimProjectView: true, locator: getIt, sessionId: sessionId, projectId: projectId),
       child: DesktopComposerPresentationScope(
-        child: _SessionActivityAnalyticsOwner(
+        child: SessionDetailActivityOwner(
+          routeSource: getIt<RouteSource>(),
+          lifecycleSource: getIt<LifecycleSource>(),
+          productAnalyticsService: getIt<ProductAnalyticsService>(),
+          expectedDetailRoute: AppRouteDef.sessionDetail,
           child: DesktopSessionDetailView(
             projectId: projectId,
             sessionId: sessionId,
@@ -35,6 +39,7 @@ class const DesktopSessionDetailScreen({
             onBack: onBack,
             onShowDiffs: onShowDiffs,
             onOpenSession: onOpenSession,
+            onOpenHarnessSettings: onOpenHarnessSettings,
             messageImageRepository: getIt.get<MessageImageRepository>,
             imageSaver: getIt.get<ImageSaver>,
             imageClipboard: getIt.get<ImageClipboard>,
@@ -56,6 +61,7 @@ class const DesktopSessionDetailView({
   required final VoidCallback onBack,
   required final VoidCallback onShowDiffs,
   required final SessionDetailSessionOpener onOpenSession,
+  required final VoidCallback onOpenHarnessSettings,
   required final SessionDetailCapabilityProvider<MessageImageRepository> messageImageRepository,
   required final SessionDetailCapabilityProvider<ImageSaver> imageSaver,
   required final SessionDetailCapabilityProvider<ImageClipboard> imageClipboard,
@@ -72,7 +78,9 @@ class const DesktopSessionDetailView({
       canShareImages: canShareImages,
       openExternalLink: openDesktopExternalLink,
       openSession: onOpenSession,
+      openHarnessSettings: onOpenHarnessSettings,
       child: SessionDetailBody(
+        onClose: null,
         projectId: projectId,
         sessionId: sessionId,
         sessionTitle: sessionTitle,
@@ -89,78 +97,4 @@ class const DesktopSessionDetailView({
       ),
     );
   }
-}
-
-class const _SessionActivityAnalyticsOwner({required final Widget child}) extends StatefulWidget {
-  @override
-  State<_SessionActivityAnalyticsOwner> createState() => _SessionActivityAnalyticsOwnerState();
-}
-
-class _SessionActivityAnalyticsOwnerState() extends State<_SessionActivityAnalyticsOwner> {
-  SessionActivityAnalyticsListener? _listener;
-  StreamSubscription<AppRouteDef?>? _routeSubscription;
-  AppRouteDef? _topRoute;
-  bool? _wasRouteVisible;
-
-  @override
-  void didChangeDependencies() {
-    super.didChangeDependencies();
-    if (_routeSubscription == null) {
-      final routeSource = getIt<RouteSource>();
-      _topRoute = routeSource.currentRoute;
-      _routeSubscription = routeSource.currentRouteStream.listen((route) {
-        _topRoute = route;
-        _updateRouteVisibility();
-      });
-    }
-    _updateRouteVisibility();
-  }
-
-  void _updateRouteVisibility() {
-    final isRouteVisible = (ModalRoute.of(context)?.isCurrent ?? false) && !_isCoveredBySettings;
-    final cubit = context.read<SessionDetailCubit>();
-    if (_wasRouteVisible != isRouteVisible) {
-      cubit.setRouteVisible(isVisible: isRouteVisible);
-    }
-    _wasRouteVisible = isRouteVisible;
-    final listener = _listener;
-    if (listener == null) {
-      _listener = SessionActivityAnalyticsListener(
-        sessionDetailCubit: cubit,
-        lifecycleSource: getIt<LifecycleSource>(),
-        productAnalyticsService: getIt<ProductAnalyticsService>(),
-        initialRouteVisible: isRouteVisible,
-      );
-    } else {
-      listener.setRouteVisible(isVisible: isRouteVisible);
-    }
-  }
-
-  bool get _isCoveredBySettings {
-    return switch (_topRoute) {
-      AppRouteDef.settings ||
-      AppRouteDef.settingsNotifications ||
-      AppRouteDef.settingsProfile ||
-      AppRouteDef.settingsHarnesses => true,
-      null ||
-      AppRouteDef.splash ||
-      AppRouteDef.login ||
-      AppRouteDef.projects ||
-      AppRouteDef.sessions ||
-      AppRouteDef.newSession ||
-      AppRouteDef.sessionDetail ||
-      AppRouteDef.sessionDiffs => false,
-    };
-  }
-
-  @override
-  void dispose() {
-    final listener = _listener;
-    if (listener != null) unawaited(listener.dispose());
-    unawaited(_routeSubscription?.cancel());
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }

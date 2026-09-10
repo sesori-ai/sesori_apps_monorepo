@@ -1144,6 +1144,65 @@ void main() {
     expect(responseById["external"]?.hasIdleTimeoutOverride, isTrue);
   });
 
+  test("named refresh commands overlap and join only their own slot", () async {
+    final runtime = createRegisteredTestPluginRuntime(pluginIds: const ["one", "two"]);
+    final gates = {"one": Completer<void>(), "two": Completer<void>()};
+    final repository = _GatedInspectionRepository(runtime: runtime, gates: gates);
+    final service =
+        PluginLifecycleService(
+          lifecycleRepository: repository,
+          preferredDefaultPluginId: legacyMissingPluginId,
+          bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+          idleTimerScheduler: const PluginIdleTimerScheduler(),
+          bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+          plugins: [
+            for (final id in gates.keys)
+              (
+                id: id,
+                displayName: id,
+                activationPolicy: PluginActivationPolicy.onDemand,
+                residencyPolicy: PluginResidencyPolicy.transient,
+                sessionOptionsScope: PluginSessionOptionsScope.project,
+                managementCapabilities: defaultManagementCapabilities,
+                supportsPromptAttachments: false,
+              ),
+          ],
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupNotInspected(), "two": PluginSetupNotInspected()},
+        );
+    addTearDown(() async {
+      await service.dispose();
+      await runtime.dispose();
+    });
+    final one = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+    final two = service.command(pluginId: "two", request: const PluginLifecycleCommandRequest.refresh());
+    final joined = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+    expect(joined, same(one));
+    await _waitUntil(() => repository.inspected.length == 2);
+    expect(repository.inspected, ["one", "two"]);
+    expect(
+      () => service.command(
+        pluginId: "one",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      ),
+      throwsA(isA<PluginManagementConflictException>()),
+    );
+    gates["two"]!.complete();
+    final second = await two;
+    expect(
+      second.plugins.singleWhere((plugin) => plugin.setup.id == "two").setup.state,
+      PluginSetupState.ready,
+    );
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.enable()),
+      throwsA(isA<PluginManagementConflictException>()),
+    );
+    gates["one"]!.complete();
+    await one;
+    expect(service.managementSnapshot.plugins.every((plugin) => plugin.runtimeState.isEnabled), isTrue);
+  });
+
   test("idle timeout writes serialize and preserve unknown plugin settings", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
@@ -1935,7 +1994,7 @@ void main() {
     expect(settingsRepository.settings.plugins.isDisabled(pluginId: "one"), isTrue);
   });
 
-  test("an installed runtime that is still setup-blocked does not report completed", () async {
+  test("an installed runtime needing login reports completed without starting the harness", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Log in"),
       inspectionGate: null,
@@ -1961,9 +2020,12 @@ void main() {
 
     expect(progress.map((update) => update.phase).toList(), const [
       PluginInstallPhase.finalizing,
-      PluginInstallPhase.failed,
+      PluginInstallPhase.completed,
     ]);
+    expect(progress.last.message, isNull);
     expect(repository.startCalls, isZero);
+    expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.authenticationRequired);
+    expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.blocked);
   });
 
   test("a duplicate install joins and a different command conflicts while installing", () async {
@@ -2553,6 +2615,48 @@ void main() {
     await _waitFor(() => repository.stopCalls == 1);
   });
 
+  test("import-only generation uses five-minute suspension cap until promoted", () async {
+    final repository = _IdleLifecycleRepository();
+    addTearDown(repository.dispose);
+    final timerScheduler = _ControllablePluginIdleTimerScheduler();
+    final service = PluginLifecycleService(
+      lifecycleRepository: repository,
+      preferredDefaultPluginId: legacyMissingPluginId,
+      bridgeSettingsRepository: createTestBridgeSettingsRepository(),
+      idleTimerScheduler: timerScheduler,
+      bridgeIdProvider: FakeBridgeIdProvider("br_test1234"),
+      plugins: const [
+        (
+          id: "one",
+          displayName: "One",
+          activationPolicy: PluginActivationPolicy.onDemand,
+          residencyPolicy: PluginResidencyPolicy.transient,
+          sessionOptionsScope: PluginSessionOptionsScope.project,
+          managementCapabilities: defaultManagementCapabilities,
+          supportsPromptAttachments: false,
+        ),
+      ],
+    );
+    addTearDown(service.dispose);
+    service.initialize(disabledPluginIds: const {}, setupById: const {"one": PluginSetupReady()});
+
+    repository.publish(
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+      generationResidency: PluginGenerationResidency.importOnly,
+    );
+    await _waitFor(() => timerScheduler.timers.isNotEmpty);
+    expect(timerScheduler.timers.last.duration, const Duration(minutes: 5));
+
+    repository.publish(
+      workState: PluginWorkState.idle,
+      leaseCount: 0,
+      generationResidency: PluginGenerationResidency.normal,
+    );
+    await _waitFor(() => timerScheduler.timers.length == 2);
+    expect(timerScheduler.timers.last.duration, const Duration(minutes: defaultPluginIdleTimeoutMins));
+  });
+
   test("non-positive idle timeout keeps a demanded plugin resident", () async {
     final repository = _IdleLifecycleRepository();
     addTearDown(repository.dispose);
@@ -2764,6 +2868,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
     required PluginWorkState workState,
     required int leaseCount,
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
+    PluginGenerationResidency generationResidency = PluginGenerationResidency.normal,
   }) {
     _current = [
       _snapshot(
@@ -2771,6 +2876,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
         workState: workState,
         leaseCount: leaseCount,
         transition: transition,
+        generationResidency: generationResidency,
       ),
     ];
     _snapshots.add(snapshot);
@@ -2795,6 +2901,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
+        generationResidency: PluginGenerationResidency.normal,
       ),
     );
   }
@@ -2811,6 +2918,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
     PluginRuntimeTransition transition = PluginRuntimeTransition.none,
     PluginRuntimeAccessGate accessGate = PluginRuntimeAccessGate.enabled,
     bool startAllowed = true,
+    PluginGenerationResidency generationResidency = PluginGenerationResidency.normal,
   }) {
     return PluginRuntimeSnapshot(
       pluginId: "one",
@@ -2823,6 +2931,7 @@ class _IdleLifecycleRepository({PluginRuntimeState initialState = PluginRuntimeS
       workState: workState,
       leaseCount: leaseCount,
       transition: transition,
+      generationResidency: generationResidency,
     );
   }
 }
@@ -2845,6 +2954,7 @@ class _ConflictingDisableLifecycleRepository() extends _IdleLifecycleRepository 
         workState: PluginWorkState.busy,
         leaseCount: 0,
         transition: PluginRuntimeTransition.none,
+        generationResidency: PluginGenerationResidency.normal,
       ),
       reasons: const [PluginRuntimeConflictReason.busy],
     );
@@ -2871,6 +2981,7 @@ class _CommitFailingDisableLifecycleRepository() extends _IdleLifecycleRepositor
         workState: PluginWorkState.unknown,
         leaseCount: 0,
         transition: PluginRuntimeTransition.stopping,
+        generationResidency: PluginGenerationResidency.normal,
       ),
     );
   }
@@ -2913,6 +3024,7 @@ class _CommandLifecycleRepository({
     workState: PluginWorkState.unknown,
     leaseCount: 0,
     transition: PluginRuntimeTransition.none,
+    generationResidency: PluginGenerationResidency.normal,
   );
   int inspectCalls = 0;
   int startCalls = 0;
@@ -2992,6 +3104,7 @@ class _CommandLifecycleRepository({
           ? PluginRuntimeState.active
           : PluginRuntimeState.dormant,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
   }
@@ -3011,6 +3124,7 @@ class _CommandLifecycleRepository({
       startAllowed: _current.startAllowed,
       state: _current.state,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
     return {"one": inspectionResult};
@@ -3029,6 +3143,7 @@ class _CommandLifecycleRepository({
       startAllowed: _current.startAllowed,
       state: PluginRuntimeState.active,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
     return PluginRuntimeCommandApplied(snapshot: _runtimeSnapshot());
@@ -3055,6 +3170,7 @@ class _CommandLifecycleRepository({
       startAllowed: _current.startAllowed,
       state: PluginRuntimeState.stopping,
       transition: PluginRuntimeTransition.stopping,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
     return PluginRuntimeCommandApplied(snapshot: _runtimeSnapshot());
@@ -3068,6 +3184,7 @@ class _CommandLifecycleRepository({
       startAllowed: false,
       state: PluginRuntimeState.disabled,
       transition: PluginRuntimeTransition.none,
+      generationResidency: PluginGenerationResidency.normal,
     );
     _publish();
   }
@@ -3081,6 +3198,7 @@ class _CommandLifecycleRepository({
     required bool startAllowed,
     required PluginRuntimeState state,
     required PluginRuntimeTransition transition,
+    required PluginGenerationResidency generationResidency,
   }) {
     return PluginRuntimeSnapshot(
       pluginId: "one",
@@ -3093,6 +3211,7 @@ class _CommandLifecycleRepository({
       workState: PluginWorkState.unknown,
       leaseCount: 0,
       transition: transition,
+      generationResidency: generationResidency,
     );
   }
 
@@ -3107,6 +3226,7 @@ class _CommandLifecycleRepository({
     workState: _current.workState,
     leaseCount: _current.leaseCount,
     transition: _current.transition,
+    generationResidency: _current.generationResidency,
   );
 
   void _publish() => _snapshots.add(snapshot);
@@ -3194,4 +3314,20 @@ Future<void> _waitUntil(bool Function() predicate) async {
     await Future<void>.delayed(Duration.zero);
   }
   throw StateError("condition did not become true");
+}
+
+class _GatedInspectionRepository({required super.runtime, required final Map<String, Completer<void>> gates})
+    extends PluginLifecycleRepository {
+  final List<String> inspected = [];
+
+  @override
+  Future<Map<String, PluginSetupStatus>> inspect({
+    required Set<String> pluginIds,
+    required bool markUnselectedNotInspected,
+  }) async {
+    final id = pluginIds.single;
+    inspected.add(id);
+    await gates[id]!.future;
+    return await super.inspect(pluginIds: pluginIds, markUnselectedNotInspected: markUnselectedNotInspected);
+  }
 }

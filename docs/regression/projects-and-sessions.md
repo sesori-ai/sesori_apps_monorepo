@@ -52,21 +52,52 @@ state.
   routable, which is not the same as enabled: a blocked or failed harness is
   refused by the bridge and is left out. The harness settings surface offers the
   same import for one named harness.
-- One scan is one row above the list, however many harnesses take part. Between
-  dispatch and the first progress event it can name neither a harness nor a
-  count and says only that it is starting; from that event on it names the
-  harness being read and how many sessions it has seen so far. It offers to
-  cancel while it runs. Starting and running share the same Deep Scan
-  loading-card geometry, so the first progress event does not move the list, and
-  the row scrolls with the list rather than pinning. The entrance animation plays
-  once when a pull first reveals the row; later updates do not replay it, and the
-  scan indicator keeps animating until a terminal outcome replaces it. Android
-  Remove Animations and iOS Reduce Motion both hold the intentional first frame
-  without the entrance bounce, and the pull-caption invitation keeps only its
-  gentle opacity transition. Finished outcomes use the shared PREGO result-card
-  geometry, expanding rather than clipping at accessibility text sizes: a
-  success, warning, or error glow rises from the lower edge and the matching
-  tinted Dismiss action remains available until the result clears.
+- A dormant OpenCode import first attempts a direct metadata-only SQLite snapshot. A
+  successful snapshot must not resolve or start an OpenCode runtime, server, health
+  probe, CLI session listing, or REST API. It reads projects, project-directory
+  aliases, every root, and every descendant without the REST API's 100-row ceiling,
+  and does not read messages, parts, prompts, transcript content, or credentials.
+  The consumed schema is OpenCode v1.18.19's `project`, `project_directory`, and
+  `session` table shapes: additive columns are allowed, while incompatible required
+  columns, types, or values trigger the live-import fallback.
+  Complete discovery includes real global roots stored in ancestor directories and
+  retains non-global roots under their validated `project_id` when no recorded
+  directory alias matches; unlike the old project-list API, it does not exclude
+  global roots from their best matching project family.
+  The complete read-only transaction runs in a short-lived worker isolate so the
+  bridge isolate remains responsive to cancellation and bounded force-stop while
+  native SQLite finishes. The connection uses the live database and WAL normally
+  (never immutable mode or checkpointing), and performs no migration or mutation. Missing,
+  unreadable, malformed, incompatible, or unidentifiable data fails closed to the
+  existing live server import before any partial catalog publication. Explicit
+  `OPENCODE_DB` paths and `OPENCODE_DISABLE_CHANNEL_DB` are honored. Ordinary
+  non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
+  custom binary does not guess that default or a channel-specific filename. OpenCode
+  attach/no-auto-start mode always retains its existing server path.
+- One scan is one row above the list, however many harnesses take part. It names
+  only unfinished harnesses while preparing, distinguishes confirmed harness
+  startup from catalog reading, reports found-session counts during enumeration,
+  and says when results are being saved. Startup wording is driven only by a
+  fresh management snapshot for the same bridge; unknown or older metadata does
+  not infer it. After the same harness remains confirmed as starting for three
+  seconds, the row explains that scanning is waiting for startup and that the
+  user can keep browsing. This one-shot presentation timer resets on any phase
+  or harness change and never polls or changes bridge work. It offers to cancel
+  throughout live work. Every live phase shares the same Deep Scan loading-card
+  treatment, and the row scrolls with the list rather than pinning. The entrance
+  animation plays once when a pull first reveals the row; later updates do not
+  replay it, and the scan indicator keeps animating until a terminal outcome
+  replaces it. Android Remove Animations and iOS Reduce Motion both hold the
+  intentional first frame without the entrance bounce, and the pull-caption
+  invitation keeps only its gentle opacity transition. Finished outcomes use the
+  shared PREGO result-card geometry, expanding rather than clipping at
+  accessibility text sizes: a success, warning, or error glow rises from the
+  lower edge and the matching tinted Dismiss action remains available until the
+  result clears. Loading and every result state use a vertically centered 20px
+  leading mark with identical edge inset and icon-to-text gap. Titles do not
+  shift horizontally between states; at standard text size, icon and title
+  positions stay fixed vertically too. Enlarged text may grow the card without
+  changing those horizontal insets.
 - A scan the pull started is reported by that row alone: the pull raises no
   confirmation of its own, having run no ordinary refresh. A scan started from
   harness settings is the exception, because that surface has no row — it
@@ -187,8 +218,9 @@ state.
   a root also removes its `subagents/` directory; deleting a child removes its
   transcript and meta file.
 - A live Codex `subAgentActivity started` resolves the named thread through
-  `thread/read`, announces it under its direct parent with the parent's project
-  directory and Codex nickname (or agent path), and never depends on a missing
+  metadata-only `thread/read(includeTurns: false)`, announces it under its
+  direct parent with the parent's project directory and Codex nickname (or agent
+  path), and never depends on a missing
   child `thread/started`. Later child activity and title updates retain that
   parent. Connection startup restores persisted lifecycle ancestry before
   pending-input routing, and resuming a child restores the same mapper context.
@@ -218,6 +250,11 @@ state.
   preserves parent/child metadata, and never scans or imports normal
   `DSH_HOME/sessions`. Ordinary project/session list reads remain bridge-database
   reads after import; adapter JSONL is not a second normal catalog source.
+- Antigravity explicit import uses the isolated profile's bounded read-only `.meta` records to recover only UUID
+  session IDs and canonical absolute working directories. It never scans ordinary catalog reads, parses private SQLite
+  or brain content, reads tokens, mutates Google history, or replaces authoritative bridge/live attribution. The
+  plugin's one recovery batch is prepared once per cold live connection and existing bridge tombstones keep locally
+  deleted rows out of later import.
 - GitHub Copilot explicit import follows standard ACP `session/list` pagination,
   up to the bounded page limit, attributes committed rows to `copilot`, and then
   returns to bridge-database reads for ordinary listing. Sesori never scans
@@ -280,7 +317,10 @@ state.
 ## Exploration Guidance
 
 Vary the owning plugin, manual open versus import discovery, git and non-git
-folders, and whether the directory moved between runs. For Copilot, vary a
+folders, and whether the directory moved between runs. For Antigravity, vary
+fresh and cold-restarted connections, valid/malformed/duplicate `.meta` records,
+bridge/live attribution precedence, and a tombstoned retained Google session.
+For Copilot, vary a
 single-page and multi-page ACP catalog, unchanged re-import, cancellation,
 first-page failure, and a later-page failure after a prior committed import.
 For Grok, vary an empty and populated ACP catalog, persisted and live children,
@@ -339,6 +379,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Hiding destroys sessions, or a cancelled import destroys the committed catalog.
 - Desktop wide navigation recreates the session inventory on each selected
   detail/diff route, loses selection, or narrow navigation renders both panes.
+- Antigravity import parses SQLite/brain/token content, writes Google files, scans during an ordinary catalog read,
+  manufactures a cwd, replaces bridge/live attribution, repeats recovery within one connection, or resurrects a
+  tombstoned session.
 - A healthy Copilot import stops before cursor exhaustion, scans private on-disk
   history, or a first-page failure mutates the committed catalog. A later-page
   fail-soft import drops prior rows instead of only adding gathered observations
@@ -391,6 +434,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.
+- Antigravity discovery is limited to valid `.meta` records in its Sesori-owned isolated profile. Missing or changed
+  private metadata can reduce discovery/attribution; Sesori does not mutate or migrate Google's history format.
 - Copilot discovery is limited to sessions its public ACP catalog reports. Grok
   likewise requires each root to appear in its public ACP catalog, but augments
   those roots with child lineage from Grok's local persisted session tree. A

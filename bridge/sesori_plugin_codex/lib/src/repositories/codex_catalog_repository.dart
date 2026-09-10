@@ -324,6 +324,7 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
           if (candidate != null && candidate.isNotEmpty) model = candidate;
         case CodexRolloutResponseItemLineDto() ||
             CodexRolloutEventMessageLineDto() ||
+            CodexRolloutInterAgentCommunicationMetadataLineDto() ||
             CodexRolloutCompactedLineDto() ||
             CodexRolloutUnknownLineDto():
           break;

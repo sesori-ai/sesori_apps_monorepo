@@ -48,6 +48,7 @@ class const _MobileSettingsView() extends StatelessWidget {
       onOpenHarnesses: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.pushed),
       ),
+      onOpenDefaultInput: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
       additionalSettings: null,
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);

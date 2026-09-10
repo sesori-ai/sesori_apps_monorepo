@@ -114,17 +114,17 @@ void main() {
 
     await gesture.up();
     await tester.pump();
-    expect(find.text("Starting…", skipOffstage: false), findsOneWidget);
+    expect(find.text("Preparing Claude Code, Codex, and 1 other scans…", skipOffstage: false), findsOneWidget);
     expect(find.text("Scanning all harnesses", skipOffstage: false), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 650));
-    expect(find.text("Codex — 0 sessions"), findsOneWidget);
+    expect(find.text("Reading Codex sessions…"), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 750));
-    expect(find.text("Codex — 3 sessions"), findsOneWidget);
+    expect(find.text("Codex — 3 sessions found"), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 800));
-    expect(find.text("OpenCode — 8 sessions"), findsOneWidget);
+    expect(find.text("OpenCode — 8 sessions found"), findsOneWidget);
 
     await tester.pump(const Duration(milliseconds: 900));
     expect(find.text("Scan complete"), findsOneWidget);

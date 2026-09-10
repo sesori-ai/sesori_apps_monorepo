@@ -28,6 +28,16 @@ mechanism available to the agent, resolving the path from the repository root,
 before proceeding. If that path is absent, stop and report the missing handoff
 rather than assuming this Pi-only workflow covers other backends.
 
+## Normal release-check policy
+
+Target refreshes use normal release checks: the official stable release,
+verified hashes for all managed archives, isolated current-host install/version/
+protocol smoke checks, and focused package tests/analyzer. Do not require
+source-to-binary attestations, reproducible builds, or a multi-platform live
+probe matrix. Missing optional provenance evidence is a reporting limitation,
+not a blocker or a reason to ask for an exception on each update. Keep the
+compatibility minimum unchanged unless the user explicitly approves raising it.
+
 ## Scope and invariants
 
 Relevant production files normally include:
@@ -89,26 +99,16 @@ compatibility change:
    Download `SHA256SUMS` when present and confirm every line agrees with the
    GitHub asset digest. Do not guess mappings, accept a missing digest, flatten
    an archive, or invoke Pi's installer scripts.
-4. Verify source-to-artifact provenance before treating the assets as eligible
-   for pinning. Resolve both the current and candidate release tags to full,
-   immutable commit SHAs (`oldCommitSha` and `newCommitSha`) and record them
-   before diffing or downloading. Re-resolve the public tags immediately before
-   approval and require exact equality; if a tag moved, disappeared, or is
-   ambiguous, stop and restart the audit. Inspect the release workflow or other
-   published provenance for every asset. Accept an attestation only after a
-   trusted verifier cryptographically validates its signature and the verifier
-   enforces an allowlisted issuer plus the exact upstream repository and
-   designated release-workflow identity, with the audited commit and asset
-   digest as subjects. Never accept an arbitrary self-signed statement or an
-   attestation merely because its fields match; if no trusted verifier and
-   allowlist are available, provenance is unverified. Otherwise reproduce each
-   target archive from the exact recorded commit SHA (not a re-resolved tag) in
-   a disposable container/VM or restricted account with no sensitive mounts,
-   no inherited secrets, and tightly constrained outbound access. Compare the
-   normalized contents and resulting digest. If neither verifiable provenance
-   nor a reproducible build path can run within that boundary, mark the pin
-   blocked and report why; a GitHub-generated digest and a benign probe prove
-   integrity and basic behavior, not source-to-artifact identity.
+4. Resolve both the current and candidate release tags to full immutable commit
+   SHAs (`oldCommitSha` and `newCommitSha`) and record them before diffing or
+   downloading. Re-resolve the public tags immediately before approval and
+   require exact equality; if a tag moved, disappeared, or is ambiguous, stop and
+   restart the audit. Inspect release-workflow and packaging changes as part of
+   the source audit. Provenance attestations or reproducible-build evidence may
+   be recorded when already available, but are not required for a normal target
+   refresh. Do not start a separate rebuild/provenance project or block pinning
+   because that evidence is absent. Report checksum integrity separately from
+   source-to-binary provenance; a checksum or smoke test does not prove the latter.
 
 ## Phase 2 — Audit the release diff in aggregate
 
@@ -267,7 +267,7 @@ add version branches merely because an API technically permits them.
 If the semantics are genuinely incompatible and the compatibility code is large
 or hard to reason about, explicitly evaluate a narrow shared interface with two
 Pi-version-specific implementations. Select the implementation only from a
-validated runtime version/provenance (the managed manifest or a validated PATH
+validated runtime version (the managed manifest or a validated PATH
 probe); Pi has no handshake, so never infer a version from an event or silently
 assume the binary behind `PATH`. Keep both implementations inside the Pi plugin
 and do not leak Pi-specific concepts into `bridge/app/` or client contracts.
@@ -288,32 +288,30 @@ When a single tolerant path is sufficient, prefer it over the
 two-implementation interface; if neither path has a concrete caller and
 meaningful damage, reject both as speculative machinery.
 
-## Phase 3 — Run a safe per-target probe matrix
+## Phase 3 — Run a safe current-host probe
 
-Before changing the target, validate every managed archive in a temporary,
-platform-appropriate disposable boundary. This is a six-row matrix, not a
-single current-host smoke test. For each of the six assets, record the asset
-name and digest, sandbox/host and architecture, production extraction and
-package-placement result, exact `--version` result, and the JSONL/RPC
-`get_state` result. A host-only extraction or a probe of one architecture does
-not validate another row. Treat every downloaded archive as an untrusted
-executable even after its official digest is verified:
+Verify the downloaded SHA-256 of all six managed archives as opaque bytes;
+checksum validation does not require extracting or launching them. Run the
+installation and live probe below only for the archive matching the current
+host OS and architecture. Other platforms do not need installation or launch
+probes to approve a target refresh; report them as untested, not validated by
+the host result. Record the tested asset and digest, host OS/architecture,
+disposable boundary, production extraction/placement, exact `--version`, and
+JSONL/RPC `get_state` results. Treat downloaded archives as untrusted executables
+even after verifying their official digests:
 
-1. For each asset row, establish the disposable boundary before handling
-   archive contents. Use a native host or suitable target VM/container/restricted
-   OS account with no sensitive mounts and blocked outbound network access. A
-   temporary `HOME`, Pi directories, or allowlisted environment does not sandbox
-   a process running as the maintainer's account. If a target cannot provide
-   this boundary, do not inspect, extract, or execute that archive there; mark
-   that row unvalidated and leave its asset unpinned.
-2. For each row, download the matching official archive into that boundary and
-   verify its SHA-256. If the boundary cannot download directly, transfer the
-   archive as opaque bytes from the host and perform the digest check before
-   parsing it. Do not use one platform's successful checksum or probe as
-   evidence for another row.
-3. Inspect and extract every archive inside its same disposable boundary
-   without changing the repository. For each managed asset, run the production
-   extraction and package-placement path
+1. Establish the current-host disposable boundary before handling archive
+   contents. Use a native OS sandbox or suitable VM/container/restricted OS account
+   with no sensitive mounts and blocked outbound network access. A temporary `HOME`, Pi directories,
+   or allowlisted environment does not sandbox a process running as the
+   maintainer's account. If this boundary is unavailable, do not inspect, extract,
+   or execute the host archive; report the current-host probe as blocked.
+2. Transfer the matching official archive as opaque bytes into that boundary,
+   or download it there. Verify its SHA-256 before parsing it. Keep every other
+   archive opaque unless an optional platform-specific check is warranted.
+3. Inspect and extract the current-host archive inside the same disposable
+   boundary without changing the repository. Run the production extraction and
+   package-placement path
    (`bridge/sesori_bridge_foundation/lib/src/archive_extractor.dart` and
    `bridge/sesori_plugin_runtime/lib/src/provisioning/runtime_install_service.dart`)
    on a target-appropriate host; do not substitute a generic extractor for this
@@ -321,8 +319,8 @@ executable even after its official digest is verified:
    escaping symlink/hardlink targets before writing; confirm the package tree
    and platform-specific entrypoint remain intact. This repository rejects all
    symlinks after extraction, not only links that escape. If the production
-   path cannot run in the row's sandbox, mark the row unvalidated and leave its
-   asset unpinned. Resolve that entrypoint to an absolute path and invoke that
+   path cannot run in the host sandbox, report the current-host probe as blocked.
+   Resolve that entrypoint to an absolute path and invoke that
    path for every check; never
    invoke a bare PATH-installed `pi` or copy the executable away from its
    package files. If a temporary PATH wrapper is unavoidable, use only a
@@ -344,14 +342,14 @@ executable even after its official digest is verified:
    `SSH_AUTH_SOCK`, credential-helper settings, and other unrelated secrets.
    The probe must remain unauthenticated; use a separately authorized and
    explicitly approved procedure if authenticated behavior needs testing.
-6. For each row, run the separate `--version` process with a bounded 10-second
+6. Run the separate current-host `--version` process with a bounded 10-second
    timeout and the same process-group/Job Object cleanup guarantee. If it hangs
    or exits unexpectedly, terminate its entire process tree before reporting
    failure; do not let it block the RPC probe or filesystem cleanup. Verify that
    its output identifies exactly the candidate release, rather than merely
    returning success. Preserve the normal environment policy in the production
    launch design.
-7. For each row, launch the extracted entrypoint with exactly these arguments:
+7. Launch the extracted current-host entrypoint with exactly these arguments:
 
    ```text
    --mode rpc --no-session --approve
@@ -390,15 +388,13 @@ executable even after its official digest is verified:
    response-correlation, package-layout, isolation, or required-surface
    regression. Do not pin a candidate based on a version output alone.
 
-A skipped or failed live probe is a hard gate for that asset, not a
-successful platform limitation. Production extraction and package placement
-must be exercised for every managed archive, and the version/RPC launch probe
-must pass for every supported target before its corresponding digest is eligible
-for pinning. Phase 4 may report blocked or unvalidated rows, but do not approve
-or edit/pin those assets in Phase 5. If the manifest requires a complete
-six-asset release, any unvalidated row blocks the target update; otherwise leave
-only the unvalidated asset(s) unchanged. Artifact/source verification and a
-successful probe on another platform cannot substitute for the missing row.
+A skipped or failed required current-host probe blocks the target refresh.
+Missing install/launch results for other platforms do not block it. Optional
+platform checks may be added for a concrete release change or regression; report
+any observed failure rather than treating it as a passing host limitation.
+All six archive digests remain required; source-to-binary provenance is optional.
+When approved, update the complete release consistently; never combine a new
+shared target URL with old asset digests.
 
 Keep probe output redacted and bounded. Do not retain raw frames, credentials,
 transcripts, prompts, user/project/local filesystem paths, or provider/account
@@ -411,21 +407,21 @@ Before editing the runtime target or production protocol code, report:
 - current target and candidate stable release/date;
 - unchanged PATH minimum;
 - all six asset names, sizes, and verified SHA-256 values;
-- source-to-artifact provenance or reproducible-build evidence, including any
-  blocker;
+- any optional provenance evidence, clearly distinguished from checksum integrity;
 - aggregate diff size and the high/medium findings with source links;
 - which findings are truly visible on JSONL/RPC stdout;
-- the six-row probe matrix: production extraction/placement, exact version,
-  and RPC results for every asset, plus any blocked or unvalidated row;
+- current-host OS/architecture, production extraction/placement, exact version,
+  and RPC results; list other platforms as untested unless optionally checked;
 - proposed Sesori edits, explicitly separating version-only changes from
   capability changes, simplifications, and follow-up work;
 - the compatibility strategy: tolerant single path versus a justified
   version-selected interface with two implementations, including each
   branch's retirement/minimum version.
 
-Ask the user to approve the proposed production changes. A release audit is
-not permission to expand scope, raise the compatibility floor, or implement
-interesting but unverified upstream behavior. If the user approves a higher
+An explicit request to update the target approves the version-only bump; do not
+ask for that approval again or request an exception for optional provenance.
+Ask before adding capabilities or raising the minimum. A release audit is not
+permission to expand scope or implement unverified upstream behavior. If the user approves a higher
 minimum Pi version, inspect the compatibility branches, tests, and docs that
 only support versions below the new floor and delete the obsolete code rather
 than carrying it forward. The skill-only documentation PR may proceed when
@@ -433,13 +429,12 @@ explicitly requested, while the runtime/capability PR remains behind this gate.
 
 ## Phase 5 — Implement only after approval
 
-Enter this phase only after every asset being pinned has passed the
-sandboxed production extraction/placement and live version/RPC probe on a
-suitable target host, source-to-artifact provenance has been verified (or the
-artifacts have been reproducibly rebuilt), and the user has approved the
-resulting scope. A skipped or failed row blocks that asset; when the manifest
-requires a complete six-asset target, it blocks all target edits. Digest or
-source verification alone is insufficient.
+Enter this phase only after all six archive digests are verified, the
+current-host sandboxed production extraction/placement and live version/RPC
+probe pass, and the user approves the scope. Source-to-binary provenance is
+optional and does not block the refresh.
+Other platforms do not require installation or launch probes. Report their
+untested status without blocking the complete six-asset target update.
 
 For an approved target refresh:
 
@@ -512,8 +507,9 @@ If the change affects shared runtime primitives, also run the owning foundation
 or runtime package tests. Do not rerun unchanged suites without a concrete
 reason.
 
-Keep the skill/documentation change in its own reviewable PR when requested;
-do not mix it with the Pi runtime or protocol implementation PR. Use a real
+Include directly related workflow clarifications with a target bump when the
+user requests the same PR; otherwise keep independently requested skill work
+separate. Use a real
 multiline PR body with these sections:
 
 - `## Complexity`

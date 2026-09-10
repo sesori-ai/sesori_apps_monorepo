@@ -2,17 +2,20 @@
 
 ## Status and scope
 
-Internal, unregistered personal-login operation, boundaries and provider policy. The injected composition seam is
-executable with synthetic peers; real Antigravity descriptor wiring and product activation remain Step 9. Browser
-login requires the current mobile/desktop client, not a bridge-host CLI fallback. Never execute real Google OAuth or
-inspect ambient credentials/token contents to validate these foundations.
+Registered personal-login operation, boundaries and provider policy. Browser login requires a current mobile/desktop
+client, not a bridge-host CLI fallback. Synthetic verification must never execute real Google OAuth or inspect ambient
+credentials/token contents.
 
 ## Required behavior
 
 - Profile preparation, runtime probing and authentication share one monotonic budget and abort signal. Browser
-  preflight retains a five-second sub-limit; chmod uses the remaining budget. Check between mutations, await an
-  in-flight filesystem/atomic-store write, then reject cancellation or expired-budget success. No instant cancellation
-  of uninterruptible filesystem work is promised.
+  preflight and chmod use the remaining budget, including source-mode compilation before the helper reaches its
+  silent no-op. Check between mutations, await an in-flight filesystem/atomic-store write, then reject cancellation
+  or expired-budget success. Cancellation is checked before and after the bounded preflight; it does not immediately
+  interrupt the helper. No instant cancellation of uninterruptible filesystem work is promised.
+- The generic client login-start request allows two minutes for preparation/backend challenge creation plus 30 seconds
+  of relay headroom because its timer starts before the bridge's operation budget. This replaces the ordinary
+  30-second request timeout; other plugin-management requests retain their existing deadlines.
 - Scratch authentication validates the negotiated ACP version and selects only an advertised `oauth-personal`
   method before sending authentication. Incompatible protocols or other-only methods fail without auth dispatch.
   It uses the prepared environment with no
@@ -44,7 +47,7 @@ inspect ambient credentials/token contents to validate these foundations.
   callbacks; their closures cannot dispatch through another attempt's services.
 - The existing bridge `PluginLifecycleService` reinspects setup only after operation stream closure/error, including
   cancellation/failure. The plugin operation does not duplicate setup inspection or infer readiness from token
-  presence. Real descriptor integration remains unregistered until Step 9.
+  presence. Registration adds no second lifecycle owner.
 
 ## Failure signals and coverage
 
@@ -60,12 +63,14 @@ inspect ambient credentials/token contents to validate these foundations.
   budget is still positive. The selected failure fences late connection completion; cleanup retains the original
   failure/stack. A local synthetic HTTP server proves dispatched requests settle
   through real forced client closure. No Google endpoint is contacted.
-- `antigravity_profile_service_test.dart`: executor timeout identity, no mutation after aborted preflight, and awaited
-  atomic write before rejecting late success, in addition to the isolated-profile coverage.
+- `antigravity_profile_service_test.dart`: remaining-budget forwarding, executor timeout identity, no mutation after
+  aborted preflight, and awaited atomic write before rejecting late success, in addition to the isolated-profile coverage.
+- Client `plugin_api_test.dart`: the generic login-start request forwards its explicit two-minute-plus-headroom timeout
+  and retains typed challenge/redirect/cancel contracts.
 - `antigravity_authentication_operation_test.dart`: shared environment/budget, one-shot continuation, same-host
   completion, runtime rejection, callback/authorization failure, timeout/process exit, cancellation while cleanup or
   callback work is in flight, and isolation from subsequent attempts.
-- `antigravity_authentication_composer_test.dart`: full unregistered composition with real temporary runtime files,
+- `antigravity_authentication_composer_test.dart`: full composition with real temporary runtime files,
   shared store scopes, fake host-spawned helper/probe/auth processes, exact personal handshake and complete disposal.
 - `antigravity_acp_api_test.dart`: delayed probe/auth spawn cancellation waits for release and reaping without initialize.
 - Bridge `plugin_lifecycle_service_test.dart`: representative browser terminal event cannot trigger setup reinspection

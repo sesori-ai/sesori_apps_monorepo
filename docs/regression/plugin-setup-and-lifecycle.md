@@ -8,6 +8,25 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 ## Required Behavior
 
+- Existing chat interaction consumes the shared management snapshot, not a separate
+  poller. It resolves the session's exact plugin ID rather than the default harness;
+  a missing exact entry blocks only that chat, and unrelated harness changes do not
+  reload it. Disabled, authentication-required, missing-runtime, unavailable,
+  stopping, uninspected, unknown and missing-harness states block interaction. Ready
+  setup with dormant, starting, active or degraded runtime remains routable.
+- Only an authentication-required block offers Recheck. It requests fresh management
+  evidence when authentication may have been restored elsewhere; it does not authenticate.
+  Disabled and every other blocked reason omit that action. A first check failure
+  remains blocked and keeps its original error for local diagnosis. Retained refresh
+  errors show a warning without changing the last established decision. An older public
+  bridge without management support keeps interaction available with an upgrade
+  warning; a request failure is never treated as endpoint absence.
+- Disconnect preserves an established block. Reconnect requires fresh connected
+  management evidence before restoring positive availability, then refreshes session
+  prerequisites before restoring blocked input. Setup evidence is advisory rather
+  than continuous credential validation: a provider can still reject an admitted
+  turn before a later management refresh reports the change.
+
 - Registration is inert: it contributes CLI options and listing presence but starts
   nothing, and all registered harnesses appear in the snapshots. Setup inspection never
   installs, logs in, or starts a backend, reporting a bounded state and action hint
@@ -27,8 +46,11 @@ idle suspension, the management snapshot, and lifecycle commands.
   any request; later requests fail immediately until a fresh connection is established.
   Without interception the existing ACP transport behavior is unchanged.
 - Runtime resolution before start may resolve a suitable existing or managed binary but
-  never downloads or mutates files, and failure there is non-fatal. The persisted disable
-  list is the only durable eligibility policy, with setup deciding blocked versus routable.
+  never downloads or mutates files, and failure there is non-fatal. Eligible descriptors
+  resolve and start concurrently within one startup batch; each settled descriptor closes
+  its generation stream independently, while the startup mutex remains held until every
+  descriptor settles. The persisted disable list is the only durable eligibility policy,
+  with setup deciding blocked versus routable.
 - Managed selection prefers the pinned target and otherwise takes the newest installed
   managed version still at or above the harness's minimum, so raising the target leaves
   the previous install usable rather than reporting the runtime as missing. A managed
@@ -59,6 +81,15 @@ idle suspension, the management snapshot, and lifecycle commands.
   of settings, credentials, providers, and skills but its session root is never
   scanned. Session, attachment, query, and spill mutations stay below plugin
   state, and session-local model/reasoning writes never modify user settings.
+- Antigravity is an ACP v1 harness over Google's official proprietary runtime pair. An explicit
+  `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH then the
+  installed managed pair are checked. Setup inspection is static and inert, reports personal-auth readiness from
+  token-file presence without reading it, and advertises current-client browser login only when required. It never
+  imports ambient credentials, starts a process, opens a browser or downloads a runtime. Managed Install is explicit,
+  limited to macOS arm64, Linux x64/arm64 and Windows x64/arm64 (not macOS x64), absent with an override, and preceded
+  by Google terms/documentation guidance visible on the detail screen before installation. The overview download icon
+  opens that screen rather than starting a download. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
+  with parent inheritance disabled.
 - GitHub Copilot is a standard ACP v1 harness launched as
   `copilot --no-auto-update --acp`. Setup keeps an explicit `--copilot-bin`
   authoritative, otherwise prefers a compatible PATH release (`>=1.0.78`) over
@@ -150,6 +181,15 @@ idle suspension, the management snapshot, and lifecycle commands.
   immediately re-arms each currently idle session from the change, while busy
   sessions pick it up at their next idle transition; no timeout invalidates the
   existing idle timer and keeps the child resident.
+- A harness generation cold-started solely because catalog snapshot import fell back
+  to the live plugin path uses an import-only idle residency cap of five minutes.
+  A shorter positive configured timeout stays shorter and a non-positive timeout
+  stays disabled. Any ordinary plugin acquisition, explicit/eager start, session
+  warm-up, or session operation monotonically promotes that same generation to its
+  configured normal residency and immediately re-arms applicable idle ownership;
+  importing through an already-running or starting generation never changes its
+  profile. This policy controls post-use idleness only: it is not an import,
+  enumeration, server-start, or publication deadline.
 - A Claude session whose CLI scheduled a `ScheduleWakeup` loop wakeup is not reaped
   before the wakeup fires (the in-process timer would die and `--resume` cannot rearm
   it); a wakeup that never fires stops deferring one idle window past its fire time.
@@ -224,14 +264,74 @@ idle suspension, the management snapshot, and lifecycle commands.
   the bridge refused outright, which the harness card already reports; a run that ends without
   a terminal outcome announces nothing at all.
 
+- Mobile and desktop share a grouped overview (Needs attention, Enabled, Not installed,
+  Disabled) and URL-addressable `/settings/harnesses/:pluginId` details. Registry order is
+  retained within groups; empty groups disappear. Installing entries belong to Not installed;
+  genuinely disabled entries belong to Disabled; only ready dormant/starting/active entries
+  are Enabled. Degraded remains attention even though its separate scan capability is routable.
+  A stopping harness belongs to Disabled — where a toggled-off harness settles — and keeps its
+  `Stopping` status there instead of jumping through Needs attention while it drains.
+  A harness that changes group closes in the section it left while opening in the section it
+  joined, and an emptied section closes with its last row rather than disappearing under it;
+  reduced motion keeps the same result without the transition.
+- Harness names and the separate download target open details without starting installation;
+  setup guidance stays visible before the explicit detail installation button. Switches send
+  actual enable/disable intent and retain the bridge's
+  known enabled preference while blocked by setup or another operation; unknown runtime
+  has no inferred switch. A pending toggle replaces only that harness's switch with an
+  in-place indicator in the same 64×44 slot; the list and unrelated harness toggles stay
+  usable. Each harness retains its own pending action, failure or safe-conflict confirmation
+  across refresh and overview/detail navigation. Same-harness commands, overrides, installs
+  and authentication cannot conflict locally; a global timeout update excludes pending
+  harness actions/confirmations in both directions. Independent results never erase a peer's
+  feedback, and dismissals apply only to the displayed attempt. Local authentication
+  ownership releases on terminal progress even if reconciliation fails and retained
+  metadata still reports in-progress; that metadata never proves success or blocks retry.
+  Remote conflicts and uncertain retries remain explicit failures. An owned retained
+  challenge can reopen, except while a global action is pending. Retained installation
+  or authentication alone does not prevent editing the global idle-timeout setting.
+- Force conflicts can auto-open only on an uncovered flow. Additional conflicts retain a
+  named Review action on their harness, within a single grouped surface on both overview
+  and detail; Review opens the existing confirmation without sending force. No stacked
+  dialogs or automatic queue: confirmation and cancellation
+  require the exact current attempt, and loading, identity replacement, unsupported/failure
+  reset and close fence old completions and sheet callbacks.
+- Running means reported busy session work, not merely an active runtime. Idle or stopped
+  overview entries have no subtitle section, even when the process is alive; disabled
+  entries also omit it. Installation/setup problems remain visible on eligible entries,
+  and unknown activity is not labelled Running. Global timeout is last; its value remains
+  visible but not editable during per-harness commands, and only its own all-harness update
+  shows progress.
+- Detail reports only known version and idle/busy activity, never a fabricated session count.
+  Missing runtime has setup/install content rather than operational actions. Unknown and
+  externally managed capabilities remain honest. Individual timeout inheritance, custom
+  minutes and no-timeout are all available through the timeout editor.
+- One flow-owned cubit and transient-presentation owner survives overview/detail navigation.
+  Opened from Settings, overview and detail show only left Back: detail returns to overview,
+  then overview returns to the same Settings page. Opened modally from New Session,
+  overview shows only right X and detail shows left Back plus right X. Detail Back retains
+  the overview flow; X from either page dismisses only the harness modal, preserving the
+  same New Session page and draft. Direct detail links construct overview ancestry without
+  creating an unrelated Settings page, and links without an opener fall back to
+  signed-in Projects on both shells. Removed IDs show an unavailable detail, not another harness.
+  Authentication and force sheets belong to this flow and leave with it; sheet dismissal
+  remains distinct from cancelling authentication. Safe lifecycle conflicts still authorize
+  force confirmation, never an install retry.
+- Shared cards use surface2, 26px radius, 16px page/section gaps, 68px minimum overview/action
+  rows and 52px minimum detail facts, growing at larger text sizes. Switches keep their
+  64×28 visual track inside an independently tappable, labeled 64×44 target; padding taps
+  toggle rather than navigate. Overview groups omit dividers and default badges.
+  Unsupported automatic-update and install pause/stop controls
+  are hidden rather than simulated.
+
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. |
-| L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, default badge, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
-| L4 Extended | Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. |
+| L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Automated client projection covers the exact session harness for ready/routable versus disabled, setup-blocked, stopping, failed, unknown, missing-entry, initial-loading, initial-failure and public-old-bridge unsupported evidence. Headless bridge; all registered harnesses listed. |
+| L2 Routine | Automated client coverage retains an established block through disconnect, requires current evidence after reconnect, preserves a supported snapshot's decision across refresh failure, and retains an initial check failure's original cause for local diagnosis. Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. Automated client service coverage separately proves that a management SSE-triggered GET during enable/restart preserves the correlated acknowledgment without publishing its superseded snapshot; a failed reconciliation retains its typed refresh error. Representative neutral fixtures, no live plugin or rendered UI claim. Cubit/service composition and shared-widget automation prove two independent toggles dispatch before either response, per-target progress/errors and peer padding taps; bridge lifecycle fixtures prove independent named command slots and settings preservation. |
+| L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, grouped overview and per-harness detail navigation, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
+| L4 Extended | Client end to end for an existing chat: Claude authentication-required then restored, one managed runtime missing then restored, and one supporting ACP harness disabled then enabled; another harness remains usable throughout, and an unrelated-harness management change leaves the open chat untouched. Repeat one unavailable-to-usable transition from a second surface and one reconnect against a different bridge identity. Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. Automated client service ordering coverage separately exercises reversed command completion, bridge mismatch after an intervening GET, and disconnect/reconnect, replacement, unsupported management or disposal during reconciliation; old responses stay fenced and uncertain results stay uncertain despite active/idle metadata. Cubit/widget automation also covers same-harness duplicates, global-timeout exclusion, retained auth/install exclusion, both completion orders, reset/retry fencing, and two safe conflicts with explicit Review and stale dialog callbacks. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
 
 ## Exploration Guidance
@@ -241,7 +341,11 @@ managed, explicit binary path, externally managed backend. Vary the trigger betw
 and management API, whether a session is idle or working, and fresh versus reused data
 directories. For Hermes, vary missing and pre-ACP installs, a release below `0.20.0`, an
 unconfigured model/provider, PATH discovery, and `--hermes-bin`. Restore eligibility,
-timeouts, and sessions afterwards. For Copilot, vary missing, malformed, too-old,
+timeouts, and sessions afterwards. For Antigravity, vary missing, mismatched and
+valid official pairs, PATH versus authoritative explicit selection,
+authenticated versus authentication-required isolated profiles, and current
+versus unsupported older clients. Do not use real Google OAuth for synthetic
+setup checks. For Copilot, vary missing, malformed, too-old,
 compatible PATH, managed, and explicit runtimes; authenticated and unauthenticated
 normal configuration; owned-process exit; and bridge restart. For Grok, vary
 missing, malformed, too-old, current PATH, and authoritative explicit binaries;
@@ -249,6 +353,20 @@ headless and interactive-only authentication; catalog refresh; enable/disable;
 owned-process exit; and restart.
 
 ## Failure Signals
+
+- A pending harness disables peer switches, a peer completion erases another harness's
+  error, a duplicate/conflicting request escapes its target slot, or Review sends force
+  without confirmation. Stacked/queued force sheets or an old callback authorizing a retry.
+
+- A chat uses the default or another harness's state, unknown evidence enables
+  input, a disconnect bypasses a known block, reconnect reuses stale positive
+  evidence, an initial request failure is mistaken for unsupported management,
+  or a retained refresh error changes the last established decision.
+- Detail navigation recreating operation state, duplicate force/auth sheets or scan announcements,
+  pushed Back skipping Settings, modal X losing the New Session page or draft, incorrect
+  Back/X header controls, or a missing ID displaying another harness.
+- A setup-blocked switch falsely shown off, unknown preference represented as disabled,
+  degraded grouped as healthy, or controls overflowing at phone width with larger text.
 
 - An isolated child receiving ambient variables, an inert JSON child selection creating
   directories, repeated child scopes losing concurrent updates, consumed ACP output appearing
@@ -258,6 +376,9 @@ owned-process exit; and restart.
 - A stalled first handshake holds bridge startup past the cold-start budget, a
   budget-exceeded harness reports connected instead of degraded, or its late
   cold-start failure surfaces as an unhandled error rather than a log line.
+- A slow descriptor's provisioning or start keeps a ready descriptor's generation
+  stream open, a descriptor-local failure takes down another descriptor, or the startup
+  mutex releases before every descriptor start settles.
 - An eligible harness dropped from listings, a drifting or unselectable default, or
   snapshot tokens that miss real changes.
 - A harness card showing raw version-probe output, a rejected runtime's version, or a version
@@ -296,6 +417,9 @@ owned-process exit; and restart.
   instead of the explicit no-harness state when none is usable.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
   being logged, failed, or restarted as an unexpected crash.
+- Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, launches ACP,
+  opens a browser, falls through from an explicit pair, downloads automatically, or offers managed install with an
+  override/on macOS x64; registration changes the OpenCode preferred default or adds a shared `Harness` enum case.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
   PATH release, offers install with an explicit path or on an unsupported
@@ -312,11 +436,15 @@ owned-process exit; and restart.
 
 ## Known Limitations
 
-- The harness set comes from the current registry; unregistered in-development harnesses
-  are out of scope.
+- The harness set comes from the current registry; unregistered in-development harnesses are out of scope.
+  Antigravity managed installation is implemented. Native Linux/Windows correctness and real OAuth evidence remain
+  unverified; current native managed-pipeline evidence is macOS arm64 only.
 - DeepSeek is registered and enabled by default. Its official theme-independent
   brand-blue artwork, local provider setup guidance, and managed install controls
   follow the same backend-neutral registry and client surfaces as every other harness.
+- Management reports bounded setup evidence, not continuous provider entitlement.
+  Credentials can expire after a ready inspection and the admitted turn can fail
+  before the next authoritative refresh; client gating does not parse backend text.
 - Backend authentication and credential persistence happen on the bridge machine. A forced
   disable leaves work interrupted. Grok installation, updates, interactive login,
   API-key, enterprise, and custom-model configuration remain local and out of
@@ -338,14 +466,19 @@ owned-process exit; and restart.
 
 ## Sources
 
-- [Internal Antigravity isolated-profile contract](antigravity-isolated-profiles.md): unregistered profile
-  preparation, neutral browser-noop mode, and selective OAuth stderr handling (not active harness support).
+- [Antigravity operator guidance](../ANTIGRAVITY.md),
+  [official runtime activation](antigravity-descriptor-and-setup.md),
+  [isolated profile](antigravity-isolated-profiles.md), and
+  [personal authentication](antigravity-personal-authentication.md) contracts.
 - Shared host/process boundary coverage: `bridge_host_json_store_test.dart`,
   `bridge_host_process_service_test.dart`, `host_process_acp_factory_test.dart`,
   `acp_output_interceptor_test.dart`, and `acp_stdio_client_test.dart` cover atomic
   scopes, explicit inheritance, byte preservation, pre-log consumption, and cleanup.
 - `bridge/sesori_plugin_interface/lib/src/lifecycle/`; registered production plugin
   descriptors; plugin routing handlers
+- `bridge/app/lib/src/runtime/plugin_generation_factory.dart` and
+  `bridge/app/test/bridge/runtime/plugin_generation_factory_test.dart` cover concurrent
+  provisioning/start, per-descriptor stream settlement and startup mutex ownership.
 - `bridge/app/lib/src/services/plugin_lifecycle_service.dart`,
   `bridge/app/lib/src/services/plugin_warmup_service.dart`,
   `bridge/app/lib/src/listeners/plugin_warmup_setting_listener.dart`,
@@ -357,7 +490,13 @@ owned-process exit; and restart.
 - `bridge/sesori_plugin_grok/lib/src/runtime/grok_plugin_descriptor.dart` and its tests
 - `bridge/sesori_plugin_grok/lib/src/grok_plugin_impl.dart` and `grok_plugin_test.dart`
 - `bridge/sesori_plugin_codex/lib/src/codex_plugin_impl.dart` and `codex_plugin_write_path_test.dart`
-- `client/module_core/lib/src/services/plugin_management_service.dart`, `PregoBrandLogo`, the
-  Grok marks and `client/module_prego/BRAND_ASSETS.md`, and the harness settings
-  screen
-- Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites
+- Client availability gate: `client/module_core/lib/src/services/plugin_management_service.dart`,
+  `session_interaction_calculator.dart`, session-detail cubit composition and
+  their focused tests
+- Shared management presentation: `PregoBrandLogo`, the Grok marks,
+  `client/module_prego/BRAND_ASSETS.md`, and the harness settings screen
+- Tests: `plugin_lifecycle_service_test.dart`, per-plugin setup and client suites;
+  `client/module_core/test/services/plugin_management_service_test.dart` proves client
+  acknowledgment/publication ordering and identity fencing through fake repository and
+  connection streams; `client/module_core/test/repositories/plugin_repository_test.dart`
+  proves timeout, response-loss, 503 and malformed-response uncertainty mapping.

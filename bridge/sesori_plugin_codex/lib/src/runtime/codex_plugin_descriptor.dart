@@ -73,17 +73,18 @@ CodexManagedApi _defaultBuildApi({
       clock: host.clock,
     ),
   );
+  final messageRepository = CodexMessageRepository(
+    rolloutApi: rolloutApi,
+    rolloutToolMapper: rolloutToolMapper,
+    userContentMapper: userContentMapper,
+  );
   return CodexPlugin.composed(
     serverUrl: serverUrl,
     capabilityToken: null,
     clientFactory: null,
     sessionService: CodexSessionService(
       catalogRepository: catalogRepository,
-      messageRepository: CodexMessageRepository(
-        rolloutApi: rolloutApi,
-        rolloutToolMapper: rolloutToolMapper,
-        userContentMapper: userContentMapper,
-      ),
+      messageRepository: messageRepository,
       metadataRepository: CodexMetadataRepository(
         configReader: configReader,
       ),
@@ -92,6 +93,7 @@ CodexManagedApi _defaultBuildApi({
       sessionMapper: const CodexSessionMapper(),
       launchDirectory: launchDirectory,
     ),
+    messageRepository: messageRepository,
     eventMapper: CodexEventMapper(
       pluginId: CodexPlugin.pluginId,
       projectCwd: launchDirectory,
@@ -295,7 +297,7 @@ class const CodexPluginDescriptor({
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        versionValidator: RuntimeVersionValidator(
+        candidateValidator: RuntimeVersionValidator(
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,

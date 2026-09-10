@@ -64,29 +64,18 @@ class const _StubInUseSignal({required final bool _inUse}) implements RuntimeInU
   bool get isInUse => _inUse;
 }
 
-class _FakeValidator({required final RuntimeVersion? managedVersion}) implements RuntimeVersionValidator {
-  final List<String> detectedExecutables = [];
+class _FakeCandidateValidator({
+  required final RuntimeVersion? managedVersion,
+  final Future<bool> Function(RuntimeCandidateValidationContext context)? onValidate,
+}) implements RuntimeCandidateValidator {
+  final List<RuntimeCandidateValidationContext> contexts = [];
 
   @override
-  Future<RuntimeProbeOutcome> probe({
-    required String executable,
-    required Map<String, String>? environment,
-  }) async {
-    detectedExecutables.add(executable);
-    return managedVersion == null ? const RuntimeProbeUnrecognized() : RuntimeProbeReady(version: managedVersion!);
+  Future<bool> validate({required RuntimeCandidateValidationContext context}) {
+    contexts.add(context);
+    final callback = onValidate;
+    return callback == null ? Future<bool>.value(managedVersion?.raw == "1.17.9") : callback(context);
   }
-
-  @override
-  Future<RuntimeVersion?> detectVersion({
-    required String executable,
-    required Map<String, String>? environment,
-  }) async {
-    detectedExecutables.add(executable);
-    return managedVersion;
-  }
-
-  @override
-  RuntimeVersion? parseVersionOutput({required String output}) => SemanticRuntimeVersion.tryParse(value: output);
 }
 
 class const _FakeDownloadClient({required final void Function()? _onDownload}) implements BinaryDownloadClient {
@@ -112,6 +101,7 @@ class const _FakeArchiveExtractor() implements ArchiveExtractor {
     required String archivePath,
     required String stagingPath,
     required ArchiveFormat format,
+    required Duration archiveCommandTimeout,
   }) async {
     Directory(stagingPath).createSync(recursive: true);
     File(p.join(stagingPath, "opencode")).writeAsStringSync("BINARY");
@@ -151,16 +141,17 @@ void main() {
     RuntimeVersion? managedVersion,
     RuntimeAssetResolver? assetResolver,
     void Function()? onDownload,
+    RuntimeCandidateValidator? candidateValidator,
   }) {
     final manifest = _StubManifest(hasAsset: hasAsset);
     return ManagedRuntimeInstallService(
       manifest: manifest,
-      versionValidator: _FakeValidator(managedVersion: managedVersion),
       installService: RuntimeInstallService(
         downloadClient: _FakeDownloadClient(onDownload: onDownload),
         checksumValidator: _FakeChecksumValidator(valid: checksumValid),
         archiveExtractor: const _FakeArchiveExtractor(),
         commandExecutor: _FakeCommandExecutor(),
+        candidateValidator: candidateValidator ?? _FakeCandidateValidator(managedVersion: managedVersion),
         runtimeId: "opencode",
       ),
       cleaner: ManagedRuntimeCleaner(runtimeId: "opencode"),
@@ -350,6 +341,86 @@ void main() {
     expect(events.whereType<ProvisionDownloading>(), isEmpty);
     expect(events.last, isA<ProvisionReady>());
     expect(supportedDir.existsSync(), isTrue);
+  });
+
+  test("validates a cached candidate in disposable managed staging", () async {
+    installPinned();
+    final validator = _FakeCandidateValidator(
+      managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
+      onValidate: (context) async {
+        final stagingPath = p.join(stateDir.path, "opencode", ".sesori-runtime-staging");
+        expect(context.executablePath, p.join(stateDir.path, "opencode", "1.17.9", "opencode"));
+        expect(p.isWithin(stagingPath, context.workingDirectory), isTrue);
+        expect(p.isWithin(stagingPath, context.stateDirectory), isTrue);
+        expect(Directory(context.workingDirectory).existsSync(), isTrue);
+        expect(Directory(context.stateDirectory).existsSync(), isTrue);
+        return true;
+      },
+    );
+
+    final events = await install(build(candidateValidator: validator));
+
+    expect(events.whereType<ProvisionDownloading>(), isEmpty);
+    expect(events.last, isA<ProvisionReady>());
+    expect(validator.contexts, hasLength(1));
+    expect(Directory(p.join(stateDir.path, "opencode", ".sesori-runtime-staging")).existsSync(), isFalse);
+  });
+
+  test("failed cached and downloaded validation preserve the installed pair and sentinel", () async {
+    installPinned();
+    var validationCalls = 0;
+    final validator = _FakeCandidateValidator(
+      managedVersion: null,
+      onValidate: (context) async {
+        validationCalls++;
+        return false;
+      },
+    );
+
+    final events = await install(build(candidateValidator: validator));
+
+    expect(validationCalls, 2, reason: "both cached and downloaded candidates are validated");
+    expect(events.last, isA<ProvisionFailed>());
+    final pinnedPath = p.join(stateDir.path, "opencode", "1.17.9");
+    expect(File(p.join(pinnedPath, "opencode")).readAsStringSync(), "BINARY");
+    expect(File(p.join(pinnedPath, RuntimeInstallService.sentinelFileName)).readAsStringSync(), "abc123");
+    expect(Directory(p.join(stateDir.path, "opencode", ".sesori-runtime-staging")).existsSync(), isFalse);
+  });
+
+  test("aborting cached validation preserves the installed pair and sentinel", () async {
+    installPinned();
+    final aborted = StartAbortController();
+    final validationStarted = Completer<void>();
+    final validationMaySettle = Completer<void>();
+    final validator = _FakeCandidateValidator(
+      managedVersion: null,
+      onValidate: (context) async {
+        validationStarted.complete();
+        await validationMaySettle.future;
+        if (context.abortSignal.isAborted) {
+          throw const PluginStartAbortedException();
+        }
+        return true;
+      },
+    );
+    final installing = build(candidateValidator: validator)
+        .install(
+          environment: const {},
+          stateDirectory: stateDir.path,
+          startAborted: aborted.signal,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+
+    await validationStarted.future;
+    aborted.abort();
+    validationMaySettle.complete();
+
+    await expectLater(installing, throwsA(isA<PluginStartAbortedException>()));
+    final pinnedPath = p.join(stateDir.path, "opencode", "1.17.9");
+    expect(File(p.join(pinnedPath, "opencode")).readAsStringSync(), "BINARY");
+    expect(File(p.join(pinnedPath, RuntimeInstallService.sentinelFileName)).readAsStringSync(), "abc123");
+    expect(Directory(p.join(stateDir.path, "opencode", ".sesori-runtime-staging")).existsSync(), isFalse);
   });
 
   test("reclaims a supported superseded version once no generation is running", () async {

@@ -8,6 +8,41 @@ defaults and queued client sends coherent.
 
 ## Required Behavior
 
+- Existing chats on mobile and desktop become read-only when harness management
+  reports their exact harness unusable. The accessible live notice explains the
+  reason, opens Harness Settings when setup is relevant, and offers Recheck only
+  when authentication is required. Composer,
+  voice/attachment entry, slash commands, prompt selections, stop, remote queued-
+  prompt cancellation and question/permission replies cannot mutate the session.
+  Open response dialogs close without answering when availability changes.
+- Disconnects, background/resume reconnects, and the management snapshot refresh
+  that follows preserve a loaded chat's last known availability. A usable chat
+  keeps its composer, focus and editable draft instead of showing a checking or
+  disabled-harness notice. A known block stays blocked until a new management
+  result replaces it; a confirmed disable still removes input immediately. This
+  uses the open chat's existing state, not a persisted plugin-status cache.
+- A blocked harness does not hide history it can serve: a cold blocked chat reads
+  store-only and renders whatever the bridge holds with the notice in the composer's
+  place, even when that store is behind the harness. It falls back to the full-screen
+  history-unavailable state only with nothing to show — the read fails, or it returns
+  an empty transcript the bridge reports the harness still owes. From that state a
+  harness-status recheck also retries the read, because a store-only read can fail
+  for reasons enabling the harness would not fix. A recovery refresh that restores a
+  catalog the blocked load could not read replaces the placeholder agent selection
+  rather than carrying it into the enabled composer.
+  A live block, reload race or metadata-refresh failure preserves the rendered
+  transcript and applies events buffered during loading. Restored eligibility reloads history,
+  options and pending interactions before enabling input, without reopening the
+  route. A failed content refresh remains read-only and directs the user to reopen
+  the chat; it does not offer a harness-status recheck. Existing archive and route
+  read-only restrictions remain stronger. Archived chats omit harness warnings
+  and refuse Stop, including a scope confirmation left open while another surface
+  archives the session.
+- Pending local sends stop draining while blocked; users can still cancel those
+  local-only entries, but cannot cancel a bridge-owned prompt until interaction is
+  usable. Existing queue behavior otherwise stays unchanged. Availability gating
+  adds no failed-send recovery, persistence, attachment retention or retry redesign.
+
 - A prompt send targets one session with optional agent, model, and variant.
   Prompt and slash-command sends complete on acceptance — durably enqueued by
   the plugin or taken by the backend — never on run completion, so no client
@@ -60,16 +95,22 @@ defaults and queued client sends coherent.
   client user-message id in either case. The bridge keeps the authoritative
   active turn until its terminal event even when an older app server returns a
   separate submission id for the steering request.
-- Codex spawn calls render as one inline subtask card in the parent chat as
-  well as a child in the tasks widget, on phone and desktop. Cards open the
-  correct child transcript and survive history reload. A linked card follows
-  the child's session status; completing the spawn call or the parent turn
-  must not stop its spinner while the child runs. Readable child nicknames and
+- Codex spawn calls render as one inline subtask card in the direct parent's
+  chat and open the exact child transcript. Current persisted
+  `item_completed/SubAgentActivity` identity replaces the generic
+  `spawn_agent` card only by matching parent-local call id, so duplicate
+  descriptions and reversed activity order cannot cross-bind. Normal encrypted
+  child input keeps the exact matching spawn message; parent user history,
+  labels, timing, ordering, and envelope headers are never prompt provenance.
+  A complete child-owned plaintext `NEW_TASK` payload may replace that fallback
+  only for the initial child turn. That same initial turn owns the first
+  completed, failed, or cancelled terminal on live and replay paths; later
+  resumed input and terminals cannot rewrite the tile. Completing the spawn
+  call or parent turn does not stop its spinner while the child runs, and a
+  later close cannot overwrite a terminal result. Readable child nicknames and
   titles are preserved; raw path fallbacks such as
   `/root/architecture_review_1271` display as `Architecture review · 1271`.
-  Matching uses the raw task path under the direct parent, not the formatted
-  label. An interrupted launch that never creates a child retains its own
-  terminal tool status.
+  A missing/mismatched activity leaves the generic spawn tool card.
 - A Codex root remains effectively busy after its own turn completes while any
   tracked descendant turn is running. The root's idle status and completion
   signal are deferred and released exactly once after the last child settles;
@@ -80,7 +121,8 @@ defaults and queued client sends coherent.
   busy child thread ids, and roll a child's pending permission or question up
   to the root's awaiting-input state and pending-input snapshot, including a
   restored request with no live status and a request that arrives while
-  `thread/read` is still enriching the spawn. A stop or deletion accepted before
+  metadata-only `thread/read(includeTurns: false)` is still enriching the spawn.
+  A stop or deletion accepted before
   the child's `turn/started` queues its interrupt until the turn id arrives.
   Closing an active child emits its idle status before any deferred root release.
 - A plain Claude prompt sent while its resident process is working is written
@@ -114,20 +156,20 @@ defaults and queued client sends coherent.
   down, cancelling every sub-agent. With no sub-agents running, stop behaves
   as before with no dialog. An older app stops everything; an older bridge
   ignores the scope.
-- DeepSeek 0.1.3 supports side-effect-free `confirm` rejection and child-only
-  `keep`. A running main turn can be kept separate only when all running children
-  are background; unsupported `keep` rejects before cancelling prompts or input.
-  `stop` cancels standard prompts and interrupts delegated children using each
-  child's direct parent. Foreground children stop through their parent; stopping
-  a non-cancellable child directly does not widen to its parent or siblings and
-  reports retained work. An opened child's new user prompt uses standard cancel.
-  Neither accepted nor unknown-child interrupt responses fabricate terminal
-  tiles/idle state. Whole-plugin interruption waits for authoritative lifecycle;
-  transport failure preserves its original error and logs parent/child context.
-  Stop currently targets children known at request time: a child announced while
-  cancellation is in flight can continue running, remains visible as busy, and
-  can be stopped again. Closing that late-launch window is a required follow-up.
-  Other ACP harnesses retain their existing policy until they opt in.
+  OpenCode retains legacy client fallback: its observed-child snapshot does not
+  prove atomic subtree completion across separate HTTP/SSE channels.
+- DeepSeek 0.1.4 supports side-effect-free `confirm` rejection and child-only
+  `keep`. For a current-client stop, ACP captures the named native scope plus
+  every independently resident descendant root, queues all native subtree STOPs
+  before awaiting responses, and waits for all of them. Persisted descendants
+  clear queued-only turns without inventing native ownership; retained children
+  use exact direct-parent authority. A partial native failure stays observable,
+  later prompts survive STOP responses, and lifecycle alone settles busy state.
+  Released clients keep named cancellation plus their own child fanout; a current
+  client treats an older bridge's `{}` response as no acknowledgment and falls
+  back to refreshed visible busy children or its request snapshot during reload.
+  `deepseek/input/cancel` remains ordered before later reused-ID input. Other ACP
+  harnesses remain unchanged.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the
   turn's requested model and thinking level on Pi's command line so
@@ -213,6 +255,12 @@ defaults and queued client sends coherent.
   multi-tool turn does not depend on the final turn snapshot. Sesori does not
   call form-elicitation or unadvertised session-close methods to complete an
   ordinary turn.
+- Antigravity uses the shared ACP per-session lanes, prompt acceptance,
+  cancellation, command delivery and idle recovery. Before each prompt it validates the normalized model/variant tuple,
+  maps it to the exact account-advertised native model ID, applies that ID, then forces mode `default`; it never selects
+  `auto_edit` or `yolo`. Live and replay assistant, tool and error envelopes carry the same normalized model plus
+  High/Medium/Low variant. Updates share the bounded provider normalizer, and an agent-process exit clears
+  connection-scoped catalog state before one lazy reconnect restores residency.
 - GitHub Copilot runs through the same standard ACP normalization for text,
   reasoning when emitted, tools, statuses, commands, cancellation, and image
   parts. Its complete model/mode/reasoning selection is validated before
@@ -246,8 +294,12 @@ defaults and queued client sends coherent.
   it supplies another immediate active-turn delivery path; natural-completion
   queueing is not valid production behavior. Cursor, Hermes, DeepSeek, Copilot,
   Grok, and OMP use the shared fallback. Their
-  synthetic user transcript message is published only after its frame flushes
-  successfully to the agent's stdin. A prompt rejected after that dispatch
+  synthetic user transcript message is published only after its frame is
+  synchronously admitted to the agent's stdin. The shared NDJSON transport
+  relies on one IOSink's FIFO admission rather than per-request flushing, so
+  concurrent requests and notifications preserve order without binding the sink;
+  an asynchronous stdin failure is logged and fails every pending response with
+  the original error. A prompt rejected after that dispatch
   renders a durable inline error, preserving the agent's diagnostic detail
   rather than transitioning silently to idle. The shared 30-minute ACP prompt
   safety bound measures same-session inactivity, not total turn duration:
@@ -398,10 +450,10 @@ defaults and queued client sends coherent.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated shared presentation and desktop shell coverage: representative selectable transcript content renders through the shared session-detail view, the desktop session route is present, and desktop renders the text-first composer and declared attachment/diff actions without resolving voice capture. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
-| L2 Routine | Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. Automated Codex coverage holds root idle through a running child, releases it once, rolls child pending input into the root summary, and reconciles an already-idle child abort. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
-| L3 Release | Client end to end on phone and desktop, every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; a stale selection refreshes, warns, and retries once without losing the queued prompt; and a removed command becomes visibly unavailable and removable without being retried or overtaken. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
-| L4 Extended | Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
+| L1 Smoke | Automated shared presentation and desktop shell coverage: representative selectable transcript content renders through the shared session-detail view, the desktop session route is present, and desktop renders the text-first composer and declared attachment/diff actions without resolving voice capture. A loaded blocked fixture shows its reason in the composer's place with the transcript still rendered, an unavailable-history fixture shows it full-screen, and neither shows pending-input banners; setup-relevant fixtures retain Harness Settings, authentication-required fixtures alone additionally show Recheck, and local queue cancellation remains available. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
+| L2 Routine | Automated core and shared UI: blocked-state calculation covers every reason; reconnect/loading retains the last decision and composer focus/draft until a new result arrives; blocked cubit coverage refuses send, stop, bridge-owned queued-prompt cancellation, question answers and permission replies without remote dispatch; an already-open response dialog closes; local cancellation remains local; loaded transcript/events survive reload overlap and metadata/content failure; restoration refreshes prerequisites before controls return. Ready dormant/degraded and existing busy queue behavior remain interactive. Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. Automated Codex coverage holds root idle through a running child, releases it once, rolls child pending input into the root summary, and reconciles an already-idle child abort. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
+| L3 Release | Client end to end on phone: an existing chat blocked by a representative setup/runtime state keeps navigation, selection/copy and rendered history, opens shared Harness Settings, and restores controls only after a successful refresh. Every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; a stale selection refreshes, warns, and retries once without losing the queued prompt; and a removed command becomes visibly unavailable and removable without being retried or overtaken. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
+| L4 Extended | Client end to end on macOS desktop and iOS, plus one Android unavailable-to-usable variation against a macOS bridge: cold and live blocks, settings recovery, successful post-recovery send, archive/route-read-only precedence, a second harness remaining usable, and a block triggered from another surface while input or a response dialog is active. Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
 
 ## Exploration Guidance
@@ -410,7 +462,9 @@ Vary prompt shape, prompt versus slash command, explicit versus default
 agent/model, aborting early versus late, sending while busy to steer at a tool
 boundary where supported or stop-and-send over ACP, sending a command or
 selection change that must wait, cancelling before dispatch, leaving and
-reopening while an entry is visible, turn length, and client count. For Hermes,
+reopening while an entry is visible, turn length, and client count. For
+Antigravity, vary first-turn account defaults, normalized model plus High/Medium/Low variants, exact native dispatch,
+live/replay metadata, slash commands, early and late abort, two sessions, process exit and lazy reconnect. For Hermes,
 include text and image prompts, tool updates, a permission decision, cold history
 replay, and abort after output has started. For DeepSeek, include busy
 stop-and-send around tool use or pending input. For Copilot, include prose, an
@@ -421,6 +475,21 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 
 ## Failure Signals
 
+- A known-unusable chat exposes or accepts composer, attachment, command,
+  selection, stop, remote-cancel or pending-response mutations; refusal emits
+  accepted-send analytics; an open dialog answers instead of closing; or a local
+  queued item cannot be cancelled without restoring the harness.
+- A cold block hides a servable transcript behind a full-screen notice, renders an
+  empty transcript as if history loaded, marks unseen
+  content read, or omits its reason/settings path. A live block blanks already
+  rendered content, drops buffered events, or allows pagination to trigger a
+  backend read while blocked.
+- Reconnecting a usable loaded chat replaces the composer with a harness notice,
+  drops keyboard focus or interrupts typing while management is still loading;
+  a known block disappears merely because its live snapshot was invalidated.
+- Controls return after a known block before management and session prerequisites refresh, require a
+  route reopen after successful recovery, override archive/route read-only mode,
+  or describe a content-load failure as a harness-status failure.
 - A slash command holds the client request open for the whole run, or a slow
   plugin blocks unrelated sessions, other plugins, or relay traffic.
 - An accepted ACP prompt rejection returns the session to idle without a durable
@@ -481,7 +550,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   instead of updated when compaction ends, or survives an abort or process
   exit.
 - An abort, permission reply, or question reply stalls behind a send to a
-  busy session on the same session lane, or a stop-and-send ACP follow-up waits
+  busy session on the same session lane; concurrent NDJSON dispatch binds stdin,
+  reorders control frames and prompts, or loses an asynchronous sink failure; or
+  a stop-and-send ACP follow-up waits
   for the active turn to finish naturally instead of cancelling it before dispatch.
   A Pi abort waits for the general history/control timeout, lets hidden steering
   resume after Stop, or leaves later sends stuck in their sending state.
@@ -506,6 +577,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   without asking, the scope dialog appears when none run, a confirmed stop leaves a sub-agent running or the
   session stuck busy, a killed sub-agent leaves the session busy or the stop
   request hanging, or dismissing the dialog stops anything.
+- An Antigravity turn accepts a stale or mismatched model/variant tuple, sends a normalized rather than exact native
+  model ID, omits `default` mode, dispatches after failed selection, applies an unsafe mode, loses normalized
+  model/variant or output between live and replay, or reconnects without clearing connection state.
 - A Grok turn dispatches before exact model/effort selection settles, accepts a
   stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
   loses text, reasoning, tool, status, or terminal failure output. A child lets
@@ -534,6 +608,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   only, so chat copy preserves document structure but not Markdown styling or
   metadata such as bold, italics, and hyperlink destinations
   (`flutter/flutter#104206`).
+- Harness availability is bounded management evidence, not continuous credential
+  validation. A ready provider can reject a turn before setup refresh changes.
+  This gate does not recover or persist staged/queued input.
 - L3 and above need live backends; an omitted plugin is partial coverage.
 - Session-detail refresh behavior is under active investigation, so refresh
   churn is recorded as evidence rather than judged pass or fail.
@@ -551,6 +628,8 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
+- Antigravity native turn behavior, personal OAuth and cross-target reconnect remain unverified; synthetic ACP
+  composition does not substitute for them.
 - Grok does not advertise ACP image prompt capability in the supported release;
   image attachments are not Grok turn coverage.
 - Copilot reasoning is model/account dependent; absence is not a failure unless
@@ -589,10 +668,14 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
 - Hermes: `bridge/sesori_plugin_hermes/` and the shared ACP plugin implementation
 - DeepSeek: `bridge/sesori_plugin_deepseek/` and the shared ACP plugin implementation
 - Copilot: `bridge/sesori_plugin_copilot/` and the shared ACP plugin implementation
+- Antigravity: `bridge/sesori_plugin_antigravity/` and the shared ACP plugin implementation
 - Grok: `bridge/sesori_plugin_grok/` and the shared ACP plugin implementation
-- Client: `client/module_core/lib/src/cubits/session_detail/`,
-  `client/module_app_ui/lib/src/features/session_detail/`,
-  `client/app/lib/features/session_detail/`, and
+- Client gate and shared presentation:
+  `client/module_core/lib/src/cubits/session_detail/`,
+  `client/module_core/lib/src/services/session_interaction_calculator.dart`,
+  `client/module_app_ui/lib/src/features/session_detail/`, and focused session-
+  detail/calculator/widget tests
+- Product shells: `client/app/lib/features/session_detail/` and
   `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
 - Plans (discovery only): `.plan/completed/relay-request-concurrency`,
   `internal-chat-history`, `.plan/active/session-refresh-reconnects`

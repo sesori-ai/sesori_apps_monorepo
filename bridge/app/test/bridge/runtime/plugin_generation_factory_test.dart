@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_residency.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/host/bridge_host_json_store.dart";
@@ -93,6 +94,7 @@ void main() {
           store: registrationStore,
         ),
         startAborted: StartAbortSignal.never,
+        residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
       )) {
         switch (event) {
           case PluginGenerationProvisionProgress(:final event):
@@ -105,6 +107,46 @@ void main() {
       if (plugin == null) throw StateError("Factory did not return a started plugin.");
       startedPlugins.add(plugin);
       return plugin;
+    }
+
+    ManagedRuntimePaths testManagedRuntimePaths() {
+      return ManagedRuntimePaths(
+        installRoot: runtimeDirectory.path,
+        binaryPath: "${runtimeDirectory.path}/bin/sesori-bridge",
+        cacheDirectory: runtimeDirectory.path,
+      );
+    }
+
+    PluginGenerationFactory createFactory() {
+      return PluginGenerationFactory(
+        managedRuntimePaths: testManagedRuntimePaths(),
+        currentBridgeIdentity: currentBridgeIdentity,
+        ownerSessionId: "owner-session",
+        startupMutexRepository: startupMutexRepository,
+        bridgeInstanceService: bridgeInstanceService,
+        processRepository: _FakeProcessRepository(),
+        clock: const ServerClock(),
+        environment: const <String, String>{"HOME": "/home/alex"},
+        currentUser: ProcessUser.fromRawUser("alex"),
+        resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
+        settingsChanges: settingsChanges.stream,
+      );
+    }
+
+    PluginRuntimeRegistration registrationFor({required BridgePluginDescriptor testDescriptor}) {
+      final stateDirectory = pluginStateDirectoryPath(
+        paths: testManagedRuntimePaths(),
+        pluginId: testDescriptor.id,
+        stateStorage: testDescriptor.stateStorage,
+      );
+      return PluginRuntimeRegistration(
+        descriptor: testDescriptor,
+        config: const PluginConfig(values: <String, Object?>{}),
+        stateDirectory: stateDirectory,
+        store: BridgeHostJsonStore(
+          fileApi: RuntimeFileApi(runtimeDirectory: stateDirectory),
+        ),
+      );
     }
 
     test("allowed resolution starts the descriptor on a fully wired host", () async {
@@ -145,6 +187,174 @@ void main() {
         reason: "stale cleanup must be authorized to reclaim records of the bridge this one replaced",
       );
     });
+    test("starts each descriptor provisioning concurrently", () async {
+      final firstProvisionStarted = Completer<void>();
+      final firstProvisionGate = Completer<void>();
+      final secondProvisionStarted = Completer<void>();
+      final slow = _GatedDescriptor(
+        id: "slow-provision",
+        provisionStarted: firstProvisionStarted,
+        provisionGate: firstProvisionGate,
+      );
+      final fast = _GatedDescriptor(
+        id: "fast-provision",
+        provisionStarted: secondProvisionStarted,
+      );
+      final factory = createFactory();
+      final slowStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: slow),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+      final fastStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: fast),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+
+      try {
+        await firstProvisionStarted.future.timeout(const Duration(seconds: 1));
+        await secondProvisionStarted.future.timeout(const Duration(seconds: 1));
+        expect(slow.startCalls, isZero);
+        expect(fast.startCalls, equals(1));
+      } finally {
+        if (!firstProvisionGate.isCompleted) firstProvisionGate.complete();
+        final observations = await Future.wait([slowStart, fastStart]).timeout(const Duration(seconds: 1));
+        for (final observation in observations) {
+          _retainStartedPlugins(observation: observation, startedPlugins: startedPlugins);
+        }
+      }
+    });
+
+    test("closes fast descriptor stream while another descriptor start is gated", () async {
+      final slowStartStarted = Completer<void>();
+      final slowStartGate = Completer<void>();
+      final fastStartStarted = Completer<void>();
+      final slow = _GatedDescriptor(
+        id: "slow-start",
+        startStarted: slowStartStarted,
+        startGate: slowStartGate,
+      );
+      final fast = _GatedDescriptor(
+        id: "fast-start",
+        startStarted: fastStartStarted,
+      );
+      final factory = createFactory();
+      final slowStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: slow),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+      final fastStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: fast),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+
+      try {
+        await slowStartStarted.future.timeout(const Duration(seconds: 1));
+        await fastStartStarted.future.timeout(const Duration(seconds: 1));
+        final fastObservation = await fastStart.timeout(const Duration(seconds: 1));
+        expect(fastObservation.events, contains(isA<PluginGenerationStarted>()));
+        expect(slowStartGate.isCompleted, isFalse);
+      } finally {
+        if (!slowStartGate.isCompleted) slowStartGate.complete();
+        final observations = await Future.wait([slowStart, fastStart]).timeout(const Duration(seconds: 1));
+        for (final observation in observations) {
+          _retainStartedPlugins(observation: observation, startedPlugins: startedPlugins);
+        }
+      }
+    });
+
+    test("isolates descriptor provisioning failure from healthy descriptor", () async {
+      final failed = _GatedDescriptor(
+        id: "failed-provision",
+        provisionError: StateError("provisioning failed"),
+      );
+      final healthy = _GatedDescriptor(id: "healthy");
+      final factory = createFactory();
+      final failedStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: failed),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+      final healthyStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: healthy),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+
+      final observations = await Future.wait([failedStart, healthyStart]).timeout(const Duration(seconds: 1));
+      final failedObservation = observations[0];
+      final healthyObservation = observations[1];
+      expect(failedObservation.errors, hasLength(1));
+      expect(
+        failedObservation.errors.single,
+        isA<PluginGenerationStartFailedException>().having(
+          (error) => error.pluginId,
+          "pluginId",
+          equals("failed-provision"),
+        ),
+      );
+      expect(failed.startCalls, isZero);
+      expect(healthyObservation.errors, isEmpty);
+      expect(healthyObservation.events, contains(isA<PluginGenerationStarted>()));
+      _retainStartedPlugins(observation: healthyObservation, startedPlugins: startedPlugins);
+    });
+
+    test("holds startup mutex until every descriptor start settles", () async {
+      final slowStartStarted = Completer<void>();
+      final slowStartGate = Completer<void>();
+      final slow = _GatedDescriptor(
+        id: "mutex-slow-start",
+        startStarted: slowStartStarted,
+        startGate: slowStartGate,
+      );
+      final fast = _GatedDescriptor(id: "mutex-fast-start");
+      final factory = createFactory();
+      final slowStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: slow),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+      final fastStart = _observeGenerationStart(
+        factory.start(
+          registration: registrationFor(testDescriptor: fast),
+          startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
+        ),
+      );
+
+      try {
+        await slowStartStarted.future.timeout(const Duration(seconds: 1));
+        final fastObservation = await fastStart.timeout(const Duration(seconds: 1));
+        expect(fastObservation.events, contains(isA<PluginGenerationStarted>()));
+        expect(startupMutexRepository.lockHeld, isTrue);
+        expect(slowStartGate.isCompleted, isFalse);
+      } finally {
+        if (!slowStartGate.isCompleted) slowStartGate.complete();
+        final observations = await Future.wait([slowStart, fastStart]).timeout(const Duration(seconds: 1));
+        for (final observation in observations) {
+          _retainStartedPlugins(observation: observation, startedPlugins: startedPlugins);
+        }
+      }
+      expect(startupMutexRepository.lockHeld, isFalse);
+    });
+
     test("forwards only changed idle timeout values through the plugin host", () async {
       await startPlugin();
       final host = descriptor.startedHosts.single;
@@ -159,6 +369,35 @@ void main() {
 
       expect(changes, [const Duration(minutes: 25)]);
       await subscription.cancel();
+    });
+
+    test("import-only residency caps positive idle time and promotion restores configured time", () async {
+      idleTimeoutMins = 45;
+      final residency = PluginGenerationResidencyController(initial: PluginGenerationResidency.importOnly);
+      addTearDown(residency.dispose);
+      final observation = await _observeGenerationStart(
+        createFactory().start(
+          registration: registrationFor(testDescriptor: descriptor),
+          startAborted: StartAbortSignal.never,
+          residency: residency,
+        ),
+      );
+      _retainStartedPlugins(observation: observation, startedPlugins: startedPlugins);
+      final host = descriptor.startedHosts.single;
+      expect(host.pluginIdleTimeout, const Duration(minutes: 5));
+      final changes = <Duration?>[];
+      final subscription = host.pluginIdleTimeoutChanges.listen(changes.add);
+      addTearDown(subscription.cancel);
+
+      idleTimeoutMins = 0;
+      settingsChanges.add(Object());
+      idleTimeoutMins = 3;
+      settingsChanges.add(Object());
+      idleTimeoutMins = 45;
+      settingsChanges.add(Object());
+      residency.promoteToNormal();
+
+      expect(changes, const [null, Duration(minutes: 3), Duration(minutes: 5), Duration(minutes: 45)]);
     });
 
     test("zero-plugin startup still performs single-live-bridge enforcement", () async {
@@ -412,6 +651,92 @@ StartupLockRejection _startupLockRejection({String lockFilePath = "/tmp/bridge-s
   );
 }
 
+class _ObservedGenerationStart() {
+  final List<PluginGenerationStartEvent> events = <PluginGenerationStartEvent>[];
+  final List<Object> errors = <Object>[];
+}
+
+Future<_ObservedGenerationStart> _observeGenerationStart(Stream<PluginGenerationStartEvent> stream) async {
+  final observed = _ObservedGenerationStart();
+  final done = Completer<void>();
+  late final StreamSubscription<PluginGenerationStartEvent> subscription;
+  subscription = stream.listen(
+    observed.events.add,
+    onError: (Object error, StackTrace _) => observed.errors.add(error),
+    onDone: () {
+      if (!done.isCompleted) done.complete();
+    },
+  );
+  await done.future;
+  await subscription.cancel();
+  return observed;
+}
+
+void _retainStartedPlugins({
+  required _ObservedGenerationStart observation,
+  required List<BridgePlugin> startedPlugins,
+}) {
+  for (final event in observation.events) {
+    switch (event) {
+      case PluginGenerationProvisionProgress():
+        break;
+      case PluginGenerationStarted(:final plugin):
+        startedPlugins.add(plugin);
+    }
+  }
+}
+
+// ignore: must_be_immutable
+class _GatedDescriptor({
+  @override required final String id,
+  final Completer<void>? provisionStarted,
+  final Completer<void>? provisionGate,
+  final Object? provisionError,
+  final Completer<void>? startStarted,
+  final Completer<void>? startGate,
+}) extends BridgePluginDescriptor {
+  final List<PluginHost> startedHosts = <PluginHost>[];
+  BridgePlugin? startedPlugin;
+  int startCalls = 0;
+
+  @override
+  String get displayName => id;
+
+  @override
+  PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
+
+  @override
+  PluginSessionOptionsScope get sessionOptionsScope => PluginSessionOptionsScope.project;
+
+  @override
+  List<PluginOption> get options => const [];
+
+  @override
+  Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
+    _signal(provisionStarted);
+    final gate = provisionGate;
+    if (gate != null) await gate.future;
+    final error = provisionError;
+    if (error != null) throw error;
+  }
+
+  @override
+  Future<BridgePlugin> start(PluginHost host) async {
+    startCalls++;
+    startedHosts.add(host);
+    _signal(startStarted);
+    final gate = startGate;
+    if (gate != null) await gate.future;
+    final plugin = _FakeBridgePlugin();
+    startedPlugin = plugin;
+    return plugin;
+  }
+}
+
+void _signal(Completer<void>? signal) {
+  if (signal != null && !signal.isCompleted) signal.complete();
+}
+
 /// Records the host every `start()` receives and returns a steady fake plugin,
 /// so the tests can assert exactly what the runner wires up.
 // ignore: prefer_const_constructors_in_immutables, mutable test logs prevent a const primary constructor
@@ -522,6 +847,7 @@ class _FakeStartupMutexRepository() implements StartupMutexRepository {
   StartupLockRejection? rejection;
   final List<({int pid, String? startMarker})> lockRequests = <({int pid, String? startMarker})>[];
   final List<String> operations = <String>[];
+  bool lockHeld = false;
 
   @override
   Future<T> withLock<T>({
@@ -543,7 +869,12 @@ class _FakeStartupMutexRepository() implements StartupMutexRepository {
             ),
       );
     }
-    return await onLockAcquired();
+    lockHeld = true;
+    try {
+      return await onLockAcquired();
+    } finally {
+      lockHeld = false;
+    }
   }
 }
 

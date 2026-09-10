@@ -1,8 +1,10 @@
 import "dart:async";
+import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -103,6 +105,61 @@ Future<AntigravityRuntimeResolution> _resolve({
 );
 
 void main() {
+  test("static inspection logs a recovered PATH storage failure before managed fallback", () {
+    final failure = StateError("synthetic PATH storage failure");
+    final stackTrace = StackTrace.fromString("synthetic-path-storage-stack");
+    final storage = _FakeStorage(
+      pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
+      pathResult: AntigravityRuntimeStorageFailure(cause: failure, stackTrace: stackTrace),
+    );
+    final api = _FakeAcpApi(outcomes: []);
+    late AntigravityRuntimeCandidateResult result;
+    final logs = _captureWarningLog(
+      action: () => result = _service(storage: storage, api: api).inspect(
+        explicitServerPath: null,
+        managedServerPath: managedPair.serverPath,
+        pathEnvironment: const {"PATH": "/path"},
+        target: target,
+      ),
+    );
+
+    expect(result, isA<AntigravityRuntimeCandidateFound>());
+    expect(storage.inspectedPaths, [managedPair.serverPath]);
+    expect(api.launches, isEmpty);
+    expect(logs, contains("[antigravity] PATH runtime inspection failed"));
+    expect(logs, contains("synthetic PATH storage failure"));
+    expect(logs, contains("synthetic-path-storage-stack"));
+  });
+
+  test("static inspection keeps ordinary PATH pair rejection as non-error fallback", () {
+    final storage = _FakeStorage(
+      pairResults: const {
+        "/managed/agy_acp_server.par": AntigravityRuntimePairMissing(
+          component: AntigravityRuntimeComponent.server,
+        ),
+      },
+      pathResult: const AntigravityRuntimePairInvalid(
+        component: AntigravityRuntimeComponent.harness,
+        reason: AntigravityRuntimePairInvalidReason.notSiblings,
+      ),
+    );
+    final logs = _captureWarningLog(
+      action: () =>
+          _service(
+            storage: storage,
+            api: _FakeAcpApi(outcomes: []),
+          ).inspect(
+            explicitServerPath: null,
+            managedServerPath: managedPair.serverPath,
+            pathEnvironment: const {"PATH": "/path"},
+            target: target,
+          ),
+    );
+
+    expect(logs, isEmpty);
+    expect(storage.inspectedPaths, [managedPair.serverPath]);
+  });
+
   test("an explicit path is authoritative and maps its storage failure", () async {
     final failure = StateError("storage failed");
     final stackTrace = StackTrace.current;
@@ -334,6 +391,41 @@ void main() {
     expect(storage.inspectedPaths, isEmpty);
   });
 
+  test("managed candidate inspection and initialize stay in the supplied validation context", () async {
+    const candidatePair = AntigravityRuntimePair(
+      serverPath: "/staging/candidate/agy_acp_server.par",
+      harnessPath: "/staging/candidate/localharness_external",
+      target: target,
+    );
+    final storage = _FakeStorage(
+      pairResults: const {
+        "/staging/candidate/agy_acp_server.par": AntigravityRuntimePairFound(pair: candidatePair),
+      },
+      pathResult: const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server),
+    );
+    final api = _FakeAcpApi(
+      outcomes: [() async => initializeResult(agentVersion: AntigravityRelease.agentVersion)],
+    );
+
+    final result = await _service(storage: storage, api: api).validateManagedCandidate(
+      serverPath: candidatePair.serverPath,
+      probeEnvironment: const {"GEMINI_HOME": "/staging/validation-state"},
+      workingDirectory: "/staging/validation-cwd",
+      target: target,
+      timeout: const Duration(seconds: 5),
+      abortSignal: StartAbortSignal.never,
+    ) as AntigravityRuntimeSelected;
+
+    expect(result.source, AntigravityRuntimeSource.managed);
+    expect(storage.inspectedPaths, [candidatePair.serverPath]);
+    expect(storage.pathInspections, 0);
+    expect(api.launches.single.cwd, "/staging/validation-cwd");
+    expect(api.launches.single.environment, {
+      "GEMINI_HOME": "/staging/validation-state",
+      AntigravityRelease.harnessPathEnvironmentKey: candidatePair.harnessPath,
+    });
+  });
+
   test("reports every exact contract violation", () async {
     const invalid = AntigravityInitializeDto(
       protocolVersion: 2,
@@ -357,6 +449,7 @@ void main() {
               source: AntigravityRuntimeSource.explicit,
               pair: pathPair,
               probeEnvironment: const {},
+              workingDirectory: null,
               timeout: const Duration(seconds: 5),
               abortSignal: StartAbortSignal.never,
             )
@@ -376,6 +469,7 @@ void main() {
       source: AntigravityRuntimeSource.explicit,
       pair: pathPair,
       probeEnvironment: const {},
+      workingDirectory: null,
       timeout: const Duration(seconds: 5),
       abortSignal: StartAbortSignal.never,
     ) as AntigravityRuntimeProbeFailed;
@@ -397,4 +491,16 @@ void main() {
     );
     expect(storage.pathInspections, 0);
   });
+}
+
+String _captureWarningLog({required void Function() action}) {
+  final previousLevel = Log.level;
+  final stderr = BufferingStdout();
+  try {
+    Log.level = LogLevel.debug;
+    IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
 }

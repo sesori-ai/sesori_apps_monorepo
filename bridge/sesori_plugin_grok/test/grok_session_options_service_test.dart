@@ -32,6 +32,22 @@ void main() {
     expect(api.probeCount, 1);
   });
 
+  test("a model without a declared default effort keeps its first-listed effort as the default", () async {
+    final fixture = _service(api: _FakeGrokAcpApi());
+    final initialize = _jsonFixture(name: "initialize.json");
+    final meta = initialize["_meta"] as Map<String, dynamic>;
+    final modelState = meta["modelState"] as Map<String, dynamic>;
+    final alpha = (modelState["availableModels"] as List<dynamic>).first as Map<String, dynamic>;
+    for (final effort in (alpha["_meta"] as Map<String, dynamic>)["reasoningEfforts"] as List<dynamic>) {
+      (effort as Map<String, dynamic>)["default"] = false;
+    }
+    fixture.service.captureInitializeResult(result: AcpInitializeResult.fromJson(initialize));
+
+    final model = (await fixture.service.listProviders()).providers.single.models.first;
+    expect(model.variants, ["high", "low"]);
+    expect(model.defaultVariant, "low");
+  });
+
   test("failed refresh retains the last-good catalog without reporting success", () async {
     final api = _FakeGrokAcpApi()
       ..probes.add(() async => _initializeResult())

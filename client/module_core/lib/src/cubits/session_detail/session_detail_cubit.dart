@@ -14,19 +14,23 @@ import "../../errors/api_error_remote_failure_x.dart";
 import "../../foundation/models/composer/composer_attachment.dart";
 import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
+import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_options/session_options_request_mode.dart";
 import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/notification_canceller.dart";
 import "../../repositories/composer_draft_repository.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../repositories/models/plugin_management_result.dart";
 import "../../repositories/models/session_abort_rejected_exception.dart";
 import "../../repositories/models/session_options_repository_result.dart";
 import "../../repositories/permission_repository.dart";
 import "../../repositories/session_repository.dart";
+import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_detail_load_service.dart";
+import "../../services/session_interaction_calculator.dart";
 import "../../services/session_selection_calculator.dart";
 import "../../services/session_viewing_service.dart";
 import "../../services/transcript_snapshot_calculator.dart";
@@ -45,6 +49,7 @@ enum _SessionRefreshTrigger(final String logValue) {
   lifecycleResumed("lifecycle_resumed"),
   dataMayBeStale("data_may_be_stale"),
   waitingForConnection("waiting_for_connection"),
+  harnessAvailable("harness_available"),
   queuedEvent("queued_event"),
 }
 
@@ -65,9 +70,17 @@ enum _SessionRefreshResult() {
   closed,
 }
 
+enum _OptionsReloadResult() {
+  updated,
+  authenticationRequired,
+  failed,
+}
+
 class SessionDetailCubit(
   final ConnectionService _connectionService, {
   required final SessionDetailLoadService _loadService,
+  required final PluginManagementService _pluginManagementService,
+  required final SessionInteractionCalculator _interactionCalculator,
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
@@ -77,6 +90,7 @@ class SessionDetailCubit(
   required final ProductAnalyticsService _productAnalyticsService,
   required final String _sessionId,
   required final String _projectId,
+  required final bool claimProjectView,
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
 
@@ -96,10 +110,14 @@ class SessionDetailCubit(
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
-  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginDetailClaim(projectId: _projectId);
+  final ProjectViewClaim? _projectViewClaim = claimProjectView
+      ? _projectViewingService.beginDetailClaim(projectId: _projectId)
+      : null;
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final Set<String> _staleOptionsRecoveryAttemptedPromptIds = {};
+  Session? _sessionMetadata;
+  SessionInteractionState _interaction = const SessionInteractionState.checking();
 
   /// Monotonic counter stamped on parked sends, so a snapshot can settle only
   /// the parked prompts its fetch actually had a chance to observe.
@@ -187,13 +205,73 @@ class SessionDetailCubit(
       ..add(_connectionService.sessionEvents(_sessionId).listen(_handleEvent))
       ..add(_connectionService.events.listen(_handleGlobalEvent))
       ..add(_connectionService.status.listen(_onConnectionStatusChanged))
+      ..add(_pluginManagementService.snapshots.listen(_onManagementResult))
       ..add(
         _connectionService.dataMayBeStale.listen(
           (_) => _onDataMayBeStale(trigger: _SessionRefreshTrigger.dataMayBeStale),
         ),
       )
       ..add(_lifecycleSource.lifecycleStateStream.listen(_onLifecycleChanged));
-    _loadMessages(isReload: false);
+    unawaited(_pluginManagementService.refresh());
+    unawaited(_loadMessages(isReload: false));
+  }
+
+  SessionInteractionState _calculateInteraction({required Session session}) {
+    return _interactionCalculator.calculate(
+      pluginId: session.pluginId,
+      managementResult: _pluginManagementService.snapshots.hasValue ? _pluginManagementService.snapshots.value : null,
+      connectionStatus: _connectionService.currentStatus,
+      previous: _interaction,
+    );
+  }
+
+  void _onManagementResult(PluginManagementLoadResult result) {
+    if (isClosed) return;
+    if (result case PluginManagementLoadResultFailure(:final error)) {
+      logw("Harness availability check failed for session $_sessionId", error);
+    }
+    final session = _sessionMetadata;
+    if (session == null) return;
+    final next = _calculateInteraction(session: session);
+    if (next == _interaction) return;
+    _interaction = next;
+
+    final current = state;
+    switch (current) {
+      case SessionDetailLoaded(:final interaction):
+        if (!next.canInteract) {
+          emit(current.copyWith(interaction: next));
+        } else if (!interaction.canInteract) {
+          _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+        } else {
+          emit(current.copyWith(interaction: next));
+        }
+      case SessionDetailHarnessUnavailable():
+        if (next.canInteract) {
+          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
+        } else {
+          emit(SessionDetailState.harnessUnavailable(session: session, interaction: next));
+        }
+      case SessionDetailLoading() || SessionDetailFailed():
+        break;
+    }
+  }
+
+  Future<void> recheckHarnessAvailability() async {
+    await _pluginManagementService.refresh();
+    if (isClosed) return;
+    if (!_interaction.canInteract) {
+      // A blocked reload reads store-only, so it cannot wake the harness. From
+      // the unavailable shell that makes Recheck the user's retry as well: the
+      // read may have failed for a reason enabling the harness would not fix.
+      if (state is SessionDetailHarnessUnavailable) await reload();
+      return;
+    }
+    if (state is SessionDetailLoaded) {
+      _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+    } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
+      await reload();
+    }
   }
 
   // ---------------------------------------------------------------------------
@@ -204,13 +282,32 @@ class SessionDetailCubit(
     final connectionGeneration = _connectionGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
+    final previous = state;
     emit(const SessionDetailState.loading());
     final parkEpochAtFetch = _parkEpoch;
-    late final SessionDetailLoadResult result;
+    late final SessionDetailMetadataLoadResult metadataResult;
+    SessionDetailLoadResult? result;
+    // The interaction as the content load saw it. A block only refuses sending;
+    // an already-synced transcript still serves from the bridge store, so the
+    // load is attempted either way. Options come from the harness, so a blocked
+    // load can never require them.
+    var interactionAtLoad = _interaction;
     try {
-      result = isReload
-          ? await _loadService.reload(sessionId: _sessionId, projectId: _projectId)
-          : await _loadService.load(sessionId: _sessionId, projectId: _projectId);
+      metadataResult = await _loadService.loadMetadata(sessionId: _sessionId);
+      if (metadataResult case SessionDetailMetadataFound(:final session)
+          when !isClosed && connectionGeneration == _connectionGeneration) {
+        _sessionMetadata = session;
+        _interaction = _calculateInteraction(session: session);
+        interactionAtLoad = _interaction;
+        result = switch ((reload: isReload, canInteract: interactionAtLoad.canInteract)) {
+          (reload: true, canInteract: true) => await _loadService.reload(session: session, projectId: _projectId),
+          (reload: false, canInteract: true) => await _loadService.load(session: session, projectId: _projectId),
+          (reload: _, canInteract: false) => await _loadService.loadWithoutHarness(
+            session: session,
+            projectId: _projectId,
+          ),
+        };
+      }
     } finally {
       final remaining = (_activeLoadingRefreshes[connectionGeneration] ?? 1) - 1;
       if (remaining == 0) {
@@ -232,59 +329,152 @@ class SessionDetailCubit(
       return _SessionRefreshResult.staleConnection;
     }
 
-    switch (result) {
-      case SessionDetailLoadResultLoaded(:final snapshot):
-        _waitingForConnection = false;
-        _deferredPartEvents.discardForMessagesThrough(
-          messageIds: snapshot.messages.map((message) => message.info.id),
-          sequence: deferredPartEventSequence,
-        );
-        emit(_buildLoadedState(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch));
-        _refreshStaleOptions(snapshot: snapshot);
-        final effectiveProjectId = snapshot.projectId;
-        if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
-          _projectViewingService.markClaimFailed(claim: _projectViewClaim);
-        } else {
-          _projectViewingService.markClaimReady(
-            claim: _projectViewClaim,
-            projectId: effectiveProjectId,
-          );
-        }
-        // Declare the view only now that the transcript has actually loaded —
-        // a load that fails or waits for connection must not mark the session
-        // read (clearing its bold globally) while the user only saw a
-        // loading/error state.
-        _declareViewingSessionIfVisible();
-        _drainPendingEvents();
-        _drainDeferredPartsForLoadedMessages();
-        _tryDrainQueue();
-        return _SessionRefreshResult.applied;
-      case SessionDetailLoadResultWaitingForConnection():
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+    switch (metadataResult) {
+      case SessionDetailMetadataWaitingForConnection():
+        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _waitingForConnection = true;
-        if (_connectionService.currentStatus is ConnectionConnected) {
+        if (_isConnected) {
           _waitingForConnection = false;
-          _logRefresh(
-            action: _SessionRefreshAction.observed,
-            trigger: _SessionRefreshTrigger.waitingForConnection,
-          );
           unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.waitingForConnection));
         }
         return _SessionRefreshResult.waitingForConnection;
-      case SessionDetailLoadResultFailed(:final error, :final stackTrace):
+      case SessionDetailMetadataFailed(:final error, :final stackTrace):
         _waitingForConnection = false;
-        _projectViewingService.markClaimFailed(claim: _projectViewClaim);
-        _pendingSessionEvents.clear();
-        _pendingGlobalEvents.clear();
-        _deferredPartEvents.clear();
-        loge("Session detail load failed", error, stackTrace);
-        emit(
-          SessionDetailState.failed(
-            reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
-          ),
-        );
+        loge("Session metadata load failed", error, stackTrace);
+        if (previous is SessionDetailLoaded) {
+          emit(previous.copyWith(interaction: _interaction));
+          _drainPendingEvents();
+          _drainDeferredPartsForLoadedMessages();
+        } else {
+          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+          emit(
+            SessionDetailState.failed(
+              reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+            ),
+          );
+        }
         return _SessionRefreshResult.failed;
+      case SessionDetailMetadataFound(:final session):
+        switch (result) {
+          // Unreachable: the content load runs for every metadata-found outcome
+          // that gets here, because the guards that skip it (cubit closed,
+          // connection generation moved) already returned above. The arm exists
+          // only to make the switch exhaustive over the nullable local.
+          case null:
+            return _SessionRefreshResult.closed;
+          case SessionDetailLoadResultLoaded(:final snapshot):
+            _waitingForConnection = false;
+            // Nothing stored and the bridge says the harness still owes it: an
+            // empty chat would claim this session has no history, when the
+            // truth is that reading it needs the harness the user must enable.
+            // Eligibility that arrived meanwhile makes it retryable instead,
+            // and the recovery refresh below does exactly that.
+            if (snapshot.awaitingHarnessSync && snapshot.messages.isEmpty && !_interaction.canInteract) {
+              _clearBufferedEvents();
+              if (_projectViewClaim case final claim?) {
+                _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+              }
+              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              return _SessionRefreshResult.applied;
+            }
+            _deferredPartEvents.discardForMessagesThrough(
+              messageIds: snapshot.messages.map((message) => message.info.id),
+              sequence: deferredPartEventSequence,
+            );
+            // A load that ran blocked tolerated missing harness-owned options,
+            // so it must not open the composer even if eligibility arrived
+            // meanwhile. The recovery refresh below reloads them strictly first.
+            final becameAvailable = !interactionAtLoad.canInteract && _interaction.canInteract;
+            emit(
+              _buildLoadedState(
+                snapshot: snapshot,
+                parkEpochAtFetch: parkEpochAtFetch,
+                interaction: becameAvailable ? interactionAtLoad : _interaction,
+              ),
+            );
+            if (becameAvailable) {
+              _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+            } else if (_interaction.canInteract) {
+              // A stale-options refresh captures through the plugin runtime.
+              // While blocked the options are unusable anyway, and restored
+              // eligibility already runs a strict refresh that reloads them.
+              _refreshStaleOptions(snapshot: snapshot);
+            }
+            final effectiveProjectId = snapshot.projectId;
+            if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
+              if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+            } else if (_projectViewClaim case final claim?) {
+              _projectViewingService.markClaimReady(
+                claim: claim,
+                projectId: effectiveProjectId,
+              );
+            }
+            // Declare the view only now that the transcript has actually loaded —
+            // a load that fails or waits for connection must not mark the session
+            // read (clearing its bold globally) while the user only saw a
+            // loading/error state.
+            _declareViewingSessionIfVisible();
+            _drainPendingEvents();
+            _drainDeferredPartsForLoadedMessages();
+            _tryDrainQueue();
+            return _SessionRefreshResult.applied;
+          case SessionDetailLoadResultWaitingForConnection():
+            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+            _waitingForConnection = true;
+            if (_connectionService.currentStatus is ConnectionConnected) {
+              _waitingForConnection = false;
+              _logRefresh(
+                action: _SessionRefreshAction.observed,
+                trigger: _SessionRefreshTrigger.waitingForConnection,
+              );
+              unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.waitingForConnection));
+            }
+            return _SessionRefreshResult.waitingForConnection;
+          case SessionDetailLoadResultFailed(:final error, :final stackTrace):
+            _waitingForConnection = false;
+            // Serving stored history can still need a harness-backed backfill
+            // when the bridge has no complete snapshot for this session. While
+            // the harness is blocked that backfill cannot run, so report the
+            // block rather than a generic failure the user cannot act on.
+            // Classified against the current interaction, not the one the load
+            // started with: eligibility that arrived meanwhile makes this an
+            // ordinary retryable failure, and a block that arrived meanwhile
+            // explains one.
+            if (!_interaction.canInteract) {
+              logw("Session detail load failed while the harness was blocked", error, stackTrace);
+              // A block racing a refresh must not blank an already-rendered
+              // transcript; only a session with nothing to keep falls back to
+              // the unavailable-history state.
+              if (previous is SessionDetailLoaded) {
+                emit(previous.copyWith(interaction: _interaction));
+                _drainPendingEvents();
+                _drainDeferredPartsForLoadedMessages();
+                return _SessionRefreshResult.applied;
+              }
+              _clearBufferedEvents();
+              if (_projectViewClaim case final claim?) {
+                _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
+              }
+              emit(SessionDetailState.harnessUnavailable(session: session, interaction: _interaction));
+              return _SessionRefreshResult.applied;
+            }
+            _clearBufferedEvents();
+            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
+            loge("Session detail load failed", error, stackTrace);
+            emit(
+              SessionDetailState.failed(
+                reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
+              ),
+            );
+            return _SessionRefreshResult.failed;
+        }
     }
+  }
+
+  void _clearBufferedEvents() {
+    _pendingSessionEvents.clear();
+    _pendingGlobalEvents.clear();
+    _deferredPartEvents.clear();
   }
 
   Future<void> reload() async {
@@ -306,7 +496,11 @@ class SessionDetailCubit(
     final generation = _transcriptGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     emit(current.copyWith(isLoadingOlderMessages: true));
-    final page = await _loadService.loadOlderMessages(sessionId: _sessionId, before: cursor);
+    final page = await _loadService.loadOlderMessages(
+      sessionId: _sessionId,
+      before: cursor,
+      storedOnly: !_interaction.canInteract,
+    );
     if (isClosed) return;
 
     final latest = state;
@@ -362,7 +556,8 @@ class SessionDetailCubit(
     final active = _activeRefresh;
     if (active != null) {
       _logRefresh(action: _SessionRefreshAction.coalesced, trigger: trigger);
-      if (trigger == _SessionRefreshTrigger.connectionReconnected) {
+      if (trigger == _SessionRefreshTrigger.connectionReconnected ||
+          trigger == _SessionRefreshTrigger.harnessAvailable) {
         _queueConnectionRefreshAfter(activeRefresh: active);
       }
       // This call raced an in-flight refresh. If a staleness signal is
@@ -514,9 +709,24 @@ class SessionDetailCubit(
     _eventRefreshCooldown = Timer(eventRefreshMinInterval, _onEventRefreshCooldownElapsed);
   }
 
+  /// Re-declares the bridge-side view a resume or reconnect released.
+  ///
+  /// A blocked chat keeps its transcript on screen, so its refresh being a
+  /// no-op must not leave it undeclared; otherwise the chat the user is reading
+  /// keeps marking its own updates unread.
+  void _reassertViewIfPending() {
+    if (!_reassertViewAfterRefresh || !_routeVisible) return;
+    _reassertViewAfterRefresh = false;
+    _sessionViewingService.setViewingSession(_sessionId);
+  }
+
   Future<_SessionRefreshResult> _doSilentRefresh() async {
     final current = state;
     if (current is! SessionDetailLoaded) return _SessionRefreshResult.closed;
+    if (!_interaction.canInteract) {
+      _reassertViewIfPending();
+      return _SessionRefreshResult.applied;
+    }
     final connectionGeneration = _connectionGeneration;
     final optionsGeneration = _optionsGeneration;
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
@@ -539,7 +749,34 @@ class SessionDetailCubit(
 
     final parkEpochAtFetch = _parkEpoch;
     try {
-      final result = await _loadService.reload(sessionId: _sessionId, projectId: _projectId);
+      final metadata = await _loadService.loadMetadata(sessionId: _sessionId);
+      if (isClosed) return _SessionRefreshResult.closed;
+      if (connectionGeneration != _connectionGeneration) {
+        _emitRefreshEnded();
+        return _SessionRefreshResult.staleConnection;
+      }
+      final Session session;
+      switch (metadata) {
+        case SessionDetailMetadataFound(session: final found):
+          session = found;
+          _sessionMetadata = session;
+          _interaction = _calculateInteraction(session: session);
+        case SessionDetailMetadataWaitingForConnection():
+          _emitRefreshEnded();
+          return _SessionRefreshResult.waitingForConnection;
+        case SessionDetailMetadataFailed(:final error, :final stackTrace):
+          logw("Session metadata refresh failed", error, stackTrace);
+          _emitRefreshFailed();
+          return _SessionRefreshResult.failed;
+      }
+      if (!_interaction.canInteract) {
+        _emitRefreshEnded();
+        final latest = state;
+        if (latest is SessionDetailLoaded) emit(latest.copyWith(interaction: _interaction));
+        _reassertViewIfPending();
+        return _SessionRefreshResult.applied;
+      }
+      final result = await _loadService.reload(session: session, projectId: _projectId);
       if (isClosed) return _SessionRefreshResult.closed;
       if (connectionGeneration != _connectionGeneration) {
         _emitRefreshEnded();
@@ -556,8 +793,6 @@ class SessionDetailCubit(
           if (latest is! SessionDetailLoaded) return _SessionRefreshResult.closed;
           final messages = _transcript.reconcile(before: before, live: latest.messages, fetched: snapshot.messages);
           _retireStreamingPartsCoveredBy(messages: messages);
-          final preservedSelectedAgent = latest.selectedAgent;
-          final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
           // An options reload that landed while this snapshot was in flight read
           // the cache more recently than the snapshot did, so it wins.
@@ -565,6 +800,38 @@ class SessionDetailCubit(
           final availableAgents = optionsSuperseded ? latest.availableAgents : derived.agents;
           final availableProviders = optionsSuperseded ? latest.availableProviders : derived.providers;
           final availableCommands = optionsSuperseded ? latest.availableCommands : snapshot.commands;
+          // A refresh normally keeps the user's selection, but a blocked open
+          // with no options cache shows a placeholder agent nobody chose.
+          // Carrying that into the recovered catalog would open the composer on
+          // an agent the plugin never advertised, so an empty catalog reconciles
+          // against the refreshed one instead.
+          // The replacement agent's own model leads: the placeholder was never a
+          // catalog entry, so nothing about the model beside it was a preference
+          // the recovered agent should inherit. The session's model still
+          // follows, for a recovered agent that declares none.
+          final recoveredAgent = latest.availableAgents.isEmpty && availableAgents.isNotEmpty
+              ? _selection.validatedAgentName(agents: availableAgents, candidates: [latest.selectedAgent])
+              : null;
+          final recovered = recoveredAgent == null
+              ? null
+              : _selection.reconcile(
+                  agents: availableAgents,
+                  providers: availableProviders,
+                  agentNameCandidates: [recoveredAgent],
+                  modelCandidates: [
+                    availableAgents.firstWhereOrNull((agent) => agent.name == recoveredAgent)?.model,
+                    latest.selectedAgentModel,
+                  ],
+                  retainedModel: null,
+                );
+          final preservedSelectedAgent = switch (recovered) {
+            null => latest.selectedAgent,
+            final reconciled => reconciled.agentName ?? _fallbackAgentName,
+          };
+          final preservedSelectedAgentModel = switch (recovered) {
+            null => latest.selectedAgentModel,
+            final reconciled => reconciled.model,
+          };
           final availableVariants = _selection.availableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
@@ -583,6 +850,7 @@ class SessionDetailCubit(
           );
           emit(
             latest.copyWith(
+              interaction: _interaction,
               messages: messages,
               // A refresh re-reads the newest page, so previously paged-back
               // history is dropped and the cursor returns to that page's edge.
@@ -620,13 +888,9 @@ class SessionDetailCubit(
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
           _tryDrainQueue();
-          if (_reassertViewAfterRefresh && _routeVisible) {
-            // A resume/reconnect requested this refresh; the refreshed
-            // transcript has rendered, so it is safe to re-declare the view
-            // (which marks the session seen on the bridge).
-            _reassertViewAfterRefresh = false;
-            _sessionViewingService.setViewingSession(_sessionId);
-          }
+          // The refreshed transcript has rendered, so it is safe to re-declare
+          // the view (which marks the session seen on the bridge).
+          _reassertViewIfPending();
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
           return _SessionRefreshResult.applied;
@@ -636,15 +900,33 @@ class SessionDetailCubit(
           return _SessionRefreshResult.waitingForConnection;
         case SessionDetailLoadResultFailed(:final error, :final stackTrace):
           logw("Silent refresh failed", error, stackTrace);
-          _emitRefreshEnded();
+          _emitRefreshFailed();
           return _SessionRefreshResult.failed;
       }
     } on Object catch (error, stackTrace) {
       logw("Silent refresh failed", error, stackTrace);
       if (isClosed) return _SessionRefreshResult.closed;
-      _emitRefreshEnded();
+      _emitRefreshFailed();
       return _SessionRefreshResult.failed;
     }
+  }
+
+  void _emitRefreshFailed() {
+    _emitRefreshEnded();
+    final current = state;
+    if (current is! SessionDetailLoaded || current.interaction.canInteract || !_interaction.canInteract) return;
+    // Setup recovered, but the content/options needed to interact did not.
+    // Keep the transcript read-only without repeating an obsolete setup reason.
+    emit(
+      current.copyWith(
+        interaction: const SessionInteractionState.blocked(
+          reason: SessionInteractionBlockedReason.contentLoadFailed,
+          displayName: null,
+          actionHint: null,
+          refreshError: null,
+        ),
+      ),
+    );
   }
 
   void _emitRefreshEnded() {
@@ -1197,6 +1479,7 @@ class SessionDetailCubit(
   /// bridge's confirmation — including not-found, which means it already
   /// dispatched or was removed elsewhere; only a transport failure keeps it.
   Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
+    if (_refuseWhenInteractionBlocked(action: "cancel a bridge-queued prompt")) return;
     final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
     // Only not-found means the entry is gone (dispatched or removed
     // elsewhere); any other failure proves nothing about the bridge queue.
@@ -1461,6 +1744,14 @@ class SessionDetailCubit(
     final reconnected = isConnected && !_wasConnected;
     if (!isConnected && _wasConnected) _connectionGeneration++;
     _wasConnected = isConnected;
+    if (reconnected) {
+      final session = _sessionMetadata;
+      _interaction = session == null
+          ? const SessionInteractionState.checking()
+          : _calculateInteraction(session: session);
+      final current = state;
+      if (current is SessionDetailLoaded) emit(current.copyWith(interaction: _interaction));
+    }
     if (!isConnected) {
       _connectionRefreshQueued = false;
       final current = state;
@@ -1513,6 +1804,7 @@ class SessionDetailCubit(
     required ComposerInputMode inputMode,
     required List<ComposerAttachment> attachments,
   }) async {
+    if (_refuseWhenInteractionBlocked(action: "send a prompt")) return;
     final current = state;
     final trimmed = text.trim();
     final normalizedCommand = command?.normalize();
@@ -1656,6 +1948,7 @@ class SessionDetailCubit(
     final current = state;
     if (current is! SessionDetailLoaded) return;
     if (!_isConnected) return;
+    if (_refuseWhenInteractionBlocked(action: "drain the prompt queue")) return;
     if (_refuseWhenArchived(action: "drain the prompt queue")) return;
 
     final pendingSubmission = _promptQueue.items.firstOrNull;
@@ -1704,7 +1997,7 @@ class SessionDetailCubit(
           sendSettledElsewhere = !_promptQueue.failSend();
           if (!sendSettledElsewhere) {
             if (!_staleOptionsRecoveryAttemptedPromptIds.add(submission.promptId)) {
-              if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+              if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
@@ -1751,11 +2044,17 @@ class SessionDetailCubit(
   /// option it no longer has. The user is waiting on this one, so it reports
   /// both outcomes through the notice stream.
   Future<bool> _refreshStalePromptOptions({required QueuedSessionSubmission rejectedSubmission}) async {
-    final recovered = await _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false);
+    final reload = await _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false);
     if (isClosed) return false;
-    if (!recovered) {
-      _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+    switch (reload) {
+      case _OptionsReloadResult.authenticationRequired:
+        _staleOptionsRecoveryAttemptedPromptIds.remove(rejectedSubmission.promptId);
+        return false;
+      case _OptionsReloadResult.failed:
+        _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+        return false;
+      case _OptionsReloadResult.updated:
+        break;
     }
     final latest = state;
     if (latest is! SessionDetailLoaded) return false;
@@ -1768,7 +2067,7 @@ class SessionDetailCubit(
       _promptQueue.markCommandUnavailable(promptId: rejectedSubmission.promptId);
     }
     _noticeStream.add(
-      commandUnavailable ? SessionDetailNotice.commandUnavailable : SessionDetailNotice.promptOptionsUpdated,
+      commandUnavailable ? const SessionDetailCommandUnavailable() : const SessionDetailPromptOptionsUpdated(),
     );
     return true;
   }
@@ -1779,17 +2078,17 @@ class SessionDetailCubit(
   ///
   /// [notify] belongs to a load the user is waiting on. A background one stays
   /// silent: the options simply change if the backend's answer did.
-  Future<bool> _reloadOptions({
+  Future<_OptionsReloadResult> _reloadOptions({
     required SessionOptionsRequestMode mode,
     required bool notify,
   }) async {
     final current = state;
-    if (current is! SessionDetailLoaded) return false;
+    if (current is! SessionDetailLoaded) return _OptionsReloadResult.failed;
     final pluginId = current.pluginId;
     if (pluginId == null) {
       logw("Could not refresh prompt options because the session plugin is unresolved");
-      if (notify && !isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+      if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     }
 
     final requestGeneration = ++_optionsReloadRequest;
@@ -1799,7 +2098,7 @@ class SessionDetailCubit(
         pluginId: pluginId,
         mode: mode,
       );
-      if (isClosed) return false;
+      if (isClosed) return _OptionsReloadResult.failed;
       // A reload requested after this one has already applied, so it read the
       // cache more recently and this answer must not replace it. The caller
       // still succeeded: what is on screen is at least as fresh as what this
@@ -1807,11 +2106,11 @@ class SessionDetailCubit(
       // That recovery still owes the user its notice — the options did change
       // under a selection they were rejected for, whichever read delivered it.
       if (_lastAppliedOptionsReload > requestGeneration) {
-        if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
-        return true;
+        if (notify) _noticeStream.add(const SessionDetailPromptOptionsUpdated());
+        return _OptionsReloadResult.updated;
       }
       final latest = state;
-      if (latest is! SessionDetailLoaded) return false;
+      if (latest is! SessionDetailLoaded) return _OptionsReloadResult.failed;
 
       if (result case SessionOptionsRepositoryAvailable(:final catalog)) {
         final agents = _selection.selectableAgents(agents: catalog.agents);
@@ -1886,8 +2185,13 @@ class SessionDetailCubit(
         );
         _optionsGeneration++;
         _lastAppliedOptionsReload = requestGeneration;
-        if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
-        return true;
+        if (notify) _noticeStream.add(const SessionDetailPromptOptionsUpdated());
+        return _OptionsReloadResult.updated;
+      }
+
+      if (result case SessionOptionsRepositoryAuthenticationRequired(:final actionHint)) {
+        _noticeStream.add(SessionDetailAuthenticationRequired(actionHint: actionHint));
+        return _OptionsReloadResult.authenticationRequired;
       }
 
       final error = switch (result) {
@@ -1895,6 +2199,7 @@ class SessionDetailCubit(
         SessionOptionsRepositoryCacheUnavailable() => null,
         SessionOptionsRepositoryUnsupported() => null,
         SessionOptionsRepositoryProjectNotFound(:final error) => error,
+        SessionOptionsRepositoryAuthenticationRequired() => null,
         SessionOptionsRepositoryRefreshFailedRetained() => null,
         SessionOptionsRepositoryRefreshFailedUnavailable() => null,
         SessionOptionsRepositoryFailure(:final error) => error,
@@ -1904,12 +2209,12 @@ class SessionDetailCubit(
       } else {
         logw("Failed to refresh prompt options", error);
       }
-      if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+      if (notify) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     } on Object catch (error, stackTrace) {
       logw("Failed to refresh prompt options", error, stackTrace);
-      if (notify && !isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+      if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     }
   }
 
@@ -2026,12 +2331,14 @@ class SessionDetailCubit(
     }
   }
 
+  /// Shell-reported visibility also gates transient UI above a nested navigator.
+  bool get isRouteVisible => _routeVisible;
+
   /// Updates whether this detail route is currently visible to the user.
   ///
-  /// A desktop root-level route can cover the nested session navigator without
-  /// disposing this cubit, so route visibility must fence both the initial load
-  /// and later refresh declarations. The mobile shell leaves the default
-  /// visible value in place and continues to use [reassertViewingSession].
+  /// A root-level route can cover the nested session navigator without
+  /// disposing this cubit, so shell-reported visibility fences both the initial
+  /// load and later refresh declarations.
   void setRouteVisible({required bool isVisible}) {
     if (_routeVisible == isVisible) return;
     _routeVisible = isVisible;
@@ -2073,7 +2380,7 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(current.copyWith(pendingQuestions: pending));
-    _questionStream.add(question);
+    if (current.interaction.canInteract) _questionStream.add(question);
   }
 
   void _onQuestionResolved(String requestId) {
@@ -2097,7 +2404,7 @@ class SessionDetailCubit(
 
     if (isClosed) return;
     emit(current.copyWith(pendingPermissions: pending));
-    _permissionStream.add(permission);
+    if (current.interaction.canInteract) _permissionStream.add(permission);
   }
 
   void _onPermissionResolved(String requestId) {
@@ -2110,9 +2417,14 @@ class SessionDetailCubit(
     emit(current.copyWith(pendingPermissions: pending));
   }
 
-  /// Archiving is permanent, so an archived session is audit-only: every
-  /// mutation refuses here rather than in the widgets. Returns `true` when the
-  /// caller must stop.
+  /// Gate the mutation seam too, including callbacks from an already-open UI.
+  bool _refuseWhenInteractionBlocked({required String action}) {
+    final current = state;
+    if (current is SessionDetailLoaded && current.interaction.canInteract) return false;
+    logw("Refused to $action while the session harness is unavailable");
+    return true;
+  }
+
   bool _refuseWhenArchived({required String action}) {
     final current = state;
     if (current is! SessionDetailLoaded || !current.isArchived) return false;
@@ -2182,6 +2494,7 @@ class SessionDetailCubit(
     required void Function() reportSuccess,
     bool checkArchived = true,
   }) async {
+    if (_refuseWhenInteractionBlocked(action: archivedAction)) return false;
     if (checkArchived && _refuseWhenArchived(action: archivedAction)) return false;
     resolve(requestId);
     final notificationCanceller = _notificationCanceller;
@@ -2211,6 +2524,7 @@ class SessionDetailCubit(
   // ---------------------------------------------------------------------------
 
   void selectAgent(String agent) {
+    if (_refuseWhenInteractionBlocked(action: "select an agent")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2237,6 +2551,7 @@ class SessionDetailCubit(
   }
 
   void selectModel({required String providerID, required String modelID}) {
+    if (_refuseWhenInteractionBlocked(action: "select a model")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2266,6 +2581,7 @@ class SessionDetailCubit(
   }
 
   void selectVariant(SessionVariant variant) {
+    if (_refuseWhenInteractionBlocked(action: "select a model variant")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
     final agentModel = current.selectedAgentModel;
@@ -2276,6 +2592,7 @@ class SessionDetailCubit(
   }
 
   void stageCommand(CommandInfo command) {
+    if (_refuseWhenInteractionBlocked(action: "stage a command")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2284,6 +2601,7 @@ class SessionDetailCubit(
   }
 
   void clearStagedCommand() {
+    if (_refuseWhenInteractionBlocked(action: "clear a staged command")) return;
     final current = state;
     if (current is! SessionDetailLoaded) return;
 
@@ -2300,18 +2618,32 @@ class SessionDetailCubit(
   /// Under `stop` every busy child session is aborted too — plugins whose
   /// children are real sessions keep today's stop-everything behavior.
   Future<SessionAbortOutcome> abort({required SessionAbortSubAgentPolicy subAgents}) async {
+    // A scope dialog can outlive an archive event from another surface.
+    if (_refuseWhenArchived(action: "stop the session") || _refuseWhenInteractionBlocked(action: "stop the session")) {
+      return const SessionAbortOutcome.failed();
+    }
     try {
+      final requestChildStatuses = switch (state) {
+        SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
+        SessionDetailLoading() ||
+        SessionDetailHarnessUnavailable() ||
+        SessionDetailFailed() => const <String, SessionStatus>{},
+      };
       if (subAgents != SessionAbortSubAgentPolicy.confirm) _clearLocalPromptQueue();
       final root = await _sessionRepository.abortSession(sessionId: _sessionId, subAgents: subAgents);
-      if (root case ErrorResponse(:final error)) throw error;
+      final subAgentsHandled = switch (root) {
+        SuccessResponse(:final data) => data,
+        ErrorResponse(:final error) => throw error,
+      };
       _clearLocalPromptQueue();
 
-      // Read state after the await: an abort-driven status or transcript event
-      // may have landed meanwhile and must not be overwritten by a stale copy.
+      // Prefer post-stop status truth, but retain the request snapshot when an
+      // concurrent reload temporarily replaces the loaded detail state.
       final current = state;
-      if (subAgents != SessionAbortSubAgentPolicy.keep && current is SessionDetailLoaded) {
+      final childStatuses = current is SessionDetailLoaded ? current.childStatuses : requestChildStatuses;
+      if (subAgents != SessionAbortSubAgentPolicy.keep && !subAgentsHandled) {
         final results = await Future.wait([
-          for (final MapEntry(key: childId, value: status) in current.childStatuses.entries)
+          for (final MapEntry(key: childId, value: status) in childStatuses.entries)
             if (status is SessionStatusBusy || status is SessionStatusRetry)
               _sessionRepository.abortSession(sessionId: childId, subAgents: SessionAbortSubAgentPolicy.stop),
         ]);
@@ -2367,7 +2699,11 @@ class SessionDetailCubit(
     return (latestAssistant: latestAssistant, assistantAgentModel: assistantAgentModel);
   }
 
-  SessionDetailLoaded _buildLoadedState({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
+  SessionDetailLoaded _buildLoadedState({
+    required SessionDetailSnapshot snapshot,
+    required int parkEpochAtFetch,
+    required SessionInteractionState interaction,
+  }) {
     _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
     final derived = _deriveSnapshot(snapshot);
     final childSessions = derived.children;
@@ -2393,6 +2729,7 @@ class SessionDetailCubit(
 
     _transcriptGeneration++;
     return SessionDetailLoaded(
+      interaction: interaction,
       messages: snapshot.messages,
       olderMessagesCursor: snapshot.olderMessagesCursor,
       streamingText: const {},
@@ -2468,7 +2805,7 @@ class SessionDetailCubit(
   @override
   Future<void> close() {
     _sessionViewingService.clearViewingSession(_sessionId);
-    _projectViewingService.releaseClaim(claim: _projectViewClaim);
+    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _deferredPartEvents.clear();

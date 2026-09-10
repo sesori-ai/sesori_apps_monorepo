@@ -1,5 +1,6 @@
-import "package:json_annotation/json_annotation.dart";
+import "package:freezed_annotation/freezed_annotation.dart";
 
+part "deepseek_protocol_dto.freezed.dart";
 part "deepseek_protocol_dto.g.dart";
 
 const String deepSeekExtensionMetadataKey = "sesori.ai/deepseek";
@@ -54,6 +55,39 @@ class const DeepSeekSubagentInterruptResponseDto({
 }) {
   factory fromJson(Map<String, dynamic> json) => _$DeepSeekSubagentInterruptResponseDtoFromJson(json);
   Map<String, dynamic> toJson() => _$DeepSeekSubagentInterruptResponseDtoToJson(this);
+}
+
+@Freezed(unionKey: "kind", unionValueCase: FreezedUnionCase.none, fromJson: true, toJson: true)
+sealed class DeepSeekSessionStopRequestDto with _$DeepSeekSessionStopRequestDto {
+  @FreezedUnionValue("session")
+  // ignore: invalid_annotation_target, Freezed forwards this serializer configuration to the generated variant
+  @JsonSerializable(disallowUnrecognizedKeys: true)
+  const factory session({required String sessionId}) = DeepSeekSessionStopSessionRequestDto;
+
+  @FreezedUnionValue("child")
+  // ignore: invalid_annotation_target, Freezed forwards this serializer configuration to the generated variant
+  @JsonSerializable(disallowUnrecognizedKeys: true)
+  const factory child({required String sessionId, required String childSessionId}) = DeepSeekSessionStopChildRequestDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopRequestDtoFromJson(json);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekSessionStopResponseDto({required final bool workKept}) {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekSessionStopResponseDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekSessionStopResponseDtoToJson(this);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekInputCancelRequestDto({required final String sessionId}) {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekInputCancelRequestDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekInputCancelRequestDtoToJson(this);
+}
+
+@JsonSerializable(disallowUnrecognizedKeys: true)
+class const DeepSeekInputCancelResponseDto() {
+  factory fromJson(Map<String, dynamic> json) => _$DeepSeekInputCancelResponseDtoFromJson(json);
+  Map<String, dynamic> toJson() => _$DeepSeekInputCancelResponseDtoToJson(this);
 }
 
 @JsonSerializable()

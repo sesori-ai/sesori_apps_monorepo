@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../repositories/models/plugin_management_result.dart";
 import "../../services/models/catalog_rescan_state.dart";
+import "../../services/models/plugin_install_state.dart";
 import "../../services/plugin_management_service.dart";
 
 part "plugin_management_state.freezed.dart";
@@ -167,11 +168,12 @@ sealed class PluginManagementState with _$PluginManagementState {
   const factory ready({
     required PluginManagementResponse response,
     required PluginManagementRefreshState refresh,
-    required PluginManagementActionState action,
+    required PluginManagementActionState globalAction,
+    required Map<String, PluginManagementActionState> harnessActions,
     required PluginAuthenticationPresentationState authentication,
 
-    /// In-flight managed runtime installs, keyed by plugin id.
-    required Map<String, PluginInstallProgress> installs,
+    /// In-progress installs and retained terminal failures, keyed by plugin id.
+    required Map<String, PluginInstallState> installs,
 
     /// Harnesses with a catalog scan in flight, whether this screen started it
     /// or the lists did. Their scan action is not offered again while it runs.
@@ -190,4 +192,41 @@ sealed class PluginManagementState with _$PluginManagementState {
     /// list to read it.
     required CatalogRescanOutcome? scanOutcome,
   }) = PluginManagementReady;
+}
+
+// Action entries are immutable attempt identities. Refresh keeps the same
+// entries; reset drops them so a late completion or sheet cannot claim a retry.
+extension PluginManagementReadyActions on PluginManagementReady {
+  PluginManagementActionState actionFor({required PluginManagementActionTarget target}) => switch (target) {
+    PluginManagementActionTargetAllHarnesses() => globalAction,
+    PluginManagementActionTargetHarness(:final pluginId) =>
+      harnessActions[pluginId] ?? const PluginManagementActionState.idle(),
+  };
+
+  bool get globalControlsBlocked =>
+      globalAction.blocksControls || harnessActions.values.any((action) => action.blocksControls);
+
+  bool harnessControlsBlocked({required String pluginId}) =>
+      globalAction.blocksControls ||
+      (harnessActions[pluginId]?.blocksControls ?? false) ||
+      harnessActivityBlocked(pluginId: pluginId);
+
+  // Local owners reserve the target. Management metadata can remain inProgress
+  // after a terminal event and failed refresh; remote conflicts belong to the bridge.
+  bool harnessActivityBlocked({required String pluginId}) =>
+      installs[pluginId] is PluginInstallInProgress || authenticationPluginId == pluginId;
+
+  String? get authenticationPluginId => switch (authentication) {
+    PluginAuthenticationPresentationStarting(:final pluginId) ||
+    PluginAuthenticationPresentationChallenge(:final pluginId) ||
+    PluginAuthenticationPresentationBrowserLaunchFailedState(:final pluginId) ||
+    PluginAuthenticationPresentationCancelling(:final pluginId) ||
+    PluginAuthenticationPresentationCancellingUncertain(:final pluginId) => pluginId,
+    PluginAuthenticationPresentationIdle() || PluginAuthenticationPresentationFailed() => null,
+  };
+}
+
+extension PluginManagementActionStateControls on PluginManagementActionState {
+  bool get blocksControls =>
+      this is PluginManagementActionInProgress || this is PluginManagementActionForceConfirmationRequired;
 }

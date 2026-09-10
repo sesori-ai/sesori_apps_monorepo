@@ -19,6 +19,17 @@ typedef PiCatalogProbeSnapshot = ({
   bool complete,
 });
 
+sealed class const PiCatalogProbeResult();
+
+final class const PiCatalogProbeObserved({required final PiCatalogProbeSnapshot snapshot}) extends PiCatalogProbeResult;
+
+final class const PiCatalogProbeNoModels() extends PiCatalogProbeResult;
+
+final class const PiCatalogNoModelsException() implements Exception {
+  @override
+  String toString() => "Pi catalog has no available models";
+}
+
 final class const PiCatalogProbeException({required final Object cause, required final List<String> stderrDiagnostics})
     implements Exception {
   @override
@@ -50,7 +61,7 @@ class PiBackendCatalogRepository({
     }
   }
 
-  Future<PiCatalogProbeSnapshot> probe({
+  Future<PiCatalogProbeResult> probe({
     required String projectId,
     required Duration totalTimeout,
   }) async {
@@ -85,8 +96,6 @@ class PiBackendCatalogRepository({
         )).data,
       );
       final initial = state.model;
-      if (!_validModel(initial)) throw StateError("Pi catalog probe has no selected model");
-      final initialModel = initial!;
 
       final available = PiAvailableModelsDto.fromJson(
         (await _send(
@@ -96,8 +105,11 @@ class PiBackendCatalogRepository({
           timeout: _remaining(stopwatch: stopwatch, totalTimeout: totalTimeout),
         )).data,
       );
+      if (available.models.isEmpty) return const PiCatalogProbeNoModels();
       final deduped = _dedupeModels(available.models);
-      if (deduped.isEmpty) throw StateError("Pi catalog probe returned no models");
+      if (deduped.isEmpty) throw StateError("Pi catalog probe returned no valid models");
+      if (!_validModel(initial)) throw StateError("Pi catalog probe has no selected model");
+      final initialModel = initial!;
       final initialIndex = deduped.indexWhere((model) => _sameModel(model, initialModel));
       if (initialIndex < 0) throw StateError("Pi selected model is absent from the catalog");
       if (initialIndex > 0) deduped.insert(0, deduped.removeAt(initialIndex));
@@ -157,27 +169,33 @@ class PiBackendCatalogRepository({
         }
       }
 
-      return (
-        agents: [
-          const PluginAgent(
-            name: "pi",
-            description: null,
-            model: null,
-            mode: PluginAgentMode.primary,
-            hidden: false,
+      return PiCatalogProbeObserved(
+        snapshot: (
+          agents: [
+            const PluginAgent(
+              name: "pi",
+              description: null,
+              model: null,
+              mode: PluginAgentMode.primary,
+              hidden: false,
+            ),
+          ],
+          providers: PluginProvidersResult(
+            providers: _providers(
+              models: deduped,
+              initial: initialModel,
+              thinkingByModel: thinkingByModel,
+            ),
           ),
-        ],
-        providers: PluginProvidersResult(
-          providers: _providers(
-            models: deduped,
-            initial: initialModel,
-            thinkingByModel: thinkingByModel,
-          ),
+          commands: commands,
+          complete: !partial,
         ),
-        commands: commands,
-        complete: !partial,
       );
     } on Object catch (error, stack) {
+      if (error is PiRpcProcessExitException &&
+          client.stderrDiagnostics.contains(PiRpcClient.noModelsDiagnosticPrefix)) {
+        return const PiCatalogProbeNoModels();
+      }
       Error.throwWithStackTrace(
         PiCatalogProbeException(
           cause: error,
@@ -244,17 +262,22 @@ class PiBackendCatalogRepository({
       for (final entry in entries)
         _provider(
           id: entry.key,
-          models: [
-            for (final model in entry.value)
-              PluginModel(
-                id: model.id!,
-                name: _displayName(model),
-                variants: thinkingByModel[_modelKey(model)] ?? const [],
-                family: null,
-                isAvailable: true,
-                releaseDate: null,
-              ),
-          ],
+          models: CatalogStrengthOrder.models(
+            [
+              for (final model in entry.value)
+                PluginModel(
+                  id: model.id!,
+                  name: _displayName(model),
+                  // Strongest first; Pi's first-listed level stays the default.
+                  variants: CatalogStrengthOrder.variants(thinkingByModel[_modelKey(model)] ?? const []),
+                  defaultVariant: CatalogStrengthOrder.backendDefault(thinkingByModel[_modelKey(model)] ?? const []),
+                  family: null,
+                  isAvailable: true,
+                  releaseDate: null,
+                ),
+            ],
+            idOf: (model) => model.id,
+          ),
           defaultModelId: entry.key == initial.provider ? initial.id : null,
         ),
     ];
