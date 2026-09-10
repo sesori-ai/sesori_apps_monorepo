@@ -64,6 +64,7 @@ void main() {
 
     test("keeps first unfinished harness focused while later harness reports progress", () async {
       await service.startAll();
+      final focusedState = service.state.value;
 
       connection.emitProgress(
         const CatalogImportProgress.enumerating(
@@ -79,6 +80,7 @@ void main() {
             .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 0),
         reason: "a later harness must not steal focus before Codex reports",
       );
+      expect(service.state.value, same(focusedState), reason: "hidden enumeration must not republish the row");
 
       connection.emitProgress(
         const CatalogImportProgress.committing(
@@ -91,6 +93,16 @@ void main() {
         service.state.value,
         isA<CatalogRescanPreparingOne>().having((s) => s.pendingPluginName, "pendingPluginName", "Codex"),
         reason: "background phase changes must not change the selected harness",
+      );
+      expect(service.state.value, same(focusedState), reason: "hidden committing must not republish the row");
+
+      connection.emitProgress(_completed("codex", newProjects: 0, newSessions: 0));
+      expect(
+        service.state.value,
+        isA<CatalogRescanSaving>()
+            .having((s) => s.activePluginName, "activePluginName", "Claude")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 1),
+        reason: "handoff must use the latest stored background progress",
       );
     });
 

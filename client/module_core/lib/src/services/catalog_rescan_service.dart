@@ -403,7 +403,9 @@ class CatalogRescanService({
       if (_members.isNotEmpty) _publishLive();
       return;
     }
-    _publishLive();
+    // Keep background progress for handoff without rebuilding the lists for
+    // each hidden enumeration or phase change.
+    if (pluginId == _focusedPluginId()) _publishLive();
   }
 
   void _publishLive() {
