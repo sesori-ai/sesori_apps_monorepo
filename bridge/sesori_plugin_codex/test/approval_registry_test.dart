@@ -159,6 +159,46 @@ void main() {
       },
     );
 
+    test("pending native turn identity requires exact current request metadata", () async {
+      requests.add(
+        const CodexServerRequest(
+          id: 131,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            "threadId": "t-native",
+            "turnId": "turn-native",
+            "itemId": "i-native",
+            "command": "ls",
+          },
+        ),
+      );
+      await pump();
+
+      expect(registry.pendingNativeTurnIdForSession(sessionId: "t-native"), "turn-native");
+      registry.cancelForSession(sessionId: "t-native");
+      expect(registry.pendingNativeTurnIdForSession(sessionId: "t-native"), isNull);
+
+      requests.add(
+        const CodexServerRequest(
+          id: 132,
+          method: "item/tool/requestUserInput",
+          params: {
+            "threadId": "t-native",
+            "questions": [
+              {"id": "scope", "header": "Scope", "question": "Which scope?"},
+            ],
+          },
+        ),
+      );
+      await pump();
+
+      expect(
+        registry.pendingNativeTurnIdForSession(sessionId: "t-native"),
+        isNull,
+        reason: "missing request turn metadata must not become a synthetic future-turn marker",
+      );
+    });
+
     test("replyPermission(once) sends the v2 'accept' decision", () async {
       requests.add(
         const CodexServerRequest(

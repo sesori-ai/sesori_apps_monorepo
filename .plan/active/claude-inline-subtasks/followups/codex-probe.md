@@ -32,6 +32,18 @@ A bounded production-shaped stdio probe against managed 0.153.4 supersedes the
   header. A valid child-owned plaintext `NEW_TASK` payload may replace that
   fallback for the initial delegated turn.
 
+A second bounded managed-0.153.4 stop probe used real `CodexPlugin.composed`
+and production WebSocket transport with owned `/tmp` sessions and harmless
+bounded sleep work. Parent interrupt produced parent `turn_aborted` while two
+direct children and one nested grandchild remained busy. Direct interrupt of
+one named child produced that child's `turn_aborted`, while its sibling and
+grandchild remained busy; later exact cleanup interrupts settled both. This
+confirms main-agent-only support and exact per-thread child interruption, but
+rules out atomic native subtree authority. Scoped full stop must fan out over a
+known snapshot and report `subAgentsHandled: false`. Step 8 automated policy
+coverage implements that behavior; actual-plugin policy QA remains unexecuted
+until Step 9.
+
 Raw probe payloads remain private under the owned `/tmp` artifacts. Native source
 was pinned to Codex commit `3d2ee51ca2d5db578f328aa75e20aa22c0197c9a`.
 
