@@ -40,6 +40,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Store notes need every commit since the previous successful release.
+          fetch-depth: 0
 
       - name: Setup Flutter
         uses: ./.github/actions/setup-flutter
