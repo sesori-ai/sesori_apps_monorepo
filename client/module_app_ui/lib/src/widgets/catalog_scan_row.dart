@@ -375,6 +375,11 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   };
 }
 
+String _pendingHarnessSummary({required AppLocalizations loc, required List<String> names}) {
+  if (names.length == 2) return loc.catalogScanTwoHarnesses(names[0], names[1]);
+  return loc.catalogScanHarnessesWithOthers(names[0], names[1], names.length - 2);
+}
+
 /// What a finished scan found, sessions first.
 ///
 /// A clause counting nothing is dropped rather than joined, so an ordinary
@@ -383,11 +388,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
 ///
 /// Shared by the row and by the Settings toast, so one scan never reads two
 /// different ways depending on where it is reported.
-String _pendingHarnessSummary({required AppLocalizations loc, required List<String> names}) {
-  if (names.length == 2) return loc.catalogScanTwoHarnesses(names[0], names[1]);
-  return loc.catalogScanHarnessesWithOthers(names[0], names[1], names.length - 2);
-}
-
 String catalogScanCountsLine({required AppLocalizations loc, required CatalogRescanCounts counts}) {
   final (sessions, projects) = switch (counts) {
     CatalogRescanDelta(:final newSessions, :final newProjects) => (

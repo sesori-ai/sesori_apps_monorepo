@@ -408,9 +408,10 @@ class CatalogRescanService({
     final pluginIds = Set<String>.unmodifiable(_members);
     final active = _activeProgress();
     if (active != null) {
-      final pluginName = _displayName(active.pluginId);
+      final pluginName = _displayName(pluginId: active.pluginId);
       final next = switch (active) {
-        CatalogImportEnumerating(:final sessionsSeen) when sessionsSeen == 0 && _isConfirmedStarting(active.pluginId) =>
+        CatalogImportEnumerating(:final sessionsSeen)
+            when sessionsSeen == 0 && _isConfirmedStarting(pluginId: active.pluginId) =>
           CatalogRescanState.starting(activePluginName: pluginName, pluginIds: pluginIds),
         CatalogImportEnumerating(:final sessionsSeen) => CatalogRescanState.reading(
           activePluginName: pluginName,
@@ -436,10 +437,10 @@ class CatalogRescanService({
         if (_progressByPluginId[pluginId] == null) pluginId,
     ];
     for (final pluginId in pendingPluginIds) {
-      if (_isConfirmedStarting(pluginId)) {
+      if (_isConfirmedStarting(pluginId: pluginId)) {
         _publish(
           CatalogRescanState.starting(
-            activePluginName: _displayName(pluginId),
+            activePluginName: _displayName(pluginId: pluginId),
             pluginIds: pluginIds,
           ),
         );
@@ -447,7 +448,9 @@ class CatalogRescanService({
       }
     }
     if (pendingPluginIds.isEmpty) return;
-    final pendingPluginNames = List<String>.unmodifiable(pendingPluginIds.map(_displayName));
+    final pendingPluginNames = List<String>.unmodifiable(
+      pendingPluginIds.map((pluginId) => _displayName(pluginId: pluginId)),
+    );
     _publish(
       pendingPluginNames.length == 1
           ? CatalogRescanState.preparingOne(
@@ -461,9 +464,9 @@ class CatalogRescanService({
     );
   }
 
-  String _displayName(String pluginId) => _displayNames[pluginId] ?? pluginId;
+  String _displayName({required String pluginId}) => _displayNames[pluginId] ?? pluginId;
 
-  bool _isConfirmedStarting(String pluginId) =>
+  bool _isConfirmedStarting({required String pluginId}) =>
       _operationBridgeId != null &&
       _operationBridgeId == _activeBridgeId &&
       _runtimeStates[pluginId] == PluginRuntimeState.starting;
