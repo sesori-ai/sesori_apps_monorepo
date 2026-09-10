@@ -1487,6 +1487,73 @@ void main() {
       );
     });
 
+    test("scoped confirm counts pending-input-only tracked and bridge-known descendants", () async {
+      await connectWithScopedTree(
+        activeSessionIds: const {},
+        pendingInputSessionIds: {_scopeChildId, _scopeBridgeKnownId},
+      );
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeBridgeKnownId},
+      );
+
+      expect(
+        result,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 2)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isFalse)
+            .having((result) => result.mainAgentOnlySupported, "mainAgentOnlySupported", isTrue),
+      );
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeChildId)).map((permission) => permission.sessionID),
+        [_scopeChildId],
+      );
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeBridgeKnownId)).map((permission) => permission.sessionID),
+        [_scopeBridgeKnownId],
+      );
+    });
+
+    test("scoped keep cancels only named pending input while retaining pending descendants", () async {
+      await connectWithScopedTree(
+        activeSessionIds: const {},
+        pendingInputSessionIds: {_scopeRootId, _scopeChildId, _scopeBridgeKnownId},
+      );
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeBridgeKnownId},
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: true, subAgentsHandled: false));
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID),
+        [_scopeChildId],
+      );
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeBridgeKnownId)).map((permission) => permission.sessionID),
+        [_scopeBridgeKnownId],
+      );
+
+      fake.pushNotification("turn/started", {
+        "threadId": _scopeRootId,
+        "turn": {"id": "turn-after-pending-only-stop"},
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(
+        fake.sentMethods.where((method) => method == "turn/interrupt"),
+        isEmpty,
+        reason: "cancelling pure pending input must not fence a later turn start",
+      );
+    });
+
     test("scoped keep stops only a running named thread and preserves descendant work", () async {
       await connectWithScopedTree(
         activeSessionIds: {_scopeRootId, _scopeChildId, _scopeGrandchildId, _scopeSiblingId},
@@ -1531,14 +1598,10 @@ void main() {
           _scopeGrandchildId,
           _scopeInactiveChildId,
           _scopeSiblingId,
+          _scopeBridgeKnownId,
         },
       );
-      fake.pushNotification("turn/started", {
-        "threadId": _scopeBridgeKnownId,
-        "turn": {"id": "turn-$_scopeBridgeKnownId"},
-      });
-      await Future<void>.delayed(const Duration(milliseconds: 20));
-      fake.respondInOrder(List.filled(4, const _Response(result: null)));
+      fake.respondInOrder(List.filled(3, const _Response(result: null)));
 
       final result = await plugin.abortSession(
         sessionId: _scopeRootId,
@@ -1555,7 +1618,7 @@ void main() {
       expect(result, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
       expect(
         fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
-        {_scopeRootId, _scopeChildId, _scopeGrandchildId, _scopeBridgeKnownId},
+        {_scopeRootId, _scopeChildId, _scopeGrandchildId},
       );
       expect(
         (await plugin.getPendingPermissions(sessionId: _scopeAncestorId))
@@ -1565,8 +1628,10 @@ void main() {
       );
       expect(
         fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]),
-        isNot(contains(_scopeInactiveChildId)),
+        isNot(contains(anyOf(_scopeInactiveChildId, _scopeBridgeKnownId))),
       );
+      expect(await plugin.getPendingPermissions(sessionId: _scopeInactiveChildId), isEmpty);
+      expect(await plugin.getPendingPermissions(sessionId: _scopeBridgeKnownId), isEmpty);
     });
 
     test("named-child policy scopes confirmation and stop to its own descendants", () async {

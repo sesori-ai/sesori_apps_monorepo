@@ -9,10 +9,12 @@
   also made the scoped stop harness-neutral (OpenCode honors it; rejections
   declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
   the original Claude series is complete; harness follow-ups remain active
-- **Next action:** complete Codex lifecycle coverage step 7/9 after live/replay
-  integration [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399)
-  merged at `db2b71134d`; actual-plugin QA passed its bounded cases. Scoped stop
-  8/9 follows, then final coverage 9/9. Cleanup #1396 merged at `7f6fb8cb50`;
+- **Next action:** land open scoped-stop
+  [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) for
+  step 8/9, then run actual-plugin scoped-stop policy QA and record final
+  coverage in step 9/9. Lifecycle coverage step 7/9 merged as
+  [PR #1420](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1420) at
+  `ae2a9297e3`. Cleanup #1396 merged at `7f6fb8cb50`;
   #1387 is historical preparation superseded by the verified 0.153.4 rollout seam. DeepSeek #1363,
   #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
   stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
@@ -172,7 +174,7 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | [PR #1398](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1398) merged at `d801d722f2`; no tile capability activated |
 | [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) merged at `db2b71134d`; full live/replay production and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases with explicit unexecuted coverage |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | [PR #1420](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1420) merged at `ae2a9297e3`; write-path/lifecycle coverage and docs |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Current implementation; unchecked until merge. Per-thread policy and automated coverage included; actual-plugin policy QA remains Step 9 |
+| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) open; unchecked until merge. Per-thread policy and automated coverage included; actual-plugin policy QA remains Step 9 |
 | [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Final coverage incomplete; actual-plugin scoped-stop policy QA remains unexecuted |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |

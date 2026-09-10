@@ -1025,24 +1025,24 @@ class CodexPlugin._({
       ..._sessionService.scopedDescendantSessionIds(sessionId: sessionId),
       ...knownSubAgentSessionIds,
     };
-    final runningDescendantSessionIds = {
-      for (final descendantId in descendantSessionIds)
-        if (_hasTurnOrAdmissionEvidence(sessionId: descendantId)) descendantId,
-    };
     final pendingInputSessionIds = _approvalRegistry?.pendingSessionIds ?? const <String>{};
-    final pendingInputDescendantSessionIds = descendantSessionIds.intersection(pendingInputSessionIds);
+    final activeDescendantSessionIds = {
+      for (final descendantId in descendantSessionIds)
+        if (_hasTurnOrAdmissionEvidence(sessionId: descendantId) || pendingInputSessionIds.contains(descendantId))
+          descendantId,
+    };
     final mainAgentRunning = _hasTurnOrAdmissionEvidence(sessionId: sessionId);
 
-    if (subAgents == PluginAbortSubAgentPolicy.confirm && runningDescendantSessionIds.isNotEmpty) {
+    if (subAgents == PluginAbortSubAgentPolicy.confirm && activeDescendantSessionIds.isNotEmpty) {
       return PluginAbortRejectedSubAgentsRunning(
-        runningSubAgentCount: runningDescendantSessionIds.length,
+        runningSubAgentCount: activeDescendantSessionIds.length,
         mainAgentRunning: mainAgentRunning,
         mainAgentOnlySupported: true,
       );
     }
 
-    if (subAgents == PluginAbortSubAgentPolicy.keep && runningDescendantSessionIds.isNotEmpty) {
-      if (mainAgentRunning) {
+    if (subAgents == PluginAbortSubAgentPolicy.keep && activeDescendantSessionIds.isNotEmpty) {
+      if (mainAgentRunning || pendingInputSessionIds.contains(sessionId)) {
         await _abortSessions(sessionIds: {sessionId});
       }
       return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
@@ -1050,9 +1050,7 @@ class CodexPlugin._({
 
     final sessionIdsToStop = <String>{sessionId};
     if (subAgents != PluginAbortSubAgentPolicy.keep) {
-      sessionIdsToStop
-        ..addAll(runningDescendantSessionIds)
-        ..addAll(pendingInputDescendantSessionIds);
+      sessionIdsToStop.addAll(activeDescendantSessionIds);
     }
     await _abortSessions(sessionIds: sessionIdsToStop);
     return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);

@@ -159,12 +159,14 @@ defaults and queued client sends coherent.
   OpenCode retains legacy client fallback: its observed-child snapshot does not
   prove atomic subtree completion across separate HTTP/SSE channels.
 - Codex supports the same side-effect-free `confirm` preflight for any named
-  root or child thread. It reports the exact running descendant count and the
-  named thread's own running state, and offers main-agent-only stop because one
-  thread's native interrupt leaves descendants alive. `keep` interrupts only a
-  running named thread; `stop` targets that thread plus every active, pending-
-  admission, or pending-input descendant in the request snapshot, never its
-  ancestors or siblings. Each target uses its own `turnId`, including a turn
+  root or child thread. It reports the exact active descendant count, including
+  pending-input-only work, plus the named thread's own running state, and offers
+  main-agent-only stop because one thread's native interrupt leaves descendants
+  alive. `keep` stops only the named thread's active turn, admission, or pending
+  input; pure pending input does not fence a later turn start. `stop` targets
+  that thread plus every active, pending-admission, or pending-input descendant
+  in the request snapshot, never its ancestors or siblings. Each target uses
+  its own `turnId`, including a turn
   whose start arrives after Stop. Native notifications remain authoritative for
   settlement. This is per-thread fanout, not atomic subtree authority, so every
   accepted result reports `subAgentsHandled: false` even under atomic opt-in and
