@@ -100,9 +100,9 @@ reconnect or restart.
   configuration files remain outside the API. Root replay suppresses exact
   metadata-identified `spawn_subagent` cards and inserts one child-linked tile
   at the persisted lifecycle position only when that exact child's first
-  non-empty user-message run supplies the prompt. Missing prompts produce no
-  tile. Child ids use the same inherited load transport and replay their own
-  standard prompt/tool/text history. Replay initialization validates Grok
+  user-message run is nonblank. A blank or missing first run produces no tile;
+  later runs never substitute. Child ids use the same inherited load transport
+  and replay their own standard prompt/tool/text history. Replay initialization validates Grok
   identity without changing live process defaults; after load, the session's
   complete model/provider/effort selection stamps all assistant/error/tile
   envelopes. Both persisted `_x.ai/session/update` facts and late

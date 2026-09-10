@@ -280,8 +280,9 @@ child updates under the child id. Root `session/load` replays lifecycle as
 `_x.ai/session/update`; an unfinished loaded episode can settle later through
 `_x.ai/session_notification`, so both remain in the replay drain. Sesori exposes
 persisted/live children, loads child transcripts by exact native id, and rebuilds
-root tiles from exact child-owned first prompts without reading live tracker
-state. Missing prompts produce no tile. Permission denial persistence is
+root tiles from each exact child's first user-message run only when that run is
+nonblank, without reading live tracker state. A blank or missing first run
+produces no tile; later runs never substitute. Permission denial persistence is
 unverified and has no outcome model. Grok exposes `_x.ai/subagent/cancel` per
 child, but scoped-stop integration remains unimplemented. A root
 `session/cancel` cancels background children too, so main-agent-only is not

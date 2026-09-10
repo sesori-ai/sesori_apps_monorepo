@@ -18,16 +18,16 @@ void main() {
   late GrokSessionStoreApi api;
   late GrokSessionHistoryRepository repository;
 
-  String updatesPath(String sessionId) =>
+  String updatesPath({required String sessionId}) =>
       p.join(sessions.path, Uri.encodeComponent(cwd), sessionId, GrokSessionStoreApi.updatesFileName);
 
-  void writeUpdates(String sessionId, List<Object> updates) {
-    File(updatesPath(sessionId))
+  void writeUpdates({required String sessionId, required List<Object> updates}) {
+    File(updatesPath(sessionId: sessionId))
       ..createSync(recursive: true)
       ..writeAsStringSync(updates.map((update) => update is String ? update : jsonEncode(update)).join("\n"));
   }
 
-  Map<String, dynamic> spawn(String childId) => {
+  Map<String, dynamic> spawn({required String childId}) => {
     "method": GrokSessionProtocol.updateMethod,
     "params": {
       "sessionId": root,
@@ -40,7 +40,7 @@ void main() {
     },
   };
 
-  Map<String, dynamic> standard(String sessionId, Map<String, dynamic> update) => {
+  Map<String, dynamic> standard({required String sessionId, required Map<String, dynamic> update}) => {
     "method": AcpMethods.sessionUpdate,
     "params": {"sessionId": sessionId, "update": update},
   };
@@ -54,33 +54,61 @@ void main() {
   tearDown(() => sessions.deleteSync(recursive: true));
 
   test("keys exact children and concatenates only first child-owned user run", () async {
-    writeUpdates(root, [spawn("child-a"), spawn("child-b"), spawn("child-a")]);
-    writeUpdates("child-a", [
-      {"method": "foreign/before"},
-      standard("child-a", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": "first "},
-      }),
-      standard("child-a", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "image", "data": "ignored"},
-      }),
-      standard("child-a", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": "prompt"},
-      }),
-      standard("child-a", {"sessionUpdate": "future_unknown_update"}),
-      standard("child-a", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": " later"},
-      }),
-    ]);
-    writeUpdates("child-b", [
-      standard("different-child", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": "wrong owner"},
-      }),
-    ]);
+    writeUpdates(
+      sessionId: root,
+      updates: [
+        spawn(childId: "child-a"),
+        spawn(childId: "child-b"),
+        spawn(childId: "child-a"),
+      ],
+    );
+    writeUpdates(
+      sessionId: "child-a",
+      updates: [
+        {"method": "foreign/before"},
+        standard(
+          sessionId: "child-a",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "first "},
+          },
+        ),
+        standard(
+          sessionId: "child-a",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "image", "data": "ignored"},
+          },
+        ),
+        standard(
+          sessionId: "child-a",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "prompt"},
+          },
+        ),
+        standard(sessionId: "child-a", update: {"sessionUpdate": "future_unknown_update"}),
+        standard(
+          sessionId: "child-a",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": " later"},
+          },
+        ),
+      ],
+    );
+    writeUpdates(
+      sessionId: "child-b",
+      updates: [
+        standard(
+          sessionId: "different-child",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "wrong owner"},
+          },
+        ),
+      ],
+    );
 
     final context = await repository.prepareReplayContext(cwd: cwd, rootSessionId: root);
     expect(context.childPrompts, {"child-a": "first prompt"});
@@ -89,18 +117,30 @@ void main() {
 
   test("malformed child record is a private diagnosed boundary between user runs", () async {
     const secretTranscriptSource = "PRIVATE_PROMPT_SHOULD_NOT_REACH_LOGS";
-    writeUpdates(root, [spawn("child")]);
-    writeUpdates("child", [
-      standard("child", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": "first prompt"},
-      }),
-      "! malformed $secretTranscriptSource",
-      standard("child", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": " fabricated continuation"},
-      }),
-    ]);
+    writeUpdates(
+      sessionId: root,
+      updates: [spawn(childId: "child")],
+    );
+    writeUpdates(
+      sessionId: "child",
+      updates: [
+        standard(
+          sessionId: "child",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "first prompt"},
+          },
+        ),
+        "! malformed $secretTranscriptSource",
+        standard(
+          sessionId: "child",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": " fabricated continuation"},
+          },
+        ),
+      ],
+    );
 
     final previousLevel = Log.level;
     final stderr = BufferingStdout();
@@ -125,7 +165,7 @@ void main() {
       isA<GrokPersistedAcpSessionUpdateDto>(),
     ]);
     expect(prompts, {"child": "first prompt"});
-    expect(stderr.text, contains("${updatesPath("child")}, line 2"));
+    expect(stderr.text, contains("${updatesPath(sessionId: "child")}, line 2"));
     expect(stderr.text, contains("FormatException"));
     expect(stderr.text, contains("Unexpected character"));
     expect(stderr.text, contains("offset 0"));
@@ -133,21 +173,49 @@ void main() {
     expect(stderr.text, isNot(contains(secretTranscriptSource)));
   });
 
-  test("missing files, malformed lines, and empty prompts omit only affected children", () async {
-    writeUpdates(root, [spawn("missing"), "not json", spawn("empty"), spawn("valid")]);
-    writeUpdates("empty", [
-      standard("empty", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": "   "},
-      }),
-    ]);
-    writeUpdates("valid", [
-      "broken child line",
-      standard("valid", {
-        "sessionUpdate": "user_message_chunk",
-        "content": {"type": "text", "text": "valid prompt"},
-      }),
-    ]);
+  test("missing files, malformed lines, and blank first runs omit only affected children", () async {
+    writeUpdates(
+      sessionId: root,
+      updates: [
+        spawn(childId: "missing"),
+        "not json",
+        spawn(childId: "empty"),
+        spawn(childId: "valid"),
+      ],
+    );
+    writeUpdates(
+      sessionId: "empty",
+      updates: [
+        standard(
+          sessionId: "empty",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "   "},
+          },
+        ),
+        standard(sessionId: "empty", update: {"sessionUpdate": "future_unknown_update"}),
+        standard(
+          sessionId: "empty",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "must not replace blank first run"},
+          },
+        ),
+      ],
+    );
+    writeUpdates(
+      sessionId: "valid",
+      updates: [
+        "broken child line",
+        standard(
+          sessionId: "valid",
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "valid prompt"},
+          },
+        ),
+      ],
+    );
 
     expect(
       (await repository.prepareReplayContext(cwd: cwd, rootSessionId: root)).childPrompts,

@@ -295,7 +295,7 @@ confirmation, no child session or partial stop) and gets that subset.
 | 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | PR #1399 merged at `db2b71134d`; full live/replay production integration, lifecycle, busy accounting, focused tests, and behavior docs |
 | 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | PR #1420 merged at `ae2a9297e3`; write-path/lifecycle regressions and documentation |
 | 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | PR #1421 merged at `77165f784f`; per-thread policy, pending-admission fencing, and automated isolation/failure coverage |
-| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | current; managed-0.153.4 actual-plugin scoped-stop policy QA passed; pending-input live case unexecuted |
+| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | PR #1424 merged at `b945755bfe`; managed-0.153.4 actual-plugin scoped-stop policy QA passed; pending-input live case unexecuted |
 
 ### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 
@@ -393,14 +393,14 @@ confirmation, no child session or partial stop) and gets that subset.
 - **Child history and streaming.** Child ids use inherited `session/load` and
   replay their own standard prompt/tool/text stream. For root replay,
   `GrokSessionStoreApi` preserves typed persisted records in file order;
-  `GrokSessionHistoryRepository` extracts only each exact spawned child's first
-  non-empty child-owned user-message run; `GrokSessionService` resolves the
-  canonical directory and returns immutable context; and pure
+  `GrokSessionHistoryRepository` uses each exact spawned child's first child-owned
+  user-message run only when that run is nonblank; `GrokSessionService` resolves
+  the canonical directory and returns immutable context; and pure
   `GrokSessionReplayCollector` inserts/settles deterministic tiles without reading
-  live state. Unknown non-user updates end the first run. Both Grok lifecycle
-  methods are consumed through the existing post-response quiet drain. Missing
-  prompts produce no tile. No permission outcome, persistence, or deferred
-  machinery is implemented.
+  live state. Unknown non-user updates end the first run. A blank or missing first
+  run produces no tile, and later runs never substitute. Both Grok lifecycle
+  methods are consumed through the existing post-response quiet drain. No
+  permission outcome, persistence, or deferred machinery is implemented.
 - **Busy accounting.** Through seam 1: root idle is deferred while
   `busyChildIds` is non-empty. `GrokEventMapper` alone parses
   `subagent_finished.will_wake` and recognizes the matching root

@@ -23,23 +23,36 @@ void main() {
         toolPartReplacement: null,
         toolPartSuppression: null,
       );
-      final params = {
+      final foreignParams = {
         "sessionId": "s1",
         "update": {
           "sessionUpdate": "user_message_chunk",
-          "content": {"type": "text", "text": "Prompt"},
+          "content": {"type": "text", "text": "Foreign prompt"},
+        },
+      };
+      final canonicalParams = {
+        "sessionId": "s1",
+        "update": {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "Canonical prompt"},
         },
       };
 
       collector
         ..consumeNotification(
-          notification: AcpNotification(method: "foreign/update", params: params),
+          notification: AcpNotification(method: "foreign/update", params: foreignParams),
         )
         ..consumeNotification(
-          notification: AcpNotification(method: AcpMethods.sessionUpdate, params: params),
+          notification: AcpNotification(method: AcpMethods.sessionUpdate, params: canonicalParams),
         );
 
-      expect(collector.build(), hasLength(1));
+      final messages = collector.build();
+      expect(messages, hasLength(1));
+      expect(messages.single.parts, hasLength(1));
+      expect(
+        messages.single.parts.single,
+        isA<PluginMessagePartText>().having((part) => part.text, "text", "Canonical prompt"),
+      );
     });
 
     final assistantParityCases = <({String name, List<Map<String, dynamic>> updates})>[

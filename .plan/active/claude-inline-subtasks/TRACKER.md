@@ -11,10 +11,12 @@
   `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–3 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Harness follow-ups remain active.
-- **Next action:** prepare Grok Step 4 under exact title
+- **Next action:** [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427)
+  is current on `claude-inline-subtasks-grok-history-coverage-step4-current`
+  under exact title
   `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]`.
   PR #1426 merged Step 3 at `517cbb9703025633efbb2658136d8aa0879daa75`;
-  Step 4 is integrated from that merge and remains unchecked until merged.
+  Step 4 remains unchecked until PR #1427 merges.
   [Policy QA](followups/codex-plugin-qa.md) verified side-effect-free
   root/named-child confirmation, root-only `keep`, named-child subtree
   isolation, root full-stop snapshot fanout, authoritative terminals plus
@@ -799,8 +801,9 @@ stop behavior changed in cleanup #1396.
 
 Grok history Step 3/6 keeps inherited ACP load/auth/drain ownership while a
 replay-local collector consumes standard updates plus both Grok lifecycle
-methods. Typed store → history repository → session service context supplies
-only exact child-owned first prompts; missing prompts emit no tile. Exact
+methods. Typed store → history repository → session service context uses each
+exact child's first child-owned user-message run only when nonblank; a blank or
+missing first run emits no tile, and later runs never substitute. Exact
 metadata-based spawn suppression leaves ordinary tools intact and no empty
 envelope, while one collector preserves deterministic identities/order around
 inserted tiles. DeepSeek's nullable replacement contract remains unchanged.
@@ -809,9 +812,11 @@ from mapper to collector, moved shared protocol classification below the
 live/replay collectors, and made history prompt discovery consume lazy typed
 records with first-run cancellation. Architecture and correctness review
 approved production at `b0d4974e`; packaging preserves that checkpoint on a
-named branch and changes no production/generated blob. Step 4 propagation is
-fulfilled on the new successor: Collector imports/names replace Mapper,
-repository/service preparation is awaited, and original plus moved collector,
-repository, service, malformed-boundary, privacy, cancellation, and
-missing-prompt coverage remain present. Original Step 4 stays untouched at
+named branch and changes no production/generated blob. Step 4 coverage is
+current on `claude-inline-subtasks-grok-history-coverage-step4-current` in PR
+#1427: Collector imports/names replace Mapper, tests use Dart `await` when
+calling asynchronous repository/service preparation, and original plus moved
+collector, repository, service, malformed-boundary, privacy, cancellation, and
+missing-prompt coverage remain present. This records completed async call
+semantics, not unfinished preparation work. Original Step 4 stays untouched at
 `fb47206bd`.

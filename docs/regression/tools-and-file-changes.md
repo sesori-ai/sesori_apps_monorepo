@@ -88,12 +88,13 @@ signal that a tool changed files.
 - Grok uses that standard ACP lifecycle with exact live permission linkage.
   Root history replaces only metadata-identified `spawn_subagent` tools with one
   deterministic child-linked subtask tile, using the exact child's persisted
-  first user-message run as prompt and typed lifecycle for terminal state/output.
-  Ordinary tools remain generic and ordered around the tile; missing prompts
-  produce neither a fabricated tile nor an empty assistant message. Tool-call
-  identity, pending-to-terminal status, bounded output or error, and diff content
-  otherwise converge between live events and `session/load`; Grok tool names
-  remain presentation data and never become shared domain vocabulary.
+  first user-message run as prompt only when that run is nonblank, plus typed
+  lifecycle for terminal state/output. A blank or missing first run produces no
+  tile; later runs never substitute. Ordinary tools remain generic and ordered
+  around the tile, without an empty assistant message after spawn suppression.
+  Tool-call identity, terminal outcome (status and bounded output or error), and
+  diff content otherwise converge between live events and `session/load`; Grok
+  tool names remain presentation data and never become shared domain vocabulary.
 
 ## Regression Levels
 

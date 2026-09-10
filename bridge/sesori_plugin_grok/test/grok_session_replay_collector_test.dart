@@ -9,7 +9,7 @@ void main() {
   late AcpReplayCollector collector;
   late GrokSessionReplayCollector replayCollector;
 
-  AcpNotification standard(Map<String, dynamic> update) => AcpNotification(
+  AcpNotification standard({required Map<String, dynamic> update}) => AcpNotification(
     method: AcpMethods.sessionUpdate,
     params: {"sessionId": "root", "update": update},
   );
@@ -22,7 +22,7 @@ void main() {
     params: {"sessionId": "root", "update": update},
   );
 
-  void createCollector({Map<String, String> prompts = const {"child-a": "Prompt A", "child-b": "Prompt B"}}) {
+  void createCollector({required Map<String, String> prompts}) {
     collector = AcpReplayCollector(
       sessionUpdateNormalizer: null,
       sessionId: "root",
@@ -41,7 +41,7 @@ void main() {
     );
   }
 
-  Map<String, dynamic> spawned(String childId, String description) => {
+  Map<String, dynamic> spawned({required String childId, required String description}) => {
     "sessionUpdate": "subagent_spawned",
     "subagent_id": childId,
     "child_session_id": childId,
@@ -49,7 +49,12 @@ void main() {
     "description": description,
   };
 
-  Map<String, dynamic> finished(String childId, String status, {String? output, String? error}) => {
+  Map<String, dynamic> finished({
+    required String childId,
+    required String status,
+    required String? output,
+    required String? error,
+  }) => {
     "sessionUpdate": "subagent_finished",
     "subagent_id": childId,
     "child_session_id": childId,
@@ -65,43 +70,56 @@ void main() {
     variant: "high",
   );
 
-  setUp(createCollector);
+  setUp(
+    () => createCollector(prompts: const {"child-a": "Prompt A", "child-b": "Prompt B"}),
+  );
 
   test("suppresses typed spawn card and inserts one terminal tile in wire order", () {
     replayCollector
       ..consumeNotification(
-        notification: standard({
-          "sessionUpdate": "user_message_chunk",
-          "content": {"type": "text", "text": "Root prompt"},
-        }),
+        notification: standard(
+          update: {
+            "sessionUpdate": "user_message_chunk",
+            "content": {"type": "text", "text": "Root prompt"},
+          },
+        ),
       )
       ..consumeNotification(
-        notification: standard({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "spawn-call",
-          "_meta": {
-            "x.ai/tool": {"name": "spawn_subagent", "kind": "task"},
+        notification: standard(
+          update: {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "spawn-call",
+            "_meta": {
+              "x.ai/tool": {"name": "spawn_subagent", "kind": "task"},
+            },
           },
-        }),
+        ),
       )
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.updateMethod,
-          update: spawned("child-a", "Child A"),
+          update: spawned(childId: "child-a", description: "Child A"),
         ),
       )
       ..consumeNotification(
-        notification: standard({
-          "sessionUpdate": "tool_call",
-          "toolCallId": "ordinary-call",
-          "title": "Read file",
-          "status": "completed",
-        }),
+        notification: standard(
+          update: {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "ordinary-call",
+            "title": "Read file",
+            "status": "completed",
+          },
+        ),
       )
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.notificationMethod,
-          update: finished("child-a", "completed", output: "Result A"),
+          update: finished(
+            childId: "child-a",
+            status: "completed",
+            output: "Result A",
+            error: null,
+          ),
         ),
       );
 
@@ -129,31 +147,38 @@ void main() {
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.updateMethod,
-          update: spawned("child-a", "Same description"),
+          update: spawned(childId: "child-a", description: "Same description"),
         ),
       )
       ..consumeNotification(
-        notification: standard({
-          "sessionUpdate": "agent_message_chunk",
-          "content": {"type": "text", "text": "Between"},
-        }),
+        notification: standard(
+          update: {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "Between"},
+          },
+        ),
       )
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.notificationMethod,
-          update: spawned("child-b", "Same description"),
+          update: spawned(childId: "child-b", description: "Same description"),
         ),
       )
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.updateMethod,
-          update: finished("child-b", "cancelled", error: "Cancelled"),
+          update: finished(
+            childId: "child-b",
+            status: "cancelled",
+            output: null,
+            error: "Cancelled",
+          ),
         ),
       )
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.updateMethod,
-          update: spawned("child-b", "Duplicate"),
+          update: spawned(childId: "child-b", description: "Duplicate"),
         ),
       );
 
@@ -175,13 +200,13 @@ void main() {
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.updateMethod,
-          update: spawned("child-missing", "Missing prompt"),
+          update: spawned(childId: "child-missing", description: "Missing prompt"),
         ),
       )
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.updateMethod,
-          update: spawned("child-a", ""),
+          update: spawned(childId: "child-a", description: ""),
         ),
       );
 
@@ -192,7 +217,7 @@ void main() {
     replayCollector.consumeNotification(
       notification: lifecycle(
         method: GrokSessionProtocol.updateMethod,
-        update: spawned("child-a", "Child A"),
+        update: spawned(childId: "child-a", description: "Child A"),
       ),
     );
     expect(
@@ -204,13 +229,13 @@ void main() {
       ..consumeNotification(
         notification: lifecycle(
           method: "foreign/method",
-          update: finished("child-a", "failed", error: "ignored"),
+          update: finished(childId: "child-a", status: "failed", output: null, error: "ignored"),
         ),
       )
       ..consumeNotification(
         notification: lifecycle(
           method: GrokSessionProtocol.notificationMethod,
-          update: finished("child-a", "failed", error: "Failure"),
+          update: finished(childId: "child-a", status: "failed", output: null, error: "Failure"),
         ),
       );
 
