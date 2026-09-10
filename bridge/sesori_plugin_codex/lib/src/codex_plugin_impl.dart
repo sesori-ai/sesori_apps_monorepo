@@ -1031,7 +1031,8 @@ class CodexPlugin._({
         if (_hasTurnOrAdmissionEvidence(sessionId: descendantId) || pendingInputSessionIds.contains(descendantId))
           descendantId,
     };
-    final mainAgentRunning = _hasTurnOrAdmissionEvidence(sessionId: sessionId);
+    final mainAgentRunning =
+        _hasTurnOrAdmissionEvidence(sessionId: sessionId) || pendingInputSessionIds.contains(sessionId);
 
     if (subAgents == PluginAbortSubAgentPolicy.confirm && activeDescendantSessionIds.isNotEmpty) {
       return PluginAbortRejectedSubAgentsRunning(
@@ -1042,7 +1043,7 @@ class CodexPlugin._({
     }
 
     if (subAgents == PluginAbortSubAgentPolicy.keep && activeDescendantSessionIds.isNotEmpty) {
-      if (mainAgentRunning || pendingInputSessionIds.contains(sessionId)) {
+      if (mainAgentRunning) {
         await _abortSessions(sessionIds: {sessionId});
       }
       return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
@@ -1071,8 +1072,9 @@ class CodexPlugin._({
 
   Future<void> _abortSession({required String sessionId}) async {
     final hasTurnOrAdmissionEvidence = _hasTurnOrAdmissionEvidence(sessionId: sessionId);
+    final pendingNativeTurnId = _approvalRegistry?.pendingNativeTurnIdForSession(sessionId: sessionId);
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
-    final turnId = _activeTurnByThread[sessionId];
+    final turnId = _activeTurnByThread[sessionId] ?? pendingNativeTurnId;
     if (turnId == null) {
       if (hasTurnOrAdmissionEvidence) {
         _interruptOnTurnStartThreadIds.add(sessionId);
