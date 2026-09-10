@@ -395,8 +395,8 @@ class CatalogRescanService({
     _progressByPluginId[pluginId] = progress;
     if (_isTerminal(progress)) {
       _settleIfComplete();
-      // Still running: re-point the row at a harness that is actually working,
-      // rather than leaving it naming the one that just finished.
+      // Still running: advance to the next unfinished member in operation
+      // order, rather than leaving the row naming the one that just finished.
       if (_members.isNotEmpty) _publishLive();
       return;
     }
@@ -406,24 +406,34 @@ class CatalogRescanService({
   void _publishLive() {
     if (_members.isEmpty) return;
     final pluginIds = Set<String>.unmodifiable(_members);
-    final active = _activeProgress();
+    final focusedPluginId = _focusedPluginId();
+    if (focusedPluginId == null) return;
+    final finishedHarnessCount = _finishedHarnessCount();
+    final active = _progressByPluginId[focusedPluginId];
     if (active != null) {
-      final pluginName = _displayName(pluginId: active.pluginId);
+      final pluginName = _displayName(pluginId: focusedPluginId);
       final next = switch (active) {
         CatalogImportEnumerating(:final sessionsSeen)
-            when sessionsSeen == 0 && _isConfirmedStarting(pluginId: active.pluginId) =>
-          CatalogRescanState.starting(activePluginName: pluginName, pluginIds: pluginIds),
+            when sessionsSeen == 0 && _isConfirmedStarting(pluginId: focusedPluginId) =>
+          CatalogRescanState.starting(
+            activePluginName: pluginName,
+            finishedHarnessCount: finishedHarnessCount,
+            pluginIds: pluginIds,
+          ),
         CatalogImportEnumerating(:final sessionsSeen) => CatalogRescanState.reading(
           activePluginName: pluginName,
           sessionsSeen: sessionsSeen,
+          finishedHarnessCount: finishedHarnessCount,
           pluginIds: pluginIds,
         ),
         CatalogImportCommitting() => CatalogRescanState.saving(
           activePluginName: pluginName,
+          finishedHarnessCount: finishedHarnessCount,
           pluginIds: pluginIds,
         ),
-        // Unreachable: _activeProgress returns only non-terminal statuses. The
-        // exhaustive switch keeps any new transport phase visible here.
+        // Unreachable: _focusedPluginId returns only missing or non-terminal
+        // statuses. The exhaustive switch keeps any new transport phase
+        // visible here.
         CatalogImportCompleted() ||
         CatalogImportCancelled() ||
         CatalogImportFailed() => throw StateError("Terminal catalog progress cannot be active"),
@@ -432,33 +442,17 @@ class CatalogRescanService({
       return;
     }
 
-    final pendingPluginIds = [
-      for (final pluginId in _members)
-        if (_progressByPluginId[pluginId] == null) pluginId,
-    ];
-    for (final pluginId in pendingPluginIds) {
-      if (_isConfirmedStarting(pluginId: pluginId)) {
-        _publish(
-          CatalogRescanState.starting(
-            activePluginName: _displayName(pluginId: pluginId),
-            pluginIds: pluginIds,
-          ),
-        );
-        return;
-      }
-    }
-    if (pendingPluginIds.isEmpty) return;
-    final pendingPluginNames = List<String>.unmodifiable(
-      pendingPluginIds.map((pluginId) => _displayName(pluginId: pluginId)),
-    );
+    final pluginName = _displayName(pluginId: focusedPluginId);
     _publish(
-      pendingPluginNames.length == 1
-          ? CatalogRescanState.preparingOne(
-              pendingPluginName: pendingPluginNames.first,
+      _isConfirmedStarting(pluginId: focusedPluginId)
+          ? CatalogRescanState.starting(
+              activePluginName: pluginName,
+              finishedHarnessCount: finishedHarnessCount,
               pluginIds: pluginIds,
             )
-          : CatalogRescanState.preparingMany(
-              pendingPluginNames: pendingPluginNames,
+          : CatalogRescanState.preparingOne(
+              pendingPluginName: pluginName,
+              finishedHarnessCount: finishedHarnessCount,
               pluginIds: pluginIds,
             ),
     );
@@ -471,14 +465,24 @@ class CatalogRescanService({
       _operationBridgeId == _activeBridgeId &&
       _runtimeStates[pluginId] == PluginRuntimeState.starting;
 
-  /// The harness whose progress the row names, preferring whichever is still
-  /// working over one that already settled.
-  CatalogImportProgress? _activeProgress() {
+  /// The first member without terminal progress, preserving operation order.
+  /// A missing progress event is unfinished and therefore keeps foreground
+  /// focus ahead of later harnesses that have already started.
+  String? _focusedPluginId() {
     for (final pluginId in _members) {
       final progress = _progressByPluginId[pluginId];
-      if (progress != null && !_isTerminal(progress)) return progress;
+      if (progress == null || !_isTerminal(progress)) return pluginId;
     }
     return null;
+  }
+
+  int _finishedHarnessCount() {
+    var finished = 0;
+    for (final pluginId in _members) {
+      final progress = _progressByPluginId[pluginId];
+      if (progress != null && _isTerminal(progress)) finished++;
+    }
+    return finished;
   }
 
   void _settleIfComplete() {

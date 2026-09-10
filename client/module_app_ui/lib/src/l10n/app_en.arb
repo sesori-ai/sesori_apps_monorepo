@@ -1162,9 +1162,17 @@
   "@catalogScanPullCaption": {
     "description": "Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan. Names what the user gets rather than the mechanism: scanning harnesses is how it works, not what it is for."
   },
-  "catalogScanRunningTitle": "Scanning all harnesses",
+  "catalogScanRunningTitle": "Scanning · {finished} of {total} finished",
   "@catalogScanRunningTitle": {
-    "description": "Title of the row above a list while a catalog scan is in flight across every enabled harness."
+    "description": "Ordinary title of the row above a list while a catalog scan is in flight, including the number of terminal harnesses.",
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
   },
   "catalogScanPreparingOneDetail": "Preparing {harness} scan…",
   "@catalogScanPreparingOneDetail": {
@@ -1173,43 +1181,6 @@
       "harness": {
         "type": "String",
         "example": "Codex"
-      }
-    }
-  },
-  "catalogScanPreparingManyDetail": "Preparing {harnesses} scans…",
-  "@catalogScanPreparingManyDetail": {
-    "description": "Supporting line before multiple pending harnesses report catalog progress. The harnesses placeholder is a bounded localized name summary.",
-    "placeholders": {
-      "harnesses": {
-        "type": "String",
-        "example": "Codex and Claude"
-      }
-    }
-  },
-  "catalogScanTwoHarnesses": "{first} and {second}",
-  "@catalogScanTwoHarnesses": {
-    "description": "Joins two pending harness display names in scan progress copy.",
-    "placeholders": {
-      "first": {
-        "type": "String"
-      },
-      "second": {
-        "type": "String"
-      }
-    }
-  },
-  "catalogScanHarnessesWithOthers": "{first}, {second}, and {others, plural, =1{1 other} other{{others} others}}",
-  "@catalogScanHarnessesWithOthers": {
-    "description": "Bounded summary for three or more pending harnesses in scan progress copy.",
-    "placeholders": {
-      "first": {
-        "type": "String"
-      },
-      "second": {
-        "type": "String"
-      },
-      "others": {
-        "type": "int"
       }
     }
   },
@@ -1256,13 +1227,19 @@
       }
     }
   },
-  "catalogScanWaitingTitle": "Waiting for {harness}",
+  "catalogScanWaitingTitle": "Waiting for {harness} · {finished} of {total} finished",
   "@catalogScanWaitingTitle": {
-    "description": "Title after one harness has remained authoritatively in startup for three seconds.",
+    "description": "Title after one harness has remained authoritatively in startup for three seconds, including the number of terminal harnesses.",
     "placeholders": {
       "harness": {
         "type": "String",
         "example": "Codex"
+      },
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
       }
     }
   },

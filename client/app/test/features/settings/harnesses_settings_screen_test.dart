@@ -2056,6 +2056,7 @@ void main() {
       rescan.emit(
         const CatalogRescanState.preparingOne(
           pendingPluginName: "Future Harness",
+          finishedHarnessCount: 0,
           pluginIds: {"future-harness"},
         ),
       );

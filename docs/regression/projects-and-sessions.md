@@ -74,28 +74,37 @@ state.
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
   attach/no-auto-start mode always retains its existing server path.
-- One scan is one row above the list, however many harnesses take part. It names
-  only unfinished harnesses while preparing, distinguishes confirmed harness
-  startup from catalog reading, reports found-session counts during enumeration,
-  and says when results are being saved. Startup wording is driven only by a
-  fresh management snapshot for the same bridge; unknown or older metadata does
-  not infer it. After the same harness remains confirmed as starting for three
-  seconds, the row explains that scanning is waiting for startup and that the
-  user can keep browsing. This one-shot presentation timer resets on any phase
-  or harness change and never polls or changes bridge work. It offers to cancel
-  throughout live work. Every live phase shares the same Deep Scan loading-card
-  treatment, and the row scrolls with the list rather than pinning. The entrance
-  animation plays once when a pull first reveals the row; later updates do not
-  replay it, and the scan indicator keeps animating until a terminal outcome
-  replaces it. Android Remove Animations and iOS Reduce Motion both hold the
-  intentional first frame without the entrance bounce, and the pull-caption
-  invitation keeps only its gentle opacity transition. Finished outcomes use the
-  shared PREGO result-card geometry, expanding rather than clipping at
-  accessibility text sizes: a success, warning, or error glow rises from the
-  lower edge and the matching tinted Dismiss action remains available until the
-  result clears. Loading and every result state use a vertically centered 20px
-  leading mark with identical edge inset and icon-to-text gap. Titles do not
-  shift horizontally between states; at standard text size, icon and title
+- One scan is one row above the list, however many harnesses take part. The
+  service chooses the first unfinished harness in the operation's fixed
+  membership order, including members with no progress event yet, and keeps
+  later harness progress in stored state without letting it steal focus. Focus
+  advances only when the selected harness completes, fails, is cancelled, or
+  is removed by an unavailable/not-found start outcome. The row names that
+  harness while preparing, distinguishes confirmed harness startup from
+  catalog reading, reports found-session counts during enumeration, and says
+  when results are being saved. Every live phase also reports finished
+  harnesses out of the current membership; completed, failed, and cancelled
+  members count as finished, while unavailable/not-found members removed from
+  membership do not. Startup
+  wording is driven only by a fresh management snapshot for the same bridge;
+  unknown or older metadata does not infer it. After the same harness remains
+  confirmed as starting for three seconds, the row explains that scanning is
+  waiting for startup and that the user can keep browsing. This one-shot
+  presentation timer resets on any phase or harness change and never polls or
+  changes bridge work. It offers to cancel throughout live work. Every live
+  phase shares the same Deep Scan loading-card treatment, and the row scrolls
+  with the list rather than pinning. The entrance animation plays once when a
+  pull first reveals the row; later updates do not replay it, and the scan
+  indicator keeps animating until a terminal outcome replaces it. Android
+  Remove Animations and iOS Reduce Motion both hold the intentional first
+  frame without the entrance bounce, and the pull-caption invitation keeps
+  only its gentle opacity transition. Finished outcomes use the shared PREGO
+  result-card geometry, expanding rather than clipping at accessibility text
+  sizes: a success, warning, or error glow rises from the lower edge and the
+  matching tinted Dismiss action remains available until the result clears.
+  Loading and every result state use a vertically centered 20px leading mark
+  with identical edge inset and icon-to-text gap. Titles do not shift
+  horizontally between states; at standard text size, icon and title
   positions stay fixed vertically too. Enlarged text may grow the card without
   changing those horizontal insets.
 - A scan the pull started is reported by that row alone: the pull raises no

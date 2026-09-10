@@ -3631,35 +3631,17 @@ abstract class AppLocalizations {
   /// **'Keep pulling to find new sessions'**
   String get catalogScanPullCaption;
 
-  /// Title of the row above a list while a catalog scan is in flight across every enabled harness.
+  /// Ordinary title of the row above a list while a catalog scan is in flight, including the number of terminal harnesses.
   ///
   /// In en, this message translates to:
-  /// **'Scanning all harnesses'**
-  String get catalogScanRunningTitle;
+  /// **'Scanning · {finished} of {total} finished'**
+  String catalogScanRunningTitle(int finished, int total);
 
   /// Supporting line before one pending harness reports catalog progress.
   ///
   /// In en, this message translates to:
   /// **'Preparing {harness} scan…'**
   String catalogScanPreparingOneDetail(String harness);
-
-  /// Supporting line before multiple pending harnesses report catalog progress. The harnesses placeholder is a bounded localized name summary.
-  ///
-  /// In en, this message translates to:
-  /// **'Preparing {harnesses} scans…'**
-  String catalogScanPreparingManyDetail(String harnesses);
-
-  /// Joins two pending harness display names in scan progress copy.
-  ///
-  /// In en, this message translates to:
-  /// **'{first} and {second}'**
-  String catalogScanTwoHarnesses(String first, String second);
-
-  /// Bounded summary for three or more pending harnesses in scan progress copy.
-  ///
-  /// In en, this message translates to:
-  /// **'{first}, {second}, and {others, plural, =1{1 other} other{{others} others}}'**
-  String catalogScanHarnessesWithOthers(String first, String second, int others);
 
   /// Supporting line while a fresh management snapshot authoritatively reports the named harness as starting.
   ///
@@ -3685,11 +3667,11 @@ abstract class AppLocalizations {
   /// **'Saving {harness} scan results…'**
   String catalogScanSavingDetail(String harness);
 
-  /// Title after one harness has remained authoritatively in startup for three seconds.
+  /// Title after one harness has remained authoritatively in startup for three seconds, including the number of terminal harnesses.
   ///
   /// In en, this message translates to:
-  /// **'Waiting for {harness}'**
-  String catalogScanWaitingTitle(String harness);
+  /// **'Waiting for {harness} · {finished} of {total} finished'**
+  String catalogScanWaitingTitle(String harness, int finished, int total);
 
   /// Wrapped explanation after one harness has remained authoritatively in startup for three seconds.
   ///

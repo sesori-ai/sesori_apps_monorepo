@@ -199,9 +199,10 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
   CatalogScanRowScenario(
     id: "preparing",
     name: "Preparing / Awaiting progress",
-    description: "Requests were dispatched, but no harness has reported yet.",
-    scan: CatalogRescanState.preparingMany(
-      pendingPluginNames: ["Codex", "OpenCode"],
+    description: "Requests were dispatched; the first harness keeps focus until it reports.",
+    scan: CatalogRescanState.preparingOne(
+      pendingPluginName: "Codex",
+      finishedHarnessCount: 0,
       pluginIds: {"codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -213,6 +214,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     scan: CatalogRescanState.reading(
       activePluginName: "Codex",
       sessionsSeen: 0,
+      finishedHarnessCount: 0,
       pluginIds: {"codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -224,6 +226,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     scan: CatalogRescanState.reading(
       activePluginName: "Codex",
       sessionsSeen: 1,
+      finishedHarnessCount: 0,
       pluginIds: {"codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -235,6 +238,7 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     scan: CatalogRescanState.reading(
       activePluginName: "Claude Code",
       sessionsSeen: 148,
+      finishedHarnessCount: 0,
       pluginIds: {"claude-code", "codex", "opencode"},
     ),
     action: CatalogScanRowAction.cancel,
@@ -575,32 +579,36 @@ class _CatalogScanRowInActionExampleState() extends State<CatalogScanRowInAction
     if (widget.selection is! CatalogScanGestureDemo) return;
     _cancelTimers();
     setState(() {
-      _scan = const CatalogRescanState.preparingMany(
-        pendingPluginNames: ["Claude Code", "Codex", "OpenCode"],
+      _scan = const CatalogRescanState.preparingOne(
+        pendingPluginName: "Claude Code",
+        finishedHarnessCount: 0,
         pluginIds: {"claude-code", "codex", "opencode"},
       );
     });
     _schedule(
       const Duration(milliseconds: 650),
       const CatalogRescanState.reading(
-        activePluginName: "Codex",
+        activePluginName: "Claude Code",
         sessionsSeen: 0,
+        finishedHarnessCount: 0,
         pluginIds: {"claude-code", "codex", "opencode"},
       ),
     );
     _schedule(
       const Duration(milliseconds: 1400),
       const CatalogRescanState.reading(
-        activePluginName: "Codex",
+        activePluginName: "Claude Code",
         sessionsSeen: 3,
+        finishedHarnessCount: 0,
         pluginIds: {"claude-code", "codex", "opencode"},
       ),
     );
     _schedule(
       const Duration(milliseconds: 2200),
       const CatalogRescanState.reading(
-        activePluginName: "OpenCode",
+        activePluginName: "Codex",
         sessionsSeen: 8,
+        finishedHarnessCount: 1,
         pluginIds: {"claude-code", "codex", "opencode"},
       ),
     );

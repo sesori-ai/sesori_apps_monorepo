@@ -2456,6 +2456,7 @@ void main() {
           const CatalogRescanState.reading(
             activePluginName: "Codex",
             sessionsSeen: 148,
+            finishedHarnessCount: 0,
             pluginIds: {"codex"},
           ),
         );

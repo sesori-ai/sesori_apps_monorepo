@@ -55,9 +55,129 @@ void main() {
       expect(repository.startedPluginIds, unorderedEquals(["codex", "claude"]));
       expect(
         service.state.value,
-        isA<CatalogRescanPreparingMany>()
-            .having((s) => s.pendingPluginNames, "pendingPluginNames", ["Codex", "Claude"])
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 0)
             .having((s) => s.pluginIds, "pluginIds", {"codex", "claude"}),
+      );
+    });
+
+    test("keeps first unfinished harness focused while later harness reports progress", () async {
+      await service.startAll();
+
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "claude",
+          projectsSeen: 2,
+          sessionsSeen: 9,
+        ),
+      );
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 0),
+        reason: "a later harness must not steal focus before Codex reports",
+      );
+
+      connection.emitProgress(
+        const CatalogImportProgress.committing(
+          pluginId: "claude",
+          projectsSeen: 2,
+          sessionsSeen: 9,
+        ),
+      );
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>().having((s) => s.pendingPluginName, "pendingPluginName", "Codex"),
+        reason: "background phase changes must not change the selected harness",
+      );
+    });
+
+    test("shows background completion in count while focus remains stable", () async {
+      await service.startAll();
+
+      connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 2));
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 1)
+            .having((s) => s.pluginIds.length, "total harness count", 2),
+        reason: "background completion is visible without moving focus",
+      );
+
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 1,
+          sessionsSeen: 3,
+        ),
+      );
+      expect(
+        service.state.value,
+        isA<CatalogRescanReading>()
+            .having((s) => s.activePluginName, "activePluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 1),
+      );
+    });
+
+    test("hands focus off after terminal progress and skips finished members", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex", "claude": "Claude", "cursor": "Cursor"}));
+      await service.startAll();
+
+      // Claude finishes out of order while Codex is still the first member.
+      connection.emitProgress(_completed("claude", newProjects: 0, newSessions: 0));
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 1),
+      );
+
+      connection.emitProgress(_completed("codex", newProjects: 0, newSessions: 0));
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Cursor")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 2),
+        reason: "handoff skips Claude, which already finished",
+      );
+    });
+
+    test("hands focus off when the first harness is rejected", () async {
+      repository.resultFor["codex"] = const CatalogImportMutationResult.unavailable();
+
+      await service.startAll();
+
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Claude")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 0)
+            .having((s) => s.pluginIds, "pluginIds", {"claude"}),
+      );
+    });
+
+    test("counts failed and cancelled members as finished", () async {
+      build(snapshot: _snapshot(routable: const {"codex": "Codex", "claude": "Claude", "cursor": "Cursor"}));
+      await service.startAll();
+
+      connection.emitProgress(const CatalogImportProgress.cancelled(pluginId: "claude"));
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 1),
+      );
+
+      connection.emitProgress(const CatalogImportProgress.failed(pluginId: "codex", message: "failed"));
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Cursor")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 2),
       );
     });
 
@@ -293,7 +413,9 @@ void main() {
 
         expect(
           service.state.value,
-          isA<CatalogRescanPreparingMany>(),
+          isA<CatalogRescanPreparingOne>()
+              .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+              .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 0),
           reason: "the previous success timer must not reset the new run",
         );
       });
@@ -310,7 +432,9 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanPreparingMany>(),
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 0),
         reason: "retained progress from the previous run must be cleared",
       );
       connection.emitProgress(_completed("codex", newProjects: 0, newSessions: 0));
@@ -330,7 +454,7 @@ void main() {
 
       expect(result, isA<CatalogRescanStartAccepted>());
       expect(
-        (service.state.value as CatalogRescanPreparingMany).pluginIds,
+        (service.state.value as CatalogRescanPreparingOne).pluginIds,
         {"codex", "claude"},
         reason: "codex must stay in aggregation and cancellation",
       );
@@ -444,7 +568,7 @@ void main() {
       expect(catalogChanges, hasLength(1), reason: "its committed import must refresh the lists");
     });
 
-    test("re-points the row at a harness still working when another settles", () async {
+    test("keeps the first harness focused until it settles", () async {
       await service.startAll();
       connection.emitProgress(
         const CatalogImportProgress.enumerating(
@@ -453,18 +577,32 @@ void main() {
           sessionsSeen: 9,
         ),
       );
-      expect((service.state.value as CatalogRescanReading).activePluginName, "Claude");
+      expect(
+        service.state.value,
+        isA<CatalogRescanPreparingOne>().having((s) => s.pendingPluginName, "pendingPluginName", "Codex"),
+      );
 
       connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
 
       expect(
         service.state.value,
-        isA<CatalogRescanPreparingOne>().having(
-          (s) => s.pendingPluginName,
-          "pendingPluginName",
-          "Codex",
+        isA<CatalogRescanPreparingOne>()
+            .having((s) => s.pendingPluginName, "pendingPluginName", "Codex")
+            .having((s) => s.finishedHarnessCount, "finishedHarnessCount", 1),
+        reason: "background completion must not steal focus",
+      );
+
+      connection.emitProgress(
+        const CatalogImportProgress.enumerating(
+          pluginId: "codex",
+          projectsSeen: 1,
+          sessionsSeen: 2,
         ),
-        reason: "only the unfinished harness remains in preparing copy",
+      );
+      expect(
+        service.state.value,
+        isA<CatalogRescanReading>().having((s) => s.activePluginName, "activePluginName", "Codex"),
+        reason: "focus advances after the first harness settles",
       );
     });
 
@@ -572,7 +710,7 @@ void main() {
 
     test("cancel fans out one request per member, including while starting", () async {
       await service.startAll();
-      expect(service.state.value, isA<CatalogRescanPreparingMany>());
+      expect(service.state.value, isA<CatalogRescanPreparingOne>());
 
       await service.cancel();
 
@@ -879,7 +1017,7 @@ void main() {
       final catalogChanges = <void>[];
       service.catalogChanged.listen(catalogChanges.add);
       await service.startAll();
-      expect(service.state.value, isA<CatalogRescanPreparingMany>());
+      expect(service.state.value, isA<CatalogRescanPreparingOne>());
 
       connection.emitStatus(const ConnectionStatus.disconnected());
       await pumpEventQueue();
