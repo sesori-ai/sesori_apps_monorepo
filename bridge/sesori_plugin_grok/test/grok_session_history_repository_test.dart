@@ -6,7 +6,6 @@ import "package:grok_plugin/src/api/grok_session_store_api.dart";
 import "package:grok_plugin/src/api/models/grok_session_notification_dto.dart";
 import "package:grok_plugin/src/api/models/grok_session_store_dto.dart";
 import "package:grok_plugin/src/repositories/grok_session_history_repository.dart";
-import "package:grok_plugin/src/repositories/models/grok_session_replay_context.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
