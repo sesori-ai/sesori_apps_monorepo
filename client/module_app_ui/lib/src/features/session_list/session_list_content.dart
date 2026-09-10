@@ -13,18 +13,17 @@ import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
 
 /// Chooses one stable heading for a session without changing the service-owned
-/// ordering of [SessionListLoaded.sessions]. Running sessions use the same
-/// predicate as [SessionListService], while awaiting-only sessions stay in
-/// their updated-time bucket.
+/// ordering of [SessionListLoaded.sessions]. The loaded-state resolver supplies
+/// running classification; presentation only chooses the localized heading.
 String _sessionListHeading({
   required Session session,
   required SessionListFilter filter,
-  required SessionActivityInfo? activityInfo,
+  required bool isRunning,
   required DateTime now,
   required AppLocalizations loc,
 }) {
   final isArchivedList = filter == SessionListFilter.archived;
-  if (!isArchivedList && activityInfo != null && const SessionActivityCalculator().isRunning(activity: activityInfo)) {
+  if (!isArchivedList && isRunning) {
     return loc.sessionListRunning;
   }
 
@@ -88,7 +87,7 @@ class const SessionListContent({
               final heading = _sessionListHeading(
                 session: session,
                 filter: loaded.filter,
-                activityInfo: activityInfo,
+                isRunning: loaded.isSessionRunning(session: session),
                 now: now,
                 loc: loc,
               );
@@ -96,7 +95,7 @@ class const SessionListContent({
                   ? _sessionListHeading(
                       session: loaded.sessions[index - 1],
                       filter: loaded.filter,
-                      activityInfo: loaded.activeSessionIds[loaded.sessions[index - 1].id],
+                      isRunning: loaded.isSessionRunning(session: loaded.sessions[index - 1]),
                       now: now,
                       loc: loc,
                     )
