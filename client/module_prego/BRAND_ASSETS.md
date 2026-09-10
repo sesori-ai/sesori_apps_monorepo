@@ -6,9 +6,10 @@
 Antigravity mark, retained unchanged and used only to identify Antigravity.
 Source SHA-256: `1e7f9ad3f5495e83ba011a84f61cf18178f0975cdf6ee5a0dddb1e01da1d529e`.
 
-Flutter's SVG compiler does not implement its Gaussian blur filters, so the
-widget uses `assets/images/brands/antigravity.png`, a transparent 452×452
-render of that source. Both themes use the same colours and geometry.
+Flutter's SVG renderer reports `unhandled element <filter/>` for this source
+and renders a solid-blue silhouette instead of its multicolour gradients.
+The widget therefore uses `assets/images/brands/antigravity.png`, a transparent
+452×452 render of that source. Both themes use the same colours and geometry.
 PNG SHA-256: `29f646b6c37e3a67f9ab38695e75995e9e5c042410405c78aa72a5b484bda8c3`.
 
 Regenerate from the repository root:

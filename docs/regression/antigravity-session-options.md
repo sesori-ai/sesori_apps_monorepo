@@ -15,21 +15,26 @@ is required. Authenticated native discovery remains unverified; automated eviden
   Concurrent discovery requests coalesce. A list/resume failure never creates a replacement. No credential copying,
   private API access, secondary probe process, or private history deletion is involved.
 - The options service owns discovery state and calls a connection-scoped catalog repository over `AcpAgentApi`.
-  Only complete valid responses replace the last-good catalog. Failures are logged and returned as failed discovery;
-  they do not erase the previous snapshot. Reset clears catalog/configuration state and fences late discovery results.
+  The repository maps discovery DTOs into domain catalogs; the service validates selection invariants. Only complete
+  valid responses replace the last-good catalog. Failures are logged and returned as failed discovery; `/providers`
+  surfaces a typed operation failure rather than an apparently successful empty catalog. Failures do not erase the
+  previous snapshot. Reset clears catalog/configuration state and fences late discovery results.
 - Reserved-cwd sessions are excluded from global/project session enumeration and recovered directory attribution,
   including after a plugin restart. Their native artifacts remain untouched and are reused, not imported as chats.
 - The Layer-2 protocol mapper decodes flat and one-level grouped model entries through generated DTOs. Preserve exact
   opaque native IDs and advertised order. Ignore unrelated config selectors without assuming their schemas.
 - Group a model only when its native `-high`, `-medium`, or `-low` suffix agrees with its advertised
-  ` (High)`, ` (Medium)`, or ` (Low)` label suffix. Expose the stripped model name/ID and ordered variant IDs while
-  retaining the exact native ID for dispatch. Unmatched, future, whitespace-bearing or ambiguous entries stay
-  standalone. Duplicate labels alone do not merge opaque identities. No static model manifest is used.
+  ` (High)`, ` (Medium)`, or ` (Low)` label suffix. Expose the stripped model name/ID and strongest-first variant IDs
+  while retaining the backend's default and exact native ID for dispatch. A single advertised level still uses the
+  variant picker instead of returning its suffix to the model name. Unmatched, future, whitespace-bearing or ambiguous
+  entries stay standalone. Duplicate labels alone do not merge opaque identities. No static model manifest is used.
 - Empty catalogs, blank IDs/labels, duplicate native IDs, unsupported selector types, duplicate model selectors,
   missing current models and malformed entries fail without replacing last-good data. An ordinary session response
   without a model selector does not replace the snapshot; discovery without a selector fails.
-- Discovery and real new sessions establish the advertised new-session default. Real load/resume/configuration
-  responses update the session selection, not the new-session default. Defaults and message metadata use normalized
+- Newly created discovery and real sessions establish the advertised new-session default. Resuming a retained
+  discovery session does not establish or replace that default or the process fallback. After restart, the default is
+  omitted until a fresh native session establishes it. Real load/resume/configuration responses update the session
+  selection, not the new-session default. Defaults and message metadata use normalized
   model IDs plus variants; configuration writes always use exact account-advertised native IDs.
 - Before prompt dispatch, validate the requested model/variant tuple, await exact standard `session/set_config_option`,
   verify a returned catalog's current native ID equals the request, then await `session/set_mode` with `default`.

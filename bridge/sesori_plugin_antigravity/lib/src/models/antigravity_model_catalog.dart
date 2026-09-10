@@ -57,6 +57,8 @@ class AntigravityModelCatalog({
   final List<AntigravityModelOption> models = List.unmodifiable(models);
 }
 
+typedef AntigravityCatalogSession = ({String sessionId, AntigravityModelCatalog catalog});
+
 /// Only a fresh session response establishes the backend's new-session default.
 enum AntigravityCatalogSource() {
   newSession,

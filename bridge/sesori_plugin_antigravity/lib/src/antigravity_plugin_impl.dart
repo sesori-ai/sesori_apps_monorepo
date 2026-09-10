@@ -5,6 +5,7 @@ import "foundation/antigravity_identity.dart";
 import "foundation/antigravity_release.dart";
 import "models/antigravity_model_catalog.dart";
 import "repositories/antigravity_catalog_repository.dart";
+import "repositories/mappers/antigravity_protocol_mapper.dart";
 import "runtime/antigravity_interaction_composer.dart";
 import "runtime/antigravity_output_composer.dart";
 import "services/antigravity_session_metadata_service.dart";
@@ -107,8 +108,9 @@ class AntigravityPlugin({
 
   @override
   Future<PluginProvidersResult> getProviders({required String projectId}) async {
-    await _discover(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
-    return _options.getSessionOptions().providers;
+    final result = await _discover(discoveryMode: PluginSessionOptionsDiscoveryMode.reuse);
+    if (result case PluginSessionOptionsDiscoveryObserved(:final options)) return options.providers;
+    throw const PluginOperationException("getProviders", message: "Antigravity model discovery failed");
   }
 
   Future<PluginSessionOptionsDiscoveryResult> _discover({
@@ -117,6 +119,7 @@ class AntigravityPlugin({
     discoveryMode: discoveryMode,
     repositoryProvider: () async => AntigravityCatalogRepository(
       api: AcpAgentApi(client: await requireConnectedClient()),
+      protocolMapper: const AntigravityProtocolMapper(),
     ),
   );
 

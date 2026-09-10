@@ -50,7 +50,8 @@ class AntigravitySessionOptionsService({
       if (generation != _connectionGeneration) return const PluginSessionOptionsDiscoveryResult.failed();
 
       var sessionId = _reservedSessionId;
-      final AcpNewSessionResult result;
+      var source = AntigravityCatalogSource.existingSession;
+      final AntigravityCatalogSession result;
       if (sessionId == null) {
         final listed = await repository.listSessions(directory: _discoveryDirectory);
         if (generation != _connectionGeneration) return const PluginSessionOptionsDiscoveryResult.failed();
@@ -61,6 +62,7 @@ class AntigravitySessionOptionsService({
         if (matches.isEmpty) {
           result = await repository.createSession(directory: _discoveryDirectory);
           sessionId = result.sessionId;
+          source = AntigravityCatalogSource.newSession;
         } else {
           sessionId = matches.first;
           _reservedSessionId = sessionId;
@@ -71,10 +73,9 @@ class AntigravitySessionOptionsService({
       }
       if (generation != _connectionGeneration) return const PluginSessionOptionsDiscoveryResult.failed();
       _reservedSessionId = sessionId;
-      final catalog = _validatedCatalog(result: result);
-      if (catalog == null) throw const FormatException("Antigravity discovery returned no model selector");
-      _store(catalog: catalog, source: AntigravityCatalogSource.newSession);
-      _setProcessSelection(selection: catalog.currentSelection);
+      final catalog = _validateCatalog(catalog: result.catalog);
+      _store(catalog: catalog, source: source);
+      if (source == AntigravityCatalogSource.newSession) _setProcessSelection(selection: catalog.currentSelection);
       return PluginSessionOptionsDiscoveryResult.observed(options: getSessionOptions());
     } on Object catch (error, stackTrace) {
       Log.w("[antigravity] model catalog discovery failed", error, stackTrace);
@@ -110,7 +111,10 @@ class AntigravitySessionOptionsService({
 
   AntigravityModelCatalog? _validatedCatalog({required AcpNewSessionResult result}) {
     final catalog = _protocolMapper.mapModelCatalog(result: result);
-    if (catalog == null) return null;
+    return catalog == null ? null : _validateCatalog(catalog: catalog);
+  }
+
+  AntigravityModelCatalog _validateCatalog({required AntigravityModelCatalog catalog}) {
     final ids = <String>{};
     for (final model in catalog.models) {
       if (model.id.trim().isEmpty || model.name.trim().isEmpty || !ids.add(model.id)) {
@@ -189,7 +193,7 @@ class AntigravitySessionOptionsService({
                         PluginModel(
                           id: model.id,
                           name: model.name,
-                          variants: [for (final variant in model.variants) variant.kind.id],
+                          variants: CatalogStrengthOrder.variants(model.variants.map((variant) => variant.kind.id)),
                           defaultVariant: model.variants.isEmpty
                               ? null
                               : model.id == defaultSelection?.modelId

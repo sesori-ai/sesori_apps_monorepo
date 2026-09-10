@@ -305,6 +305,16 @@ void _question({required _Process process, required String session, required Str
 );
 
 void main() {
+  test("cold provider discovery failures are surfaced instead of returning an empty catalog", () async {
+    final process = _Process()..auth = _Auth.failure;
+    final h = await _harness(processes: [process]);
+    await expectLater(
+      h.plugin.getProviders(projectId: "/launch"),
+      throwsA(isA<PluginOperationException>().having((error) => error.operation, "operation", "getProviders")),
+    );
+    expect(process.created, 0);
+  });
+
   test("cold options use one hidden no-prompt discovery session and refresh resumes it", () async {
     final process = _Process();
     final h = await _harness(processes: [process]);

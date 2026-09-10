@@ -103,7 +103,7 @@ void main() {
     testWidgets("renders Antigravity's official artwork in $brightness", (tester) async {
       await tester.pumpWidget(
         _harness(
-          logo: const PregoBrandLogo(pluginId: "antigravity", size: 28, color: null),
+          logo: PregoBrandLogo(pluginId: Harness.antigravity.name, size: 28, color: null),
           brightness: brightness,
         ),
       );
@@ -138,7 +138,7 @@ void main() {
   });
 
   test("names each harness it has a mark for, and speaks an unknown id as-is", () {
-    expect(PregoBrandLogo.displayNameFor("antigravity"), "Antigravity");
+    expect(PregoBrandLogo.displayNameFor(Harness.antigravity.name), "Antigravity");
     expect(PregoBrandLogo.displayNameFor(Harness.opencode.name), "OpenCode");
     expect(PregoBrandLogo.displayNameFor(Harness.codex.name), "Codex");
     expect(PregoBrandLogo.displayNameFor(Harness.copilot.name), "GitHub Copilot");

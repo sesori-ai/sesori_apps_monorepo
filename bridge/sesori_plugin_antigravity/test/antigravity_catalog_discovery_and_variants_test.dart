@@ -82,19 +82,25 @@ class _CatalogRepository() implements AntigravityCatalogRepository {
   }
 
   @override
-  Future<AcpNewSessionResult> createSession({required String directory}) async {
+  Future<AntigravityCatalogSession> createSession({required String directory}) async {
     createCalls++;
     if (createFailure case final failure?) throw failure;
-    return createResult;
+    return (
+      sessionId: createResult.sessionId,
+      catalog: const AntigravityProtocolMapper().mapModelCatalog(result: createResult)!,
+    );
   }
 
   @override
-  Future<AcpNewSessionResult> resumeSession({required String sessionId, required String directory}) async {
+  Future<AntigravityCatalogSession> resumeSession({required String sessionId, required String directory}) async {
     resumeCalls++;
     resumedIds.add(sessionId);
     await resumeGate?.future;
     if (resumeFailure case final failure?) throw failure;
-    return resumeResult;
+    return (
+      sessionId: resumeResult.sessionId,
+      catalog: const AntigravityProtocolMapper().mapModelCatalog(result: resumeResult)!,
+    );
   }
 }
 
@@ -141,6 +147,50 @@ void main() {
     );
     expect(configRepository.writes.first.value, "gemini-3.7-flash-medium");
     expect(configuration.snapshotForSession(sessionId: "session").variantId, "medium");
+  });
+
+  test("variants display strongest first without changing the backend-declared default", () async {
+    service.capture(
+      result: _result(
+        sessionId: "session",
+        current: "opaque",
+        models: const [
+          ("family-low", "Family (Low)"),
+          ("family-medium", "Family (Medium)"),
+          ("family-high", "Family (High)"),
+          ("opaque", "Opaque"),
+        ],
+      ),
+      sessionId: "session",
+      source: AntigravityCatalogSource.newSession,
+    );
+    final model = service.getSessionOptions().providers.providers.single.models.first;
+    expect(model.variants, ["high", "medium", "low"]);
+    expect(model.defaultVariant, "low");
+    await service.applyForPrompt(
+      configRepository: configRepository,
+      sessionId: "session",
+      modelId: model.id,
+      variant: null,
+    );
+    expect(configRepository.writes.first.value, "family-low");
+  });
+
+  test("one advertised thinking level still belongs in the variant picker", () {
+    service.capture(
+      result: _result(
+        sessionId: "session",
+        current: "family-high",
+        models: const [("family-high", "Family (High)")],
+      ),
+      sessionId: "session",
+      source: AntigravityCatalogSource.newSession,
+    );
+    final model = service.getSessionOptions().providers.providers.single.models.single;
+    expect(model.id, "family");
+    expect(model.name, "Family");
+    expect(model.variants, ["high"]);
+    expect(model.defaultVariant, "high");
   });
 
   test("unpaired and ambiguous suffixes remain exact standalone models", () {
@@ -307,7 +357,8 @@ void main() {
       isA<PluginSessionOptionsDiscoveryObserved>(),
     );
     expect(repository.resumedIds, ["discovery"]);
-    expect(tracker.newSessionDefault?.variantId, "low");
+    expect(tracker.newSessionDefault?.variantId, "high");
+    expect(configuration.processDefaults.variantId, "high");
   });
 
   test("restart-style discovery reuses first sorted reserved session", () async {
@@ -325,6 +376,9 @@ void main() {
     );
     expect(repository.resumedIds, ["a"]);
     expect(repository.createCalls, 0);
+    expect(tracker.newSessionDefault, isNull);
+    expect(service.getSessionOptions().providers.providers.single.defaultModelID, isNull);
+    expect(configuration.processDefaults.modelId, isNull);
     expect(service.isDiscoverySession(sessionId: "z", directory: "/any"), isFalse);
     expect(service.isDiscoverySession(sessionId: "visible", directory: "/discovery"), isTrue);
   });

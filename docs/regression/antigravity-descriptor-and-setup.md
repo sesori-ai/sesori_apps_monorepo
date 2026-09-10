@@ -50,8 +50,8 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
 Setup inspection writing state, reading token contents, launching a process, weakening explicit-path authority,
 inheriting ambient credentials, opening a browser, silently authenticating, retaining stale configuration after reset,
 terminating best-effort provisioning on timeout, or omitting Antigravity from inventory are regressions. Advertising
-managed install with an explicit override or on macOS x64, first installation without an explicit action, adding a shared
-`Harness` case, or replacing generic client behavior with Antigravity-specific logic is also a regression. Existing Sesori-managed runtimes may
+managed install with an explicit override or on macOS x64, first installation without an explicit action,
+or replacing generic client behavior with Antigravity-specific logic is also a regression. Existing Sesori-managed runtimes may
 upgrade at bridge start. Preparation or probe timeouts
 preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abort still propagates.
 
