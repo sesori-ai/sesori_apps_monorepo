@@ -826,7 +826,7 @@ class const CatalogScanRowMotionPreview({
 
 class _CatalogScanRowMotionPreviewState() extends State<CatalogScanRowMotionPreview> {
   MotionSnapshot _values = const MotionSnapshot();
-  CatalogRescanState _scan = const CatalogRescanState.starting(pluginIds: {"codex"});
+  CatalogRescanState _scan = const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"});
   int _replay = 0;
 
   void _replayMotion({required MotionTarget target, required MotionSnapshot values}) {
@@ -835,12 +835,18 @@ class _CatalogScanRowMotionPreviewState() extends State<CatalogScanRowMotionPrev
     setState(() {
       _values = values;
       // Remount at the opposite endpoint so every replay starts consistently.
-      _scan = entering ? const CatalogRescanState.idle() : const CatalogRescanState.starting(pluginIds: {"codex"});
+      _scan =
+          entering
+              ? const CatalogRescanState.idle()
+              : const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"});
     });
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || replay != _replay) return;
       setState(() {
-        _scan = entering ? const CatalogRescanState.starting(pluginIds: {"codex"}) : const CatalogRescanState.idle();
+        _scan =
+            entering
+                ? const CatalogRescanState.starting(activePluginName: "Codex", pluginIds: {"codex"})
+                : const CatalogRescanState.idle();
       });
     });
   }
