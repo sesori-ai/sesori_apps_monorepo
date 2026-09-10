@@ -147,7 +147,7 @@ defaults and queued client sends coherent.
   mid-turn, and the app shows a confirmation: with the main agent idle, "Stop N
   sub-agents"; with the main agent running, "Stop main agent and N sub-agents".
   Dismissing leaves everything running. "Stop main agent only" (`keep`) is
-  offered only when the rejection declares `mainAgentOnlySupported`; neither
+  offered only when the rejection declares `mainAgentOnlySupported`; none
   of these harnesses can interrupt a running main agent without its sub-agents,
   so all three report false and refuse `keep` during a live main turn with the
   running count. With the main agent idle `keep` is honored: the Claude process

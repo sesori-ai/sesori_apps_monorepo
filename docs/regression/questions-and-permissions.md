@@ -86,6 +86,8 @@ reaches the backend so the turn continues.
   when active-root `keep` is unsupported, and when idle-root child-only `keep`
   succeeds. Accepted named-child stop cancels only that child's pending ACP
   interaction; full snapshot stop cancels root and selected-child interactions.
+  This input cleanup stays scoped; completion suppression for a fully stopped
+  named child records the root ID and applies to the root session group.
   Process exit and disposal also cancel pending Grok requests rather than
   broadening or silently approving them. These guarantees have automated
   fixture coverage only; actual-plugin pending input remains unexecuted, and no
