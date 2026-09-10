@@ -91,6 +91,7 @@ void main() {
           messageTimeResolver: null,
           haltClassifier: null,
           toolPartReplacement: null,
+          toolPartSuppression: null,
         );
         final liveEvents = <BridgeSseEvent>[];
 
@@ -138,6 +139,7 @@ void main() {
                   messageTimeResolver: null,
                   haltClassifier: null,
                   toolPartReplacement: null,
+                  toolPartSuppression: null,
                 )
                 ..consume(
                   upd({
@@ -183,6 +185,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -244,6 +247,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -282,6 +286,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -322,6 +327,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -368,6 +374,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -403,6 +410,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -429,6 +437,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -463,6 +472,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -504,6 +514,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -531,6 +542,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -558,6 +570,7 @@ void main() {
         messageTimeResolver: null,
         haltClassifier: null,
         toolPartReplacement: null,
+        toolPartSuppression: null,
       );
 
       expect(
@@ -577,6 +590,7 @@ void main() {
         messageTimeResolver: null,
         haltClassifier: null,
         toolPartReplacement: null,
+        toolPartSuppression: null,
       );
       final output = _captureWarnings(() {
         for (var index = 0; index < 2; index++) {
@@ -606,6 +620,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -719,6 +734,7 @@ void main() {
                 messageTimeResolver: null,
                 haltClassifier: null,
                 toolPartReplacement: null,
+                toolPartSuppression: null,
               )
               ..consume(
                 upd({
@@ -774,6 +790,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -816,6 +833,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -848,6 +866,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -880,6 +899,7 @@ void main() {
               messageTimeResolver: null,
               haltClassifier: null,
               toolPartReplacement: null,
+              toolPartSuppression: null,
             )
             ..consume(
               upd({
@@ -927,6 +947,7 @@ void main() {
             haltClassifier: ({required text}) =>
                 text.trim() == "Check your settings to continue" ? const AcpHaltNotice(errorName: "cursor_gate") : null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -957,6 +978,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -979,6 +1001,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1014,6 +1037,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: ({required text}) => const AcpHaltNotice(errorName: "cursor_gate"),
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1040,6 +1064,7 @@ void main() {
             messageTimeResolver: null,
             haltClassifier: null,
             toolPartReplacement: null,
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "agent_message_chunk",
@@ -1080,6 +1105,7 @@ void main() {
                 childSessionID: "child-1",
               );
             },
+            toolPartSuppression: null,
           )..consume(
             upd({
               "sessionUpdate": "tool_call",
@@ -1092,6 +1118,164 @@ void main() {
       final part = collector.build().single.parts.single as PluginMessagePartSubtask;
       expect(part.id, "s1-h0-assistant-tool-call-1");
       expect(part.childSessionID, "child-1");
+    });
+
+    test("suppression removes only classified tools and leaves no empty message", () {
+      final collector =
+          AcpReplayCollector(
+              sessionUpdateNormalizer: null,
+              sessionId: "s1",
+              agentId: "ACP",
+              initialUserMessageId: null,
+              messageIdOverride: null,
+              messageTimeResolver: null,
+              haltClassifier: null,
+              toolPartReplacement: null,
+              toolPartSuppression: ({required update}) => update["_meta"] == "suppress",
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "tool_call",
+                "toolCallId": "hidden",
+                "_meta": "suppress",
+              }),
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "tool_call",
+                "toolCallId": "visible",
+                "title": "ordinary",
+              }),
+            );
+
+      final messages = collector.build();
+      expect(messages, hasLength(1));
+      expect(messages.single.parts.single, isA<PluginMessagePartTool>());
+      expect((messages.single.parts.single as PluginMessagePartTool).tool, "ordinary");
+      expect(messages.every((message) => message.parts.isNotEmpty), isTrue);
+    });
+
+    test("inserted messages split an explicit assistant id into unique deterministic segments", () {
+      final collector =
+          AcpReplayCollector(
+              sessionUpdateNormalizer: null,
+              sessionId: "s1",
+              agentId: "ACP",
+              initialUserMessageId: null,
+              messageIdOverride: null,
+              messageTimeResolver: null,
+              haltClassifier: null,
+              toolPartReplacement: null,
+              toolPartSuppression: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "agent_message_chunk",
+                "messageId": "m1",
+                "content": {"type": "text", "text": "before"},
+              }),
+            )
+            ..upsertAssistantMessage(
+              messageId: "s1-child",
+              parts: const [],
+              time: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "agent_message_chunk",
+                "messageId": "m1",
+                "content": {"type": "text", "text": "after"},
+              }),
+            );
+
+      final messages = collector.build();
+      expect(
+        messages.map((message) => message.info.id),
+        ["s1-mm1-assistant", "s1-child", "s1-mm1-assistant-segment-2"],
+      );
+      expect(messages[0].parts.single.id, "s1-mm1-assistant-text");
+      expect(messages[2].parts.single.id, "s1-mm1-assistant-segment-2-text");
+      expect(messages.map((message) => message.info.id).toSet(), hasLength(3));
+    });
+
+    test("inserted messages split a user override id without replacing its identity", () {
+      final collector =
+          AcpReplayCollector(
+              sessionUpdateNormalizer: null,
+              sessionId: "s1",
+              agentId: "ACP",
+              initialUserMessageId: null,
+              messageIdOverride: ({required acpMessageId}) => "authoritative-$acpMessageId",
+              messageTimeResolver: null,
+              haltClassifier: null,
+              toolPartReplacement: null,
+              toolPartSuppression: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "user_message_chunk",
+                "messageId": "u1",
+                "content": {"type": "text", "text": "before"},
+              }),
+            )
+            ..upsertAssistantMessage(
+              messageId: "s1-child",
+              parts: const [],
+              time: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "user_message_chunk",
+                "messageId": "u1",
+                "content": {"type": "text", "text": "after"},
+              }),
+            );
+
+      final messages = collector.build();
+      expect(
+        messages.map((message) => message.info.id),
+        ["authoritative-u1", "s1-child", "authoritative-u1-segment-2"],
+      );
+      expect(messages[0].parts.single.id, "authoritative-u1-text");
+      expect(messages[2].parts.single.id, "authoritative-u1-segment-2-text");
+      expect(messages.map((message) => message.info.id).toSet(), hasLength(3));
+    });
+
+    test("inserted messages retain one collector's deterministic identity continuity", () {
+      final collector =
+          AcpReplayCollector(
+              sessionUpdateNormalizer: null,
+              sessionId: "s1",
+              agentId: "ACP",
+              initialUserMessageId: "s1-initial-user",
+              messageIdOverride: null,
+              messageTimeResolver: null,
+              haltClassifier: null,
+              toolPartReplacement: null,
+              toolPartSuppression: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "user_message_chunk",
+                "content": {"type": "text", "text": "before"},
+              }),
+            )
+            ..upsertAssistantMessage(
+              messageId: "s1-child",
+              parts: const [],
+              time: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "user_message_chunk",
+                "content": {"type": "text", "text": "after"},
+              }),
+            );
+
+      expect(
+        collector.build().map((message) => message.info.id),
+        ["s1-initial-user", "s1-child", "s1-h1-user"],
+      );
     });
   });
 }

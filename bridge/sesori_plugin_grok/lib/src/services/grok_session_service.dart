@@ -3,13 +3,24 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show nor
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginSession;
 
 import "../repositories/grok_session_catalog_repository.dart";
+import "../repositories/grok_session_history_repository.dart";
+import "../repositories/models/grok_session_replay_context.dart";
 
 /// Layer-3 coordination for Grok child-session lineage across the persisted
 /// session tree and the current ACP process's live tracker.
 class GrokSessionService({
   required final GrokSessionCatalogRepository _catalogRepository,
+  required final GrokSessionHistoryRepository _historyRepository,
   required final AcpChildSessionTracker _liveTracker,
 }) {
+  GrokSessionReplayContext prepareReplayContext({
+    required String sessionId,
+    required String fallbackDirectory,
+  }) => _historyRepository.prepareReplayContext(
+    cwd: _directoryForSession(sessionId: sessionId, fallbackDirectory: fallbackDirectory),
+    rootSessionId: sessionId,
+  );
+
   List<PluginSession> childSessions({
     required String rootSessionId,
     required String fallbackDirectory,

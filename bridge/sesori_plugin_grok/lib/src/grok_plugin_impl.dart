@@ -9,6 +9,8 @@ import "grok_identity.dart";
 import "repositories/grok_catalog_repository.dart";
 import "repositories/grok_session_catalog_repository.dart";
 import "repositories/grok_session_config_repository.dart";
+import "repositories/grok_session_history_repository.dart";
+import "repositories/mappers/grok_session_replay_mapper.dart";
 import "services/grok_session_options_service.dart";
 import "services/grok_session_service.dart";
 import "trackers/grok_catalog_tracker.dart";
@@ -50,12 +52,11 @@ class GrokPlugin._({
       displayName: GrokPluginIdentity.displayName,
       discoveryTimeout: const Duration(seconds: 15),
     );
-    final sessionCatalogRepository = GrokSessionCatalogRepository(
-      api: GrokSessionStoreApi.forHome(
-        environment: environment,
-        pluginId: GrokPluginIdentity.id,
-      ),
+    final sessionStoreApi = GrokSessionStoreApi.forHome(
+      environment: environment,
+      pluginId: GrokPluginIdentity.id,
     );
+    final sessionCatalogRepository = GrokSessionCatalogRepository(api: sessionStoreApi);
     return GrokPlugin._(
       launchSpec: GrokBinary.launchSpec(
         binary: binaryPath,
@@ -81,6 +82,7 @@ class GrokPlugin._({
       grokSessionOptionsService: grokSessionOptionsService,
       sessionService: GrokSessionService(
         catalogRepository: sessionCatalogRepository,
+        historyRepository: GrokSessionHistoryRepository(api: sessionStoreApi),
         liveTracker: childSessionTracker,
       ),
     );
@@ -124,6 +126,24 @@ class GrokPlugin._({
   @override
   String? replayVariantForSession({required String sessionId}) =>
       _grokSessionOptionsService.reasoningEffortForSession(sessionId: sessionId);
+
+  @override
+  Future<AcpSessionReplayMapper> createSessionReplayMapper({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async {
+    final context = _sessionService.prepareReplayContext(
+      sessionId: sessionId,
+      fallbackDirectory: directoryForSession(sessionId: sessionId),
+    );
+    return GrokSessionReplayMapper(
+      sessionId: sessionId,
+      standardCollector: collectorFactory(
+        toolPartSuppression: GrokEventMapper.isSpawnSubagentUpdate,
+      ),
+      context: context,
+    );
+  }
 
   @override
   Future<void> validateTurnSelection({
@@ -173,7 +193,9 @@ class GrokPlugin._({
 
   @override
   bool isResumeReplayNotification(AcpNotification notification) =>
-      super.isResumeReplayNotification(notification) || notification.method == GrokEventMapper.sessionUpdateMethod;
+      super.isResumeReplayNotification(notification) ||
+      notification.method == GrokEventMapper.sessionUpdateMethod ||
+      notification.method == GrokEventMapper.sessionNotificationMethod;
 
   // Grok's `session/list` is verified to return roots only. Child parentage is
   // added by [_sessionService] after the root list is mapped, avoiding a

@@ -91,16 +91,12 @@ reconnect or restart.
   reopening a prior session after plugin, process, or bridge restart loads it
   before the next prompt without duplicating replay into the live stream. Sesori
   uses the public protocol and never reads Copilot credential or history files.
-- Grok history also uses standard ACP `session/load` on a dedicated short-lived
-  connection and never reads its local credential or session files. Replay
-  initialization validates Grok identity without changing live process defaults;
-  after load, the session's complete model/provider/effort selection is captured
-  atomically and stamps replayed assistant/error messages. Cold continuation
-  loads that same session before prompting after process, plugin, or bridge
-  restart. Both standard `session/update` history and historical Grok
-  `_x.ai/session/update` lifecycle frames remain suppressed from the live event
-  stream during that load window; extension frames received outside it remain
-  live.
+- Grok history uses standard ACP `session/load` on a dedicated short-lived
+  connection. Root replay rebuilds deterministic child-linked tiles from typed
+  persisted lifecycle and each exact child's first non-empty user-message run;
+  child ids load their own standard transcript. Missing child prompts produce no
+  tile. Replay stamps the loaded model/provider/effort selection and never reads
+  or mutates live child state.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their

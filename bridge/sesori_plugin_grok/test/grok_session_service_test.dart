@@ -4,6 +4,7 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:grok_plugin/src/api/grok_session_store_api.dart";
 import "package:grok_plugin/src/repositories/grok_session_catalog_repository.dart";
+import "package:grok_plugin/src/repositories/grok_session_history_repository.dart";
 import "package:grok_plugin/src/services/grok_session_service.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -33,10 +34,13 @@ void main() {
     setUp(() {
       sessions = Directory.systemTemp.createTempSync("grok-child-service-");
       tracker = AcpChildSessionTracker();
-      final repository = GrokSessionCatalogRepository(
-        api: GrokSessionStoreApi(sessionsRoot: sessions.path, pluginId: "grok-test"),
+      final storeApi = GrokSessionStoreApi(sessionsRoot: sessions.path, pluginId: "grok-test");
+      final repository = GrokSessionCatalogRepository(api: storeApi);
+      service = GrokSessionService(
+        catalogRepository: repository,
+        historyRepository: GrokSessionHistoryRepository(api: storeApi),
+        liveTracker: tracker,
       );
-      service = GrokSessionService(catalogRepository: repository, liveTracker: tracker);
 
       File(p.join(sessionDirectory(rootId), "summary.json"))
         ..createSync(recursive: true)

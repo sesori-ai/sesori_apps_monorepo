@@ -3,17 +3,17 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `8731cabe08`, containing Codex scoped-stop
-  [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) at
-  `77165f784f`.
+- **Implementation base:** `main` at `127ee3166f`, containing merged Codex
+  coverage [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424)
+  at `b945755bfe`.
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
-  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–8 are merged; bounded Step 9
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 are merged; bounded Step 9
   managed-0.153.4 actual-plugin policy QA passed on 2026-09-10. Harness
   follow-ups remain active.
-- **Next action:** land Codex coverage docs for step 9/9 under exact title
-  `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]`.
+- **Next action:** land Grok child history under exact title
+  `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]`.
   [Policy QA](followups/codex-plugin-qa.md) verified side-effect-free
   root/named-child confirmation, root-only `keep`, named-child subtree
   isolation, root full-stop snapshot fanout, authoritative terminals plus
@@ -180,12 +180,13 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) merged at `db2b71134d`; full live/replay production and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases with explicit unexecuted coverage |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | [PR #1420](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1420) merged at `ae2a9297e3`; write-path/lifecycle coverage and docs |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) merged at `77165f784f`; per-thread snapshot fanout, non-atomic (not native subtree cancellation); automated coverage included |
-| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) open; managed-0.153.4 actual-plugin policy QA passed; pending-input live case unexecuted |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
-| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
-| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
-| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
+| [x] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) merged at `b945755bfe`; pending-input live case unexecuted |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/6) |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/6) |
+| [ ] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | Production replay and essential integration/regression coverage packaged on `claude-inline-subtasks-grok-history-step3` |
+| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | Supplemental mapper/repository/service coverage and full documentation reconciliation packaged on `claude-inline-subtasks-grok-history-coverage-step4` |
+| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | Not started |
+| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 6/6]` | Not started |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |

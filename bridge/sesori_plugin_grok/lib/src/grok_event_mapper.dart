@@ -31,10 +31,16 @@ class GrokEventMapper({
   /// The `spawn_subagent` call and the `subagent_spawned` notification share
   /// no id, so the call renders nothing and the notification owns the tile.
   @override
-  bool isSubagentSpawnToolCall({required Map<String, dynamic> update}) {
+  // ignore: no_slop_linter/prefer_specific_type, ACP override requires open JSON
+  bool isSubagentSpawnToolCall({required Map<String, dynamic> update}) => isSpawnSubagentUpdate(update: update);
+
+  /// Exact typed classifier shared by live and replay-local mappers.
+  // ignore: no_slop_linter/prefer_specific_type, ACP update payload is an open JSON object
+  static bool isSpawnSubagentUpdate({required Map<String, dynamic> update}) {
     final rawMeta = update["_meta"];
     if (rawMeta is! Map) return false;
     try {
+      // ignore: no_slop_linter/prefer_specific_type, generated DTO accepts JSON maps
       return GrokToolCallMetaDto.fromJson(rawMeta.cast<String, dynamic>()).tool?.name == spawnSubagentToolName;
     } on Object catch (error, stackTrace) {
       Log.w("[grok] tool call metadata could not be parsed; rendering a tool card", error, stackTrace);

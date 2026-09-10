@@ -94,27 +94,32 @@ class GrokSessionStoreApi({
     return GrokSessionSummaryDto.fromJson(jsonDecodeMap(file.readAsStringSync()));
   }
 
-  /// The `subagent_spawned` records [sessionId] persisted, in file order.
-  /// Unparseable lines and other update kinds are skipped.
-  List<GrokSubagentSpawned> readSpawnRecords({required String cwd, required String sessionId}) {
+  /// All persisted updates for one known session, in file order. Unknown typed
+  /// variants and malformed records are retained as boundaries. Malformed
+  /// records are also logged so one damaged record remains observable without
+  /// hiding unrelated history.
+  List<GrokPersistedUpdateDto> readUpdates({required String cwd, required String sessionId}) {
     final project = _projectDirectory(cwd: cwd);
     if (project == null) return const [];
     final file = File(p.join(_sessionDirectory(project: project, sessionId: sessionId), updatesFileName));
     if (!file.existsSync()) return const [];
-    final spawns = <GrokSubagentSpawned>[];
+    final updates = <GrokPersistedUpdateDto>[];
     for (final line in file.readAsLinesSync()) {
       if (line.trim().isEmpty) continue;
       try {
-        final envelope = GrokPersistedUpdateDto.fromJson(jsonDecodeMap(line));
-        if (envelope case GrokPersistedSessionUpdateDto(:final params)) {
-          if (params.update case final GrokSubagentSpawned spawned) spawns.add(spawned);
-        }
+        updates.add(GrokPersistedUpdateDto.fromJson(jsonDecodeMap(line)));
       } on Object catch (error, stackTrace) {
-        // The file carries many unrelated update variants. Typed unknown
-        // variants are skipped above; malformed envelopes remain observable.
-        Log.w("[$pluginId] skipping unreadable session update at ${file.path}", error, stackTrace);
+        Log.w("[$pluginId] retaining unreadable session update boundary at ${file.path}", error, stackTrace);
+        updates.add(const GrokPersistedUpdateDto.unknown());
       }
     }
-    return spawns;
+    return updates;
   }
+
+  /// The `subagent_spawned` records [sessionId] persisted, in file order.
+  List<GrokSubagentSpawned> readSpawnRecords({required String cwd, required String sessionId}) => [
+    for (final envelope in readUpdates(cwd: cwd, sessionId: sessionId))
+      if (envelope case GrokPersistedGrokSessionUpdateDto(:final params))
+        if (params.update case final GrokSubagentSpawned spawned) spawned,
+  ];
 }
