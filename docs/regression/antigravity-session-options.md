@@ -15,7 +15,8 @@ is required. Authenticated native discovery remains unverified; automated eviden
   Concurrent discovery requests coalesce. A list/resume failure never creates a replacement. No credential copying,
   private API access, secondary probe process, or private history deletion is involved.
 - The options service owns discovery state and calls a connection-scoped catalog repository over `AcpAgentApi`.
-  The repository maps discovery DTOs into domain catalogs; the service validates selection invariants. Only complete
+  The repository resolves the reserved session ID and maps discovery DTOs into domain catalogs; no discovery API DTOs
+  cross into the service, which validates selection invariants. Only complete
   valid responses replace the last-good catalog. Failures are logged and returned as failed discovery; `/providers`
   surfaces a typed operation failure rather than an apparently successful empty catalog. Failures do not erase the
   previous snapshot. Reset clears catalog/configuration state and fences late discovery results.

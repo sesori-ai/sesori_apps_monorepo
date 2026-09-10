@@ -60,7 +60,7 @@ class _ConfigRepository() implements AcpSessionConfigRepository {
 }
 
 class _CatalogRepository() implements AntigravityCatalogRepository {
-  List<AcpSessionInfo> sessions = const [];
+  String? recoveredSessionId;
   AcpNewSessionResult createResult = _variants(sessionId: "discovery");
   AcpNewSessionResult resumeResult = _variants(sessionId: "discovery");
   Object? listFailure;
@@ -74,11 +74,11 @@ class _CatalogRepository() implements AntigravityCatalogRepository {
   final List<String> resumedIds = [];
 
   @override
-  Future<List<AcpSessionInfo>> listSessions({required String directory}) async {
+  Future<String?> findSessionId({required String directory}) async {
     listCalls++;
     await listGate?.future;
     if (listFailure case final failure?) throw failure;
-    return sessions;
+    return recoveredSessionId;
   }
 
   @override
@@ -361,13 +361,9 @@ void main() {
     expect(configuration.processDefaults.variantId, "high");
   });
 
-  test("restart-style discovery reuses first sorted reserved session", () async {
+  test("restart-style discovery resumes the repository's reserved session", () async {
     final repository = _CatalogRepository()
-      ..sessions = const [
-        AcpSessionInfo(sessionId: "z", cwd: "/discovery", title: null, updatedAtMs: null),
-        AcpSessionInfo(sessionId: "other", cwd: "/other", title: null, updatedAtMs: null),
-        AcpSessionInfo(sessionId: "a", cwd: "/discovery", title: null, updatedAtMs: null),
-      ]
+      ..recoveredSessionId = "a"
       ..resumeResult = _variants(sessionId: "a");
 
     await service.discover(
@@ -396,7 +392,7 @@ void main() {
 
     repository
       ..listFailure = null
-      ..sessions = const [AcpSessionInfo(sessionId: "reserved", cwd: "/discovery", title: null, updatedAtMs: null)];
+      ..recoveredSessionId = "reserved";
     await service.discover(
       discoveryMode: PluginSessionOptionsDiscoveryMode.reuse,
       repositoryProvider: () async => repository,

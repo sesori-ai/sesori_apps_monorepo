@@ -315,6 +315,27 @@ void main() {
     expect(process.created, 0);
   });
 
+  test("cold discovery resumes the stable reserved session reported by ACP", () async {
+    final process = _Process();
+    final h = await _harness(processes: [process]);
+    final reservedDirectory = "${h.directory.path}/antigravity-acp/conversations";
+    process.listedSessions.addAll([
+      {"sessionId": "z", "cwd": reservedDirectory},
+      {"sessionId": "real", "cwd": "/real-project"},
+      {"sessionId": "a", "cwd": reservedDirectory},
+    ]);
+    final providers = await h.plugin.getProviders(projectId: "/launch");
+    expect(providers.providers.single.models, hasLength(2));
+    expect(providers.providers.single.defaultModelID, isNull);
+    expect(process.created, 0);
+    final resumed = process.stdin.frames.singleWhere((frame) => frame["method"] == "session/resume");
+    expect((resumed["params"] as Map)["sessionId"], "a");
+    expect((resumed["params"] as Map)["cwd"], reservedDirectory);
+    expect(process.stdin.frames.where((frame) => frame["method"] == "session/prompt"), isEmpty);
+    final visible = await h.plugin.listAllSessions(knownDirectories: const {"/real-project"});
+    expect(visible.map((session) => session.id), ["real"]);
+  });
+
   test("cold options use one hidden no-prompt discovery session and refresh resumes it", () async {
     final process = _Process();
     final h = await _harness(processes: [process]);

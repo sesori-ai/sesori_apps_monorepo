@@ -50,26 +50,20 @@ class AntigravitySessionOptionsService({
       if (generation != _connectionGeneration) return const PluginSessionOptionsDiscoveryResult.failed();
 
       var sessionId = _reservedSessionId;
-      var source = AntigravityCatalogSource.existingSession;
-      final AntigravityCatalogSession result;
       if (sessionId == null) {
-        final listed = await repository.listSessions(directory: _discoveryDirectory);
+        sessionId = await repository.findSessionId(directory: _discoveryDirectory);
         if (generation != _connectionGeneration) return const PluginSessionOptionsDiscoveryResult.failed();
-        final matches = [
-          for (final session in listed)
-            if (session.sessionId.isNotEmpty && _hasDiscoveryDirectory(session: session)) session.sessionId,
-        ]..sort();
-        if (matches.isEmpty) {
-          result = await repository.createSession(directory: _discoveryDirectory);
-          sessionId = result.sessionId;
-          source = AntigravityCatalogSource.newSession;
-        } else {
-          sessionId = matches.first;
-          _reservedSessionId = sessionId;
-          result = await repository.resumeSession(sessionId: sessionId, directory: _discoveryDirectory);
-        }
+      }
+      final AntigravityCatalogSession result;
+      final AntigravityCatalogSource source;
+      if (sessionId == null) {
+        result = await repository.createSession(directory: _discoveryDirectory);
+        sessionId = result.sessionId;
+        source = AntigravityCatalogSource.newSession;
       } else {
+        _reservedSessionId = sessionId;
         result = await repository.resumeSession(sessionId: sessionId, directory: _discoveryDirectory);
+        source = AntigravityCatalogSource.existingSession;
       }
       if (generation != _connectionGeneration) return const PluginSessionOptionsDiscoveryResult.failed();
       _reservedSessionId = sessionId;
@@ -81,13 +75,6 @@ class AntigravitySessionOptionsService({
       Log.w("[antigravity] model catalog discovery failed", error, stackTrace);
       return const PluginSessionOptionsDiscoveryResult.failed();
     }
-  }
-
-  bool _hasDiscoveryDirectory({required AcpSessionInfo session}) {
-    final directory = session.cwd;
-    return directory != null &&
-        directory.trim().isNotEmpty &&
-        normalizeProjectDirectory(directory: directory) == _discoveryDirectory;
   }
 
   bool isDiscoverySession({required String sessionId, required String directory}) {
