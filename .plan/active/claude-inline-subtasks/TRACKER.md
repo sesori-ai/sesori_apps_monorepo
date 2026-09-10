@@ -12,8 +12,16 @@
   `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 are merged; bounded Step 9
   managed-0.153.4 actual-plugin policy QA passed on 2026-09-10. Harness
   follow-ups remain active.
-- **Next action:** land Grok child history under exact title
+- **Next action:** [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426)
+  is open/current under exact title
   `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]`.
+  Its published head is `0b0f79a859db380765359831171684cb4df65229`;
+  approved feedback head `b0d4974e116a2b413f0d0bfe9844d67d1dfe8a23`
+  is preserved on `claude-inline-subtasks-grok-history-pr1426-approved-checkpoint`,
+  while the current Step 3 branch adds packaging only. Step 4 is queued on
+  `claude-inline-subtasks-grok-history-coverage-step4-successor`; original full
+  checkpoint `704006bf8e8adbd02935fd81cfddd541d5bd9b7d` and original Step 4
+  `fb47206bd0ed4cc521dde4a0f921281d8d1a8d33` remain intact.
   [Policy QA](followups/codex-plugin-qa.md) verified side-effect-free
   root/named-child confirmation, root-only `keep`, named-child subtree
   isolation, root full-stop snapshot fanout, authoritative terminals plus
@@ -183,8 +191,8 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) merged at `b945755bfe`; pending-input live case unexecuted |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/6) |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/6) |
-| [ ] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | Production replay and essential integration/regression coverage packaged on `claude-inline-subtasks-grok-history-step3` |
-| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | Supplemental mapper/repository/service coverage and full documentation reconciliation packaged on `claude-inline-subtasks-grok-history-coverage-step4` |
+| [ ] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) open/current; updated local `claude-inline-subtasks-grok-history-step3` keeps approved production, root/direct-child integration, and no-`loadSession` coverage while moving supplemental unit coverage additively |
+| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | Queued on new `claude-inline-subtasks-grok-history-coverage-step4-successor`; integrates original `fb47206bd` tests/docs plus moved ACP collector and Grok repository coverage against the approved Collector/async API |
 | [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | Not started |
 | [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 6/6]` | Not started |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
@@ -796,8 +804,11 @@ stop behavior changed in cleanup #1396.
 Grok Step 3 review follow-up renamed the new stateful replay seam and Grok
 implementation from mapper to collector, moved shared protocol classification
 below the live/replay collectors, and made history prompt discovery consume
-lazy typed records with first-run cancellation. Step 4 branch
-`claude-inline-subtasks-grok-history-coverage-step4` remains untouched at
-`fb47206bd`; before delivery it must update replay-collector file/class imports,
-await repository/service history APIs, and carry its supplemental collector,
-repository, service, malformed-boundary, and missing-prompt coverage forward.
+lazy typed records with first-run cancellation. Architecture and correctness
+review approved production at `b0d4974e`; packaging preserves that checkpoint
+on a named branch and changes no production/generated blob. Step 4 propagation
+is fulfilled on the new successor: Collector imports/names replace Mapper,
+repository/service preparation is awaited, and original plus moved collector,
+repository, service, malformed-boundary, privacy, cancellation, and
+missing-prompt coverage remain present. Original Step 4 stays untouched at
+`fb47206bd`.
