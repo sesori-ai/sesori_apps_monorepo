@@ -131,8 +131,9 @@ sealed class SessionIdRequest with _$SessionIdRequest {
 
 /// Request body for `POST /session/messages`.
 ///
-/// A superset of [SessionIdRequest]: both new fields are optional, so an older
-/// app's body still decodes and an older bridge ignores what it does not know.
+/// A superset of [SessionIdRequest]: every field beyond the session id is
+/// optional, so an older app's body still decodes and an older bridge ignores
+/// what it does not know.
 /// Omitting [limit] returns the whole transcript, which is the pre-pagination
 /// behavior.
 @Freezed(fromJson: true, toJson: true)
@@ -151,6 +152,16 @@ sealed class SessionMessagesRequest with _$SessionMessagesRequest {
 
     // COMPATIBILITY 2026-08-10 (v1.8.0): Apps predating stored transcript images omit attachmentDelivery and require inline payloads. Remove @Default after the minimum supported app sends this field.
     @Default(MessageAttachmentDelivery.inline) MessageAttachmentDelivery attachmentDelivery,
+
+    /// Serve the transcript from the bridge's store alone, never fetching it
+    /// from the harness. The reply reports whether the store was behind the
+    /// harness through `awaitingHarnessSync`.
+    ///
+    /// This is what a client asks for when it cannot afford to wake the
+    /// harness — because it is disabled, needs authentication, or is simply
+    /// slow right after a start.
+    // COMPATIBILITY 2026-09-09 (v1.8.4): Apps that predate the store-only read omit storedOnly and expect the harness-backed backfill. Make this required once those apps are unsupported.
+    @Default(false) bool storedOnly,
   }) = _SessionMessagesRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);

@@ -272,6 +272,80 @@ void main() {
       await expectLater(history.service.getSessionMessages(sessionId: "ses_a"), throwsStateError);
     });
   });
+
+  group("store-only reads", () {
+    test("a never-backfilled session serves its captured rows instead of fetching", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "live"),
+      );
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+
+      expect(page.messages.map((message) => message.info.id), const ["live"]);
+      expect(page.awaitingHarnessSync, isTrue);
+      expect(repository.fetchCount, 0, reason: "a store-only read must never reach the harness");
+    });
+
+    test("a stale store still answers, flagged, while a normal read would re-fetch", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.getSessionMessages(sessionId: "ses_a");
+
+      final synced = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+      expect(synced.messages.map((message) => message.info.id), const ["m1"]);
+      expect(synced.awaitingHarnessSync, isFalse, reason: "a current store owes the harness nothing");
+
+      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      await history.service.observeBackendActivity(sessionId: "ses_a", activityAt: state.watermark + 5000);
+      repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
+
+      final stale = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+
+      expect(stale.messages.map((message) => message.info.id), const ["m1"]);
+      expect(stale.awaitingHarnessSync, isTrue, reason: "the store is behind, and the caller must be told");
+      expect(repository.fetchCount, 1, reason: "staleness must not trigger a backfill for a store-only read");
+    });
+
+    test("another reader's stalled, failing backfill neither delays nor fails it", () async {
+      final fetchGate = Completer<void>();
+      final repository = _FakeSessionRepository(transcript: const [], error: StateError("backend down"))
+        ..fetchGate = fetchGate.future;
+      final history = createTestChatHistory(sessionRepository: repository);
+      await history.service.captureMessage(
+        sessionId: "ses_a",
+        message: _message(id: "live"),
+      );
+
+      // An ordinary read is mid-backfill and will fail once its fetch returns.
+      final ordinary = history.service.getSessionMessages(sessionId: "ses_a");
+      while (repository.fetchCount == 0) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      // Completes while that fetch is still outstanding, so it cannot be
+      // waiting on the session queue the backfill holds.
+      final page = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+      expect(page.messages.map((message) => message.info.id), const ["live"]);
+      expect(page.awaitingHarnessSync, isTrue);
+
+      fetchGate.complete();
+      await expectLater(ordinary, throwsStateError, reason: "the ordinary read still reports its own failure");
+    });
+
+    test("an unknown session reads as an empty transcript the harness still owes", () async {
+      final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")])..sessionKnown = false;
+      final history = createTestChatHistory(sessionRepository: repository);
+
+      final page = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);
+
+      expect(page.messages, isEmpty);
+      expect(page.awaitingHarnessSync, isTrue);
+      expect(repository.fetchCount, 0);
+    });
+  });
 }
 
 Message _message({required String id}) => Message.user(
@@ -305,6 +379,9 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, fi
   void Function()? onFetch;
   Future<void>? fetchGate;
 
+  /// Whether the bridge holds a binding row for the session at all.
+  bool sessionKnown = true;
+
   @override
   Future<SessionMessagesSnapshot> getSessionMessages({required String sessionId}) async {
     fetchCount++;
@@ -332,20 +409,22 @@ class _FakeSessionRepository({required var List<MessageWithParts> transcript, fi
   Future<SessionStatus?> getSessionStatus({required String sessionId}) async => const SessionStatus.idle();
 
   @override
-  Future<StoredSession?> getStoredSession({required String sessionId}) async => StoredSession(
-    id: sessionId,
-    backendSessionId: sessionId,
-    pluginId: "opencode",
-    projectId: "project-1",
-    parentSessionId: null,
-    directory: "/tmp/project-1",
-    worktreePath: null,
-    branchName: null,
-    isDedicated: false,
-    archivedAt: null,
-    baseBranch: null,
-    baseCommit: null,
-  );
+  Future<StoredSession?> getStoredSession({required String sessionId}) async => !sessionKnown
+      ? null
+      : StoredSession(
+          id: sessionId,
+          backendSessionId: sessionId,
+          pluginId: "opencode",
+          projectId: "project-1",
+          parentSessionId: null,
+          directory: "/tmp/project-1",
+          worktreePath: null,
+          branchName: null,
+          isDedicated: false,
+          archivedAt: null,
+          baseBranch: null,
+          baseCommit: null,
+        );
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

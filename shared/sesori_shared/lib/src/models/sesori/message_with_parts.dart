@@ -21,6 +21,13 @@ sealed class MessageWithPartsResponse with _$MessageWithPartsResponse {
 
     // COMPATIBILITY 2026-08-27 (v1.8.2): Older bridges omit replayedPromptDefaults, which decodes to null and means no replay-derived selection is available. Remove this comment when bridges without this field are unsupported.
     required SessionPromptDefaults? replayedPromptDefaults,
+
+    /// Whether the store this page came from is behind the harness, so the
+    /// transcript may be missing its newest messages. Only a `storedOnly`
+    /// request can see this true: every other read backfills from the harness
+    /// before serving.
+    // COMPATIBILITY 2026-09-09 (v1.8.4): Bridges that predate the store-only read omit awaitingHarnessSync; false is honest for them, because they always backfill before serving. Make this required once those bridges are unsupported.
+    @Default(false) bool awaitingHarnessSync,
   }) = _MessageWithPartsResponse;
 
   factory fromJson(Map<String, dynamic> json) => _$MessageWithPartsResponseFromJson(json);

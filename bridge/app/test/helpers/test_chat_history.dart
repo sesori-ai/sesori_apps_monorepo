@@ -104,11 +104,13 @@ class TestChatHistoryService({
     int? limit,
     int? before,
     MessageAttachmentDelivery attachmentDelivery = MessageAttachmentDelivery.inline,
+    bool storedOnly = false,
   }) => super.getSessionMessages(
     sessionId: sessionId,
     limit: limit,
     before: before,
     attachmentDelivery: attachmentDelivery,
+    storedOnly: storedOnly,
   );
 
   @override

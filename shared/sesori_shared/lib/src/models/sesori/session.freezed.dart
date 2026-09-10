@@ -1329,7 +1329,14 @@ mixin _$SessionMessagesRequest {
 /// full transcript.
  int? get limit;/// Exclusive cursor: return messages ordered strictly before this one.
 /// Null starts from the newest message.
- int? get before; MessageAttachmentDelivery get attachmentDelivery;
+ int? get before; MessageAttachmentDelivery get attachmentDelivery;/// Serve the transcript from the bridge's store alone, never fetching it
+/// from the harness. The reply reports whether the store was behind the
+/// harness through `awaitingHarnessSync`.
+///
+/// This is what a client asks for when it cannot afford to wake the
+/// harness — because it is disabled, needs authentication, or is simply
+/// slow right after a start.
+ bool get storedOnly;
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1342,16 +1349,16 @@ $SessionMessagesRequestCopyWith<SessionMessagesRequest> get copyWith => _$Sessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery);
+int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery,storedOnly);
 
 @override
 String toString() {
-  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery)';
+  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly)';
 }
 
 
@@ -1362,7 +1369,7 @@ abstract mixin class $SessionMessagesRequestCopyWith<$Res>  {
   factory $SessionMessagesRequestCopyWith(SessionMessagesRequest value, $Res Function(SessionMessagesRequest) _then) = _$SessionMessagesRequestCopyWithImpl;
 @useResult
 $Res call({
- String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery
+ String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly
 });
 
 
@@ -1379,13 +1386,14 @@ class _$SessionMessagesRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,Object? storedOnly = null,}) {
   return _then(SessionMessagesRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
 as int?,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
-as MessageAttachmentDelivery,
+as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
@@ -1397,7 +1405,7 @@ as MessageAttachmentDelivery,
 @JsonSerializable()
 
 class _SessionMessagesRequest implements SessionMessagesRequest {
-  const _SessionMessagesRequest({required this.sessionId, required this.limit, required this.before, this.attachmentDelivery = MessageAttachmentDelivery.inline});
+  const _SessionMessagesRequest({required this.sessionId, required this.limit, required this.before, this.attachmentDelivery = MessageAttachmentDelivery.inline, this.storedOnly = false});
   factory _SessionMessagesRequest.fromJson(Map<String, dynamic> json) => _$SessionMessagesRequestFromJson(json);
 
 @override final  String sessionId;
@@ -1408,6 +1416,14 @@ class _SessionMessagesRequest implements SessionMessagesRequest {
 /// Null starts from the newest message.
 @override final  int? before;
 @override@JsonKey() final  MessageAttachmentDelivery attachmentDelivery;
+/// Serve the transcript from the bridge's store alone, never fetching it
+/// from the harness. The reply reports whether the store was behind the
+/// harness through `awaitingHarnessSync`.
+///
+/// This is what a client asks for when it cannot afford to wake the
+/// harness — because it is disabled, needs authentication, or is simply
+/// slow right after a start.
+@override@JsonKey() final  bool storedOnly;
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -1422,16 +1438,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery);
+int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery,storedOnly);
 
 @override
 String toString() {
-  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery)';
+  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly)';
 }
 
 
@@ -1442,7 +1458,7 @@ abstract mixin class _$SessionMessagesRequestCopyWith<$Res> implements $SessionM
   factory _$SessionMessagesRequestCopyWith(_SessionMessagesRequest value, $Res Function(_SessionMessagesRequest) _then) = __$SessionMessagesRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery
+ String sessionId, int? limit, int? before, MessageAttachmentDelivery attachmentDelivery, bool storedOnly
 });
 
 
@@ -1459,13 +1475,14 @@ class __$SessionMessagesRequestCopyWithImpl<$Res>
 
 /// Create a copy of SessionMessagesRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = null,Object? limit = freezed,Object? before = freezed,Object? attachmentDelivery = null,Object? storedOnly = null,}) {
   return _then(_SessionMessagesRequest(
 sessionId: null == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String,limit: freezed == limit ? _self.limit : limit // ignore: cast_nullable_to_non_nullable
 as int?,before: freezed == before ? _self.before : before // ignore: cast_nullable_to_non_nullable
 as int?,attachmentDelivery: null == attachmentDelivery ? _self.attachmentDelivery : attachmentDelivery // ignore: cast_nullable_to_non_nullable
-as MessageAttachmentDelivery,
+as MessageAttachmentDelivery,storedOnly: null == storedOnly ? _self.storedOnly : storedOnly // ignore: cast_nullable_to_non_nullable
+as bool,
   ));
 }
 
