@@ -3637,13 +3637,13 @@ abstract class AppLocalizations {
   /// **'Saving {harness} scan results…'**
   String catalogScanSavingDetail(String harness);
 
-  /// Title after one harness has remained authoritatively in startup for ten seconds.
+  /// Title after one harness has remained authoritatively in startup for three seconds.
   ///
   /// In en, this message translates to:
   /// **'Waiting for {harness}'**
   String catalogScanWaitingTitle(String harness);
 
-  /// Wrapped explanation after one harness has remained authoritatively in startup for ten seconds.
+  /// Wrapped explanation after one harness has remained authoritatively in startup for three seconds.
   ///
   /// In en, this message translates to:
   /// **'{harness} must finish starting before scanning can continue. You can keep browsing.'**

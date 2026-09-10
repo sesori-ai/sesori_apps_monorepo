@@ -1250,7 +1250,7 @@
   },
   "catalogScanWaitingTitle": "Waiting for {harness}",
   "@catalogScanWaitingTitle": {
-    "description": "Title after one harness has remained authoritatively in startup for ten seconds.",
+    "description": "Title after one harness has remained authoritatively in startup for three seconds.",
     "placeholders": {
       "harness": {
         "type": "String",
@@ -1260,7 +1260,7 @@
   },
   "catalogScanWaitingDetail": "{harness} must finish starting before scanning can continue. You can keep browsing.",
   "@catalogScanWaitingDetail": {
-    "description": "Wrapped explanation after one harness has remained authoritatively in startup for ten seconds.",
+    "description": "Wrapped explanation after one harness has remained authoritatively in startup for three seconds.",
     "placeholders": {
       "harness": {
         "type": "String",
