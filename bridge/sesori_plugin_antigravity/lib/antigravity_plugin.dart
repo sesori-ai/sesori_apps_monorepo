@@ -20,6 +20,7 @@ export "src/models/antigravity_runtime_pair.dart";
 export "src/models/antigravity_runtime_resolution.dart";
 export "src/models/antigravity_session_metadata.dart";
 export "src/repositories/antigravity_authentication_repository.dart";
+export "src/repositories/antigravity_catalog_repository.dart";
 export "src/repositories/antigravity_interaction_repository.dart";
 export "src/repositories/antigravity_profile_inspection_repository.dart";
 export "src/repositories/antigravity_profile_repository.dart";

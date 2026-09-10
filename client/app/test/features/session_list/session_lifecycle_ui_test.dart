@@ -520,6 +520,7 @@ void main() {
       await tester.pumpWidget(
         _buildScreenApp(
           child: const SessionListCubitProvider(
+            filter: SessionListFilter.active,
             projectId: "project-1",
             child: SessionListScreen(projectId: "project-1", projectName: null),
           ),
@@ -550,6 +551,7 @@ void main() {
             child: BlocProvider<SessionListCubit>.value(
               value: mockCubit,
               child: SessionListPanel(
+                onOpenArchived: mockCubit.toggleArchived,
                 projectName: "Project One",
                 onNewSession: () {},
                 onSessionTap: ({required session}) {},
@@ -579,6 +581,7 @@ void main() {
             child: BlocProvider<SessionListCubit>.value(
               value: mockCubit,
               child: SessionListPanel(
+                onOpenArchived: mockCubit.toggleArchived,
                 projectName: "Project One",
                 selectedSessionId: session.id,
                 onNewSession: () {},

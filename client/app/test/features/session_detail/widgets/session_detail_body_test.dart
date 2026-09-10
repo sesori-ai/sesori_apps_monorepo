@@ -52,6 +52,7 @@ Widget _buildApp({
   StubChatInputModeCubit? chatInputModeCubit,
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
+  VoidCallback? onClose,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -82,6 +83,7 @@ Widget _buildApp({
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
             child: SessionDetailBody(
+              onClose: onClose,
               projectId: "project-1",
               sessionId: "session-1",
               sessionTitle: "Session",
@@ -244,6 +246,7 @@ void main() {
     when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
     when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
+    when(() => cubit.isRouteVisible).thenReturn(true);
     when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
     when(
       () => cubit.saveComposerDraft(draft: any(named: "draft")),
@@ -272,6 +275,23 @@ void main() {
   tearDown(() async {
     await GetIt.instance.reset();
   });
+
+  for (final auditState in [
+    const SessionDetailState.loading(),
+    const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
+  ]) {
+    testWidgets("audit Back and Close remain available in $auditState", (tester) async {
+      when(() => cubit.state).thenReturn(auditState);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: auditState);
+      var closed = false;
+      await tester.pumpWidget(_buildApp(cubit: cubit, onClose: () => closed = true));
+      await tester.pump();
+      expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
+      expect(find.bySemanticsLabel("Close archived sessions"), findsOneWidget);
+      await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+      expect(closed, isTrue);
+    });
+  }
 
   testWidgets("PromptInput consumes initial attachments once per identity or restoration", (tester) async {
     final first = ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "first.png");
@@ -772,7 +792,7 @@ void main() {
 
     expect(find.text("Diffs"), findsOneWidget);
 
-    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -820,53 +840,70 @@ void main() {
     actionHint: null,
     refreshError: null,
   );
-  for (final cold in [true, false]) {
-    testWidgets("unavailable harness has no input and opens settings (cold: $cold)", (tester) async {
-      final state = cold
-          ? SessionDetailState.harnessUnavailable(session: testSession(), interaction: authRequired)
-          : _loadedState(
-              pendingQuestions: const [_question],
-              pendingPermissions: const [_permission],
-            ).copyWith(
-              interaction: authRequired,
-              queuedMessages: const [
-                QueuedSessionSubmission.text(
-                  promptId: "local",
-                  text: "Local queued prompt",
-                  inputMode: ComposerInputMode.typed,
-                  attachments: [],
-                  agent: null,
-                  agentModel: null,
-                ),
-              ],
-            );
-      when(() => cubit.state).thenReturn(state);
-      var settingsOpened = 0;
-      await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
-      await tester.pumpAndSettle();
-      expect(find.byType(PromptInput), findsNothing);
-      expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
-      expect(find.text("1 pending question"), findsNothing);
-      expect(find.text("1 permission request pending"), findsNothing);
-      expect(
-        find.byWidgetPredicate((widget) => widget is Semantics && (widget.properties.liveRegion ?? false)),
-        findsWidgets,
-      );
-      final settingsAction = tester.getRect(find.byKey(const Key("session_harness_settings")));
-      final recheckAction = tester.getRect(find.byKey(const Key("session_harness_recheck")));
-      expect(find.text("Recheck"), findsOneWidget);
-      expect(recheckAction.center.dy, settingsAction.center.dy);
-      if (!cold) {
-        await tester.tap(find.widgetWithText(TextButton, "Cancel"));
-        verify(() => cubit.cancelQueuedMessage(0)).called(1);
-      }
-      await tester.tap(find.byKey(const Key("session_harness_recheck")));
-      verify(cubit.recheckHarnessAvailability).called(1);
-      await tester.tap(find.byKey(const Key("session_harness_settings")));
-      expect(settingsOpened, 1);
-      expect(tester.takeException(), isNull);
-    });
-  }
+  testWidgets("unavailable harness has no input and opens settings", (tester) async {
+    final state = _loadedState(
+      pendingQuestions: const [_question],
+      pendingPermissions: const [_permission],
+      messages: [testMessageWithParts()],
+    ).copyWith(
+      interaction: authRequired,
+      queuedMessages: const [
+        QueuedSessionSubmission.text(
+          promptId: "local",
+          text: "Local queued prompt",
+          inputMode: ComposerInputMode.typed,
+          attachments: [],
+          agent: null,
+          agentModel: null,
+        ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    var settingsOpened = 0;
+    await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
+    await tester.pumpAndSettle();
+    expect(find.byType(PromptInput), findsNothing);
+    // The transcript stays readable; only the composer is replaced.
+    expect(find.text("Hello, world!"), findsOneWidget);
+    expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
+    expect(find.text("1 pending question"), findsNothing);
+    expect(find.text("1 permission request pending"), findsNothing);
+    expect(
+      find.byWidgetPredicate((widget) => widget is Semantics && (widget.properties.liveRegion ?? false)),
+      findsWidgets,
+    );
+    final settingsAction = tester.getRect(find.byKey(const Key("session_harness_settings")));
+    final recheckAction = tester.getRect(find.byKey(const Key("session_harness_recheck")));
+    expect(find.text("Recheck"), findsOneWidget);
+    expect(recheckAction.center.dy, settingsAction.center.dy);
+    await tester.tap(find.widgetWithText(TextButton, "Cancel"));
+    verify(() => cubit.cancelQueuedMessage(0)).called(1);
+    await tester.tap(find.byKey(const Key("session_harness_recheck")));
+    verify(cubit.recheckHarnessAvailability).called(1);
+    await tester.tap(find.byKey(const Key("session_harness_settings")));
+    expect(settingsOpened, 1);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("unservable blocked history falls back to the full-screen notice", (tester) async {
+    when(() => cubit.state).thenReturn(
+      SessionDetailState.harnessUnavailable(session: testSession(), interaction: authRequired),
+    );
+    var settingsOpened = 0;
+    await tester.pumpWidget(_buildApp(cubit: cubit, onOpenHarnessSettings: () => settingsOpened++));
+    await tester.pumpAndSettle();
+    expect(find.byType(PromptInput), findsNothing);
+    expect(find.text("Sign in to Claude Code to continue."), findsOneWidget);
+    expect(
+      find.text("Chat history for this session still needs the harness. Enable it to load the transcript."),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key("session_harness_recheck")));
+    verify(cubit.recheckHarnessAvailability).called(1);
+    await tester.tap(find.byKey(const Key("session_harness_settings")));
+    expect(settingsOpened, 1);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("content restoration failure explains route recovery without actions", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
@@ -898,8 +935,7 @@ void main() {
     }
     testWidgets("$reason omits Recheck", (tester) async {
       when(() => cubit.state).thenReturn(
-        SessionDetailState.harnessUnavailable(
-          session: testSession(),
+        _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
           interaction: SessionInteractionState.blocked(
             reason: reason,
             displayName: "Harness",
@@ -977,6 +1013,67 @@ void main() {
     );
   });
 
+  for (final (name, interaction) in [
+    ("legacy", const SessionInteractionState.legacyUnverified()),
+    ("refresh-error", SessionInteractionState.available(refreshError: ApiError.generic())),
+  ]) {
+    testWidgets("archiving hides the $name harness warning", (tester) async {
+      final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        interaction: interaction,
+      );
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(cubit, states.stream, initialState: loaded);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("session_harness_settings")), findsOneWidget);
+      expect(find.byType(PromptInput), findsOneWidget);
+
+      states.add(loaded.copyWith(isArchived: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+      expect(find.text("This session is archived and read-only."), findsOneWidget);
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
+  testWidgets("covered current routes suppress questions, permissions and notices", (tester) async {
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    final permissions = StreamController<SesoriPermissionAsked>.broadcast();
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(questions.close);
+    addTearDown(permissions.close);
+    addTearDown(notices.close);
+    var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    when(() => cubit.state).thenAnswer((_) => state);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+    when(() => cubit.permissionStream).thenAnswer((_) => permissions.stream);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+    when(() => cubit.isRouteVisible).thenReturn(false);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final bodyContext = tester.element(find.byType(SessionDetailBody));
+    expect(ModalRoute.of(bodyContext)?.isCurrent, isTrue);
+
+    state = state.copyWith(pendingQuestions: const [_question], pendingPermissions: const [_permission]);
+    questions.add(_question);
+    permissions.add(_permission);
+    notices.add(const SessionDetailPromptOptionsUpdated());
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsNothing);
+    expect(find.text("write_release_notes"), findsNothing);
+    expect(find.text("Prompt options changed. Updated settings and retrying your message."), findsNothing);
+
+    when(() => cubit.isRouteVisible).thenReturn(true);
+    questions.add(_question);
+    await tester.pumpAndSettle();
+    expect(find.text("Choose a release channel"), findsOneWidget);
+  });
+
   testWidgets("shows an alert when stale prompt options are refreshed automatically", (tester) async {
     final notices = StreamController<SessionDetailNotice>.broadcast();
     addTearDown(notices.close);
@@ -985,7 +1082,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -993,6 +1090,22 @@ void main() {
       find.text("Prompt options changed. Updated settings and retrying your message."),
       findsOneWidget,
     );
+  });
+
+  testWidgets("shows privacy-safe authentication guidance from stale option recovery", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    notices.add(const SessionDetailAuthenticationRequired(actionHint: "Authenticate locally, then retry."));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text("Provider login required"), findsOneWidget);
+    expect(find.text("Authenticate locally, then retry."), findsOneWidget);
   });
 
   testWidgets("explains when a queued command is no longer available", (tester) async {
@@ -1003,7 +1116,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    notices.add(SessionDetailNotice.commandUnavailable);
+    notices.add(const SessionDetailCommandUnavailable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -1196,6 +1309,45 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.keyboard));
     await tester.pumpAndSettle();
   }
+
+  testWidgets("reconnect management refresh preserves composer focus and typing", (tester) async {
+    var loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: loaded);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "before reconnect");
+    final composer = tester.state(find.byType(PromptInput));
+
+    const config = ServerConnectionConfig(relayHost: "relay.example", authToken: null);
+    for (final status in [
+      const ConnectionStatus.connectionLost(config: config),
+      const ConnectionStatus.reconnecting(config: config),
+      ConnectionStatus.connected(config: config, health: testHealthResponse()),
+    ]) {
+      loaded = loaded.copyWith(
+        interaction: const SessionInteractionCalculator().calculate(
+          pluginId: "opencode",
+          managementResult: const PluginManagementLoadResult.loading(),
+          connectionStatus: status,
+          previous: loaded.interaction,
+        ),
+      );
+      states.add(loaded);
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(tester.state(find.byType(PromptInput)), same(composer));
+      expect(composerFocus(tester).hasFocus, isTrue);
+      expect(find.text("before reconnect"), findsOneWidget);
+      expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+    }
+
+    await tester.enterText(find.byType(EditableText), "continue while management loads");
+    expect(find.text("continue while management loads"), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
 
   testWidgets("pressing send keeps the composer field focused", (tester) async {
     when(

@@ -51,6 +51,7 @@ void main() {
             body: BlocProvider<SessionListCubit>.value(
               value: cubit,
               child: SessionListPanel(
+                onOpenArchived: cubit.toggleArchived,
                 projectName: "Project One",
                 onNewSession: () {},
                 onSessionTap: ({required session}) {},

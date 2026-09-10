@@ -2,10 +2,11 @@
 
 ## Current State
 
-- **Plan:** `.plan/active/antigravity-harness/PLAN.md`
-- **Status:** Steps 1–10.d merged; Step 11 guidance ready for review
-- **Base:** synced with main `b10b71675ccbd610828ce69b0ce557d2606f091b` after Step 10.d merge
-- **Current branch:** `antigravity-harness-step-11-guidance`
+- **Plan:** `.plan/completed/antigravity-harness/PLAN.md`
+- **Status:** completed under explicitly accepted reduced verification; Step 12 retirement ready for review
+- **Base:** synced with main `51faa03f6ee40ad5fb30ca78779c558f5f4f7f17` after Step 11 merge
+- **Current branch:** `antigravity-harness-step-12-verification`
+- **Open PR:** [#1397](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1397) (final Step 12 retirement).
 - **Merged PRs:** [#1285](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1285) (Step 1),
   [#1286](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1286) (Step 2),
   [#1287](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1287) (Step 3),
@@ -29,8 +30,12 @@
   had 15/16 checks complete, with clean Cubic approval and no actionable Codex feedback.
 - **Merged PR:** [#1386](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1386) (Step 10.d), with 19/19 checks
   passing at merge, Cubic approval and all review feedback handled. Final head `f9fa90695f` had 888 changed lines.
-- **Open PR:** [#1395](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1395) (Step 11 guidance).
-- **Next action:** monitor Step 11; prepare only Step 12's cumulative verification locally.
+- **Merged PR:** [#1395](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1395) (Step 11 guidance); terminal report
+  had 15/16 checks complete, Cubic approval and no outstanding feedback. Do not infer 16/16 passing.
+- **Owner decision:** accepted reduced verification and retirement after the remaining native/authenticated/client and
+  cumulative catalog gaps were presented. The exact waiver is recorded in `PLAN.md`; [EVIDENCE.md](EVIDENCE.md) retains
+  every Partial/Blocked/Not run result. This is not a full L5 pass.
+- **Next action:** monitor final PR #1397 through human review; no successor implementation step remains.
 
 ## Fixed PR Series
 
@@ -54,8 +59,9 @@
 - [x] Step 10.b/12 — `🚧 [antigravity-harness] feat(runtime): validate isolated installation candidates [step 10.b/12]`
 - [x] Step 10.c/12 — `🚧 [antigravity-harness] feat(antigravity): validate official managed candidates [step 10.c/12]`
 - [x] Step 10.d/12 — `🚧 [antigravity-harness] feat(antigravity): install the managed ACP runtime [step 10.d/12]`
-- [ ] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
-- [ ] Step 12/12 — `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
+- [x] Step 11/12 — `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
+- [x] Step 12/12 — `🌱 [antigravity-harness] docs: retire plan with accepted verification limits [step 12/12]`
+  Retirement implemented; PR #1397 is open, pending merge. This check does not assert that its PR merged.
 
 ## Step 1 Checklist
 
@@ -518,6 +524,23 @@
   Validation is documentation-only; no Dart/Flutter suites or architecture reviewers run for this non-production step.
 - [x] Publish Step 11 as #1395 and start its monitor. Step 12 remains required; no plan retirement or L5 pass is claimed.
 
+## Step 12 Verification and Accepted Retirement
+
+- [x] Sync to merged Step 11; pin source `fe06ee356ebfc61cf14058881afd3f991e1d1b6e` for review and testing.
+- [x] First cumulative architecture review `0be00c31` approves all nineteen production PRs and integrated owning files.
+  Full report recovered verbatim from its completed transcript after the output handoff replaced it with a short summary;
+  review bundle and report hash are in [EVIDENCE.md](EVIDENCE.md). No repeated review or production corrections.
+- [x] Run the available automated subset: 1,398 passing tests across eleven package/suite selections, eleven clean
+  analyzers. JSON case counts, exact suite selections, versions and local logs are recorded in the evidence document.
+- [x] Reuse unchanged macOS arm64 initialize-only/managed-pipeline evidence; no extra download or real Google operation.
+- [x] Account for all 33 indexed regression features and the required host/account/client matrix without treating
+  automated/fake boundaries as live/provider/client E2E proof. Missing native hosts/Google QA access are blocked;
+  other unexecuted catalog journeys remain explicitly Not run. No full L5 pass is claimed.
+- [x] Owner selected “Accept reduced verification and retire” after the passing subset and remaining gaps were explained.
+  Record the named reduction in `PLAN.md` and preserve all results in `EVIDENCE.md`; no unexecuted check becomes a pass.
+- [x] Move the plan/tracker/evidence to `.plan/completed/antigravity-harness/` under that explicit acceptance.
+- [x] Publish final documentation-only PR #1397 and start its monitor; no further implementation step remains.
+
 ## Architecture Reviews
 
 - **Step 6.b plan review (2026-09-05): APPROVED.** Applied `.agents/skills/architecture-plan-review/SKILL.md`
@@ -540,7 +563,9 @@
 - **Step 2 implementation review:** first pass rejected handwritten parsing of newly exposed ACP initialize fields. The
   shared parser additions were reverted, and Layer 1 now maps into generated Antigravity Freezed/JSON DTOs before the
   repository. The second and final pass approved the corrected architecture with no remaining violations.
-- **Series implementation review:** required in Step 12 over the Step 2-10 production range; maximum two passes
+- **Series implementation review:** completed and approved in Step 12 by `0be00c31`, first pass, with no blocking
+  findings. Covered all nineteen Step 2–10 production PRs at `fe06ee356ebfc61cf14058881afd3f991e1d1b6e`;
+  exact scope and report hash are recorded in `EVIDENCE.md`. No second pass was required.
 
 ## Locked Decisions
 
@@ -567,33 +592,14 @@
 
 ## Retirement Coverage
 
-Highest required level: **L5 Full**, including the complete applicable documented L1-L5 catalog.
+The original **L5 Full** requirement was reduced for retirement by the owner's explicit acceptance recorded in
+`PLAN.md`. The authoritative final target, account/client and complete 33-feature catalog dispositions are in
+[EVIDENCE.md](EVIDENCE.md); the original intended boundaries remain in `PLAN.md`.
 
-Required target rows:
-
-| Target | Local pair | Managed install | ACP identity | Process smoke | Status |
-| --- | --- | --- | --- | --- | --- |
-| macOS arm64 | Required | Required | Required | Required | Not run |
-| Linux x64 | Required | Required | Required | Required | Not run |
-| Linux arm64 | Required | Required | Required | Required | Not run |
-| Windows x64 | Required | Required | Required | Required | Not run |
-| Windows arm64 | Required | Required | Required | Required | Not run |
-| macOS x64 | Unsupported guidance | Must be absent | N/A | N/A | Not run |
-
-Required representative end-to-end rows:
-
-| Flow | Boundary | Status |
-| --- | --- | --- |
-| Same-host personal OAuth | Google -> bridge host -> official agent -> desktop | Not run |
-| Remote personal OAuth | Google -> client -> pasted redirect -> bridge loopback -> agent | Not run |
-| Model/session create and turn | client -> relay -> bridge -> official agent -> Google | Not run |
-| Permission and interaction question | official agent -> bridge -> client -> exact response | Not run |
-| History, cold resume, bridge restart | isolated profile -> ACP load/resume -> client | Not run |
-| Managed install pre-placement retention/shutdown abort | Google archive -> shared installer -> validated active pair | Not run |
-| Unknown/older-client fallback | shared wire/plugin identity -> client presentation | Not run |
-
-Antigravity-affected regression documents are listed in Step 11 of `PLAN.md`. Step 12 additionally collects every
-applicable catalog entry from L1 through L5 across its required plugin/platform boundaries.
+The macOS arm64 native subset is **Partial**; macOS x64 capability omission is **Pass (automated)**. Native Linux/Windows
+and real personal Google flows are **Blocked**. Packaged client journeys and other unexecuted catalog checks remain
+**Not run**, with only the listed automated/native subsets marked **Partial** or **Pass**. No full L5 pass is claimed.
+These recorded gaps are accepted for retirement, not outstanding requirements under this completed plan.
 
 ## Evidence Log
 

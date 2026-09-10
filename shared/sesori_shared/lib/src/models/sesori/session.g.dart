@@ -173,6 +173,7 @@ _SessionMessagesRequest _$SessionMessagesRequestFromJson(Map json) =>
             json['attachmentDelivery'],
           ) ??
           MessageAttachmentDelivery.inline,
+      storedOnly: json['storedOnly'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionMessagesRequestToJson(
@@ -183,6 +184,7 @@ Map<String, dynamic> _$SessionMessagesRequestToJson(
   'before': ?instance.before,
   'attachmentDelivery':
       _$MessageAttachmentDeliveryEnumMap[instance.attachmentDelivery]!,
+  'storedOnly': instance.storedOnly,
 };
 
 const _$MessageAttachmentDeliveryEnumMap = {

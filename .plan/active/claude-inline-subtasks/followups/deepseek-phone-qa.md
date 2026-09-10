@@ -57,7 +57,8 @@ write/response-timed probe and phone observations above are the evidence.
 ## Handoff
 
 The requested phone stop/input checks are complete. Codex #1387 remains
-historical preparation; continue through cleanup step 4/7, inline tiles 5/7,
-scoped stop 6/7, and coverage 7/7. Metadata and child-session foundations
+historical preparation, and cleanup #1396 is merged. Continue through native
+facts 5/9, live/replay tiles 6/9, lifecycle coverage 7/9, scoped stop 8/9, and
+final coverage 9/9. Metadata and child-session foundations
 already merged in #1263, #1273, and #1280. Do not mark remaining harness
 coverage or the whole plan complete on the strength of this phone-only handoff.

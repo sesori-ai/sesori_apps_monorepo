@@ -75,6 +75,7 @@ void main() {
 
     cubit = SessionDetailCubit(
       connectionService,
+      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
@@ -106,7 +107,7 @@ void main() {
     });
 
     test("loading older messages prepends them and advances the cursor", () async {
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
         (_) async => (
           messages: [
             _message(id: "m3"),
@@ -125,7 +126,7 @@ void main() {
     });
 
     test("reaching the start of the transcript clears the cursor", () async {
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
         (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: null),
       );
 
@@ -136,18 +137,18 @@ void main() {
     });
 
     test("loading older messages is a no-op once the start is loaded", () async {
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
         (_) async => (messages: const <MessageWithParts>[], olderMessagesCursor: null),
       );
       await cubit.loadOlderMessages();
 
       await cubit.loadOlderMessages();
 
-      verify(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).called(1);
+      verify(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).called(1);
     });
 
     test("a failed load keeps the cursor so the user can retry", () async {
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer((_) async => null);
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer((_) async => null);
 
       await cubit.loadOlderMessages();
 
@@ -159,7 +160,7 @@ void main() {
     test("an older page never duplicates a message already shown", () async {
       // The bridge's cursor is exclusive, but a live event may have appended
       // the same message while the page was in flight.
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
         (_) async => (
           messages: [
             _message(id: "m4"),
@@ -180,7 +181,7 @@ void main() {
       // page describes history that no longer joins onto what is shown.
       final pageCompleter = Completer<SessionMessagePage?>();
       when(
-        () => loadService.loadOlderMessages(sessionId: _sessionId, before: 5),
+        () => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false),
       ).thenAnswer((_) => pageCompleter.future);
 
       final loading = cubit.loadOlderMessages();
@@ -198,7 +199,7 @@ void main() {
     });
 
     test("a reload returns to the newest page and drops paged-back history", () async {
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5)).thenAnswer(
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer(
         (_) async => (messages: [_message(id: "m4")], olderMessagesCursor: 4),
       );
       await cubit.loadOlderMessages();
@@ -247,6 +248,7 @@ SessionDetailSnapshot _snapshot({
   supportsPromptAttachments: true,
   messages: messages,
   olderMessagesCursor: olderMessagesCursor,
+  awaitingHarnessSync: false,
   pendingQuestions: const [],
   pendingPermissions: const [],
   childSessions: const [],

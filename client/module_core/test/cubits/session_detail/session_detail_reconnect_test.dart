@@ -80,6 +80,7 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
+      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
@@ -108,6 +109,7 @@ void main() {
         sessionId: _sessionId,
         limit: any(named: "limit"),
         before: any(named: "before"),
+        storedOnly: any(named: "storedOnly"),
       ),
     ).called(1);
   });
@@ -166,6 +168,7 @@ void main() {
           supportsPromptAttachments: false,
           messages: <MessageWithParts>[],
           olderMessagesCursor: null,
+          awaitingHarnessSync: false,
           pendingQuestions: <PendingQuestion>[],
           pendingPermissions: <PendingPermission>[],
           childSessions: <Session>[],
@@ -183,6 +186,7 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
+      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: mockLoadService,
@@ -260,6 +264,7 @@ void main() {
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
         olderMessagesCursor: null,
+        awaitingHarnessSync: false,
         pendingQuestions: <PendingQuestion>[],
         pendingPermissions: <PendingPermission>[],
         childSessions: <Session>[],
@@ -293,6 +298,7 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
+      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: mockLoadService,
@@ -345,6 +351,7 @@ void _stubLoadApis(MockSessionRepository service) {
       sessionId: _sessionId,
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) async => ApiResponse.success(

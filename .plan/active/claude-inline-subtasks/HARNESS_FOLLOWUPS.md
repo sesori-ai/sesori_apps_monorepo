@@ -10,8 +10,8 @@
 - **Delivery:** one open PR at a time, following current repository rules.
   Codex now has nine steps: merged metadata, child-session, historical prompt
   preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
-  step 5/9, integrated tiles 6/9, lifecycle coverage 7/9, scoped stop 8/9, and
-  coverage 9/9. Historical PR titles are unchanged. Progress is tracked in
+  step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
+  stop 8/9, and coverage 9/9. Historical PR titles are unchanged. Progress is tracked in
   `TRACKER.md` "Harness Follow-Ups". The DeepSeek phone handoff is recorded in
   `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
@@ -287,17 +287,11 @@ confirmation, no child session or partial stop) and gets that subset.
 | 2/9 | ⚙️ | `codex: sub-agent threads become child sessions` | Merged historical title unchanged; repository/mapper/service child-session flow, roots-only listing, and busy-child summaries |
 | 3/9 | ⚙️ | `codex: parse typed child prompts from thread reads [step 3/6]` | PR #1387 merged under this historical title; preparation superseded by 0.153.4 evidence |
 | 4/9 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | PR #1396 merged at `7f6fb8cb50`; metadata-only `thread/read`, no discarded cache |
-| 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | Local predecessor `claude-inline-subtasks-codex-native-facts-step5`; typed DTOs and repository facts only, no tile activation |
-| 6/9 | 🚧 | `codex: integrate live and replay subtask tiles [step 6/9]` | Local branch `claude-inline-subtasks-codex-replay-tiles-step6`; exact-call replacement, existing-tail wiring, lifecycle, and busy accounting |
-| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Local branch `claude-inline-subtasks-codex-live-coverage-step7`; plugin write-path regressions and current-state docs |
-| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
-| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | matrix closure after live plugin QA |
-
-Split provenance is reviewed complete commit `f8d5fbbc65`, preserved on
-`claude-inline-subtasks-codex-tiles-step5-corrected`. Replacement branches
-stack from current `origin/main` `51faa03f6e`: native facts (1,419 changed
-lines), integrated tiles (1,403), then lifecycle coverage/docs (under 1,500).
-Tile behavior activates only in step 6; step 5 makes no capability claim.
+| 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | PR #1398 merged at `d801d722f2`; typed DTOs and repository facts only, no tile activation |
+| 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | PR #1399 merged at `db2b71134d`; full live/replay production integration, lifecycle, busy accounting, focused tests, and behavior docs |
+| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Current local coverage; write-path/lifecycle regressions, test-seam cleanup, and remaining capability/regression documentation; no production behavior changes |
+| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | next; policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
+| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | final matrix remains outstanding after scoped stop |
 
 ### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 

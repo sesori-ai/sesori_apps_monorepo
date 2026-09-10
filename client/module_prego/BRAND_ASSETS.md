@@ -1,5 +1,34 @@
 # Brand Asset Sources
 
+## Antigravity
+
+`assets/svgs/brands/antigravity.svg` is the owner-supplied full-colour
+Antigravity mark, retained unchanged and used only to identify Antigravity.
+Source SHA-256: `1e7f9ad3f5495e83ba011a84f61cf18178f0975cdf6ee5a0dddb1e01da1d529e`.
+
+Flutter's SVG renderer reports `unhandled element <filter/>` for this source
+and renders a solid-blue silhouette instead of its multicolour gradients.
+The widget therefore uses `assets/images/brands/antigravity.png`, a transparent
+452×452 render of that source. Both themes use the same colours and geometry.
+PNG SHA-256: `29f646b6c37e3a67f9ab38695e75995e9e5c042410405c78aa72a5b484bda8c3`.
+
+Regenerate from the repository root:
+
+```python
+from pathlib import Path
+import subprocess
+
+source = Path("client/module_prego/assets/svgs/brands/antigravity.svg").read_text()
+# resvg uses luminance masks: white preserves this opaque alpha silhouette.
+# This rendering-only adaptation does not modify the source SVG.
+source = source.replace('<path fill="#000"', '<path fill="#fff"')
+subprocess.run([
+    "npm", "exec", "--yes", "--package=@resvg/resvg-js-cli@2.6.2-beta.1", "--",
+    "resvg-js", "--no-system-font", "--fit-width", "452", "-",
+    "client/module_prego/assets/images/brands/antigravity.png",
+], input=source, text=True, check=True)
+```
+
 ## Grok Build
 
 The Grok marks are used only to identify Grok Build. Their canonical sources are

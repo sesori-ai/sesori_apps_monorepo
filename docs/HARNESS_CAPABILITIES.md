@@ -32,8 +32,8 @@ published archives: macOS arm64, Linux x64/arm64, and Windows x64/arm64. Google 
 managed installation is unavailable there. Every archive keeps the server and local harness as siblings, uses a
 conservative two-minute bound for each archive listing/extraction command, and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install. Native
-managed-pipeline correctness has run on macOS arm64; Linux and Windows correctness remains unexecuted until the final
-cross-target verification step. Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
+managed-pipeline correctness has run on macOS arm64; Linux and Windows native correctness remains unverified.
+Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
 
@@ -63,19 +63,35 @@ They do not claim that a harness's native CLI could never implement an equivalen
 | Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
 | Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
 
+## Pre-start catalog import
+
+| Capability | OpenCode |
+|---|---|
+| Metadata-only import before harness startup | ✅ |
+
+OpenCode can read a safely identified local SQLite database as a coherent,
+read-only snapshot. The reader consumes the pinned v1.18.19 project,
+project-directory, and session schema and safely falls back to live import when
+that contract is absent or invalid. Other harnesses retain their existing
+plugin-backed import; no pre-start capability claim is made for them.
+All harnesses cold-started only by import fallback use the shared five-minute
+import-only idle residency cap.
+
 ## Option pickers
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Effort variants listed strongest first, default declared separately | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
+| Effort variants listed strongest first, default declared separately | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
 | Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
 
 The picker shows each plugin's declared order. Every plugin ranks through the
 shared `CatalogStrengthOrder`; models of other vendors keep the plugin's own
 order after the ranked ones (OpenCode newest release first, others backend
-order). Antigravity's account-advertised order is what remains for its
-unranked models, and before the first real session catalog in a process it
-exposes no model choice and uses the account default.
+order). Antigravity's account-advertised order remains for its unranked models.
+Exact account IDs ending in `-high`, `-medium`, or `-low` become strongest-first
+variants only when labels carry the matching suffix. Its pre-chat catalog uses
+one retained hidden no-prompt native session because the pinned runtime exposes
+models only from new/resume responses and has no deletion capability.
 
 ## Codex question input
 
@@ -189,20 +205,24 @@ its observed-child snapshot retains legacy client fanout.
 ³ Codex (managed codex-cli 0.153.4, probed 2026-09-08): live children announce
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
-matches `spawn_agent.call_id`. Sesori joins only that exact parent-local id,
-replaces the generic spawn card with one child-linked subtask tile, and applies
-the initial child turn's first terminal result consistently live and on replay.
-Normal initial child input is encrypted in the rollout and absent from
-metadata-only `thread/read(includeTurns: false)`, so the tile uses the exact
-nonblank message from that matching spawn call. It never uses parent user
-history, task names, labels, order, timing, or the encrypted envelope header.
-A complete child-owned plaintext `NEW_TASK` payload can replace the fallback
-for the initial turn; later resumed input cannot. Existing rollout tails observe
-input appends, with no extra watcher or timer. Sesori exposes child threads
-under their direct parent, keeps running descendants in root busy state, and
-formats raw path fallbacks for display. `turn/interrupt` works per child with
-its `turnId`, while parent interrupt leaves children running, so main-agent-only
-is supportable; scoped stop remains unimplemented.
+matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
+rollout and absent from `thread/read`. Live/replayed tiles join by exact
+parent-local call ID and use that spawn call's exact nonblank message for the
+encrypted-input fallback; they never use parent user history, task names,
+labels, order, timing, or the encrypted envelope header. Validated initial
+child-owned plaintext `NEW_TASK` can override the fallback. Missing activity
+leaves the generic tool card. Native-plugin QA verified forked/nonforked tiles,
+cold replay, busy-root handling, and disconnect cleanup. Duplicate display
+names, plaintext input, and a differently-terminal resumed child were not run
+live. Direct app-server `turn/start` input to v2 sub-agents is **not supported**
+by Codex 0.153.4; this does not establish a parent-mediated messaging limit.
+Sesori exposes child threads under their direct parent and keeps running
+descendants in root busy state. Metadata-only
+`thread/read(includeTurns: false)` retains parent and nickname enrichment.
+Raw task paths are formatted for display, not used for tile correlation.
+`turn/interrupt` works per child with its `turnId`, while parent interrupt
+leaves children running, so main-agent-only is supportable; scoped stop remains
+unimplemented.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,
@@ -283,8 +303,7 @@ setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
 
 ¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
-ACP seam, and Antigravity has no Sesori effort variants, so for both there is
-nothing to order.
+ACP seam, so there is nothing to order.
 
 ¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
 its models keep DeepSeek's catalog order; its efforts are ordered.

@@ -14,7 +14,8 @@ class const DesktopSessionListCubitProvider({
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createSessionListCubit(locator: getIt, projectId: projectId),
+      create: (_) =>
+          createSessionListCubit(initialFilter: SessionListFilter.active, locator: getIt, projectId: projectId),
       child: child,
     );
   }
@@ -32,6 +33,7 @@ class const DesktopSessionListScreen({
   @override
   Widget build(BuildContext context) {
     return SessionListScaffold(
+      onOpenArchived: () => context.read<SessionListCubit>().toggleArchived(),
       projectName: projectName,
       onSessionTap: onSessionTap,
       actionDispatcher: actionDispatcher,
@@ -56,6 +58,7 @@ class const DesktopSessionListPane({
   @override
   Widget build(BuildContext context) {
     return SessionListPanel(
+      onOpenArchived: () => context.read<SessionListCubit>().toggleArchived(),
       projectName: projectName,
       selectedSessionId: selectedSessionId,
       onSessionTap: onSessionTap,

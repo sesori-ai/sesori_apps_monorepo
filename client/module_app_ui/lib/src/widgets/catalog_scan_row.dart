@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:ui" as ui;
 
 import "package:material_ui/material_ui.dart";
@@ -16,15 +17,18 @@ const Curve _revealEaseOut = Cubic(0.23, 1, 0.32, 1);
 // with just enough blur to connect the card to the pull without looking glassy.
 const double _entranceScaleFrom = 0.97;
 const double _entranceBlurSigma = 2;
+// Keep the leading footprint identical when loading becomes a result.
+const double _scanMarkSize = 20;
+const Duration _startupWaitThreshold = Duration(seconds: 3);
 
 /// The catalog scan reported as one quiet row above a list.
 ///
 /// Live scans use the coordinated loading card designed for this flow;
 /// terminal outcomes keep their severity-tinted report cards.
 ///
-/// Its height never changes while the scan is live. The supporting line always
-/// occupies a row, so a scan that starts before it can name a harness does not
-/// shove the list down again when the first progress event lands.
+/// Ordinary live phases keep one supporting row, so progress changes do not
+/// shove the list. Only the prolonged-startup explanation may wrap and grow;
+/// preserving its guidance is more important than the baseline card height.
 class const CatalogScanRow({
   super.key,
 
@@ -83,6 +87,10 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   /// an empty box collapsing behind it.
   _RowContent? _shown;
 
+  Timer? _startupWaitTimer;
+  String? _startupWaitPluginName;
+  bool _startupWaitElapsed = false;
+
   /// Whether the current scan has anything to report. Decided from the scan
   /// alone, so the animation can be driven from lifecycle callbacks rather than
   /// from [build], where starting a controller races its own frame.
@@ -96,6 +104,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     // its labels and its live action button stay mounted at zero height, where
     // a keyboard or screen reader can still reach an invisible control.
     _reveal.addStatusListener(_onRevealStatus);
+    _syncStartupWait();
   }
 
   @override
@@ -107,6 +116,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   @override
   void didUpdateWidget(CatalogScanRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _syncStartupWait();
     final reducedMotion = _syncReducedMotionPreference();
     final hadContent = oldWidget._scan is! CatalogRescanIdle;
     if (_hasContent) {
@@ -151,8 +161,50 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     setState(() => _shown = null);
   }
 
+  void _syncStartupWait() {
+    final pluginName = switch (widget._scan) {
+      CatalogRescanStarting(:final activePluginName) => activePluginName,
+      CatalogRescanIdle() ||
+      CatalogRescanPreparingOne() ||
+      CatalogRescanPreparingMany() ||
+      CatalogRescanReading() ||
+      CatalogRescanSaving() ||
+      CatalogRescanSucceeded() ||
+      CatalogRescanPartlyFailed() ||
+      CatalogRescanFailed() ||
+      CatalogRescanUnsupported() ||
+      CatalogRescanNoHarness() => null,
+    };
+    if (pluginName == _startupWaitPluginName && (_startupWaitTimer != null || _startupWaitElapsed)) return;
+    _startupWaitTimer?.cancel();
+    _startupWaitTimer = null;
+    _startupWaitPluginName = pluginName;
+    _startupWaitElapsed = false;
+    if (pluginName == null) return;
+    _startupWaitTimer = Timer(_startupWaitThreshold, () {
+      _startupWaitTimer = null;
+      if (!mounted) return;
+      final stillWaitingForSameHarness = switch (widget._scan) {
+        CatalogRescanStarting(:final activePluginName) => activePluginName == pluginName,
+        CatalogRescanIdle() ||
+        CatalogRescanPreparingOne() ||
+        CatalogRescanPreparingMany() ||
+        CatalogRescanReading() ||
+        CatalogRescanSaving() ||
+        CatalogRescanSucceeded() ||
+        CatalogRescanPartlyFailed() ||
+        CatalogRescanFailed() ||
+        CatalogRescanUnsupported() ||
+        CatalogRescanNoHarness() => false,
+      };
+      if (!stillWaitingForSameHarness) return;
+      setState(() => _startupWaitElapsed = true);
+    });
+  }
+
   @override
   void dispose() {
+    _startupWaitTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _reveal.removeStatusListener(_onRevealStatus);
     _entranceCurve.dispose();
@@ -179,7 +231,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
         // Announced when it appears without moving focus, the same treatment
         // the connection banner uses: a scan started by a pull finishes with
         // no other signal that it is done. Every state announces except the
-        // running one, whose session count changes with each enumerated
+        // reading one, whose session count changes with each enumerated
         // session and would otherwise interrupt a screen reader hundreds of
         // times during one scan.
         child: AnimatedBuilder(
@@ -210,11 +262,12 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
             // otherwise this live-region container merges its localized label
             // into the changing status announcement.
             explicitChildNodes: true,
-            liveRegion: widget._scan is! CatalogRescanRunning,
+            liveRegion: widget._scan is! CatalogRescanReading,
             child: shown.tone == _ScanTone.working
                 ? _ScanLoadingCard(
                     title: shown.title,
                     supportingText: shown.detail,
+                    wrapSupportingText: shown.wrapDetail,
                     cancelLabel: shown.actionLabel,
                     onCancel: shown.onAction,
                   )
@@ -233,20 +286,43 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   /// `null` is the idle row, which folds away to nothing.
   _RowContent? _contentFor({required AppLocalizations loc, required CatalogRescanState scan}) => switch (scan) {
     CatalogRescanIdle() => null,
-    // The spinner is the progress report: a scan has no total to count towards,
-    // so there is nothing to fill a bar with. The detail line holds its place
-    // until the first harness reports.
-    CatalogRescanStarting() => _RowContent(
+    CatalogRescanPreparingOne(:final pendingPluginName) => _RowContent(
       tone: _ScanTone.working,
       title: loc.catalogScanRunningTitle,
-      detail: loc.catalogScanStartingDetail,
+      detail: loc.catalogScanPreparingOneDetail(pendingPluginName),
       actionLabel: loc.catalogScanCancel,
       onAction: widget._onCancel,
     ),
-    CatalogRescanRunning(:final activePluginName, :final sessionsSeen) => _RowContent(
+    CatalogRescanPreparingMany(:final pendingPluginNames) => _RowContent(
       tone: _ScanTone.working,
       title: loc.catalogScanRunningTitle,
-      detail: loc.catalogScanRunningDetail(activePluginName, sessionsSeen),
+      detail: loc.catalogScanPreparingManyDetail(_pendingHarnessSummary(loc: loc, names: pendingPluginNames)),
+      actionLabel: loc.catalogScanCancel,
+      onAction: widget._onCancel,
+    ),
+    CatalogRescanStarting(:final activePluginName) => _RowContent(
+      tone: _ScanTone.working,
+      title: _startupWaitElapsed ? loc.catalogScanWaitingTitle(activePluginName) : loc.catalogScanRunningTitle,
+      detail: _startupWaitElapsed
+          ? loc.catalogScanWaitingDetail(activePluginName)
+          : loc.catalogScanStartingDetail(activePluginName),
+      wrapDetail: _startupWaitElapsed,
+      actionLabel: loc.catalogScanCancel,
+      onAction: widget._onCancel,
+    ),
+    CatalogRescanReading(:final activePluginName, :final sessionsSeen) => _RowContent(
+      tone: _ScanTone.working,
+      title: loc.catalogScanRunningTitle,
+      detail: sessionsSeen == 0
+          ? loc.catalogScanReadingDetail(activePluginName)
+          : loc.catalogScanReadingCountDetail(activePluginName, sessionsSeen),
+      actionLabel: loc.catalogScanCancel,
+      onAction: widget._onCancel,
+    ),
+    CatalogRescanSaving(:final activePluginName) => _RowContent(
+      tone: _ScanTone.working,
+      title: loc.catalogScanRunningTitle,
+      detail: loc.catalogScanSavingDetail(activePluginName),
       actionLabel: loc.catalogScanCancel,
       onAction: widget._onCancel,
     ),
@@ -299,6 +375,11 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   };
 }
 
+String _pendingHarnessSummary({required AppLocalizations loc, required List<String> names}) {
+  if (names.length == 2) return loc.catalogScanTwoHarnesses(names[0], names[1]);
+  return loc.catalogScanHarnessesWithOthers(names[0], names[1], names.length - 2);
+}
+
 /// What a finished scan found, sessions first.
 ///
 /// A clause counting nothing is dropped rather than joined, so an ordinary
@@ -348,6 +429,7 @@ class const _RowContent({
   final IconData? icon,
   required final String title,
   required final String detail,
+  final bool wrapDetail = false,
   required final String actionLabel,
   required final VoidCallback onAction,
 });
@@ -355,7 +437,6 @@ class const _RowContent({
 /// The Figma result card: leading mark, two fixed lines, one tinted action.
 class const _ScanCard({required final _RowContent content}) extends StatelessWidget {
   static const double _minHeight = 69;
-  static const double _markSize = 22;
   // Figma's radial is 483.76px wide for a 69px vertical radius.
   static const double _glowScaleX = 7.011014492753623;
 
@@ -389,35 +470,29 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
         colors.textErrorPrimary,
       ),
     };
-    final textBlock = Padding(
-      padding: const EdgeInsetsDirectional.only(top: 1),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Text(
-            content.title,
-            maxLines: wrapsText ? null : 1,
-            overflow: wrapsText ? null : TextOverflow.ellipsis,
-            style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
-          ),
-          const SizedBox(height: PregoSpacing.xxs),
-          Text(
-            content.detail,
-            maxLines: wrapsText ? null : 1,
-            overflow: wrapsText ? null : TextOverflow.ellipsis,
-            style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
-          ),
-        ],
-      ),
+    final textBlock = Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Text(
+          content.title,
+          maxLines: wrapsText ? null : 1,
+          overflow: wrapsText ? null : TextOverflow.ellipsis,
+          style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
+        ),
+        const SizedBox(height: PregoSpacing.xxs),
+        Text(
+          content.detail,
+          maxLines: wrapsText ? null : 1,
+          overflow: wrapsText ? null : TextOverflow.ellipsis,
+          style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
+        ),
+      ],
     );
-    final action = Padding(
-      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
-      child: _ScanDismissButton(
-        label: content.actionLabel,
-        color: actionColor,
-        onPressed: content.onAction,
-      ),
+    final action = _ScanDismissButton(
+      label: content.actionLabel,
+      color: actionColor,
+      onPressed: content.onAction,
     );
 
     return Column(
@@ -454,12 +529,12 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
                   vertical: PregoSpacing.lg,
                 ),
                 child: Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     SizedBox.square(
                       key: const ValueKey("catalog-scan-terminal-icon"),
-                      dimension: _markSize,
-                      child: Icon(icon, size: _markSize, color: markColor),
+                      dimension: _scanMarkSize,
+                      child: Icon(icon, size: _scanMarkSize, color: markColor),
                     ),
                     const SizedBox(width: PregoSpacing.sm),
                     Expanded(
@@ -469,11 +544,12 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
                               mainAxisSize: MainAxisSize.min,
                               children: [
                                 textBlock,
+                                const SizedBox(height: PregoSpacing.xs),
                                 Align(alignment: AlignmentDirectional.centerEnd, child: action),
                               ],
                             )
                           : Row(
-                              crossAxisAlignment: CrossAxisAlignment.start,
+                              crossAxisAlignment: CrossAxisAlignment.center,
                               children: [
                                 Expanded(child: textBlock),
                                 const SizedBox(width: PregoSpacing.xs),
@@ -496,6 +572,7 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
 class const _ScanLoadingCard({
   required final String title,
   required final String supportingText,
+  required final bool wrapSupportingText,
   required final String cancelLabel,
   required final VoidCallback onCancel,
 }) extends StatefulWidget {
@@ -602,7 +679,7 @@ class _ScanLoadingCardState()
                         key: const ValueKey("prego-deep-scan-loader"),
                         turns: _loaderTurns,
                         child: PregoAiLoader(
-                          size: 20,
+                          size: _scanMarkSize,
                           animate: false,
                           fillMode: .outline,
                           color: colors.textPrimary,
@@ -623,8 +700,8 @@ class _ScanLoadingCardState()
                             const SizedBox(height: PregoSpacing.xxs),
                             Text(
                               widget.supportingText,
-                              maxLines: wrapsText ? null : 1,
-                              overflow: wrapsText ? null : TextOverflow.ellipsis,
+                              maxLines: wrapsText || widget.wrapSupportingText ? null : 1,
+                              overflow: wrapsText || widget.wrapSupportingText ? null : TextOverflow.ellipsis,
                               style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
                             ),
                           ],

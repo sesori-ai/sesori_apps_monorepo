@@ -174,10 +174,13 @@ void main() {
         (route) => route.path == AppRouteDef.settings.path,
       );
       final children = settingsRoute.routes;
-      expect((children[0] as GoRoute).path, "notifications");
-      expect((children[1] as GoRoute).path, "profile");
-      expect(children, hasLength(2));
-      final harnessShell = buildAppRoutes().whereType<ShellRoute>().single;
+      expect((children[0] as GoRoute).path, "default-input");
+      expect((children[1] as GoRoute).path, "notifications");
+      expect((children[2] as GoRoute).path, "profile");
+      expect(children, hasLength(3));
+      final harnessShell = buildAppRoutes().whereType<ShellRoute>().singleWhere(
+        (shell) => shell.routes.whereType<GoRoute>().any((route) => route.path == AppRouteDef.settingsHarnesses.path),
+      );
       final overview = harnessShell.routes.single as GoRoute;
       expect(overview.path, AppRouteDef.settingsHarnesses.path);
       expect((overview.routes.single as GoRoute).path, ":$pluginIdPathParam");
@@ -227,7 +230,7 @@ void main() {
       expect("${AppRouteDef.sessionDetail.path}/diffs", AppRouteDef.sessionDiffs.path);
     });
 
-    test("keeps non-session routes flat and session routes nested under a ShellRoute", () {
+    test("keeps live sessions nested and modal flows in root shells", () {
       final routes = buildAppRoutes();
       final flatPaths = routes.whereType<GoRoute>().map((route) => route.path).toList();
       final shell = _sessionShellRoute();
@@ -248,9 +251,12 @@ void main() {
           AppRouteDef.newSession.path,
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
+          AppRouteDef.archivedSessions.path,
+          AppRouteDef.archivedSessionDetail.path,
           AppRouteDef.settingsHarnesses.path,
           AppRouteDef.settingsHarnessDetail.path,
           AppRouteDef.settings.path,
+          AppRouteDef.settingsDefaultInput.path,
           AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsProfile.path,
         ]),
@@ -336,8 +342,8 @@ void main() {
     });
 
     group("nested route tree invariants", () {
-      test("registers separate session and harness shell routes", () {
-        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(2));
+      test("registers separate live session, archive and harness shell routes", () {
+        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(3));
       });
 
       test("shell owns exactly one first-level session route", () {

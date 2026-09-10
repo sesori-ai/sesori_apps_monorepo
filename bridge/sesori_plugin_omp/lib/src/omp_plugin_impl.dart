@@ -158,10 +158,9 @@ class OmpPlugin._({
     );
     return switch (result) {
       OmpOptionsObserved(:final options) => PluginSessionOptionsDiscoveryResult.observed(options: options),
-      OmpOptionsNoModels() => () {
-        emitEvent(_missingModelToast);
-        return const PluginSessionOptionsDiscoveryResult.failed();
-      }(),
+      OmpOptionsNoModels() => const PluginSessionOptionsDiscoveryResult.authenticationRequired(
+        actionHint: "Open OMP locally, run /login, then retry.",
+      ),
       OmpOptionsDiscoveryFailed() => const PluginSessionOptionsDiscoveryResult.failed(),
     };
   }
@@ -221,13 +220,6 @@ class OmpPlugin._({
     }
     await super.dispose();
   }
-
-  static const BridgeSseTuiToastShow _missingModelToast = BridgeSseTuiToastShow(
-    sessionID: null,
-    title: "Oh My Pi needs a model",
-    message: "Open OMP locally, run /login, then retry.",
-    variant: "warning",
-  );
 
   static bool _isMissingModel(Object error) {
     if (error is! AcpRpcException || error.code != -32603) return false;

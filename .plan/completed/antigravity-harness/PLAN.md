@@ -3,7 +3,8 @@
 ## Status
 
 - **Plan slug:** `antigravity-harness`
-- **Status:** active; Steps 1–10.d merged, Step 11 guidance ready for review
+- **Status:** completed under explicitly accepted reduced verification; Steps 1–11 merged,
+  Step 12 retirement [PR #1397](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1397) open for review
 - **Plan date:** 2026-09-03
 - **Implementation base:** `origin/main` at `3d65382e8cd4e33bbaedaf6c6a679a24ad211320`
 - **Delivery:** twelve ordered top-level steps; approved ordered slices include 6.a/6.b/6.c/6.d, 7.a/7.b/7.c,
@@ -628,9 +629,10 @@ outside the closed analytics privacy contract, and a setup-button tap would not 
 11. `🌱 [antigravity-harness] docs: complete guidance and regression coverage [step 11/12]`
     - Complete product/operator guidance, then audit and reconcile already-updated regression contracts, cross-links,
       matrices, and limits.
-12. `🚧 [antigravity-harness] test: verify Antigravity and retire the plan [step 12/12]`
-    - Run architecture implementation review and the recorded L1-L5 matrix, fix only in-scope defects, record evidence,
-      and move the passing plan to `.plan/completed/antigravity-harness/`.
+12. `🌱 [antigravity-harness] docs: retire plan with accepted verification limits [step 12/12]`
+    - Record the completed cumulative architecture review, passing automated/native subset and explicit owner acceptance
+      of the remaining matrix reduction, then move the plan to `.plan/completed/antigravity-harness/`.
+    - Complexity is trivial for this final documentation-only diff; no production changes were required.
 
 Each PR targets at most 1,500 changed lines including tests and generated output. The original Step 2 exceeded the cap,
 so its ACP boundary/release pin remains Step 2 and local runtime resolution moves to Step 3; the two small final docs
@@ -1049,6 +1051,13 @@ Enterprise/API-key/Agent Platform/macOS-x64 support.
 
 ### Step 12/12: Verify and retire
 
+The first cumulative architecture review passed, as did 1,398 focused tests and eleven owning analyzers; see
+[EVIDENCE.md](EVIDENCE.md) for exact scope and versions. No production corrections were required. The owner explicitly
+accepted the named verification reduction below and requested retirement on that evidence; this is not an L5 pass.
+
+Original intended verification procedure, retained to identify the scope reduced by the explicit acceptance below;
+these bullets are not outstanding requirements under this completed plan:
+
 - Run `architecture-implementation-review` through a sub-agent over the Git-defined Step 2-10 production commit/PR
   range. Resolve valid in-scope findings with at most the two passes allowed by repository policy.
 - Run focused package/app/shared/client tests and analyzers after the final code state and any review fixes.
@@ -1058,12 +1067,36 @@ Enterprise/API-key/Agent Platform/macOS-x64 support.
 - Do not retire on incomplete required coverage unless the user explicitly accepts a named matrix reduction in this
   plan. On full pass, move both files to `.plan/completed/antigravity-harness/`.
 
+## Accepted Verification Reduction — 2026-09-08
+
+After receiving the passing automated/review results and the missing QA requirements, the owner selected
+**“Accept reduced verification and retire.”** The presented choice explicitly waived the remaining live Google,
+native Linux/Windows, packaged-client and unexecuted L1–L5 catalog checks, accepting the recorded automated tests and
+macOS initialize-only subset with their limitations documented.
+
+Accepted retirement evidence: the cumulative nineteen-PR architecture approval, 1,398 passing selected tests,
+eleven clean analyzers, five-target archive integrity facts and preserved macOS arm64 initialize-only/managed-pipeline
+verification. The following remaining requirements are waived **for this plan's retirement**, not marked passed:
+
+- Real personal Google OAuth, same-host direct and remote pasted callbacks, and all authenticated live Google
+  session/model/permission/question/image/history/import/deletion/reconnect and two-session flows.
+- Native Linux x64/arm64 and Windows x64/arm64 packaged installation and session matrices; the remaining authenticated
+  macOS arm64 packaged lifecycle matrix beyond the preserved initialize-only/managed-install subset.
+- Packaged iOS and desktop end-to-end journeys, required remote-client topology, multi-client/compatibility execution,
+  and the remaining all-plugin, installer, push, analytics, GitHub and device/external-service checks.
+- Every unexecuted portion of the cumulative 33-feature L1–L5 catalog explicitly accounted for in `EVIDENCE.md`.
+
+This acceptance permits moving the plan to completed. Existing implementation and supported-capability contracts are
+unchanged; blocked/not-run results stay visible in the evidence and operator guidance. The original intended matrix
+below is retained to identify the accepted gap, not to claim it ran.
+
 ## Regression And Retirement Matrix
 
-Highest required level: **L5 Full**. The delivered managed runtime makes packaged claims across five host targets, and
+Originally required level: **L5 Full**, reduced for retirement only by the explicit acceptance above.
+The delivered managed runtime makes packaged claims across five host targets, and
 browser authentication/session behavior crosses Google, bridge, encrypted transport, and client boundaries. Under
-`docs/regression/README.md`, Step 12 runs the complete applicable documented catalog cumulatively from L1 through L5,
-not only the Antigravity-focused feature rows below. Missing infrastructure is `Blocked`, not silently out of scope.
+`docs/regression/README.md`, the original Step 12 procedure required the complete applicable documented catalog
+cumulatively from L1 through L5, not only the Antigravity-focused feature rows below. Missing infrastructure is `Blocked`, not silently out of scope.
 
 Release matrix:
 

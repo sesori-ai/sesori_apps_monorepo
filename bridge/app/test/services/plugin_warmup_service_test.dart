@@ -132,4 +132,5 @@ const _activeSnapshot = PluginRuntimeSnapshot(
   workState: PluginWorkState.idle,
   leaseCount: 0,
   transition: PluginRuntimeTransition.none,
+  generationResidency: PluginGenerationResidency.normal,
 );

@@ -260,13 +260,108 @@ class const AntigravityProtocolMapper() {
     if (config.type != AntigravityConfigType.select) {
       throw const FormatException("Antigravity model selector is not a supported select option");
     }
+
+    final entries = [
+      for (final option in config.options)
+        _CatalogEntry(
+          id: option.value,
+          name: option.name,
+          variant: _pairedVariant(id: option.value, name: option.name),
+        ),
+    ];
+    final exactIds = <String>{};
+    if (entries.any((entry) => !exactIds.add(entry.id))) {
+      throw const FormatException("Antigravity model catalog has duplicate native IDs");
+    }
+
+    final candidatesByModel = <String, List<_CatalogEntry>>{};
+    for (final entry in entries) {
+      final variant = entry.variant;
+      if (variant != null) (candidatesByModel[variant.modelId] ??= []).add(entry);
+    }
+    final groupedIds = <String>{};
+    for (final candidate in candidatesByModel.entries) {
+      final members = candidate.value;
+      final variantIds = <String>{};
+      final names = <String>{
+        for (final member in members)
+          if (member.variant case final variant?) variant.modelName,
+      };
+      final collidesWithStandalone = entries.any((entry) => entry.variant == null && entry.id == candidate.key);
+      final hasDuplicateVariant = members.any((member) {
+        final variant = member.variant;
+        return variant != null && !variantIds.add(variant.kind.id);
+      });
+      if (!collidesWithStandalone && !hasDuplicateVariant && names.length == 1) groupedIds.add(candidate.key);
+    }
+
+    final models = <AntigravityModelOption>[];
+    final emittedGroups = <String>{};
+    for (final entry in entries) {
+      final variant = entry.variant;
+      if (variant == null || !groupedIds.contains(variant.modelId)) {
+        models.add(AntigravityStandaloneModel(id: entry.id, name: entry.name));
+        continue;
+      }
+      if (!emittedGroups.add(variant.modelId)) continue;
+      final members = candidatesByModel[variant.modelId] ?? const [];
+      models.add(
+        AntigravityVariantModel(
+          id: variant.modelId,
+          name: variant.modelName,
+          variants: [
+            for (final member in members)
+              if (member.variant case final memberVariant?)
+                AntigravityModelVariant(kind: memberVariant.kind, nativeModelId: member.id),
+          ],
+        ),
+      );
+    }
+
+    final currentEntry = entries.where((entry) => entry.id == config.currentValue).firstOrNull;
+    if (currentEntry == null) {
+      throw const FormatException("Antigravity model catalog has no selectable current model");
+    }
+    final pairedVariant = currentEntry.variant;
+    final currentVariant = pairedVariant != null && groupedIds.contains(pairedVariant.modelId) ? pairedVariant : null;
     return AntigravityModelCatalog(
       configId: config.id,
-      currentModelId: config.currentValue,
-      models: [for (final option in config.options) AntigravityModelOption(id: option.value, name: option.name)],
+      currentNativeModelId: config.currentValue,
+      currentSelection: AntigravityModelSelection(
+        modelId: currentVariant?.modelId ?? currentEntry.id,
+        variantId: currentVariant?.kind.id,
+        nativeModelId: currentEntry.id,
+      ),
+      models: models,
     );
   }
+
+  _PairedVariant? _pairedVariant({required String id, required String name}) {
+    if (id.trim() != id || id.contains(RegExp(r"\s")) || name.trim() != name) return null;
+    for (final kind in AntigravityModelVariantKind.values) {
+      final idSuffix = "-${kind.id}";
+      final labelSuffix = " (${kind.labelSuffix})";
+      if (!id.endsWith(idSuffix) || !name.endsWith(labelSuffix)) continue;
+      final modelId = id.substring(0, id.length - idSuffix.length);
+      final modelName = name.substring(0, name.length - labelSuffix.length);
+      if (modelId.isEmpty || modelName.isEmpty) return null;
+      return _PairedVariant(kind: kind, modelId: modelId, modelName: modelName);
+    }
+    return null;
+  }
 }
+
+class const _CatalogEntry({
+  required final String id,
+  required final String name,
+  required final _PairedVariant? variant,
+});
+
+class const _PairedVariant({
+  required final AntigravityModelVariantKind kind,
+  required final String modelId,
+  required final String modelName,
+});
 
 /// Per-payload budget for arbitrary native JSON, following the pinned provider
 /// boundary (512 nodes, 64k text, depth12). Known native fields use DTOs above;

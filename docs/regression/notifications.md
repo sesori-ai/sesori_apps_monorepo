@@ -11,6 +11,8 @@ external.
 
 ## Required Behavior
 
+- Mobile Settings places the Notifications entry under Preferences, between Sessions and Appearance. Tapping it opens
+  the existing notification settings page without changing notification preferences.
 - Immediate notifications exist only for question-asked, permission-asked, and installation-update events. Completion
   fires after a debounced busy-to-idle transition, is blocked while a question or permission is pending, and is
   suppressed for a user abort until the group is busy again. A Claude session

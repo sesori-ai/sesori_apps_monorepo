@@ -494,7 +494,8 @@ void main() {
         ),
       );
 
-      await api.getMessages(sessionId: "session-1", limit: 50, before: 100);
+      await api.getMessages(sessionId: "session-1", limit: 50, before: 100,
+storedOnly: false,);
 
       final verification = verify(
         () => client.post<MessageWithPartsResponse>(

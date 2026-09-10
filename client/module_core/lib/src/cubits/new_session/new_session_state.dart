@@ -29,6 +29,16 @@ sealed class NewSessionOptionsLoadState with _$NewSessionOptionsLoadState {
 
   const factory loadFailureUnavailable() = NewSessionOptionsLoadFailureUnavailableState;
 
+  const factory authenticationRequiredUnavailable({
+    required String actionHint,
+  }) = NewSessionOptionsAuthenticationRequiredUnavailableState;
+
+  const factory authenticationRequiredRetained({
+    required String actionHint,
+    required NewSessionOptionsData options,
+    required NewSessionOptionsSource source,
+  }) = NewSessionOptionsAuthenticationRequiredRetainedState;
+
   const factory failure({
     required RemoteFailureReason reason,
     required NewSessionOptionsSource source,
@@ -46,11 +56,13 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
   NewSessionOptionsData? get data => switch (this) {
     NewSessionOptionsRefreshingState(:final options) ||
     NewSessionOptionsAvailableState(:final options) ||
+    NewSessionOptionsAuthenticationRequiredRetainedState(:final options) ||
     NewSessionOptionsFailureRetainedState(:final options) => options,
     NewSessionOptionsLoadingState() ||
     NewSessionOptionsUnsupportedState() ||
     NewSessionOptionsUnavailableState() ||
     NewSessionOptionsLoadFailureUnavailableState() ||
+    NewSessionOptionsAuthenticationRequiredUnavailableState() ||
     NewSessionOptionsFailureState() ||
     NewSessionOptionsRefreshFailureUnavailableState() => null,
   };
@@ -61,13 +73,19 @@ extension NewSessionOptionsLoadStateData on NewSessionOptionsLoadState {
     NewSessionOptionsLoadingState(:final source) => source,
     NewSessionOptionsRefreshingState(:final source) ||
     NewSessionOptionsAvailableState(:final source) ||
+    NewSessionOptionsAuthenticationRequiredRetainedState(:final source) ||
     NewSessionOptionsFailureState(:final source) ||
     NewSessionOptionsFailureRetainedState(:final source) => source,
     NewSessionOptionsUnsupportedState() => NewSessionOptionsSource.legacy,
     NewSessionOptionsUnavailableState() ||
     NewSessionOptionsLoadFailureUnavailableState() ||
+    NewSessionOptionsAuthenticationRequiredUnavailableState() ||
     NewSessionOptionsRefreshFailureUnavailableState() => NewSessionOptionsSource.aggregate,
   };
+
+  bool get authenticationRequired =>
+      this is NewSessionOptionsAuthenticationRequiredUnavailableState ||
+      this is NewSessionOptionsAuthenticationRequiredRetainedState;
 }
 
 enum NewSessionProjectWorktreeCapability() {
@@ -146,8 +164,7 @@ extension NewSessionComposeConfigAgentModel on NewSessionComposeConfig {
       plugin: selectedPlugin,
       optionsState: options,
       backendScope: backendScope,
-      isLoading:
-          options.isLoading || projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading,
+      isLoading: options.isLoading || projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading,
       isPluginDiscoveryInFlight: isPluginDiscoveryInFlight,
       agents: data?.agents ?? const [],
       providers: data?.providers ?? const [],

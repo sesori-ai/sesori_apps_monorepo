@@ -38,6 +38,9 @@ final class const SessionOptionsCaptureObserved({
   required final int generation,
 }) extends SessionOptionsCaptureResult;
 
+final class const SessionOptionsCaptureAuthenticationRequired({required final String actionHint})
+    extends SessionOptionsCaptureResult;
+
 final class const SessionOptionsCaptureFailed() extends SessionOptionsCaptureResult;
 
 final class const SessionOptionsCaptureInactive() extends SessionOptionsCaptureResult;
@@ -195,6 +198,8 @@ class SessionOptionsRepository({
     required int generation,
   }) {
     return switch (result) {
+      PluginSessionOptionsDiscoveryAuthenticationRequired(:final actionHint) =>
+        SessionOptionsCaptureAuthenticationRequired(actionHint: actionHint),
       PluginSessionOptionsDiscoveryFailed() => const SessionOptionsCaptureFailed(),
       PluginSessionOptionsDiscoveryObserved(:final options) => SessionOptionsCaptureObserved(
         response: SessionOptionsResponse(

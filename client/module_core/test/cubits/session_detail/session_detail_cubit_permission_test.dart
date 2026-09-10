@@ -305,6 +305,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).called(1);
       verify(() => mockSessionService.getPendingQuestions(sessionId: sessionId)).called(1);
@@ -474,6 +475,7 @@ void main() {
           sessionId: sessionId,
           limit: any(named: "limit"),
           before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
         ),
       ).thenAnswer((_) => messagesCompleter.future);
 
@@ -790,6 +792,7 @@ SessionDetailCubit _buildCubit({
 }) {
   return SessionDetailCubit(
     connectionService,
+    claimProjectView: true,
     pluginManagementService: stubbedPluginManagementService(),
     interactionCalculator: const SessionInteractionCalculator(),
     loadService: loadService,
@@ -813,6 +816,7 @@ void _stubLoadApis(MockSessionRepository service, {required String sessionId}) {
       sessionId: any(named: "sessionId"),
       limit: any(named: "limit"),
       before: any(named: "before"),
+      storedOnly: any(named: "storedOnly"),
     ),
   ).thenAnswer(
     (_) => Future<ApiResponse<MessageWithPartsResponse>>.value(

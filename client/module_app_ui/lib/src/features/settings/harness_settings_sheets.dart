@@ -227,10 +227,17 @@ Future<void> _showForceConfirmation({
   required PluginManagementCubit cubit,
   required PluginManagementActionForceConfirmationRequired confirmation,
 }) async {
+  final owner = _flowPresentationContext(context: context);
+  final current = cubit.state;
+  if (!(ModalRoute.of(owner)?.isCurrent ?? false) ||
+      current is! PluginManagementReady ||
+      !identical(current.harnessActions[confirmation.pluginId], confirmation)) {
+    return;
+  }
   final confirmed = await showPregoBottomSheet<bool>(
     context: _flowPresentationContext(context: context),
     title: confirmation.action == PluginManagementForceAction.disable
-        ? context.loc.harnessManagementForceDisableTitle
+        ? context.loc.harnessManagementForceDisableTitle(confirmation.conflict.current.setup.displayName)
         : context.loc.harnessesForceRestartTitle(confirmation.conflict.current.setup.displayName),
     isDismissible: false,
     builder: (sheetContext) => Padding(
@@ -271,9 +278,9 @@ Future<void> _showForceConfirmation({
     ),
   );
   if (confirmed ?? false) {
-    await cubit.confirmForce();
+    await cubit.confirmForce(confirmation: confirmation);
   } else {
-    cubit.dismissForceConfirmation();
+    cubit.dismissForceConfirmation(confirmation: confirmation);
   }
 }
 

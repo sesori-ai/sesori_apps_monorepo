@@ -17,16 +17,13 @@ class const SessionInteractionCalculator() {
     required SessionInteractionState? previous,
   }) {
     if (connectionStatus is! ConnectionConnected) {
-      return switch (previous) {
-        final SessionInteractionBlocked blocked => blocked,
-        final SessionInteractionAvailable available => available,
-        final SessionInteractionLegacyUnverified legacy => legacy,
-        SessionInteractionChecking() || null => const SessionInteractionState.checking(),
-      };
+      return previous ?? const SessionInteractionState.checking();
     }
 
     return switch (managementResult) {
-      null || PluginManagementLoadResultLoading() => const SessionInteractionState.checking(),
+      // Reconnect clears the live snapshot, not the last known chat policy.
+      // Keep the composer (or confirmed block) until management reports a result.
+      null || PluginManagementLoadResultLoading() => previous ?? const SessionInteractionState.checking(),
       PluginManagementLoadResultUnsupported() => const SessionInteractionState.legacyUnverified(),
       PluginManagementLoadResultFailure(:final error) => SessionInteractionState.blocked(
         reason: SessionInteractionBlockedReason.statusCheckFailed,

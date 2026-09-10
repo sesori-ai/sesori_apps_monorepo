@@ -1,0 +1,49 @@
+name: Release Workflow CI
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/actions/**'
+      - '.github/workflows/_reusable-*.yml'
+      - '.github/scripts/check_internal_release.sh'
+      - '.github/scripts/test_check_internal_release.py'
+      - '.github/workflows/release-all-platforms.yml'
+      - '.github/workflows/release-workflow-ci.yml'
+      - 'client/app/fastlane/**'
+      - 'client/app/ios/fastlane/Fastfile'
+      - 'client/app/android/fastlane/Fastfile'
+  pull_request:
+    paths:
+      - '.github/actions/**'
+      - '.github/workflows/_reusable-*.yml'
+      - '.github/scripts/check_internal_release.sh'
+      - '.github/scripts/test_check_internal_release.py'
+      - '.github/workflows/release-all-platforms.yml'
+      - '.github/workflows/release-workflow-ci.yml'
+      - 'client/app/fastlane/**'
+      - 'client/app/ios/fastlane/Fastfile'
+      - 'client/app/android/fastlane/Fastfile'
+
+permissions:
+  contents: read
+
+jobs:
+  release-gate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v6
+      - name: Lint release gate
+        run: shellcheck .github/scripts/check_internal_release.sh
+      - name: Test scheduled release decisions and attempt recording
+        run: python3 .github/scripts/test_check_internal_release.py
+      - uses: ruby/setup-ruby@v1
+        with:
+          ruby-version: '3.3'
+      - name: Check store lane syntax
+        run: |
+          ruby -c client/app/ios/fastlane/Fastfile
+          ruby -c client/app/android/fastlane/Fastfile
+      - name: Test batched store release notes and length limits
+        run: ruby client/app/fastlane/test_build_changelog.rb

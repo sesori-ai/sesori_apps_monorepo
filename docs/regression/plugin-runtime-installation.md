@@ -62,9 +62,10 @@ bridge start when Sesori already manages an older version.
   progress reports phases with an optional download percentage. Completion re-inspects setup;
   a setup snapshot alone is not evidence of a historical installation failure.
 - Success then implies enable: the harness is persisted enabled, setup is re-inspected,
-  and the post-install enable phase starts it when ready. A still-blocked setup is
-  reported honestly, and failure text sent to the client is sanitized while paths and
-  command output stay in the log.
+  and the post-install enable phase starts it when ready. Authentication-required after successful provisioning reports
+  installation completed, while setup remains blocked and offers login; it is not a reason to reinstall. Other unresolved
+  runtime/setup failures remain failures. Failure text sent to the client is sanitized while paths and command output
+  stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
 - A bridge start upgrades every eligible harness that still has a Sesori-managed version
@@ -102,12 +103,16 @@ bridge start when Sesori already manages an older version.
 - Failed terminal SSE is retained in connection-scoped client memory and replayed across
   overview/detail navigation and cubit recreation. Retry starts immediately and clears it;
   observed progress from another surface replaces it. An unchanged missing/unavailable
-  snapshot preserves failure; a newly applied ready snapshot or completed SSE clears it.
+  snapshot preserves failure; a newly applied ready or authentication-required snapshot, or completed SSE, clears it.
+  Login-required reconciliation removes stale installation failure without starting authentication or claiming readiness.
   Connection/bridge invalidation clears all retained installation state.
 - Failure detail offers Restart installation where install remains eligible. Status still
   follows actual setup: a missing runtime is Not installed, unavailable remains Unavailable,
   and a recovered runtime is never relabelled missing. A definite command rejection is an
-  action error, not evidence that an installation ran and failed. Uncertain acceptance stays busy.
+  action error on that harness, not evidence that an installation ran and failed. Uncertain
+  acceptance stays busy. Pending or retained install feedback does not block unrelated
+  harness toggles or disappear when another harness command settles; the installing
+  harness's conflicting controls remain blocked until its install settles.
 - Terminal events racing accepted, uncertain or rejected command responses settle correctly:
   retained failure is not replaced by synthetic progress or removed on response settlement.
   Analytics reports each locally authored outcome once; merely observing another surface's
@@ -120,7 +125,7 @@ bridge start when Sesori already manages an older version.
 | L1 Smoke | Not included. Installation is a deliberate network-bound action, not a heartbeat. |
 | L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install and automatic upgrade, the rest do neither. A start with no managed version directory triggers no upgrade. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, Antigravity's five official targets and macOS x64 omission, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
 | L3 Release | One complete install on the release-target bridge host from missing runtime through verification and extraction to enabled, re-inspected, and selectable, with progress shown on the release-target client platform. Plus a start with a raised target over an older supported managed version: the harness stays selectable throughout, startup does not block, and the new version is used by the next generation; and over a below-minimum version: the harness is blocked briefly, then becomes selectable without a bridge restart or an Install press. Client end to end; every harness advertising install. |
-| L4 Extended | Checksum mismatch or interrupted download failing safely, shutdown mid-install, duplicate join, competing-command rejection, authentication-required outcome, too-old runtime, and an alternate bridge host. An Install pressed while a startup upgrade downloads, which joins it and still leaves the harness enabled and started. A forced upgrade failure over each of an older supported and a below-minimum version, leaving the documented fallback state. A session running on the older supported runtime during an upgrade continuing uninterrupted, with its version directory surviving until the generation stops and the next start resolving the pinned version. Live plugin for bridge outcome, client end to end for card state. |
+| L4 Extended | Checksum mismatch or interrupted download failing safely, shutdown mid-install, duplicate join, competing-command rejection, authentication-required outcome, too-old runtime, and an alternate bridge host. An Install pressed while a startup upgrade downloads, which joins it and still leaves the harness enabled and started. A forced upgrade failure over each of an older supported and a below-minimum version, leaving the documented fallback state. A session running on the older supported runtime during an upgrade continuing uninterrupted, with its version directory surviving until the generation stops and the next start resolving the pinned version. Live plugin for bridge outcome, client end to end for card state. Separate cubit/shared-widget automation proves retained progress/failure and same-harness exclusion while peer toggles remain usable, without claiming a real installation. |
 | L5 Full | Install on every supported platform and architecture where the harness publishes an asset, a superseded managed version swept after success, and pinned digests matching the upstream release assets. Copilot's complete matrix is its six official arm64/x64 macOS, Linux, and Windows archives. Antigravity's is macOS arm64 plus Linux and Windows arm64/x64; macOS x64 must omit Install. Packaged or external, since real upstream artifacts are part of the claim. |
 
 ## Exploration Guidance
@@ -181,7 +186,7 @@ download, verification, or placement. Use a disposable data directory.
   validates the exact ACP runtime identity `agy_acp_server_20260818_01_RC01`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
-  Linux arm64, Windows x64 and Windows arm64 native correctness remains unexecuted until cross-target verification.
+  Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.
 - The upgrade replaces only a runtime Sesori already manages; a harness that has never
   been installed through Sesori still needs the explicit Install action. A user who runs
   a PATH install and also has a stale managed directory downloads one target they do not

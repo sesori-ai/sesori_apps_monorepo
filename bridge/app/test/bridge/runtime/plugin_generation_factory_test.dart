@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
 import "package:sesori_bridge/src/runtime/plugin_generation_factory.dart";
+import "package:sesori_bridge/src/runtime/plugin_generation_residency.dart";
 import "package:sesori_bridge/src/server/api/runtime_file_api.dart";
 import "package:sesori_bridge/src/server/foundation/process_match.dart";
 import "package:sesori_bridge/src/server/host/bridge_host_json_store.dart";
@@ -93,6 +94,7 @@ void main() {
           store: registrationStore,
         ),
         startAborted: StartAbortSignal.never,
+        residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
       )) {
         switch (event) {
           case PluginGenerationProvisionProgress(:final event):
@@ -203,12 +205,14 @@ void main() {
         factory.start(
           registration: registrationFor(testDescriptor: slow),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
       final fastStart = _observeGenerationStart(
         factory.start(
           registration: registrationFor(testDescriptor: fast),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
 
@@ -244,12 +248,14 @@ void main() {
         factory.start(
           registration: registrationFor(testDescriptor: slow),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
       final fastStart = _observeGenerationStart(
         factory.start(
           registration: registrationFor(testDescriptor: fast),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
 
@@ -279,12 +285,14 @@ void main() {
         factory.start(
           registration: registrationFor(testDescriptor: failed),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
       final healthyStart = _observeGenerationStart(
         factory.start(
           registration: registrationFor(testDescriptor: healthy),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
 
@@ -320,12 +328,14 @@ void main() {
         factory.start(
           registration: registrationFor(testDescriptor: slow),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
       final fastStart = _observeGenerationStart(
         factory.start(
           registration: registrationFor(testDescriptor: fast),
           startAborted: StartAbortSignal.never,
+          residency: PluginGenerationResidencyController(initial: PluginGenerationResidency.normal),
         ),
       );
 
@@ -359,6 +369,35 @@ void main() {
 
       expect(changes, [const Duration(minutes: 25)]);
       await subscription.cancel();
+    });
+
+    test("import-only residency caps positive idle time and promotion restores configured time", () async {
+      idleTimeoutMins = 45;
+      final residency = PluginGenerationResidencyController(initial: PluginGenerationResidency.importOnly);
+      addTearDown(residency.dispose);
+      final observation = await _observeGenerationStart(
+        createFactory().start(
+          registration: registrationFor(testDescriptor: descriptor),
+          startAborted: StartAbortSignal.never,
+          residency: residency,
+        ),
+      );
+      _retainStartedPlugins(observation: observation, startedPlugins: startedPlugins);
+      final host = descriptor.startedHosts.single;
+      expect(host.pluginIdleTimeout, const Duration(minutes: 5));
+      final changes = <Duration?>[];
+      final subscription = host.pluginIdleTimeoutChanges.listen(changes.add);
+      addTearDown(subscription.cancel);
+
+      idleTimeoutMins = 0;
+      settingsChanges.add(Object());
+      idleTimeoutMins = 3;
+      settingsChanges.add(Object());
+      idleTimeoutMins = 45;
+      settingsChanges.add(Object());
+      residency.promoteToNormal();
+
+      expect(changes, const [null, Duration(minutes: 3), Duration(minutes: 5), Duration(minutes: 45)]);
     });
 
     test("zero-plugin startup still performs single-live-bridge enforcement", () async {

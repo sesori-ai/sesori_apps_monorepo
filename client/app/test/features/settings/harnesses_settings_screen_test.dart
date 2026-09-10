@@ -1159,12 +1159,12 @@ void main() {
     await _showDetail(tester, "opencode");
     await tester.tap(find.byKey(const Key("harness_management_refresh_opencode")));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key("harness_management_action_error")), findsOneWidget);
+    expect(find.byKey(const Key("harness_management_action_error_opencode")), findsOneWidget);
     expect(find.text("The harness is no longer registered on this bridge."), findsOneWidget);
 
     await tester.tap(find.byTooltip("Dismiss action error"));
     await tester.pump();
-    expect(find.byKey(const Key("harness_management_action_error")), findsNothing);
+    expect(find.byKey(const Key("harness_management_action_error_opencode")), findsNothing);
     expect(find.text("OpenCode"), findsNWidgets(2));
   });
 
@@ -1193,7 +1193,7 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("an in-progress action blocks conflicting controls", (tester) async {
+  testWidgets("an in-progress action blocks only its own harness controls", (tester) async {
     _useTallSurface(tester);
     final commandCompleter = Completer<PluginManagementMutationResult>();
     when(
@@ -1210,10 +1210,19 @@ void main() {
     await tester.tap(find.byKey(const Key("harness_management_refresh_opencode")));
     await tester.pump();
 
+    expect(tester.widget<PregoGroupedRow>(find.byKey(const Key("harness_management_refresh_opencode"))).onTap, isNull);
     await _showDetail(tester, "future-harness");
     final restart = find.byKey(const Key("harness_management_restart_future-harness"));
-    expect(tester.widget<PregoGroupedRow>(restart).onTap, isNull);
-    expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).onChanged, isNull);
+    expect(tester.widget<PregoGroupedRow>(restart).onTap, isNotNull);
+    expect(tester.widget<PregoSwitch>(_switchFor("future-harness")).onChanged, isNotNull);
+    await tester.tap(restart);
+    await tester.pump();
+    verify(
+      () => service.command(
+        pluginId: "future-harness",
+        request: const PluginLifecycleCommandRequest.restart(mode: PluginStopMode.safe),
+      ),
+    ).called(1);
 
     commandCompleter.complete(const PluginManagementMutationResult.success(response: _response));
     await tester.pumpAndSettle();
@@ -1452,7 +1461,10 @@ void main() {
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
     await _openRow(tester, "harness_management_restart_future-harness");
-    expect(find.text("Restart Future Harness?"), findsOneWidget);
+    expect(
+      find.descendant(of: find.byType(PregoBottomSheet), matching: find.text("Restart Future Harness?")),
+      findsOneWidget,
+    );
     expect(find.text("Force restart"), findsOneWidget);
     verifyNever(
       () => service.command(
@@ -1815,7 +1827,12 @@ void main() {
       await openHarnesses(tester);
       final row = find.byKey(const Key("harness_management_scan_future-harness"));
       await tester.ensureVisible(row);
-      rescan.emit(const CatalogRescanState.starting(pluginIds: {"future-harness"}));
+      rescan.emit(
+        const CatalogRescanState.preparingOne(
+          pendingPluginName: "Future Harness",
+          pluginIds: {"future-harness"},
+        ),
+      );
       // Fixed pumps rather than settling: the row's spinner never stops.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));

@@ -42,11 +42,39 @@ class SessionDetailLoadService({
   }
 
   Future<SessionDetailLoadResult> load({required Session session, required String projectId}) {
-    return _loadSnapshot(session: session, projectId: projectId, requireCompleteOptions: false);
+    return _loadSnapshot(
+      session: session,
+      projectId: projectId,
+      requireCompleteOptions: false,
+      optionsMode: SessionOptionsRequestMode.dynamic,
+      storedOnly: false,
+    );
+  }
+
+  /// The transcript for a session whose harness is blocked.
+  ///
+  /// Messages are read store-only and options cache-only: both the ordinary
+  /// history read and dynamic discovery are served through the bridge's
+  /// may-activate path, so asking a blocked harness for them can stall the open
+  /// behind a start attempt it cannot complete.
+  Future<SessionDetailLoadResult> loadWithoutHarness({required Session session, required String projectId}) {
+    return _loadSnapshot(
+      session: session,
+      projectId: projectId,
+      requireCompleteOptions: false,
+      optionsMode: SessionOptionsRequestMode.cacheOnly,
+      storedOnly: true,
+    );
   }
 
   Future<SessionDetailLoadResult> reload({required Session session, required String projectId}) {
-    return _loadSnapshot(session: session, projectId: projectId, requireCompleteOptions: true);
+    return _loadSnapshot(
+      session: session,
+      projectId: projectId,
+      requireCompleteOptions: true,
+      optionsMode: SessionOptionsRequestMode.dynamic,
+      storedOnly: false,
+    );
   }
 
   /// One page of messages older than [before], for a load-older action.
@@ -57,11 +85,13 @@ class SessionDetailLoadService({
   Future<SessionMessagePage?> loadOlderMessages({
     required String sessionId,
     required int before,
+    required bool storedOnly,
   }) async {
     final response = await _repository.getMessages(
       sessionId: sessionId,
       limit: olderPageSize,
       before: before,
+      storedOnly: storedOnly,
     );
     return switch (response) {
       SuccessResponse(:final data) => (messages: data.messages, olderMessagesCursor: data.nextCursor),
@@ -76,6 +106,8 @@ class SessionDetailLoadService({
     required Session session,
     required String projectId,
     required bool requireCompleteOptions,
+    required SessionOptionsRequestMode optionsMode,
+    required bool storedOnly,
   }) async {
     if (_connectionService.currentStatus is! ConnectionConnected) {
       return const SessionDetailLoadResult.waitingForConnection();
@@ -91,6 +123,7 @@ class SessionDetailLoadService({
         sessionId: sessionId,
         limit: initialPageSize,
         before: null,
+        storedOnly: storedOnly,
       );
       final childrenFuture = _repository.getChildren(sessionId: sessionId);
       final isArchived = session.time?.archived != null;
@@ -109,6 +142,7 @@ class SessionDetailLoadService({
               projectId: effectiveProjectId,
               pluginId: pluginId,
               requireComplete: requireCompleteOptions,
+              mode: optionsMode,
             );
       final promptAttachmentSupportFuture = isArchived
           ? Future<bool?>.value(null)
@@ -141,8 +175,13 @@ class SessionDetailLoadService({
         _SessionDetailOptionsAvailable(:final options) => options,
         _SessionDetailOptionsFailure(:final error, :final stackTrace) => Error.throwWithStackTrace(error, stackTrace),
       };
-      final (messages, olderMessagesCursor, replayedPromptDefaults) = switch (messagesResponse) {
-        SuccessResponse(:final data) => (data.messages, data.nextCursor, data.replayedPromptDefaults),
+      final (messages, olderMessagesCursor, replayedPromptDefaults, awaitingHarnessSync) = switch (messagesResponse) {
+        SuccessResponse(:final data) => (
+          data.messages,
+          data.nextCursor,
+          data.replayedPromptDefaults,
+          data.awaitingHarnessSync,
+        ),
         ErrorResponse(:final error) => throw error,
       };
       final promptDefaults = replayedPromptDefaults ?? session.promptDefaults;
@@ -187,6 +226,7 @@ class SessionDetailLoadService({
           supportsPromptAttachments: supportsPromptAttachments,
           messages: messages,
           olderMessagesCursor: olderMessagesCursor,
+          awaitingHarnessSync: awaitingHarnessSync,
           pendingQuestions: pendingQuestions,
           pendingPermissions: pendingPermissions,
           bridgeQueuedPrompts: bridgeQueuedPrompts,
@@ -211,6 +251,7 @@ class SessionDetailLoadService({
     required String? projectId,
     required String? pluginId,
     required bool requireComplete,
+    required SessionOptionsRequestMode mode,
   }) async {
     final normalizedProjectId = projectId?.normalize();
     if (normalizedProjectId == null || pluginId == null) {
@@ -248,12 +289,17 @@ class SessionDetailLoadService({
     final result = await _repository.loadSessionOptions(
       projectId: normalizedProjectId,
       pluginId: pluginId,
-      mode: SessionOptionsRequestMode.dynamic,
+      mode: mode,
     );
     switch (result) {
       case SessionOptionsRepositoryAvailable(:final catalog, :final isStale):
         return fromCatalog(catalog, areStale: isStale);
       case SessionOptionsRepositoryUnsupported():
+        // The legacy routes below capture through the plugin runtime, which may
+        // start the harness. A cache-only read exists precisely to avoid that,
+        // so it declines the fallback rather than trading one activation path
+        // for another.
+        if (mode == SessionOptionsRequestMode.cacheOnly) return unavailable;
         // COMPATIBILITY 2026-08-09 (v1.8.0): Published older bridges do not
         // expose /session/options. Remove this fallback with support for them.
         switch (await _repository.loadLegacySessionOptions(projectId: normalizedProjectId, pluginId: pluginId)) {
@@ -293,6 +339,15 @@ class SessionDetailLoadService({
             stackTrace: StackTrace.current,
           );
         }
+        return unavailable;
+      case SessionOptionsRepositoryAuthenticationRequired():
+        if (requireComplete) {
+          return _SessionDetailOptionsFailure(
+            error: StateError("Session options require provider authentication"),
+            stackTrace: StackTrace.current,
+          );
+        }
+        logw("Session options require provider authentication for plugin $pluginId");
         return unavailable;
       case SessionOptionsRepositoryRefreshFailedRetained():
         if (requireComplete) {
@@ -352,6 +407,11 @@ class const SessionDetailSnapshot({
   /// complete — either because it all fits, or because the bridge predates
   /// pagination and always sends everything.
   required final int? olderMessagesCursor,
+
+  /// Whether the bridge answered from a store it knows is behind the harness,
+  /// so [messages] may be missing the newest ones. Only a store-only read can
+  /// see this true.
+  required final bool awaitingHarnessSync,
   required final List<PendingQuestion> pendingQuestions,
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final List<PendingPermission> pendingPermissions,

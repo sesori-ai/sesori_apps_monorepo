@@ -42,6 +42,9 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
       home: SessionDetailScreen(
+        auditView: false,
+        onBack: null,
+        onClose: null,
         projectId: "project-1",
         projectName: null,
         sessionId: "session-1",
@@ -61,6 +64,7 @@ SessionDetailLoadResult _loadedResult() {
       supportsPromptAttachments: false,
       messages: [],
       olderMessagesCursor: null,
+      awaitingHarnessSync: false,
       pendingQuestions: [],
       pendingPermissions: [],
       childSessions: [],
@@ -86,6 +90,7 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
       supportsPromptAttachments: false,
       messages: const [],
       olderMessagesCursor: null,
+      awaitingHarnessSync: false,
       pendingQuestions: const [],
       pendingPermissions: const [],
       childSessions: const [],
@@ -111,6 +116,7 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
       supportsPromptAttachments: false,
       messages: [],
       olderMessagesCursor: null,
+      awaitingHarnessSync: false,
       pendingQuestions: [
         PendingQuestion(
           id: "question-1",
@@ -157,6 +163,8 @@ void _registerDependencies({
   getIt.registerSingleton<SessionViewingService>(sessionViewingService);
   getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
   getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
+  final routeSource = MockRouteSource(initialRoute: AppRouteDef.sessionDetail);
+  getIt.registerSingleton<RouteSource>(routeSource, dispose: (_) => routeSource.dispose());
   getIt.registerSingleton<NotificationCanceller>(notificationCanceller);
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);

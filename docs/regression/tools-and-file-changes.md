@@ -160,7 +160,7 @@ one permission-gated mutation and one repeated terminal update.
 - ACP permission decisions and pending requests are process-local interaction
   state. Cold replay restores the resulting tool lifecycle and diff, not the
   earlier decision or its linkage event.
-- Real Antigravity tool execution and generated-image output remain pending native/L5 evidence; synthetic normalization
+- Real Antigravity tool execution and generated-image output remain unverified; synthetic normalization
   establishes the boundary contract only.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.

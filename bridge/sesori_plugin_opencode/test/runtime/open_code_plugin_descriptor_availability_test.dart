@@ -30,7 +30,7 @@ void main() {
         ),
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
         environment: const <String, String>{"PATH": "/usr/bin"},
@@ -49,7 +49,7 @@ void main() {
         spawnError: const ProcessException("opencode", ["--version"], "missing", 2),
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
         environment: const <String, String>{},
@@ -71,7 +71,7 @@ void main() {
         ],
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
         environment: const <String, String>{},
@@ -99,7 +99,7 @@ void main() {
         ],
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
         environment: const <String, String>{},
@@ -118,7 +118,7 @@ void main() {
         spawnError: const ProcessException("/custom/opencode", ["--version"], "missing", 2),
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: const PluginConfig(
           values: {
             "no-auto-start": false,
@@ -152,7 +152,7 @@ void main() {
         ],
       );
 
-      const descriptor = OpenCodePluginDescriptor();
+      final descriptor = OpenCodePluginDescriptor.production();
       final result = await descriptor.inspectSetup(
         config: automaticConfig,
         processes: processes,
@@ -186,7 +186,7 @@ void main() {
         ),
       );
 
-      const descriptor = OpenCodePluginDescriptor();
+      final descriptor = OpenCodePluginDescriptor.production();
       final result = await descriptor.inspectSetup(
         config: explicitConfig,
         processes: processes,
@@ -214,7 +214,7 @@ void main() {
         spawnError: const ProcessException("opencode", ["--version"], "missing", 2),
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
         environment: const <String, String>{},
@@ -235,7 +235,7 @@ void main() {
         spawnError: const ProcessException("opencode", ["--version"], "missing", 2),
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
         environment: const <String, String>{},
@@ -256,7 +256,7 @@ void main() {
         ),
       );
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: automaticConfig,
         processes: processes,
         environment: const <String, String>{},
@@ -270,7 +270,7 @@ void main() {
     test("attach mode is ready without probing, provisioning, or starting", () async {
       final processes = _ProbeProcessService(spawnError: StateError("must not spawn"));
 
-      final result = await const OpenCodePluginDescriptor().inspectSetup(
+      final result = await OpenCodePluginDescriptor.production().inspectSetup(
         config: const PluginConfig(
           values: {
             "no-auto-start": true,

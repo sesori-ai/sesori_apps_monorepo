@@ -67,7 +67,34 @@ entirely along with its transcript and, optionally, its worktree.
   reject `true` before mutation so old clients cannot mistake unperformed branch
   cleanup for success.
 - Clients present archiving as permanent, hide mutation affordances there, and
-  list archived sessions.
+  list archived sessions. Archived row menus omit Rename and Archive but retain
+  permanent Delete and read-state actions.
+- Mobile opens archived tasks in a full-screen modal from both portrait and
+  split-pane session lists. The live list remains active-only. The modal contains
+  only archived rows, grouped by their actual archive date, newest first; an
+  active-only project shows the archive artwork and “No archived sessions”. It
+  has no new-task button or bottom floating navigation.
+- Archived detail is read-only from its first frame. Back returns to the retained
+  archive list; X closes the entire modal to its original opener, preserving its
+  list/scroll and draft. Both controls remain available during loading and errors,
+  including related-session audit navigation. Direct archive entry has a safe X
+  exit to projects. Audit cubits never replace the opener's live-project claims;
+  the covered project's declaration is suspended until the opener is visible.
+  A covered live detail also stops declaring its session viewed, so new output
+  stays unread; closing the modal reasserts the retained loaded detail. Incoming
+  questions, permissions and notices from the covered detail do not interrupt
+  archive browsing.
+- Mobile and desktop detail activity share one visibility rule: the top route
+  must match the expected normal or archived detail kind and the nearest detail
+  page must be current. A pushed same-kind child, root Settings/Harness settings,
+  archive flow, or diffs suppresses the retained detail's viewed declaration and
+  activity analytics. Late loads and refreshes while covered do not mark output
+  seen. Returning reasserts only a loaded retained detail, preserving its draft;
+  app background/resume handling remains owned by the existing cubit and analytics
+  listener. Disposing the detail releases the owner's route and analytics listeners.
+- Deletion completed in the archive flow returns to its archive list only when
+  the currently open audit record matches both project and session. Stale or
+  unrelated completions leave navigation unchanged; X still restores the opener.
 - Archive and delete confirmation sheets identify the action, default worktree
   cleanup on only when a dedicated worktree exists, and keep deletion's confirm
   action visually destructive. Cancelling performs neither operation.
@@ -104,6 +131,14 @@ Repeat that matrix for Grok, including deletion with a permission pending and a
 restart before explicit re-import.
 
 ## Failure Signals
+
+- Mobile mixes active rows into archives, shows a new-task floating button in
+  the modal, loses the opener on X, or navigates out of the modal on detail Back.
+- Opening or closing an audit record consumes the underlying live project's
+  claim, preventing its declaration from returning when the opener is visible.
+- A covered detail marks late output seen, reports activity, or presents a
+  question, permission or notice over another page; child Back or cover dismissal
+  loses the retained detail/draft or fails to restore its loaded viewed state.
 
 - An archived session accepts a prohibited non-deletion mutation, or becomes
   unarchived by any path.
@@ -161,4 +196,6 @@ Bridge session lifecycle, deletion, archived-validator, and mutation dispatch
 services; chat-history export and purge; archived-record completeness model;
 worktree service; shared cleanup rejection model; OMP cleanup service; shared
 ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity composed deletion tests; Grok package deletion
-tests; client list/detail surfaces.
+tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
+mobile `session_detail_activity_navigation_test` and
+`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`.

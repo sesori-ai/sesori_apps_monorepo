@@ -19,6 +19,7 @@ import "../../routing/app_routes.dart";
 import "../../services/catalog_rescan_service.dart";
 import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
+import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
 import "../../services/project_viewing_service.dart";
 import "../../services/session_list_service.dart";
@@ -34,6 +35,7 @@ enum _SessionFetchOutcome() {
 }
 
 class SessionListCubit({
+  required SessionListFilter initialFilter,
   required final SessionRepository _sessionRepository,
   required final SessionListService _sessionListService,
   required final ProjectRepository _projectRepository,
@@ -48,7 +50,9 @@ class SessionListCubit({
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  final ProjectViewClaim _projectViewClaim = _projectViewingService.beginListClaim(projectId: _projectId);
+  final ProjectViewClaim? _projectViewClaim = initialFilter == SessionListFilter.archived
+      ? null
+      : _projectViewingService.beginListClaim(projectId: _projectId);
   SessionCleanupRejection? _lastCleanupRejection;
 
   /// Cached git context (base branch + remote repository identity), fetched
@@ -555,10 +559,11 @@ class SessionListCubit({
   /// mutation is still pending.
   final Map<String, OptimisticRenameTracker> _renameStateBySessionId = {};
   int _nextRenameToken = 0;
-  bool _showArchived = false;
+  SessionListFilter _filter = initialFilter;
 
   void toggleArchived() {
-    _showArchived = !_showArchived;
+    if (state is! SessionListLoaded) return;
+    _filter = _filter == SessionListFilter.active ? SessionListFilter.all : SessionListFilter.active;
     _emitFiltered();
   }
 
@@ -568,7 +573,7 @@ class SessionListCubit({
         final renameState = _renameStateBySessionId[session.id];
         return renameState == null ? session : session.copyWith(title: renameState.visibleValue);
       }),
-      showArchived: _showArchived,
+      filter: _filter,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
       listStateBySessionId:
           _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, SessionListItemState>{},
@@ -581,7 +586,7 @@ class SessionListCubit({
     emit(
       SessionListState.loaded(
         sessions: visible,
-        showArchived: _showArchived,
+        filter: _filter,
         activeSessionIds: projectActivity,
         unseenBySessionId: _unseenBySessionId(visible),
         isRefreshing: isRefreshing,
@@ -770,7 +775,9 @@ class SessionListCubit({
             sinceTick: unseenTick,
           );
           _emitFiltered();
-          _projectViewingService.markClaimReady(claim: _projectViewClaim, projectId: _projectId);
+          if (_projectViewClaim case final claim?) {
+            _projectViewingService.markClaimReady(claim: claim, projectId: _projectId);
+          }
           _consumeCatalogChangesThrough(generation: catalogChangeGeneration);
           didApplySnapshot = true;
           return _SessionFetchOutcome.applied;
@@ -779,7 +786,7 @@ class SessionListCubit({
           if (silent && state is! SessionListLoading) {
             logw("Failed to refresh sessions: ${error.toString()}");
           } else {
-            _projectViewingService.markClaimFailed(claim: _projectViewClaim);
+            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
             loge("Session list load failed", error);
             emit(SessionListState.failed(reason: error.remoteFailureReason));
           }
@@ -877,7 +884,7 @@ class SessionListCubit({
 
   @override
   Future<void> close() {
-    _projectViewingService.releaseClaim(claim: _projectViewClaim);
+    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     _subscriptions.dispose();
     return super.close();
   }

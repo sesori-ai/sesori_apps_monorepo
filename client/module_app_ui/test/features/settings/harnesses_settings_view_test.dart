@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
@@ -154,6 +155,52 @@ void main() {
       });
     }
   }
+
+  testWidgets("stopping harness sits in the disabled group and keeps its status", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _plugin(id: "stopping", runtime: PluginRuntimeState.stopping, setup: PluginSetupState.ready),
+        _ready,
+      ],
+    );
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    final ids = tester
+        .widgetList<PregoGroupedRow>(find.byType(PregoGroupedRow))
+        .map((row) => row.key)
+        .whereType<Key>()
+        .toList();
+    expect(ids, [
+      const Key("harnesses_card_ready"),
+      const Key("harnesses_card_stopping"),
+      const Key("harness_management_default_timeout"),
+    ]);
+    expect(find.text("Needs attention"), findsNothing);
+    expect(find.text("Disabled"), findsOneWidget);
+    expect(find.text("Stopping"), findsOneWidget);
+  });
+
+  testWidgets("a harness changing group animates out of the old section instead of jumping", (tester) async {
+    phone(tester: tester);
+    publish(plugins: [_ready]);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harnesses_card_ready")), findsOneWidget);
+
+    publish(plugins: [_ready.copyWith(runtimeState: PluginRuntimeState.disabled)]);
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    // The outgoing snapshot closes with the section it left while the row opens
+    // in the one it moved to.
+    expect(find.byKey(const Key("harnesses_card_ready")), findsNWidgets(2));
+    expect(find.text("Enabled"), findsOneWidget);
+
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harnesses_card_ready")), findsOneWidget);
+    expect(find.text("Enabled"), findsNothing);
+    expect(find.text("Disabled"), findsOneWidget);
+  });
 
   testWidgets("overview groups honest states in design order and preserves registry order", (tester) async {
     phone(tester: tester);
@@ -322,7 +369,7 @@ void main() {
       if (!detail) {
         final peerSwitch = tester.widget<PregoSwitch>(find.byKey(const Key("harness_management_enabled_peer")));
         expect(peerSwitch.value, isTrue);
-        expect(peerSwitch.onChanged, isNull);
+        expect(peerSwitch.onChanged, isNotNull);
         expect(find.text("peer"), findsOneWidget);
       }
 
@@ -334,6 +381,9 @@ void main() {
       );
       await tester.runAsync(() => Future<void>.delayed(Duration.zero));
       await tester.pump();
+      // The overview harness just changed group, so let it finish moving before
+      // asserting that a single pending switch slot survived the move.
+      await tester.pump(const Duration(milliseconds: 300));
       expect(find.bySemanticsLabel("Loading harnesses"), findsNothing);
       expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsOneWidget);
       result.complete(
@@ -346,6 +396,271 @@ void main() {
       expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsNothing);
       expect(tester.widget<PregoSwitch>(find.byKey(const Key("harness_management_enabled_ready"))).value, detail);
       verify(() => service.command(pluginId: "ready", request: request)).called(1);
+    });
+  }
+
+  testWidgets("peer padding taps dispatch independently and failures stay on their harness", (tester) async {
+    phone(tester: tester);
+    final peer = _plugin(id: "peer", runtime: PluginRuntimeState.active, setup: PluginSetupState.ready);
+    publish(plugins: [_ready, peer]);
+    final first = Completer<PluginManagementMutationResult>();
+    final second = Completer<PluginManagementMutationResult>();
+    when(
+      () => service.command(
+        pluginId: "ready",
+        request: any(named: "request"),
+      ),
+    ).thenAnswer((_) => first.future);
+    when(
+      () => service.command(
+        pluginId: "peer",
+        request: any(named: "request"),
+      ),
+    ).thenAnswer((_) => second.future);
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_management_enabled_ready")));
+    await tester.pump();
+    final peerSlot = tester.getRect(find.byKey(const Key("harness_management_enabled_target_peer")));
+    await tester.tapAt(peerSlot.topCenter + const Offset(0, 2));
+    await tester.pump();
+    expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsOneWidget);
+    expect(find.byKey(const Key("harness_management_enabled_progress_peer")), findsOneWidget);
+    expect(opened, isEmpty);
+    verify(
+      () => service.command(
+        pluginId: "ready",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      ),
+    ).called(1);
+    verify(
+      () => service.command(
+        pluginId: "peer",
+        request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+      ),
+    ).called(1);
+    second.complete(const PluginManagementMutationResult.notFound());
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    expect(find.byKey(const Key("harness_management_action_error_peer")), findsOneWidget);
+    expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsOneWidget);
+    first.complete(
+      PluginManagementMutationResult.success(
+        response: (snapshots.value as PluginManagementLoadResultSupported).response,
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harness_management_action_error_peer")), findsOneWidget);
+    expect(find.byKey(const Key("harness_management_action_error_ready")), findsNothing);
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const Key("harness_management_action_error_peer")),
+        matching: find.byType(IconButton),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("harness_management_action_error_peer")), findsNothing);
+  });
+
+  for (final stale in [false, true]) {
+    testWidgets("additional force conflict requires Review without stacking; stale=$stale", (tester) async {
+      phone(tester: tester);
+      final peer = _plugin(id: "peer", runtime: PluginRuntimeState.active, setup: PluginSetupState.ready);
+      publish(plugins: [_ready, peer]);
+      final response = (snapshots.value as PluginManagementLoadResultSupported).response;
+      final first = Completer<PluginManagementMutationResult>();
+      final second = Completer<PluginManagementMutationResult>();
+      const safe = PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe);
+      const force = PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force);
+      when(() => service.command(pluginId: "ready", request: safe)).thenAnswer((_) => first.future);
+      when(() => service.command(pluginId: "peer", request: safe)).thenAnswer((_) => second.future);
+      for (final plugin in [_ready, peer]) {
+        final conflict = PluginLifecycleConflict(
+          pluginId: plugin.setup.id,
+          reasons: const [PluginLifecycleConflictReason.busy],
+          current: plugin,
+        );
+        when(() => service.assessForce(conflict: conflict, action: PluginManagementForceAction.disable)).thenReturn(
+          const PluginManagementForceAssessment.requiresConfirmation(request: force),
+        );
+      }
+      final router = GoRouter(
+        routes: [
+          GoRoute(
+            path: "/",
+            builder: (context, state) => HarnessSettingsFlowView(
+              child: HarnessesSettingsView(
+                presentation: HarnessSettingsPresentation.modal,
+                connectionBanner: null,
+                onClose: () {},
+                onBack: null,
+                onOpenHarness: ({required pluginId}) {},
+              ),
+            ),
+          ),
+        ],
+      );
+      addTearDown(router.dispose);
+      await tester.pumpWidget(
+        BlocProvider.value(
+          value: cubit,
+          child: MaterialApp.router(
+            routerConfig: router,
+            theme: buildPregoThemeData(brightness: Brightness.light),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.byKey(const Key("harness_management_enabled_ready")));
+      await tester.pump();
+      await tester.tap(find.byKey(const Key("harness_management_enabled_peer")));
+      first.complete(
+        const PluginManagementMutationResult.conflict(
+          conflict: PluginLifecycleConflict(
+            pluginId: "ready",
+            reasons: [PluginLifecycleConflictReason.busy],
+            current: _ready,
+          ),
+        ),
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      second.complete(
+        PluginManagementMutationResult.conflict(
+          conflict: PluginLifecycleConflict(
+            pluginId: "peer",
+            reasons: const [PluginLifecycleConflictReason.busy],
+            current: peer,
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("harness_management_force_confirm")), findsOneWidget);
+      expect((cubit.state as PluginManagementReady).harnessActions, hasLength(2));
+      expect(find.text("Force disable Ready harness?"), findsWidgets);
+      await tester.tap(find.byKey(const Key("harness_management_force_cancel")));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("harness_management_force_confirm")), findsNothing);
+      final review = find.byKey(const Key("harness_management_force_review_peer"));
+      expect(review, findsOneWidget);
+      await tester.tap(find.descendant(of: review, matching: find.text("Review")));
+      await tester.pumpAndSettle();
+      verifyNever(() => service.command(pluginId: "peer", request: force));
+      expect(find.byKey(const Key("harness_management_force_confirm")), findsOneWidget);
+      if (stale) {
+        snapshots.add(const PluginManagementLoadResult.loading());
+        await tester.pump();
+        publish(plugins: [_ready, peer]);
+        await tester.pump();
+      }
+      when(() => service.command(pluginId: "peer", request: force))
+          .thenAnswer((_) async => PluginManagementMutationResult.success(response: response));
+      await tester.tap(find.byKey(const Key("harness_management_force_confirm")));
+      await tester.pumpAndSettle();
+      if (stale) {
+        verifyNever(() => service.command(pluginId: "peer", request: force));
+      } else {
+        verify(() => service.command(pluginId: "peer", request: force)).called(1);
+      }
+      verifyNever(() => service.command(pluginId: "ready", request: force));
+    });
+  }
+
+  for (final detail in [false, true]) {
+    testWidgets("retained force Review has one grouped surface without divider; detail=$detail", (tester) async {
+      phone(tester: tester);
+      publish(plugins: [_ready]);
+      const conflict = PluginLifecycleConflict(
+        pluginId: "ready",
+        reasons: [PluginLifecycleConflictReason.busy],
+        current: _ready,
+      );
+      when(
+        () => service.command(
+          pluginId: "ready",
+          request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.safe),
+        ),
+      ).thenAnswer((_) async => const PluginManagementMutationResult.conflict(conflict: conflict));
+      when(() => service.assessForce(conflict: conflict, action: PluginManagementForceAction.disable)).thenReturn(
+        const PluginManagementForceAssessment.requiresConfirmation(
+          request: PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+        ),
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(Duration.zero);
+        await cubit.disable(pluginId: "ready");
+      });
+      await tester.pumpWidget(app(detailId: detail ? "ready" : null));
+      await tester.pumpAndSettle();
+      final review = find.byKey(const Key("harness_management_force_review_ready"));
+      expect(review, findsOneWidget);
+      expect(find.ancestor(of: review, matching: find.byType(PregoGroupedRows)), findsOneWidget);
+      expect(find.descendant(of: review, matching: find.byType(ColoredBox)), findsNothing);
+      verifyNever(
+        () => service.command(
+          pluginId: "ready",
+          request: const PluginLifecycleCommandRequest.disable(mode: PluginStopMode.force),
+        ),
+      );
+    });
+  }
+
+  for (final uncertainCancel in [false, true]) {
+    testWidgets("owned challenge reopens except during global timeout; uncertainCancel=$uncertainCancel", (
+      tester,
+    ) async {
+      phone(tester: tester);
+      publish(
+        plugins: [
+          _ready.copyWith(
+            setup: _ready.setup.copyWith(state: PluginSetupState.authenticationRequired),
+            managementCapabilities: {..._ready.managementCapabilities, PluginManagementCapability.authentication},
+          ),
+        ],
+      );
+      final challenge = PluginAuthenticationDeviceCodeChallenge(
+        verificationUri: Uri.parse("https://auth.example/device"),
+        userCode: "ABCD-EFGH",
+      );
+      final challenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded({"ready": challenge});
+      addTearDown(challenges.close);
+      when(() => service.authenticationChallenges).thenAnswer((_) => challenges.stream);
+      when(() => service.startAuthentication(pluginId: "ready"))
+          .thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: challenge));
+      when(() => service.cancelAuthentication(pluginId: "ready")).thenAnswer(
+        (_) async => const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain()),
+      );
+      await tester.runAsync(() async {
+        await Future<void>.delayed(Duration.zero);
+        await cubit.startAuthentication(pluginId: "ready");
+        if (uncertainCancel) await cubit.cancelAuthentication();
+      });
+      await tester.pumpWidget(app(detailId: "ready"));
+      await tester.pumpAndSettle();
+      final row = find.byKey(const Key("harness_authentication_ready"));
+      expect(tester.widget<PregoGroupedRow>(row).onTap, isNotNull);
+      const input = PluginManagementIdleTimeoutInput.noTimeout();
+      const request = PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 0);
+      final pending = Completer<PluginManagementMutationResult>();
+      when(() => service.planApplyAllIdleTimeout(input: input)).thenReturn(
+        const PluginManagementCommandPlan.request(request: request),
+      );
+      when(() => service.updateIdleTimeout(request: request)).thenAnswer((_) => pending.future);
+      final updating = cubit.applyIdleTimeoutToAll(input: input);
+      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+      await tester.pump();
+      expect((cubit.state as PluginManagementReady).globalAction, isA<PluginManagementActionInProgress>());
+      expect(tester.widget<PregoGroupedRow>(row).onTap, isNull);
+      pending.complete(const PluginManagementMutationResult.uncertain());
+      await updating;
+      await tester.pumpAndSettle();
+      expect(tester.widget<PregoGroupedRow>(row).onTap, isNotNull);
+      await tester.tap(row);
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("harness_authentication_code")), findsOneWidget);
+      verify(() => service.startAuthentication(pluginId: "ready")).called(1);
     });
   }
 

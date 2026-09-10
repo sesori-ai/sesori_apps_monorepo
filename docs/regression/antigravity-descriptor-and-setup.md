@@ -7,6 +7,9 @@ its plugin-owned opaque ID. This activation adds no database/wire migration or a
 performs no real OAuth or Google history access. For user/operator instructions and the consolidated supported-runtime
 contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
 
+- Shared client harness presentation shows Antigravity's official full-colour mark in both themes and the display
+  name `Antigravity`. Asset provenance lives in `client/module_prego/BRAND_ASSETS.md`; brand-logo widget tests cover
+  bundled image loading, sizing and decorative semantics. Harness behavior still uses the opaque plugin ID.
 - Setup inspection is inert. It checks only the official sibling runtime filenames and isolated token-file presence; it
   does not create files, read token contents, spawn/probe a process, prepare a browser command or authenticate.
 - Runtime precedence is authoritative explicit pair, then PATH, then the installed managed-layout location. Empty POSIX
@@ -47,8 +50,8 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
 Setup inspection writing state, reading token contents, launching a process, weakening explicit-path authority,
 inheriting ambient credentials, opening a browser, silently authenticating, retaining stale configuration after reset,
 terminating best-effort provisioning on timeout, or omitting Antigravity from inventory are regressions. Advertising
-managed install with an explicit override or on macOS x64, first installation without an explicit action, adding a shared
-`Harness` case, or replacing the generic client presentation is also a regression. Existing Sesori-managed runtimes may
+managed install with an explicit override or on macOS x64, first installation without an explicit action,
+or replacing generic client behavior with Antigravity-specific logic is also a regression. Existing Sesori-managed runtimes may
 upgrade at bridge start. Preparation or probe timeouts
 preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abort still propagates.
 
@@ -71,4 +74,4 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
 - **L5 Full:** the managed macOS arm64 pipeline has run against the cached independently rehashed official archive in
   disposable state, preserving both siblings and completing isolated initialize-only validation/cleanup before result.
   Native Linux/Windows managed installs, real personal OAuth, cross-target launch/permissions, bridge import and
-  tombstone behavior remain pending gates. Automated registration/composition evidence does not replace them.
+  tombstone behavior remain unverified. Automated registration/composition evidence does not replace them.

@@ -26,11 +26,16 @@ callback policy and shared preparation/authentication budget.
   and directory commands cannot restore ambient credentials. Existing other-plugin executors retain inheritance.
 - The backend-neutral `--internal-browser-noop` mode returns before CLI/config/DI/logging. It does not inspect,
   open, fetch, or print its URL argument. It exits successfully with empty stdout/stderr, including after cancellation.
-  The plugin requires an exact injected native or source invocation, quotes it for Python shlex (not a shell),
+  The plugin reconstructs the current native or Dart-hosted source/snapshot invocation, including the entrypoint when
+  package discovery is implicit and `Platform.packageConfig` is null. Native relative/PATH launches stay native;
+  symlink resolution does not add the binary as a script argument. It quotes the invocation for Python shlex (not a shell),
   rejects path-separator/control/placeholder ambiguity and preflights exit/output before preparing the profile.
+  Source-mode compilation consumes the shared operation budget; preflight uses its remaining deadline rather than
+  a short native-startup cutoff. Expiry still blocks preparation and launch; a slow helper never bypasses validation.
   The repository maps exit/output facts; the service alone decides that success requires zero exit and no output.
   Rejected preflights retain the original command result as the exception cause, while the safe presentation
-  identifies the executable and exit code without echoing captured output.
+  identifies the executable and exit code without echoing captured output. Authentication logs retain the bounded
+  original preflight/storage diagnostics and stack locally rather than only the wrapper's safe message.
 - Every composed Antigravity stderr interceptor uses the plugin mapper before logging: OAuth authorization/token
   endpoint URLs with queries, callback query URLs, state/code/token/PKCE/secret assignments and bearer values are consumed.
   Bare endpoint mentions and DNS/TLS/proxy/HTTP errors without payloads remain visible, alongside paths, stack frames,
@@ -50,9 +55,16 @@ callback policy and shared preparation/authentication budget.
 - `antigravity_profile_service_test.dart`: inert token-presence inspection, mode/order, generated serialization,
   exact native/source/Windows invocation shapes, environment aliases, immutable outputs and surfaced failures.
   Its real host-executor composition test verifies preflight and directory calls disable parent inheritance.
+  Deterministic budget-forwarding cases cover short and full operation budgets without a separate preflight cutoff.
 - `antigravity_stderr_mapper_test.dart`: selective OAuth consumption, retained diagnostics, byte-split CRLF/EOF,
   sanitized bounds. `antigravity_acp_api_test.dart` exercises the injected scratch-process interceptor composition.
-- `browser_noop_test.dart`: actual source entrypoint subprocess, synthetic HOME, empty output and no created files.
+- `antigravity_browser_invocation_test.dart`: actual descriptor-derived helper invocation with implicit/explicit package
+  discovery, plus a compiled native fixture launched directly and through POSIX PATH; no runtime/login is started.
+- `browser_noop_test.dart`: actual source entrypoint through production profile storage, host command executor and
+  host process service, with implicit/explicit package discovery, synthetic HOME/cwd, false parent inheritance,
+  empty output and no created files. The subprocess uses the production preflight budget, not a test-only allowance.
+- `antigravity_authentication_operation_test.dart`: a failed preflight retains its original result/stack in local logs,
+  leaves the safe exception presentation unchanged, and starts neither the runtime nor authentication.
 - Existing `bridge_host_json_store_test.dart`: real nested child stores, interrupted atomic update, shared exclusion.
 - Native proof on macOS arm64, 2026-09-05: `cd bridge/app && dart build cli -o /tmp/step6b-native-build`;
   the resulting `bundle/bin/bridge --internal-browser-noop https://example.invalid/sesori-browser-preflight`
