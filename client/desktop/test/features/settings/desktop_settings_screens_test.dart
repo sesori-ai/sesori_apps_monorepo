@@ -108,6 +108,7 @@ void main() {
   late BehaviorSubject<PluginManagementLoadResult> pluginSnapshots;
   late BehaviorSubject<Map<String, PluginInstallState>> installStates;
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
+  late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late BehaviorSubject<CatalogRescanState> catalogScanStates;
 
@@ -167,6 +168,7 @@ void main() {
     pluginSnapshots = BehaviorSubject<PluginManagementLoadResult>();
     installStates = BehaviorSubject<Map<String, PluginInstallState>>.seeded(const {});
     authenticationChallenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded(const {});
+    authenticationBrowserStates = BehaviorSubject<Map<String, PluginAuthenticationBrowserState>>.seeded(const {});
     authenticationTerminal = StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
     catalogScanStates = BehaviorSubject<CatalogRescanState>.seeded(const CatalogRescanState.idle());
   });
@@ -182,6 +184,7 @@ void main() {
     await pluginSnapshots.close();
     await installStates.close();
     await authenticationChallenges.close();
+    await authenticationBrowserStates.close();
     await authenticationTerminal.close();
     await catalogScanStates.close();
   });
@@ -301,6 +304,7 @@ void main() {
     when(() => service.snapshots).thenAnswer((_) => pluginSnapshots.stream);
     when(() => service.installStates).thenAnswer((_) => installStates.stream);
     when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
+    when(() => service.authenticationBrowserStates).thenAnswer((_) => authenticationBrowserStates.stream);
     when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
     when(service.onDispose).thenAnswer((_) async {});
     when(() => catalogRescanService.state).thenAnswer((_) => catalogScanStates.stream);
@@ -423,10 +427,10 @@ void main() {
           verificationUri: Uri.parse("https://auth.example/device"),
           userCode: "ABCD-EFGH",
         );
-        when(() => service.startAuthentication(pluginId: "opencode")).thenAnswer(
-          (_) async => PluginAuthenticationStartResult.challenge(challenge: challenge),
-        );
-        authenticationChallenges.add({"opencode": challenge});
+        when(() => service.startAuthentication(pluginId: "opencode")).thenAnswer((_) async {
+          authenticationChallenges.add({"opencode": challenge});
+          return PluginAuthenticationStartResult.challenge(challenge: challenge);
+        });
         pluginSnapshots.add(
           PluginManagementLoadResult.supported(
             response: _pluginResponse.copyWith(
@@ -454,6 +458,8 @@ void main() {
         expect(tester.element(find.text("open")), same(opener));
         expect(pluginSnapshots.hasListener, isFalse);
         verifyNever(() => service.cancelAuthentication(pluginId: "opencode"));
+        // End the mocked attempt before exercising independent deep-link navigation.
+        authenticationChallenges.add(const {});
       }
       router.go(
         AppRoute.settingsHarnessDetail(

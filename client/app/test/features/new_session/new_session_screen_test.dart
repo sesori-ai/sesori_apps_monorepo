@@ -1033,6 +1033,12 @@ void main() {
       final installs = BehaviorSubject<Map<String, PluginInstallState>>.seeded(const {});
       addTearDown(installs.close);
       when(() => service.installStates).thenAnswer((_) => installs.stream);
+      final challenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded(const {});
+      final browserStates = BehaviorSubject<Map<String, PluginAuthenticationBrowserState>>.seeded(const {});
+      addTearDown(challenges.close);
+      addTearDown(browserStates.close);
+      when(() => service.authenticationChallenges).thenAnswer((_) => challenges.stream);
+      when(() => service.authenticationBrowserStates).thenAnswer((_) => browserStates.stream);
       when(() => service.authenticationTerminal)
           .thenAnswer((_) => const Stream<PluginAuthenticationTerminalUpdate>.empty());
       GetIt.instance.registerSingleton<PluginManagementService>(service);
