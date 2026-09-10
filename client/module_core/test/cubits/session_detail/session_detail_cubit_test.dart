@@ -15,9 +15,11 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
+import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
@@ -343,6 +345,52 @@ void main() {
         expect((cubit.state as SessionDetailLoaded).interaction, isA<SessionInteractionAvailable>());
       });
     }
+
+    test("recovered options replace the placeholder agent the blocked load showed", () async {
+      // A blocked open with no options cache has no catalog to select from and
+      // falls back to a placeholder name. Carrying that into the enabled
+      // composer would arm the next prompt with an agent the plugin never
+      // advertised.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          mode: SessionOptionsRequestMode.cacheOnly,
+        ),
+      ).thenAnswer((_) async => const SessionOptionsRepositoryCacheUnavailable());
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+        description: "blocked transcript",
+      );
+      expect((cubit.state as SessionDetailLoaded).availableAgents, isEmpty);
+
+      snapshots.add(
+        managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+      );
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) =>
+            state is SessionDetailLoaded && state.interaction.canInteract && state.availableAgents.isNotEmpty,
+        description: "recovered catalog",
+      );
+      final recovered = cubit.state as SessionDetailLoaded;
+      expect(recovered.selectedAgent, testAgentInfo().name);
+    });
 
     test("a blocked session the bridge stored nothing for reports the block", () async {
       // The store-only read succeeds but has nothing to serve and says the

@@ -15,10 +15,16 @@ defaults and queued client sends coherent.
   voice/attachment entry, slash commands, prompt selections, stop, remote queued-
   prompt cancellation and question/permission replies cannot mutate the session.
   Open response dialogs close without answering when availability changes.
-- A blocked harness does not hide history it can serve: a cold blocked chat on a
-  synced session renders its transcript with the notice in the composer's place, and
-  falls back to the full-screen history-unavailable state only when the read itself
-  fails. A live block, reload race or metadata-refresh failure preserves the rendered
+- A blocked harness does not hide history it can serve: a cold blocked chat reads
+  store-only and renders whatever the bridge holds with the notice in the composer's
+  place, even when that store is behind the harness. It falls back to the full-screen
+  history-unavailable state only with nothing to show — the read fails, or it returns
+  an empty transcript the bridge reports the harness still owes. From that state a
+  harness-status recheck also retries the read, because a store-only read can fail
+  for reasons enabling the harness would not fix. A recovery refresh that restores a
+  catalog the blocked load could not read replaces the placeholder agent selection
+  rather than carrying it into the enabled composer.
+  A live block, reload race or metadata-refresh failure preserves the rendered
   transcript and applies events buffered during loading. Restored eligibility reloads history,
   options and pending interactions before enabling input, without reopening the
   route. A failed content refresh remains read-only and directs the user to reopen

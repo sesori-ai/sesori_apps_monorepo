@@ -253,7 +253,14 @@ class SessionDetailCubit(
 
   Future<void> recheckHarnessAvailability() async {
     await _pluginManagementService.refresh();
-    if (isClosed || !_interaction.canInteract) return;
+    if (isClosed) return;
+    if (!_interaction.canInteract) {
+      // A blocked reload reads store-only, so it cannot wake the harness. From
+      // the unavailable shell that makes Recheck the user's retry as well: the
+      // read may have failed for a reason enabling the harness would not fix.
+      if (state is SessionDetailHarnessUnavailable) await reload();
+      return;
+    }
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
     } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
@@ -780,8 +787,6 @@ class SessionDetailCubit(
           if (latest is! SessionDetailLoaded) return _SessionRefreshResult.closed;
           final messages = _transcript.reconcile(before: before, live: latest.messages, fetched: snapshot.messages);
           _retireStreamingPartsCoveredBy(messages: messages);
-          final preservedSelectedAgent = latest.selectedAgent;
-          final preservedSelectedAgentModel = latest.selectedAgentModel;
           final preservedStagedCommand = latest.stagedCommand;
           // An options reload that landed while this snapshot was in flight read
           // the cache more recently than the snapshot did, so it wins.
@@ -789,6 +794,28 @@ class SessionDetailCubit(
           final availableAgents = optionsSuperseded ? latest.availableAgents : derived.agents;
           final availableProviders = optionsSuperseded ? latest.availableProviders : derived.providers;
           final availableCommands = optionsSuperseded ? latest.availableCommands : snapshot.commands;
+          // A refresh normally keeps the user's selection, but a blocked open
+          // with no options cache shows a placeholder agent nobody chose.
+          // Carrying that into the recovered catalog would open the composer on
+          // an agent the plugin never advertised, so an empty catalog reconciles
+          // against the refreshed one instead.
+          final recovered = latest.availableAgents.isEmpty && availableAgents.isNotEmpty
+              ? _selection.reconcile(
+                  agents: availableAgents,
+                  providers: availableProviders,
+                  agentNameCandidates: [latest.selectedAgent],
+                  modelCandidates: [latest.selectedAgentModel],
+                  retainedModel: null,
+                )
+              : null;
+          final preservedSelectedAgent = switch (recovered) {
+            null => latest.selectedAgent,
+            final reconciled => reconciled.agentName ?? _fallbackAgentName,
+          };
+          final preservedSelectedAgentModel = switch (recovered) {
+            null => latest.selectedAgentModel,
+            final reconciled => reconciled.model,
+          };
           final availableVariants = _selection.availableVariants(
             providers: availableProviders,
             model: preservedSelectedAgentModel,
