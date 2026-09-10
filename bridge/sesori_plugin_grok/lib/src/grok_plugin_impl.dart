@@ -100,7 +100,7 @@ class GrokPlugin._({
   final GrokSessionOptionsService _grokSessionOptionsService = grokSessionOptionsService;
 
   @override
-  bool get supportsScopedStop => true;
+  AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.perChildSnapshot;
 
   @override
   Future<AcpChildCancelResult> cancelChild({

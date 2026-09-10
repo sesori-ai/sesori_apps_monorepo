@@ -193,9 +193,9 @@ prompt, and skill commands remain available.
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
-Plugins that report a scoped-stop rejection declare whether "main agent only"
-is honored through `mainAgentOnlySupported`; the app offers the action only
-when it is true.
+ACP plugins declare one closed scoped-stop capability: `unsupported`, `perChildSnapshot` (Grok), or
+`completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare whether "main agent only" is
+honored through `mainAgentOnlySupported`; the app offers the action only when it is true.
 
 ¹ Claude Code's only stop primitive (`interrupt`, verified on 2.1.257) stops
 background sub-agents together with the running main turn.

@@ -4,7 +4,6 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../grok_binary.dart";
-import "../models/grok_subagent_status.dart";
 import "models/grok_protocol_dto.dart";
 
 /// Grok's ACP extensions, initialize-only catalog probe, and model selection.
@@ -99,19 +98,6 @@ class GrokAcpApi({
       throw FormatException(
         "Grok sub-agent cancellation returned id ${response.subagentId} for requested child $subagentId",
       );
-    }
-    final consistent = switch (response.outcome.kind) {
-      GrokSubagentCancelOutcomeKind.cancelled => response.cancelled,
-      GrokSubagentCancelOutcomeKind.alreadyFinished => !response.cancelled,
-      GrokSubagentCancelOutcomeKind.unknown => false,
-    };
-    if (!consistent) {
-      throw FormatException(
-        "Grok sub-agent cancellation returned inconsistent outcome ${response.outcome.kind.name}",
-      );
-    }
-    if (response.outcome.status == GrokSubagentStatus.unknown) {
-      throw const FormatException("Grok sub-agent cancellation returned an unknown terminal status");
     }
     return response;
   }

@@ -113,11 +113,11 @@ confirmation, no child session or partial stop) and gets that subset.
      `workKept` means retained work, not pending lifecycle delivery. Unknown-child
      responses do not fabricate either retained work or terminal state.
      `interruptActiveWork` uses `stop` and waits for authoritative lifecycle.
-  4. Capability opt-in `supportsScopedStop` plus a typed `AcpPlugin.cancelChild`
-     hook matches current composition. Separate `supportsAtomicScopedStop`
-     defaults false and means complete native subtree authority; DeepSeek alone
-     opts in. Grok keeps it false and supplies its typed per-child API. Other ACP
-     harnesses keep existing behavior until their transport seam lands. A child with a
+  4. Closed `AcpScopedStopCapability` plus a typed `AcpPlugin.cancelChild`
+     hook matches current composition. `unsupported` is the standard ACP default,
+     `perChildSnapshot` selects exact-child fanout for Grok, and
+     `completeNativeAtomic` declares DeepSeek's complete native subtree authority.
+     Other ACP harnesses keep existing behavior until their transport seam lands. A child with a
      bridge-owned standard prompt uses `session/cancel`, not its former ancestry.
   5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into

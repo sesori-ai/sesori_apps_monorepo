@@ -37,10 +37,7 @@ class DeepSeekPlugin({
   );
 
   @override
-  bool get supportsScopedStop => true;
-
-  @override
-  bool get supportsAtomicScopedStop => true;
+  AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.completeNativeAtomic;
 
   @override
   Future<AcpScopedStopResult> stopScopedTree({

@@ -137,7 +137,37 @@ void main() {
     expect(response.outcome.status, GrokSubagentStatus.completed);
   });
 
-  test("child cancellation rejects malformed or inconsistent native outcomes", () async {
+  test("child cancellation preserves unknown native outcomes for repository validation", () async {
+    final fake = FakeAcpProcess();
+    final client = AcpStdioClient(
+      launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "grok", args: []),
+      processFactory: (_) async => fake,
+    );
+    addTearDown(() async {
+      await client.dispose();
+      await fake.close();
+    });
+    await client.connect();
+    final api = _api(processFactory: (_) => throw StateError("unused"));
+
+    final cancelling = api.cancelSubagent(client: client, subagentId: "child");
+    final frame = await _waitForFrame(fake: fake, method: GrokAcpApi.subagentCancelMethod);
+    fake.emit({
+      "jsonrpc": "2.0",
+      "id": frame["id"],
+      "result": {
+        "subagentId": "child",
+        "cancelled": false,
+        "outcome": {"kind": "future_outcome", "status": "future_status"},
+      },
+    });
+
+    final response = await cancelling;
+    expect(response.outcome.kind, GrokSubagentCancelOutcomeKind.unknown);
+    expect(response.outcome.status, GrokSubagentStatus.unknown);
+  });
+
+  test("child cancellation rejects malformed responses and mismatched child ids", () async {
     final fake = FakeAcpProcess();
     final client = AcpStdioClient(
       launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "grok", args: []),
@@ -163,26 +193,32 @@ void main() {
     });
     await expectLater(mismatched, throwsFormatException);
 
-    final inconsistent = api.cancelSubagent(client: client, subagentId: "child");
-    final inconsistentFrame = await _waitForFrame(
+    final nonObject = api.cancelSubagent(client: client, subagentId: "child");
+    final nonObjectFrame = await _waitForFrame(
       fake: fake,
       method: GrokAcpApi.subagentCancelMethod,
       afterId: mismatchFrame["id"],
     );
+    fake.emit({"jsonrpc": "2.0", "id": nonObjectFrame["id"], "result": <Object?>[]});
+    await expectLater(nonObject, throwsFormatException);
+
+    final malformed = api.cancelSubagent(client: client, subagentId: "child");
+    final malformedFrame = await _waitForFrame(
+      fake: fake,
+      method: GrokAcpApi.subagentCancelMethod,
+      afterId: nonObjectFrame["id"],
+    );
     fake.emit({
       "jsonrpc": "2.0",
-      "id": inconsistentFrame["id"],
+      "id": malformedFrame["id"],
       "result": {
         "subagentId": "child",
-        "cancelled": false,
-        "outcome": {"kind": "future_outcome"},
+        "cancelled": "yes",
+        "outcome": {"kind": "cancelled"},
       },
     });
-    await expectLater(inconsistent, throwsFormatException);
-    await expectLater(
-      api.cancelSubagent(client: client, subagentId: " "),
-      throwsFormatException,
-    );
+    await expectLater(malformed, throwsA(isA<TypeError>()));
+    await expectLater(api.cancelSubagent(client: client, subagentId: " "), throwsFormatException);
   });
 
   test("setModel sends exact model and optional reasoning metadata", () async {

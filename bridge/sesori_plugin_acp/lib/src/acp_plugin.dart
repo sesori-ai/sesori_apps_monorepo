@@ -35,6 +35,13 @@ enum AcpChildCancelResult() {
   unknownChild,
 }
 
+/// Native scoped-stop authority one ACP harness can guarantee.
+enum AcpScopedStopCapability() {
+  unsupported,
+  perChildSnapshot,
+  completeNativeAtomic,
+}
+
 /// Base [BridgeDerivedProjectsPluginApi] implementation for any ACP (Agent
 /// Client Protocol) agent driven over stdio.
 ///
@@ -1749,11 +1756,8 @@ abstract class AcpPlugin({
     return {"type": type, "mimeType": mime, "data": base64};
   }
 
-  /// Capability opt-in: standard ACP alone cannot promise scoped child stops.
-  bool get supportsScopedStop => false;
-
-  /// Complete native subtree authority, distinct from per-child cancellation.
-  bool get supportsAtomicScopedStop => false;
+  /// Standard ACP alone cannot promise scoped child stops.
+  AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.unsupported;
 
   Future<AcpChildCancelResult> cancelChild({
     required AcpStdioClient client,
@@ -1775,7 +1779,7 @@ abstract class AcpPlugin({
     required bool useAtomicStop,
     required Set<String> knownSubAgentSessionIds,
   }) async {
-    if (!supportsScopedStop) {
+    if (scopedStopCapability == AcpScopedStopCapability.unsupported) {
       await _abortSession(sessionId: sessionId, sendSessionCancel: true);
       return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
     }
@@ -1835,7 +1839,7 @@ abstract class AcpPlugin({
     }
 
     if (useAtomicStop && subAgents != PluginAbortSubAgentPolicy.keep) {
-      if (supportsAtomicScopedStop) {
+      if (scopedStopCapability == AcpScopedStopCapability.completeNativeAtomic) {
         for (final targetSessionId in {sessionId, ...allDescendantSessionIds}) {
           _prepareSessionAbort(sessionId: targetSessionId, cancelBufferedInputs: false);
         }
@@ -1997,7 +2001,7 @@ abstract class AcpPlugin({
   Future<Set<String>> interruptActiveWork({required Duration budget}) {
     return () async {
       final activeSessionIds = <String>{
-        if (supportsScopedStop)
+        if (scopedStopCapability != AcpScopedStopCapability.unsupported)
           for (final entry in _turnStates.entries)
             if (entry.value.pending > 0) entry.key,
         for (final summary in getActiveSessionsSummary())
@@ -2010,7 +2014,7 @@ abstract class AcpPlugin({
       };
       if (activeSessionIds.isEmpty) return const <String>{};
 
-      if (supportsScopedStop) {
+      if (scopedStopCapability != AcpScopedStopCapability.unsupported) {
         final roots = {
           for (final sessionId in activeSessionIds) childSessionTracker.rootOf(sessionId: sessionId),
         };
