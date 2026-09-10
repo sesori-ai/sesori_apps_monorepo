@@ -83,12 +83,14 @@ List<String> _stringList(Object? value) => value is List ? value.whereType<Strin
 PiCatalogModelDto? _modelOrNull(Object? value) =>
     value is Map ? PiCatalogModelDto.fromJson(value.cast<String, dynamic>()) : null;
 
-List<PiCatalogModelDto> _modelList(Object? value) => value is List
-    ? [
-        for (final model in value.whereType<Map<dynamic, dynamic>>())
-          PiCatalogModelDto.fromJson(model.cast<String, dynamic>()),
-      ]
-    : const [];
+List<PiCatalogModelDto> _modelList(Object? value) {
+  if (value is! List || value.any((model) => model is! Map<dynamic, dynamic>)) {
+    throw const FormatException("Invalid Pi available models payload");
+  }
+  return [
+    for (final model in value.cast<Map<dynamic, dynamic>>()) PiCatalogModelDto.fromJson(model.cast<String, dynamic>()),
+  ];
+}
 
 PiCatalogCommandSource _commandSource(Object? value) => switch (value) {
   "extension" => PiCatalogCommandSource.extension,

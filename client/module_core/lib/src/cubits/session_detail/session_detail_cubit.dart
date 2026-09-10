@@ -70,6 +70,12 @@ enum _SessionRefreshResult() {
   closed,
 }
 
+enum _OptionsReloadResult() {
+  updated,
+  authenticationRequired,
+  failed,
+}
+
 class SessionDetailCubit(
   final ConnectionService _connectionService, {
   required final SessionDetailLoadService _loadService,
@@ -1991,7 +1997,7 @@ class SessionDetailCubit(
           sendSettledElsewhere = !_promptQueue.failSend();
           if (!sendSettledElsewhere) {
             if (!_staleOptionsRecoveryAttemptedPromptIds.add(submission.promptId)) {
-              if (!isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
+              if (!isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
             } else {
               _stalePromptOptionsRefreshInFlight = true;
               try {
@@ -2038,11 +2044,17 @@ class SessionDetailCubit(
   /// option it no longer has. The user is waiting on this one, so it reports
   /// both outcomes through the notice stream.
   Future<bool> _refreshStalePromptOptions({required QueuedSessionSubmission rejectedSubmission}) async {
-    final recovered = await _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false);
+    final reload = await _reloadOptions(mode: SessionOptionsRequestMode.forceRefresh, notify: false);
     if (isClosed) return false;
-    if (!recovered) {
-      _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+    switch (reload) {
+      case _OptionsReloadResult.authenticationRequired:
+        _staleOptionsRecoveryAttemptedPromptIds.remove(rejectedSubmission.promptId);
+        return false;
+      case _OptionsReloadResult.failed:
+        _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+        return false;
+      case _OptionsReloadResult.updated:
+        break;
     }
     final latest = state;
     if (latest is! SessionDetailLoaded) return false;
@@ -2055,7 +2067,7 @@ class SessionDetailCubit(
       _promptQueue.markCommandUnavailable(promptId: rejectedSubmission.promptId);
     }
     _noticeStream.add(
-      commandUnavailable ? SessionDetailNotice.commandUnavailable : SessionDetailNotice.promptOptionsUpdated,
+      commandUnavailable ? const SessionDetailCommandUnavailable() : const SessionDetailPromptOptionsUpdated(),
     );
     return true;
   }
@@ -2066,17 +2078,17 @@ class SessionDetailCubit(
   ///
   /// [notify] belongs to a load the user is waiting on. A background one stays
   /// silent: the options simply change if the backend's answer did.
-  Future<bool> _reloadOptions({
+  Future<_OptionsReloadResult> _reloadOptions({
     required SessionOptionsRequestMode mode,
     required bool notify,
   }) async {
     final current = state;
-    if (current is! SessionDetailLoaded) return false;
+    if (current is! SessionDetailLoaded) return _OptionsReloadResult.failed;
     final pluginId = current.pluginId;
     if (pluginId == null) {
       logw("Could not refresh prompt options because the session plugin is unresolved");
-      if (notify && !isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+      if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     }
 
     final requestGeneration = ++_optionsReloadRequest;
@@ -2086,7 +2098,7 @@ class SessionDetailCubit(
         pluginId: pluginId,
         mode: mode,
       );
-      if (isClosed) return false;
+      if (isClosed) return _OptionsReloadResult.failed;
       // A reload requested after this one has already applied, so it read the
       // cache more recently and this answer must not replace it. The caller
       // still succeeded: what is on screen is at least as fresh as what this
@@ -2094,11 +2106,11 @@ class SessionDetailCubit(
       // That recovery still owes the user its notice — the options did change
       // under a selection they were rejected for, whichever read delivered it.
       if (_lastAppliedOptionsReload > requestGeneration) {
-        if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
-        return true;
+        if (notify) _noticeStream.add(const SessionDetailPromptOptionsUpdated());
+        return _OptionsReloadResult.updated;
       }
       final latest = state;
-      if (latest is! SessionDetailLoaded) return false;
+      if (latest is! SessionDetailLoaded) return _OptionsReloadResult.failed;
 
       if (result case SessionOptionsRepositoryAvailable(:final catalog)) {
         final agents = _selection.selectableAgents(agents: catalog.agents);
@@ -2173,8 +2185,13 @@ class SessionDetailCubit(
         );
         _optionsGeneration++;
         _lastAppliedOptionsReload = requestGeneration;
-        if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsUpdated);
-        return true;
+        if (notify) _noticeStream.add(const SessionDetailPromptOptionsUpdated());
+        return _OptionsReloadResult.updated;
+      }
+
+      if (result case SessionOptionsRepositoryAuthenticationRequired(:final actionHint)) {
+        _noticeStream.add(SessionDetailAuthenticationRequired(actionHint: actionHint));
+        return _OptionsReloadResult.authenticationRequired;
       }
 
       final error = switch (result) {
@@ -2182,6 +2199,7 @@ class SessionDetailCubit(
         SessionOptionsRepositoryCacheUnavailable() => null,
         SessionOptionsRepositoryUnsupported() => null,
         SessionOptionsRepositoryProjectNotFound(:final error) => error,
+        SessionOptionsRepositoryAuthenticationRequired() => null,
         SessionOptionsRepositoryRefreshFailedRetained() => null,
         SessionOptionsRepositoryRefreshFailedUnavailable() => null,
         SessionOptionsRepositoryFailure(:final error) => error,
@@ -2191,12 +2209,12 @@ class SessionDetailCubit(
       } else {
         logw("Failed to refresh prompt options", error);
       }
-      if (notify) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+      if (notify) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     } on Object catch (error, stackTrace) {
       logw("Failed to refresh prompt options", error, stackTrace);
-      if (notify && !isClosed) _noticeStream.add(SessionDetailNotice.promptOptionsRecoveryFailed);
-      return false;
+      if (notify && !isClosed) _noticeStream.add(const SessionDetailPromptOptionsRecoveryFailed());
+      return _OptionsReloadResult.failed;
     }
   }
 

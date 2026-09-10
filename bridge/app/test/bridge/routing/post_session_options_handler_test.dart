@@ -148,6 +148,23 @@ void main() {
       });
     }
 
+    test("maps authentication-required guidance without backend diagnostics", () async {
+      service.outcome = const SessionOptionsAuthenticationRequired(
+        actionHint: "Open the harness locally and authenticate.",
+      );
+
+      final response = await _send(handler: handler, body: _requestBody);
+
+      expect(response.status, 503);
+      expect(
+        SessionOptionsErrorResponse.fromJson(jsonDecodeMap(response.body!)),
+        const SessionOptionsErrorResponse(
+          code: SessionOptionsErrorCode.authenticationRequired,
+          actionHint: "Open the harness locally and authenticate.",
+        ),
+      );
+    });
+
     test("maps automatic no-op to safe typed 500", () async {
       service.outcome = const SessionOptionsAutomaticNoOp();
 
@@ -198,11 +215,15 @@ void _expectError(
   expect(response.headers, containsPair("content-type", "application/json"));
   expect(
     SessionOptionsErrorResponse.fromJson(jsonDecodeMap(response.body!)),
-    SessionOptionsErrorResponse(code: code),
+    SessionOptionsErrorResponse(code: code, actionHint: null),
   );
 }
 
-enum _SessionOptionsOperation() { loadDynamic, loadCacheOnly, refreshExplicit }
+enum _SessionOptionsOperation() {
+  loadDynamic,
+  loadCacheOnly,
+  refreshExplicit,
+}
 
 typedef _SessionOptionsCall = ({
   _SessionOptionsOperation operation,

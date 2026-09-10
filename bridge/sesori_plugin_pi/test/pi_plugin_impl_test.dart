@@ -116,6 +116,31 @@ void main() {
       expect(harness.processes.map((entry) => entry.spec.launch), everyElement(isA<PiNoSession>()));
     });
 
+    test("missing catalog models return scoped privacy-safe authentication guidance", () async {
+      final missingModels = _Harness(
+        failCommandDiscovery: false,
+        catalogModelsAvailable: false,
+      );
+      addTearDown(missingModels.dispose);
+      final events = <BridgeSseEvent>[];
+      final subscription = missingModels.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final result = await missingModels.plugin.getSessionOptions(
+        projectId: missingModels.project.path,
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      );
+      await pump();
+
+      expect(
+        result,
+        isA<PluginSessionOptionsDiscoveryAuthenticationRequired>()
+            .having((value) => value.actionHint, "action hint", contains("/login"))
+            .having((value) => value.actionHint, "privacy-safe action hint", isNot(contains("/private"))),
+      );
+      expect(events, isEmpty);
+    });
+
     test("reports a command missing from the current catalog as stale options", () async {
       final session = await harness.plugin.createSession(
         directory: harness.project.path,
@@ -607,6 +632,7 @@ void main() {
 final class _Harness({
   required bool failCommandDiscovery,
   bool stdinCloseCompletes = true,
+  bool catalogModelsAvailable = true,
   String catalogCommand = "review",
 }) {
   this {
@@ -625,6 +651,7 @@ final class _Harness({
           _answerProcess(
             process: process,
             spec: spec,
+            catalogModelsAvailable: catalogModelsAvailable,
             catalogCommand: catalogCommand,
             failCommandDiscovery: failCommandDiscovery,
           ),
@@ -687,6 +714,7 @@ final class _Harness({
 Future<void> _answerProcess({
   required FakePiProcess process,
   required PiLaunchSpec spec,
+  required bool catalogModelsAvailable,
   required String catalogCommand,
   required bool failCommandDiscovery,
 }) async {
@@ -712,13 +740,20 @@ Future<void> _answerProcess({
             },
           );
         case "get_available_models":
+          if (!catalogModelsAvailable) {
+            process.emitStderrRaw(
+              bytes: utf8.encode("${PiRpcClient.noModelsDiagnosticPrefix} /private/provider/path\n"),
+            );
+          }
           process.emitResponse(
             id: id,
             command: type,
-            data: const {
-              "models": [
-                {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
-              ],
+            data: {
+              "models": catalogModelsAvailable
+                  ? const [
+                      {"provider": "provider", "id": "model", "name": "Model", "reasoning": true},
+                    ]
+                  : const <Object?>[],
             },
           );
         case "set_model":

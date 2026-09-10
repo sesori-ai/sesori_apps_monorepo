@@ -4,6 +4,17 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../repositories/pi_backend_catalog_repository.dart";
 import "../trackers/pi_catalog_tracker.dart";
 
+sealed class const PiOptionsDiscoveryResult();
+
+final class const PiOptionsObserved({required final PluginSessionOptions options}) extends PiOptionsDiscoveryResult;
+
+final class const PiOptionsNoModels() extends PiOptionsDiscoveryResult;
+
+final class const PiOptionsDiscoveryFailed({
+  required final Object cause,
+  required final StackTrace causeStackTrace,
+}) extends PiOptionsDiscoveryResult;
+
 class PiCatalogService({
   required final PiBackendCatalogRepository _repository,
   required final PiCatalogTracker _tracker,
@@ -17,7 +28,7 @@ class PiCatalogService({
 
   static final PluginCommand _compactionCommand = PluginCommand.compaction(name: compactionCommandName);
 
-  final Map<String, Future<_PiCatalogProbeOutcome>> _inFlight = {};
+  final Map<String, Future<PiOptionsDiscoveryResult>> _inFlight = {};
 
   Future<bool> healthCheck() => _repository.healthCheck();
 
@@ -30,31 +41,30 @@ class PiCatalogService({
     final normalized = normalizeProjectDirectory(directory: projectId);
     final tracked = _tracker.snapshotFor(projectId: normalized);
     if (tracked != null) return tracked;
-    final outcome = await _coalescedProbe(projectId: normalized);
-    return switch (outcome.result) {
-      PluginSessionOptionsDiscoveryObserved(:final options) => options,
-      PluginSessionOptionsDiscoveryFailed() => _throwDiscoveryFailure(outcome: outcome),
+    final result = await _coalescedProbe(projectId: normalized);
+    return switch (result) {
+      PiOptionsObserved(:final options) => options,
+      PiOptionsNoModels() => _throwNoModels(),
+      PiOptionsDiscoveryFailed() => _throwDiscoveryFailure(result: result),
     };
   }
 
-  Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
+  Future<PiOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) {
     final normalized = normalizeProjectDirectory(directory: projectId);
     if (discoveryMode == PluginSessionOptionsDiscoveryMode.reuse) {
       final tracked = _tracker.snapshotFor(projectId: normalized);
-      if (tracked != null) {
-        return Future.value(PluginSessionOptionsDiscoveryResult.observed(options: tracked));
-      }
+      if (tracked != null) return Future.value(PiOptionsObserved(options: tracked));
     }
-    return _coalescedProbe(projectId: normalized).then((outcome) => outcome.result);
+    return _coalescedProbe(projectId: normalized);
   }
 
-  Future<_PiCatalogProbeOutcome> _coalescedProbe({required String projectId}) {
+  Future<PiOptionsDiscoveryResult> _coalescedProbe({required String projectId}) {
     final pending = _inFlight[projectId];
     if (pending != null) return pending;
-    late final Future<_PiCatalogProbeOutcome> operation;
+    late final Future<PiOptionsDiscoveryResult> operation;
     operation = _probe(projectId: projectId).whenComplete(() {
       if (identical(_inFlight[projectId], operation)) _inFlight.remove(projectId);
     });
@@ -62,12 +72,19 @@ class PiCatalogService({
     return operation;
   }
 
-  Future<_PiCatalogProbeOutcome> _probe({required String projectId}) async {
+  Future<PiOptionsDiscoveryResult> _probe({required String projectId}) async {
     try {
-      final probe = await _repository.probe(
+      final result = await _repository.probe(
         projectId: projectId,
         totalTimeout: _totalTimeout,
       );
+      final PiCatalogProbeSnapshot probe;
+      switch (result) {
+        case PiCatalogProbeNoModels():
+          return const PiOptionsNoModels();
+        case PiCatalogProbeObserved(:final snapshot):
+          probe = snapshot;
+      }
       final snapshot = PluginSessionOptions(
         agents: probe.agents,
         providers: probe.providers,
@@ -77,18 +94,10 @@ class PiCatalogService({
             : PluginSessionOptionsCompleteness.partial,
       );
       _tracker.replace(projectId: projectId, snapshot: snapshot);
-      return (
-        result: PluginSessionOptionsDiscoveryResult.observed(options: snapshot),
-        error: null,
-        stackTrace: null,
-      );
+      return PiOptionsObserved(options: snapshot);
     } on Object catch (error, stack) {
       Log.w("[pi] project catalog probe failed", error, stack);
-      return (
-        result: const PluginSessionOptionsDiscoveryResult.failed(),
-        error: error,
-        stackTrace: stack,
-      );
+      return PiOptionsDiscoveryFailed(cause: error, causeStackTrace: stack);
     }
   }
 
@@ -97,20 +106,18 @@ class PiCatalogService({
     return [...commands, _compactionCommand];
   }
 
-  Never _throwDiscoveryFailure({required _PiCatalogProbeOutcome outcome}) {
+  Never _throwNoModels() => throw const PluginOperationException(
+    "discover Pi options",
+    message: "Pi session options are unavailable.",
+    cause: PiCatalogNoModelsException(),
+  );
+
+  Never _throwDiscoveryFailure({required PiOptionsDiscoveryFailed result}) {
     final error = PluginOperationException(
       "discover Pi options",
       message: "Pi session options are unavailable.",
-      cause: outcome.error,
+      cause: result.cause,
     );
-    final stackTrace = outcome.stackTrace;
-    if (stackTrace == null) throw error;
-    Error.throwWithStackTrace(error, stackTrace);
+    Error.throwWithStackTrace(error, result.causeStackTrace);
   }
 }
-
-typedef _PiCatalogProbeOutcome = ({
-  PluginSessionOptionsDiscoveryResult result,
-  Object? error,
-  StackTrace? stackTrace,
-});

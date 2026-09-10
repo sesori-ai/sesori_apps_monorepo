@@ -1160,6 +1160,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Couldn’t apply updated prompt options. Your message remains queued.';
 
   @override
+  String get sessionDetailAuthenticationRequired => 'Provider login required';
+
+  @override
   String get sessionDetailCommandUnavailable =>
       'That command is no longer available. Remove it from the queue to continue.';
 
@@ -1580,6 +1583,11 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get newSessionOptionsRefresh => 'Refresh options';
+
+  @override
+  String newSessionAuthenticationRequiredTitle(String plugin) {
+    return '$plugin login required';
+  }
 
   @override
   String get newSessionProjectUnavailable =>

@@ -66,6 +66,10 @@ class PostSessionOptionsHandler({
         status: 404,
         code: SessionOptionsErrorCode.projectNotFound,
       ),
+      SessionOptionsAuthenticationRequired(:final actionHint) => _authenticationRequired(
+        request: request,
+        actionHint: actionHint,
+      ),
       SessionOptionsRefreshFailedRetained() => _error(
         request: request,
         status: 502,
@@ -85,6 +89,18 @@ class PostSessionOptionsHandler({
     return _error(request: request, status: 500, code: SessionOptionsErrorCode.unknown);
   }
 
+  RelayResponse _authenticationRequired({
+    required RelayRequest request,
+    required String actionHint,
+  }) => buildJsonErrorResponse(
+    request: request,
+    status: 503,
+    body: SessionOptionsErrorResponse(
+      code: SessionOptionsErrorCode.authenticationRequired,
+      actionHint: actionHint,
+    ).toJson(),
+  );
+
   RelayResponse _error({
     required RelayRequest request,
     required int status,
@@ -92,6 +108,6 @@ class PostSessionOptionsHandler({
   }) => buildJsonErrorResponse(
     request: request,
     status: status,
-    body: SessionOptionsErrorResponse(code: code).toJson(),
+    body: SessionOptionsErrorResponse(code: code, actionHint: null).toJson(),
   );
 }

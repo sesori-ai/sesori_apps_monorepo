@@ -23,6 +23,12 @@ final class const SessionOptionsCacheUnavailable() extends SessionOptionsOutcome
 
 final class const SessionOptionsProjectNotFound() extends SessionOptionsOutcome;
 
+/// Provider authentication/configuration is absent for the requested option
+/// scope. The last-good cache, if any, remains intact but is not served as a
+/// successful refresh because it cannot make the current provider usable.
+final class const SessionOptionsAuthenticationRequired({required final String actionHint})
+    extends SessionOptionsOutcome;
+
 sealed class const SessionOptionsRefreshFailure();
 
 final class const SessionOptionsKnownRefreshFailure() extends SessionOptionsRefreshFailure;
@@ -392,6 +398,17 @@ class SessionOptionsService({
     switch (capture) {
       case SessionOptionsCaptureInactive():
         return const SessionOptionsAutomaticNoOp();
+      case SessionOptionsCaptureAuthenticationRequired(:final actionHint):
+        if (!await _isCurrentInvalidationEpoch(key: resolved.key, expected: invalidationEpoch)) {
+          return _invalidatedRefreshOutcome(automatic: automatic);
+        }
+        if (!await _isCurrentResolution(resolved: resolved)) {
+          return _movedProjectOutcome(automatic: automatic);
+        }
+        if (!await _isCurrentInvalidationEpoch(key: resolved.key, expected: invalidationEpoch)) {
+          return _invalidatedRefreshOutcome(automatic: automatic);
+        }
+        return SessionOptionsAuthenticationRequired(actionHint: actionHint);
       case SessionOptionsCaptureFailed():
         return await _captureFailure(
           resolved: resolved,

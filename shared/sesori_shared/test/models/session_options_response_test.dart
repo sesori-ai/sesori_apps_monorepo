@@ -60,9 +60,12 @@ void main() {
     );
   });
 
-  test("session options errors round-trip known codes", () {
+  test("session options errors round-trip known codes and authentication guidance", () {
     for (final code in SessionOptionsErrorCode.values) {
-      final response = SessionOptionsErrorResponse(code: code);
+      final response = SessionOptionsErrorResponse(
+        code: code,
+        actionHint: code == SessionOptionsErrorCode.authenticationRequired ? "Authenticate locally." : null,
+      );
 
       expect(SessionOptionsErrorResponse.fromJson(response.toJson()), response);
     }
@@ -72,5 +75,12 @@ void main() {
     final response = SessionOptionsErrorResponse.fromJson(const {"code": "futureFailure"});
 
     expect(response.code, SessionOptionsErrorCode.unknown);
+    expect(response.actionHint, isNull);
+  });
+
+  test("session options errors accept guidance omitted by older peers", () {
+    final response = SessionOptionsErrorResponse.fromJson(const {"code": "refreshFailedUnavailable"});
+
+    expect(response.actionHint, isNull);
   });
 }

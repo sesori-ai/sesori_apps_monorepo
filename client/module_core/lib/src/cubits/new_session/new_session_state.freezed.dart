@@ -362,6 +362,151 @@ String toString() {
 /// @nodoc
 
 
+class NewSessionOptionsAuthenticationRequiredUnavailableState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsAuthenticationRequiredUnavailableState({required this.actionHint});
+  
+
+ final  String actionHint;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWith<NewSessionOptionsAuthenticationRequiredUnavailableState> get copyWith => _$NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWithImpl<NewSessionOptionsAuthenticationRequiredUnavailableState>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAuthenticationRequiredUnavailableState&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,actionHint);
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.authenticationRequiredUnavailable(actionHint: $actionHint)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWith<$Res> implements $NewSessionOptionsLoadStateCopyWith<$Res> {
+  factory $NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWith(NewSessionOptionsAuthenticationRequiredUnavailableState value, $Res Function(NewSessionOptionsAuthenticationRequiredUnavailableState) _then) = _$NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWithImpl;
+@useResult
+$Res call({
+ String actionHint
+});
+
+
+
+
+}
+/// @nodoc
+class _$NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWithImpl<$Res>
+    implements $NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWith<$Res> {
+  _$NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionOptionsAuthenticationRequiredUnavailableState _self;
+  final $Res Function(NewSessionOptionsAuthenticationRequiredUnavailableState) _then;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? actionHint = null,}) {
+  return _then(NewSessionOptionsAuthenticationRequiredUnavailableState(
+actionHint: null == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+
+
+class NewSessionOptionsAuthenticationRequiredRetainedState implements NewSessionOptionsLoadState {
+  const NewSessionOptionsAuthenticationRequiredRetainedState({required this.actionHint, required this.options, required this.source});
+  
+
+ final  String actionHint;
+ final  NewSessionOptionsData options;
+ final  NewSessionOptionsSource source;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$NewSessionOptionsAuthenticationRequiredRetainedStateCopyWith<NewSessionOptionsAuthenticationRequiredRetainedState> get copyWith => _$NewSessionOptionsAuthenticationRequiredRetainedStateCopyWithImpl<NewSessionOptionsAuthenticationRequiredRetainedState>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAuthenticationRequiredRetainedState&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+}
+
+
+@override
+int get hashCode => Object.hash(runtimeType,actionHint,options,source);
+
+@override
+String toString() {
+  return 'NewSessionOptionsLoadState.authenticationRequiredRetained(actionHint: $actionHint, options: $options, source: $source)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $NewSessionOptionsAuthenticationRequiredRetainedStateCopyWith<$Res> implements $NewSessionOptionsLoadStateCopyWith<$Res> {
+  factory $NewSessionOptionsAuthenticationRequiredRetainedStateCopyWith(NewSessionOptionsAuthenticationRequiredRetainedState value, $Res Function(NewSessionOptionsAuthenticationRequiredRetainedState) _then) = _$NewSessionOptionsAuthenticationRequiredRetainedStateCopyWithImpl;
+@useResult
+$Res call({
+ String actionHint, NewSessionOptionsData options, NewSessionOptionsSource source
+});
+
+
+$NewSessionOptionsDataCopyWith<$Res> get options;
+
+}
+/// @nodoc
+class _$NewSessionOptionsAuthenticationRequiredRetainedStateCopyWithImpl<$Res>
+    implements $NewSessionOptionsAuthenticationRequiredRetainedStateCopyWith<$Res> {
+  _$NewSessionOptionsAuthenticationRequiredRetainedStateCopyWithImpl(this._self, this._then);
+
+  final NewSessionOptionsAuthenticationRequiredRetainedState _self;
+  final $Res Function(NewSessionOptionsAuthenticationRequiredRetainedState) _then;
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? actionHint = null,Object? options = null,Object? source = null,}) {
+  return _then(NewSessionOptionsAuthenticationRequiredRetainedState(
+actionHint: null == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as String,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsData,source: null == source ? _self.source : source // ignore: cast_nullable_to_non_nullable
+as NewSessionOptionsSource,
+  ));
+}
+
+/// Create a copy of NewSessionOptionsLoadState
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$NewSessionOptionsDataCopyWith<$Res> get options {
+  
+  return $NewSessionOptionsDataCopyWith<$Res>(_self.options, (value) {
+    return _then(_self.copyWith(options: value));
+  });
+}
+}
+
+/// @nodoc
+
+
 class NewSessionOptionsFailureState implements NewSessionOptionsLoadState {
   const NewSessionOptionsFailureState({required this.reason, required this.source});
   

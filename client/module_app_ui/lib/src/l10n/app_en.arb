@@ -684,6 +684,7 @@
   "sessionDetailSendingMessage": "Sending",
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
+  "sessionDetailAuthenticationRequired": "Provider login required",
   "sessionDetailCommandUnavailable": "That command is no longer available. Remove it from the queue to continue.",
   "sessionDetailCancelQueued": "Cancel",
   "sessionDetailRemoveQueued": "Remove",
@@ -900,6 +901,15 @@
   "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
   "newSessionOptionsLoadingSemantics": "Loading session options",
   "newSessionOptionsRefresh": "Refresh options",
+  "newSessionAuthenticationRequiredTitle": "{plugin} login required",
+  "@newSessionAuthenticationRequiredTitle": {
+    "description": "Warning title shown when the selected coding harness has no authenticated provider/model available for this project.",
+    "placeholders": {
+      "plugin": {
+        "type": "String"
+      }
+    }
+  },
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",

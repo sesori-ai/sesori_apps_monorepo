@@ -488,6 +488,49 @@ void main() {
           pluginId: "plugin-1",
           mode: SessionOptionsRequestMode.forceRefresh,
         ),
+      ).thenAnswer(
+        (_) async => const SessionOptionsRepositoryAuthenticationRequired(
+          actionHint: "Authenticate locally.",
+        ),
+      );
+      final authenticationRetained = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.forcedRefresh,
+        restoredSelection: null,
+        previousOptions: previous,
+      );
+      expect(
+        authenticationRetained,
+        isA<NewSessionOptionsAuthenticationRequiredRetained>()
+            .having((value) => value.actionHint, "action hint", "Authenticate locally.")
+            .having((value) => identical(value.options, previous), "retained options", isTrue),
+      );
+
+      final authenticationUnavailable = await service.load(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        source: NewSessionOptionsSource.aggregate,
+        mode: NewSessionOptionsLoadMode.forcedRefresh,
+        restoredSelection: null,
+        previousOptions: null,
+      );
+      expect(
+        authenticationUnavailable,
+        isA<NewSessionOptionsAuthenticationRequiredUnavailable>().having(
+          (value) => value.actionHint,
+          "action hint",
+          "Authenticate locally.",
+        ),
+      );
+
+      when(
+        () => repository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
       ).thenAnswer((_) async => SessionOptionsRepositoryFailure(error: ApiError.generic()));
       final transientFailure = await service.load(
         projectId: "project-1",
