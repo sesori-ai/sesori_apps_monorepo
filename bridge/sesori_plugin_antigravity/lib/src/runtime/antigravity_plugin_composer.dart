@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:path/path.dart" as p;
 
 import "../antigravity_event_mapper.dart";
 import "../antigravity_plugin_impl.dart";
@@ -58,6 +59,7 @@ class const AntigravityPluginComposer() {
         protocolMapper: protocol,
         catalogTracker: catalog,
         configurationTracker: configuration,
+        discoveryDirectory: p.join(profile.geminiHome, "antigravity-acp", "conversations"),
       ),
       metadata: AntigravitySessionMetadataService(
         repository: AntigravitySessionMetadataRepository(storage: const AntigravitySessionMetadataStorage()),

@@ -81,15 +81,17 @@ import-only idle residency cap.
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Effort variants listed strongest first, default declared separately | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
+| Effort variants listed strongest first, default declared separately | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
 | Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
 
 The picker shows each plugin's declared order. Every plugin ranks through the
 shared `CatalogStrengthOrder`; models of other vendors keep the plugin's own
 order after the ranked ones (OpenCode newest release first, others backend
-order). Antigravity's account-advertised order is what remains for its
-unranked models, and before the first real session catalog in a process it
-exposes no model choice and uses the account default.
+order). Antigravity's account-advertised order remains for its unranked models.
+Exact account IDs ending in `-high`, `-medium`, or `-low` become strongest-first
+variants only when labels carry the matching suffix. Its pre-chat catalog uses
+one retained hidden no-prompt native session because the pinned runtime exposes
+models only from new/resume responses and has no deletion capability.
 
 ## Codex question input
 
@@ -296,8 +298,7 @@ setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
 
 ¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
-ACP seam, and Antigravity has no Sesori effort variants, so for both there is
-nothing to order.
+ACP seam, so there is nothing to order.
 
 ¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
 its models keep DeepSeek's catalog order; its efforts are ordered.

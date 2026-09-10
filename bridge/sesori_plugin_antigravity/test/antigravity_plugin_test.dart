@@ -35,11 +35,14 @@ class _Process() implements AcpProcessHandle {
   final requests = StreamController<Map<String, dynamic>>.broadcast();
   final held = <Map<String, dynamic>>[];
   final updates = <Map<String, dynamic>>[];
+  final listedSessions = <Map<String, dynamic>>[];
   _Auth auth = _Auth.personal;
   bool resume = true;
   bool holdPrompts = false;
   String defaultModelId = "default";
+  String defaultModelName = "Default";
   String otherModelId = "other";
+  String otherModelName = "Other";
   int created = 0;
   int kills = 0;
   bool outTapped = false;
@@ -94,7 +97,7 @@ class _Process() implements AcpProcessHandle {
               ],
               "agentCapabilities": {
                 "loadSession": true,
-                "sessionCapabilities": {if (resume) "resume": <String, dynamic>{}},
+                "sessionCapabilities": {"list": <String, dynamic>{}, if (resume) "resume": <String, dynamic>{}},
               },
             },
           );
@@ -113,17 +116,30 @@ class _Process() implements AcpProcessHandle {
           reply(request: frame, result: {});
         }
       case "session/new":
+        final sessionId = "new-${++created}";
+        listedSessions.add({"sessionId": sessionId, "cwd": params["cwd"]});
         reply(
           request: frame,
           result: _catalog(
-            session: "new-${++created}",
+            session: sessionId,
             current: defaultModelId,
             defaultModelId: defaultModelId,
+            defaultModelName: defaultModelName,
             otherModelId: otherModelId,
+            otherModelName: otherModelName,
           ),
         );
       case "session/list":
-        reply(request: frame, result: {"sessions": <Object?>[]});
+        final cwd = params["cwd"];
+        reply(
+          request: frame,
+          result: {
+            "sessions": [
+              for (final session in listedSessions)
+                if (cwd == null || session["cwd"] == cwd) session,
+            ],
+          },
+        );
       case "session/load":
       case "session/resume":
         for (final update in updates) {
@@ -140,7 +156,9 @@ class _Process() implements AcpProcessHandle {
             session: params["sessionId"] as String,
             current: otherModelId,
             defaultModelId: defaultModelId,
+            defaultModelName: defaultModelName,
             otherModelId: otherModelId,
+            otherModelName: otherModelName,
           ),
         );
       case "session/set_config_option":
@@ -179,7 +197,9 @@ Map<String, dynamic> _catalog({
   required String session,
   required String current,
   required String defaultModelId,
+  required String defaultModelName,
   required String otherModelId,
+  required String otherModelName,
 }) => {
   "sessionId": session,
   "configOptions": [
@@ -188,8 +208,8 @@ Map<String, dynamic> _catalog({
       "type": "select",
       "currentValue": current,
       "options": [
-        {"value": defaultModelId, "name": "Default"},
-        {"value": otherModelId, "name": "Other"},
+        {"value": defaultModelId, "name": defaultModelName},
+        {"value": otherModelId, "name": otherModelName},
       ],
     },
   ],
@@ -231,12 +251,16 @@ class _Harness({required final Directory directory, required final List<_Process
     variant: null,
     agent: null,
   );
-  Future<void> send({required String session, ({String providerID, String modelID})? model}) => plugin.sendPrompt(
+  Future<void> send({
+    required String session,
+    required ({String providerID, String modelID})? model,
+    PluginSessionVariant? variant,
+  }) => plugin.sendPrompt(
     promptId: "prompt-$session",
     sessionId: session,
     parts: const [PluginPromptPart.text(text: "synthetic")],
     model: model,
-    variant: null,
+    variant: variant,
     agent: null,
   );
   Future<void> close() async {
@@ -281,15 +305,23 @@ void _question({required _Process process, required String session, required Str
 );
 
 void main() {
-  test("composed options are inert; creation and selection use personal OAuth and default mode", () async {
+  test("cold options use one hidden no-prompt discovery session and refresh resumes it", () async {
     final process = _Process();
     final h = await _harness(processes: [process]);
-    expect((await h.plugin.getProviders(projectId: "/launch")).providers, isEmpty);
+    final providers = await h.plugin.getProviders(projectId: "/launch");
+    expect(providers.providers.single.defaultModelID, "default");
     expect((await h.plugin.getAgents(projectId: "/launch")).single.name, "antigravity");
-    expect(h.specs, isEmpty);
+    expect(h.specs, hasLength(1));
+    expect(process.created, 1);
+    final discoveryNew = process.stdin.frames.singleWhere((frame) => frame["method"] == "session/new");
+    expect(
+      (discoveryNew["params"] as Map)["cwd"],
+      "${h.directory.path}/antigravity-acp/conversations",
+    );
+    expect(process.stdin.frames.where((frame) => frame["method"] == "session/prompt"), isEmpty);
     await h.start();
     final session = await h.create();
-    expect(session.id, "new-1");
+    expect(session.id, "new-2");
     expect((await h.plugin.getProviders(projectId: "/launch")).providers.single.defaultModelID, "default");
     final beforeStale = process.stdin.frames.length;
     await expectLater(
@@ -334,7 +366,27 @@ void main() {
     expect((assistant.modelID, assistant.providerID), ("other", AntigravityIdentity.pluginId));
     expect(h.specs.single.includeParentEnvironment, isFalse);
     expect(h.specs.single.environment["GEMINI_CLI_HOME"], h.directory.path);
-    expect(process.created, 1, reason: "No scratch discovery session");
+    final visible = await h.plugin.listAllSessions(knownDirectories: const {"/new-cwd"});
+    expect(visible.map((entry) => entry.id), [session.id]);
+    expect(
+      await h.plugin.getSessions(projectId: "${h.directory.path}/antigravity-acp/conversations", start: 0, limit: 20),
+      isEmpty,
+    );
+    expect(
+      (await h.plugin.getSessions(projectId: "/new-cwd", start: 0, limit: 20)).map((entry) => entry.id),
+      [session.id],
+    );
+    final beforeRefresh = process.stdin.frames.length;
+    expect(
+      await h.plugin.getSessionOptions(
+        projectId: "/launch",
+        discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+      ),
+      isA<PluginSessionOptionsDiscoveryObserved>(),
+    );
+    final refreshed = process.stdin.frames.skip(beforeRefresh).where((frame) => frame["method"] == "session/resume");
+    expect((refreshed.single["params"] as Map)["sessionId"], "new-1");
+    expect(process.created, 2, reason: "Refresh reuses discovery session and real session remains separate");
   });
 
   test("whitespace-bearing model IDs remain exact in fresh, selected, live and replay attribution", () async {
@@ -386,6 +438,57 @@ void main() {
     expect(replayed.providerID, AntigravityIdentity.pluginId);
   });
 
+  test("exact native variant selection stamps normalized live and replay metadata", () async {
+    final live = _Process()
+      ..defaultModelId = "gemini-3.7-flash-high"
+      ..defaultModelName = "Gemini 3.7 Flash (High)"
+      ..otherModelId = "gemini-3.7-flash-low"
+      ..otherModelName = "Gemini 3.7 Flash (Low)";
+    final replay = _Process()
+      ..defaultModelId = live.defaultModelId
+      ..defaultModelName = live.defaultModelName
+      ..otherModelId = live.otherModelId
+      ..otherModelName = live.otherModelName;
+    final h = await _harness(processes: [live, replay]);
+    final provider = (await h.plugin.getProviders(projectId: "/launch")).providers.single;
+    expect(provider.models.single.id, "gemini-3.7-flash");
+    expect(provider.models.single.variants, ["high", "low"]);
+    await h.start();
+    final session = await h.create();
+
+    await h.send(
+      session: session.id,
+      model: (providerID: AntigravityIdentity.pluginId, modelID: "gemini-3.7-flash"),
+      variant: const PluginSessionVariant(id: "low"),
+    );
+    final selection = await live.frame(method: "session/set_config_option");
+    await live.frame(method: "session/prompt");
+    expect((selection["params"] as Map)["value"], "gemini-3.7-flash-low");
+    live.emit(
+      frame: {
+        "method": "session/update",
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": "live variant"},
+          },
+        },
+      },
+    );
+    await _settle();
+    final liveMessage = h.events.whereType<BridgeSseMessageUpdated>().last.info as PluginMessageAssistant;
+    expect((liveMessage.modelID, liveMessage.variant), ("gemini-3.7-flash", "low"));
+
+    replay.updates.add({
+      "sessionUpdate": "agent_message_chunk",
+      "content": {"type": "text", "text": "replayed variant"},
+    });
+    final history = await h.plugin.getSessionMessages(session.id);
+    final replayed = history.where((message) => message.info is PluginMessageAssistant).single.info;
+    expect(((replayed as PluginMessageAssistant).modelID, replayed.variant), ("gemini-3.7-flash", "low"));
+  });
+
   for (final resume in [true, false]) {
     test(
       "cold metadata recovery drives ${resume ? 'resume' : 'load'}; DB hint wins and replay stays load-based",
@@ -396,7 +499,12 @@ void main() {
         final metadata = File("${h.directory.path}/antigravity-acp/conversations/$_old.meta");
         await metadata.create(recursive: true);
         await metadata.writeAsString(jsonEncode({"cwd": "/recovered-cwd"}));
+        const hidden = "00000000-0000-4000-8000-000000000003";
+        await File("${h.directory.path}/antigravity-acp/conversations/$hidden.meta").writeAsString(
+          jsonEncode({"cwd": "${h.directory.path}/antigravity-acp/conversations"}),
+        );
         await h.start();
+        expect(h.plugin.directoryForSession(sessionId: hidden), "/launch");
         const later = "00000000-0000-4000-8000-000000000002";
         await File("${h.directory.path}/antigravity-acp/conversations/$later.meta").writeAsString(
           jsonEncode({"cwd": "/late-metadata"}),
@@ -407,7 +515,7 @@ void main() {
           "/launch",
           reason: "Ordinary enumeration does not rescan",
         );
-        await h.send(session: _old);
+        await h.send(session: _old, model: null);
         final activation = await live.frame(method: resume ? "session/resume" : "session/load");
         expect((activation["params"] as Map)["cwd"], "/recovered-cwd");
         await live.frame(method: "session/prompt");
@@ -482,10 +590,10 @@ void main() {
       final first = await h.create();
       final second = await h.create();
       process.holdPrompts = true;
-      await h.send(session: first.id);
+      await h.send(session: first.id, model: null);
       await process.frame(method: "session/prompt");
       final afterFirst = process.stdin.frames.length;
-      await h.send(session: second.id);
+      await h.send(session: second.id, model: null);
       await process.frame(method: "session/prompt", after: afterFirst);
       _question(process: process, session: first.id, id: "answer");
       await _settle();
@@ -536,7 +644,9 @@ void main() {
     // Drive the existing reset explicitly; this fake does not include the host exit watch.
     await h.plugin.resetConnectionAfterExit();
     expect(await h.plugin.getPendingQuestions(sessionId: first.id), isEmpty);
-    expect((await h.plugin.getProviders(projectId: "/launch")).providers, isEmpty);
+    final rediscovered = await h.plugin.getProviders(projectId: "/launch");
+    expect(rediscovered.providers.single.defaultModelID, "default");
+    expect(replacement.stdin.frames.where((f) => f["method"] == "session/new"), hasLength(1));
     await h.send(session: first.id, model: (providerID: "antigravity", modelID: "other"));
     await replacement.frame(method: "session/prompt");
     final resumed = replacement.stdin.frames.where((f) => f["method"] == "session/resume").single;
@@ -544,7 +654,7 @@ void main() {
     final selection = replacement.stdin.frames.where((f) => f["method"] == "session/set_config_option").single;
     expect((selection["params"] as Map)["value"], "other");
     final after = replacement.stdin.frames.length;
-    await h.send(session: second.id);
+    await h.send(session: second.id, model: null);
     await replacement.frame(method: "session/prompt", after: after);
     expect(replacement.held, hasLength(2));
     await h.plugin.interruptActiveWork(budget: const Duration(seconds: 2));

@@ -99,6 +99,31 @@ void main() {
     });
   }
 
+  for (final brightness in Brightness.values) {
+    testWidgets("renders Antigravity's official artwork in $brightness", (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          logo: const PregoBrandLogo(pluginId: "antigravity", size: 28, color: null),
+          brightness: brightness,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      final image = tester.widget<Image>(find.byType(Image));
+      final asset = image.image as AssetImage;
+      expect(asset.assetName, "assets/images/brands/antigravity.png");
+      expect(asset.package, "theme_prego");
+      expect(image.width, 28);
+      expect(image.height, 28);
+      expect(find.byIcon(TablerRegular.plug), findsNothing);
+      expect(tester.takeException(), isNull);
+      expect(
+        find.descendant(of: find.byType(PregoBrandLogo), matching: find.byType(ExcludeSemantics)),
+        findsWidgets,
+      );
+    });
+  }
+
   testWidgets("falls back to a tinted plug for a harness it has no artwork for", (tester) async {
     const color = Color(0xFF123456);
     await tester.pumpWidget(
@@ -113,6 +138,7 @@ void main() {
   });
 
   test("names each harness it has a mark for, and speaks an unknown id as-is", () {
+    expect(PregoBrandLogo.displayNameFor("antigravity"), "Antigravity");
     expect(PregoBrandLogo.displayNameFor(Harness.opencode.name), "OpenCode");
     expect(PregoBrandLogo.displayNameFor(Harness.codex.name), "Codex");
     expect(PregoBrandLogo.displayNameFor(Harness.copilot.name), "GitHub Copilot");

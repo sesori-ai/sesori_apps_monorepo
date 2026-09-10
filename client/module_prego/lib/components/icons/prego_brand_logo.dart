@@ -34,13 +34,16 @@ class const PregoBrandLogo({
     }
 
     return ExcludeSemantics(
-      child: SvgPicture.asset(asset, package: "theme_prego", width: size, height: size),
+      child: asset.endsWith(".png")
+          ? Image.asset(asset, package: "theme_prego", width: size, height: size)
+          : SvgPicture.asset(asset, package: "theme_prego", width: size, height: size),
     );
   }
 
   static String? _assetFor(String pluginId, {required Brightness brightness}) {
     final isDark = brightness == Brightness.dark;
     return switch (pluginId) {
+      "antigravity" => "assets/images/brands/antigravity.png",
       final id when id == Harness.opencode.name =>
         isDark ? "assets/svgs/brands/opencode_dark.svg" : "assets/svgs/brands/opencode_light.svg",
       final id when id == Harness.codex.name =>
@@ -70,6 +73,7 @@ class const PregoBrandLogo({
   /// can advertise a harness this build has never heard of; its id is then the
   /// truest name available, and speaking it beats saying nothing.
   static String displayNameFor(String pluginId) => switch (pluginId) {
+    "antigravity" => "Antigravity",
     final id when id == Harness.opencode.name => "OpenCode",
     final id when id == Harness.codex.name => "Codex",
     final id when id == Harness.copilot.name => "GitHub Copilot",
