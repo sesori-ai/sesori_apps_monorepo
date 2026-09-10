@@ -35,7 +35,9 @@ defaults and queued client sends coherent.
   options and pending interactions before enabling input, without reopening the
   route. A failed content refresh remains read-only and directs the user to reopen
   the chat; it does not offer a harness-status recheck. Existing archive and route
-  read-only restrictions remain stronger.
+  read-only restrictions remain stronger. Archived chats omit harness warnings
+  and refuse Stop, including a scope confirmation left open while another surface
+  archives the session.
 - Pending local sends stop draining while blocked; users can still cancel those
   local-only entries, but cannot cancel a bridge-owned prompt until interaction is
   usable. Existing queue behavior otherwise stays unchanged. Availability gating

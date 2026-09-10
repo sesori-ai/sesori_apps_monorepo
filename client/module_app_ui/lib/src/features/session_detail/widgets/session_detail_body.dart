@@ -158,6 +158,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
     ];
 
     final statusWarning = switch (state) {
+      SessionDetailLoaded(isArchived: true) => null,
       SessionDetailLoaded(:final SessionInteractionLegacyUnverified interaction) => interaction,
       SessionDetailLoaded(:final SessionInteractionAvailable interaction) when interaction.refreshError != null =>
         interaction,
