@@ -333,9 +333,11 @@ rules where supported.
   diagnostic logging is in place and any refresh correction is unfinished.
 - Antigravity's native personal-authenticated history, cold bridge restart, retained-history import/tombstone behavior,
   and cross-target pairs remain unverified.
-- Grok's sub-agent tile and child catalog are live/persisted lifecycle views;
-  reconstructing the inline tile and child transcript from `session/load` is the
-  separate planned child-history step, so the capability matrix remains open.
+- Grok permission denial persistence remains unverified because the unchanged
+  1.0.5 runtime auto-resolved probe interactions without exposing a permission
+  request. Replay therefore has no permission-outcome model; a denied generic
+  spawn card may be absent. An early-cancelled child with no persisted prompt
+  intentionally has no replayed tile.
 
 ## Sources
 
