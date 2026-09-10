@@ -24,7 +24,7 @@ typedef SessionOpenedCallback = void Function({required Session session});
 /// The title line's two ends answer different questions. The leading slot says
 /// which backend owns the session, so a list mixing harnesses stays readable
 /// at a glance. The trailing slot carries the liveness the old status line
-/// spelled out: the sparkle twinkles while an agent works and rests solid —
+/// spelled out: the sparkle rotates while an agent works and rests solid —
 /// the same "new activity" mark the project list uses — when the session has
 /// activity the user hasn't opened, and gives way to when the session last
 /// changed once there is neither. Only states that need words keep them, as
@@ -303,7 +303,7 @@ class const SessionTile({
     );
   }
 
-  /// The session's state, told by the sparkle: twinkling while an agent works,
+  /// The session's state, told by the sparkle: rotating while an agent works,
   /// resting solid when there is activity the user hasn't opened, absent for a
   /// quiet session. A live turn is the more informative of the two, so it wins;
   /// unseen still shows through the title's weight.
@@ -359,7 +359,7 @@ class const SessionTile({
 
   /// The states that still need words after the sparkle has said "working":
   /// input wanted, a retry loop, tasks running behind the turn. A plain
-  /// running session carries no label — the twinkle is the signal.
+  /// running session carries no label — the rotation is the signal.
   Widget? _statusLabel({required BuildContext context}) {
     final loc = context.loc;
     final prego = context.prego;
@@ -422,4 +422,4 @@ const double _titleLineHeight = 24;
 const double _footerLineHeight = 20;
 
 const double _brandLogoSize = 12;
-const double _stateIconSize = 16;
+const double _stateIconSize = 20;
