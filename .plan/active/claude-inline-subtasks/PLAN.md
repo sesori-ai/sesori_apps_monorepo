@@ -23,9 +23,12 @@
   now uses nine steps after automatic size-based splitting: #1387 remains
   historical preparation, and cleanup #1396 is merged. Native facts are step
   5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9
-  (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 is current, scoped
-  stop 8/9 is next, and final coverage 9/9 remains uncompleted. Historical merged PR titles
-  remain unchanged. Overall harness plan remains active.
+  (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 merged as #1420,
+  and scoped stop 8/9 merged as #1421 at `77165f784f`. Final coverage 9/9
+  records a passed bounded actual-plugin policy scope and a partial live matrix;
+  it stays unchecked until its documentation PR merges. Historical merged PR
+  titles remain unchanged. Overall harness plan remains active for remaining
+  harness gates.
 
 ## Goal
 

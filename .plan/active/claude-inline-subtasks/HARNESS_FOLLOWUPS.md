@@ -11,7 +11,10 @@
   Codex now has nine steps: merged metadata, child-session, historical prompt
   preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
   step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
-  stop 8/9, and coverage 9/9. Historical PR titles are unchanged. Progress is tracked in
+  stop 8/9, and coverage 9/9. Step 8 merged as PR #1421 at `77165f784f`;
+  Step 9 actual-plugin policy QA passed against managed 0.153.4; its
+  documentation step is current and remains unchecked until merge. Historical
+  PR titles are unchanged. Progress is tracked in
   `TRACKER.md` "Harness Follow-Ups". The DeepSeek phone handoff is recorded in
   `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
@@ -203,6 +206,18 @@ confirmation, no child session or partial stop) and gets that subset.
   remains `subAgentsHandled: false` because Codex has no atomic subtree stop.
 - Active summaries keep named/root work distinct from busy descendants and
   child pending input, while authoritative native notifications settle state.
+- Bounded [actual-plugin policy QA](followups/codex-plugin-qa.md) on
+  2026-09-10 used `CodexPlugin.composed`, production WebSocket transport,
+  managed 0.153.4, and only owned `/tmp` work. Root and named-child confirmation
+  had zero effects and exact counts; root `keep`, named-child subtree stop, and
+  root full stop preserved their scope. Every selected target produced
+  `turn_aborted`; full-stop targets became non-busy in plugin status. After root
+  `keep`, its own turn stopped but effective root status stayed busy for retained
+  descendants. The runtime survived each case; every
+  atomic-opt-in accepted response retained `subAgentsHandled: false`. Executed
+  policy scope passed. Live matrix remains partial because no pending input
+  surfaced; that case is unexecuted live and remains covered by focused
+  automation.
 
 ### Design
 
@@ -292,8 +307,8 @@ confirmation, no child session or partial stop) and gets that subset.
 | 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | PR #1398 merged at `d801d722f2`; typed DTOs and repository facts only, no tile activation |
 | 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | PR #1399 merged at `db2b71134d`; full live/replay production integration, lifecycle, busy accounting, focused tests, and behavior docs |
 | 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | PR #1420 merged at `ae2a9297e3`; write-path/lifecycle regressions and documentation |
-| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | current, unchecked until merge; per-thread policy, pending-admission fencing, and automated isolation/failure coverage |
-| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | final coverage incomplete; actual-plugin scoped-stop policy QA remains unexecuted |
+| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | PR #1421 merged at `77165f784f`; per-thread policy, pending-admission fencing, and automated isolation/failure coverage |
+| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | current; managed-0.153.4 actual-plugin scoped-stop policy QA passed; pending-input live case unexecuted |
 
 ### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 
