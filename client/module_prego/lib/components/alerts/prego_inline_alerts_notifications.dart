@@ -130,23 +130,25 @@ class const PregoInlineAlertsNotifications({
 
     return Padding(
       padding: const EdgeInsets.all(PregoSpacing.xl),
-      // Material supplies text defaults outside a Scaffold and clips both the
-      // accent and action ink to the card, with its border in the foreground.
-      child: Material(
-        color: colors.bgSurface5,
-        shape: RoundedRectangleBorder(
+      // Paint the rounded surface directly, outside the content clip. Clipping
+      // a rectangular gradient and the foreground border together truncates
+      // their edge coverage on Impeller, leaving uneven rounded corners.
+      child: DecoratedBox(
+        decoration: BoxDecoration(
           borderRadius: BorderRadius.circular(PregoRadius.x2l),
-          side: BorderSide(color: colors.borderPrimary),
+          border: Border.all(color: colors.borderPrimary),
+          gradient: _accentGradient(colors),
         ),
-        clipBehavior: Clip.antiAlias,
-        child: Stack(
-          children: [
-            Positioned.fill(child: IgnorePointer(child: _accentGradient(colors))),
-            Padding(
-              padding: const EdgeInsets.all(PregoSpacing.xl),
-              child: _buildBody(prego, brightness: Theme.of(context).brightness),
-            ),
-          ],
+        // Keep text defaults and clipped action ink without clipping the
+        // surface's antialiased fill or border a second time.
+        child: Material(
+          type: MaterialType.transparency,
+          borderRadius: BorderRadius.circular(PregoRadius.x2l),
+          clipBehavior: Clip.antiAlias,
+          child: Padding(
+            padding: const EdgeInsets.all(PregoSpacing.xl),
+            child: _buildBody(prego, brightness: Theme.of(context).brightness),
+          ),
         ),
       ),
     );
@@ -275,7 +277,7 @@ class const PregoInlineAlertsNotifications({
     );
   }
 
-  Widget _accentGradient(PregoColors colors) {
+  RadialGradient _accentGradient(PregoColors colors) {
     final rim = switch (type) {
       PregoInlineAlertsNotificationsType.info || PregoInlineAlertsNotificationsType.loading => colors.bgSurface5,
       PregoInlineAlertsNotificationsType.success => colors.bgSuccessSecondary,
@@ -283,18 +285,14 @@ class const PregoInlineAlertsNotifications({
       PregoInlineAlertsNotificationsType.error => colors.bgErrorSecondary,
     };
 
-    return DecoratedBox(
-      decoration: BoxDecoration(
-        gradient: RadialGradient(
-          center: Alignment.topCenter,
-          radius: 1,
-          transform: const _WideEllipseGradientTransform(),
-          // Figma holds the surface colour through 60% of the ellipse, then
-          // fades to the status tint, with 20% opacity over the whole gradient.
-          stops: const [0.6, 1],
-          colors: [colors.bgSurface5.withValues(alpha: 0.20), rim.withValues(alpha: 0.20)],
-        ),
-      ),
+    return RadialGradient(
+      center: Alignment.topCenter,
+      radius: 1,
+      transform: const _WideEllipseGradientTransform(),
+      // Flatten Figma's 20%-opacity tint onto the surface so the rounded
+      // background is painted once, rather than as overlapping clipped fills.
+      stops: const [0.6, 1],
+      colors: [colors.bgSurface5, Color.alphaBlend(rim.withValues(alpha: 0.20), colors.bgSurface5)],
     );
   }
 

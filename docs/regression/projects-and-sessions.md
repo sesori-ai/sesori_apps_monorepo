@@ -87,7 +87,11 @@ state.
   gentle opacity transition. Finished outcomes use the shared PREGO result-card
   geometry, expanding rather than clipping at accessibility text sizes: a
   success, warning, or error glow rises from the lower edge and the matching
-  tinted Dismiss action remains available until the result clears.
+  tinted Dismiss action remains available until the result clears. Loading and
+  every result state use a vertically centered 20px leading mark with identical
+  edge inset and icon-to-text gap. Titles do not shift horizontally between
+  states; at standard text size, icon and title positions stay fixed vertically
+  too. Enlarged text may grow the card without changing those horizontal insets.
 - A scan the pull started is reported by that row alone: the pull raises no
   confirmation of its own, having run no ordinary refresh. A scan started from
   harness settings is the exception, because that surface has no row — it

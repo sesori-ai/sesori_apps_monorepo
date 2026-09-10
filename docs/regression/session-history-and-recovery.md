@@ -13,6 +13,17 @@ reconnect or restart.
   never starts a stopped backend. Only a first backfill or a re-read after the
   backend advanced may reach it; backfill is lazy and per session, and a session
   advanced outside Sesori is detected as stale, re-read, and re-cached.
+- A store-only read (`storedOnly` on `POST /session/messages`) never backfills.
+  It serves the store even when that store is behind the harness and reports
+  that through `awaitingHarnessSync`, so a caller that cannot wake the harness
+  still receives whatever transcript exists. A session for which the bridge
+  holds no row reads as an empty transcript that the harness still owes. It
+  also stays off the session write queue, so another reader's slow or failing
+  backfill can neither delay it nor fail it; its rows and its sync marker come
+  from one database snapshot instead, so a concurrent backfill or purge lands
+  wholly before or wholly after the page. Every other read keeps the
+  backfilling behavior, and an older app or bridge on either side of the
+  contract keeps it too.
 - Session detail resolves canonical catalog metadata before the history request.
   A block does not itself withhold history: a cold blocked open still attempts the
   read, and an already-synced session renders its transcript with the block
@@ -193,7 +204,7 @@ reconnect or restart.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped. Automated client: a cold management block resolves canonical metadata, renders the stored transcript with the block reported in the composer's place when the read succeeds, and falls back to the history-unavailable state when it fails. |
+| L1 Smoke | Headless bridge, one representative plugin: a previously synced session's transcript is served with every backend stopped, and an unsynced session's store-only read serves its stored rows flagged as awaiting harness sync without starting one. Automated client: a cold management block resolves canonical metadata, renders the stored transcript with the block reported in the composer's place when the read succeeds, and falls back to the history-unavailable state when it fails. |
 | L2 Routine | Automated client: a live block preserves messages; a block or metadata failure during reload restores the transcript and replays buffered events; content restoration failure stays read-only with guidance to reopen the chat. Live plugin, representative: first backfill, replayed prompt-default persistence and response precedence, live capture that becomes immediately queryable, semantic identity reconciliation with ordered-context and multiplicity preservation (including normalized attachments), stale re-read ordering for retained live-only rows, and paging older messages on a transcript longer than one page. Automated OpenCode, Codex, Claude, and Pi coverage preserves available historical effort or thinking-level variants from assistant/error messages; Codex also trims only verified sub-agent copied prefixes while preserving root and ordinary-fork history, and replays rollback markers to remove reverted turn content and subtasks while retaining prior and subsequently appended turns, including cumulative rollbacks and fork-prefix boundaries; Claude also covers one stable live/replay identity for a CLI-authored API failure and suppression of its duplicate terminal result, while Pi covers active-branch attribution and file fallback. Automated Pi coverage also includes v1-v3 fallback migration, compaction visibility, hidden-context decoding, bounded tool/image mapping, content-index streaming, early tool-call metadata with the pre-0.84.3 fallback, duplicate terminal suppression, cumulative tool updates, and live/replay final parity. Automated DeepSeek coverage checks direct-parent live/replay tile identity, multiple ordered storage-safe content runs, latest metadata across pages, unbound startup errors, and live-state isolation. |
 | L3 Release | Client end to end on the release-target client platform: compare cold blocked history, a live block after history renders, and restored eligibility without route reopening. Every supporting production plugin: open a long session, page back, continue a live turn, reopen cold, and confirm live and replayed content converge including tool parts and image parts where declared. Grok additionally retains its exact loaded model/effort attribution across first load, cold reopen, plugin restart, and bridge restart. |
 | L4 Extended | Client end to end on macOS desktop and iOS, plus an Android variation: change availability from a second client while history is visible and while reload is in flight, page back through an older page on a synced blocked session, and confirm an unsynced blocked session reports the block instead of an empty or failed transcript; reconnect inside/outside replay and switch bridge identity without losing retained or buffered content. Relay integration plus owning client automated coverage, every supporting production plugin: session advanced through the backend's own CLI, plugin restart and event-stream-gap invalidation, bridge restart, client reconnect inside and outside the replay window without refresh losing concurrently finalized content, two clients on one session, a slow request beside unrelated traffic. Copilot and Grok additionally replace their ACP process, reload the same session, and converge standard replay with the bridge transcript without duplicate live delivery. |
@@ -230,6 +241,11 @@ rules where supported.
   marks its own updates unread. Interaction returns before a successful content/options refresh. A failed restoration erases the retained
   transcript or tells the user that availability itself could not be checked. A
   blocked state other than authentication-required offers harness-status Recheck.
+- A store-only read reaches the harness, waits on or fails with another reader's
+  backfill, fails instead of serving what the store holds, returns parts that
+  belong to a different transcript than its messages, or misreports freshness in
+  either direction — a current store flagged as awaiting sync, or a stale one
+  served as complete.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders
@@ -294,10 +310,11 @@ rules where supported.
 ## Known Limitations
 
 - A first-ever open or a stale re-read still needs the backend; if it is
-  unavailable and cannot auto-start, that read fails. There is no guaranteed
-  store-only read in the current history contract, so a blocked session whose
-  store is unsynced cannot show its transcript at all; it reports the block
-  instead. A blocked session that is synced reads and pages normally.
+  unavailable and cannot auto-start, that read fails. A store-only read avoids
+  that at the cost of a possibly incomplete transcript. A store-only read also
+  skips the open-tool-part sweep, because that sweep is a queued write; a tool
+  tile left spinning by an abrupt bridge death stays that way until the next
+  ordinary read.
 - An independently owned backend can outlive a bridge restart holding state an
   inactive runtime slot cannot see, so bridge inactivity and backend
   unavailability are not fully distinguished. Agent, provider, and command

@@ -147,6 +147,54 @@ void main() {
       expect(running, starting);
     });
 
+    for (final textScale in [1.0, 2.0]) {
+      testWidgets("keeps scan marks and text in place across states at ${textScale}x text", (tester) async {
+        final loc = await AppLocalizations.delegate.load(const Locale("en"));
+        final states = [
+          (const CatalogRescanState.starting(pluginIds: {"codex"}), loc.catalogScanRunningTitle),
+          (
+            const CatalogRescanState.running(activePluginName: "Codex", sessionsSeen: 148, pluginIds: {"codex"}),
+            loc.catalogScanRunningTitle,
+          ),
+          (
+            const CatalogRescanState.succeeded(
+              harnessCount: 1,
+              counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 3),
+            ),
+            loc.catalogScanCompleteTitle,
+          ),
+          (const CatalogRescanState.partlyFailed(succeededCount: 1, failedCount: 1), loc.catalogScanPartlyFailedTitle),
+          (const CatalogRescanState.failed(harnessCount: 1), loc.catalogScanFailedTitle),
+          (const CatalogRescanState.unsupported(), loc.catalogScanUnsupportedTitle),
+          (const CatalogRescanState.noHarness(), loc.catalogScanNoHarnessTitle),
+        ];
+        Rect? initialMark;
+        Offset? initialTitle;
+        for (final (scan, title) in states) {
+          await pumpRow(tester, scan, width: 402, textScaler: TextScaler.linear(textScale), reducedMotion: true);
+          final card = find.byKey(ValueKey(scan.isLive ? "prego-deep-scan-card" : "catalog-scan-terminal-card"));
+          final mark = find.byKey(ValueKey(scan.isLive ? "prego-deep-scan-loader" : "catalog-scan-terminal-icon"));
+          final markRect = tester.getRect(mark);
+          final titleOffset = tester.getTopLeft(find.text(title));
+          initialMark ??= markRect;
+          initialTitle ??= titleOffset;
+          expect(markRect.size, const Size.square(20));
+          expect(markRect.left, initialMark.left);
+          expect(markRect.center.dy, tester.getCenter(card).dy);
+          expect(titleOffset.dx, initialTitle.dx);
+          if (textScale == 1) {
+            expect(markRect, initialMark);
+            expect(titleOffset, initialTitle);
+          } else if (!scan.isLive) {
+            final textBlock = find.ancestor(of: find.text(title), matching: find.byType(Column)).first;
+            final action = find.byKey(const ValueKey("catalog-scan-dismiss-action"));
+            expect(tester.getTopLeft(action).dy - tester.getBottomLeft(textBlock).dy, PregoSpacing.xs);
+          }
+          expect(tester.takeException(), isNull);
+        }
+      });
+    }
+
     testWidgets("reports the scan before any harness has reported progress", (tester) async {
       await pumpRow(tester, const CatalogRescanState.starting(pluginIds: {"codex"}));
 
@@ -396,7 +444,7 @@ void main() {
       expect(tester.getSize(row), const Size(402, 101));
       expect(tester.getSize(card), const Size(370, 69));
       expect(tester.getTopLeft(card) - tester.getTopLeft(row), const Offset(16, 16));
-      expect(tester.getSize(mark), const Size.square(22));
+      expect(tester.getSize(mark), const Size.square(20));
       expect(tester.getSize(action), const Size(76, 36));
 
       final container = tester.widget<Container>(card);
