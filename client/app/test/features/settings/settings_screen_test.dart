@@ -12,6 +12,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/settings/widgets/chat_input_mode_picker.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/platform/package_info_client.dart";
 import "package:sesori_mobile/features/creator_recording/creator_recording_sheet.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
@@ -157,6 +158,7 @@ void main() {
     );
 
     await GetIt.instance.reset();
+    GetIt.instance.registerSingleton<PackageInfoClient>(PackageInfoClient());
     connectionStatuses = BehaviorSubject.seeded(_connected);
     connectionService = MockConnectionService();
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
