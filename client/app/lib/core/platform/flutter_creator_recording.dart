@@ -25,7 +25,7 @@ class FlutterCreatorRecording({
     await for (final rawEvent in _channelClient.events) {
       try {
         final event = _requiredMap(rawEvent, description: "creator recording event");
-        final type = _requiredString(event, "type");
+        final type = _requiredString(map: event, key: "type");
         final payload = event["payload"];
         switch (type) {
           case "recordingSaving":
@@ -34,7 +34,12 @@ class FlutterCreatorRecording({
             yield CreatorRecordingCompleted(artifact: _artifactFrom(payload));
           case "recordingFailed":
             final details = _requiredMap(payload, description: "recording failure");
-            yield CreatorRecordingFailed(failure: _failureFromCode(_requiredString(details, "code")));
+            yield CreatorRecordingFailed(
+              failure: _failureFromCode(
+                code: _requiredString(map: details, key: "code"),
+                innerError: null,
+              ),
+            );
           default:
             throw const FormatException("Unknown creator recording event type");
         }
@@ -159,19 +164,22 @@ class FlutterCreatorRecording({
     }
   }
 
+  // ignore: no_slop_linter/prefer_specific_type, validate raw platform-codec values before constructing the typed artifact
   static CreatorRecordingArtifact _artifactFrom(Object? raw) {
     try {
       final map = _requiredMap(raw, description: "creator recording artifact");
       return CreatorRecordingArtifact(
-        id: _requiredString(map, "id"),
-        createdAt: DateTime.parse(_requiredString(map, "createdAt")),
-        duration: Duration(milliseconds: _requiredInt(map, "durationMs")),
-        composedVideoPath: _requiredString(map, "composedVideoPath"),
-        screenVideoPath: _requiredString(map, "screenVideoPath"),
-        cameraVideoPath: _requiredString(map, "cameraVideoPath"),
-        microphoneAudioPath: _requiredString(map, "microphoneAudioPath"),
-        movementMetadataPath: _requiredString(map, "movementMetadataPath"),
-        manifestPath: _requiredString(map, "manifestPath"),
+        id: _requiredString(map: map, key: "id"),
+        createdAt: DateTime.parse(_requiredString(map: map, key: "createdAt")),
+        duration: Duration(
+          milliseconds: _requiredInt(map: map, key: "durationMs"),
+        ),
+        composedVideoPath: _requiredString(map: map, key: "composedVideoPath"),
+        screenVideoPath: _requiredString(map: map, key: "screenVideoPath"),
+        cameraVideoPath: _requiredString(map: map, key: "cameraVideoPath"),
+        microphoneAudioPath: _requiredString(map: map, key: "microphoneAudioPath"),
+        movementMetadataPath: _requiredString(map: map, key: "movementMetadataPath"),
+        manifestPath: _requiredString(map: map, key: "manifestPath"),
       );
     } on Object catch (error) {
       throw CreatorRecordingFailure(
@@ -182,38 +190,44 @@ class FlutterCreatorRecording({
   }
 
   static CreatorRecordingFailure _failureFromPlatform(PlatformException error) =>
-      _failureFromCode(error.code, innerError: error);
+      _failureFromCode(code: error.code, innerError: error);
 
-  static CreatorRecordingFailure _failureFromCode(String code, {Object? innerError}) => CreatorRecordingFailure(
-    reason: switch (code) {
-      "unsupported" => CreatorRecordingFailureReason.unsupported,
-      "camera_permission_denied" => CreatorRecordingFailureReason.cameraPermissionDenied,
-      "microphone_permission_denied" => CreatorRecordingFailureReason.microphonePermissionDenied,
-      "portrait_required" => CreatorRecordingFailureReason.portraitRequired,
-      "screen_capture_unavailable" => CreatorRecordingFailureReason.screenCaptureUnavailable,
-      "recording_already_in_progress" => CreatorRecordingFailureReason.recordingAlreadyInProgress,
-      "recording_not_in_progress" => CreatorRecordingFailureReason.recordingNotInProgress,
-      "storage_failed" => CreatorRecordingFailureReason.storage,
-      "capture_failed" => CreatorRecordingFailureReason.capture,
-      "export_failed" => CreatorRecordingFailureReason.export,
-      _ => CreatorRecordingFailureReason.unexpected,
-    },
-    innerError: innerError,
-  );
+  static CreatorRecordingFailure _failureFromCode({required String code, required Object? innerError}) =>
+      CreatorRecordingFailure(
+        reason: switch (code) {
+          "unsupported" => CreatorRecordingFailureReason.unsupported,
+          "camera_permission_denied" => CreatorRecordingFailureReason.cameraPermissionDenied,
+          "microphone_permission_denied" => CreatorRecordingFailureReason.microphonePermissionDenied,
+          "portrait_required" => CreatorRecordingFailureReason.portraitRequired,
+          "screen_capture_unavailable" => CreatorRecordingFailureReason.screenCaptureUnavailable,
+          "recording_already_in_progress" => CreatorRecordingFailureReason.recordingAlreadyInProgress,
+          "recording_not_in_progress" => CreatorRecordingFailureReason.recordingNotInProgress,
+          "storage_failed" => CreatorRecordingFailureReason.storage,
+          "capture_failed" => CreatorRecordingFailureReason.capture,
+          "export_failed" => CreatorRecordingFailureReason.export,
+          _ => CreatorRecordingFailureReason.unexpected,
+        },
+        innerError: innerError,
+      );
 
+  // ignore: no_slop_linter/prefer_specific_type, the standard platform codec decodes maps with heterogeneous keys and values
   static Map<Object?, Object?> _requiredMap(Object? value, {required String description}) {
+    // ignore: no_slop_linter/prefer_specific_type, preserve the codec value until individual fields are validated below
     if (value is Map<Object?, Object?>) return value;
+    // ignore: no_slop_linter/prefer_specific_type, normalize raw codec maps at this boundary
     if (value is Map) return Map<Object?, Object?>.from(value);
     throw FormatException("Invalid $description");
   }
 
-  static String _requiredString(Map<Object?, Object?> map, String key) {
+  // ignore: no_slop_linter/prefer_specific_type, validate a field from a heterogeneous platform-codec map
+  static String _requiredString({required Map<Object?, Object?> map, required String key}) {
     final value = map[key];
     if (value is String && value.isNotEmpty) return value;
     throw FormatException("Missing $key");
   }
 
-  static int _requiredInt(Map<Object?, Object?> map, String key) {
+  // ignore: no_slop_linter/prefer_specific_type, validate a field from a heterogeneous platform-codec map
+  static int _requiredInt({required Map<Object?, Object?> map, required String key}) {
     final value = map[key];
     if (value is int) return value;
     if (value is num) return value.toInt();
