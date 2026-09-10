@@ -3,32 +3,28 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `127ee3166f`, containing merged Codex
-  coverage [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424)
-  at `b945755bfe`.
+- **Implementation base:** `main` at `517cbb9703`, containing merged Grok
+  history [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
-  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 are merged; bounded Step 9
-  managed-0.153.4 actual-plugin policy QA passed on 2026-09-10. Harness
-  follow-ups remain active.
-- **Next action:** [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426)
-  is open/current under exact title
-  `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]`.
-  Its published head is `0b0f79a859db380765359831171684cb4df65229`;
-  approved feedback head `b0d4974e116a2b413f0d0bfe9844d67d1dfe8a23`
-  is preserved on `claude-inline-subtasks-grok-history-pr1426-approved-checkpoint`,
-  while the current Step 3 branch adds packaging only. Step 4 is queued on
-  `claude-inline-subtasks-grok-history-coverage-step4-successor`; original full
-  checkpoint `704006bf8e8adbd02935fd81cfddd541d5bd9b7d` and original Step 4
-  `fb47206bd0ed4cc521dde4a0f921281d8d1a8d33` remain intact.
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–3 are merged;
+  bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
+  2026-09-10. Harness follow-ups remain active.
+- **Next action:** [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427)
+  is current on `claude-inline-subtasks-grok-history-coverage-step4-current`
+  under exact title
+  `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]`.
+  PR #1426 merged Step 3 at `517cbb9703025633efbb2658136d8aa0879daa75`;
+  Step 4 remains unchecked until PR #1427 merges.
   [Policy QA](followups/codex-plugin-qa.md) verified side-effect-free
   root/named-child confirmation, root-only `keep`, named-child subtree
   isolation, root full-stop snapshot fanout, authoritative terminals plus
   plugin settlement, false atomic acknowledgment, and runtime survival. No
   pending input surfaced, so the executed policy scope passed but the live
   matrix is partial; no phone, relay, or desktop coverage is claimed. DeepSeek #1363, #1370, and
-  live-QA crash fix #1379 are merged. Requested phone-only stop/input checks
+  live-QA crash fix #1379 are merged. Codex coverage #1424 merged at
+  `b945755bfe`; historical Codex titles remain unchanged. Requested phone-only stop/input checks
   passed; see `followups/deepseek-phone-qa.md`. Desktop remains deferred by
   user choice; overall plan stays active for Grok, DeepSeek documentation, and
   Cursor follow-ups.
@@ -188,11 +184,11 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) merged at `db2b71134d`; full live/replay production and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases with explicit unexecuted coverage |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | [PR #1420](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1420) merged at `ae2a9297e3`; write-path/lifecycle coverage and docs |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) merged at `77165f784f`; per-thread snapshot fanout, non-atomic (not native subtree cancellation); automated coverage included |
-| [x] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) merged at `b945755bfe`; pending-input live case unexecuted |
+| [x] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) merged at `b945755bfe`; managed-0.153.4 actual-plugin policy QA passed; pending-input live case unexecuted |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/6) |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/6) |
-| [ ] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) open/current; updated local `claude-inline-subtasks-grok-history-step3` keeps approved production, root/direct-child integration, and no-`loadSession` coverage while moving supplemental unit coverage additively |
-| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | Queued on new `claude-inline-subtasks-grok-history-coverage-step4-successor`; integrates original `fb47206bd` tests/docs plus moved ACP collector and Grok repository coverage against the approved Collector/async API |
+| [x] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) merged at `517cbb9703`; approved production, root/direct-child integration, and no-`loadSession` coverage |
+| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | Integrated on `claude-inline-subtasks-grok-history-coverage-step4-current`; original `fb47206bd` tests/docs plus moved ACP collector and Grok repository coverage use the approved Collector/async API; remains unchecked until merged |
 | [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | Not started |
 | [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 6/6]` | Not started |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
@@ -554,11 +550,13 @@ and prompt-id conventions before invoking backend-neutral hold/release
 operations.
 
 A second follow-up `architecture-plan-review` on 2026-09-03 covered the later
-stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. It
-rejected one finding, applied without re-review: deferred Grok tool-call state
-moved out of `AcpEventMapper` into a Layer-2
-`AcpDeferredToolCallTracker` with session, disconnect, and process-exit
-cleanup. The stop policy and DeepSeek adapter/plugin ownership passed.
+stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. Its
+historical deferred Grok permission-state finding was superseded before
+implementation: current production has no `AcpDeferredToolCallTracker`, and the
+2026-09-10 unchanged-config probe exposed no denyable permission request or
+persisted outcome. This history step therefore keeps exact spawn suppression
+and accepts denied generic-card omission. The stop policy and DeepSeek
+adapter/plugin ownership passed.
 
 A third follow-up `architecture-plan-review` on 2026-09-03 approved the Codex
 service-owned lifecycle flow and replay replacement, the proportional Grok
@@ -792,8 +790,8 @@ passed root/named-child confirmation and scoped interruption, including
 persisted native terminals, plugin settlement, runtime survival, and the
 non-atomic `subAgentsHandled: false` acknowledgment that retains client fanout.
 The live matrix remains partial because no pending question or permission
-surfaced. Final coverage 9/9 stays unchecked until this documentation step
-merges, and the overall plan remains active for the other harness gates.
+surfaced. Final coverage 9/9 merged as PR #1424 at `b945755bfe`; the overall
+plan remains active for the other harness gates.
 Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-step4-integrated` (`c6aa29a8ce`), while
 `claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and
@@ -801,14 +799,24 @@ Rejected tile work remains at
 untouched. No runtime pin, native source, client/shared contract, database, or
 stop behavior changed in cleanup #1396.
 
-Grok Step 3 review follow-up renamed the new stateful replay seam and Grok
-implementation from mapper to collector, moved shared protocol classification
-below the live/replay collectors, and made history prompt discovery consume
-lazy typed records with first-run cancellation. Architecture and correctness
-review approved production at `b0d4974e`; packaging preserves that checkpoint
-on a named branch and changes no production/generated blob. Step 4 propagation
-is fulfilled on the new successor: Collector imports/names replace Mapper,
-repository/service preparation is awaited, and original plus moved collector,
-repository, service, malformed-boundary, privacy, cancellation, and
-missing-prompt coverage remain present. Original Step 4 stays untouched at
+Grok history Step 3/6 keeps inherited ACP load/auth/drain ownership while a
+replay-local collector consumes standard updates plus both Grok lifecycle
+methods. Typed store → history repository → session service context uses each
+exact child's first child-owned user-message run only when nonblank; a blank or
+missing first run emits no tile, and later runs never substitute. Exact
+metadata-based spawn suppression leaves ordinary tools intact and no empty
+envelope, while one collector preserves deterministic identities/order around
+inserted tiles. DeepSeek's nullable replacement contract remains unchanged.
+Review follow-up renamed the new stateful replay seam and Grok implementation
+from mapper to collector, moved shared protocol classification below the
+live/replay collectors, and made history prompt discovery consume lazy typed
+records with first-run cancellation. Architecture and correctness review
+approved production at `b0d4974e`; packaging preserves that checkpoint on a
+named branch and changes no production/generated blob. Step 4 coverage is
+current on `claude-inline-subtasks-grok-history-coverage-step4-current` in PR
+#1427: Collector imports/names replace Mapper, tests use Dart `await` when
+calling asynchronous repository/service preparation, and original plus moved
+collector, repository, service, malformed-boundary, privacy, cancellation, and
+missing-prompt coverage remain present. This records completed async call
+semantics, not unfinished preparation work. Original Step 4 stays untouched at
 `fb47206bd`.

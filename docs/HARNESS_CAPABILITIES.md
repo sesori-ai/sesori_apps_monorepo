@@ -275,11 +275,18 @@ when invoked, without a Web BFF, HTTP listener, extra process, or telemetry expo
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03 and 2026-09-10) sends
 `subagent_spawned`/`subagent_progress`/`subagent_finished` with parent and child
-session ids as extension notifications and streams child updates under the child
-id. Sesori loads exact child transcripts and rebuilds root tiles from persisted
-lifecycle plus each exact child's first prompt. Missing prompts produce no tile.
-Scoped stop remains unimplemented. A root `session/cancel` cancels background
-children too, so main-agent-only is not supported.
+session ids as `_x.ai/session_notification` extension notifications and streams
+child updates under the child id. Root `session/load` replays lifecycle as
+`_x.ai/session/update`; an unfinished loaded episode can settle later through
+`_x.ai/session_notification`, so both remain in the replay drain. Sesori exposes
+persisted/live children, loads child transcripts by exact native id, and rebuilds
+root tiles from each exact child's first user-message run only when that run is
+nonblank, without reading live tracker state. A blank or missing first run
+produces no tile; later runs never substitute. Permission denial persistence is
+unverified and has no outcome model. Grok exposes `_x.ai/subagent/cancel` per
+child, but scoped-stop integration remains unimplemented. A root
+`session/cancel` cancels background children too, so main-agent-only is not
+supported.
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the

@@ -94,12 +94,20 @@ reconnect or restart.
 - Grok history uses standard ACP `session/load` on a dedicated short-lived
   connection. Historical `_x.ai/session/update` and standard `session/update`
   frames are suppressed from the live stream only during the load window;
-  extension frames received outside it remain live. Root replay rebuilds
-  deterministic child-linked tiles from typed persisted lifecycle and each
-  exact child's first non-empty user-message run;
-  child ids load their own standard transcript. Missing child prompts produce no
-  tile. Replay stamps the loaded model/provider/effort selection and never reads
-  or mutates live child state.
+  extension frames received outside it remain live. The plugin reads only typed
+  `summary.json` and `updates.jsonl` session data under the known Grok sessions
+  tree for catalog attribution and child-owned prompt context; credential and
+  configuration files remain outside the API. Root replay suppresses exact
+  metadata-identified `spawn_subagent` cards and inserts one child-linked tile
+  at the persisted lifecycle position only when that exact child's first
+  user-message run is nonblank. A blank or missing first run produces no tile;
+  later runs never substitute. Child ids use the same inherited load transport
+  and replay their own standard prompt/tool/text history. Replay initialization validates Grok
+  identity without changing live process defaults; after load, the session's
+  complete model/provider/effort selection stamps all assistant/error/tile
+  envelopes. Both persisted `_x.ai/session/update` facts and late
+  `_x.ai/session_notification` settlement remain inside the existing quiet drain
+  and never read or mutate live child state or the event stream.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their
@@ -316,9 +324,12 @@ rules where supported.
   normalizes live and replay differently.
 - A Copilot restart prompts before `session/load`, duplicates replay as new live
   output, or reads private history files instead of the ACP replay boundary.
-- Grok replay mutates live defaults during initialize, stamps messages from an
+- Grok replay mutates live defaults or child state, stamps messages from an
   incomplete tuple, loses loaded effort/model attribution, duplicates replay as
-  live output, prompts before cold load, or reads private local files.
+  live output, prompts before cold load, reads credential/configuration files,
+  merges child prompt chunks across the first non-user boundary, renders both a
+  generic spawn card and subtask tile, or fabricates a tile without a child-owned
+  prompt.
 
 ## Known Limitations
 
