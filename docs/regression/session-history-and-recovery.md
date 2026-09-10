@@ -64,8 +64,11 @@ reconnect or restart.
 - When DeepSeek needs a first or stale backfill, its plugin calls
   `deepseek/session/history` through the one long-lived adapter connection and
   reads isolated persistence without resuming an agent or starting a scratch
-  process. It pages at complete message boundaries, returns at most 100 messages
-  per page, rejects non-progressing or over-100-page traversal, and reuses the
+  process. Native session observations preserve seeded-child inherited boundaries
+  and parent lineage. Released JSONL sessions use the harness's native format
+  migration; history reads leave source bytes unchanged, and resuming may create
+  a new native generation. It pages at complete message boundaries, returns at
+  most 100 messages per page, rejects non-progressing or over-100-page traversal, and reuses the
   shared ACP replay collector. Direct user message IDs remain exact; assistant
   IDs use the deterministic ACP projection. Known DeepSeek history metadata is
   decoded once into typed fields and validated at the API boundary; malformed

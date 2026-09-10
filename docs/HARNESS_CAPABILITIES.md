@@ -262,11 +262,16 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.4 over dsh 0.1.1-rc.2 is the managed target
+⁹ DeepSeek's published adapter 0.1.5 over dsh 0.1.5-rc.2 is the managed target
 and minimum accepted runtime. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
 Released clients retain their own child fanout; final phone/desktop E2E remains outstanding.
+The native model catalog includes `deepseek-flash` (DeepSeek V4.1 Flash) with
+image input and reasoning controls. Refresh rereads the installed harness's
+configured catalog; it does not upgrade that harness or fetch a live provider catalog.
+Native `web_search` and `web_fetch` tools are enabled: outbound requests occur
+when invoked, without a Web BFF, HTTP listener, extra process, or telemetry exporter.
 
 ¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
 `subagent_finished` with parent and child session ids as
