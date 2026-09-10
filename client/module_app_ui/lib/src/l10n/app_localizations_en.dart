@@ -845,6 +845,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListUntitled => 'Untitled session';
 
   @override
+  String get sessionListUnknownDate => 'Unknown date';
+
+  @override
   String get sessionListRefreshSuccess => 'Sessions updated';
 
   @override

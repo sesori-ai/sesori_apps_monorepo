@@ -5,11 +5,35 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "../../l10n/app_localizations.dart";
 import "../../widgets/remote_failure_view.dart";
-import "archived_session_date_label.dart";
+import "session_date_label.dart";
 import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
+
+/// Chooses one stable heading for a session without changing the service-owned
+/// ordering of [SessionListLoaded.sessions]. The loaded-state resolver supplies
+/// running classification; presentation only chooses the localized heading.
+String _sessionListHeading({
+  required Session session,
+  required SessionListFilter filter,
+  required bool isRunning,
+  required DateTime now,
+  required AppLocalizations loc,
+}) {
+  final isArchivedList = filter == SessionListFilter.archived;
+  if (!isArchivedList && isRunning) {
+    return loc.sessionListRunning;
+  }
+
+  final timestamp = isArchivedList ? session.time?.archived : session.time?.updated;
+  return sessionDateLabel(
+    date: timestamp == null ? null : DateTime.fromMillisecondsSinceEpoch(timestamp),
+    now: now,
+    loc: loc,
+  );
+}
 
 /// Pull-to-refresh handler shared by [SessionListScaffold] and
 /// [SessionListPanel]: re-fetches the session list and reports the outcome via
@@ -60,22 +84,18 @@ class const SessionListContent({
             itemBuilder: (_, index, session) {
               final isArchived = session.time?.archived != null;
               final activityInfo = loaded.activeSessionIds[session.id];
-
-              final archiveLabel = loaded.filter == SessionListFilter.archived
-                  ? archivedSessionDateLabel(
-                      archivedAt: DateTime.fromMillisecondsSinceEpoch(
-                        session.time?.archived ?? (throw StateError("Archive row requires archive time")),
-                      ),
-                      now: now,
-                      loc: loc,
-                    )
-                  : null;
-              final previousLabel = archiveLabel != null && index > 0
-                  ? archivedSessionDateLabel(
-                      archivedAt: DateTime.fromMillisecondsSinceEpoch(
-                        loaded.sessions[index - 1].time?.archived ??
-                            (throw StateError("Archive row requires archive time")),
-                      ),
+              final heading = _sessionListHeading(
+                session: session,
+                filter: loaded.filter,
+                isRunning: loaded.isSessionRunning(session: session),
+                now: now,
+                loc: loc,
+              );
+              final previousHeading = index > 0
+                  ? _sessionListHeading(
+                      session: loaded.sessions[index - 1],
+                      filter: loaded.filter,
+                      isRunning: loaded.isSessionRunning(session: loaded.sessions[index - 1]),
                       now: now,
                       loc: loc,
                     )
@@ -83,11 +103,11 @@ class const SessionListContent({
               return Column(
                 crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  if (archiveLabel != null && archiveLabel != previousLabel)
+                  if (heading != previousHeading)
                     Padding(
                       padding: const EdgeInsetsDirectional.fromSTEB(16, 16, 16, 12),
                       child: Text(
-                        archiveLabel,
+                        heading,
                         style: context.prego.textTheme.textSm.regular.copyWith(
                           color: context.prego.colors.textSecondary,
                         ),

@@ -459,6 +459,10 @@
     "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
   },
   "sessionListUntitled": "Untitled session",
+  "sessionListUnknownDate": "Unknown date",
+  "@sessionListUnknownDate": {
+    "description": "Heading for sessions whose updated or archive timestamp is unavailable."
+  },
   "sessionListRefreshSuccess": "Sessions updated",
   "sessionListRefreshFailed": "Could not refresh sessions",
   "sessionListErrorTitle": "Failed to load sessions",
@@ -1441,9 +1445,15 @@
   "archivedSessionsTitle": "Archived tasks",
   "archivedSessionsClose": "Close archived sessions",
   "archivedSessionsToday": "Today",
+  "@archivedSessionsToday": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsYesterday": "Yesterday",
+  "@archivedSessionsYesterday": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsThisWeek": "This week",
+  "@archivedSessionsThisWeek": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsLastWeek": "Last week",
+  "@archivedSessionsLastWeek": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsThisMonth": "This month",
-  "archivedSessionsLastMonth": "One month ago"
+  "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived task lists."},
+  "archivedSessionsLastMonth": "One month ago",
+  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived task lists."}
 }

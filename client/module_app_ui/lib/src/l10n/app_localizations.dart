@@ -1645,6 +1645,12 @@ abstract class AppLocalizations {
   /// **'Untitled session'**
   String get sessionListUntitled;
 
+  /// Heading for sessions whose updated or archive timestamp is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown date'**
+  String get sessionListUnknownDate;
+
   /// No description provided for @sessionListRefreshSuccess.
   ///
   /// In en, this message translates to:
@@ -3997,37 +4003,37 @@ abstract class AppLocalizations {
   /// **'Close archived sessions'**
   String get archivedSessionsClose;
 
-  /// No description provided for @archivedSessionsToday.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'Today'**
   String get archivedSessionsToday;
 
-  /// No description provided for @archivedSessionsYesterday.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'Yesterday'**
   String get archivedSessionsYesterday;
 
-  /// No description provided for @archivedSessionsThisWeek.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'This week'**
   String get archivedSessionsThisWeek;
 
-  /// No description provided for @archivedSessionsLastWeek.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'Last week'**
   String get archivedSessionsLastWeek;
 
-  /// No description provided for @archivedSessionsThisMonth.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'This month'**
   String get archivedSessionsThisMonth;
 
-  /// No description provided for @archivedSessionsLastMonth.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'One month ago'**
