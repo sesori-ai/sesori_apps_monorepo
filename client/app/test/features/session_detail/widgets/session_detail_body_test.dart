@@ -1267,6 +1267,45 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  testWidgets("reconnect management refresh preserves composer focus and typing", (tester) async {
+    var loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
+    final states = StreamController<SessionDetailState>();
+    addTearDown(states.close);
+    whenListen(cubit, states.stream, initialState: loaded);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    await enterTypingMode(tester);
+    await tester.enterText(find.byType(EditableText), "before reconnect");
+    final composer = tester.state(find.byType(PromptInput));
+
+    const config = ServerConnectionConfig(relayHost: "relay.example", authToken: null);
+    for (final status in [
+      const ConnectionStatus.connectionLost(config: config),
+      const ConnectionStatus.reconnecting(config: config),
+      ConnectionStatus.connected(config: config, health: testHealthResponse()),
+    ]) {
+      loaded = loaded.copyWith(
+        interaction: const SessionInteractionCalculator().calculate(
+          pluginId: "opencode",
+          managementResult: const PluginManagementLoadResult.loading(),
+          connectionStatus: status,
+          previous: loaded.interaction,
+        ),
+      );
+      states.add(loaded);
+      await tester.pumpAndSettle();
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(tester.state(find.byType(PromptInput)), same(composer));
+      expect(composerFocus(tester).hasFocus, isTrue);
+      expect(find.text("before reconnect"), findsOneWidget);
+      expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+    }
+
+    await tester.enterText(find.byType(EditableText), "continue while management loads");
+    expect(find.text("continue while management loads"), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("pressing send keeps the composer field focused", (tester) async {
     when(
       () => cubit.sendMessage(
