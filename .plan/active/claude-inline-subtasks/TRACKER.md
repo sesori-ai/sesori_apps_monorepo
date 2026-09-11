@@ -3,9 +3,8 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `116392cb711bf8fbe3cc21fea3ea0141f651c3e7`,
-  containing merged Cursor generic Task lifecycle
-  [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438).
+- **Implementation base:** Cursor Step 3 merged as
+  [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) at `bb85f48148`.
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -13,10 +12,10 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** review and merge Cursor completed foreground live tiles
-  Step 3/6. Step 2 merged as PR #1438 at `116392cb71`; Step 3 stays unchecked
-  pending merge. Full reviewed
-  checkpoint `5cc54ad013` is preserved by branches
+- **Next action:** Cursor safe Task stop Step 4/6 is implemented and checked
+  locally on its predecessor-based successor branch, unpublished and ready to
+  regenerate from merged Step 3. No Step 5 replay or native QA is included.
+  Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
   was split to stay near the owner's 1,500-line publication limit. Refs
@@ -208,8 +207,8 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
 | [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Implemented locally, pending merge: exact completed-phase correlation, minimal presentation DTO fields, one-shot childless live replacement, tests, and capability/docs update |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerate after Step 3; approximately 1,300–1,700 lines for exact active mode-unknown Task count, unresolved-background process residency, typed plugin/bridge/shared refusal and exact client handling, all-policy first guard, named-root stop with post-settlement re-check, queue-drain gate, explicit shared UI limitation, tests, and stop/lifecycle/capability docs |
+| [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Implemented and checked locally, unpublished: exact active mode-unknown Task count, unresolved-background process residency, typed refusal, named-root safe stop, queue-drain gate, limitation UI, tests, and docs; no replay/native QA |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
@@ -526,10 +525,20 @@ post-merge E2E gates are unchanged.
   focused ACP/Cursor/runtime tests, analyzers, and diff checks passed. It added
   no completed tile, replay, stop/refusal, residency, child session, client, or
   runtime/config change.
-- **Cursor Step 3/6 (local, pending merge):** completed foreground live Task
-  correlation and one-shot childless replacement implemented from merged Step 2.
-  Replay, safe stop/refusal, residency, child sessions, client/shared changes,
-  runtime/config changes, and native QA remain absent.
+- **Cursor Step 3/6:** merged as PR #1441 at `bb85f48148`; completed foreground
+  live Task correlation and one-shot childless replacement include closed Task
+  lookup, prior-turn cleanup, initial-terminal support, unknown-status
+  settlement, and ACP-owned prompt-write ordering. Step 4's local predecessor
+  commit is `d3297ad4b9`.
+- **Cursor Step 4/6 (local, checked; unpublished):** exact active Task count,
+  unresolved-background process residency, typed HTTP 409 refusal, named-root
+  cancellation with mandatory post-settlement re-check/HTTP 502 partial failure,
+  client request-lifetime queue gate, and localized restart guidance are
+  implemented. No replay, child session, runtime/config change, native QA, push,
+  or publication is included. No analytics event was added: this typed limit is
+  part of the existing abort action and has no product decision or reporting
+  consumer. Publication must regenerate these Step 4-only commits from merged
+  main and prove tree equivalence; Step 5 remains blocked.
 
 ## Plan Review
 

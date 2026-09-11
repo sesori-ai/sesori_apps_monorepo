@@ -41,6 +41,38 @@ Map<String, dynamic> _$SessionAbortResponseToJson(
   _SessionAbortResponse instance,
 ) => <String, dynamic>{'subAgentsHandled': instance.subAgentsHandled};
 
+_SessionAbortRefusal _$SessionAbortRefusalFromJson(Map json) =>
+    _SessionAbortRefusal(
+      kind: $enumDecode(
+        _$SessionAbortRefusalKindEnumMap,
+        json['kind'],
+        unknownValue: SessionAbortRefusalKind.unknownEnumValue,
+      ),
+      reason: $enumDecode(
+        _$SessionAbortRefusalReasonEnumMap,
+        json['reason'],
+        unknownValue: SessionAbortRefusalReason.unknownEnumValue,
+      ),
+    );
+
+Map<String, dynamic> _$SessionAbortRefusalToJson(
+  _SessionAbortRefusal instance,
+) => <String, dynamic>{
+  'kind': _$SessionAbortRefusalKindEnumMap[instance.kind]!,
+  'reason': _$SessionAbortRefusalReasonEnumMap[instance.reason]!,
+};
+
+const _$SessionAbortRefusalKindEnumMap = {
+  SessionAbortRefusalKind.notPerformed: 'notPerformed',
+  SessionAbortRefusalKind.unknownEnumValue: 'unknown',
+};
+
+const _$SessionAbortRefusalReasonEnumMap = {
+  SessionAbortRefusalReason.residentWorkCompletionUnknown:
+      'residentWorkCompletionUnknown',
+  SessionAbortRefusalReason.unknownEnumValue: 'unknown',
+};
+
 _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>
     _SessionAbortRejection(
       runningSubAgentCount: (json['runningSubAgentCount'] as num).toInt(),

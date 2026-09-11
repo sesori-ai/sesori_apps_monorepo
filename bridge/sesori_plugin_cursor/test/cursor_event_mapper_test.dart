@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 import "dart:typed_data";
 
@@ -467,6 +468,50 @@ void main() {
         target.mapPromptLifecycleFailure(sessionId: "root", failureMessage: "duplicate"),
         isEmpty,
       );
+    });
+
+    test("active count and unresolved residency stay independent through cleanup", () async {
+      final taskTracker = CursorTaskTracker();
+      final target = buildMapper(taskTracker: taskTracker);
+      final changes = <void>[];
+      final done = Completer<void>();
+      taskTracker.residencyChanges.listen(changes.add, onDone: done.complete);
+
+      target.beginTurn(sessionId: "root", messageId: "turn");
+      for (final toolCallId in const ["active", "background"]) {
+        taskUpdate(
+          target: target,
+          sessionId: "root",
+          toolCallId: toolCallId,
+          status: "pending",
+          starts: true,
+          rawOutput: null,
+        );
+      }
+      expect(taskTracker.activeTaskCount(sessionId: "root"), 2);
+      taskUpdate(
+        target: target,
+        sessionId: "root",
+        toolCallId: "background",
+        status: "completed",
+        starts: false,
+        rawOutput: {"isBackground": true},
+      );
+      expect(taskTracker.activeTaskCount(sessionId: "root"), 1);
+      expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: "root"), isTrue);
+      expect(changes, hasLength(1));
+
+      target.beginTurn(sessionId: "root", messageId: "later");
+      expect(taskTracker.activeTaskCount(sessionId: "root"), 0);
+      expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: "root"), isTrue);
+      taskTracker.forgetSession(sessionId: "other");
+      expect(changes, hasLength(1));
+      taskTracker.forgetSession(sessionId: "root");
+      expect(taskTracker.requiresProcessResidency, isFalse);
+      expect(changes, hasLength(2));
+
+      await taskTracker.dispose();
+      await done.future;
     });
 
     test("session and descendant deletion tombstones last until process reset", () {

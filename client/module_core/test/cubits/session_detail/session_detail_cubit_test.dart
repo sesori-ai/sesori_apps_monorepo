@@ -27,6 +27,7 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
@@ -148,6 +149,7 @@ void main() {
       pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
+      sessionAbortService: SessionAbortService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
@@ -183,8 +185,7 @@ void main() {
         addTearDown(cubit.close);
         await awaitState(
           cubit: cubit,
-          predicate: (state) =>
-              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
+          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
           description: "initial harness state",
         );
         final before = cubit.state;
@@ -1440,6 +1441,7 @@ void main() {
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
+        sessionAbortService: SessionAbortService(repository: promptDispatcher),
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),

@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
+
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -494,8 +495,12 @@ void main() {
         ),
       );
 
-      await api.getMessages(sessionId: "session-1", limit: 50, before: 100,
-storedOnly: false,);
+      await api.getMessages(
+        sessionId: "session-1",
+        limit: 50,
+        before: 100,
+        storedOnly: false,
+      );
 
       final verification = verify(
         () => client.post<MessageWithPartsResponse>(
@@ -506,6 +511,68 @@ storedOnly: false,);
       )..called(1);
       final request = verification.captured.single as SessionMessagesRequest;
       expect(request.toJson()["attachmentDelivery"], "storedReference");
+    });
+
+    test("abort trusts only exact typed not-performed 409 and retains transport cause", () async {
+      final transportError = NonSuccessCodeError(
+        errorCode: 409,
+        rawErrorString: jsonEncode(
+          const SessionAbortRefusal(
+            kind: SessionAbortRefusalKind.notPerformed,
+            reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+          ).toJson(),
+        ),
+      );
+      when(
+        () => client.post<SessionAbortResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(transportError));
+
+      await expectLater(
+        api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.confirm),
+        throwsA(
+          isA<SessionAbortApiNotAcceptedException>()
+              .having((error) => error.innerError, "cause", same(transportError))
+              .having(
+                (error) => error.refusal.reason,
+                "reason",
+                SessionAbortRefusalReason.residentWorkCompletionUnknown,
+              ),
+        ),
+      );
+    });
+
+    test("abort leaves malformed, missing, and unknown typed 409s ambiguous", () async {
+      for (final body in [
+        "not-json",
+        jsonEncode(const <String, Object?>{"kind": "notPerformed"}),
+        jsonEncode(const <String, Object?>{
+          "kind": "notPerformed",
+          "reason": "future",
+        }),
+        jsonEncode(const <String, Object?>{
+          "kind": "future",
+          "reason": "residentWorkCompletionUnknown",
+        }),
+      ]) {
+        final transportError = NonSuccessCodeError(errorCode: 409, rawErrorString: body);
+        when(
+          () => client.post<SessionAbortResponse>(
+            any(),
+            fromJson: any(named: "fromJson"),
+            body: any(named: "body"),
+          ),
+        ).thenAnswer((_) async => ApiResponse.error(transportError));
+
+        final result = await api.abortSession(
+          sessionId: "session-1",
+          subAgents: SessionAbortSubAgentPolicy.confirm,
+        );
+        expect((result as ErrorResponse<SessionAbortResponse>).error, same(transportError));
+      }
     });
 
     test("getSessionDiffs posts the session id request", () async {

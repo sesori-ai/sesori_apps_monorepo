@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 /// Live correlation phase for one generic Cursor Task card.
@@ -18,10 +20,24 @@ final class const CursorTaskSessionFound({required final String sessionId}) exte
 /// Cursor-owned correlation for generic Task cards whose foreground/background
 /// mode becomes known only on an explicit terminal standard update.
 ///
-/// Records have no child identity and never affect root activity, counts,
-/// fanout, process residency, or stop behavior.
+/// Records have no child identity and never affect root activity, child counts,
+/// or fanout. Active mode-unknown records and root-level unresolved-background
+/// observations inform Cursor's narrow safe-stop policy.
 final class CursorTaskTracker() {
   final Map<String, Map<String, _CursorTaskRecord>> _bySession = {};
+  final Set<String> _rootsWithUnresolvedBackgroundWork = {};
+  final StreamController<void> _residencyChanges = StreamController<void>.broadcast(sync: true);
+
+  /// Emits only when unresolved process-residency state changes.
+  Stream<void> get residencyChanges => _residencyChanges.stream;
+
+  bool get requiresProcessResidency => _rootsWithUnresolvedBackgroundWork.isNotEmpty;
+
+  int activeTaskCount({required String sessionId}) =>
+      _bySession[sessionId]?.values.where((record) => record.phase == CursorTaskPhase.activeModeUnknown).length ?? 0;
+
+  bool hasUnresolvedBackgroundWork({required String sessionId}) =>
+      _rootsWithUnresolvedBackgroundWork.contains(sessionId);
 
   /// Deleted sessions for the current Cursor process. Process reset clears the
   /// tombstones after the old notification source has been drained.
@@ -73,6 +89,13 @@ final class CursorTaskTracker() {
     };
   }
 
+  /// Retires one known Task into a root-level observation. Cursor exposes no
+  /// terminal identity or running count for work launched in background.
+  void recordUnresolvedBackgroundWork({required String sessionId, required String toolCallId}) {
+    forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
+    if (_rootsWithUnresolvedBackgroundWork.add(sessionId)) _notifyResidencyChanged();
+  }
+
   void forgetInvocation({required String sessionId, required String toolCallId}) {
     final invocations = _bySession[sessionId];
     if (invocations == null) return;
@@ -117,12 +140,25 @@ final class CursorTaskTracker() {
   void forgetSession({required String sessionId}) {
     _deletedSessionIds.add(sessionId);
     _bySession.remove(sessionId);
+    if (_rootsWithUnresolvedBackgroundWork.remove(sessionId)) _notifyResidencyChanged();
   }
 
   /// Drops all process-local correlation and deletion fences after reset.
   void clear() {
+    final residencyChanged = _rootsWithUnresolvedBackgroundWork.isNotEmpty;
     _bySession.clear();
     _deletedSessionIds.clear();
+    _rootsWithUnresolvedBackgroundWork.clear();
+    if (residencyChanged) _notifyResidencyChanged();
+  }
+
+  Future<void> dispose() async {
+    clear();
+    await _residencyChanges.close();
+  }
+
+  void _notifyResidencyChanged() {
+    if (!_residencyChanges.isClosed) _residencyChanges.add(null);
   }
 }
 

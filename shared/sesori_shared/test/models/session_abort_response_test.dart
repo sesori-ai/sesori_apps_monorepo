@@ -16,6 +16,30 @@ void main() {
     expect(response.toJson(), {"subAgentsHandled": false});
   });
 
+  test("typed not-performed refusal requires both discriminators", () {
+    const refusal = SessionAbortRefusal(
+      kind: SessionAbortRefusalKind.notPerformed,
+      reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+    );
+
+    expect(SessionAbortRefusal.fromJson(refusal.toJson()), refusal);
+    for (final invalid in const [
+      <String, Object?>{"kind": "notPerformed"},
+      <String, Object?>{"reason": "residentWorkCompletionUnknown"},
+      <String, Object?>{"kind": null, "reason": "residentWorkCompletionUnknown"},
+      <String, Object?>{"kind": "notPerformed", "reason": null},
+    ]) {
+      expect(() => SessionAbortRefusal.fromJson(invalid), throwsA(anything));
+    }
+    expect(
+      SessionAbortRefusal.fromJson(const {"kind": "future", "reason": "future"}),
+      const SessionAbortRefusal(
+        kind: SessionAbortRefusalKind.unknownEnumValue,
+        reason: SessionAbortRefusalReason.unknownEnumValue,
+      ),
+    );
+  });
+
   test("current handshake round-trips explicit atomic handling", () {
     const request = AbortSessionRequest(
       sessionId: "session",

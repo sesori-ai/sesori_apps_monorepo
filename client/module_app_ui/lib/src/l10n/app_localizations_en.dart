@@ -972,6 +972,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailAbort => 'Stop';
 
   @override
+  String get sessionDetailStopNotAcceptedTitle => 'Session not stopped';
+
+  @override
+  String get sessionDetailStopNotAcceptedBackgroundMessage =>
+      'Sesori couldn’t verify whether background work finished, so it didn’t stop this session. Restart the harness, then try again.';
+
+  @override
+  String get sessionDetailStopNotAcceptedGenericMessage =>
+      'Sesori couldn’t safely stop this session. Restart the harness, then try again.';
+
+  @override
   String get sessionDetailStopScopeTitle => 'Sub-agents are running';
 
   @override

@@ -44,6 +44,31 @@ void main() {
       expect(plugin.lastAbortUseAtomicStop, isTrue);
     });
 
+    test("returns typed 409 when plugin performs no stop", () async {
+      plugin.abortResult = const PluginAbortNotPerformed(
+        reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
+      );
+
+      await expectLater(
+        () => handler.handle(
+          makeRequest("POST", "/session/abort"),
+          body: const AbortSessionRequest(sessionId: "s1", useAtomicStop: true),
+        ),
+        throwsA(
+          isA<RelayResponse>()
+              .having((response) => response.status, "status", 409)
+              .having(
+                (response) => SessionAbortRefusal.fromJson(jsonDecodeMap(response.body!)),
+                "body",
+                const SessionAbortRefusal(
+                  kind: SessionAbortRefusalKind.notPerformed,
+                  reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+                ),
+              ),
+        ),
+      );
+    });
+
     test("returns the plugin descendant-handling acknowledgment", () async {
       plugin.abortResult = const PluginAbortAccepted(workKept: false, subAgentsHandled: true);
       final response = await handler.handle(

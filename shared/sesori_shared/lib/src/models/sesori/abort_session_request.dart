@@ -53,6 +53,37 @@ sealed class SessionAbortResponse with _$SessionAbortResponse {
   factory fromJson(Map<String, dynamic> json) => _$SessionAbortResponseFromJson(json);
 }
 
+/// Closed class of typed abort refusals.
+@JsonEnum()
+enum SessionAbortRefusalKind() {
+  @JsonValue("notPerformed")
+  notPerformed,
+
+  @JsonValue("unknown")
+  unknownEnumValue,
+}
+
+/// Why the bridge could not safely perform an abort.
+@JsonEnum()
+enum SessionAbortRefusalReason() {
+  @JsonValue("residentWorkCompletionUnknown")
+  residentWorkCompletionUnknown,
+
+  @JsonValue("unknown")
+  unknownEnumValue,
+}
+
+/// Typed 409 body when the bridge performed no abort side effect.
+@Freezed(fromJson: true, toJson: true)
+sealed class SessionAbortRefusal with _$SessionAbortRefusal {
+  const factory({
+    @JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) required SessionAbortRefusalKind kind,
+    @JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) required SessionAbortRefusalReason reason,
+  }) = _SessionAbortRefusal;
+
+  factory fromJson(Map<String, dynamic> json) => _$SessionAbortRefusalFromJson(json);
+}
+
 /// 409 body for a `confirm` stop the bridge refused because sub-agents run.
 @Freezed(fromJson: true, toJson: true)
 sealed class SessionAbortRejection with _$SessionAbortRejection {

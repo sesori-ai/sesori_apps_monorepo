@@ -32,6 +32,12 @@ extension PluginAbortRejectionMapping on PluginAbortRejectedSubAgentsRunning {
   );
 }
 
+extension PluginAbortRefusalMapping on PluginAbortRefusalReason {
+  SessionAbortRefusalReason toShared() => switch (this) {
+    PluginAbortRefusalReason.residentWorkCompletionUnknown => SessionAbortRefusalReason.residentWorkCompletionUnknown,
+  };
+}
+
 /// Maps a plugin-normalized attachment into the shared wire contract.
 extension PluginMessageAttachmentMapping on PluginMessageAttachment {
   MessageAttachment toShared() => switch (this) {

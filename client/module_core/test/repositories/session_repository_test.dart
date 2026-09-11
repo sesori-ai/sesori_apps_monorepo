@@ -2,7 +2,9 @@ import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -43,8 +45,14 @@ void main() {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
 
-    when(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,)).thenAnswer(
+    when(
+      () => api.getMessages(
+        sessionId: "session-1",
+        limit: null,
+        before: null,
+        storedOnly: false,
+      ),
+    ).thenAnswer(
       (_) async => ApiResponse.success(
         const MessageWithPartsResponse(
           messages: <MessageWithParts>[],
@@ -109,8 +117,12 @@ storedOnly: false,)).thenAnswer(
     when(
       () => api.rejectQuestion(requestId: "question-1", sessionId: "session-1"),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    await repository.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,);
+    await repository.getMessages(
+      sessionId: "session-1",
+      limit: null,
+      before: null,
+      storedOnly: false,
+    );
     await repository.getPendingQuestions(sessionId: "session-1");
     await repository.getPendingPermissions(sessionId: "session-1");
     await repository.getChildren(sessionId: "session-1");
@@ -141,8 +153,14 @@ storedOnly: false,);
       ],
     );
     await repository.rejectQuestion(requestId: "question-1", sessionId: "session-1");
-    verify(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
-storedOnly: false,)).called(1);
+    verify(
+      () => api.getMessages(
+        sessionId: "session-1",
+        limit: null,
+        before: null,
+        storedOnly: false,
+      ),
+    ).called(1);
     verify(() => api.getPendingQuestions(sessionId: "session-1")).called(1);
     verify(() => api.getPendingPermissions(sessionId: "session-1")).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
@@ -173,6 +191,29 @@ storedOnly: false,)).called(1);
       ),
     ).called(1);
     verify(() => api.rejectQuestion(requestId: "question-1", sessionId: "session-1")).called(1);
+  });
+
+  test("abort translates typed not-accepted failure and retains API cause", () async {
+    final api = MockSessionApi();
+    final repository = SessionRepository(api: api);
+    const refusal = SessionAbortRefusal(
+      kind: SessionAbortRefusalKind.notPerformed,
+      reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+    );
+    final transport = NonSuccessCodeError(errorCode: 409, rawErrorString: jsonEncode(refusal.toJson()));
+    final apiFailure = SessionAbortApiNotAcceptedException(refusal: refusal, innerError: transport);
+    when(
+      () => api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.confirm),
+    ).thenThrow(apiFailure);
+
+    await expectLater(
+      repository.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.confirm),
+      throwsA(
+        isA<SessionAbortNotAcceptedException>()
+            .having((error) => error.refusal, "refusal", refusal)
+            .having((error) => error.innerError, "cause", same(apiFailure)),
+      ),
+    );
   });
 
   test("listProviders always delegates because the bridge owns option caching", () async {

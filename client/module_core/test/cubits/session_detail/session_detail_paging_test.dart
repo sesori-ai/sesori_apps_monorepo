@@ -7,6 +7,7 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -79,6 +80,7 @@ void main() {
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
+      sessionAbortService: SessionAbortService(repository: sessionRepository),
       promptDispatcher: sessionRepository,
       permissionRepository: MockPermissionRepository(),
       sessionViewingService: stubbedSessionViewingService(),
@@ -148,7 +150,8 @@ void main() {
     });
 
     test("a failed load keeps the cursor so the user can retry", () async {
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer((_) async => null);
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false))
+          .thenAnswer((_) async => null);
 
       await cubit.loadOlderMessages();
 

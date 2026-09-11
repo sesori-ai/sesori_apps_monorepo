@@ -33,6 +33,11 @@ class AbortSessionHandler({
         status: 409,
         body: rejection.toJson(),
       ),
+      SessionAbortNotPerformed(:final refusal) => throw buildJsonErrorResponse(
+        request: request,
+        status: 409,
+        body: refusal.toJson(),
+      ),
     };
   }
 }

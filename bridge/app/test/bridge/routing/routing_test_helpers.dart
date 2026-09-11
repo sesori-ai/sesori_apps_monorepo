@@ -1099,10 +1099,19 @@ class FakeSessionRepository({
       useAtomicStop: useAtomicStop,
       knownSubAgentSessionIds: const {},
     );
-    return SessionAborted(
-      workKept: result is PluginAbortAccepted && result.workKept,
-      subAgentsHandled: result is PluginAbortAccepted && result.subAgentsHandled,
-    );
+    return switch (result) {
+      PluginAbortAccepted(:final workKept, :final subAgentsHandled) => SessionAborted(
+        workKept: workKept,
+        subAgentsHandled: subAgentsHandled,
+      ),
+      final PluginAbortRejectedSubAgentsRunning rejection => SessionAbortRejected(rejection: rejection.toShared()),
+      PluginAbortNotPerformed(:final reason) => SessionAbortNotPerformed(
+        refusal: SessionAbortRefusal(
+          kind: SessionAbortRefusalKind.notPerformed,
+          reason: reason.toShared(),
+        ),
+      ),
+    };
   }
 
   @override
