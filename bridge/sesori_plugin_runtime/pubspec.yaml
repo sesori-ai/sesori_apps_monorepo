@@ -3,7 +3,7 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.2
+  sdk: ^3.13.3
 
 dependencies:
   meta: ^1.19.0

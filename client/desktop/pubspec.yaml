@@ -9,7 +9,7 @@ resolution: workspace
 version: 0.1.0
 
 environment:
-  sdk: ^3.13.2
+  sdk: ^3.13.3
 
 dependencies:
   dbus: ^0.7.15
