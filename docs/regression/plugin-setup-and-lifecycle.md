@@ -210,10 +210,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   work state stays busy so a safe stop or suspension refuses, and only a forced stop, a
   full-scope session stop, delete, or process exit ends it. A main-agent-only stop
   keeps the process resident for its tasks.
-- Cursor's root-level unresolved-background observation keeps only process work
-  state busy, preventing safe suspension without changing UI status, summaries,
-  child counts, or idle events. It survives turns until session cleanup or
-  process teardown because Cursor exposes no terminal fact.
+- Cursor records one root-level unresolved-background observation when a Task
+  launch explicitly reports `isBackground: true`. It keeps only process work state
+  busy, preventing safe suspension without changing UI status, summaries, child
+  counts, or idle events. It survives later turns and clears only on exact session
+  cleanup, process reset/forced teardown, or disposal because Cursor exposes no
+  terminal fact.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.
