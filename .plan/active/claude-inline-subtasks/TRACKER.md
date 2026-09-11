@@ -3,8 +3,8 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** Cursor Step 3 merged as
-  [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) at `bb85f48148`.
+- **Implementation base:** Cursor Step 4 merged as
+  [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) at `a7d3014e1a`.
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -12,9 +12,9 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** Cursor replay Step 5/6 is implemented and checked locally
-  after normally merging latest unpublished Step 4 at `815756efe9`; it remains
-  unpublished. Publish in order, then run Step 6 actual-plugin coverage.
+- **Next action:** Drive Cursor replay Step 5/6
+  [PR #1443](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1443) to merge,
+  then run Step 6 actual-plugin coverage.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
@@ -208,8 +208,8 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerated from merged main and checked locally, unpublished: exact active mode-unknown Task count, unresolved-background process residency, typed refusal, named-root safe stop, queue-drain gate, limitation UI, tests, and docs; no replay/native QA |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Implemented and checked locally, unpublished: configured ACP collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
+| [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | [PR #1443](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1443) open: configured ACP collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
@@ -523,17 +523,12 @@ post-merge E2E gates are unchanged.
   runtime/config change.
 - **Cursor Step 3/6:** PR #1441 merged at `bb85f48148`; Step 4 was regenerated
   from that tree (matching pre-squash `d3297ad4b9`).
-- **Cursor Step 4/6 (local, checked; unpublished):** exact Task count, process
-  residency, typed refusal, bounded named-root stop, concurrent descendant
-  fallback, queue gate, and restart UI are implemented. Child sessions,
-  runtime/config, native QA, push, analytics, and publication remain absent.
-- **Cursor Step 5/6 (local, checked; unpublished):** typed standard replay facts
-  replace only complete foreground Task cards through one configured collector
-  and shared pure projection; stable identity, ordering, fallbacks, and unchanged
-  configured ACP replacement behavior are focused-tested against latest Step 4
-  predecessor `815756efe9`. No analytics event: existing history rendering has
-  no bounded decision or reporting consumer. No native QA, child session,
-  wire/client/DB, runtime, timer, or poller change.
+- **Cursor Step 4/6:** PR #1442 merged at `a7d3014e1a`; exact Task count,
+  residency, typed refusal, bounded root stop, concurrent descendant fallback,
+  queue gate, and restart UI shipped without replay or native QA.
+- **Cursor Step 5/6:** PR #1443 is open. Complete foreground Task replay uses one
+  configured collector/shared projection with stable identity, ordering, and fallbacks.
+  No analytics event, native QA, child session, wire/client/DB, runtime, timer, or poller change.
 
 ## Plan Review
 

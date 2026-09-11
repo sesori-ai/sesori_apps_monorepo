@@ -506,14 +506,12 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    childless replacement, tests, and live-tile capability/docs. Step 4 is based
    on that merged commit; pre-squash `d3297ad4b9` has the same tree.
 4. `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]`
-   is implemented and checked locally: exact active count, unresolved-background
-   residency, typed refusal, safe `rootSessionCancel` with mandatory post-
-   settlement re-check, bridge/client/UI flow, tests, and stop/lifecycle/
-   capability docs. It remains unpublished on a branch regenerated from merged
-   main; its pre-reconciliation tree matched reviewed checkpoint `eae039ca27`.
+   merged as PR #1442 at `a7d3014e1a`: exact active count, unresolved-background
+   residency, typed refusal, safe `rootSessionCancel`, and concurrent descendant
+   fallback with mandatory settlement re-check; no replay/native QA.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
-   is implemented and checked locally, unpublished: configured collector/shared
-   pure projection, typed stable replacement/fallbacks, tests, and history docs.
+   is open as PR #1443 with configured collector/shared projection, typed
+   fallbacks, tests, and history docs; no native QA.
 6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
    (expected 60–140 changed lines): bounded actual-plugin evidence and final
    reconciliation only; unsupported/unexecuted boundaries remain explicit.
