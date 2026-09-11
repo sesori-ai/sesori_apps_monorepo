@@ -211,7 +211,7 @@ post-merge E2E gates are unchanged.
 | [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | Implemented locally, pending merge; approximately 1,300–1,400 lines: Cursor-local active generic-part tracking, pending/running observation, terminal forget, generic cancellation/error settlement, `cursor/task` request ack, transport exit ordering regression, typed-refusal plan correction, and behavior docs; no tile |
 | [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Planned; approximately 650–950 lines: completed-phase correlation, minimal added presentation DTO fields, completed foreground mapper replacement, focused tests, and tile capability/docs update |
 | [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerate after Step 3; approximately 1,300–1,700 lines for exact active mode-unknown Task count, unresolved-background process residency, typed plugin/bridge/shared refusal and exact client handling, all-policy first guard, named-root stop with post-settlement re-check, queue-drain gate, explicit shared UI limitation, tests, and stop/lifecycle/capability docs |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared mapper, stable completed projection, fallbacks, tests, and history doc |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
@@ -252,7 +252,7 @@ post-merge E2E gates are unchanged.
   `activeModeUnknown` and `activeTaskCount`; foreground is asserted only after
   terminal `isBackground: false`. New replay role is
   `CursorTaskReplayTracker` under the Cursor repository tracker layer; it
-  receives a configured ACP collector and the shared injected pure mapper.
+  receives a configured ACP collector and the shared injected pure projection.
 - [x] Routed standard Task updates, re-injected `cursor/task`, parsed prompt
   results, and prompt lifecycle failures through existing `CursorEventMapper`
   plus `AcpChildSessionTracker`; abort policy has no presentation mutation. The

@@ -865,7 +865,7 @@ those refs. Regenerate each successor from its merged predecessor.
 | 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | Approximately 1,300–1,400 lines: active generic-part tracking, pending/running observation, all standard terminal forget, cancellation/error settlement, request ack, transport ordering fix/regressions, typed-refusal plan correction, and behavior docs; no tile |
 | 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Approximately 650–950 lines: completed correlation, minimal added presentation DTO fields, childless tile replacement, tests, and tile capability/docs update |
 | 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Approximately 1,300–1,700 lines: exact count, process residency, typed refusal, safe root cancel/re-check, bridge/client/UI flow, tests, and stop/lifecycle/capability docs |
-| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Approximately 650–1,000 lines: configured collector/shared mapper, stable completed projection, fallbacks, tests, and history doc |
+| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Approximately 650–1,000 lines: configured collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | 6/6 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; unsupported/unexecuted matrix remains explicit |
 
 ### Probe questions
