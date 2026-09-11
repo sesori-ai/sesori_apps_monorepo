@@ -94,12 +94,12 @@ Consequences:
   therefore never acknowledge `confirm`, `keep`, or `stop` while an unresolved
   background observation exists because `workKept` cannot qualify a success omitted
   from the client wire.
-- Every policy fails through one explicit existing plugin/HTTP 409 path before
-  root/input preparation or cancellation. No count, successful ACK, or shared
-  wire field is invented for work whose current running count is unknowable.
-  Step 3 maps an unparsed abort 409 to a typed client-local “not accepted”
-  exception and preserves the local prompt queue; it does not confuse that
-  refusal with an accepted abort.
+- Every policy returns one explicit backend-neutral not-performed result before
+  root/input preparation or cancellation. The bridge serializes its required
+  discriminator as a typed HTTP 409 refusal; no count or successful ACK is
+  invented for work whose current running count is unknowable. Step 3 preserves
+  the local prompt queue only after decoding that exact discriminator, never by
+  inferring lifecycle semantics from an arbitrary or malformed 409.
 - Background Task lifecycle cannot render completion merely because its launch
   call completed. Until Cursor exposes a terminal fact, background Tasks keep
   the honest generic Task card and remain a declared capability gap.
@@ -304,30 +304,66 @@ Cursor boundary and repository changes:
   keeps constructing `CursorPlugin` through the existing factory; its public
   `CursorPluginFactory` signature does not gain repository peers. Test
   composition continues through `CursorPlugin.factory`.
-- `client/module_core/lib/src/api/session_api.dart` adds local
-  `SessionAbortApiNotAcceptedException({required Object innerError})`. An abort
-  HTTP 409 that does not parse as the existing `SessionAbortRejection` throws
-  this exception with the original `NonSuccessCodeError`; parsed confirmation
-  rejections remain unchanged. A post-cancel partial failure does not use 409.
+- `bridge/sesori_plugin_interface/lib/src/models/plugin_abort.dart` adds closed
+  `PluginAbortRefusalReason.residentWorkCompletionUnknown` and
+  `PluginAbortNotPerformed({required PluginAbortRefusalReason reason})`.
+  Cursor's pre-mutation guard returns this neutral result; no backend term enters
+  shared or client layers.
+- `shared/sesori_shared/lib/src/models/sesori/abort_session_request.dart` adds
+  typed `SessionAbortRefusal` with required
+  `SessionAbortRefusalKind.notPerformed` and required backend-neutral
+  `SessionAbortRefusalReason.residentWorkCompletionUnknown`. Both closed enums
+  include `unknown` JSON fallbacks, but no `@Default`; missing discriminators do
+  not become trusted refusals. Generated serializers are regenerated from this
+  source only.
+- `bridge/app/lib/src/repositories/models/session_abort_result.dart`,
+  `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`, and
+  `bridge/app/lib/src/repositories/session_repository.dart` map the plugin result
+  exhaustively to `SessionAbortNotPerformed({required SessionAbortRefusal
+  refusal})`. `SessionAbortService` treats it as failed/no completion push, and
+  `AbortSessionHandler` serializes the typed refusal body with HTTP 409. No
+  plugin exception or string matching carries this expected outcome.
+- `client/module_core/lib/src/api/session_api.dart` decodes abort 409 bodies as
+  either the existing `SessionAbortRejection` or `SessionAbortRefusal`. Only an
+  exact `kind: notPerformed` throws
+  `SessionAbortApiNotAcceptedException({required SessionAbortRefusal refusal,
+  required Object innerError})`; malformed and unknown-kind 409s stay ordinary
+  ambiguous errors. A post-cancel partial failure does not use 409.
 - New
   `client/module_core/lib/src/repositories/models/session_abort_not_accepted_exception.dart`
-  adds `SessionAbortNotAcceptedException({required Object innerError})`.
-  `SessionRepository.abortSession` translates the API exception at the existing
-  API → repository boundary and retains it as `innerError`.
+  adds `SessionAbortNotAcceptedException({required SessionAbortRefusal refusal,
+  required Object innerError})`. `SessionRepository.abortSession` translates the
+  API exception at the existing API → repository boundary and retains it as
+  `innerError`.
+- `client/module_core/lib/src/cubits/session_detail/session_abort_outcome.dart`
+  adds closed `SessionAbortNotAccepted({required SessionAbortRefusal refusal})`.
+  This is distinct from generic `failed` and from the existing sub-agent-count
+  rejection; each variant carries only its valid data.
 - `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`
   adds one request-lifetime `_abortRequestInFlight` gate. Queue draining returns
   while it is true. `abort` sets the gate before dispatch and no longer clears
   local prompts before `keep`/`stop`; accepted 2xx and ambiguous failures keep
-  the existing clear behavior, while typed confirmation rejection and typed
-  not-accepted failure return without clearing the queue or stale-options
+  the existing clear behavior, while typed confirmation rejection and exact
+  typed not-performed refusal return without clearing the queue or stale-options
   bookkeeping. The `finally` path releases the gate and retries normal drain.
-  The not-accepted path logs once and returns the existing
-  `SessionAbortOutcome.failed`, so no new UI state is required.
+  The not-accepted path returns the new typed outcome without redundant logging;
+  the remote failure retains its original cause in the repository exception.
+- `client/module_app_ui/lib/src/features/session_detail/widgets/session_abort_scope_dialog.dart`
+  handles `SessionAbortNotAccepted` with a shared localized explanation: the
+  harness has background work whose completion cannot be verified, Sesori did
+  not stop the session, and restarting the harness is the available recovery.
+  Add source localization keys and regenerate localization output; unknown
+  refusal reasons receive a generic not-performed explanation. This explicit
+  limitation needs no analytics event because it is neither an authoritative
+  success nor an adoption decision.
 
 No other new production classes are planned. Existing constructor calls in
-Cursor tests are updated for required fields. There is no shared wire,
-bridge-app/database contract, child catalog row, compatibility shim, or Cursor
-import in ACP.
+Cursor tests are updated for required fields. There is no database change,
+child catalog row, compatibility shim, or Cursor import in ACP. The additive
+error body is forward/backward safe: released clients treat it as an ordinary
+failed abort rather than false success; newer clients still parse released
+bridges' existing `SessionAbortRejection` and treat every unknown/malformed 409
+conservatively.
 
 ### One lifecycle path
 
@@ -422,20 +458,20 @@ is separate and never contributes a fabricated `runningSubAgentCount`.
 
 The `rootSessionCancel` branch targets only the method's named `sessionId`.
 Its first operation checks the unresolved-background observation. When present,
-all three policies throw the same side-effect-free
-`PluginOperationException` for operation `abortSession`, HTTP status 409, and
-backend-neutral message
-`Cannot stop while resident background work has unknown completion`. This uses
-existing plugin-operation → router HTTP failure path, introduces no
-new shared response, and runs before queued/writing work, pending interaction,
-root cancellation, settlement capture, descendant collection, or fanout.
-`SessionApi.abortSession` cannot parse this plain 409 as the existing typed
-confirmation rejection, so it throws the client-local
-`SessionAbortApiNotAcceptedException` with the original error. The repository
-translates that to `SessionAbortNotAcceptedException`; `SessionDetailCubit.abort`
-returns failed rather than aborted while retaining its queued prompts. A
-request-lifetime drain gate prevents those prompts from dispatching until the
-refusal is known, then normal drain resumes. This changes no shared wire shape.
+all three policies return the same side-effect-free
+`PluginAbortNotPerformed(reason:
+PluginAbortRefusalReason.residentWorkCompletionUnknown)`. The bridge maps it to
+`SessionAbortRefusal(kind: SessionAbortRefusalKind.notPerformed, reason:
+SessionAbortRefusalReason.residentWorkCompletionUnknown)` and an HTTP 409 before
+queued/writing work, pending interaction, root cancellation, settlement
+capture, descendant collection, or fanout. `SessionApi.abortSession` recognizes
+only that required typed discriminator, then the API/repository exceptions carry
+the refusal and original transport error. `SessionDetailCubit.abort` returns
+the typed not-accepted outcome rather than aborted while retaining its queued
+prompts. The shared UI renders the explicit limitation. A request-lifetime drain
+gate prevents those prompts from dispatching until the refusal is known, then
+normal drain resumes. Arbitrary, malformed, and unknown-kind 409s
+remain ambiguous and keep existing queue cleanup.
 
 Without an unresolved-background observation, `confirm` and `keep` with
 `activeTaskCount > 0` return the existing
@@ -462,7 +498,7 @@ preparation or native dispatch.
 
 | Named-root state | Policy | Effect | Result |
 |---|---|---|---|
-| Any prior unresolved-background observation | `confirm` / `keep` / `stop` | None | Same explicit unsupported HTTP failure |
+| Any prior unresolved-background observation | `confirm` / `keep` / `stop` | None | Typed not-performed HTTP 409 refusal |
 | Active mode-unknown Tasks `N > 0`, no prior unresolved background | `confirm` | None | Exact typed rejection `N`; main running; main-only false |
 | Active mode-unknown Tasks `N > 0`, no prior unresolved background | `keep` | None | Same exact typed rejection |
 | Active mode-unknown Tasks `N > 0`, no prior unresolved background | `stop` | Named-root prepare/cancel; await authoritative prompt settlement; re-check background | ACK kept=false/handled=false only if no unresolved background; otherwise HTTP 502 partial failure after cancellation |
@@ -504,9 +540,9 @@ corrections here; do not mutate or delete them. Regenerate both successors from
 this revised plan.
 
 1. `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]`:
-   this privacy-safe native evidence, corrected ownership/policy design, and
-   exact delivery sequence only. No feature implementation. This step remains
-   unchecked until its PR merges.
+   merged as PR #1435 at `b83b64901c` with this privacy-safe native evidence,
+   corrected ownership/policy design, and exact delivery sequence only. No
+   feature implementation.
 2. `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]`
    (expected approximately 1,550–1,750 changed lines): neutral tile-only
    correlation, parsed-result and prompt-failure mapper lifecycle hooks, Cursor
@@ -517,13 +553,14 @@ this revised plan.
    `docs/regression/session-turns.md` behavior updates. Pending/in-progress and
    background calls stay generic; cancellation creates no tile. No scoped-stop
    authority, unresolved-background residency state, or replay wrapper.
-3. `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]`
-   (expected approximately 750–1,050 changed lines): exact active mode-unknown
+3. `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]`
+   (expected approximately 1,300–1,700 changed lines): exact active mode-unknown
    Task count, durable unresolved-background observation and
-   `requiresProcessResidency`, first-action unsupported guard for all policies,
-   safe `rootSessionCancel` with mandatory post-settlement background re-check,
-   typed client-local non-acceptance plus a request-lifetime queue-drain gate,
-   focused tests, and
+   `requiresProcessResidency`, first-action typed refusal for all policies, safe
+   `rootSessionCancel` with mandatory post-settlement background re-check,
+   backend-neutral plugin/bridge/shared refusal mapping, exact client decoding,
+   a request-lifetime queue-drain gate, explicit shared UI limitation, focused
+   tests, and
    corresponding scoped-stop/lifecycle/capability updates in
    `docs/regression/session-turns.md`,
    `docs/regression/plugin-setup-and-lifecycle.md`, and
@@ -569,13 +606,17 @@ Step 3 automated scope:
   through `requiresProcessResidency`. Tests cover work-state resync when the
   first observation is recorded and when authoritative clear, root-only
   `forgetSession`, or process-wide `clear()` removes it.
-- Every prior unresolved-background `confirm`/`keep`/`stop` takes the same
-  explicit HTTP 409 before root/input preparation or cancellation; client tests
-  assert its typed API/repository translation, no local queue or stale-options
-  cleanup, no drain during the request, resumed normal drain afterward, and no
-  successful ACK or fabricated count. Accepted responses and ambiguous failures
-  still clear the queue. A background transition discovered only after root
-  cancellation uses HTTP 502 and the ambiguous-failure cleanup path.
+- Every prior unresolved-background `confirm`/`keep`/`stop` returns the same
+  typed plugin not-performed result before root/input preparation or
+  cancellation. Shared serializer and bridge repository/service/route tests
+  assert the required kind/reason, HTTP 409 body, no successful ACK, and no
+  fabricated count. Client tests assert exact kind decoding, API/repository
+  translation, the sealed cubit outcome, no local queue or stale-options
+  cleanup, no drain during the request, resumed normal drain afterward, and the
+  localized shared limitation dialog. Malformed/unknown-kind 409s, accepted
+  responses, and ambiguous failures still clear the queue. A
+  background transition discovered only after root cancellation uses HTTP 502
+  and the ambiguous-failure cleanup path.
   Active mode-unknown `confirm`/`keep`, named-root `stop`, prompt settlement
   ordering, post-settlement background-transition failure (with root cancel
   already allowed), accepted `workKept: false` only after the re-check, forced

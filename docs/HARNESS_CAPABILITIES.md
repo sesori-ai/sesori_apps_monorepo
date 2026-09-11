@@ -292,11 +292,14 @@ success. A launched background Task survives root cancel, so the
 overall “`stop` cancels them all” capability is **not supported**. While such an
 observation remains unresolved, `confirm`, `keep`, and `stop` must all fail
 before root/input cancellation because bridge-internal `workKept` cannot qualify
-a success omitted from the client wire. Step 3 plans to map that pre-mutation
-HTTP 409 to a typed client-local not-accepted exception, pause local queue drain
-for the request, and retain queued prompts; a background transition discovered
-only after root cancellation instead uses an ambiguous HTTP 502 failure and
-existing queue cleanup. The observation may keep only
+a success omitted from the client wire. Step 3 plans a backend-neutral typed
+not-performed result and required `SessionAbortRefusal(kind: notPerformed,
+reason: residentWorkCompletionUnknown)` HTTP 409 body. Only that exact decoded
+discriminator lets the client pause/resume local queue drain, retain queued
+prompts, and surface a typed not-accepted explanation with harness-restart
+recovery; malformed, unknown-kind, and version-skewed 409s remain ambiguous. A
+background transition discovered only after root cancellation instead uses an
+HTTP 502 partial failure and existing queue cleanup. The observation may keep only
 ACP process work state busy until session deletion/process reset; root
 `end_turn` and root UI idle remain honest root-turn completion, never a
 background completion or tile claim.

@@ -806,10 +806,12 @@ The architecture corrections are summarized here:
 - `CursorPlugin.scopedStopCapability` explicitly returns
   `AcpScopedStopCapability.rootSessionCancel`, which reaches its dedicated
   `AcpPlugin.abortSession` branch before descendant logic. Its first action
-  checks unresolved background: `confirm`, `keep`, and `stop` all throw the
-  same `PluginOperationException` with HTTP 409 before root/input preparation,
-  cancellation, or fanout. No new shared wire or successful retained-work ACK
-  is added. Without that observation, `confirm` and `keep` map exact
+  checks unresolved background: `confirm`, `keep`, and `stop` all return the
+  same `PluginAbortNotPerformed` with closed backend-neutral
+  `residentWorkCompletionUnknown` reason before root/input preparation,
+  cancellation, or fanout. Bridge layers map that result to a required
+  `SessionAbortRefusal(kind: notPerformed, reason: ...)` HTTP 409 body; no
+  successful retained-work ACK or inferred count is added. Without that observation, `confirm` and `keep` map exact
   `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning` → `SessionAbortRejection` path with
   `mainAgentOnlySupported: false` and no wire change. Explicit `stop` prepares
@@ -826,12 +828,16 @@ The architecture corrections are summarized here:
 - This is required because bridge-internal `SessionAborted` carries `workKept`,
   but `AbortSessionHandler` serializes only `subAgentsHandled`, and
   `SessionDetailCubit.abort` treats every 2xx response as aborted. `workKept`
-  cannot qualify a success omitted from the client wire. Step 3 maps an
-  unparsed abort HTTP 409 through client-local API/repository not-accepted
-  exceptions. A request-lifetime cubit drain gate replaces pre-request queue
-  clearing: typed rejections and pre-mutation 409s retain queued prompts,
-  accepted responses and ambiguous failures clear them, and drain resumes when
-  the request settles. No shared wire or new UI outcome is added.
+  cannot qualify a success omitted from the client wire. Step 3 decodes the
+  exact typed refusal discriminator through client-local API/repository
+  not-accepted exceptions. A request-lifetime cubit drain gate replaces pre-
+  request queue clearing: typed rejections and exact not-performed refusals
+  retain queued prompts, accepted responses and ambiguous failures clear them,
+  and drain resumes when the request settles. The cubit returns a distinct
+  typed not-accepted outcome and shared UI explains that completion cannot be
+  verified and the harness must be restarted. Malformed, unknown-kind, and
+  version-skewed 409s never gain lifecycle meaning from parse failure. The new
+  body is an additive error contract.
 - The only renamed new replay class is `CursorTaskReplayTracker` in
   `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/`. Cursor plugin
   composition injects one already-configured `AcpReplayCollector` and the same
@@ -847,10 +853,10 @@ The architecture corrections are summarized here:
   accepted safety tradeoff avoids silently killing possibly-running work.
   Forced process stop and explicit session cleanup remain possible.
 - No new locks, timers, controllers, pollers, speculative `end_turn` missing-
-  terminal machinery, recovery hooks, shared wire, bridge-app contract,
-  database, child catalog, or fake history. Client changes stay within the
-  existing API → repository → cubit flow and add only typed local causes plus
-  the request-lifetime queue-drain gate.
+  terminal machinery, recovery hooks, database, child catalog, or fake history.
+  The additive typed refusal follows plugin interface → bridge repository/route
+  → shared transport → client API/repository/cubit; client behavior adds only
+  typed local causes plus the request-lifetime queue-drain gate.
   Background terminal lifecycle/full stop/history and Cursor child sessions
   remain unsupported with the generic card.
 
@@ -865,9 +871,9 @@ actual-plugin evidence and reconciles claims.
 
 | Step | Exact title | Target and scope |
 |---|---|---|
-| 1/5 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Docs only: privacy-safe native evidence, corrected ownership and stop policy, exact five-step delivery; unchecked until merge; no feature implementation |
+| 1/5 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Merged as PR #1435 at `b83b64901c`; privacy-safe native evidence and corrected five-step delivery, with no feature implementation |
 | 2/5 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Approximately 1,550–1,750 lines: DTO/codegen, generic mode-unknown pending/in-progress plus cancelled/error settlement, completed terminal correlation/replacement, focused tests, tools/session-turn behavior docs |
-| 3/5 | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Approximately 750–1,050 lines: exact active mode-unknown Task count, unresolved-background process residency and all-policy first guard, named-root cancel plus mandatory post-settlement re-check, typed client-local not-accepted handling and queue-drain gate, focused tests, stop/lifecycle/capability docs |
+| 3/5 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Approximately 1,300–1,700 lines: exact active mode-unknown Task count, unresolved-background process residency, typed plugin/bridge/shared refusal and exact client handling, all-policy first guard, named-root cancel plus mandatory post-settlement re-check, queue-drain gate, explicit shared UI limitation, focused tests, stop/lifecycle/capability docs |
 | 4/5 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 4/5]` | Approximately 650–1,000 lines: `CursorTaskReplayTracker`, configured collector/shared mapper injection, stable completed foreground projection, generic/absent fallbacks, tests, history doc |
 | 5/5 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; no first behavior-doc delivery; explicit unsupported/unexecuted matrix; Grok phone gate stays open |
 

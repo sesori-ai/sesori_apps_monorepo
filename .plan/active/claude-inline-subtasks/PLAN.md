@@ -8,9 +8,10 @@
   coverage merged as PR #1431 at `7dd323d1d7`. Current Cursor
   `2026.08.11-e8db854` native evidence and the five-step delivery plan are
   recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Feature
-  implementation has not landed. Cursor delivery remains five steps: unchecked
-  docs/probe Step 1; completed foreground tiles plus tools/session-turn docs in
-  Step 2; safe Task stop policy plus lifecycle/capability docs in Step 3;
+  implementation has not landed. Cursor delivery remains five steps: docs/probe
+  Step 1 merged as PR #1435 at `b83b64901c`; completed foreground tiles plus
+  tools/session-turn docs and the late typed-refusal plan correction are in
+  progress in Step 2; safe Task stop policy plus lifecycle/capability docs in Step 3;
   completed-tile replay plus history docs in Step 4; actual-plugin evidence and
   final reconciliation only in Step 5. Preserved code refs `c5c0def` and
   `ab03528` are stale, unpublishable historical evidence; successors must be
