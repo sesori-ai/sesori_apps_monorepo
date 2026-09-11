@@ -134,6 +134,58 @@ void main() {
       await pump();
     }
 
+    Future<Map<String, dynamic>> startTaskPrompt({
+      required String sessionId,
+      required String toolCallId,
+      required bool connect,
+    }) async {
+      if (connect) {
+        final connecting = plugin.ensureConnected();
+        await respond("initialize", const {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        });
+        expect(await connecting, isTrue);
+      }
+      final creating = plugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      await respond("session/new", {"sessionId": sessionId});
+      final session = await creating;
+      await plugin.sendPrompt(
+        sessionId: session.id,
+        promptId: "prompt-$sessionId",
+        parts: const [PluginPromptPart.text(text: "delegate")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final prompt = await waitForFrame("session/prompt");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": session.id,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": toolCallId,
+            "title": "Task: inspect",
+            "status": "pending",
+            "rawInput": {"_toolName": "task"},
+          },
+        },
+      });
+      await pump();
+      return prompt;
+    }
+
     test("delegates persisted session cleanup", () async {
       expect(plugin, isA<PersistedSessionCleanupApi>());
 
@@ -297,6 +349,124 @@ void main() {
       }
       expect(events.whereType<BridgeSseSessionIdle>(), hasLength(1));
       expect(events.whereType<BridgeSseSessionError>(), isEmpty);
+    });
+
+    test("prompt cancellation settles active Task before the root turns idle", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final prompt = await startTaskPrompt(
+        sessionId: "s-task-cancel",
+        toolCallId: "task-cancel-1",
+        connect: true,
+      );
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "result": {"stopReason": "cancelled"},
+      });
+      for (var i = 0; i < 10 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await pump();
+      }
+
+      final cancelledIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.cancelled,
+      );
+      final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(cancelledIndex, greaterThanOrEqualTo(0));
+      expect(idleIndex, greaterThan(cancelledIndex));
+    });
+
+    test("prompt failure errors active Task after prompt error and before root settlement", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+
+      final prompt = await startTaskPrompt(
+        sessionId: "s-task-failure",
+        toolCallId: "task-failure-1",
+        connect: true,
+      );
+
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "error": {"code": -32000, "message": "Agent connection failed"},
+      });
+      for (var i = 0; i < 10 && events.whereType<BridgeSseSessionIdle>().isEmpty; i++) {
+        await pump();
+      }
+
+      final promptErrorIndex = events.indexWhere(
+        (event) => event is BridgeSseMessageUpdated && event.info is PluginMessageError,
+      );
+      final taskErrorIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.error,
+      );
+      final sessionErrorIndex = events.indexWhere((event) => event is BridgeSseSessionError);
+      final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(promptErrorIndex, greaterThanOrEqualTo(0));
+      expect(taskErrorIndex, greaterThan(promptErrorIndex));
+      expect(
+        ((events[taskErrorIndex] as BridgeSseMessagePartUpdated).part as PluginMessagePartTool).state.error,
+        "Agent connection failed",
+      );
+      expect(idleIndex, greaterThan(taskErrorIndex));
+      expect(sessionErrorIndex, greaterThan(idleIndex));
+    });
+
+    test("process exit errors active Task before root settlement resets correlation", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      final wrapper = AcpBridgePlugin(plugin: plugin, clock: const ServerClock());
+      addTearDown(() => wrapper.shutdown(budget: null));
+
+      final connecting = wrapper.connect(
+        budget: const Duration(seconds: 1),
+        startAborted: StartAbortSignal.never,
+      );
+      await respond("initialize", const {
+        "protocolVersion": 1,
+        "agentCapabilities": <String, dynamic>{},
+        "authMethods": <Object?>[],
+      });
+      await connecting;
+      await startTaskPrompt(
+        sessionId: "s-task-exit",
+        toolCallId: "task-exit-1",
+        connect: false,
+      );
+
+      fake.exit(17);
+      for (var i = 0; i < 10 && (events.whereType<BridgeSseSessionIdle>().isEmpty || plugin.client != null); i++) {
+        await pump();
+      }
+
+      final taskErrorIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.error,
+      );
+      final sessionErrorIndex = events.indexWhere((event) => event is BridgeSseSessionError);
+      final idleIndex = events.indexWhere((event) => event is BridgeSseSessionIdle);
+      expect(taskErrorIndex, greaterThanOrEqualTo(0));
+      expect(
+        ((events[taskErrorIndex] as BridgeSseMessagePartUpdated).part as PluginMessagePartTool).state.error,
+        "agent process exited with code 17",
+      );
+      expect(idleIndex, greaterThan(taskErrorIndex));
+      expect(sessionErrorIndex, greaterThan(idleIndex));
+      expect(plugin.client, isNull);
     });
 
     test("tool-correlated extensions keep the earlier session with two turns in flight", () async {

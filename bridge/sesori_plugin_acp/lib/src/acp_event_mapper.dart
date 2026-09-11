@@ -291,6 +291,21 @@ class AcpEventMapper({
     _spawnToolCalls.remove(sessionId);
   }
 
+  /// Maps an authoritative prompt result before the owning turn settles.
+  /// Harnesses may use it to settle presentation state that has no separate
+  /// terminal lifecycle frame. Base ACP has no such state.
+  List<BridgeSseEvent> mapPromptResult({
+    required String sessionId,
+    required AcpStopReason stopReason,
+  }) => const [];
+
+  /// Maps harness presentation state after a prompt lifecycle failure and
+  /// before the owning turn settles. Base ACP has no such state.
+  List<BridgeSseEvent> mapPromptLifecycleFailure({
+    required String sessionId,
+    required String failureMessage,
+  }) => const [];
+
   /// Maps a rejected `session/prompt` into a durable inline error. A session
   /// error event carries no diagnostic text, so emitting only that event would
   /// make an accepted prompt appear to finish silently.
