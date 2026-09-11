@@ -1,8 +1,11 @@
 import "dart:async";
 import "dart:collection";
+import "dart:io" show Platform;
 import "dart:math";
 
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show normalizeProjectDirectory, resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -44,6 +47,7 @@ class CatalogImportRepository({
   static const int _responsivenessBatchSize = 512;
   static final Random _secureRandom = Random.secure();
 
+  final String? _normalizedUserHomeDirectory = _resolveNormalizedUserHomeDirectory();
   final StreamController<List<SessionBackendActivity>> _backendActivityController =
       StreamController<List<SessionBackendActivity>>.broadcast(sync: true);
 
@@ -461,6 +465,8 @@ class CatalogImportRepository({
         // extra enumeration or query is needed.
         var projectsAdded = 0;
         var sessionsAdded = 0;
+        final automaticallyHiddenProjectIds = <String>{};
+        final hideNewHiddenHomeProjects = !control.explicitImportRequested;
         for (final observation in publicationProjects.values) {
           final existing = _projectCatalogIdentityCalculator.calculate(
             projectsById: projectsById,
@@ -469,11 +475,15 @@ class CatalogImportRepository({
             observedPath: observation.path,
           );
           if (existing == null) projectsAdded++;
+          final hiddenWhenNew =
+              hideNewHiddenHomeProjects && _isUnderTopLevelHiddenHomeDirectory(projectPath: observation.path);
           final row = _mergeProjectRow(
             observation: observation,
             existing: existing,
+            hiddenWhenNew: hiddenWhenNew,
             importStartedAt: importStartedAt,
           );
+          if (existing == null && hiddenWhenNew) automaticallyHiddenProjectIds.add(row.projectId);
           projectRows.add(row);
           final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
           final nextPath = _normalizeRequiredPath(row.path);
@@ -558,6 +568,17 @@ class CatalogImportRepository({
             ),
           );
         }
+        // An explicit scan can join while the first project write is pending.
+        // Correct only new rows this automatic import hid; existing visibility stays authoritative.
+        if (control.explicitImportRequested && automaticallyHiddenProjectIds.isNotEmpty) {
+          requireCurrentGeneration();
+          await _projectsDao.upsertProjectRows(
+            rows: [
+              for (final row in projectRows)
+                if (automaticallyHiddenProjectIds.contains(row.projectId)) row.copyWith(hidden: false),
+            ],
+          );
+        }
         requireCurrentGeneration();
         _publishBackendActivity(activity: observedActivity);
         return (
@@ -573,13 +594,14 @@ class CatalogImportRepository({
   ProjectDto _mergeProjectRow({
     required _ObservedProject observation,
     required ProjectDto? existing,
+    required bool hiddenWhenNew,
     required int importStartedAt,
   }) {
     if (existing != null && existing.projectionUpdatedAt > importStartedAt) return existing;
     return ProjectDto(
       projectId: existing?.projectId ?? observation.preferredId,
       path: observation.path,
-      hidden: existing?.hidden ?? false,
+      hidden: existing?.hidden ?? hiddenWhenNew,
       baseBranch: existing?.baseBranch,
       prCacheGithubLogin: existing?.prCacheGithubLogin,
       displayName: existing?.displayName ?? observation.displayName,
@@ -735,6 +757,13 @@ class CatalogImportRepository({
     }
   }
 
+  bool _isUnderTopLevelHiddenHomeDirectory({required String projectPath}) {
+    final userHomeDirectory = _normalizedUserHomeDirectory;
+    if (userHomeDirectory == null || !p.isWithin(userHomeDirectory, projectPath)) return false;
+    final relativeSegments = p.split(p.relative(projectPath, from: userHomeDirectory));
+    return relativeSegments.isNotEmpty && relativeSegments.first.startsWith(".");
+  }
+
   String _normalizeRequiredPath(String path) {
     final trimmed = path.trim();
     if (trimmed.isEmpty) throw StateError("plugin returned an empty catalog path");
@@ -744,6 +773,11 @@ class CatalogImportRepository({
   String? _usefulText(String? value) {
     final trimmed = value?.trim();
     return trimmed == null || trimmed.isEmpty ? null : value;
+  }
+
+  static String? _resolveNormalizedUserHomeDirectory() {
+    final userHomeDirectory = resolveUserHomeDirectory(environment: Platform.environment);
+    return userHomeDirectory == null ? null : normalizeProjectDirectory(directory: userHomeDirectory);
   }
 }
 
