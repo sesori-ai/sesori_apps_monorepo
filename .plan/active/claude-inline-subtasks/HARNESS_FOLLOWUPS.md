@@ -777,7 +777,9 @@ The architecture corrections are summarized here:
   terminal input or session/process teardown. Its backend-neutral
   `requiresProcessResidency` property contributes only to ACP
   `PluginWorkState.busy`, blocking safe suspension without changing root status,
-  deferred idle, active-root summaries, or sub-agent counts.
+  deferred idle, active-root summaries, or sub-agent counts. False-to-true
+  recording, authoritative removal, root-only `forgetSession`, and `clear()` all
+  emit the existing tracker change so `_syncWorkState` cannot stay stale.
 - Existing `CursorEventMapper` is the common observation entrypoint for
   standard Task updates, re-injected `cursor/task`, parsed prompt results, and
   prompt lifecycle failures routed by `AcpPlugin._runTurn` before turn
@@ -807,9 +809,11 @@ The architecture corrections are summarized here:
   checks unresolved background: `confirm`, `keep`, and `stop` all throw the
   same `PluginOperationException` with HTTP 409 before root/input preparation,
   cancellation, or fanout. No new shared wire or successful retained-work ACK
-  is added. Without that observation, `confirm` and `keep` reject active mode-
-  unknown Tasks side-effect-free with exact `activeTaskCount` and
-  `mainAgentOnlySupported: false`. Explicit `stop` prepares only the named root,
+  is added. Without that observation, `confirm` and `keep` map exact
+  `activeTaskCount` through the existing
+  `PluginAbortRejectedSubAgentsRunning` → `SessionAbortRejection` path with
+  `mainAgentOnlySupported: false` and no wire change. Explicit `stop` prepares
+  only the named root,
   sends one root `session/cancel`, waits existing authoritative prompt
   settlement, then must re-check unresolved background before acceptance. A
   Task that transitions to background during that window produces the same
@@ -852,13 +856,13 @@ successors from this revised plan without mutating or deleting those refs. Each 
 slice lands its own regression documentation, while final coverage records
 actual-plugin evidence and reconciles claims.
 
-| Step | Emoji | Description | Target and scope |
-|---|---|---|---|
-| 1/5 | 🌱 | `docs: record Cursor native probe and corrected plan` | Docs only: privacy-safe native evidence, corrected ownership and stop policy, exact five-step delivery; unchecked until merge; no feature implementation |
-| 2/5 | 🚧 | `cursor: completed foreground Task tiles` | Approximately 1,550–1,750 lines: DTO/codegen, generic mode-unknown pending/in-progress plus cancelled/error settlement, completed terminal correlation/replacement, focused tests, tools/session-turn behavior docs |
-| 3/5 | ⚙️ | `cursor: safe Task stop policy` | Approximately 550–750 lines: exact active mode-unknown Task count, unresolved-background process residency and all-policy first guard, named-root cancel plus mandatory post-settlement re-check, focused tests, stop/lifecycle/capability docs |
-| 4/5 | ⚙️ | `cursor: replay completed foreground Task tiles` | Approximately 650–1,000 lines: `CursorTaskReplayTracker`, configured collector/shared mapper injection, stable completed foreground projection, generic/absent fallbacks, tests, history doc |
-| 5/5 | 🌱 | `docs: record Cursor sub-agent coverage` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; no first behavior-doc delivery; explicit unsupported/unexecuted matrix; Grok phone gate stays open |
+| Step | Exact title | Target and scope |
+|---|---|---|
+| 1/5 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Docs only: privacy-safe native evidence, corrected ownership and stop policy, exact five-step delivery; unchecked until merge; no feature implementation |
+| 2/5 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Approximately 1,550–1,750 lines: DTO/codegen, generic mode-unknown pending/in-progress plus cancelled/error settlement, completed terminal correlation/replacement, focused tests, tools/session-turn behavior docs |
+| 3/5 | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Approximately 550–750 lines: exact active mode-unknown Task count, unresolved-background process residency and all-policy first guard, named-root cancel plus mandatory post-settlement re-check, focused tests, stop/lifecycle/capability docs |
+| 4/5 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 4/5]` | Approximately 650–1,000 lines: `CursorTaskReplayTracker`, configured collector/shared mapper injection, stable completed foreground projection, generic/absent fallbacks, tests, history doc |
+| 5/5 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; no first behavior-doc delivery; explicit unsupported/unexecuted matrix; Grok phone gate stays open |
 
 ### Probe questions
 

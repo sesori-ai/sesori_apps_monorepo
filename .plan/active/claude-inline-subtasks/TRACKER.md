@@ -262,8 +262,10 @@ post-merge E2E gates are unchanged.
   observation lasting until authoritative terminal/session or process teardown.
   Backend-neutral `requiresProcessResidency` feeds only ACP
   `PluginWorkState.busy`; root/session status, deferred idle, active roots, and
-  counts stay unchanged. Accepted tradeoff: silent completion may block safe
-  suspension until session deletion/process reset.
+  counts stay unchanged. Recording, authoritative removal, root-only
+  `forgetSession`, and `clear()` notify the existing tracker stream so process
+  work state resyncs in both directions. Accepted tradeoff: silent completion
+  may block safe suspension until session deletion/process reset.
 - [x] Corrected transport/client policy: bridge-internal `SessionAborted` has
   `workKept`, `AbortSessionHandler` omits it, and `SessionDetailCubit.abort`
   treats every 2xx as aborted. While unresolved background exists, all
@@ -272,7 +274,9 @@ post-merge E2E gates are unchanged.
   because `workKept` cannot qualify a success omitted from the client wire. No
   count, shared wire, or successful ACK is invented. Active mode-unknown
   confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
-  reject side-effect-free with exact `activeTaskCount` and main-only false;
+  map exact `activeTaskCount` through the existing
+  `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
+  main-only false and no wire change;
   explicit `stop` awaits authoritative prompt settlement and must re-check
   unresolved background before acceptance. A Task that transitions to
   background returns the same failure after root cancellation may already have

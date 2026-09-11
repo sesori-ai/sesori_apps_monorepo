@@ -154,7 +154,10 @@ ACP changes stay backend-neutral:
   carrying child ids, emitting child session/status events, contributing to
   child fanout, or keeping a root/session UI busy. The tracker exposes the
   backend-neutral aggregate `requiresProcessResidency` separately for ACP
-  process work-state derivation.
+  process work-state derivation. Recording the first unresolved observation,
+  removing one through an authoritative terminal or `forgetSession`, and
+  clearing observations through `clear()` each notify the affected root so the
+  plugin recomputes process work state in both directions.
 - New private `_AcpTileTask({required var PluginMessagePartTool genericPart,
   required var AcpTileTaskPhase phase})` lives in that tracker file; the
   enclosing nested maps own the root-session and
@@ -357,8 +360,14 @@ fact, so normal cleanup is session/process teardown.
 `AcpChildSessionTracker.requiresProcessResidency` is true while any such
 observation exists. `AcpPlugin._syncWorkState` includes that property in its
 `PluginWorkState.busy` computation, beside pending turns, pending input, and
-real child work. Tracker change notification already reaches
-`AcpPlugin._onChildSessionsChanged`, which reruns `_syncWorkState`; no timer,
+real child work. A false-to-true record emits the existing
+`AcpChildSessionTrackerChange` for its root. `forgetSession` includes removal of
+an unresolved observation in its active-work notification even when that root
+has no children or holds. `clear()` includes every unresolved root in its
+`affectedRoots`, clears the set, and notifies each root; a future authoritative
+terminal clear does the same. The existing `AcpPlugin._onChildSessionsChanged`
+listener reruns `_syncWorkState` after each transition, so work state cannot
+remain falsely idle after recording or falsely busy after cleanup. No timer,
 poller, or lifecycle synthesis is added. This prevents configured safe idle
 suspension from silently killing work known to have escaped its root turn.
 
@@ -403,9 +412,13 @@ confirmation rejection, so it returns the ordinary `ErrorResponse`;
 `SessionDetailCubit.abort` returns failed rather than aborted.
 
 Without an unresolved-background observation, `confirm` and `keep` with
-`activeTaskCount > 0` reject side-effect-free with that exact observed Task
-count, `mainAgentRunning: true`, and `mainAgentOnlySupported: false`. Explicit
-`stop` captures the existing `activeSettlement` future when a prompt is in
+`activeTaskCount > 0` return the existing
+`PluginAbortRejectedSubAgentsRunning`, mapping that exact count through
+`runningSubAgentCount`, the existing root-turn fact through
+`mainAgentRunning`, and `mainAgentOnlySupported: false`. The current repository
+and router then serialize the existing `SessionAbortRejection`; no new result
+or wire field is introduced. Explicit `stop` captures the existing
+`activeSettlement` future when a prompt is in
 flight, prepares only that root's queued/writing work and pending interaction,
 sends exactly one standard `session/cancel` for that root when the live client
 exists (and zero only when no process exists to notify), and waits for that
@@ -520,10 +533,13 @@ Step 2 automated scope:
 Step 3 automated scope:
 
 - Exact `activeTaskCount` for mode-unknown Tasks and unresolved background remain
-  independent; the observation survives turns, clears on session/process
-  teardown, leaves root status/active summaries/deferred idle/counts unchanged,
-  and alone keeps ACP `PluginWorkState` busy through
-  `requiresProcessResidency`.
+  independent; the count maps through the existing
+  `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with no wire
+  change. The observation survives turns, leaves root status/active summaries/
+  deferred idle/counts unchanged, and alone keeps ACP `PluginWorkState` busy
+  through `requiresProcessResidency`. Tests cover work-state resync when the
+  first observation is recorded and when authoritative clear, root-only
+  `forgetSession`, or process-wide `clear()` removes it.
 - Every unresolved-background `confirm`/`keep`/`stop` takes the same explicit
   failure before root/input preparation or cancellation; tests assert no
   outbound cancel, queue/input mutation, successful ACK, or fabricated count.
