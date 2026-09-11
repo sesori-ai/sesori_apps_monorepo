@@ -536,8 +536,8 @@ post-merge E2E gates are unchanged.
 - **Cursor Step 4/6 (local, checked; unpublished):** exact active Task count,
   unresolved-background process residency, typed HTTP 409 refusal, named-root
   cancellation with mandatory post-settlement re-check/HTTP 502 partial failure,
-  client request-lifetime queue gate, and localized restart guidance are
-  implemented. No replay, child session, runtime/config change, native QA, push,
+  repository-owned concurrent descendant fallback, client queue gate, and
+  restart guidance are implemented; no replay, child session, runtime/config, native QA, or push,
   or publication is included. No analytics event was added: this typed limit is
   part of the existing abort action and has no product decision or reporting
   consumer. The publication branch was regenerated from merged main and its

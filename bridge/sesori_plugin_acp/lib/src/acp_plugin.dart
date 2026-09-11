@@ -1988,9 +1988,11 @@ abstract class AcpPlugin({
 
     final activeSettlement = state?.activeSettlement?.future;
     _prepareSessionAbort(sessionId: sessionId, cancelBufferedInputs: true);
-    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     final client = _client;
     client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
+    // Match _abortSession: native cancellation precedes input resolution so
+    // unblocking a permission/question cannot start more work first.
+    _approvalRegistry?.cancelForSession(sessionId: sessionId);
     if (activeSettlement != null && client != null) {
       try {
         await activeSettlement.timeout(rootSessionCancelSettlementTimeout);

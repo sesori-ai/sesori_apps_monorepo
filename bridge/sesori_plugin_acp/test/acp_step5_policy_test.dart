@@ -315,8 +315,21 @@ void main() {
       expect(frames(AcpMethods.sessionCancel), hasLength(1));
     });
 
-    test("root cancel rejects active work that survives prompt settlement", () async {
+    test("root cancel orders native cancellation before input resolution and rejects surviving work", () async {
       final (session, prompt) = await startRootCancel(timeout: const Duration(seconds: 1));
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 91,
+        "method": AcpMethods.sessionRequestPermission,
+        "params": {
+          "sessionId": session.id,
+          "toolCall": {"toolCallId": "tool-1", "title": "Run", "kind": "execute"},
+          "options": [
+            {"optionId": "reject", "name": "Reject", "kind": "reject_once"},
+          ],
+        },
+      });
+      await pump();
       plugin.activeWorkCount = 1;
       final stopping = plugin.abortSession(
         sessionId: session.id,
@@ -325,6 +338,9 @@ void main() {
         knownSubAgentSessionIds: const {},
       );
       await waitForFrameCount(AcpMethods.sessionCancel, 1);
+      final cancelIndex = fake.written.indexWhere((frame) => frame["method"] == AcpMethods.sessionCancel);
+      final permissionIndex = fake.written.indexWhere((frame) => frame["id"] == 91);
+      expect(cancelIndex, lessThan(permissionIndex));
       respond(prompt, {"stopReason": "cancelled"});
       await expectLater(
         stopping,

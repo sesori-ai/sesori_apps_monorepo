@@ -206,10 +206,11 @@ defaults and queued client sends coherent.
   whose start arrives after Stop. Native notifications remain authoritative for
   settlement. This is per-thread fanout, not atomic subtree authority, so every
   accepted result reports `subAgentsHandled: false` even under atomic opt-in.
-  Existing client fallback then prefers post-response loaded statuses, retains
-  the request snapshot only if detail is no longer loaded, and walks nested
-  descendants. Any descendant-stage failure stays an ambiguous partial failure
-  because root cancellation already succeeded.
+  Existing client fallback reads fresh direct children and aggregate statuses
+  from the repository only after the root reports descendants unhandled, then
+  walks nested topology with sibling branches in parallel. Missing status from
+  an available plugin means idle; relevant plugin unavailability or any other
+  descendant failure stays ambiguous because root cancellation already succeeded.
   Managed-0.153.4 actual-plugin QA verifies
   root and named-child confirmation, root-only `keep`, named-child subtree
   isolation, full-root snapshot fanout, and native terminal plus plugin-status

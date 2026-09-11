@@ -305,11 +305,6 @@ as bool,
 mixin _$SessionAbortRefusal {
 
 @JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) SessionAbortRefusalKind get kind;@JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) SessionAbortRefusalReason get reason;
-/// Create a copy of SessionAbortRefusal
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$SessionAbortRefusalCopyWith<SessionAbortRefusal> get copyWith => _$SessionAbortRefusalCopyWithImpl<SessionAbortRefusal>(this as SessionAbortRefusal, _$identity);
 
   /// Serializes this SessionAbortRefusal to a JSON map.
   Map<String, dynamic> toJson();
@@ -337,37 +332,7 @@ String toString() {
 
 }
 
-/// @nodoc
-abstract mixin class $SessionAbortRefusalCopyWith<$Res>  {
-  factory $SessionAbortRefusalCopyWith(SessionAbortRefusal value, $Res Function(SessionAbortRefusal) _then) = _$SessionAbortRefusalCopyWithImpl;
-@useResult
-$Res call({
-@JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) SessionAbortRefusalKind kind,@JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) SessionAbortRefusalReason reason
-});
 
-
-
-
-}
-/// @nodoc
-class _$SessionAbortRefusalCopyWithImpl<$Res>
-    implements $SessionAbortRefusalCopyWith<$Res> {
-  _$SessionAbortRefusalCopyWithImpl(this._self, this._then);
-
-  final SessionAbortRefusal _self;
-  final $Res Function(SessionAbortRefusal) _then;
-
-/// Create a copy of SessionAbortRefusal
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? reason = null,}) {
-  return _then(SessionAbortRefusal(
-kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
-as SessionAbortRefusalKind,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as SessionAbortRefusalReason,
-  ));
-}
-
-}
 
 
 
@@ -381,11 +346,6 @@ class _SessionAbortRefusal implements SessionAbortRefusal {
 @override@JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) final  SessionAbortRefusalKind kind;
 @override@JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) final  SessionAbortRefusalReason reason;
 
-/// Create a copy of SessionAbortRefusal
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$SessionAbortRefusalCopyWith<_SessionAbortRefusal> get copyWith => __$SessionAbortRefusalCopyWithImpl<_SessionAbortRefusal>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
@@ -411,38 +371,8 @@ String toString() {
 
 }
 
-/// @nodoc
-abstract mixin class _$SessionAbortRefusalCopyWith<$Res> implements $SessionAbortRefusalCopyWith<$Res> {
-  factory _$SessionAbortRefusalCopyWith(_SessionAbortRefusal value, $Res Function(_SessionAbortRefusal) _then) = __$SessionAbortRefusalCopyWithImpl;
-@override @useResult
-$Res call({
-@JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) SessionAbortRefusalKind kind,@JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) SessionAbortRefusalReason reason
-});
 
 
-
-
-}
-/// @nodoc
-class __$SessionAbortRefusalCopyWithImpl<$Res>
-    implements _$SessionAbortRefusalCopyWith<$Res> {
-  __$SessionAbortRefusalCopyWithImpl(this._self, this._then);
-
-  final _SessionAbortRefusal _self;
-  final $Res Function(_SessionAbortRefusal) _then;
-
-/// Create a copy of SessionAbortRefusal
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? kind = null,Object? reason = null,}) {
-  return _then(_SessionAbortRefusal(
-kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
-as SessionAbortRefusalKind,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as SessionAbortRefusalReason,
-  ));
-}
-
-
-}
 
 
 /// @nodoc

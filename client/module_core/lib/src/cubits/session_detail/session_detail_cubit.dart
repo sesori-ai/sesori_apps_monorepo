@@ -2625,21 +2625,7 @@ class SessionDetailCubit(
     }
     _abortRequestInFlight = true;
     try {
-      final childStatuses = switch (state) {
-        SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
-        SessionDetailLoading() ||
-        SessionDetailHarnessUnavailable() ||
-        SessionDetailFailed() => const <String, SessionStatus>{},
-      };
-      await _sessionAbortService.abortSession(
-        sessionId: _sessionId,
-        subAgents: subAgents,
-        childStatuses: childStatuses,
-        readCurrentChildStatuses: () => switch (state) {
-          SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
-          SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
-        },
-      );
+      await _sessionAbortService.abortSession(sessionId: _sessionId, subAgents: subAgents);
       _clearLocalPromptQueue();
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());
       return const SessionAbortOutcome.aborted();

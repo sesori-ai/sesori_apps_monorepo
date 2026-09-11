@@ -1292,7 +1292,7 @@ void main() {
       await cubit.close();
     });
 
-    test("old bridge fallback retains the request snapshot while detail reloads", () async {
+    test("fallback reads fresh repository state while detail reloads", () async {
       const childId = "child-1";
       when(() => mockSessionService.getChildren(sessionId: sessionId)).thenAnswer(
         (_) async => ApiResponse.success(

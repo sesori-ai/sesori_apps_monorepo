@@ -74,7 +74,7 @@ enum SessionAbortRefusalReason() {
 }
 
 /// Typed 409 body when the bridge performed no abort side effect.
-@Freezed(fromJson: true, toJson: true)
+@Freezed(copyWith: false, fromJson: true, toJson: true)
 sealed class SessionAbortRefusal with _$SessionAbortRefusal {
   const factory({
     @JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) required SessionAbortRefusalKind kind,
