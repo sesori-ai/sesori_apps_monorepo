@@ -743,8 +743,8 @@ against the required behavior rather than requiring byte-for-byte source parity.
   call has `rawOutput {durationMs, isBackground: false}`. One correlated
   `cursor/task` **request** follows terminal completion, not start; it carries
   exact prompt/description/type/model/agent facts but no session id or lifecycle
-  discriminator. Step 2 acknowledges and re-injects that request; its
-  notification is deliberately ignored until Step 3 adds tile correlation.
+  discriminator. Step 2 acknowledges and re-injects that request. Step 3 now
+  consumes it only for exact completed-foreground live correlation.
 - Foreground `session/cancel` authoritatively returned the outstanding prompt
   with `stopReason: cancelled`; no Task terminal update followed, and the same
   process/session accepted a follow-up. Prompt settlement, not process death,
@@ -778,8 +778,9 @@ The architecture corrections are summarized here:
   with bounded privacy-safe text. Both retire records before root settlement.
   Its `forgetSession` override calls the base mapper cleanup and fences late
   current-process frames; `CursorPlugin.onConnectionReset` clears records after
-  pending RPC failures resume. Reset fabricates no terminal event. No completed
-  phase or tile take/replace method exists in this slice.
+  pending RPC failures resume. Reset fabricates no terminal event. Step 3 extends
+  this Cursor-owned tracker with `activeModeUnknown`/`foregroundCompleted`, exact
+  tool/root lookup, one-shot completed take, and stale-completion cleanup.
 - Neutral `mapPromptResult` and `mapPromptLifecycleFailure` hooks run before
   `_finishTurn`; base ACP returns no events. Failure order remains
   `mapPromptError` → lifecycle failure mapping → `_finishTurn` → plugin-level
@@ -789,12 +790,14 @@ The architecture corrections are summarized here:
 - Step 2's Cursor Freezed boundary DTO parses only `_toolName`, with unknown
   non-null values mapping to `unknown` and no default. CursorEventMapper keeps
   its two single-consumer generic cancelled/error projections private.
-  `cursor/task` uses the existing empty-response/reinjection path but is ignored
-  after acknowledgement. Step 3 adds foreground-completion correlation and only
-  presentation fields then consumed. Completed foreground tiles, background
-  lifecycle, child sessions, replay, and stop policy are not implemented here.
-- `CursorPlugin.scopedStopCapability` explicitly returns
-  `AcpScopedStopCapability.rootSessionCancel`, which reaches its dedicated
+  `cursor/task` uses the existing empty-response/reinjection path. Step 3 parses
+  only its required prompt/description/subagent presentation and replaces exact
+  `isBackground: false` completion with one childless completed tile. Missing,
+  unknown, malformed, background, failed, or cancelled facts keep the generic
+  card. Child sessions, replay, background lifecycle, residency, and stop policy
+  remain unimplemented.
+- Step 4 will make `CursorPlugin.scopedStopCapability` return
+  `AcpScopedStopCapability.rootSessionCancel`, reaching a dedicated
   `AcpPlugin.abortSession` branch before descendant logic. Its first action
   checks unresolved background: `confirm`, `keep`, and `stop` all return the
   same `PluginAbortNotPerformed` with closed backend-neutral
@@ -862,8 +865,8 @@ those refs. Regenerate each successor from its merged predecessor.
 | Step | Exact title | Target and scope |
 |---|---|---|
 | 1/6 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | PR #1435 merged at `b83b64901c`; supervisor will update its GitHub title; docs only |
-| 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | Approximately 1,300–1,400 lines: active generic-part tracking, pending/running observation, all standard terminal forget, cancellation/error settlement, request ack, transport ordering fix/regressions, typed-refusal plan correction, and behavior docs; no tile |
-| 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Approximately 650–950 lines: completed correlation, minimal added presentation DTO fields, childless tile replacement, tests, and tile capability/docs update |
+| 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | PR #1438 merged at `116392cb71`: active generic-part tracking, terminal settlement, request ack, transport ordering regressions, typed-refusal plan correction, and behavior docs; no tile |
+| 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Implemented locally, pending merge: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
 | 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Approximately 1,300–1,700 lines: exact count, process residency, typed refusal, safe root cancel/re-check, bridge/client/UI flow, tests, and stop/lifecycle/capability docs |
 | 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Approximately 650–1,000 lines: configured collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | 6/6 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; unsupported/unexecuted matrix remains explicit |

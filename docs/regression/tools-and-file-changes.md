@@ -90,18 +90,21 @@ sub-agent parts, plus the signal that a tool changed files.
   terminal card. Replay projects typed delegation metadata into the same tile
   identity and terminal policy, or an unlinked tile when no child was created;
   unrelated tools retain the generic ACP projection. Initialization requires v2.
-- Cursor's fire-and-forget tool extensions preserve their top-level tool-call
-  correlation before falling back to the active turn, including while another
-  session is in flight. Its standard `_toolName: task` pending/running updates
-  remain generic and are tracked only for prompt settlement. Prompt cancellation
-  settles every active Task as a generic cancelled card; prompt failure settles
-  it as a generic error card with bounded privacy-safe ACP failure text. Process
-  exit first fails pending prompt RPCs so active cards reach error before reset;
-  reset then clears remaining correlation without synthesizing lifecycle. Every
-  standard terminal card remains generic and retires tracking. Native
-  `cursor/task` requests receive required empty acknowledgement and are
-  deliberately ignored after reinjection until completed foreground tiles land.
-  No child session, tile, background lifecycle, or replay is claimed.
+- Cursor's fire-and-forget extensions preserve exact tool-call attribution before
+  active-turn fallback. Task lookup distinguishes one owner, no owner, and
+  duplicate-id ambiguity; an ambiguous request is dropped without fallback and
+  consumes neither root. Standard Task pending/running cards remain generic and
+  mode-unknown. Cancellation/failure settles those generic cards before root
+  settlement. An explicit standard completion with `isBackground: false`,
+  including an initial terminal `tool_call`, retains exact root/tool correlation
+  for the following acknowledged `cursor/task` request; complete nonblank
+  prompt/description and known subagent presentation replace that same part once
+  with a completed childless subtask tile. Missing, unknown, malformed, unmatched,
+  background, failed, and cancelled facts retain the generic card. Every
+  prior-turn Task record clears at the next turn; deletion and process reset also
+  clear correlation. Prompt-write ordering keeps the accepted user message and
+  buffered generic terminal update ahead of the routed request. No child session,
+  activity/busy effect, background lifecycle, or replay is claimed.
 - Antigravity normalizes its `formatted_output`, `exit_code`, `command_line`, and `working_dir` aliases before the
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
@@ -165,11 +168,13 @@ guarantee.
 - A part carries fields owned by another variant, or a released known-type
   payload fails to decode because an older bridge omitted variant data, or a
   current peer serializes null variant data.
-- A Cursor tool extension with an originating call ID is attributed to a
-  different concurrently active session; a pending/running standard Task is
-  mistaken for a child, root/activity/count state changes, a terminal standard
-  card stays tracked, `cursor/task` is not acknowledged, or a cancelled/failed
-  prompt leaves its generic Task running.
+- A Cursor extension cross-binds sessions or falls back across ambiguous duplicate
+  tool ids; a pending/running Task becomes a child/tile; root/activity state
+  changes; a non-foreground terminal becomes a tile; prior-turn active or
+  completed correlation survives the next turn; identity changes during
+  replacement; `cursor/task` is not acknowledged or overtakes its accepted user
+  message/generic terminal card; or prompt cancellation/failure leaves a current
+  generic Task running.
 - Antigravity changes ACP status from an exit code, loses an exit note to truncation, leaks an image path as a fetched
   attachment, retains unbounded/redundant raw fields, drops differing text, or
   produces different live/replay tool state.

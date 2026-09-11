@@ -3,10 +3,9 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at
-  `7dd323d1d762009d9a6f530630eb0683f986ab3d`, containing merged DeepSeek
-  coverage documentation
-  [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431).
+- **Implementation base:** `main` at `116392cb711bf8fbe3cc21fea3ea0141f651c3e7`,
+  containing merged Cursor generic Task lifecycle
+  [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -14,9 +13,9 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** review and merge Cursor generic Task lifecycle Step 2/6,
-  then regenerate completed foreground tiles as Step 3/6 from the merged result.
-  Step 1 is complete; Step 2 stays unchecked until merge. Full reviewed
+- **Next action:** review and merge Cursor completed foreground live tiles
+  Step 3/6. Step 2 merged as PR #1438 at `116392cb71`; Step 3 stays unchecked
+  pending merge. Full reviewed
   checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
@@ -208,8 +207,8 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
 | [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | Implemented locally, pending merge; approximately 1,300–1,400 lines: Cursor-local active generic-part tracking, pending/running observation, terminal forget, generic cancellation/error settlement, `cursor/task` request ack, transport exit ordering regression, typed-refusal plan correction, and behavior docs; no tile |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Planned; approximately 650–950 lines: completed-phase correlation, minimal added presentation DTO fields, completed foreground mapper replacement, focused tests, and tile capability/docs update |
+| [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Implemented locally, pending merge: exact completed-phase correlation, minimal presentation DTO fields, one-shot childless live replacement, tests, and capability/docs update |
 | [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerate after Step 3; approximately 1,300–1,700 lines for exact active mode-unknown Task count, unresolved-background process residency, typed plugin/bridge/shared refusal and exact client handling, all-policy first guard, named-root stop with post-settlement re-check, queue-drain gate, explicit shared UI limitation, tests, and stop/lifecycle/capability docs |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
@@ -523,13 +522,14 @@ post-merge E2E gates are unchanged.
   #1257 fix, OpenCode representative proof partial (widget-test covered),
   notifications end to end not run. Plan retired with those two limitations
   recorded here and in the regression documents.
-- **Cursor Step 2/6 (2026-09-11, local, pending merge):** source codegen
-  completed in `bridge/sesori_plugin_cursor`. Focused ACP turn, Cursor DTO/event/
-  tracker/approval/plugin, and runtime NDJSON transport suites passed. `dart
-  analyze --fatal-infos` passed in ACP, Cursor, and runtime packages; `git diff
-  --check` passed. Final diff remains below 1,600 changed lines. No completed
-  tile, replay, stop/refusal production contract, residency, child session,
-  client, runtime/config pin, or capability checkmark landed.
+- **Cursor Step 2/6:** merged as PR #1438 at `116392cb71`; source codegen,
+  focused ACP/Cursor/runtime tests, analyzers, and diff checks passed. It added
+  no completed tile, replay, stop/refusal, residency, child session, client, or
+  runtime/config change.
+- **Cursor Step 3/6 (local, pending merge):** completed foreground live Task
+  correlation and one-shot childless replacement implemented from merged Step 2.
+  Replay, safe stop/refusal, residency, child sessions, client/shared changes,
+  runtime/config changes, and native QA remain absent.
 
 ## Plan Review
 
