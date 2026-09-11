@@ -266,7 +266,17 @@ turn.
 and minimum accepted runtime. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
-Released clients retain their own child fanout; final phone/desktop E2E remains outstanding.
+Released clients retain their own child fanout. Phone QA on unchanged published
+adapter 0.1.4 passed the requested stop/input scope after the shared transport fix:
+confirmation dismissal, main-only keep, root/independently resumed child/grandchild
+cancellation, authoritative settlement, runtime reuse, a follow-up turn, earlier
+pending-input cleanup, and one later question preserved and answered. The
+permission sheet's generic label and opaque call ID are not presentation coverage,
+and surviving root-owned shell jobs do not imply failed descendant cancellation or
+broader process-stop support. Cold tile/history reload, read-only child navigation,
+push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
+and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
+user choice. This 0.1.4 evidence does not requalify the current 0.1.5 managed target.
 The native model catalog includes `deepseek-flash` (DeepSeek V4.1 Flash) with
 image input and reasoning controls. Refresh rereads the installed harness's
 configured catalog; it does not upgrade that harness or fetch a live provider catalog.

@@ -208,7 +208,15 @@ defaults and queued client sends coherent.
   client treats an older bridge's `{}` response as no acknowledgment and falls
   back to refreshed visible busy children or its request snapshot during reload.
   `deepseek/input/cancel` remains ordered before later reused-ID input. Other ACP
-  harnesses remain unchanged.
+  harnesses remain unchanged. Phone QA on unchanged published adapter 0.1.4
+  passed scope-dialog dismissal, main-only keep, and root stop across an
+  independently resumed child and its grandchild after #1379 fixed concurrent
+  NDJSON dispatch. Root, child, and grandchild settled idle while the bridge and
+  native runtime survived; a later turn completed on the same runtime. Root-owned
+  background shell jobs may remain after agent-turn cancellation and do not
+  establish failed descendant stop or broader process-stop behavior. This gate
+  did not exercise macOS desktop, cold tile/history reload, bridge restart,
+  multiple clients, or alternate mobile platforms.
 - Pi keeps at most one lazy resident RPC process per active session and allows
   different sessions to run concurrently. A cold resident starts with the
   turn's requested model and thinking level on Pi's command line so
@@ -626,7 +634,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - A plain stop kills running Claude sub-agents or OpenCode child sessions
   without asking, the scope dialog appears when none run, a confirmed stop leaves a sub-agent running or the
   session stuck busy, a killed sub-agent leaves the session busy or the stop
-  request hanging, or dismissing the dialog stops anything.
+  request hanging, or dismissing the dialog stops anything. For DeepSeek, a
+  stopped independent descendant or grandchild remains busy without an
+  authoritative terminal, concurrent native STOP dispatch crashes the bridge,
+  or later accepted input is removed by the earlier Stop.
 - An Antigravity turn accepts a stale or mismatched model/variant tuple, sends a normalized rather than exact native
   model ID, omits `default` mode, dispatches after failed selection, applies an unsafe mode, loses normalized
   model/variant or output between live and replay, or reconnects without clearing connection state.
@@ -663,7 +674,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - Harness availability is bounded management evidence, not continuous credential
   validation. A ready provider can reject a turn before setup refresh changes.
   This gate does not recover or persist staged/queued input.
-- L3 and above need live backends; an omitted plugin is partial coverage.
+- L3 and above need live backends; an omitted plugin is partial coverage. The
+  final DeepSeek phone gate covered scoped stop and ordered pending input only;
+  it did not execute the rest of the cross-plugin L3 turn matrix or any desktop
+  case.
 - Session-detail refresh behavior is under active investigation, so refresh
   churn is recorded as evidence rather than judged pass or fail.
 - The bridge's queued prompts live in plugin memory and do not survive a

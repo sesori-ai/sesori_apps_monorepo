@@ -78,6 +78,14 @@ reaches the backend so the turn continues.
   detail. Native input cancellation clears only earlier requests on the ordered
   stream; later requests survive even when they reuse a question ID. Abort,
   process exit, and disposal cancel pending requests and reject late replies.
+  Phone QA on unchanged published adapter 0.1.4 proved two bounded live cases:
+  API-triggered Stop rejected an earlier real permission and removed its open
+  sheet, and a real question was cancelled while a distinct prompt submitted
+  after Stop was written produced a new question that remained visible,
+  answerable on the phone, and cleared normally. The permission sheet showed a generic tool label and opaque call ID,
+  so cancellation passed but complete permission presentation did not. Desktop,
+  cross-client observation, restart/reconnect, and alternate mobile platforms
+  were not run.
 - Grok runs in its normal ask mode without `--always-approve` or `--yolo`.
   Standard ACP permissions preserve the exact session, tool call, and offered
   option IDs; Once, Reject, and every scope the request actually advertises stay
@@ -204,7 +212,9 @@ the prompt write is held, proving cancellation does not remove the later request
   or appears outside its imported display root or owning project.
 - A DeepSeek question loses supplemental detail, changes answer ordering or
   scope, accepts custom plan-review input, survives abort/process cleanup, or
-  an ordered input cancellation clears a later reused-ID question.
+  an ordered input cancellation clears a later reused-ID question. A Stop that
+  clears an earlier request also removes a later admitted request, or a cleared
+  permission/question sheet remains actionable.
 - A resolved request stays visible, keeps suppressing notifications, or returns
   after reconnect.
 - One failed backend resolution prevents another pending prompt from clearing,

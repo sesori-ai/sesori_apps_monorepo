@@ -7,15 +7,17 @@
   gates are reconciled or explicitly accepted; a docs PR does not close a
   blocked live gate)
 - **Plan date:** 2026-09-02
-- **Base:** `main` at merged Grok child-cancel envelope repair `2ebcc7d01a`
-  (#1429).
+- **Base:** `main` at merged Grok coverage documentation `a28e860557`
+  ([#1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430)).
 - **Delivery:** one open PR at a time, following current repository rules.
   Grok Step 6/7 merged under its exact title. Corrected actual-plugin coverage
   passed its executed stop, lifecycle, replay, and runtime-reuse scope; live
   permission coverage remains unexecuted because no request surfaced. Phone
   setup reached a healthy source build and relay connection, but UI automation
-  was blocked before any visible case. Step 7/7 records that partial matrix and
-  keeps the phone gate open. Codex has nine steps: merged metadata,
+  was blocked before any visible case. Step 7/7 merged as PR #1430 and records
+  that partial matrix while keeping the phone gate open. DeepSeek final coverage
+  documentation now records its passed phone stop/input scope and explicitly
+  deferred desktop scope. Codex has nine steps: merged metadata,
   child-session, historical prompt preparation, and cleanup remain steps
   1/9–4/9. Native rollout facts are
   step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
@@ -596,7 +598,7 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | 🌱 | `release: prepare v0.1.4 for atomic-stop consumer` | #18 merged at `e2ea207f21`; v0.1.4 and six archives verified |
 | monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | Frozen native corpus, ordered input cancel, initialize floor, target and digests; no stop-policy change |
 | monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Replace direct-child fanout with complete native authority at the existing ACP owner |
-| monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
+| monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Current reconciliation: requested phone stop/input scope passed; desktop explicitly deferred; other unexecuted client matrices remain explicit |
 
 ### Scoped-stop replacement
 
@@ -604,9 +606,10 @@ The [replacement design](followups/deepseek-stop-replacement.md) fixes both slic
 PR #1356 closed without merge; its former step 4/4 is superseded. Step 4/5
 lands only the verified native contract/input consumer and keeps current scoped
 stop behavior. Step 5/5 will use one ACP-owned operation, native atomic authority,
-and no residual-ID handshake or new long-lived state. Final phone/desktop E2E
-remains user-owned; finish DeepSeek before Codex. Automatic managed-runtime upgrade
-machinery remains outside this series.
+and no residual-ID handshake or new long-lived state. Requested phone stop/input
+E2E passed after #1379; desktop remains explicitly deferred. Final documentation
+records that partial matrix without reopening native probes. Automatic managed-runtime
+upgrade machinery remains outside this series.
 
 ### Completed live/replay consumer series (historical)
 
@@ -697,6 +700,28 @@ against the required behavior rather than requiring byte-for-byte source parity.
    result?
 3. Does the parent report idle while a continuable child runs, and does its
    later "subagent reported" turn arrive with no inflight prompt?
+
+### Final coverage reconciliation (published adapter 0.1.4, 2026-09-08)
+
+- Passed on the release-target phone path: scope confirmation and dismissal with
+  root plus two nested sub-agents, main-only keep, ancestor atomic stop covering
+  an independently resumed child and its grandchild, authoritative idle
+  settlement, bridge/native runtime survival, and a successful follow-up turn.
+- Passed for live pending input: Stop cleared an earlier permission and an
+  earlier question; a distinct prompt submitted after Stop was written survived,
+  its new question remained usable on the phone, and its answer completed. The
+  permission Stop was invoked through the bridge API, not the phone Stop button.
+- Not claimed: generic permission labeling was not useful presentation; surviving
+  root-owned background shell jobs were not descendant-agent failures or evidence
+  of broader process-stop capability. Owned jobs were cleaned explicitly.
+- Unexecuted in this gate: macOS desktop by explicit user choice, cold
+  tile/history reload and read-only child navigation, push/notification delivery,
+  bridge restart/reconnect, multiple clients, and alternate mobile platforms.
+  Package automation remains evidence for its own narrower cases only.
+- Evidence and privacy boundaries are in `followups/deepseek-phone-qa.md`. Raw
+  logs, screenshots, transcripts, and timing records remain private and require
+  redaction before sharing. No adapter, runtime, production, configuration, or
+  authentication change is part of this documentation gate.
 
 ## Cursor (cursor-agent 2026.07.23, ACP stdio)
 
