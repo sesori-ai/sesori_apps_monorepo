@@ -94,9 +94,12 @@ Consequences:
   therefore never acknowledge `confirm`, `keep`, or `stop` while an unresolved
   background observation exists because `workKept` cannot qualify a success omitted
   from the client wire.
-- Every policy fails through one explicit existing plugin/HTTP error path before
+- Every policy fails through one explicit existing plugin/HTTP 409 path before
   root/input preparation or cancellation. No count, successful ACK, or shared
   wire field is invented for work whose current running count is unknowable.
+  Step 3 maps an unparsed abort 409 to a typed client-local “not accepted”
+  exception and preserves the local prompt queue; it does not confuse that
+  refusal with an accepted abort.
 - Background Task lifecycle cannot render completion merely because its launch
   call completed. Until Cursor exposes a terminal fact, background Tasks keep
   the honest generic Task card and remain a declared capability gap.
@@ -301,11 +304,30 @@ Cursor boundary and repository changes:
   keeps constructing `CursorPlugin` through the existing factory; its public
   `CursorPluginFactory` signature does not gain repository peers. Test
   composition continues through `CursorPlugin.factory`.
+- `client/module_core/lib/src/api/session_api.dart` adds local
+  `SessionAbortApiNotAcceptedException({required Object innerError})`. An abort
+  HTTP 409 that does not parse as the existing `SessionAbortRejection` throws
+  this exception with the original `NonSuccessCodeError`; parsed confirmation
+  rejections remain unchanged. A post-cancel partial failure does not use 409.
+- New
+  `client/module_core/lib/src/repositories/models/session_abort_not_accepted_exception.dart`
+  adds `SessionAbortNotAcceptedException({required Object innerError})`.
+  `SessionRepository.abortSession` translates the API exception at the existing
+  API → repository boundary and retains it as `innerError`.
+- `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`
+  adds one request-lifetime `_abortRequestInFlight` gate. Queue draining returns
+  while it is true. `abort` sets the gate before dispatch and no longer clears
+  local prompts before `keep`/`stop`; accepted 2xx and ambiguous failures keep
+  the existing clear behavior, while typed confirmation rejection and typed
+  not-accepted failure return without clearing the queue or stale-options
+  bookkeeping. The `finally` path releases the gate and retries normal drain.
+  The not-accepted path logs once and returns the existing
+  `SessionAbortOutcome.failed`, so no new UI state is required.
 
 No other new production classes are planned. Existing constructor calls in
-Cursor tests are updated for required fields. There is no shared/client/bridge-
-app/database contract, child catalog row, compatibility shim, or Cursor import
-in ACP.
+Cursor tests are updated for required fields. There is no shared wire,
+bridge-app/database contract, child catalog row, compatibility shim, or Cursor
+import in ACP.
 
 ### One lifecycle path
 
@@ -408,8 +430,12 @@ existing plugin-operation → router HTTP failure path, introduces no
 new shared response, and runs before queued/writing work, pending interaction,
 root cancellation, settlement capture, descendant collection, or fanout.
 `SessionApi.abortSession` cannot parse this plain 409 as the existing typed
-confirmation rejection, so it returns the ordinary `ErrorResponse`;
-`SessionDetailCubit.abort` returns failed rather than aborted.
+confirmation rejection, so it throws the client-local
+`SessionAbortApiNotAcceptedException` with the original error. The repository
+translates that to `SessionAbortNotAcceptedException`; `SessionDetailCubit.abort`
+returns failed rather than aborted while retaining its queued prompts. A
+request-lifetime drain gate prevents those prompts from dispatching until the
+refusal is known, then normal drain resumes. This changes no shared wire shape.
 
 Without an unresolved-background observation, `confirm` and `keep` with
 `activeTaskCount > 0` return the existing
@@ -424,10 +450,12 @@ sends exactly one standard `session/cancel` for that root when the live client
 exists (and zero only when no process exists to notify), and waits for that
 captured settlement. It then **must re-check** unresolved background before any
 accepted response. If a mode-unknown Task terminal changed to background while
-cancellation settled, the branch throws the same backend-neutral
-`PluginOperationException`; root cancellation may already have happened, but the
-client never receives false aborted success. Only when settlement leaves no
-unresolved background may the branch return
+cancellation settled, the branch throws a separate backend-neutral
+`PluginOperationException` with HTTP 502: root cancellation has already happened,
+so this partial failure deliberately follows the existing ambiguous-failure
+queue cleanup rather than the non-mutating 409 path. The client never receives
+false aborted success. Only when settlement leaves no unresolved background may
+the branch return
 `PluginAbortAccepted(workKept: false, subAgentsHandled: false)`. No child id,
 Task id, known client child id, ancestor, sibling, or descendant enters
 preparation or native dispatch.
@@ -437,7 +465,7 @@ preparation or native dispatch.
 | Any prior unresolved-background observation | `confirm` / `keep` / `stop` | None | Same explicit unsupported HTTP failure |
 | Active mode-unknown Tasks `N > 0`, no prior unresolved background | `confirm` | None | Exact typed rejection `N`; main running; main-only false |
 | Active mode-unknown Tasks `N > 0`, no prior unresolved background | `keep` | None | Same exact typed rejection |
-| Active mode-unknown Tasks `N > 0`, no prior unresolved background | `stop` | Named-root prepare/cancel; await authoritative prompt settlement; re-check background | ACK kept=false/handled=false only if no unresolved background; otherwise explicit failure after cancellation |
+| Active mode-unknown Tasks `N > 0`, no prior unresolved background | `stop` | Named-root prepare/cancel; await authoritative prompt settlement; re-check background | ACK kept=false/handled=false only if no unresolved background; otherwise HTTP 502 partial failure after cancellation |
 | No active Task/background fact | `confirm` / `stop` / `keep` | Existing named-root cancellation; re-check after any captured settlement | ACK kept=false, handled=false only while no unresolved background |
 
 `subAgentsHandled` is always false because Cursor exposes no child targets or
@@ -490,10 +518,11 @@ this revised plan.
    background calls stay generic; cancellation creates no tile. No scoped-stop
    authority, unresolved-background residency state, or replay wrapper.
 3. `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]`
-   (expected approximately 550–750 changed lines): exact active mode-unknown
+   (expected approximately 750–1,050 changed lines): exact active mode-unknown
    Task count, durable unresolved-background observation and
    `requiresProcessResidency`, first-action unsupported guard for all policies,
    safe `rootSessionCancel` with mandatory post-settlement background re-check,
+   typed client-local non-acceptance plus a request-lifetime queue-drain gate,
    focused tests, and
    corresponding scoped-stop/lifecycle/capability updates in
    `docs/regression/session-turns.md`,
@@ -540,9 +569,13 @@ Step 3 automated scope:
   through `requiresProcessResidency`. Tests cover work-state resync when the
   first observation is recorded and when authoritative clear, root-only
   `forgetSession`, or process-wide `clear()` removes it.
-- Every unresolved-background `confirm`/`keep`/`stop` takes the same explicit
-  failure before root/input preparation or cancellation; tests assert no
-  outbound cancel, queue/input mutation, successful ACK, or fabricated count.
+- Every prior unresolved-background `confirm`/`keep`/`stop` takes the same
+  explicit HTTP 409 before root/input preparation or cancellation; client tests
+  assert its typed API/repository translation, no local queue or stale-options
+  cleanup, no drain during the request, resumed normal drain afterward, and no
+  successful ACK or fabricated count. Accepted responses and ambiguous failures
+  still clear the queue. A background transition discovered only after root
+  cancellation uses HTTP 502 and the ambiguous-failure cleanup path.
   Active mode-unknown `confirm`/`keep`, named-root `stop`, prompt settlement
   ordering, post-settlement background-transition failure (with root cancel
   already allowed), accepted `workKept: false` only after the re-check, forced

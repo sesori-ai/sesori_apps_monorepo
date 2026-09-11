@@ -816,9 +816,9 @@ The architecture corrections are summarized here:
   only the named root,
   sends one root `session/cancel`, waits existing authoritative prompt
   settlement, then must re-check unresolved background before acceptance. A
-  Task that transitions to background during that window produces the same
-  failure after root cancellation may already have happened, never aborted
-  success; only when no unresolved background remains does it return
+  Task that transitions to background during that window produces an HTTP 502
+  partial failure—root cancellation has already happened—never aborted success;
+  only when no unresolved background remains does it return
   `workKept: false` and `subAgentsHandled: false`. Standard Task terminal frames
   preceding the prompt result are assumed mapped before active settlement
   completes; no quiet timer or poller is added. No child ids or fanout are used.
@@ -826,7 +826,12 @@ The architecture corrections are summarized here:
 - This is required because bridge-internal `SessionAborted` carries `workKept`,
   but `AbortSessionHandler` serializes only `subAgentsHandled`, and
   `SessionDetailCubit.abort` treats every 2xx response as aborted. `workKept`
-  cannot qualify a success omitted from the client wire.
+  cannot qualify a success omitted from the client wire. Step 3 maps an
+  unparsed abort HTTP 409 through client-local API/repository not-accepted
+  exceptions. A request-lifetime cubit drain gate replaces pre-request queue
+  clearing: typed rejections and pre-mutation 409s retain queued prompts,
+  accepted responses and ambiguous failures clear them, and drain resumes when
+  the request settles. No shared wire or new UI outcome is added.
 - The only renamed new replay class is `CursorTaskReplayTracker` in
   `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/`. Cursor plugin
   composition injects one already-configured `AcpReplayCollector` and the same
@@ -842,8 +847,10 @@ The architecture corrections are summarized here:
   accepted safety tradeoff avoids silently killing possibly-running work.
   Forced process stop and explicit session cleanup remain possible.
 - No new locks, timers, controllers, pollers, speculative `end_turn` missing-
-  terminal machinery, recovery hooks, shared wire, client, bridge-app contract,
-  database, child catalog, or fake history.
+  terminal machinery, recovery hooks, shared wire, bridge-app contract,
+  database, child catalog, or fake history. Client changes stay within the
+  existing API → repository → cubit flow and add only typed local causes plus
+  the request-lifetime queue-drain gate.
   Background terminal lifecycle/full stop/history and Cursor child sessions
   remain unsupported with the generic card.
 
@@ -860,7 +867,7 @@ actual-plugin evidence and reconciles claims.
 |---|---|---|
 | 1/5 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Docs only: privacy-safe native evidence, corrected ownership and stop policy, exact five-step delivery; unchecked until merge; no feature implementation |
 | 2/5 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Approximately 1,550–1,750 lines: DTO/codegen, generic mode-unknown pending/in-progress plus cancelled/error settlement, completed terminal correlation/replacement, focused tests, tools/session-turn behavior docs |
-| 3/5 | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Approximately 550–750 lines: exact active mode-unknown Task count, unresolved-background process residency and all-policy first guard, named-root cancel plus mandatory post-settlement re-check, focused tests, stop/lifecycle/capability docs |
+| 3/5 | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Approximately 750–1,050 lines: exact active mode-unknown Task count, unresolved-background process residency and all-policy first guard, named-root cancel plus mandatory post-settlement re-check, typed client-local not-accepted handling and queue-drain gate, focused tests, stop/lifecycle/capability docs |
 | 4/5 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 4/5]` | Approximately 650–1,000 lines: `CursorTaskReplayTracker`, configured collector/shared mapper injection, stable completed foreground projection, generic/absent fallbacks, tests, history doc |
 | 5/5 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; no first behavior-doc delivery; explicit unsupported/unexecuted matrix; Grok phone gate stays open |
 

@@ -205,7 +205,7 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Current documentation PR; privacy-safe evidence and exact ownership/policy plan, with no feature implementation |
 | [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Regenerate after step 1 merge; approximately 1,550–1,750 lines for DTO/codegen, generic mode-unknown pending/in-progress plus cancelled/error cards, completed terminal replacement, focused tests, and tools/session-turn docs |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Regenerate after Step 2; approximately 550–750 lines for exact active mode-unknown Task count, unresolved-background process residency/all-policy first guard, named-root stop with post-settlement re-check, tests, and stop/lifecycle/capability docs |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Regenerate after Step 2; approximately 750–1,050 lines for exact active mode-unknown Task count, unresolved-background process residency/all-policy first guard, named-root stop with post-settlement re-check, typed client-local not-accepted handling and queue-drain gate, tests, and stop/lifecycle/capability docs |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 4/5]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared mapper, stable completed projection, fallbacks, tests, and history doc |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
@@ -272,15 +272,18 @@ post-merge E2E gates are unchanged.
   `confirm`/`keep`/`stop` requests now fail through one side-effect-free
   `PluginOperationException`/HTTP path before root/input preparation or cancel
   because `workKept` cannot qualify a success omitted from the client wire. No
-  count, shared wire, or successful ACK is invented. Active mode-unknown
+  count, shared wire, or successful ACK is invented. Client-local API/repository
+  not-accepted exceptions and a request-lifetime cubit drain gate preserve the
+  local prompt queue for this pre-mutation 409; accepted responses and
+  ambiguous failures retain existing queue cleanup. Active mode-unknown
   confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
   map exact `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
   main-only false and no wire change;
   explicit `stop` awaits authoritative prompt settlement and must re-check
   unresolved background before acceptance. A Task that transitions to
-  background returns the same failure after root cancellation may already have
-  happened; accepted responses require no unresolved background and
+  background returns an HTTP 502 partial failure—root cancellation has already
+  happened—while accepted responses require no unresolved background and
   `workKept: false`.
 - [x] Corrected rendering scope to completed foreground tiles only.
   Pending/in-progress are mode-unknown and remain generic; cancelled and failed
@@ -298,8 +301,9 @@ post-merge E2E gates are unchanged.
   lifecycle/full stop/history/child sessions unsupported with the generic card.
   Task terminal frames preceding a prompt result are assumed mapped before
   active settlement completes; no quiet timer, poller, speculative `end_turn`
-  missing-terminal machinery, lock, controller, recovery path, shared wire, or
-  client contract was added.
+  missing-terminal machinery, lock, controller, recovery path, or shared wire
+  was added. The bounded client changes remain in the existing API → repository
+  → cubit flow.
 - The earlier architecture correction is superseded on process residency,
   successful retained-work ACKs, tile lifecycle claims, and documentation
   timing by the verified bridge transport/client path and native presentation
@@ -318,8 +322,13 @@ post-merge E2E gates are unchanged.
   mapper lifecycle hook before `_finishTurn`, retiring every active generic Task
   as error. Cubic independently duplicated the stop-race finding. Its separate
   `workKept` wording comment is also applied: no sentence suggests relying on a
-  field omitted from the client wire. Per user direction after two architecture
-  passes, there is no further architecture-review loop.
+  field omitted from the client wire. The next review found that generic 409
+  handling clears queued prompts and that current capability docs prematurely
+  listed the planned enum value. The revised Step 3 now uses typed client-local
+  not-accepted handling plus a queue-drain gate for pre-mutation 409s, reserves
+  HTTP 502 for the post-cancel partial failure, and keeps `rootSessionCancel`
+  out of the implemented-capability list until Step 3 lands. Per user direction
+  after two architecture passes, there is no further architecture-review loop.
 
 ## Step 1 Checklist
 
