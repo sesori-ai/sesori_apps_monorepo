@@ -4,6 +4,7 @@ library;
 import "dart:async";
 import "dart:math" as math;
 
+import "package:clock/clock.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
@@ -12,6 +13,56 @@ import "package:material_ui/material_ui.dart";
 import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 import "../../utils/lerp_utils.dart";
+
+/// One device-clock-aligned repaint source shared by all Flutter sparkles.
+///
+/// A recursive one-shot timer avoids `Timer.periodic` drift. It exists only
+/// while at least one visible, motion-enabled working sparkle listens.
+final class _AiLoaderLoopClock._() extends ChangeNotifier {
+  static final instance = _AiLoaderLoopClock._();
+  static const _period = Duration(seconds: 2);
+  static const _step = Duration(milliseconds: 25);
+
+  Timer? _timer;
+  double _angle = 0;
+
+  double get angle => _angle;
+
+  @override
+  void addListener(VoidCallback listener) {
+    final needsTimer = !hasListeners;
+    super.addListener(listener);
+    if (needsTimer) {
+      _sampleClock();
+      _scheduleNextStep();
+    }
+  }
+
+  @override
+  void removeListener(VoidCallback listener) {
+    super.removeListener(listener);
+    if (!hasListeners) {
+      _timer?.cancel();
+      _timer = null;
+    }
+  }
+
+  void _scheduleNextStep() {
+    final remainder = clock.now().millisecondsSinceEpoch % _step.inMilliseconds;
+    _timer = Timer(Duration(milliseconds: _step.inMilliseconds - remainder), () {
+      _timer = null;
+      _sampleClock();
+      notifyListeners();
+      if (hasListeners) _scheduleNextStep();
+    });
+  }
+
+  void _sampleClock() {
+    final now = clock.now().millisecondsSinceEpoch;
+    final sampled = now - now % _step.inMilliseconds;
+    _angle = (sampled % _period.inMilliseconds) / _period.inMilliseconds * 2 * math.pi;
+  }
+}
 
 /// How the sparkle's interior is painted.
 enum PregoAiLoaderFillMode() {
@@ -41,12 +92,7 @@ class const PregoAiLoader({
 
   /// Overrides both states, for a caller-owned timeline such as Deep Scan.
   final Color? color,
-
-  /// Initial fraction of a rotation, stable per row across rebuilds.
-  final double phase = 0,
 }) extends StatefulWidget {
-  static double phaseFor(String seed) => (seed.hashCode % 100) / 100;
-
   @override
   State<PregoAiLoader> createState() => _PregoAiLoaderState();
 }
@@ -55,7 +101,6 @@ class _PregoAiLoaderState()
     extends State<PregoAiLoader>
     with TickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   static const _nativeViewType = "sesori/native-ai-loader";
-  static const _period = Duration(seconds: 2);
 
   // The Figma example contains several seconds of loading and a long idle
   // hold. Only the finish is a UI transition: preserve its fill and rotational
@@ -65,11 +110,12 @@ class _PregoAiLoaderState()
   static const _resumeDuration = Duration(milliseconds: 150);
   static const _settleCurve = Cubic(0.45, 1.45, 0.833, 1.368);
 
-  late final _rotation = AnimationController.unbounded(
-    vsync: this,
-    value: widget.animate ? widget.phase * 2 * math.pi : 0,
-  );
-  late final _fill = AnimationController(vsync: this, value: 1);
+  late final _rotation = AnimationController.unbounded(vsync: this);
+  late final _fill = AnimationController(vsync: this, value: 1)..addListener(_updateLoopAngle);
+  final _loopClock = _AiLoaderLoopClock.instance;
+  double _loopAngle = 0;
+  double _loopOffset = 0;
+  bool _listeningToLoop = false;
   late ({Color fill, Color stroke}) _fillOrigin = (
     fill: const Color(0x00B2D1FF),
     stroke: context.prego.colors.textPrimary,
@@ -82,19 +128,25 @@ class _PregoAiLoaderState()
       widget.fillMode == .keyframed &&
       widget.color == null;
 
+  bool get _appIsVisible {
+    final lifecycle = WidgetsBinding.instance.lifecycleState;
+    return lifecycle == null || lifecycle == AppLifecycleState.resumed || lifecycle == AppLifecycleState.inactive;
+  }
+
   @override
-  bool get motionEnabled => !_usesNativeRenderer && TickerMode.valuesOf(context).enabled;
+  bool get motionEnabled => !_usesNativeRenderer && TickerMode.valuesOf(context).enabled && _appIsVisible;
 
   @override
   void startMotion() {
     if (widget.animate) {
-      if (!_rotation.isAnimating) {
-        _rotation.repeat(min: _rotation.value, max: _rotation.value + 2 * math.pi, period: _period);
+      _startLoop(rejoin: _fill.value < 1);
+    } else {
+      _stopLoop();
+      if (_fill.value < 1 && !_rotation.isAnimating) {
+        const quarterTurn = math.pi / 2;
+        final target = ((_rotation.value + 0.593) / quarterTurn).ceil() * quarterTurn;
+        _rotation.animateTo(target, duration: _settleDuration, curve: _settleCurve);
       }
-    } else if (_fill.value < 1 && !_rotation.isAnimating) {
-      const quarterTurn = math.pi / 2;
-      final target = ((_rotation.value + 0.593) / quarterTurn).ceil() * quarterTurn;
-      _rotation.animateTo(target, duration: _settleDuration, curve: _settleCurve);
     }
     if (_fill.value < 1 && !_fill.isAnimating) {
       _fill.animateTo(1, duration: widget.animate ? _resumeDuration : _settleDuration);
@@ -103,10 +155,40 @@ class _PregoAiLoaderState()
 
   @override
   void stopMotion() {
+    _stopLoop();
     _rotation.stop();
     _rotation.value = 0;
     _fill.stop();
     _fill.value = 1;
+  }
+
+  void _startLoop({required bool rejoin}) {
+    if (_listeningToLoop) return;
+    _listeningToLoop = true;
+    _loopClock.addListener(_updateLoopAngle);
+    final phaseAngle = _loopClock.angle;
+    _loopAngle = phaseAngle + ((_rotation.value - phaseAngle) / (2 * math.pi)).round() * 2 * math.pi;
+    _loopOffset = rejoin ? _rotation.value - _loopAngle : 0;
+    _updateLoopAngle();
+  }
+
+  void _stopLoop() {
+    if (!_listeningToLoop) return;
+    _loopClock.removeListener(_updateLoopAngle);
+    _listeningToLoop = false;
+  }
+
+  void _updateLoopAngle() {
+    if (!_listeningToLoop) return;
+    final phaseAngle = _loopClock.angle;
+    _loopAngle = phaseAngle + ((_loopAngle - phaseAngle) / (2 * math.pi)).round() * 2 * math.pi;
+    _rotation.value = _loopAngle + _loopOffset * (1 - _fill.value);
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    super.didChangeAppLifecycleState(state);
+    syncMotion();
   }
 
   @override
@@ -124,6 +206,7 @@ class _PregoAiLoaderState()
         outline: widget.color ?? colors.textPrimary,
         bloom: widget.color ?? const Color(0xFFB2D1FF),
       );
+      _stopLoop();
       _rotation.stop();
       _fill.stop();
       _fill.value = 0;
@@ -161,6 +244,7 @@ class _PregoAiLoaderState()
 
   @override
   void dispose() {
+    _stopLoop();
     _rotation.dispose();
     _fill.dispose();
     super.dispose();
@@ -192,12 +276,11 @@ class _PregoAiLoaderState()
   }
 
   Widget _nativeSparkle({required PregoColors colors}) {
-    // StandardMessageCodec carries ARGB integers, a double phase, and a bool.
+    // StandardMessageCodec carries ARGB integers and a bool.
     // ignore: no_slop_linter/prefer_specific_type, heterogeneous native codec payload
     final params = <String, Object>{
       "solid": colors.textPrimaryOnBrand.toARGB32(),
       "outline": colors.textPrimary.toARGB32(),
-      "phase": widget.phase,
       "loading": widget.animate,
     };
     final nativeView = defaultTargetPlatform == TargetPlatform.iOS
@@ -217,7 +300,7 @@ class _PregoAiLoaderState()
           );
     return SizedBox.square(
       dimension: widget.size,
-      // State and phase must not replace the renderer at completion. Colours
+      // State must not replace the renderer at completion. Colours
       // are creation-time data, so a theme change does create the new palette.
       child: KeyedSubtree(
         key: ValueKey(Object.hash(params["solid"], params["outline"])),

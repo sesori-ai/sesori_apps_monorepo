@@ -15,9 +15,13 @@ indicator at the native medium size, stepped by a plain timer instead of a
 ticker. Its picture only changes when the active tick advances, so it repaints
 exactly eight times per second, registers no ticker, schedules no frame between
 steps, and stops its timer while the app is not visible (paused, hidden, or
-detached; an unfocused but visible window keeps spinning). The sparkle
-keeps its animated Flutter fallback there. Reduced motion and disabled tickers
-replace the native views with static Flutter frames (the spinner rests on one
+detached; an unfocused but visible window keeps spinning). The sparkle uses a
+private, device-clock-aligned 40 FPS timer there: all visible working sparkles
+share one timer and phase, no repeating ticker runs, and the steady loop
+schedules no frame between 25ms steps. Its timer also stops when no eligible
+sparkle listens. Finite completion and 150ms restart/rejoin transitions keep
+display-rate updates.
+Reduced motion and disabled tickers replace the native views with static Flutter frames (the spinner rests on one
 stepped frame; the sparkle is a hollow working mark or a solid unread mark), the spinner owns loading-spinner semantics on every
 platform, and the sparkle stays decorative.
 The sparkle matches Figma `2506:20093`: a 14px Tabler glyph in a 20px slot,
@@ -30,9 +34,11 @@ read thread removes the status mark through the existing row state rules.
 
 Apple views retain their renderer through working/unread changes and receive
 `setLoading` on a per-view channel; both the loop and completion use Core
-Animation, without continuous Flutter frames. Native and Flutter renderers
-share the same geometry, colours, timing, and per-row initial phase. Theme
-changes rebuild the native palette. Reduced motion and disabled TickerMode
+Animation, without continuous Flutter frames or per-frame channel traffic.
+Native Core Animation remains unthrottled. Apple and Flutter renderers sample
+the same two-second Unix device-clock phase when starting or resuming, so
+working sparkles mounted at different times rotate together. They share the
+same geometry, colours, and timing. Theme changes rebuild the native palette. Reduced motion and disabled TickerMode
 settle immediately, retaining the hollow/solid state distinction. Caller-owned
 outline mode and explicit colours remain available for Deep Scan.
 
@@ -40,7 +46,7 @@ outline mode and explicit colours remain available for Deep Scan.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: the owning widget test suite proves per-platform widget selection, creation parameters, semantics role, the reduced-motion and disabled-ticker fallbacks, and that the stepped spinner schedules one repaint per step, none between, no ticker, and nothing while the app is backgrounded. |
+| L1 Smoke | Automated: the owning widget test suite proves per-platform widget selection, creation parameters, semantics role, and reduced-motion and disabled-ticker fallbacks. It also proves staggered sparkle mounts share one phase and 40 FPS cadence, restarted sparkles rejoin after their finite transition, no repeating ticker or inter-step frames run, and scheduling stops while backgrounded or disposed. Stepped-spinner cadence remains covered independently. |
 | L2 Routine | Client end to end (release-target client platform): a screen with a spinning indicator renders correctly while the app shows no continuous Flutter UI/raster work attributable to the spinner; list scrolling stays smooth with indicators on screen. |
 | L3 Release | Client end to end: repeat on the alternate mobile platform and macOS desktop (include a session list with working-session sparkles on iOS and macOS); scroll an indicator through a list, insert and remove it repeatedly, and overlap it with glass/blur without crashes or scene corruption. |
 | L4 Extended | Client end to end: toggle system reduce motion mid-spin; background and foreground the app while an indicator is animating. |
@@ -70,8 +76,8 @@ request no brand tint, so every spinner shows its platform's natural colour
 for the app's resolved brightness (native views receive that brightness and
 surfaces that invert the page ask for the opposite natural grey) while the
 tint capability stays available;
-sparkles in a list rotating in lockstep despite distinct phases; the native
-sparkle motion visibly diverging from the Flutter fallback; completion
+working sparkles rotating out of sync or the Flutter fallback's steady working
+loop exceeding 40 repaints per second; the native sparkle motion visibly diverging from the Flutter fallback; completion
 restarting on rebuild or looping after work ends; a visible angle/fill jump
 when another turn starts during completion; a stale native loading state after
 a row update; reduce motion still animating or making working look unread.
