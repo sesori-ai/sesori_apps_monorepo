@@ -108,9 +108,9 @@ final class CursorTaskReplayTracker({
       return;
     }
     try {
-      task.isBackground = CursorTaskOutputDto.fromJson(outputJson).isBackground;
-    } on Object {
-      _logMalformedTaskFact();
+      task.isBackground = CursorTaskOutputDto.fromJson({"isBackground": outputJson["isBackground"]}).isBackground;
+    } on Object catch (error, stackTrace) {
+      Log.w("[cursor] malformed replay Task output ignored", error, stackTrace);
     }
   }
 

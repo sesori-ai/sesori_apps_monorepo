@@ -3,8 +3,7 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** Cursor Step 4 merged as
-  [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) at `a7d3014e1a`.
+- **Implementation base:** Cursor Step 4 PR #1442 merged at `a7d3014e1a`.
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -12,9 +11,7 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** Drive Cursor replay Step 5/6
-  [PR #1443](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1443) to merge,
-  then run Step 6 actual-plugin coverage.
+- **Next action:** Merge Cursor Step 5 PR #1443, then run Step 6 actual-plugin coverage.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
@@ -526,8 +523,7 @@ post-merge E2E gates are unchanged.
 - **Cursor Step 4/6:** PR #1442 merged at `a7d3014e1a`; exact Task count,
   residency, typed refusal, bounded root stop, concurrent descendant fallback,
   queue gate, and restart UI shipped without replay or native QA.
-- **Cursor Step 5/6:** PR #1443 is open with configured collector/shared projection and stable fallbacks.
-  No analytics event, native QA, child session, wire/client/DB, runtime, timer, or poller change.
+- **Cursor Step 5/6:** PR #1443 is open with a standard ACP collector/shared typed projection; no analytics or native QA.
 
 ## Plan Review
 

@@ -23,20 +23,27 @@ void main() {
       expect(standard.notifications, [foreign, task]);
     });
 
-    test("preserves completed non-Task generic output without a malformed Task warning", () {
+    test("preserves non-Task output and safely diagnoses malformed Task output", () {
       final update = _toolCall(input: const {"_toolName": "shell"}, status: "completed")
         ..["rawOutput"] = const {"stdout": "done"};
       final notification = _notification(update: update);
       final standard = _collector()..consumeNotification(notification: notification);
       final tracker = _tracker();
+      final malformedTracker = _tracker();
       final stderrLines = <String>[];
 
-      IOOverrides.runZoned(
-        () => tracker.consumeNotification(notification: notification),
-        stderr: () => CapturingStdout(lines: stderrLines),
-      );
+      IOOverrides.runZoned(() {
+        tracker.consumeNotification(notification: notification);
+        malformedTracker
+          ..consumeNotification(notification: _notification(update: _toolCall()))
+          ..consumeNotification(
+            notification: _notification(
+              update: _terminal(rawOutput: {"isBackground": "false", "transcript": "secret"}),
+            ),
+          );
+      }, stderr: () => CapturingStdout(lines: stderrLines));
 
-      expect(stderrLines, isEmpty);
+      expect(stderrLines.join(), allOf(contains("malformed replay Task output"), isNot(contains("secret"))));
       expect(
         _build(tracker: tracker),
         standard.buildWithAssistantSelection(modelId: "model", providerId: "cursor", variant: "high"),
