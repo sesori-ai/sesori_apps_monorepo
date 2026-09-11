@@ -152,8 +152,8 @@ ACP changes stay backend-neutral:
 - `AcpChildSessionTracker` remains limited to real ACP child sessions and root
   holds. Cursor Task correlation never enters its activity, root-busy, count,
   fanout, stop, deletion, or reset paths.
-- Step 3 extends Cursor-owned correlation with the completed foreground phase
-  and one-shot replacement methods only when live completed tiles consume them.
+- Step 3 extends Cursor-owned correlation with the completed foreground phase,
+  exact root/tool lookup, one-shot replacement, and next-turn stale cleanup.
   Step 4 then adds exact active count plus one root-level unresolved-background
   observation and Cursor-owned process-residency policy. Pending/in-progress
   remains mode-unknown because `isBackground` appears only on terminal output.
@@ -495,13 +495,13 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    PR #1435 merged at `b83b64901c`; supervisor owns GitHub title update. Docs
    only, no feature implementation.
 2. `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]`
-   (expected 1,300–1,400 changed lines): active generic-part tracking,
+   merged as PR #1438 at `116392cb71`: active generic-part tracking,
    pending/running observation, every standard terminal forget, generic
    cancelled/error settlement, `cursor/task` request ack, NDJSON exit ordering,
    focused ACP/Cursor/runtime tests, behavior docs, and late typed-refusal plan
    correction only. No tile, completed correlation, residency, stop, or replay.
 3. `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]`
-   (expected 650–950 changed lines): completed-phase correlation, minimal added
+   is implemented locally and pending merge: completed-phase correlation, minimal added
    presentation DTO fields/codegen, completed childless replacement, tests, and
    live-tile capability/docs update.
 4. `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]`
