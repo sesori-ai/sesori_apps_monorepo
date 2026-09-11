@@ -215,13 +215,15 @@ prompt, and skill commands remain available.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
-ACP plugins declare one closed scoped-stop capability: `unsupported`, `perChildSnapshot` (Grok), or
-`completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare whether "main agent only" is
-honored through `mainAgentOnlySupported`; the app offers the action only when it is true.
+ACP plugins currently declare one closed scoped-stop capability: `unsupported`, `perChildSnapshot` (Grok), or
+`completeNativeAtomic` (DeepSeek). Cursor's planned safe Task subset will extend this enum with
+`rootSessionCancel` when Step 3 implements and tests the branch. Plugins that report a scoped-stop rejection declare
+whether "main agent only" is honored through `mainAgentOnlySupported`; the app offers that action only when it is
+true.
 
 ¹ Claude Code's only stop primitive (`interrupt`, verified on 2.1.257) stops
 background sub-agents together with the running main turn.
@@ -269,10 +271,35 @@ live-plugin coverage.
 Agent Client Protocol server exposes no subagent lifecycle, no child session,
 and only the turn-wide `session/cancel`.
 
-⁵ Cursor (cursor-agent 2026.07.23) over ACP emits a subagent as a plain
-`Task: …` tool call plus a `cursor/task` notification without child transcript,
-so a tile is possible but a child session is not; the running count enables a
-confirmation, while ACP's turn-wide `session/cancel` rules out partial stops.
+⁵ Cursor (managed target `cursor-agent 2026.08.11-e8db854`, probed
+2026-09-11) emits a standard `Task: …` call and then one correlated
+`cursor/task` JSON-RPC request when that Task-tool invocation completes. A
+foreground invocation's completion is also sub-agent completion; a background
+invocation completes at launch and exposes `isBackground: true`, while the
+background work continues without a later terminal lifecycle or child
+transcript. `session/load` replays stable full standard Task input/result facts,
+not `cursor/task`, so completed foreground tiles are planned without a child
+session. Pending/in-progress calls lack presentation facts and `isBackground`, so their
+mode is unknown and they remain generic; cancelled foreground calls also remain
+generic cancelled cards because no `cursor/task` follows cancellation. Standard
+`session/cancel` authoritatively cancels an active root prompt. The planned safe
+Task subset may provide side-effect-free confirmation with the exact observed
+active Task count and named-root stop when no unresolved background observation
+exists. Explicit stop must await authoritative prompt settlement and re-check
+unresolved background before acceptance; a Task that resolves as background in
+that window yields failure—root cancellation has already happened—never aborted
+success. A launched background Task survives root cancel, so the
+overall “`stop` cancels them all” capability is **not supported**. While such an
+observation remains unresolved, `confirm`, `keep`, and `stop` must all fail
+before root/input cancellation because bridge-internal `workKept` cannot qualify
+a success omitted from the client wire. Step 3 plans to map that pre-mutation
+HTTP 409 to a typed client-local not-accepted exception, pause local queue drain
+for the request, and retain queued prompts; a background transition discovered
+only after root cancellation instead uses an ambiguous HTTP 502 failure and
+existing queue cleanup. The observation may keep only
+ACP process work state busy until session deletion/process reset; root
+`end_turn` and root UI idle remain honest root-turn completion, never a
+background completion or tile claim.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a

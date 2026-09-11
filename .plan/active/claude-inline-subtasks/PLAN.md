@@ -3,11 +3,22 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Status:** Series completed 2026-09-02 (Step 8/8; L4 matrix recorded in
-  `TRACKER.md`); reactivated 2026-09-02 for the harness follow-ups in
-  `HARNESS_FOLLOWUPS.md`; remains active until their required coverage gates
-  are reconciled or explicitly accepted, including the blocked Grok phone gate
-  and the unstarted Cursor work
+- **Status:** **ACTIVE.** Series completed 2026-09-02 (Step 8/8; L4 matrix
+  recorded in `TRACKER.md`) and reactivated for harness follow-ups. DeepSeek
+  coverage merged as PR #1431 at `7dd323d1d7`. Current Cursor
+  `2026.08.11-e8db854` native evidence and the five-step delivery plan are
+  recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Feature
+  implementation has not landed. Cursor delivery remains five steps: unchecked
+  docs/probe Step 1; completed foreground tiles plus tools/session-turn docs in
+  Step 2; safe Task stop policy plus lifecycle/capability docs in Step 3;
+  completed-tile replay plus history docs in Step 4; actual-plugin evidence and
+  final reconciliation only in Step 5. Preserved code refs `c5c0def` and
+  `ab03528` are stale, unpublishable historical evidence; successors must be
+  regenerated from
+  the revised plan without mutating or deleting those refs. Retirement remains
+  blocked by Cursor delivery/coverage and the Grok phone
+  gate, whose WebDriverAgent 0.0.23 infrastructure failure occurred before any
+  visible case
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
