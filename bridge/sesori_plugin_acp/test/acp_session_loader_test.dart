@@ -1228,6 +1228,63 @@ void main() {
       expect(messages.every((message) => message.parts.isNotEmpty), isTrue);
     });
 
+    test("build-time tool replacement keeps ordered materialization and constructor behavior", () {
+      final collector =
+          AcpReplayCollector(
+              sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
+              sessionId: "s1",
+              agentId: "ACP",
+              initialUserMessageId: null,
+              messageIdOverride: null,
+              messageTimeResolver: null,
+              haltClassifier: null,
+              toolPartReplacement: ({required toolCallId, required toolPart}) =>
+                  toolPart.copyWith(tool: "configured-$toolCallId"),
+              toolPartSuppression: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "agent_message_chunk",
+                "messageId": "m1",
+                "content": {"type": "text", "text": "before"},
+              }),
+            )
+            ..consume(upd({"sessionUpdate": "tool_call", "toolCallId": "task-1", "status": "completed"}))
+            ..consume(
+              upd({
+                "sessionUpdate": "agent_message_chunk",
+                "messageId": "m1",
+                "content": {"type": "text", "text": "after"},
+              }),
+            );
+
+      final configured = collector.buildWithAssistantSelection(modelId: "m", providerId: "p", variant: "v");
+      final overridden = collector.buildWithToolPartReplacement(
+        modelId: "m",
+        providerId: "p",
+        variant: "v",
+        toolPartReplacement: ({required toolCallId, required toolPart}) =>
+            toolPart.copyWith(tool: "override-$toolCallId"),
+      );
+
+      expect(configured.single.parts.map((part) => part.type), [
+        PluginMessagePartType.text,
+        PluginMessagePartType.tool,
+        PluginMessagePartType.text,
+      ]);
+      expect((configured.single.parts[1] as PluginMessagePartTool).tool, "configured-task-1");
+      expect((overridden.single.parts[1] as PluginMessagePartTool).tool, "override-task-1");
+      expect(overridden.single.parts.map((part) => part.id), configured.single.parts.map((part) => part.id));
+      final assistant = overridden.single.info as PluginMessageAssistant;
+      expect((assistant.modelID, assistant.providerID, assistant.variant), ("m", "p", "v"));
+      expect(
+        (collector.build().single.parts[1] as PluginMessagePartTool).tool,
+        "configured-task-1",
+        reason: "override does not mutate configuration",
+      );
+    });
+
     test("inserted messages split an explicit assistant id into unique deterministic segments", () {
       final collector =
           AcpReplayCollector(

@@ -17,6 +17,28 @@ enum CursorSubagentType() {
   unknown,
 }
 
+enum CursorTaskReplayUpdateKind() {
+  @JsonValue("tool_call")
+  toolCall,
+  @JsonValue("tool_call_update")
+  toolCallUpdate,
+  @JsonValue("unknown")
+  unknown,
+}
+
+enum CursorTaskReplayStatus() {
+  @JsonValue("pending")
+  pending,
+  @JsonValue("in_progress")
+  inProgress,
+  @JsonValue("completed")
+  completed,
+  @JsonValue("failed")
+  failed,
+  @JsonValue("unknown")
+  unknown,
+}
+
 /// Cursor-owned boundary model for identifying standard Task calls.
 @Freezed(fromJson: true, toJson: false)
 sealed class CursorTaskInputDto with _$CursorTaskInputDto {
@@ -47,6 +69,35 @@ sealed class CursorSubagentTypeDto with _$CursorSubagentTypeDto {
   }) = _CursorSubagentTypeDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorSubagentTypeDtoFromJson(json);
+}
+
+/// Full standard Task input persisted by Cursor for history replay.
+@Freezed(fromJson: true, toJson: false)
+sealed class CursorTaskReplayInputDto with _$CursorTaskReplayInputDto {
+  const factory({
+    @JsonKey(
+      name: "_toolName",
+      unknownEnumValue: CursorTaskTool.unknown,
+    )
+    required CursorTaskTool toolName,
+    required String? prompt,
+    required String? description,
+    required CursorSubagentTypeDto? subagentType,
+  }) = _CursorTaskReplayInputDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CursorTaskReplayInputDtoFromJson(json);
+}
+
+/// Minimal standard update envelope used to establish replay Task identity.
+@Freezed(fromJson: true, toJson: false)
+sealed class CursorTaskReplayUpdateDto with _$CursorTaskReplayUpdateDto {
+  const factory({
+    @JsonKey(unknownEnumValue: CursorTaskReplayUpdateKind.unknown) required CursorTaskReplayUpdateKind sessionUpdate,
+    required String? toolCallId,
+    @JsonKey(unknownEnumValue: CursorTaskReplayStatus.unknown) required CursorTaskReplayStatus? status,
+  }) = _CursorTaskReplayUpdateDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CursorTaskReplayUpdateDtoFromJson(json);
 }
 
 /// Presentation and exact tool correlation from Cursor's terminal

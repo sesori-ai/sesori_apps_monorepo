@@ -469,7 +469,7 @@ remains at the post-settlement re-check. Background full stop remains unsupporte
 ### Replay and unsupported behavior
 
 Replay uses only typed standard Task facts. Complete foreground input plus
-`isBackground: false` may replace the generic part. `isBackground: true`,
+`isBackground: false` replaces the exact materialized generic part. `isBackground: true`,
 missing/malformed input/output, or incomplete presentation facts preserve the
 generic card. Native cancelled replay absence remains absence. Repeated loads
 reuse native replay-local identity without asserting equality to the original
@@ -512,8 +512,8 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    capability docs. It remains unpublished on a branch regenerated from merged
    main; its pre-reconciliation tree matched reviewed checkpoint `eae039ca27`.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
-   (expected 650–1,000 changed lines): configured collector/shared pure projection,
-   stable completed projection, fallbacks, tests, and history doc.
+   is implemented and checked locally, unpublished: configured collector/shared
+   pure projection, typed stable replacement/fallbacks, tests, and history docs.
 6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
    (expected 60–140 changed lines): bounded actual-plugin evidence and final
    reconciliation only; unsupported/unexecuted boundaries remain explicit.

@@ -422,6 +422,317 @@ as CursorSubagentType?,
 
 
 /// @nodoc
+mixin _$CursorTaskReplayInputDto {
+
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool get toolName; String? get prompt; String? get description; CursorSubagentTypeDto? get subagentType;
+/// Create a copy of CursorTaskReplayInputDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CursorTaskReplayInputDtoCopyWith<CursorTaskReplayInputDto> get copyWith => _$CursorTaskReplayInputDtoCopyWithImpl<CursorTaskReplayInputDto>(this as CursorTaskReplayInputDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CursorTaskReplayInputDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorTaskReplayInputDto&&(identical(other.toolName, _this.toolName) || other.toolName == _this.toolName)&&(identical(other.prompt, _this.prompt) || other.prompt == _this.prompt)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.subagentType, _this.subagentType) || other.subagentType == _this.subagentType));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CursorTaskReplayInputDto;
+  return Object.hash(runtimeType,_this.toolName,_this.prompt,_this.description,_this.subagentType);
+}
+
+@override
+String toString() {
+  final _this = this as CursorTaskReplayInputDto;
+  return 'CursorTaskReplayInputDto(toolName: ${_this.toolName}, prompt: ${_this.prompt}, description: ${_this.description}, subagentType: ${_this.subagentType})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CursorTaskReplayInputDtoCopyWith<$Res>  {
+  factory $CursorTaskReplayInputDtoCopyWith(CursorTaskReplayInputDto value, $Res Function(CursorTaskReplayInputDto) _then) = _$CursorTaskReplayInputDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description, CursorSubagentTypeDto? subagentType
+});
+
+
+$CursorSubagentTypeDtoCopyWith<$Res>? get subagentType;
+
+}
+/// @nodoc
+class _$CursorTaskReplayInputDtoCopyWithImpl<$Res>
+    implements $CursorTaskReplayInputDtoCopyWith<$Res> {
+  _$CursorTaskReplayInputDtoCopyWithImpl(this._self, this._then);
+
+  final CursorTaskReplayInputDto _self;
+  final $Res Function(CursorTaskReplayInputDto) _then;
+
+/// Create a copy of CursorTaskReplayInputDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? toolName = null,Object? prompt = freezed,Object? description = freezed,Object? subagentType = freezed,}) {
+  return _then(CursorTaskReplayInputDto(
+toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
+as CursorTaskTool,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,subagentType: freezed == subagentType ? _self.subagentType : subagentType // ignore: cast_nullable_to_non_nullable
+as CursorSubagentTypeDto?,
+  ));
+}
+/// Create a copy of CursorTaskReplayInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentTypeDtoCopyWith<$Res>? get subagentType {
+    if (_self.subagentType == null) {
+    return null;
+  }
+
+  return $CursorSubagentTypeDtoCopyWith<$Res>(_self.subagentType!, (value) {
+    return _then(_self.copyWith(subagentType: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CursorTaskReplayInputDto implements CursorTaskReplayInputDto {
+  const _CursorTaskReplayInputDto({@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) required this.toolName, required this.prompt, required this.description, required this.subagentType});
+  factory _CursorTaskReplayInputDto.fromJson(Map<String, dynamic> json) => _$CursorTaskReplayInputDtoFromJson(json);
+
+@override@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) final  CursorTaskTool toolName;
+@override final  String? prompt;
+@override final  String? description;
+@override final  CursorSubagentTypeDto? subagentType;
+
+/// Create a copy of CursorTaskReplayInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CursorTaskReplayInputDtoCopyWith<_CursorTaskReplayInputDto> get copyWith => __$CursorTaskReplayInputDtoCopyWithImpl<_CursorTaskReplayInputDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorTaskReplayInputDto&&(identical(other.toolName, toolName) || other.toolName == toolName)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.subagentType, subagentType) || other.subagentType == subagentType));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,toolName,prompt,description,subagentType);
+}
+
+@override
+String toString() {
+    return 'CursorTaskReplayInputDto(toolName: $toolName, prompt: $prompt, description: $description, subagentType: $subagentType)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CursorTaskReplayInputDtoCopyWith<$Res> implements $CursorTaskReplayInputDtoCopyWith<$Res> {
+  factory _$CursorTaskReplayInputDtoCopyWith(_CursorTaskReplayInputDto value, $Res Function(_CursorTaskReplayInputDto) _then) = __$CursorTaskReplayInputDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description, CursorSubagentTypeDto? subagentType
+});
+
+
+@override $CursorSubagentTypeDtoCopyWith<$Res>? get subagentType;
+
+}
+/// @nodoc
+class __$CursorTaskReplayInputDtoCopyWithImpl<$Res>
+    implements _$CursorTaskReplayInputDtoCopyWith<$Res> {
+  __$CursorTaskReplayInputDtoCopyWithImpl(this._self, this._then);
+
+  final _CursorTaskReplayInputDto _self;
+  final $Res Function(_CursorTaskReplayInputDto) _then;
+
+/// Create a copy of CursorTaskReplayInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? toolName = null,Object? prompt = freezed,Object? description = freezed,Object? subagentType = freezed,}) {
+  return _then(_CursorTaskReplayInputDto(
+toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_to_non_nullable
+as CursorTaskTool,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
+as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
+as String?,subagentType: freezed == subagentType ? _self.subagentType : subagentType // ignore: cast_nullable_to_non_nullable
+as CursorSubagentTypeDto?,
+  ));
+}
+
+/// Create a copy of CursorTaskReplayInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentTypeDtoCopyWith<$Res>? get subagentType {
+    if (_self.subagentType == null) {
+    return null;
+  }
+
+  return $CursorSubagentTypeDtoCopyWith<$Res>(_self.subagentType!, (value) {
+    return _then(_self.copyWith(subagentType: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$CursorTaskReplayUpdateDto {
+
+@JsonKey(unknownEnumValue: CursorTaskReplayUpdateKind.unknown) CursorTaskReplayUpdateKind get sessionUpdate; String? get toolCallId;@JsonKey(unknownEnumValue: CursorTaskReplayStatus.unknown) CursorTaskReplayStatus? get status;
+/// Create a copy of CursorTaskReplayUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CursorTaskReplayUpdateDtoCopyWith<CursorTaskReplayUpdateDto> get copyWith => _$CursorTaskReplayUpdateDtoCopyWithImpl<CursorTaskReplayUpdateDto>(this as CursorTaskReplayUpdateDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CursorTaskReplayUpdateDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorTaskReplayUpdateDto&&(identical(other.sessionUpdate, _this.sessionUpdate) || other.sessionUpdate == _this.sessionUpdate)&&(identical(other.toolCallId, _this.toolCallId) || other.toolCallId == _this.toolCallId)&&(identical(other.status, _this.status) || other.status == _this.status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CursorTaskReplayUpdateDto;
+  return Object.hash(runtimeType,_this.sessionUpdate,_this.toolCallId,_this.status);
+}
+
+@override
+String toString() {
+  final _this = this as CursorTaskReplayUpdateDto;
+  return 'CursorTaskReplayUpdateDto(sessionUpdate: ${_this.sessionUpdate}, toolCallId: ${_this.toolCallId}, status: ${_this.status})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CursorTaskReplayUpdateDtoCopyWith<$Res>  {
+  factory $CursorTaskReplayUpdateDtoCopyWith(CursorTaskReplayUpdateDto value, $Res Function(CursorTaskReplayUpdateDto) _then) = _$CursorTaskReplayUpdateDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(unknownEnumValue: CursorTaskReplayUpdateKind.unknown) CursorTaskReplayUpdateKind sessionUpdate, String? toolCallId,@JsonKey(unknownEnumValue: CursorTaskReplayStatus.unknown) CursorTaskReplayStatus? status
+});
+
+
+
+
+}
+/// @nodoc
+class _$CursorTaskReplayUpdateDtoCopyWithImpl<$Res>
+    implements $CursorTaskReplayUpdateDtoCopyWith<$Res> {
+  _$CursorTaskReplayUpdateDtoCopyWithImpl(this._self, this._then);
+
+  final CursorTaskReplayUpdateDto _self;
+  final $Res Function(CursorTaskReplayUpdateDto) _then;
+
+/// Create a copy of CursorTaskReplayUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionUpdate = null,Object? toolCallId = freezed,Object? status = freezed,}) {
+  return _then(CursorTaskReplayUpdateDto(
+sessionUpdate: null == sessionUpdate ? _self.sessionUpdate : sessionUpdate // ignore: cast_nullable_to_non_nullable
+as CursorTaskReplayUpdateKind,toolCallId: freezed == toolCallId ? _self.toolCallId : toolCallId // ignore: cast_nullable_to_non_nullable
+as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CursorTaskReplayStatus?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CursorTaskReplayUpdateDto implements CursorTaskReplayUpdateDto {
+  const _CursorTaskReplayUpdateDto({@JsonKey(unknownEnumValue: CursorTaskReplayUpdateKind.unknown) required this.sessionUpdate, required this.toolCallId, @JsonKey(unknownEnumValue: CursorTaskReplayStatus.unknown) required this.status});
+  factory _CursorTaskReplayUpdateDto.fromJson(Map<String, dynamic> json) => _$CursorTaskReplayUpdateDtoFromJson(json);
+
+@override@JsonKey(unknownEnumValue: CursorTaskReplayUpdateKind.unknown) final  CursorTaskReplayUpdateKind sessionUpdate;
+@override final  String? toolCallId;
+@override@JsonKey(unknownEnumValue: CursorTaskReplayStatus.unknown) final  CursorTaskReplayStatus? status;
+
+/// Create a copy of CursorTaskReplayUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CursorTaskReplayUpdateDtoCopyWith<_CursorTaskReplayUpdateDto> get copyWith => __$CursorTaskReplayUpdateDtoCopyWithImpl<_CursorTaskReplayUpdateDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorTaskReplayUpdateDto&&(identical(other.sessionUpdate, sessionUpdate) || other.sessionUpdate == sessionUpdate)&&(identical(other.toolCallId, toolCallId) || other.toolCallId == toolCallId)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionUpdate,toolCallId,status);
+}
+
+@override
+String toString() {
+    return 'CursorTaskReplayUpdateDto(sessionUpdate: $sessionUpdate, toolCallId: $toolCallId, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CursorTaskReplayUpdateDtoCopyWith<$Res> implements $CursorTaskReplayUpdateDtoCopyWith<$Res> {
+  factory _$CursorTaskReplayUpdateDtoCopyWith(_CursorTaskReplayUpdateDto value, $Res Function(_CursorTaskReplayUpdateDto) _then) = __$CursorTaskReplayUpdateDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(unknownEnumValue: CursorTaskReplayUpdateKind.unknown) CursorTaskReplayUpdateKind sessionUpdate, String? toolCallId,@JsonKey(unknownEnumValue: CursorTaskReplayStatus.unknown) CursorTaskReplayStatus? status
+});
+
+
+
+
+}
+/// @nodoc
+class __$CursorTaskReplayUpdateDtoCopyWithImpl<$Res>
+    implements _$CursorTaskReplayUpdateDtoCopyWith<$Res> {
+  __$CursorTaskReplayUpdateDtoCopyWithImpl(this._self, this._then);
+
+  final _CursorTaskReplayUpdateDto _self;
+  final $Res Function(_CursorTaskReplayUpdateDto) _then;
+
+/// Create a copy of CursorTaskReplayUpdateDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionUpdate = null,Object? toolCallId = freezed,Object? status = freezed,}) {
+  return _then(_CursorTaskReplayUpdateDto(
+sessionUpdate: null == sessionUpdate ? _self.sessionUpdate : sessionUpdate // ignore: cast_nullable_to_non_nullable
+as CursorTaskReplayUpdateKind,toolCallId: freezed == toolCallId ? _self.toolCallId : toolCallId // ignore: cast_nullable_to_non_nullable
+as String?,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as CursorTaskReplayStatus?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
 mixin _$CursorTaskRequestDto {
 
  String get toolCallId; String get description; String get prompt; CursorSubagentTypeDto get subagentType;

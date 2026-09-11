@@ -4,6 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/cursor_task_dto.dart";
 import "repositories/cursor_generated_image_reader.dart";
+import "repositories/mappers/cursor_task_projection.dart";
 import "trackers/cursor_task_tracker.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
@@ -22,6 +23,7 @@ class CursorEventMapper({
   required super.childSessions,
   required final CursorGeneratedImageReader _generatedImageReader,
   required final CursorTaskTracker _taskTracker,
+  required final CursorTaskProjection _taskProjection,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
   /// last-resort attribution for Cursor extension payloads that omit
@@ -184,42 +186,13 @@ class CursorEventMapper({
       toolCallId: request.toolCallId,
     );
     if (genericPart == null) return const [];
-    final replacement = _mapCompletedForeground(
+    final replacement = _taskProjection.completedForeground(
       genericPart: genericPart,
-      request: request,
+      prompt: request.prompt,
+      description: request.description,
+      subagentType: request.subagentType,
     );
     return replacement == null ? const [] : [BridgeSseMessagePartUpdated(part: replacement)];
-  }
-
-  PluginMessagePart? _mapCompletedForeground({
-    required PluginMessagePartTool genericPart,
-    required CursorTaskRequestDto request,
-  }) {
-    final prompt = _nonblank(request.prompt);
-    final description = _nonblank(request.description);
-    final agent = switch (request.subagentType.custom) {
-      CursorSubagentType.unspecified => CursorSubagentType.unspecified.name,
-      CursorSubagentType.unknown || null => null,
-    };
-    if (prompt == null || description == null || agent == null) return null;
-
-    return PluginMessagePart.subtask(
-      id: genericPart.id,
-      sessionID: genericPart.sessionID,
-      messageID: genericPart.messageID,
-      prompt: prompt,
-      description: description,
-      agent: agent,
-      taskState: PluginToolState(
-        status: PluginToolStatus.completed,
-        title: genericPart.state.title,
-        shellCommand: null,
-        output: genericPart.state.output,
-        error: null,
-        attachments: genericPart.state.attachments,
-      ),
-      childSessionID: null,
-    );
   }
 
   PluginMessagePart _mapTerminalGeneric({
@@ -273,8 +246,6 @@ class CursorEventMapper({
       return null;
     }
   }
-
-  static String? _nonblank(String value) => value.trim().isEmpty ? null : value;
 
   static Map<String, dynamic>? _map(Object? raw) => raw is Map ? raw.cast<String, dynamic>() : null;
 

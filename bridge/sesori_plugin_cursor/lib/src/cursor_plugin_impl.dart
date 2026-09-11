@@ -11,6 +11,8 @@ import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "repositories/cursor_generated_image_reader.dart";
+import "repositories/mappers/cursor_task_projection.dart";
+import "repositories/trackers/cursor_task_replay_tracker.dart";
 import "services/cursor_catalog_service.dart";
 import "services/cursor_session_cleanup_service.dart";
 import "services/cursor_session_options_service.dart";
@@ -34,6 +36,7 @@ class CursorPlugin._({
   required CursorSessionOptionsService cursorSessionOptionsService,
   required final AcpSessionConfigurationTracker _configurationTracker,
   required final CursorTaskTracker _taskTracker,
+  required final CursorTaskProjection _taskProjection,
   required super.commandTracker,
   required super.sessionOptionsService,
   required final CursorSessionCleanupService _sessionCleanupService,
@@ -72,6 +75,7 @@ class CursorPlugin._({
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
     final taskTracker = CursorTaskTracker();
+    const taskProjection = CursorTaskProjection();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
@@ -107,6 +111,7 @@ class CursorPlugin._({
       childSessions: childSessionTracker,
       generatedImageReader: const CursorGeneratedImageReader(),
       taskTracker: taskTracker,
+      taskProjection: taskProjection,
       activeSessionResolver: () => plugin.activeTurnSessionId,
     );
     return plugin = CursorPlugin._(
@@ -121,6 +126,7 @@ class CursorPlugin._({
       cursorSessionOptionsService: cursorSessionOptionsService,
       configurationTracker: configurationTracker,
       taskTracker: taskTracker,
+      taskProjection: taskProjection,
       commandTracker: commandTracker,
       sessionOptionsService: acpSessionOptionsService,
       sessionCleanupService: sessionCleanupService,
@@ -143,6 +149,19 @@ class CursorPlugin._({
 
   @override
   String? get authMethodId => CursorBinary.acpAuthMethodId;
+
+  @override
+  Future<AcpSessionReplayCollector> createSessionReplayCollector({
+    required String sessionId,
+    required AcpReplayCollectorFactory collectorFactory,
+  }) async {
+    final standardCollector = collectorFactory(toolPartSuppression: null);
+    return CursorTaskReplayTracker(
+      sessionId: sessionId,
+      standardCollector: standardCollector,
+      taskProjection: _taskProjection,
+    );
+  }
 
   @override
   AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.rootSessionCancel;

@@ -5,6 +5,7 @@ import "dart:typed_data";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
+import "package:cursor_plugin/src/repositories/mappers/cursor_task_projection.dart";
 import "package:cursor_plugin/src/trackers/cursor_task_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -22,6 +23,7 @@ void main() {
         childSessions: AcpChildSessionTracker(),
         generatedImageReader: const CursorGeneratedImageReader(),
         taskTracker: taskTracker ?? CursorTaskTracker(),
+        taskProjection: const CursorTaskProjection(),
         activeSessionResolver: activeSessionResolver ?? () => null,
       );
     }
@@ -163,6 +165,7 @@ void main() {
         childSessions: childSessions,
         generatedImageReader: const CursorGeneratedImageReader(),
         taskTracker: CursorTaskTracker(),
+        taskProjection: const CursorTaskProjection(),
         activeSessionResolver: () => "other-root",
       );
       target.beginTurn(sessionId: "root", messageId: "turn-1");

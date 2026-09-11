@@ -37,6 +37,51 @@ const _$CursorSubagentTypeEnumMap = {
   CursorSubagentType.unknown: 'unknown',
 };
 
+_CursorTaskReplayInputDto _$CursorTaskReplayInputDtoFromJson(Map json) =>
+    _CursorTaskReplayInputDto(
+      toolName: $enumDecode(
+        _$CursorTaskToolEnumMap,
+        json['_toolName'],
+        unknownValue: CursorTaskTool.unknown,
+      ),
+      prompt: json['prompt'] as String?,
+      description: json['description'] as String?,
+      subagentType: json['subagentType'] == null
+          ? null
+          : CursorSubagentTypeDto.fromJson(
+              Map<String, dynamic>.from(json['subagentType'] as Map),
+            ),
+    );
+
+_CursorTaskReplayUpdateDto _$CursorTaskReplayUpdateDtoFromJson(Map json) =>
+    _CursorTaskReplayUpdateDto(
+      sessionUpdate: $enumDecode(
+        _$CursorTaskReplayUpdateKindEnumMap,
+        json['sessionUpdate'],
+        unknownValue: CursorTaskReplayUpdateKind.unknown,
+      ),
+      toolCallId: json['toolCallId'] as String?,
+      status: $enumDecodeNullable(
+        _$CursorTaskReplayStatusEnumMap,
+        json['status'],
+        unknownValue: CursorTaskReplayStatus.unknown,
+      ),
+    );
+
+const _$CursorTaskReplayUpdateKindEnumMap = {
+  CursorTaskReplayUpdateKind.toolCall: 'tool_call',
+  CursorTaskReplayUpdateKind.toolCallUpdate: 'tool_call_update',
+  CursorTaskReplayUpdateKind.unknown: 'unknown',
+};
+
+const _$CursorTaskReplayStatusEnumMap = {
+  CursorTaskReplayStatus.pending: 'pending',
+  CursorTaskReplayStatus.inProgress: 'in_progress',
+  CursorTaskReplayStatus.completed: 'completed',
+  CursorTaskReplayStatus.failed: 'failed',
+  CursorTaskReplayStatus.unknown: 'unknown',
+};
+
 _CursorTaskRequestDto _$CursorTaskRequestDtoFromJson(Map json) =>
     _CursorTaskRequestDto(
       toolCallId: json['toolCallId'] as String,

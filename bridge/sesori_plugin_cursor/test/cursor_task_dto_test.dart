@@ -22,6 +22,46 @@ void main() {
     });
   });
 
+  group("Cursor replay Task DTOs", () {
+    test("parses the update envelope and Task-specific nested facts separately", () {
+      final update = CursorTaskReplayUpdateDto.fromJson(const {
+        "sessionUpdate": "tool_call",
+        "toolCallId": "task-1",
+        "status": "pending",
+      });
+      final input = CursorTaskReplayInputDto.fromJson(const {
+        "_toolName": "task",
+        "prompt": "Inspect code",
+        "description": "Inspect",
+        "subagentType": {"custom": "unspecified"},
+      });
+      final output = CursorTaskOutputDto.fromJson(const {"isBackground": false});
+
+      expect(
+        (update.sessionUpdate, update.status, input.subagentType?.custom),
+        (CursorTaskReplayUpdateKind.toolCall, CursorTaskReplayStatus.pending, CursorSubagentType.unspecified),
+      );
+      expect(output.isBackground, isFalse);
+    });
+
+    test("preserves nullable enums and rejects malformed known fields", () {
+      final unknown = CursorTaskReplayUpdateDto.fromJson(const {
+        "sessionUpdate": "future_update",
+        "status": "future_status",
+      });
+      expect(
+        (unknown.sessionUpdate, unknown.status),
+        (CursorTaskReplayUpdateKind.unknown, CursorTaskReplayStatus.unknown),
+      );
+      expect(CursorSubagentTypeDto.fromJson(const {}).custom, isNull);
+      expect(
+        () => CursorTaskReplayInputDto.fromJson(const {"_toolName": "task", "prompt": 7}),
+        throwsA(anything),
+      );
+      expect(() => CursorTaskReplayUpdateDto.fromJson(const {}), throwsA(anything));
+    });
+  });
+
   group("Cursor completed Task DTOs", () {
     test("parses explicit foreground output and observed request presentation", () {
       expect(CursorTaskOutputDto.fromJson(const {"isBackground": false}).isBackground, isFalse);

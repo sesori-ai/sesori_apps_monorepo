@@ -5,6 +5,7 @@ import "dart:io";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
+import "package:cursor_plugin/src/repositories/trackers/cursor_task_replay_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -198,6 +199,35 @@ void main() {
       await pump();
       return prompt;
     }
+
+    test("replay composition configures one standard collector without suppression", () async {
+      var factoryCalls = 0;
+      AcpReplayToolPartSuppression? receivedSuppression;
+
+      final collector = await plugin.createSessionReplayCollector(
+        sessionId: "replay-root",
+        collectorFactory: ({required toolPartSuppression}) {
+          factoryCalls++;
+          receivedSuppression = toolPartSuppression;
+          return AcpReplayCollector(
+            sessionUpdateNormalizer: null,
+            shellCommandResolver: null,
+            sessionId: "replay-root",
+            agentId: CursorPlugin.pluginId,
+            initialUserMessageId: null,
+            messageIdOverride: null,
+            messageTimeResolver: null,
+            haltClassifier: null,
+            toolPartReplacement: null,
+            toolPartSuppression: toolPartSuppression,
+          );
+        },
+      );
+
+      expect(collector, isA<CursorTaskReplayTracker>());
+      expect(factoryCalls, 1);
+      expect(receivedSuppression, isNull);
+    });
 
     test("delegates persisted session cleanup", () async {
       expect(plugin, isA<PersistedSessionCleanupApi>());
