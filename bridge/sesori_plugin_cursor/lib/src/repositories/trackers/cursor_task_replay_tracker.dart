@@ -27,7 +27,8 @@ final class CursorTaskReplayTracker({
         "sessionUpdate": updateJson["sessionUpdate"],
         "toolCallId": updateJson["toolCallId"],
       });
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Log.w("[cursor] malformed replay update envelope ignored", error, stackTrace);
       return;
     }
 
@@ -39,8 +40,9 @@ final class CursorTaskReplayTracker({
         if (inputJson == null) return;
         final CursorTaskInputDto identity;
         try {
-          identity = CursorTaskInputDto.fromJson(inputJson);
-        } on Object {
+          identity = CursorTaskInputDto.fromJson({"_toolName": inputJson["_toolName"]});
+        } on Object catch (error, stackTrace) {
+          Log.w("[cursor] malformed replay tool identity ignored", error, stackTrace);
           return;
         }
         if (identity.toolName != CursorTaskTool.task) return;

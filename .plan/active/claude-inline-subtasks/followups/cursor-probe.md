@@ -510,8 +510,7 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    residency, typed refusal, safe `rootSessionCancel`, and concurrent descendant
    fallback with mandatory settlement re-check; no replay/native QA.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
-   is open as PR #1443 with configured collector/shared projection, typed
-   fallbacks, tests, and history docs; no native QA.
+   is open as PR #1443 with configured typed collector/projection, fallbacks, tests, history docs, and no native QA.
 6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
    (expected 60–140 changed lines): bounded actual-plugin evidence and final
    reconciliation only; unsupported/unexecuted boundaries remain explicit.

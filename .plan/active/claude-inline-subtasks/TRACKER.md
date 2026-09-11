@@ -526,8 +526,7 @@ post-merge E2E gates are unchanged.
 - **Cursor Step 4/6:** PR #1442 merged at `a7d3014e1a`; exact Task count,
   residency, typed refusal, bounded root stop, concurrent descendant fallback,
   queue gate, and restart UI shipped without replay or native QA.
-- **Cursor Step 5/6:** PR #1443 is open. Complete foreground Task replay uses one
-  configured collector/shared projection with stable identity, ordering, and fallbacks.
+- **Cursor Step 5/6:** PR #1443 is open with configured collector/shared projection and stable fallbacks.
   No analytics event, native QA, child session, wire/client/DB, runtime, timer, or poller change.
 
 ## Plan Review
