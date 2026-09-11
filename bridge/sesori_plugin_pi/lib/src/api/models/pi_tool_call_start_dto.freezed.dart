@@ -27,12 +27,16 @@ $PiToolCallStartDtoCopyWith<PiToolCallStartDto> get copyWith => _$PiToolCallStar
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolCallStartDto&&(identical(other.contentIndex, contentIndex) || other.contentIndex == contentIndex)&&(identical(other.id, id) || other.id == id)&&(identical(other.toolName, toolName) || other.toolName == toolName));
+  final _this = this as PiToolCallStartDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolCallStartDto&&(identical(other.contentIndex, _this.contentIndex) || other.contentIndex == _this.contentIndex)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.toolName, _this.toolName) || other.toolName == _this.toolName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,contentIndex,id,toolName);
+int get hashCode {
+  final _this = this as PiToolCallStartDto;
+  return Object.hash(runtimeType,_this.contentIndex,_this.id,_this.toolName);
+}
 
 
 
@@ -94,12 +98,14 @@ _$PiToolCallStartDtoCopyWith<_PiToolCallStartDto> get copyWith => __$PiToolCallS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiToolCallStartDto&&(identical(other.contentIndex, contentIndex) || other.contentIndex == contentIndex)&&(identical(other.id, id) || other.id == id)&&(identical(other.toolName, toolName) || other.toolName == toolName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiToolCallStartDto&&(identical(other.contentIndex, contentIndex) || other.contentIndex == contentIndex)&&(identical(other.id, id) || other.id == id)&&(identical(other.toolName, toolName) || other.toolName == toolName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,contentIndex,id,toolName);
+int get hashCode {
+    return Object.hash(runtimeType,contentIndex,id,toolName);
+}
 
 
 

@@ -28,16 +28,21 @@ $PluginProjectCopyWith<PluginProject> get copyWith => _$PluginProjectCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.name, name) || other.name == name)&&(identical(other.activity, activity) || other.activity == activity));
+  final _this = this as PluginProject;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProject&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.directory, _this.directory) || other.directory == _this.directory)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.activity, _this.activity) || other.activity == _this.activity));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,directory,name,activity);
+int get hashCode {
+  final _this = this as PluginProject;
+  return Object.hash(runtimeType,_this.id,_this.directory,_this.name,_this.activity);
+}
 
 @override
 String toString() {
-  return 'PluginProject(id: $id, directory: $directory, name: $name, activity: $activity)';
+  final _this = this as PluginProject;
+  return 'PluginProject(id: ${_this.id}, directory: ${_this.directory}, name: ${_this.name}, activity: ${_this.activity})';
 }
 
 
@@ -116,16 +121,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.name, name) || other.name == name)&&(identical(other.activity, activity) || other.activity == activity));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProject&&(identical(other.id, id) || other.id == id)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.name, name) || other.name == name)&&(identical(other.activity, activity) || other.activity == activity));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,directory,name,activity);
+int get hashCode {
+    return Object.hash(runtimeType,id,directory,name,activity);
+}
 
 @override
 String toString() {
-  return 'PluginProject(id: $id, directory: $directory, name: $name, activity: $activity)';
+    return 'PluginProject(id: $id, directory: $directory, name: $name, activity: $activity)';
 }
 
 
@@ -194,16 +201,21 @@ $PluginProjectActivityCopyWith<PluginProjectActivity> get copyWith => _$PluginPr
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectActivity&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  final _this = this as PluginProjectActivity;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginProjectActivity&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,createdAt,updatedAt);
+int get hashCode {
+  final _this = this as PluginProjectActivity;
+  return Object.hash(runtimeType,_this.createdAt,_this.updatedAt);
+}
 
 @override
 String toString() {
-  return 'PluginProjectActivity(createdAt: $createdAt, updatedAt: $updatedAt)';
+  final _this = this as PluginProjectActivity;
+  return 'PluginProjectActivity(createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -266,16 +278,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectActivity&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginProjectActivity&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,createdAt,updatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,createdAt,updatedAt);
+}
 
 @override
 String toString() {
-  return 'PluginProjectActivity(createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'PluginProjectActivity(createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 

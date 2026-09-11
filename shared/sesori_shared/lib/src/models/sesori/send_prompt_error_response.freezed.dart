@@ -29,16 +29,21 @@ $SendPromptErrorResponseCopyWith<SendPromptErrorResponse> get copyWith => _$Send
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendPromptErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.message, message) || other.message == message));
+  final _this = this as SendPromptErrorResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendPromptErrorResponse&&(identical(other.code, _this.code) || other.code == _this.code)&&(identical(other.message, _this.message) || other.message == _this.message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code,message);
+int get hashCode {
+  final _this = this as SendPromptErrorResponse;
+  return Object.hash(runtimeType,_this.code,_this.message);
+}
 
 @override
 String toString() {
-  return 'SendPromptErrorResponse(code: $code, message: $message)';
+  final _this = this as SendPromptErrorResponse;
+  return 'SendPromptErrorResponse(code: ${_this.code}, message: ${_this.message})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendPromptErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendPromptErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code,message);
+int get hashCode {
+    return Object.hash(runtimeType,code,message);
+}
 
 @override
 String toString() {
-  return 'SendPromptErrorResponse(code: $code, message: $message)';
+    return 'SendPromptErrorResponse(code: $code, message: $message)';
 }
 
 

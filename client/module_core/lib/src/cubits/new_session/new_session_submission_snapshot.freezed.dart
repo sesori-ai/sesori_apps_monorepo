@@ -26,16 +26,21 @@ $NewSessionSubmissionSnapshotCopyWith<NewSessionSubmissionSnapshot> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSubmissionSnapshot&&(identical(other.draft, draft) || other.draft == draft));
+  final _this = this as NewSessionSubmissionSnapshot;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionSubmissionSnapshot&&(identical(other.draft, _this.draft) || other.draft == _this.draft));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,draft);
+int get hashCode {
+  final _this = this as NewSessionSubmissionSnapshot;
+  return Object.hash(runtimeType,_this.draft);
+}
 
 @override
 String toString() {
-  return 'NewSessionSubmissionSnapshot(draft: $draft)';
+  final _this = this as NewSessionSubmissionSnapshot;
+  return 'NewSessionSubmissionSnapshot(draft: ${_this.draft})';
 }
 
 
@@ -100,16 +105,18 @@ $NewSessionTextSubmissionSnapshotCopyWith<NewSessionTextSubmissionSnapshot> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionTextSubmissionSnapshot&&(identical(other.draft, draft) || other.draft == draft)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionTextSubmissionSnapshot&&(identical(other.draft, draft) || other.draft == draft)&&const DeepCollectionEquality().equals(other.attachments, _attachments));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,draft,const DeepCollectionEquality().hash(_attachments));
+int get hashCode {
+    return Object.hash(runtimeType,draft,const DeepCollectionEquality().hash(_attachments));
+}
 
 @override
 String toString() {
-  return 'NewSessionSubmissionSnapshot.text(draft: $draft, attachments: $attachments)';
+    return 'NewSessionSubmissionSnapshot.text(draft: $draft, attachments: $attachments)';
 }
 
 
@@ -168,16 +175,18 @@ $NewSessionCommandSubmissionSnapshotCopyWith<NewSessionCommandSubmissionSnapshot
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCommandSubmissionSnapshot&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.command, command) || other.command == command));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCommandSubmissionSnapshot&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.command, command) || other.command == command));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,draft,command);
+int get hashCode {
+    return Object.hash(runtimeType,draft,command);
+}
 
 @override
 String toString() {
-  return 'NewSessionSubmissionSnapshot.command(draft: $draft, command: $command)';
+    return 'NewSessionSubmissionSnapshot.command(draft: $draft, command: $command)';
 }
 
 

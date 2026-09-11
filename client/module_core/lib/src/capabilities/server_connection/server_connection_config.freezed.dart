@@ -26,16 +26,21 @@ $ServerConnectionConfigCopyWith<ServerConnectionConfig> get copyWith => _$Server
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServerConnectionConfig&&(identical(other.relayHost, relayHost) || other.relayHost == relayHost)&&(identical(other.authToken, authToken) || other.authToken == authToken));
+  final _this = this as ServerConnectionConfig;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ServerConnectionConfig&&(identical(other.relayHost, _this.relayHost) || other.relayHost == _this.relayHost)&&(identical(other.authToken, _this.authToken) || other.authToken == _this.authToken));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,relayHost,authToken);
+int get hashCode {
+  final _this = this as ServerConnectionConfig;
+  return Object.hash(runtimeType,_this.relayHost,_this.authToken);
+}
 
 @override
 String toString() {
-  return 'ServerConnectionConfig(relayHost: $relayHost, authToken: $authToken)';
+  final _this = this as ServerConnectionConfig;
+  return 'ServerConnectionConfig(relayHost: ${_this.relayHost}, authToken: ${_this.authToken})';
 }
 
 
@@ -95,16 +100,18 @@ _$ServerConnectionConfigCopyWith<_ServerConnectionConfig> get copyWith => __$Ser
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServerConnectionConfig&&(identical(other.relayHost, relayHost) || other.relayHost == relayHost)&&(identical(other.authToken, authToken) || other.authToken == authToken));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ServerConnectionConfig&&(identical(other.relayHost, relayHost) || other.relayHost == relayHost)&&(identical(other.authToken, authToken) || other.authToken == authToken));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,relayHost,authToken);
+int get hashCode {
+    return Object.hash(runtimeType,relayHost,authToken);
+}
 
 @override
 String toString() {
-  return 'ServerConnectionConfig(relayHost: $relayHost, authToken: $authToken)';
+    return 'ServerConnectionConfig(relayHost: $relayHost, authToken: $authToken)';
 }
 
 

@@ -29,16 +29,21 @@ $RenameSessionRequestCopyWith<RenameSessionRequest> get copyWith => _$RenameSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.title, title) || other.title == title));
+  final _this = this as RenameSessionRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RenameSessionRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.title, _this.title) || other.title == _this.title));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,title);
+int get hashCode {
+  final _this = this as RenameSessionRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.title);
+}
 
 @override
 String toString() {
-  return 'RenameSessionRequest(sessionId: $sessionId, title: $title)';
+  final _this = this as RenameSessionRequest;
+  return 'RenameSessionRequest(sessionId: ${_this.sessionId}, title: ${_this.title})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.title, title) || other.title == title));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RenameSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.title, title) || other.title == title));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,title);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,title);
+}
 
 @override
 String toString() {
-  return 'RenameSessionRequest(sessionId: $sessionId, title: $title)';
+    return 'RenameSessionRequest(sessionId: $sessionId, title: $title)';
 }
 
 

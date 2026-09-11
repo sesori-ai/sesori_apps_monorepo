@@ -10,7 +10,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  material_ui: ^1.1.0
+  material_ui: ^1.2.0
   theme_prego:
     path: ../module_prego
   widgetbook: 3.25.0

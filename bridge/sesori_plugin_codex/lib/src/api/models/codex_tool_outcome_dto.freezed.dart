@@ -29,16 +29,21 @@ $CodexToolOutcomeFileDtoCopyWith<CodexToolOutcomeFileDto> get copyWith => _$Code
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolOutcomeFileDto&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other.errors, errors));
+  final _this = this as CodexToolOutcomeFileDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolOutcomeFileDto&&(identical(other.schemaVersion, _this.schemaVersion) || other.schemaVersion == _this.schemaVersion)&&const DeepCollectionEquality().equals(other.errors, _this.errors));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,schemaVersion,const DeepCollectionEquality().hash(errors));
+int get hashCode {
+  final _this = this as CodexToolOutcomeFileDto;
+  return Object.hash(runtimeType,_this.schemaVersion,const DeepCollectionEquality().hash(_this.errors));
+}
 
 @override
 String toString() {
-  return 'CodexToolOutcomeFileDto(schemaVersion: $schemaVersion, errors: $errors)';
+  final _this = this as CodexToolOutcomeFileDto;
+  return 'CodexToolOutcomeFileDto(schemaVersion: ${_this.schemaVersion}, errors: ${_this.errors})';
 }
 
 
@@ -107,16 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolOutcomeFileDto&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other._errors, _errors));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolOutcomeFileDto&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&const DeepCollectionEquality().equals(other.errors, _errors));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,schemaVersion,const DeepCollectionEquality().hash(_errors));
+int get hashCode {
+    return Object.hash(runtimeType,schemaVersion,const DeepCollectionEquality().hash(_errors));
+}
 
 @override
 String toString() {
-  return 'CodexToolOutcomeFileDto(schemaVersion: $schemaVersion, errors: $errors)';
+    return 'CodexToolOutcomeFileDto(schemaVersion: $schemaVersion, errors: $errors)';
 }
 
 
@@ -172,16 +179,21 @@ $CodexStoredToolErrorDtoCopyWith<CodexStoredToolErrorDto> get copyWith => _$Code
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexStoredToolErrorDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.callId, callId) || other.callId == callId));
+  final _this = this as CodexStoredToolErrorDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexStoredToolErrorDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.callId, _this.callId) || other.callId == _this.callId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,callId);
+int get hashCode {
+  final _this = this as CodexStoredToolErrorDto;
+  return Object.hash(runtimeType,_this.sessionId,_this.callId);
+}
 
 @override
 String toString() {
-  return 'CodexStoredToolErrorDto(sessionId: $sessionId, callId: $callId)';
+  final _this = this as CodexStoredToolErrorDto;
+  return 'CodexStoredToolErrorDto(sessionId: ${_this.sessionId}, callId: ${_this.callId})';
 }
 
 
@@ -244,16 +256,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexStoredToolErrorDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.callId, callId) || other.callId == callId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexStoredToolErrorDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.callId, callId) || other.callId == callId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,callId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,callId);
+}
 
 @override
 String toString() {
-  return 'CodexStoredToolErrorDto(sessionId: $sessionId, callId: $callId)';
+    return 'CodexStoredToolErrorDto(sessionId: $sessionId, callId: $callId)';
 }
 
 

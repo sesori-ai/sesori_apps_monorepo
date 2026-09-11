@@ -29,16 +29,21 @@ $SessionListResponseCopyWith<SessionListResponse> get copyWith => _$SessionListR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListResponse&&const DeepCollectionEquality().equals(other.items, items));
+  final _this = this as SessionListResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListResponse&&const DeepCollectionEquality().equals(other.items, _this.items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items));
+int get hashCode {
+  final _this = this as SessionListResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.items));
+}
 
 @override
 String toString() {
-  return 'SessionListResponse(items: $items)';
+  final _this = this as SessionListResponse;
+  return 'SessionListResponse(items: ${_this.items})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListResponse&&const DeepCollectionEquality().equals(other._items, _items));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListResponse&&const DeepCollectionEquality().equals(other.items, _items));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_items));
+}
 
 @override
 String toString() {
-  return 'SessionListResponse(items: $items)';
+    return 'SessionListResponse(items: $items)';
 }
 
 
@@ -169,16 +176,21 @@ $SessionListRequestCopyWith<SessionListRequest> get copyWith => _$SessionListReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.waitForPrData, waitForPrData) || other.waitForPrData == waitForPrData));
+  final _this = this as SessionListRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListRequest&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.start, _this.start) || other.start == _this.start)&&(identical(other.limit, _this.limit) || other.limit == _this.limit)&&(identical(other.waitForPrData, _this.waitForPrData) || other.waitForPrData == _this.waitForPrData));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,start,limit,waitForPrData);
+int get hashCode {
+  final _this = this as SessionListRequest;
+  return Object.hash(runtimeType,_this.projectId,_this.start,_this.limit,_this.waitForPrData);
+}
 
 @override
 String toString() {
-  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit, waitForPrData: $waitForPrData)';
+  final _this = this as SessionListRequest;
+  return 'SessionListRequest(projectId: ${_this.projectId}, start: ${_this.start}, limit: ${_this.limit}, waitForPrData: ${_this.waitForPrData})';
 }
 
 
@@ -245,16 +257,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.waitForPrData, waitForPrData) || other.waitForPrData == waitForPrData));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListRequest&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.start, start) || other.start == start)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.waitForPrData, waitForPrData) || other.waitForPrData == waitForPrData));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId,start,limit,waitForPrData);
+int get hashCode {
+    return Object.hash(runtimeType,projectId,start,limit,waitForPrData);
+}
 
 @override
 String toString() {
-  return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit, waitForPrData: $waitForPrData)';
+    return 'SessionListRequest(projectId: $projectId, start: $start, limit: $limit, waitForPrData: $waitForPrData)';
 }
 
 
@@ -312,16 +326,21 @@ $SessionCopyWith<Session> get copyWith => _$SessionCopyWithImpl<Session>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, id) || other.id == id)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest)&&const DeepCollectionEquality().equals(other.pullRequestHistory, pullRequestHistory)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt));
+  final _this = this as Session;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Session&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.projectID, _this.projectID) || other.projectID == _this.projectID)&&(identical(other.directory, _this.directory) || other.directory == _this.directory)&&(identical(other.parentID, _this.parentID) || other.parentID == _this.parentID)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.time, _this.time) || other.time == _this.time)&&(identical(other.pullRequest, _this.pullRequest) || other.pullRequest == _this.pullRequest)&&const DeepCollectionEquality().equals(other.pullRequestHistory, _this.pullRequestHistory)&&(identical(other.promptDefaults, _this.promptDefaults) || other.promptDefaults == _this.promptDefaults)&&(identical(other.branchName, _this.branchName) || other.branchName == _this.branchName)&&(identical(other.hasWorktree, _this.hasWorktree) || other.hasWorktree == _this.hasWorktree)&&(identical(other.unseen, _this.unseen) || other.unseen == _this.unseen)&&(identical(other.lastUserActivityAt, _this.lastUserActivityAt) || other.lastUserActivityAt == _this.lastUserActivityAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,pluginId,projectID,directory,parentID,title,time,pullRequest,const DeepCollectionEquality().hash(pullRequestHistory),promptDefaults,branchName,hasWorktree,unseen,lastUserActivityAt);
+int get hashCode {
+  final _this = this as Session;
+  return Object.hash(runtimeType,_this.id,_this.pluginId,_this.projectID,_this.directory,_this.parentID,_this.title,_this.time,_this.pullRequest,const DeepCollectionEquality().hash(_this.pullRequestHistory),_this.promptDefaults,_this.branchName,_this.hasWorktree,_this.unseen,_this.lastUserActivityAt);
+}
 
 @override
 String toString() {
-  return 'Session(id: $id, pluginId: $pluginId, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, pullRequest: $pullRequest, pullRequestHistory: $pullRequestHistory, promptDefaults: $promptDefaults, branchName: $branchName, hasWorktree: $hasWorktree, unseen: $unseen, lastUserActivityAt: $lastUserActivityAt)';
+  final _this = this as Session;
+  return 'Session(id: ${_this.id}, pluginId: ${_this.pluginId}, projectID: ${_this.projectID}, directory: ${_this.directory}, parentID: ${_this.parentID}, title: ${_this.title}, time: ${_this.time}, pullRequest: ${_this.pullRequest}, pullRequestHistory: ${_this.pullRequestHistory}, promptDefaults: ${_this.promptDefaults}, branchName: ${_this.branchName}, hasWorktree: ${_this.hasWorktree}, unseen: ${_this.unseen}, lastUserActivityAt: ${_this.lastUserActivityAt})';
 }
 
 
@@ -450,16 +469,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest)&&const DeepCollectionEquality().equals(other._pullRequestHistory, _pullRequestHistory)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Session&&(identical(other.id, id) || other.id == id)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.pullRequest, pullRequest) || other.pullRequest == pullRequest)&&const DeepCollectionEquality().equals(other.pullRequestHistory, _pullRequestHistory)&&(identical(other.promptDefaults, promptDefaults) || other.promptDefaults == promptDefaults)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.hasWorktree, hasWorktree) || other.hasWorktree == hasWorktree)&&(identical(other.unseen, unseen) || other.unseen == unseen)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,pluginId,projectID,directory,parentID,title,time,pullRequest,const DeepCollectionEquality().hash(_pullRequestHistory),promptDefaults,branchName,hasWorktree,unseen,lastUserActivityAt);
+int get hashCode {
+    return Object.hash(runtimeType,id,pluginId,projectID,directory,parentID,title,time,pullRequest,const DeepCollectionEquality().hash(_pullRequestHistory),promptDefaults,branchName,hasWorktree,unseen,lastUserActivityAt);
+}
 
 @override
 String toString() {
-  return 'Session(id: $id, pluginId: $pluginId, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, pullRequest: $pullRequest, pullRequestHistory: $pullRequestHistory, promptDefaults: $promptDefaults, branchName: $branchName, hasWorktree: $hasWorktree, unseen: $unseen, lastUserActivityAt: $lastUserActivityAt)';
+    return 'Session(id: $id, pluginId: $pluginId, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, pullRequest: $pullRequest, pullRequestHistory: $pullRequestHistory, promptDefaults: $promptDefaults, branchName: $branchName, hasWorktree: $hasWorktree, unseen: $unseen, lastUserActivityAt: $lastUserActivityAt)';
 }
 
 
@@ -563,16 +584,21 @@ $SessionPromptDefaultsCopyWith<SessionPromptDefaults> get copyWith => _$SessionP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptDefaults&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
+  final _this = this as SessionPromptDefaults;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionPromptDefaults&&(identical(other.agent, _this.agent) || other.agent == _this.agent)&&(identical(other.model, _this.model) || other.model == _this.model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agent,model);
+int get hashCode {
+  final _this = this as SessionPromptDefaults;
+  return Object.hash(runtimeType,_this.agent,_this.model);
+}
 
 @override
 String toString() {
-  return 'SessionPromptDefaults(agent: $agent, model: $model)';
+  final _this = this as SessionPromptDefaults;
+  return 'SessionPromptDefaults(agent: ${_this.agent}, model: ${_this.model})';
 }
 
 
@@ -647,16 +673,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionPromptDefaults&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionPromptDefaults&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agent,model);
+int get hashCode {
+    return Object.hash(runtimeType,agent,model);
+}
 
 @override
 String toString() {
-  return 'SessionPromptDefaults(agent: $agent, model: $model)';
+    return 'SessionPromptDefaults(agent: $agent, model: $model)';
 }
 
 
@@ -724,16 +752,21 @@ $SessionTimeCopyWith<SessionTime> get copyWith => _$SessionTimeCopyWithImpl<Sess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.archived, archived) || other.archived == archived));
+  final _this = this as SessionTime;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionTime&&(identical(other.created, _this.created) || other.created == _this.created)&&(identical(other.updated, _this.updated) || other.updated == _this.updated)&&(identical(other.archived, _this.archived) || other.archived == _this.archived));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,archived);
+int get hashCode {
+  final _this = this as SessionTime;
+  return Object.hash(runtimeType,_this.created,_this.updated,_this.archived);
+}
 
 @override
 String toString() {
-  return 'SessionTime(created: $created, updated: $updated, archived: $archived)';
+  final _this = this as SessionTime;
+  return 'SessionTime(created: ${_this.created}, updated: ${_this.updated}, archived: ${_this.archived})';
 }
 
 
@@ -798,16 +831,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.archived, archived) || other.archived == archived));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated)&&(identical(other.archived, archived) || other.archived == archived));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated,archived);
+int get hashCode {
+    return Object.hash(runtimeType,created,updated,archived);
+}
 
 @override
 String toString() {
-  return 'SessionTime(created: $created, updated: $updated, archived: $archived)';
+    return 'SessionTime(created: $created, updated: $updated, archived: $archived)';
 }
 
 
@@ -864,16 +899,21 @@ $GlobalSessionCopyWith<GlobalSession> get copyWith => _$GlobalSessionCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GlobalSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.project, project) || other.project == project));
+  final _this = this as GlobalSession;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GlobalSession&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.projectID, _this.projectID) || other.projectID == _this.projectID)&&(identical(other.directory, _this.directory) || other.directory == _this.directory)&&(identical(other.parentID, _this.parentID) || other.parentID == _this.parentID)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.time, _this.time) || other.time == _this.time)&&(identical(other.project, _this.project) || other.project == _this.project));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,project);
+int get hashCode {
+  final _this = this as GlobalSession;
+  return Object.hash(runtimeType,_this.id,_this.projectID,_this.directory,_this.parentID,_this.title,_this.time,_this.project);
+}
 
 @override
 String toString() {
-  return 'GlobalSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, project: $project)';
+  final _this = this as GlobalSession;
+  return 'GlobalSession(id: ${_this.id}, projectID: ${_this.projectID}, directory: ${_this.directory}, parentID: ${_this.parentID}, title: ${_this.title}, time: ${_this.time}, project: ${_this.project})';
 }
 
 
@@ -970,16 +1010,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GlobalSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.project, project) || other.project == project));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GlobalSession&&(identical(other.id, id) || other.id == id)&&(identical(other.projectID, projectID) || other.projectID == projectID)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.parentID, parentID) || other.parentID == parentID)&&(identical(other.title, title) || other.title == title)&&(identical(other.time, time) || other.time == time)&&(identical(other.project, project) || other.project == project));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,projectID,directory,parentID,title,time,project);
+int get hashCode {
+    return Object.hash(runtimeType,id,projectID,directory,parentID,title,time,project);
+}
 
 @override
 String toString() {
-  return 'GlobalSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, project: $project)';
+    return 'GlobalSession(id: $id, projectID: $projectID, directory: $directory, parentID: $parentID, title: $title, time: $time, project: $project)';
 }
 
 
@@ -1064,16 +1106,21 @@ $SessionProjectCopyWith<SessionProject> get copyWith => _$SessionProjectCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.worktree, worktree) || other.worktree == worktree));
+  final _this = this as SessionProject;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionProject&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.worktree, _this.worktree) || other.worktree == _this.worktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,worktree);
+int get hashCode {
+  final _this = this as SessionProject;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.worktree);
+}
 
 @override
 String toString() {
-  return 'SessionProject(id: $id, name: $name, worktree: $worktree)';
+  final _this = this as SessionProject;
+  return 'SessionProject(id: ${_this.id}, name: ${_this.name}, worktree: ${_this.worktree})';
 }
 
 
@@ -1138,16 +1185,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.worktree, worktree) || other.worktree == worktree));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionProject&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.worktree, worktree) || other.worktree == worktree));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,worktree);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,worktree);
+}
 
 @override
 String toString() {
-  return 'SessionProject(id: $id, name: $name, worktree: $worktree)';
+    return 'SessionProject(id: $id, name: $name, worktree: $worktree)';
 }
 
 
@@ -1204,16 +1253,21 @@ $SessionIdRequestCopyWith<SessionIdRequest> get copyWith => _$SessionIdRequestCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionIdRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+  final _this = this as SessionIdRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionIdRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId);
+int get hashCode {
+  final _this = this as SessionIdRequest;
+  return Object.hash(runtimeType,_this.sessionId);
+}
 
 @override
 String toString() {
-  return 'SessionIdRequest(sessionId: $sessionId)';
+  final _this = this as SessionIdRequest;
+  return 'SessionIdRequest(sessionId: ${_this.sessionId})';
 }
 
 
@@ -1274,16 +1328,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionIdRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionIdRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId);
+}
 
 @override
 String toString() {
-  return 'SessionIdRequest(sessionId: $sessionId)';
+    return 'SessionIdRequest(sessionId: $sessionId)';
 }
 
 
@@ -1349,16 +1405,21 @@ $SessionMessagesRequestCopyWith<SessionMessagesRequest> get copyWith => _$Sessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly));
+  final _this = this as SessionMessagesRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionMessagesRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.limit, _this.limit) || other.limit == _this.limit)&&(identical(other.before, _this.before) || other.before == _this.before)&&(identical(other.attachmentDelivery, _this.attachmentDelivery) || other.attachmentDelivery == _this.attachmentDelivery)&&(identical(other.storedOnly, _this.storedOnly) || other.storedOnly == _this.storedOnly));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery,storedOnly);
+int get hashCode {
+  final _this = this as SessionMessagesRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.limit,_this.before,_this.attachmentDelivery,_this.storedOnly);
+}
 
 @override
 String toString() {
-  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly)';
+  final _this = this as SessionMessagesRequest;
+  return 'SessionMessagesRequest(sessionId: ${_this.sessionId}, limit: ${_this.limit}, before: ${_this.before}, attachmentDelivery: ${_this.attachmentDelivery}, storedOnly: ${_this.storedOnly})';
 }
 
 
@@ -1438,16 +1499,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionMessagesRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.limit, limit) || other.limit == limit)&&(identical(other.before, before) || other.before == before)&&(identical(other.attachmentDelivery, attachmentDelivery) || other.attachmentDelivery == attachmentDelivery)&&(identical(other.storedOnly, storedOnly) || other.storedOnly == storedOnly));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery,storedOnly);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,limit,before,attachmentDelivery,storedOnly);
+}
 
 @override
 String toString() {
-  return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly)';
+    return 'SessionMessagesRequest(sessionId: $sessionId, limit: $limit, before: $before, attachmentDelivery: $attachmentDelivery, storedOnly: $storedOnly)';
 }
 
 

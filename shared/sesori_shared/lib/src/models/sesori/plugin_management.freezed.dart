@@ -29,16 +29,21 @@ $PluginManagementMetadataCopyWith<PluginManagementMetadata> get copyWith => _$Pl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.authenticationState, authenticationState) || other.authenticationState == authenticationState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+  final _this = this as PluginManagementMetadata;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementMetadata&&(identical(other.setup, _this.setup) || other.setup == _this.setup)&&(identical(other.runtimeState, _this.runtimeState) || other.runtimeState == _this.runtimeState)&&(identical(other.workState, _this.workState) || other.workState == _this.workState)&&(identical(other.authenticationState, _this.authenticationState) || other.authenticationState == _this.authenticationState)&&(identical(other.idleTimeoutMins, _this.idleTimeoutMins) || other.idleTimeoutMins == _this.idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, _this.hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == _this.hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, _this.managementCapabilities)&&(identical(other.actionHint, _this.actionHint) || other.actionHint == _this.actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,authenticationState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(managementCapabilities),actionHint);
+int get hashCode {
+  final _this = this as PluginManagementMetadata;
+  return Object.hash(runtimeType,_this.setup,_this.runtimeState,_this.workState,_this.authenticationState,_this.idleTimeoutMins,_this.hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_this.managementCapabilities),_this.actionHint);
+}
 
 @override
 String toString() {
-  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, authenticationState: $authenticationState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
+  final _this = this as PluginManagementMetadata;
+  return 'PluginManagementMetadata(setup: ${_this.setup}, runtimeState: ${_this.runtimeState}, workState: ${_this.workState}, authenticationState: ${_this.authenticationState}, idleTimeoutMins: ${_this.idleTimeoutMins}, hasIdleTimeoutOverride: ${_this.hasIdleTimeoutOverride}, managementCapabilities: ${_this.managementCapabilities}, actionHint: ${_this.actionHint})';
 }
 
 
@@ -128,16 +133,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.authenticationState, authenticationState) || other.authenticationState == authenticationState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other._managementCapabilities, _managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementMetadata&&(identical(other.setup, setup) || other.setup == setup)&&(identical(other.runtimeState, runtimeState) || other.runtimeState == runtimeState)&&(identical(other.workState, workState) || other.workState == workState)&&(identical(other.authenticationState, authenticationState) || other.authenticationState == authenticationState)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins)&&(identical(other.hasIdleTimeoutOverride, hasIdleTimeoutOverride) || other.hasIdleTimeoutOverride == hasIdleTimeoutOverride)&&const DeepCollectionEquality().equals(other.managementCapabilities, _managementCapabilities)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,setup,runtimeState,workState,authenticationState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_managementCapabilities),actionHint);
+int get hashCode {
+    return Object.hash(runtimeType,setup,runtimeState,workState,authenticationState,idleTimeoutMins,hasIdleTimeoutOverride,const DeepCollectionEquality().hash(_managementCapabilities),actionHint);
+}
 
 @override
 String toString() {
-  return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, authenticationState: $authenticationState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
+    return 'PluginManagementMetadata(setup: $setup, runtimeState: $runtimeState, workState: $workState, authenticationState: $authenticationState, idleTimeoutMins: $idleTimeoutMins, hasIdleTimeoutOverride: $hasIdleTimeoutOverride, managementCapabilities: $managementCapabilities, actionHint: $actionHint)';
 }
 
 
@@ -397,7 +404,7 @@ mixin _$PluginAuthenticationProgress {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationProgress);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationProgress);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -406,7 +413,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationProgress()';
+    return 'PluginAuthenticationProgress()';
 }
 
 
@@ -437,7 +444,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationCompletedProgress);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationCompletedProgress);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -446,7 +453,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationProgress.completed()';
+    return 'PluginAuthenticationProgress.completed()';
 }
 
 
@@ -476,16 +483,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationFailedProgress&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationFailedProgress&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationProgress.failed(message: $message)';
+    return 'PluginAuthenticationProgress.failed(message: $message)';
 }
 
 
@@ -515,7 +524,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationCancelledProgress);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationCancelledProgress);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -524,7 +533,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationProgress.cancelled()';
+    return 'PluginAuthenticationProgress.cancelled()';
 }
 
 
@@ -554,7 +563,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationUnknownProgress);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationUnknownProgress);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -563,7 +572,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationProgress.unknown()';
+    return 'PluginAuthenticationProgress.unknown()';
 }
 
 
@@ -589,16 +598,21 @@ $PluginManagementResponseCopyWith<PluginManagementResponse> get copyWith => _$Pl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementResponse&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.defaultPluginId, defaultPluginId) || other.defaultPluginId == defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other.plugins, plugins));
+  final _this = this as PluginManagementResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementResponse&&(identical(other.snapshotToken, _this.snapshotToken) || other.snapshotToken == _this.snapshotToken)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.defaultPluginId, _this.defaultPluginId) || other.defaultPluginId == _this.defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, _this.defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == _this.defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other.plugins, _this.plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,snapshotToken,bridgeId,defaultPluginId,defaultIdleTimeoutMins,const DeepCollectionEquality().hash(plugins));
+int get hashCode {
+  final _this = this as PluginManagementResponse;
+  return Object.hash(runtimeType,_this.snapshotToken,_this.bridgeId,_this.defaultPluginId,_this.defaultIdleTimeoutMins,const DeepCollectionEquality().hash(_this.plugins));
+}
 
 @override
 String toString() {
-  return 'PluginManagementResponse(snapshotToken: $snapshotToken, bridgeId: $bridgeId, defaultPluginId: $defaultPluginId, defaultIdleTimeoutMins: $defaultIdleTimeoutMins, plugins: $plugins)';
+  final _this = this as PluginManagementResponse;
+  return 'PluginManagementResponse(snapshotToken: ${_this.snapshotToken}, bridgeId: ${_this.bridgeId}, defaultPluginId: ${_this.defaultPluginId}, defaultIdleTimeoutMins: ${_this.defaultIdleTimeoutMins}, plugins: ${_this.plugins})';
 }
 
 
@@ -673,16 +687,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementResponse&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.defaultPluginId, defaultPluginId) || other.defaultPluginId == defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other._plugins, _plugins));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginManagementResponse&&(identical(other.snapshotToken, snapshotToken) || other.snapshotToken == snapshotToken)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.defaultPluginId, defaultPluginId) || other.defaultPluginId == defaultPluginId)&&(identical(other.defaultIdleTimeoutMins, defaultIdleTimeoutMins) || other.defaultIdleTimeoutMins == defaultIdleTimeoutMins)&&const DeepCollectionEquality().equals(other.plugins, _plugins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,snapshotToken,bridgeId,defaultPluginId,defaultIdleTimeoutMins,const DeepCollectionEquality().hash(_plugins));
+int get hashCode {
+    return Object.hash(runtimeType,snapshotToken,bridgeId,defaultPluginId,defaultIdleTimeoutMins,const DeepCollectionEquality().hash(_plugins));
+}
 
 @override
 String toString() {
-  return 'PluginManagementResponse(snapshotToken: $snapshotToken, bridgeId: $bridgeId, defaultPluginId: $defaultPluginId, defaultIdleTimeoutMins: $defaultIdleTimeoutMins, plugins: $plugins)';
+    return 'PluginManagementResponse(snapshotToken: $snapshotToken, bridgeId: $bridgeId, defaultPluginId: $defaultPluginId, defaultIdleTimeoutMins: $defaultIdleTimeoutMins, plugins: $plugins)';
 }
 
 
@@ -771,7 +787,7 @@ mixin _$PluginLifecycleCommandRequest {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleCommandRequest);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleCommandRequest);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -780,7 +796,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest()';
+    return 'PluginLifecycleCommandRequest()';
 }
 
 
@@ -811,7 +827,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleEnableRequest);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleEnableRequest);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -820,7 +836,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest.enable()';
+    return 'PluginLifecycleCommandRequest.enable()';
 }
 
 
@@ -850,16 +866,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleDisableRequest&&(identical(other.mode, mode) || other.mode == mode));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleDisableRequest&&(identical(other.mode, mode) || other.mode == mode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode);
+int get hashCode {
+    return Object.hash(runtimeType,mode);
+}
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest.disable(mode: $mode)';
+    return 'PluginLifecycleCommandRequest.disable(mode: $mode)';
 }
 
 
@@ -889,16 +907,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleRestartRequest&&(identical(other.mode, mode) || other.mode == mode));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleRestartRequest&&(identical(other.mode, mode) || other.mode == mode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode);
+int get hashCode {
+    return Object.hash(runtimeType,mode);
+}
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest.restart(mode: $mode)';
+    return 'PluginLifecycleCommandRequest.restart(mode: $mode)';
 }
 
 
@@ -928,7 +948,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleRefreshRequest);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleRefreshRequest);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -937,7 +957,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest.refresh()';
+    return 'PluginLifecycleCommandRequest.refresh()';
 }
 
 
@@ -967,7 +987,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleInstallRequest);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleInstallRequest);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -976,7 +996,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginLifecycleCommandRequest.install()';
+    return 'PluginLifecycleCommandRequest.install()';
 }
 
 
@@ -1024,7 +1044,7 @@ mixin _$PluginIdleTimeoutUpdateRequest {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutUpdateRequest);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutUpdateRequest);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1033,7 +1053,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginIdleTimeoutUpdateRequest()';
+    return 'PluginIdleTimeoutUpdateRequest()';
 }
 
 
@@ -1064,16 +1084,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutApplyAllRequest&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutApplyAllRequest&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,idleTimeoutMins);
+int get hashCode {
+    return Object.hash(runtimeType,idleTimeoutMins);
+}
 
 @override
 String toString() {
-  return 'PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: $idleTimeoutMins)';
+    return 'PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: $idleTimeoutMins)';
 }
 
 
@@ -1104,16 +1126,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutSetOverrideRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutSetOverrideRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.idleTimeoutMins, idleTimeoutMins) || other.idleTimeoutMins == idleTimeoutMins));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,idleTimeoutMins);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,idleTimeoutMins);
+}
 
 @override
 String toString() {
-  return 'PluginIdleTimeoutUpdateRequest.setOverride(pluginId: $pluginId, idleTimeoutMins: $idleTimeoutMins)';
+    return 'PluginIdleTimeoutUpdateRequest.setOverride(pluginId: $pluginId, idleTimeoutMins: $idleTimeoutMins)';
 }
 
 
@@ -1143,16 +1167,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutClearOverrideRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginIdleTimeoutClearOverrideRequest&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId);
+}
 
 @override
 String toString() {
-  return 'PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: $pluginId)';
+    return 'PluginIdleTimeoutUpdateRequest.clearOverride(pluginId: $pluginId)';
 }
 
 
@@ -1178,16 +1204,21 @@ $PluginLifecycleConflictCopyWith<PluginLifecycleConflict> get copyWith => _$Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.reasons, reasons)&&(identical(other.current, current) || other.current == current));
+  final _this = this as PluginLifecycleConflict;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginLifecycleConflict&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&const DeepCollectionEquality().equals(other.reasons, _this.reasons)&&(identical(other.current, _this.current) || other.current == _this.current));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(reasons),current);
+int get hashCode {
+  final _this = this as PluginLifecycleConflict;
+  return Object.hash(runtimeType,_this.pluginId,const DeepCollectionEquality().hash(_this.reasons),_this.current);
+}
 
 @override
 String toString() {
-  return 'PluginLifecycleConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+  final _this = this as PluginLifecycleConflict;
+  return 'PluginLifecycleConflict(pluginId: ${_this.pluginId}, reasons: ${_this.reasons}, current: ${_this.current})';
 }
 
 
@@ -1267,16 +1298,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginLifecycleConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other._reasons, _reasons)&&(identical(other.current, current) || other.current == current));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginLifecycleConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.reasons, _reasons)&&(identical(other.current, current) || other.current == current));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(_reasons),current);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(_reasons),current);
+}
 
 @override
 String toString() {
-  return 'PluginLifecycleConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+    return 'PluginLifecycleConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
 }
 
 
@@ -1342,16 +1375,21 @@ $PluginAuthenticationConflictCopyWith<PluginAuthenticationConflict> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.reasons, reasons)&&(identical(other.current, current) || other.current == current));
+  final _this = this as PluginAuthenticationConflict;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationConflict&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&const DeepCollectionEquality().equals(other.reasons, _this.reasons)&&(identical(other.current, _this.current) || other.current == _this.current));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(reasons),current);
+int get hashCode {
+  final _this = this as PluginAuthenticationConflict;
+  return Object.hash(runtimeType,_this.pluginId,const DeepCollectionEquality().hash(_this.reasons),_this.current);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+  final _this = this as PluginAuthenticationConflict;
+  return 'PluginAuthenticationConflict(pluginId: ${_this.pluginId}, reasons: ${_this.reasons}, current: ${_this.current})';
 }
 
 
@@ -1431,16 +1469,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAuthenticationConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other._reasons, _reasons)&&(identical(other.current, current) || other.current == current));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAuthenticationConflict&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&const DeepCollectionEquality().equals(other.reasons, _reasons)&&(identical(other.current, current) || other.current == current));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(_reasons),current);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,const DeepCollectionEquality().hash(_reasons),current);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
+    return 'PluginAuthenticationConflict(pluginId: $pluginId, reasons: $reasons, current: $current)';
 }
 
 

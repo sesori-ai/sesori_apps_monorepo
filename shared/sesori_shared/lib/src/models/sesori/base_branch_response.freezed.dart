@@ -29,16 +29,21 @@ $BaseBranchResponseCopyWith<BaseBranchResponse> get copyWith => _$BaseBranchResp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BaseBranchResponse&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug)&&(identical(other.repoHost, repoHost) || other.repoHost == repoHost));
+  final _this = this as BaseBranchResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BaseBranchResponse&&(identical(other.baseBranch, _this.baseBranch) || other.baseBranch == _this.baseBranch)&&(identical(other.repoSlug, _this.repoSlug) || other.repoSlug == _this.repoSlug)&&(identical(other.repoHost, _this.repoHost) || other.repoHost == _this.repoHost));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,baseBranch,repoSlug,repoHost);
+int get hashCode {
+  final _this = this as BaseBranchResponse;
+  return Object.hash(runtimeType,_this.baseBranch,_this.repoSlug,_this.repoHost);
+}
 
 @override
 String toString() {
-  return 'BaseBranchResponse(baseBranch: $baseBranch, repoSlug: $repoSlug, repoHost: $repoHost)';
+  final _this = this as BaseBranchResponse;
+  return 'BaseBranchResponse(baseBranch: ${_this.baseBranch}, repoSlug: ${_this.repoSlug}, repoHost: ${_this.repoHost})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BaseBranchResponse&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug)&&(identical(other.repoHost, repoHost) || other.repoHost == repoHost));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BaseBranchResponse&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug)&&(identical(other.repoHost, repoHost) || other.repoHost == repoHost));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,baseBranch,repoSlug,repoHost);
+int get hashCode {
+    return Object.hash(runtimeType,baseBranch,repoSlug,repoHost);
+}
 
 @override
 String toString() {
-  return 'BaseBranchResponse(baseBranch: $baseBranch, repoSlug: $repoSlug, repoHost: $repoHost)';
+    return 'BaseBranchResponse(baseBranch: $baseBranch, repoSlug: $repoSlug, repoHost: $repoHost)';
 }
 
 

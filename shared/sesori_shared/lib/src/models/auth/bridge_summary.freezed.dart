@@ -29,16 +29,21 @@ $BridgeSummaryCopyWith<BridgeSummary> get copyWith => _$BridgeSummaryCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.addedAt, addedAt) || other.addedAt == addedAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt));
+  final _this = this as BridgeSummary;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSummary&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.addedAt, _this.addedAt) || other.addedAt == _this.addedAt)&&(identical(other.lastSeenAt, _this.lastSeenAt) || other.lastSeenAt == _this.lastSeenAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,platform,addedAt,lastSeenAt);
+int get hashCode {
+  final _this = this as BridgeSummary;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.platform,_this.addedAt,_this.lastSeenAt);
+}
 
 @override
 String toString() {
-  return 'BridgeSummary(id: $id, name: $name, platform: $platform, addedAt: $addedAt, lastSeenAt: $lastSeenAt)';
+  final _this = this as BridgeSummary;
+  return 'BridgeSummary(id: ${_this.id}, name: ${_this.name}, platform: ${_this.platform}, addedAt: ${_this.addedAt}, lastSeenAt: ${_this.lastSeenAt})';
 }
 
 
@@ -107,16 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.addedAt, addedAt) || other.addedAt == addedAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.addedAt, addedAt) || other.addedAt == addedAt)&&(identical(other.lastSeenAt, lastSeenAt) || other.lastSeenAt == lastSeenAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,platform,addedAt,lastSeenAt);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,platform,addedAt,lastSeenAt);
+}
 
 @override
 String toString() {
-  return 'BridgeSummary(id: $id, name: $name, platform: $platform, addedAt: $addedAt, lastSeenAt: $lastSeenAt)';
+    return 'BridgeSummary(id: $id, name: $name, platform: $platform, addedAt: $addedAt, lastSeenAt: $lastSeenAt)';
 }
 
 

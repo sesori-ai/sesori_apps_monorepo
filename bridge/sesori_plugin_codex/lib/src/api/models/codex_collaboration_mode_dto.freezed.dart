@@ -28,16 +28,21 @@ $CodexCollaborationModeDtoCopyWith<CodexCollaborationModeDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCollaborationModeDto&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.settings, settings) || other.settings == settings));
+  final _this = this as CodexCollaborationModeDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCollaborationModeDto&&(identical(other.mode, _this.mode) || other.mode == _this.mode)&&(identical(other.settings, _this.settings) || other.settings == _this.settings));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,settings);
+int get hashCode {
+  final _this = this as CodexCollaborationModeDto;
+  return Object.hash(runtimeType,_this.mode,_this.settings);
+}
 
 @override
 String toString() {
-  return 'CodexCollaborationModeDto(mode: $mode, settings: $settings)';
+  final _this = this as CodexCollaborationModeDto;
+  return 'CodexCollaborationModeDto(mode: ${_this.mode}, settings: ${_this.settings})';
 }
 
 
@@ -109,16 +114,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCollaborationModeDto&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.settings, settings) || other.settings == settings));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCollaborationModeDto&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.settings, settings) || other.settings == settings));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mode,settings);
+int get hashCode {
+    return Object.hash(runtimeType,mode,settings);
+}
 
 @override
 String toString() {
-  return 'CodexCollaborationModeDto(mode: $mode, settings: $settings)';
+    return 'CodexCollaborationModeDto(mode: $mode, settings: $settings)';
 }
 
 
@@ -182,16 +189,21 @@ $CodexCollaborationModeSettingsDtoCopyWith<CodexCollaborationModeSettingsDto> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCollaborationModeSettingsDto&&(identical(other.model, model) || other.model == model)&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort)&&(identical(other.developerInstructions, developerInstructions) || other.developerInstructions == developerInstructions));
+  final _this = this as CodexCollaborationModeSettingsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexCollaborationModeSettingsDto&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.reasoningEffort, _this.reasoningEffort) || other.reasoningEffort == _this.reasoningEffort)&&(identical(other.developerInstructions, _this.developerInstructions) || other.developerInstructions == _this.developerInstructions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model,reasoningEffort,developerInstructions);
+int get hashCode {
+  final _this = this as CodexCollaborationModeSettingsDto;
+  return Object.hash(runtimeType,_this.model,_this.reasoningEffort,_this.developerInstructions);
+}
 
 @override
 String toString() {
-  return 'CodexCollaborationModeSettingsDto(model: $model, reasoningEffort: $reasoningEffort, developerInstructions: $developerInstructions)';
+  final _this = this as CodexCollaborationModeSettingsDto;
+  return 'CodexCollaborationModeSettingsDto(model: ${_this.model}, reasoningEffort: ${_this.reasoningEffort}, developerInstructions: ${_this.developerInstructions})';
 }
 
 
@@ -256,16 +268,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCollaborationModeSettingsDto&&(identical(other.model, model) || other.model == model)&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort)&&(identical(other.developerInstructions, developerInstructions) || other.developerInstructions == developerInstructions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexCollaborationModeSettingsDto&&(identical(other.model, model) || other.model == model)&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort)&&(identical(other.developerInstructions, developerInstructions) || other.developerInstructions == developerInstructions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model,reasoningEffort,developerInstructions);
+int get hashCode {
+    return Object.hash(runtimeType,model,reasoningEffort,developerInstructions);
+}
 
 @override
 String toString() {
-  return 'CodexCollaborationModeSettingsDto(model: $model, reasoningEffort: $reasoningEffort, developerInstructions: $developerInstructions)';
+    return 'CodexCollaborationModeSettingsDto(model: $model, reasoningEffort: $reasoningEffort, developerInstructions: $developerInstructions)';
 }
 
 

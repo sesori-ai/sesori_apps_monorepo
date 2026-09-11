@@ -29,16 +29,21 @@ $BridgeSettingsResponseCopyWith<BridgeSettingsResponse> get copyWith => _$Bridge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingsResponse&&(identical(other.pullRequestRefresh, pullRequestRefresh) || other.pullRequestRefresh == pullRequestRefresh)&&(identical(other.yolo, yolo) || other.yolo == yolo)&&(identical(other.warmUpPluginsOnSessionOpen, warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == warmUpPluginsOnSessionOpen));
+  final _this = this as BridgeSettingsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeSettingsResponse&&(identical(other.pullRequestRefresh, _this.pullRequestRefresh) || other.pullRequestRefresh == _this.pullRequestRefresh)&&(identical(other.yolo, _this.yolo) || other.yolo == _this.yolo)&&(identical(other.warmUpPluginsOnSessionOpen, _this.warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == _this.warmUpPluginsOnSessionOpen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pullRequestRefresh,yolo,warmUpPluginsOnSessionOpen);
+int get hashCode {
+  final _this = this as BridgeSettingsResponse;
+  return Object.hash(runtimeType,_this.pullRequestRefresh,_this.yolo,_this.warmUpPluginsOnSessionOpen);
+}
 
 @override
 String toString() {
-  return 'BridgeSettingsResponse(pullRequestRefresh: $pullRequestRefresh, yolo: $yolo, warmUpPluginsOnSessionOpen: $warmUpPluginsOnSessionOpen)';
+  final _this = this as BridgeSettingsResponse;
+  return 'BridgeSettingsResponse(pullRequestRefresh: ${_this.pullRequestRefresh}, yolo: ${_this.yolo}, warmUpPluginsOnSessionOpen: ${_this.warmUpPluginsOnSessionOpen})';
 }
 
 
@@ -121,16 +126,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSettingsResponse&&(identical(other.pullRequestRefresh, pullRequestRefresh) || other.pullRequestRefresh == pullRequestRefresh)&&(identical(other.yolo, yolo) || other.yolo == yolo)&&(identical(other.warmUpPluginsOnSessionOpen, warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == warmUpPluginsOnSessionOpen));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeSettingsResponse&&(identical(other.pullRequestRefresh, pullRequestRefresh) || other.pullRequestRefresh == pullRequestRefresh)&&(identical(other.yolo, yolo) || other.yolo == yolo)&&(identical(other.warmUpPluginsOnSessionOpen, warmUpPluginsOnSessionOpen) || other.warmUpPluginsOnSessionOpen == warmUpPluginsOnSessionOpen));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,pullRequestRefresh,yolo,warmUpPluginsOnSessionOpen);
+int get hashCode {
+    return Object.hash(runtimeType,pullRequestRefresh,yolo,warmUpPluginsOnSessionOpen);
+}
 
 @override
 String toString() {
-  return 'BridgeSettingsResponse(pullRequestRefresh: $pullRequestRefresh, yolo: $yolo, warmUpPluginsOnSessionOpen: $warmUpPluginsOnSessionOpen)';
+    return 'BridgeSettingsResponse(pullRequestRefresh: $pullRequestRefresh, yolo: $yolo, warmUpPluginsOnSessionOpen: $warmUpPluginsOnSessionOpen)';
 }
 
 

@@ -29,16 +29,21 @@ $CodexOwnershipRecordCopyWith<CodexOwnershipRecord> get copyWith => _$CodexOwner
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexOwnershipRecord&&(identical(other.ownerSessionId, ownerSessionId) || other.ownerSessionId == ownerSessionId)&&(identical(other.codexPid, codexPid) || other.codexPid == codexPid)&&(identical(other.codexStartMarker, codexStartMarker) || other.codexStartMarker == codexStartMarker)&&(identical(other.codexExecutablePath, codexExecutablePath) || other.codexExecutablePath == codexExecutablePath)&&(identical(other.codexCommand, codexCommand) || other.codexCommand == codexCommand)&&const DeepCollectionEquality().equals(other.codexArgs, codexArgs)&&(identical(other.port, port) || other.port == port)&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.status, status) || other.status == status));
+  final _this = this as CodexOwnershipRecord;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexOwnershipRecord&&(identical(other.ownerSessionId, _this.ownerSessionId) || other.ownerSessionId == _this.ownerSessionId)&&(identical(other.codexPid, _this.codexPid) || other.codexPid == _this.codexPid)&&(identical(other.codexStartMarker, _this.codexStartMarker) || other.codexStartMarker == _this.codexStartMarker)&&(identical(other.codexExecutablePath, _this.codexExecutablePath) || other.codexExecutablePath == _this.codexExecutablePath)&&(identical(other.codexCommand, _this.codexCommand) || other.codexCommand == _this.codexCommand)&&const DeepCollectionEquality().equals(other.codexArgs, _this.codexArgs)&&(identical(other.port, _this.port) || other.port == _this.port)&&(identical(other.bridgePid, _this.bridgePid) || other.bridgePid == _this.bridgePid)&&(identical(other.bridgeStartMarker, _this.bridgeStartMarker) || other.bridgeStartMarker == _this.bridgeStartMarker)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&(identical(other.status, _this.status) || other.status == _this.status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,ownerSessionId,codexPid,codexStartMarker,codexExecutablePath,codexCommand,const DeepCollectionEquality().hash(codexArgs),port,bridgePid,bridgeStartMarker,startedAt,status);
+int get hashCode {
+  final _this = this as CodexOwnershipRecord;
+  return Object.hash(runtimeType,_this.ownerSessionId,_this.codexPid,_this.codexStartMarker,_this.codexExecutablePath,_this.codexCommand,const DeepCollectionEquality().hash(_this.codexArgs),_this.port,_this.bridgePid,_this.bridgeStartMarker,_this.startedAt,_this.status);
+}
 
 @override
 String toString() {
-  return 'CodexOwnershipRecord(ownerSessionId: $ownerSessionId, codexPid: $codexPid, codexStartMarker: $codexStartMarker, codexExecutablePath: $codexExecutablePath, codexCommand: $codexCommand, codexArgs: $codexArgs, port: $port, bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker, startedAt: $startedAt, status: $status)';
+  final _this = this as CodexOwnershipRecord;
+  return 'CodexOwnershipRecord(ownerSessionId: ${_this.ownerSessionId}, codexPid: ${_this.codexPid}, codexStartMarker: ${_this.codexStartMarker}, codexExecutablePath: ${_this.codexExecutablePath}, codexCommand: ${_this.codexCommand}, codexArgs: ${_this.codexArgs}, port: ${_this.port}, bridgePid: ${_this.bridgePid}, bridgeStartMarker: ${_this.bridgeStartMarker}, startedAt: ${_this.startedAt}, status: ${_this.status})';
 }
 
 
@@ -125,16 +130,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexOwnershipRecord&&(identical(other.ownerSessionId, ownerSessionId) || other.ownerSessionId == ownerSessionId)&&(identical(other.codexPid, codexPid) || other.codexPid == codexPid)&&(identical(other.codexStartMarker, codexStartMarker) || other.codexStartMarker == codexStartMarker)&&(identical(other.codexExecutablePath, codexExecutablePath) || other.codexExecutablePath == codexExecutablePath)&&(identical(other.codexCommand, codexCommand) || other.codexCommand == codexCommand)&&const DeepCollectionEquality().equals(other._codexArgs, _codexArgs)&&(identical(other.port, port) || other.port == port)&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexOwnershipRecord&&(identical(other.ownerSessionId, ownerSessionId) || other.ownerSessionId == ownerSessionId)&&(identical(other.codexPid, codexPid) || other.codexPid == codexPid)&&(identical(other.codexStartMarker, codexStartMarker) || other.codexStartMarker == codexStartMarker)&&(identical(other.codexExecutablePath, codexExecutablePath) || other.codexExecutablePath == codexExecutablePath)&&(identical(other.codexCommand, codexCommand) || other.codexCommand == codexCommand)&&const DeepCollectionEquality().equals(other.codexArgs, _codexArgs)&&(identical(other.port, port) || other.port == port)&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,ownerSessionId,codexPid,codexStartMarker,codexExecutablePath,codexCommand,const DeepCollectionEquality().hash(_codexArgs),port,bridgePid,bridgeStartMarker,startedAt,status);
+int get hashCode {
+    return Object.hash(runtimeType,ownerSessionId,codexPid,codexStartMarker,codexExecutablePath,codexCommand,const DeepCollectionEquality().hash(_codexArgs),port,bridgePid,bridgeStartMarker,startedAt,status);
+}
 
 @override
 String toString() {
-  return 'CodexOwnershipRecord(ownerSessionId: $ownerSessionId, codexPid: $codexPid, codexStartMarker: $codexStartMarker, codexExecutablePath: $codexExecutablePath, codexCommand: $codexCommand, codexArgs: $codexArgs, port: $port, bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker, startedAt: $startedAt, status: $status)';
+    return 'CodexOwnershipRecord(ownerSessionId: $ownerSessionId, codexPid: $codexPid, codexStartMarker: $codexStartMarker, codexExecutablePath: $codexExecutablePath, codexCommand: $codexCommand, codexArgs: $codexArgs, port: $port, bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker, startedAt: $startedAt, status: $status)';
 }
 
 

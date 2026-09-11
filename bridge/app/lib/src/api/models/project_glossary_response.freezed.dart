@@ -27,16 +27,21 @@ $ProjectGlossaryWordsResponseCopyWith<ProjectGlossaryWordsResponse> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryWordsResponse&&const DeepCollectionEquality().equals(other.words, words));
+  final _this = this as ProjectGlossaryWordsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryWordsResponse&&const DeepCollectionEquality().equals(other.words, _this.words));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(words));
+int get hashCode {
+  final _this = this as ProjectGlossaryWordsResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.words));
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryWordsResponse(words: $words)';
+  final _this = this as ProjectGlossaryWordsResponse;
+  return 'ProjectGlossaryWordsResponse(words: ${_this.words})';
 }
 
 
@@ -100,16 +105,18 @@ _$ProjectGlossaryWordsResponseCopyWith<_ProjectGlossaryWordsResponse> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryWordsResponse&&const DeepCollectionEquality().equals(other._words, _words));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryWordsResponse&&const DeepCollectionEquality().equals(other.words, _words));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_words));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_words));
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryWordsResponse(words: $words)';
+    return 'ProjectGlossaryWordsResponse(words: $words)';
 }
 
 
@@ -162,16 +169,21 @@ $ProjectGlossaryAddedWordsResponseCopyWith<ProjectGlossaryAddedWordsResponse> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryAddedWordsResponse&&const DeepCollectionEquality().equals(other.added, added));
+  final _this = this as ProjectGlossaryAddedWordsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryAddedWordsResponse&&const DeepCollectionEquality().equals(other.added, _this.added));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(added));
+int get hashCode {
+  final _this = this as ProjectGlossaryAddedWordsResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.added));
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryAddedWordsResponse(added: $added)';
+  final _this = this as ProjectGlossaryAddedWordsResponse;
+  return 'ProjectGlossaryAddedWordsResponse(added: ${_this.added})';
 }
 
 
@@ -235,16 +247,18 @@ _$ProjectGlossaryAddedWordsResponseCopyWith<_ProjectGlossaryAddedWordsResponse> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryAddedWordsResponse&&const DeepCollectionEquality().equals(other._added, _added));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryAddedWordsResponse&&const DeepCollectionEquality().equals(other.added, _added));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_added));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_added));
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryAddedWordsResponse(added: $added)';
+    return 'ProjectGlossaryAddedWordsResponse(added: $added)';
 }
 
 
@@ -297,16 +311,21 @@ $ProjectGlossaryRemovedWordsResponseCopyWith<ProjectGlossaryRemovedWordsResponse
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryRemovedWordsResponse&&(identical(other.removed, removed) || other.removed == removed));
+  final _this = this as ProjectGlossaryRemovedWordsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryRemovedWordsResponse&&(identical(other.removed, _this.removed) || other.removed == _this.removed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,removed);
+int get hashCode {
+  final _this = this as ProjectGlossaryRemovedWordsResponse;
+  return Object.hash(runtimeType,_this.removed);
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryRemovedWordsResponse(removed: $removed)';
+  final _this = this as ProjectGlossaryRemovedWordsResponse;
+  return 'ProjectGlossaryRemovedWordsResponse(removed: ${_this.removed})';
 }
 
 
@@ -364,16 +383,18 @@ _$ProjectGlossaryRemovedWordsResponseCopyWith<_ProjectGlossaryRemovedWordsRespon
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryRemovedWordsResponse&&(identical(other.removed, removed) || other.removed == removed));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryRemovedWordsResponse&&(identical(other.removed, removed) || other.removed == removed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,removed);
+int get hashCode {
+    return Object.hash(runtimeType,removed);
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryRemovedWordsResponse(removed: $removed)';
+    return 'ProjectGlossaryRemovedWordsResponse(removed: $removed)';
 }
 
 

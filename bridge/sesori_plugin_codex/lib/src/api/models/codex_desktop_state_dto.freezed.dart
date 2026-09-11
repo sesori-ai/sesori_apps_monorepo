@@ -27,16 +27,21 @@ $CodexDesktopStateDtoCopyWith<CodexDesktopStateDto> get copyWith => _$CodexDeskt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDesktopStateDto&&const DeepCollectionEquality().equals(other.projectlessThreadIds, projectlessThreadIds));
+  final _this = this as CodexDesktopStateDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDesktopStateDto&&const DeepCollectionEquality().equals(other.projectlessThreadIds, _this.projectlessThreadIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(projectlessThreadIds));
+int get hashCode {
+  final _this = this as CodexDesktopStateDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.projectlessThreadIds));
+}
 
 @override
 String toString() {
-  return 'CodexDesktopStateDto(projectlessThreadIds: $projectlessThreadIds)';
+  final _this = this as CodexDesktopStateDto;
+  return 'CodexDesktopStateDto(projectlessThreadIds: ${_this.projectlessThreadIds})';
 }
 
 
@@ -100,16 +105,18 @@ _$CodexDesktopStateDtoCopyWith<_CodexDesktopStateDto> get copyWith => __$CodexDe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexDesktopStateDto&&const DeepCollectionEquality().equals(other._projectlessThreadIds, _projectlessThreadIds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexDesktopStateDto&&const DeepCollectionEquality().equals(other.projectlessThreadIds, _projectlessThreadIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_projectlessThreadIds));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_projectlessThreadIds));
+}
 
 @override
 String toString() {
-  return 'CodexDesktopStateDto(projectlessThreadIds: $projectlessThreadIds)';
+    return 'CodexDesktopStateDto(projectlessThreadIds: $projectlessThreadIds)';
 }
 
 

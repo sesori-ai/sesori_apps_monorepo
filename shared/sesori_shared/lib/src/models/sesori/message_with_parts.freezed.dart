@@ -35,16 +35,21 @@ $MessageWithPartsResponseCopyWith<MessageWithPartsResponse> get copyWith => _$Me
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults)&&(identical(other.awaitingHarnessSync, awaitingHarnessSync) || other.awaitingHarnessSync == awaitingHarnessSync));
+  final _this = this as MessageWithPartsResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, _this.messages)&&(identical(other.nextCursor, _this.nextCursor) || other.nextCursor == _this.nextCursor)&&(identical(other.replayedPromptDefaults, _this.replayedPromptDefaults) || other.replayedPromptDefaults == _this.replayedPromptDefaults)&&(identical(other.awaitingHarnessSync, _this.awaitingHarnessSync) || other.awaitingHarnessSync == _this.awaitingHarnessSync));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(messages),nextCursor,replayedPromptDefaults,awaitingHarnessSync);
+int get hashCode {
+  final _this = this as MessageWithPartsResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.messages),_this.nextCursor,_this.replayedPromptDefaults,_this.awaitingHarnessSync);
+}
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults, awaitingHarnessSync: $awaitingHarnessSync)';
+  final _this = this as MessageWithPartsResponse;
+  return 'MessageWithPartsResponse(messages: ${_this.messages}, nextCursor: ${_this.nextCursor}, replayedPromptDefaults: ${_this.replayedPromptDefaults}, awaitingHarnessSync: ${_this.awaitingHarnessSync})';
 }
 
 
@@ -135,16 +140,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other._messages, _messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults)&&(identical(other.awaitingHarnessSync, awaitingHarnessSync) || other.awaitingHarnessSync == awaitingHarnessSync));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithPartsResponse&&const DeepCollectionEquality().equals(other.messages, _messages)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor)&&(identical(other.replayedPromptDefaults, replayedPromptDefaults) || other.replayedPromptDefaults == replayedPromptDefaults)&&(identical(other.awaitingHarnessSync, awaitingHarnessSync) || other.awaitingHarnessSync == awaitingHarnessSync));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),nextCursor,replayedPromptDefaults,awaitingHarnessSync);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_messages),nextCursor,replayedPromptDefaults,awaitingHarnessSync);
+}
 
 @override
 String toString() {
-  return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults, awaitingHarnessSync: $awaitingHarnessSync)';
+    return 'MessageWithPartsResponse(messages: $messages, nextCursor: $nextCursor, replayedPromptDefaults: $replayedPromptDefaults, awaitingHarnessSync: $awaitingHarnessSync)';
 }
 
 
@@ -214,16 +221,21 @@ $MessageWithPartsCopyWith<MessageWithParts> get copyWith => _$MessageWithPartsCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithParts&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other.parts, parts));
+  final _this = this as MessageWithParts;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MessageWithParts&&(identical(other.info, _this.info) || other.info == _this.info)&&const DeepCollectionEquality().equals(other.parts, _this.parts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info,const DeepCollectionEquality().hash(parts));
+int get hashCode {
+  final _this = this as MessageWithParts;
+  return Object.hash(runtimeType,_this.info,const DeepCollectionEquality().hash(_this.parts));
+}
 
 @override
 String toString() {
-  return 'MessageWithParts(info: $info, parts: $parts)';
+  final _this = this as MessageWithParts;
+  return 'MessageWithParts(info: ${_this.info}, parts: ${_this.parts})';
 }
 
 
@@ -301,16 +313,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithParts&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other._parts, _parts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MessageWithParts&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other.parts, _parts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info,const DeepCollectionEquality().hash(_parts));
+int get hashCode {
+    return Object.hash(runtimeType,info,const DeepCollectionEquality().hash(_parts));
+}
 
 @override
 String toString() {
-  return 'MessageWithParts(info: $info, parts: $parts)';
+    return 'MessageWithParts(info: $info, parts: $parts)';
 }
 
 

@@ -28,16 +28,21 @@ $RestartBridgeResponseCopyWith<RestartBridgeResponse> get copyWith => _$RestartB
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RestartBridgeResponse&&(identical(other.restarting, restarting) || other.restarting == restarting));
+  final _this = this as RestartBridgeResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RestartBridgeResponse&&(identical(other.restarting, _this.restarting) || other.restarting == _this.restarting));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,restarting);
+int get hashCode {
+  final _this = this as RestartBridgeResponse;
+  return Object.hash(runtimeType,_this.restarting);
+}
 
 @override
 String toString() {
-  return 'RestartBridgeResponse(restarting: $restarting)';
+  final _this = this as RestartBridgeResponse;
+  return 'RestartBridgeResponse(restarting: ${_this.restarting})';
 }
 
 
@@ -98,16 +103,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RestartBridgeResponse&&(identical(other.restarting, restarting) || other.restarting == restarting));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RestartBridgeResponse&&(identical(other.restarting, restarting) || other.restarting == restarting));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,restarting);
+int get hashCode {
+    return Object.hash(runtimeType,restarting);
+}
 
 @override
 String toString() {
-  return 'RestartBridgeResponse(restarting: $restarting)';
+    return 'RestartBridgeResponse(restarting: $restarting)';
 }
 
 

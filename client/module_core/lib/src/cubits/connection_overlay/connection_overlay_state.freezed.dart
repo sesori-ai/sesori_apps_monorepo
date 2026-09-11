@@ -21,7 +21,7 @@ mixin _$ConnectionOverlayState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionOverlayState()';
+    return 'ConnectionOverlayState()';
 }
 
 
@@ -62,16 +62,18 @@ $ConnectionOverlayHiddenCopyWith<ConnectionOverlayHidden> get copyWith => _$Conn
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayHidden&&(identical(other.connected, connected) || other.connected == connected));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayHidden&&(identical(other.connected, connected) || other.connected == connected));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,connected);
+int get hashCode {
+    return Object.hash(runtimeType,connected);
+}
 
 @override
 String toString() {
-  return 'ConnectionOverlayState.hidden(connected: $connected)';
+    return 'ConnectionOverlayState.hidden(connected: $connected)';
 }
 
 
@@ -123,7 +125,7 @@ class ConnectionOverlayReconnecting implements ConnectionOverlayState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayReconnecting);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayReconnecting);
 }
 
 
@@ -132,7 +134,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionOverlayState.reconnecting()';
+    return 'ConnectionOverlayState.reconnecting()';
 }
 
 
@@ -155,7 +157,7 @@ class ConnectionOverlayConnectionLost implements ConnectionOverlayState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayConnectionLost);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayConnectionLost);
 }
 
 
@@ -164,7 +166,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionOverlayState.connectionLost()';
+    return 'ConnectionOverlayState.connectionLost()';
 }
 
 
@@ -187,7 +189,7 @@ class ConnectionOverlayBridgeOffline implements ConnectionOverlayState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayBridgeOffline);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ConnectionOverlayBridgeOffline);
 }
 
 
@@ -196,7 +198,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ConnectionOverlayState.bridgeOffline()';
+    return 'ConnectionOverlayState.bridgeOffline()';
 }
 
 

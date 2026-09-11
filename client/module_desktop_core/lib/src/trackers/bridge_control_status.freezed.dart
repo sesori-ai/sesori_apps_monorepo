@@ -30,16 +30,21 @@ $BridgeControlStatusCopyWith<BridgeControlStatus> get copyWith => _$BridgeContro
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeControlStatus&&(identical(other.helperOnline, helperOnline) || other.helperOnline == helperOnline)&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+  final _this = this as BridgeControlStatus;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeControlStatus&&(identical(other.helperOnline, _this.helperOnline) || other.helperOnline == _this.helperOnline)&&(identical(other.startup, _this.startup) || other.startup == _this.startup)&&(identical(other.relay, _this.relay) || other.relay == _this.relay)&&(identical(other.plugin, _this.plugin) || other.plugin == _this.plugin)&&(identical(other.activeSessionCount, _this.activeSessionCount) || other.activeSessionCount == _this.activeSessionCount)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,helperOnline,startup,relay,plugin,activeSessionCount,bridgeId);
+int get hashCode {
+  final _this = this as BridgeControlStatus;
+  return Object.hash(runtimeType,_this.helperOnline,_this.startup,_this.relay,_this.plugin,_this.activeSessionCount,_this.bridgeId);
+}
 
 @override
 String toString() {
-  return 'BridgeControlStatus(helperOnline: $helperOnline, startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount, bridgeId: $bridgeId)';
+  final _this = this as BridgeControlStatus;
+  return 'BridgeControlStatus(helperOnline: ${_this.helperOnline}, startup: ${_this.startup}, relay: ${_this.relay}, plugin: ${_this.plugin}, activeSessionCount: ${_this.activeSessionCount}, bridgeId: ${_this.bridgeId})';
 }
 
 
@@ -111,16 +116,18 @@ _$BridgeControlStatusCopyWith<_BridgeControlStatus> get copyWith => __$BridgeCon
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeControlStatus&&(identical(other.helperOnline, helperOnline) || other.helperOnline == helperOnline)&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeControlStatus&&(identical(other.helperOnline, helperOnline) || other.helperOnline == helperOnline)&&(identical(other.startup, startup) || other.startup == startup)&&(identical(other.relay, relay) || other.relay == relay)&&(identical(other.plugin, plugin) || other.plugin == plugin)&&(identical(other.activeSessionCount, activeSessionCount) || other.activeSessionCount == activeSessionCount)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,helperOnline,startup,relay,plugin,activeSessionCount,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,helperOnline,startup,relay,plugin,activeSessionCount,bridgeId);
+}
 
 @override
 String toString() {
-  return 'BridgeControlStatus(helperOnline: $helperOnline, startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount, bridgeId: $bridgeId)';
+    return 'BridgeControlStatus(helperOnline: $helperOnline, startup: $startup, relay: $relay, plugin: $plugin, activeSessionCount: $activeSessionCount, bridgeId: $bridgeId)';
 }
 
 

@@ -29,16 +29,21 @@ $AbortSessionRequestCopyWith<AbortSessionRequest> get copyWith => _$AbortSession
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AbortSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.subAgents, subAgents) || other.subAgents == subAgents)&&(identical(other.useAtomicStop, useAtomicStop) || other.useAtomicStop == useAtomicStop));
+  final _this = this as AbortSessionRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AbortSessionRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.subAgents, _this.subAgents) || other.subAgents == _this.subAgents)&&(identical(other.useAtomicStop, _this.useAtomicStop) || other.useAtomicStop == _this.useAtomicStop));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,subAgents,useAtomicStop);
+int get hashCode {
+  final _this = this as AbortSessionRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.subAgents,_this.useAtomicStop);
+}
 
 @override
 String toString() {
-  return 'AbortSessionRequest(sessionId: $sessionId, subAgents: $subAgents, useAtomicStop: $useAtomicStop)';
+  final _this = this as AbortSessionRequest;
+  return 'AbortSessionRequest(sessionId: ${_this.sessionId}, subAgents: ${_this.subAgents}, useAtomicStop: ${_this.useAtomicStop})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AbortSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.subAgents, subAgents) || other.subAgents == subAgents)&&(identical(other.useAtomicStop, useAtomicStop) || other.useAtomicStop == useAtomicStop));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AbortSessionRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.subAgents, subAgents) || other.subAgents == subAgents)&&(identical(other.useAtomicStop, useAtomicStop) || other.useAtomicStop == useAtomicStop));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,subAgents,useAtomicStop);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,subAgents,useAtomicStop);
+}
 
 @override
 String toString() {
-  return 'AbortSessionRequest(sessionId: $sessionId, subAgents: $subAgents, useAtomicStop: $useAtomicStop)';
+    return 'AbortSessionRequest(sessionId: $sessionId, subAgents: $subAgents, useAtomicStop: $useAtomicStop)';
 }
 
 
@@ -169,16 +176,21 @@ $SessionAbortResponseCopyWith<SessionAbortResponse> get copyWith => _$SessionAbo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled));
+  final _this = this as SessionAbortResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortResponse&&(identical(other.subAgentsHandled, _this.subAgentsHandled) || other.subAgentsHandled == _this.subAgentsHandled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subAgentsHandled);
+int get hashCode {
+  final _this = this as SessionAbortResponse;
+  return Object.hash(runtimeType,_this.subAgentsHandled);
+}
 
 @override
 String toString() {
-  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled)';
+  final _this = this as SessionAbortResponse;
+  return 'SessionAbortResponse(subAgentsHandled: ${_this.subAgentsHandled})';
 }
 
 
@@ -239,16 +251,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortResponse&&(identical(other.subAgentsHandled, subAgentsHandled) || other.subAgentsHandled == subAgentsHandled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subAgentsHandled);
+int get hashCode {
+    return Object.hash(runtimeType,subAgentsHandled);
+}
 
 @override
 String toString() {
-  return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled)';
+    return 'SessionAbortResponse(subAgentsHandled: $subAgentsHandled)';
 }
 
 
@@ -307,16 +321,21 @@ $SessionAbortRejectionCopyWith<SessionAbortRejection> get copyWith => _$SessionA
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortRejection&&(identical(other.runningSubAgentCount, runningSubAgentCount) || other.runningSubAgentCount == runningSubAgentCount)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.mainAgentOnlySupported, mainAgentOnlySupported) || other.mainAgentOnlySupported == mainAgentOnlySupported));
+  final _this = this as SessionAbortRejection;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortRejection&&(identical(other.runningSubAgentCount, _this.runningSubAgentCount) || other.runningSubAgentCount == _this.runningSubAgentCount)&&(identical(other.mainAgentRunning, _this.mainAgentRunning) || other.mainAgentRunning == _this.mainAgentRunning)&&(identical(other.mainAgentOnlySupported, _this.mainAgentOnlySupported) || other.mainAgentOnlySupported == _this.mainAgentOnlySupported));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,runningSubAgentCount,mainAgentRunning,mainAgentOnlySupported);
+int get hashCode {
+  final _this = this as SessionAbortRejection;
+  return Object.hash(runtimeType,_this.runningSubAgentCount,_this.mainAgentRunning,_this.mainAgentOnlySupported);
+}
 
 @override
 String toString() {
-  return 'SessionAbortRejection(runningSubAgentCount: $runningSubAgentCount, mainAgentRunning: $mainAgentRunning, mainAgentOnlySupported: $mainAgentOnlySupported)';
+  final _this = this as SessionAbortRejection;
+  return 'SessionAbortRejection(runningSubAgentCount: ${_this.runningSubAgentCount}, mainAgentRunning: ${_this.mainAgentRunning}, mainAgentOnlySupported: ${_this.mainAgentOnlySupported})';
 }
 
 
@@ -385,16 +404,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortRejection&&(identical(other.runningSubAgentCount, runningSubAgentCount) || other.runningSubAgentCount == runningSubAgentCount)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.mainAgentOnlySupported, mainAgentOnlySupported) || other.mainAgentOnlySupported == mainAgentOnlySupported));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortRejection&&(identical(other.runningSubAgentCount, runningSubAgentCount) || other.runningSubAgentCount == runningSubAgentCount)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.mainAgentOnlySupported, mainAgentOnlySupported) || other.mainAgentOnlySupported == mainAgentOnlySupported));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,runningSubAgentCount,mainAgentRunning,mainAgentOnlySupported);
+int get hashCode {
+    return Object.hash(runtimeType,runningSubAgentCount,mainAgentRunning,mainAgentOnlySupported);
+}
 
 @override
 String toString() {
-  return 'SessionAbortRejection(runningSubAgentCount: $runningSubAgentCount, mainAgentRunning: $mainAgentRunning, mainAgentOnlySupported: $mainAgentOnlySupported)';
+    return 'SessionAbortRejection(runningSubAgentCount: $runningSubAgentCount, mainAgentRunning: $mainAgentRunning, mainAgentOnlySupported: $mainAgentOnlySupported)';
 }
 
 

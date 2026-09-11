@@ -27,16 +27,21 @@ $CodexTurnStartResponseDtoCopyWith<CodexTurnStartResponseDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnStartResponseDto&&(identical(other.turn, turn) || other.turn == turn));
+  final _this = this as CodexTurnStartResponseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnStartResponseDto&&(identical(other.turn, _this.turn) || other.turn == _this.turn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turn);
+int get hashCode {
+  final _this = this as CodexTurnStartResponseDto;
+  return Object.hash(runtimeType,_this.turn);
+}
 
 @override
 String toString() {
-  return 'CodexTurnStartResponseDto(turn: $turn)';
+  final _this = this as CodexTurnStartResponseDto;
+  return 'CodexTurnStartResponseDto(turn: ${_this.turn})';
 }
 
 
@@ -106,16 +111,18 @@ _$CodexTurnStartResponseDtoCopyWith<_CodexTurnStartResponseDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexTurnStartResponseDto&&(identical(other.turn, turn) || other.turn == turn));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexTurnStartResponseDto&&(identical(other.turn, turn) || other.turn == turn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turn);
+int get hashCode {
+    return Object.hash(runtimeType,turn);
+}
 
 @override
 String toString() {
-  return 'CodexTurnStartResponseDto(turn: $turn)';
+    return 'CodexTurnStartResponseDto(turn: $turn)';
 }
 
 
@@ -180,16 +187,21 @@ $CodexTurnDtoCopyWith<CodexTurnDto> get copyWith => _$CodexTurnDtoCopyWithImpl<C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnDto&&(identical(other.id, id) || other.id == id));
+  final _this = this as CodexTurnDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexTurnDto&&(identical(other.id, _this.id) || other.id == _this.id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id);
+int get hashCode {
+  final _this = this as CodexTurnDto;
+  return Object.hash(runtimeType,_this.id);
+}
 
 @override
 String toString() {
-  return 'CodexTurnDto(id: $id)';
+  final _this = this as CodexTurnDto;
+  return 'CodexTurnDto(id: ${_this.id})';
 }
 
 
@@ -247,16 +259,18 @@ _$CodexTurnDtoCopyWith<_CodexTurnDto> get copyWith => __$CodexTurnDtoCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexTurnDto&&(identical(other.id, id) || other.id == id));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexTurnDto&&(identical(other.id, id) || other.id == id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id);
+int get hashCode {
+    return Object.hash(runtimeType,id);
+}
 
 @override
 String toString() {
-  return 'CodexTurnDto(id: $id)';
+    return 'CodexTurnDto(id: $id)';
 }
 
 

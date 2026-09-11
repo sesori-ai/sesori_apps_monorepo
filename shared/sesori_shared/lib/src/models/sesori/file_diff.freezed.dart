@@ -52,16 +52,21 @@ $FileDiffCopyWith<FileDiff> get copyWith => _$FileDiffCopyWithImpl<FileDiff>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiff&&(identical(other.file, file) || other.file == file)&&(identical(other.status, status) || other.status == status));
+  final _this = this as FileDiff;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiff&&(identical(other.file, _this.file) || other.file == _this.file)&&(identical(other.status, _this.status) || other.status == _this.status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,file,status);
+int get hashCode {
+  final _this = this as FileDiff;
+  return Object.hash(runtimeType,_this.file,_this.status);
+}
 
 @override
 String toString() {
-  return 'FileDiff(file: $file, status: $status)';
+  final _this = this as FileDiff;
+  return 'FileDiff(file: ${_this.file}, status: ${_this.status})';
 }
 
 
@@ -132,16 +137,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiffContent&&(identical(other.file, file) || other.file == file)&&(identical(other.before, before) || other.before == before)&&(identical(other.after, after) || other.after == after)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiffContent&&(identical(other.file, file) || other.file == file)&&(identical(other.before, before) || other.before == before)&&(identical(other.after, after) || other.after == after)&&(identical(other.additions, additions) || other.additions == additions)&&(identical(other.deletions, deletions) || other.deletions == deletions)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,file,before,after,additions,deletions,status);
+int get hashCode {
+    return Object.hash(runtimeType,file,before,after,additions,deletions,status);
+}
 
 @override
 String toString() {
-  return 'FileDiff.content(file: $file, before: $before, after: $after, additions: $additions, deletions: $deletions, status: $status)';
+    return 'FileDiff.content(file: $file, before: $before, after: $after, additions: $additions, deletions: $deletions, status: $status)';
 }
 
 
@@ -212,16 +219,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiffSkipped&&(identical(other.file, file) || other.file == file)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is FileDiffSkipped&&(identical(other.file, file) || other.file == file)&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,file,reason,status);
+int get hashCode {
+    return Object.hash(runtimeType,file,reason,status);
+}
 
 @override
 String toString() {
-  return 'FileDiff.skipped(file: $file, reason: $reason, status: $status)';
+    return 'FileDiff.skipped(file: $file, reason: $reason, status: $status)';
 }
 
 

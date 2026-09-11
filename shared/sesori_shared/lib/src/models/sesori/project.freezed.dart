@@ -29,16 +29,21 @@ $ProjectsCopyWith<Projects> get copyWith => _$ProjectsCopyWithImpl<Projects>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Projects&&const DeepCollectionEquality().equals(other.data, data));
+  final _this = this as Projects;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Projects&&const DeepCollectionEquality().equals(other.data, _this.data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+int get hashCode {
+  final _this = this as Projects;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data));
+}
 
 @override
 String toString() {
-  return 'Projects(data: $data)';
+  final _this = this as Projects;
+  return 'Projects(data: ${_this.data})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Projects&&const DeepCollectionEquality().equals(other._data, _data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Projects&&const DeepCollectionEquality().equals(other.data, _data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+}
 
 @override
 String toString() {
-  return 'Projects(data: $data)';
+    return 'Projects(data: $data)';
 }
 
 
@@ -169,16 +176,21 @@ $ProjectSummaryCopyWith<ProjectSummary> get copyWith => _$ProjectSummaryCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
+  final _this = this as ProjectSummary;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectSummary&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.time, _this.time) || other.time == _this.time)&&(identical(other.hasUnseenChanges, _this.hasUnseenChanges) || other.hasUnseenChanges == _this.hasUnseenChanges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges);
+int get hashCode {
+  final _this = this as ProjectSummary;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.path,_this.time,_this.hasUnseenChanges);
+}
 
 @override
 String toString() {
-  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges)';
+  final _this = this as ProjectSummary;
+  return 'ProjectSummary(id: ${_this.id}, name: ${_this.name}, path: ${_this.path}, time: ${_this.time}, hasUnseenChanges: ${_this.hasUnseenChanges})';
 }
 
 
@@ -259,16 +271,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectSummary&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,path,time,hasUnseenChanges);
+}
 
 @override
 String toString() {
-  return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges)';
+    return 'ProjectSummary(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges)';
 }
 
 
@@ -339,16 +353,21 @@ $ProjectCopyWith<Project> get copyWith => _$ProjectCopyWithImpl<Project>(this as
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees)&&(identical(other.voiceGlossaryKey, voiceGlossaryKey) || other.voiceGlossaryKey == voiceGlossaryKey));
+  final _this = this as Project;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Project&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.time, _this.time) || other.time == _this.time)&&(identical(other.hasUnseenChanges, _this.hasUnseenChanges) || other.hasUnseenChanges == _this.hasUnseenChanges)&&(identical(other.directoryMissing, _this.directoryMissing) || other.directoryMissing == _this.directoryMissing)&&(identical(other.supportsDedicatedWorktrees, _this.supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == _this.supportsDedicatedWorktrees)&&(identical(other.voiceGlossaryKey, _this.voiceGlossaryKey) || other.voiceGlossaryKey == _this.voiceGlossaryKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees,voiceGlossaryKey);
+int get hashCode {
+  final _this = this as Project;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.path,_this.time,_this.hasUnseenChanges,_this.directoryMissing,_this.supportsDedicatedWorktrees,_this.voiceGlossaryKey);
+}
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees, voiceGlossaryKey: $voiceGlossaryKey)';
+  final _this = this as Project;
+  return 'Project(id: ${_this.id}, name: ${_this.name}, path: ${_this.path}, time: ${_this.time}, hasUnseenChanges: ${_this.hasUnseenChanges}, directoryMissing: ${_this.directoryMissing}, supportsDedicatedWorktrees: ${_this.supportsDedicatedWorktrees}, voiceGlossaryKey: ${_this.voiceGlossaryKey})';
 }
 
 
@@ -435,16 +454,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees)&&(identical(other.voiceGlossaryKey, voiceGlossaryKey) || other.voiceGlossaryKey == voiceGlossaryKey));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Project&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.path, path) || other.path == path)&&(identical(other.time, time) || other.time == time)&&(identical(other.hasUnseenChanges, hasUnseenChanges) || other.hasUnseenChanges == hasUnseenChanges)&&(identical(other.directoryMissing, directoryMissing) || other.directoryMissing == directoryMissing)&&(identical(other.supportsDedicatedWorktrees, supportsDedicatedWorktrees) || other.supportsDedicatedWorktrees == supportsDedicatedWorktrees)&&(identical(other.voiceGlossaryKey, voiceGlossaryKey) || other.voiceGlossaryKey == voiceGlossaryKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees,voiceGlossaryKey);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,path,time,hasUnseenChanges,directoryMissing,supportsDedicatedWorktrees,voiceGlossaryKey);
+}
 
 @override
 String toString() {
-  return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees, voiceGlossaryKey: $voiceGlossaryKey)';
+    return 'Project(id: $id, name: $name, path: $path, time: $time, hasUnseenChanges: $hasUnseenChanges, directoryMissing: $directoryMissing, supportsDedicatedWorktrees: $supportsDedicatedWorktrees, voiceGlossaryKey: $voiceGlossaryKey)';
 }
 
 
@@ -518,16 +539,21 @@ $ProjectTimeCopyWith<ProjectTime> get copyWith => _$ProjectTimeCopyWithImpl<Proj
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated));
+  final _this = this as ProjectTime;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectTime&&(identical(other.created, _this.created) || other.created == _this.created)&&(identical(other.updated, _this.updated) || other.updated == _this.updated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated);
+int get hashCode {
+  final _this = this as ProjectTime;
+  return Object.hash(runtimeType,_this.created,_this.updated);
+}
 
 @override
 String toString() {
-  return 'ProjectTime(created: $created, updated: $updated)';
+  final _this = this as ProjectTime;
+  return 'ProjectTime(created: ${_this.created}, updated: ${_this.updated})';
 }
 
 
@@ -590,16 +616,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectTime&&(identical(other.created, created) || other.created == created)&&(identical(other.updated, updated) || other.updated == updated));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,updated);
+int get hashCode {
+    return Object.hash(runtimeType,created,updated);
+}
 
 @override
 String toString() {
-  return 'ProjectTime(created: $created, updated: $updated)';
+    return 'ProjectTime(created: $created, updated: $updated)';
 }
 
 
@@ -655,16 +683,21 @@ $ProjectIdRequestCopyWith<ProjectIdRequest> get copyWith => _$ProjectIdRequestCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId));
+  final _this = this as ProjectIdRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectIdRequest&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId);
+int get hashCode {
+  final _this = this as ProjectIdRequest;
+  return Object.hash(runtimeType,_this.projectId);
+}
 
 @override
 String toString() {
-  return 'ProjectIdRequest(projectId: $projectId)';
+  final _this = this as ProjectIdRequest;
+  return 'ProjectIdRequest(projectId: ${_this.projectId})';
 }
 
 
@@ -725,16 +758,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectIdRequest&&(identical(other.projectId, projectId) || other.projectId == projectId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectId);
+int get hashCode {
+    return Object.hash(runtimeType,projectId);
+}
 
 @override
 String toString() {
-  return 'ProjectIdRequest(projectId: $projectId)';
+    return 'ProjectIdRequest(projectId: $projectId)';
 }
 
 
@@ -789,16 +824,21 @@ $ProjectPathRequestCopyWith<ProjectPathRequest> get copyWith => _$ProjectPathReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectPathRequest&&(identical(other.path, path) || other.path == path));
+  final _this = this as ProjectPathRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectPathRequest&&(identical(other.path, _this.path) || other.path == _this.path));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path);
+int get hashCode {
+  final _this = this as ProjectPathRequest;
+  return Object.hash(runtimeType,_this.path);
+}
 
 @override
 String toString() {
-  return 'ProjectPathRequest(path: $path)';
+  final _this = this as ProjectPathRequest;
+  return 'ProjectPathRequest(path: ${_this.path})';
 }
 
 
@@ -859,16 +899,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectPathRequest&&(identical(other.path, path) || other.path == path));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectPathRequest&&(identical(other.path, path) || other.path == path));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path);
+int get hashCode {
+    return Object.hash(runtimeType,path);
+}
 
 @override
 String toString() {
-  return 'ProjectPathRequest(path: $path)';
+    return 'ProjectPathRequest(path: $path)';
 }
 
 
@@ -923,16 +965,21 @@ $OpenProjectRequestCopyWith<OpenProjectRequest> get copyWith => _$OpenProjectReq
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OpenProjectRequest&&(identical(other.path, path) || other.path == path)&&(identical(other.gitAction, gitAction) || other.gitAction == gitAction));
+  final _this = this as OpenProjectRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OpenProjectRequest&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.gitAction, _this.gitAction) || other.gitAction == _this.gitAction));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,gitAction);
+int get hashCode {
+  final _this = this as OpenProjectRequest;
+  return Object.hash(runtimeType,_this.path,_this.gitAction);
+}
 
 @override
 String toString() {
-  return 'OpenProjectRequest(path: $path, gitAction: $gitAction)';
+  final _this = this as OpenProjectRequest;
+  return 'OpenProjectRequest(path: ${_this.path}, gitAction: ${_this.gitAction})';
 }
 
 
@@ -995,16 +1042,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OpenProjectRequest&&(identical(other.path, path) || other.path == path)&&(identical(other.gitAction, gitAction) || other.gitAction == gitAction));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _OpenProjectRequest&&(identical(other.path, path) || other.path == path)&&(identical(other.gitAction, gitAction) || other.gitAction == gitAction));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,gitAction);
+int get hashCode {
+    return Object.hash(runtimeType,path,gitAction);
+}
 
 @override
 String toString() {
-  return 'OpenProjectRequest(path: $path, gitAction: $gitAction)';
+    return 'OpenProjectRequest(path: $path, gitAction: $gitAction)';
 }
 
 

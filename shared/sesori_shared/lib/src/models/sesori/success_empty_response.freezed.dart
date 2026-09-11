@@ -24,7 +24,7 @@ mixin _$SuccessEmptyResponse {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SuccessEmptyResponse);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SuccessEmptyResponse);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -33,7 +33,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SuccessEmptyResponse()';
+    return 'SuccessEmptyResponse()';
 }
 
 
@@ -63,7 +63,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SuccessEmptyResponse);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SuccessEmptyResponse);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -72,7 +72,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SuccessEmptyResponse()';
+    return 'SuccessEmptyResponse()';
 }
 
 

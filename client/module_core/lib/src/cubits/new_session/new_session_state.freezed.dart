@@ -21,7 +21,7 @@ mixin _$NewSessionOptionsLoadState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState()';
+    return 'NewSessionOptionsLoadState()';
 }
 
 
@@ -62,16 +62,18 @@ $NewSessionOptionsLoadingStateCopyWith<NewSessionOptionsLoadingState> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadingState&&(identical(other.source, source) || other.source == source));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadingState&&(identical(other.source, source) || other.source == source));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,source);
+int get hashCode {
+    return Object.hash(runtimeType,source);
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.loading(source: $source)';
+    return 'NewSessionOptionsLoadState.loading(source: $source)';
 }
 
 
@@ -129,16 +131,18 @@ $NewSessionOptionsRefreshingStateCopyWith<NewSessionOptionsRefreshingState> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsRefreshingState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsRefreshingState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,options,source);
+int get hashCode {
+    return Object.hash(runtimeType,options,source);
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.refreshing(options: $options, source: $source)';
+    return 'NewSessionOptionsLoadState.refreshing(options: $options, source: $source)';
 }
 
 
@@ -206,16 +210,18 @@ $NewSessionOptionsAvailableStateCopyWith<NewSessionOptionsAvailableState> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAvailableState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAvailableState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,options,source);
+int get hashCode {
+    return Object.hash(runtimeType,options,source);
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.available(options: $options, source: $source)';
+    return 'NewSessionOptionsLoadState.available(options: $options, source: $source)';
 }
 
 
@@ -277,7 +283,7 @@ class NewSessionOptionsUnsupportedState implements NewSessionOptionsLoadState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsUnsupportedState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsUnsupportedState);
 }
 
 
@@ -286,7 +292,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.unsupported()';
+    return 'NewSessionOptionsLoadState.unsupported()';
 }
 
 
@@ -309,7 +315,7 @@ class NewSessionOptionsUnavailableState implements NewSessionOptionsLoadState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsUnavailableState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsUnavailableState);
 }
 
 
@@ -318,7 +324,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.unavailable()';
+    return 'NewSessionOptionsLoadState.unavailable()';
 }
 
 
@@ -341,7 +347,7 @@ class NewSessionOptionsLoadFailureUnavailableState implements NewSessionOptionsL
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadFailureUnavailableState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsLoadFailureUnavailableState);
 }
 
 
@@ -350,7 +356,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.loadFailureUnavailable()';
+    return 'NewSessionOptionsLoadState.loadFailureUnavailable()';
 }
 
 
@@ -378,16 +384,18 @@ $NewSessionOptionsAuthenticationRequiredUnavailableStateCopyWith<NewSessionOptio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAuthenticationRequiredUnavailableState&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAuthenticationRequiredUnavailableState&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,actionHint);
+int get hashCode {
+    return Object.hash(runtimeType,actionHint);
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.authenticationRequiredUnavailable(actionHint: $actionHint)';
+    return 'NewSessionOptionsLoadState.authenticationRequiredUnavailable(actionHint: $actionHint)';
 }
 
 
@@ -446,16 +454,18 @@ $NewSessionOptionsAuthenticationRequiredRetainedStateCopyWith<NewSessionOptionsA
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAuthenticationRequiredRetainedState&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsAuthenticationRequiredRetainedState&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint)&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,actionHint,options,source);
+int get hashCode {
+    return Object.hash(runtimeType,actionHint,options,source);
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.authenticationRequiredRetained(actionHint: $actionHint, options: $options, source: $source)';
+    return 'NewSessionOptionsLoadState.authenticationRequiredRetained(actionHint: $actionHint, options: $options, source: $source)';
 }
 
 
@@ -524,16 +534,18 @@ $NewSessionOptionsFailureStateCopyWith<NewSessionOptionsFailureState> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsFailureState&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.source, source) || other.source == source));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsFailureState&&(identical(other.reason, reason) || other.reason == reason)&&(identical(other.source, source) || other.source == source));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason,source);
+int get hashCode {
+    return Object.hash(runtimeType,reason,source);
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.failure(reason: $reason, source: $source)';
+    return 'NewSessionOptionsLoadState.failure(reason: $reason, source: $source)';
 }
 
 
@@ -592,16 +604,18 @@ $NewSessionOptionsFailureRetainedStateCopyWith<NewSessionOptionsFailureRetainedS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsFailureRetainedState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsFailureRetainedState&&(identical(other.options, options) || other.options == options)&&(identical(other.source, source) || other.source == source));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,options,source);
+int get hashCode {
+    return Object.hash(runtimeType,options,source);
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.failureRetained(options: $options, source: $source)';
+    return 'NewSessionOptionsLoadState.failureRetained(options: $options, source: $source)';
 }
 
 
@@ -663,7 +677,7 @@ class NewSessionOptionsRefreshFailureUnavailableState implements NewSessionOptio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsRefreshFailureUnavailableState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsRefreshFailureUnavailableState);
 }
 
 
@@ -672,7 +686,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionOptionsLoadState.refreshFailureUnavailable()';
+    return 'NewSessionOptionsLoadState.refreshFailureUnavailable()';
 }
 
 
@@ -695,16 +709,21 @@ $NewSessionComposeConfigCopyWith<NewSessionComposeConfig> get copyWith => _$NewS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
+  final _this = this as NewSessionComposeConfig;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, _this.availablePlugins)&&(identical(other.selectedPlugin, _this.selectedPlugin) || other.selectedPlugin == _this.selectedPlugin)&&(identical(other.options, _this.options) || other.options == _this.options)&&(identical(other.backendScope, _this.backendScope) || other.backendScope == _this.backendScope)&&(identical(other.isPluginDiscoveryInFlight, _this.isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == _this.isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, _this.projectWorktreeCapability) || other.projectWorktreeCapability == _this.projectWorktreeCapability));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
+int get hashCode {
+  final _this = this as NewSessionComposeConfig;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.availablePlugins),_this.selectedPlugin,_this.options,_this.backendScope,_this.isPluginDiscoveryInFlight,_this.projectWorktreeCapability);
+}
 
 @override
 String toString() {
-  return 'NewSessionComposeConfig(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
+  final _this = this as NewSessionComposeConfig;
+  return 'NewSessionComposeConfig(availablePlugins: ${_this.availablePlugins}, selectedPlugin: ${_this.selectedPlugin}, options: ${_this.options}, backendScope: ${_this.backendScope}, isPluginDiscoveryInFlight: ${_this.isPluginDiscoveryInFlight}, projectWorktreeCapability: ${_this.projectWorktreeCapability})';
 }
 
 
@@ -808,16 +827,18 @@ _$NewSessionComposeConfigCopyWith<_NewSessionComposeConfig> get copyWith => __$N
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionComposeConfig&&const DeepCollectionEquality().equals(other._availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionComposeConfig&&const DeepCollectionEquality().equals(other.availablePlugins, _availablePlugins)&&(identical(other.selectedPlugin, selectedPlugin) || other.selectedPlugin == selectedPlugin)&&(identical(other.options, options) || other.options == options)&&(identical(other.backendScope, backendScope) || other.backendScope == backendScope)&&(identical(other.isPluginDiscoveryInFlight, isPluginDiscoveryInFlight) || other.isPluginDiscoveryInFlight == isPluginDiscoveryInFlight)&&(identical(other.projectWorktreeCapability, projectWorktreeCapability) || other.projectWorktreeCapability == projectWorktreeCapability));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_availablePlugins),selectedPlugin,options,backendScope,isPluginDiscoveryInFlight,projectWorktreeCapability);
+}
 
 @override
 String toString() {
-  return 'NewSessionComposeConfig(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
+    return 'NewSessionComposeConfig(availablePlugins: $availablePlugins, selectedPlugin: $selectedPlugin, options: $options, backendScope: $backendScope, isPluginDiscoveryInFlight: $isPluginDiscoveryInFlight, projectWorktreeCapability: $projectWorktreeCapability)';
 }
 
 
@@ -899,7 +920,7 @@ mixin _$NewSessionPhase {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhase);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhase);
 }
 
 
@@ -908,7 +929,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionPhase()';
+    return 'NewSessionPhase()';
 }
 
 
@@ -935,7 +956,7 @@ class NewSessionPhaseIdle implements NewSessionPhase {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseIdle);
 }
 
 
@@ -944,7 +965,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionPhase.idle()';
+    return 'NewSessionPhase.idle()';
 }
 
 
@@ -972,16 +993,18 @@ $NewSessionPhaseSendingCopyWith<NewSessionPhaseSending> get copyWith => _$NewSes
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseSending&&(identical(other.submission, submission) || other.submission == submission));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,submission);
+int get hashCode {
+    return Object.hash(runtimeType,submission);
+}
 
 @override
 String toString() {
-  return 'NewSessionPhase.sending(submission: $submission)';
+    return 'NewSessionPhase.sending(submission: $submission)';
 }
 
 
@@ -1048,16 +1071,18 @@ $NewSessionPhaseRestoringSubmissionCopyWith<NewSessionPhaseRestoringSubmission> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseRestoringSubmission&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseRestoringSubmission&&(identical(other.submission, submission) || other.submission == submission)&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,submission,reason);
+int get hashCode {
+    return Object.hash(runtimeType,submission,reason);
+}
 
 @override
 String toString() {
-  return 'NewSessionPhase.restoringSubmission(submission: $submission, reason: $reason)';
+    return 'NewSessionPhase.restoringSubmission(submission: $submission, reason: $reason)';
 }
 
 
@@ -1124,16 +1149,18 @@ $NewSessionPhaseCreationErrorCopyWith<NewSessionPhaseCreationError> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseCreationError&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseCreationError&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason);
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
 
 @override
 String toString() {
-  return 'NewSessionPhase.creationError(reason: $reason)';
+    return 'NewSessionPhase.creationError(reason: $reason)';
 }
 
 
@@ -1190,16 +1217,18 @@ $NewSessionPhaseDiscoveryErrorCopyWith<NewSessionPhaseDiscoveryError> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseDiscoveryError&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionPhaseDiscoveryError&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason);
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
 
 @override
 String toString() {
-  return 'NewSessionPhase.discoveryError(reason: $reason)';
+    return 'NewSessionPhase.discoveryError(reason: $reason)';
 }
 
 
@@ -1246,7 +1275,7 @@ mixin _$NewSessionState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionState);
 }
 
 
@@ -1255,7 +1284,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionState()';
+    return 'NewSessionState()';
 }
 
 
@@ -1288,16 +1317,18 @@ $NewSessionComposingCopyWith<NewSessionComposing> get copyWith => _$NewSessionCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposing&&(identical(other.config, config) || other.config == config)&&(identical(other.phase, phase) || other.phase == phase));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionComposing&&(identical(other.config, config) || other.config == config)&&(identical(other.phase, phase) || other.phase == phase));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,config,phase);
+int get hashCode {
+    return Object.hash(runtimeType,config,phase);
+}
 
 @override
 String toString() {
-  return 'NewSessionState.composing(config: $config, phase: $phase)';
+    return 'NewSessionState.composing(config: $config, phase: $phase)';
 }
 
 
@@ -1373,16 +1404,18 @@ $NewSessionCreatedCopyWith<NewSessionCreated> get copyWith => _$NewSessionCreate
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCreated&&(identical(other.session, session) || other.session == session));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionCreated&&(identical(other.session, session) || other.session == session));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,session);
+int get hashCode {
+    return Object.hash(runtimeType,session);
+}
 
 @override
 String toString() {
-  return 'NewSessionState.created(session: $session)';
+    return 'NewSessionState.created(session: $session)';
 }
 
 

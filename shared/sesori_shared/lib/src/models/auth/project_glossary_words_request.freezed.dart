@@ -29,16 +29,21 @@ $ProjectGlossaryWordsRequestCopyWith<ProjectGlossaryWordsRequest> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryWordsRequest&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.words, words));
+  final _this = this as ProjectGlossaryWordsRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryWordsRequest&&(identical(other.scope, _this.scope) || other.scope == _this.scope)&&const DeepCollectionEquality().equals(other.words, _this.words));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(words));
+int get hashCode {
+  final _this = this as ProjectGlossaryWordsRequest;
+  return Object.hash(runtimeType,_this.scope,const DeepCollectionEquality().hash(_this.words));
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryWordsRequest(scope: $scope, words: $words)';
+  final _this = this as ProjectGlossaryWordsRequest;
+  return 'ProjectGlossaryWordsRequest(scope: ${_this.scope}, words: ${_this.words})';
 }
 
 
@@ -116,16 +121,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryWordsRequest&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other._words, _words));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProjectGlossaryWordsRequest&&(identical(other.scope, scope) || other.scope == scope)&&const DeepCollectionEquality().equals(other.words, _words));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(_words));
+int get hashCode {
+    return Object.hash(runtimeType,scope,const DeepCollectionEquality().hash(_words));
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryWordsRequest(scope: $scope, words: $words)';
+    return 'ProjectGlossaryWordsRequest(scope: $scope, words: $words)';
 }
 
 

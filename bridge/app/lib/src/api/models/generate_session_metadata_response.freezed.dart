@@ -27,16 +27,21 @@ $GenerateSessionMetadataResponseCopyWith<GenerateSessionMetadataResponse> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataResponse&&(identical(other.title, title) || other.title == title)&&(identical(other.branchName, branchName) || other.branchName == branchName));
+  final _this = this as GenerateSessionMetadataResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataResponse&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.branchName, _this.branchName) || other.branchName == _this.branchName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,branchName);
+int get hashCode {
+  final _this = this as GenerateSessionMetadataResponse;
+  return Object.hash(runtimeType,_this.title,_this.branchName);
+}
 
 @override
 String toString() {
-  return 'GenerateSessionMetadataResponse(title: $title, branchName: $branchName)';
+  final _this = this as GenerateSessionMetadataResponse;
+  return 'GenerateSessionMetadataResponse(title: ${_this.title}, branchName: ${_this.branchName})';
 }
 
 
@@ -96,16 +101,18 @@ _$GenerateSessionMetadataResponseCopyWith<_GenerateSessionMetadataResponse> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataResponse&&(identical(other.title, title) || other.title == title)&&(identical(other.branchName, branchName) || other.branchName == branchName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataResponse&&(identical(other.title, title) || other.title == title)&&(identical(other.branchName, branchName) || other.branchName == branchName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,title,branchName);
+int get hashCode {
+    return Object.hash(runtimeType,title,branchName);
+}
 
 @override
 String toString() {
-  return 'GenerateSessionMetadataResponse(title: $title, branchName: $branchName)';
+    return 'GenerateSessionMetadataResponse(title: $title, branchName: $branchName)';
 }
 
 

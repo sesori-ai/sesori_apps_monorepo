@@ -17,6 +17,7 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `client/module_auth/pubspec.yaml`
 - `client/module_core/pubspec.yaml`
 - `client/module_prego/pubspec.yaml` (Flutter package — theme/assets)
+- `client/module_app_ui/pubspec.yaml` (shared Flutter UI)
 - `client/module_desktop_core/pubspec.yaml` (pure Dart desktop business logic)
 - `client/design_catalog/pubspec.yaml` (Flutter design-system catalog)
 - `client/app/pubspec.yaml` (Flutter app — Firebase, flutter_bloc, etc.)
@@ -39,6 +40,7 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `bridge/sesori_plugin_copilot/pubspec.yaml`
 - `bridge/sesori_plugin_grok/pubspec.yaml`
 - `bridge/sesori_plugin_deepseek/pubspec.yaml`
+- `bridge/sesori_plugin_antigravity/pubspec.yaml`
 - `bridge/app/pubspec.yaml` (CLI relay server)
 
 **Standalone packages** (NOT in any workspace — resolve independently with their own lockfile):
@@ -65,7 +67,7 @@ Sesori iOS is **Swift Package Manager only** — there is no Podfile, and CocoaP
 </android_files>
 
 <swiftpm_files>
-iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, etc.) via Swift Package Manager. The resolved native versions are pinned in `Package.resolved` lockfiles. **All four tracked copies matter** — the project copy and the workspace copy, per platform:
+iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, etc.) via Swift Package Manager. The resolved native versions are pinned in `Package.resolved` lockfiles. **Every discovered tracked copy matters** — the project copy and the workspace copy, per platform:
 
 - `client/app/ios/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 - `client/app/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
@@ -90,6 +92,8 @@ These lockfiles change on most weekly runs because native SDK patch releases lan
 find . -name pubspec.yaml -not -path '*/build/*' -not -path '*/.dart_tool/*' -not -path './.worktrees/*' | sort
 ```
 
+Exclude generated platform symlinks (for example `ephemeral/.symlinks/plugins`) from the source inventory as well.
+
 Cross-check the output against the package inventory in `<project_structure>`. If a pubspec appears that is NOT listed there (a newly added workspace member), treat it as in-scope for THIS run — add it to every per-file step below (env constraints in 1.2, outdated check in 2.1, constraint bumps in 3.1) — AND update the inventory + env table in this skill so future runs inherit it. The ONLY pubspec excluded from edits is `shared/no_slop_linter/pubspec.yaml`.
 </step>
 
@@ -101,7 +105,7 @@ sed -n '/^workspace:/,$p' client/pubspec.yaml
 ```
 </step>
 
-<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (expect exactly four — a project copy and a workspace copy per platform; these are native deps and are in scope):
+<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (currently four tracked app copies — a project copy and a workspace copy per platform; these are native deps and are in scope). Reconcile this list with actual source Xcode projects, including `client/desktop/macos`: configure and resolve every discovered SwiftPM graph. A local-only graph may legitimately produce no `Package.resolved`; report that rather than adding an artificial lockfile.
 
 ```bash
 git ls-files | grep 'Package.resolved'
@@ -145,6 +149,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `client/module_auth/pubspec.yaml` | ✅ | — | caret |
 | `client/module_core/pubspec.yaml` | ✅ | — | caret |
 | `client/module_prego/pubspec.yaml` | ✅ | ✅ | caret + range |
+| `client/module_app_ui/pubspec.yaml` | ✅ | ✅ | caret + range |
 | `client/module_desktop_core/pubspec.yaml` | ✅ | — | caret |
 | `client/design_catalog/pubspec.yaml` | ✅ | ✅ | caret + range |
 | `client/desktop/pubspec.yaml` | ✅ | — | caret |
@@ -164,6 +169,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `bridge/sesori_plugin_copilot/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_grok/pubspec.yaml` | ✅ | — | caret |
 | `bridge/sesori_plugin_deepseek/pubspec.yaml` | ✅ | — | caret |
+| `bridge/sesori_plugin_antigravity/pubspec.yaml` | ✅ | — | caret |
 | `shared/sesori_shared/pubspec.yaml` | ✅ | — | caret |
 
 Example:
@@ -222,6 +228,7 @@ set -e
 (cd client/module_auth && dart pub outdated)       # pure Dart
 (cd client/module_core && dart pub outdated)       # pure Dart
 (cd client/module_prego && flutter pub outdated)   # Flutter (flutter: sdk: flutter)
+(cd client/module_app_ui && flutter pub outdated)  # shared Flutter UI
 (cd client/module_desktop_core && dart pub outdated) # pure Dart
 (cd client/design_catalog && flutter pub outdated)   # Flutter design catalog
 (cd client/app && flutter pub outdated)            # Flutter app
@@ -247,6 +254,7 @@ set -e
 (cd bridge/sesori_plugin_copilot && dart pub outdated)
 (cd bridge/sesori_plugin_grok && dart pub outdated)
 (cd bridge/sesori_plugin_deepseek && dart pub outdated)
+(cd bridge/sesori_plugin_antigravity && dart pub outdated)
 (cd bridge/app && dart pub outdated)
 ```
 
@@ -274,10 +282,12 @@ set -e
 <step name="3.1">For each pubspec.yaml, in this order:
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
-2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/sesori_plugin_omp`, `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_pi`, `bridge/sesori_plugin_hermes`, `bridge/sesori_plugin_copilot`, `bridge/sesori_plugin_grok`, `bridge/sesori_plugin_deepseek`, `bridge/app`
-3. Client workspace members (dependency order): `client/module_auth`, `client/module_core`, `client/module_prego`, `client/module_desktop_core`, `client/design_catalog`, `client/app`, `client/desktop`
+2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/sesori_plugin_omp`, `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_pi`, `bridge/sesori_plugin_hermes`, `bridge/sesori_plugin_copilot`, `bridge/sesori_plugin_grok`, `bridge/sesori_plugin_deepseek`, `bridge/sesori_plugin_antigravity`, `bridge/app`
+3. Client workspace members (dependency order): `client/module_auth`, `client/module_core`, `client/module_prego`, `client/module_app_ui`, `client/module_desktop_core`, `client/design_catalog`, `client/app`, `client/desktop`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
+
+Use `pub outdated --show-all` when comparing constraint minimums: after lockfile regeneration the default output omits already-resolved latest versions even when their declared minimums can be raised.
 
 **a) Bump version constraints for direct dependencies** that have newer versions available.
 
@@ -297,11 +307,14 @@ For each direct dependency listed in the `pub outdated` output from Phase 2:
 ```bash
 set -e
 (cd shared && make pub-get)   # iterates sesori_shared + no_slop_linter (independent lockfiles)
+# Verify no_slop_linter's pubspec and lockfile remain byte-for-byte unchanged.
 (cd bridge && make pub-get)   # single workspace resolution
 (cd client && make pub-get)   # single workspace resolution (uses dart from Flutter SDK)
 ```
 
 </step>
+
+After widening constraints, check `pub outdated` again. `pub get` can retain previously constrained transitive pins even when newer versions are now allowed. If that happens, run `dart pub upgrade` (or `flutter pub upgrade`) in the affected resolution root only; never upgrade `shared/no_slop_linter`.
 
 <step name="3.3">If conflicts occur:
 
@@ -389,6 +402,7 @@ set -e
 if command -v xcodebuild >/dev/null 2>&1; then
   (cd client/app && flutter build ios --config-only --release --no-codesign)
   (cd client/app && flutter build macos --config-only --release)
+  (cd client/desktop && flutter build macos --config-only --release)
 else
   echo "xcodebuild unavailable (non-macOS host) — record SwiftPM resolution as deferred in the conflict list"
 fi
@@ -396,7 +410,7 @@ fi
 
 This updates the two `Runner.xcodeproj/project.xcworkspace/.../Package.resolved` files (see `<swiftpm_files>`). Notes:
 
-- Run `flutter build` from `client/app`, not the `client` workspace root — `client/app` is the package that owns the `ios/`/`macos/` dirs. `flutter build` runs `flutter pub get` and regenerates the SwiftPM package itself, so there is no separate pub-get step and no stale-generated-package window to guard against.
+- Run `flutter build` from the owning shell (`client/app` for iOS/macOS; `client/desktop` for its macOS graph), not the `client` workspace root. Apply the workspace resolve and project fallback below to each discovered shell/platform pair. `flutter build` runs `flutter pub get` and regenerates the SwiftPM package itself, so there is no separate pub-get step and no stale-generated-package window to guard against.
 - These commands are macOS + Xcode only, and under `set -e` they would abort the whole run on a non-macOS host; the `command -v xcodebuild` guard lets the workflow continue and record SwiftPM as deferred instead of silently skipping.
 
 Then refresh the **workspace** copies, which `flutter build` does not maintain but the release lanes build against. `xcodebuild -resolvePackageDependencies` honors whatever pins already exist, so the file must be DELETED first to force a fresh resolve. Point `-clonedSourcePackagesDirPath` at a scratch dir: the shared SwiftPM clone cache can hold stale tag data and silently re-resolve the OLD versions even on a deleted lockfile.
@@ -404,11 +418,19 @@ Then refresh the **workspace** copies, which `flutter build` does not maintain b
 ```bash
 set -e
 if command -v xcodebuild >/dev/null 2>&1; then
-  for platform in ios macos; do
-    rm -f "client/app/$platform/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved"
-    (cd "client/app/$platform" && xcodebuild -resolvePackageDependencies \
+  for native_dir in client/app/ios client/app/macos client/desktop/macos; do
+    lockfile="$native_dir/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+    backup="$(mktemp)"
+    if [ -f "$lockfile" ]; then cp "$lockfile" "$backup"; fi
+    rm -f "$lockfile"
+    if (cd "$native_dir" && xcodebuild -resolvePackageDependencies \
       -workspace Runner.xcworkspace -scheme Runner \
-      -clonedSourcePackagesDirPath "$(mktemp -d)")
+      -clonedSourcePackagesDirPath "$(mktemp -d)"); then
+      rm "$backup"
+    else
+      if [ -s "$backup" ]; then mv "$backup" "$lockfile"; else rm "$backup"; fi
+      exit 1
+    fi
   done
 fi
 ```
@@ -454,6 +476,8 @@ git diff --stat -- '*Package.resolved'
 ```
 
 If there are NO changes, confirm that's genuine (the native graph really was current) and not a resolve that silently failed — re-check the exit codes from 5.1. A `git diff` showing nothing while a resolve "succeeded" is the classic symptom of a resolve that honored existing pins instead of re-resolving.
+
+For `client/desktop/macos`, the current graph contains only local plugin packages, so neither project nor workspace resolution emits a lockfile. Check the resolver output confirms this; if remote dependencies appear, include both new lockfiles in pin verification and commits.
 
 Then assert the project and workspace copies agree per platform. They describe the same package graph, so any difference means one of them is stale and a workspace build would link different native SDKs than a project build:
 
@@ -553,11 +577,11 @@ Report this list at the end of the update process for visibility.
 <success_criteria>
 
 - Preflight discovery (Phase 0) ran; every discovered source pubspec and workspace member is accounted for, with none silently skipped
-- Environment constraints (sdk, flutter) updated in 25 pubspec.yaml files (every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`, which is excluded entirely — 16 bridge, 8 client, and `shared/sesori_shared`)
+- Environment constraints (sdk, flutter) checked in every discovered pubspec and updated when a newer stable SDK exists (currently 27 in-scope files: 17 bridge, 9 client, and `shared/sesori_shared`; `shared/no_slop_linter/pubspec.yaml` is excluded entirely)
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All in-scope pubspec.lock files regenerated (bridge workspace, client workspace, and `shared/sesori_shared` = 3 lockfiles); `shared/no_slop_linter/pubspec.lock` remains untouched
-- iOS + macOS SwiftPM `Package.resolved` re-resolved — all 4 tracked lockfiles (project AND workspace copies, per platform), with project/workspace pins verified identical — or recorded as deferred if no Xcode toolchain
+- Every discovered SwiftPM graph configured and re-resolved — currently app iOS/macOS (4 tracked project/workspace lockfiles, with pins verified identical) and desktop macOS (local-only, no lockfiles) — or recorded as deferred if no Xcode toolchain
 - `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd client && make analyze)` all pass
 - `(cd shared && make test)`, `(cd bridge && make test)`, `(cd client && make test)` all pass
 - `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd client && make codegen)` all complete cleanly

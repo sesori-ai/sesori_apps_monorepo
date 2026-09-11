@@ -52,16 +52,21 @@ $ProjectGlossaryScopeCopyWith<ProjectGlossaryScope> get copyWith => _$ProjectGlo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryScope&&(identical(other.projectKey, projectKey) || other.projectKey == projectKey));
+  final _this = this as ProjectGlossaryScope;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectGlossaryScope&&(identical(other.projectKey, _this.projectKey) || other.projectKey == _this.projectKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectKey);
+int get hashCode {
+  final _this = this as ProjectGlossaryScope;
+  return Object.hash(runtimeType,_this.projectKey);
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryScope(projectKey: $projectKey)';
+  final _this = this as ProjectGlossaryScope;
+  return 'ProjectGlossaryScope(projectKey: ${_this.projectKey})';
 }
 
 
@@ -126,16 +131,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RepositoryProjectGlossaryScope&&(identical(other.projectKey, projectKey) || other.projectKey == projectKey));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RepositoryProjectGlossaryScope&&(identical(other.projectKey, projectKey) || other.projectKey == projectKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectKey);
+int get hashCode {
+    return Object.hash(runtimeType,projectKey);
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryScope.repository(projectKey: $projectKey)';
+    return 'ProjectGlossaryScope.repository(projectKey: $projectKey)';
 }
 
 
@@ -200,16 +207,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeLocalProjectGlossaryScope&&(identical(other.projectKey, projectKey) || other.projectKey == projectKey)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeLocalProjectGlossaryScope&&(identical(other.projectKey, projectKey) || other.projectKey == projectKey)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,projectKey,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,projectKey,bridgeId);
+}
 
 @override
 String toString() {
-  return 'ProjectGlossaryScope.bridgeLocal(projectKey: $projectKey, bridgeId: $bridgeId)';
+    return 'ProjectGlossaryScope.bridgeLocal(projectKey: $projectKey, bridgeId: $bridgeId)';
 }
 
 

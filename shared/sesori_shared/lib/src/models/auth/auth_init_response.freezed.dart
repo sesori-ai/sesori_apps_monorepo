@@ -29,16 +29,21 @@ $AuthInitResponseCopyWith<AuthInitResponse> get copyWith => _$AuthInitResponseCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitResponse&&(identical(other.authUrl, authUrl) || other.authUrl == authUrl)&&(identical(other.state, state) || other.state == state)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
+  final _this = this as AuthInitResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitResponse&&(identical(other.authUrl, _this.authUrl) || other.authUrl == _this.authUrl)&&(identical(other.state, _this.state) || other.state == _this.state)&&(identical(other.expiresIn, _this.expiresIn) || other.expiresIn == _this.expiresIn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,authUrl,state,expiresIn);
+int get hashCode {
+  final _this = this as AuthInitResponse;
+  return Object.hash(runtimeType,_this.authUrl,_this.state,_this.expiresIn);
+}
 
 @override
 String toString() {
-  return 'AuthInitResponse(authUrl: $authUrl, state: $state, expiresIn: $expiresIn)';
+  final _this = this as AuthInitResponse;
+  return 'AuthInitResponse(authUrl: ${_this.authUrl}, state: ${_this.state}, expiresIn: ${_this.expiresIn})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitResponse&&(identical(other.authUrl, authUrl) || other.authUrl == authUrl)&&(identical(other.state, state) || other.state == state)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthInitResponse&&(identical(other.authUrl, authUrl) || other.authUrl == authUrl)&&(identical(other.state, state) || other.state == state)&&(identical(other.expiresIn, expiresIn) || other.expiresIn == expiresIn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,authUrl,state,expiresIn);
+int get hashCode {
+    return Object.hash(runtimeType,authUrl,state,expiresIn);
+}
 
 @override
 String toString() {
-  return 'AuthInitResponse(authUrl: $authUrl, state: $state, expiresIn: $expiresIn)';
+    return 'AuthInitResponse(authUrl: $authUrl, state: $state, expiresIn: $expiresIn)';
 }
 
 

@@ -29,16 +29,21 @@ $SessionStatusResponseCopyWith<SessionStatusResponse> get copyWith => _$SessionS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusResponse&&const DeepCollectionEquality().equals(other.statuses, statuses)&&const DeepCollectionEquality().equals(other.unavailablePluginIds, unavailablePluginIds));
+  final _this = this as SessionStatusResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusResponse&&const DeepCollectionEquality().equals(other.statuses, _this.statuses)&&const DeepCollectionEquality().equals(other.unavailablePluginIds, _this.unavailablePluginIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(statuses),const DeepCollectionEquality().hash(unavailablePluginIds));
+int get hashCode {
+  final _this = this as SessionStatusResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.statuses),const DeepCollectionEquality().hash(_this.unavailablePluginIds));
+}
 
 @override
 String toString() {
-  return 'SessionStatusResponse(statuses: $statuses, unavailablePluginIds: $unavailablePluginIds)';
+  final _this = this as SessionStatusResponse;
+  return 'SessionStatusResponse(statuses: ${_this.statuses}, unavailablePluginIds: ${_this.unavailablePluginIds})';
 }
 
 
@@ -113,16 +118,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionStatusResponse&&const DeepCollectionEquality().equals(other._statuses, _statuses)&&const DeepCollectionEquality().equals(other._unavailablePluginIds, _unavailablePluginIds));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionStatusResponse&&const DeepCollectionEquality().equals(other.statuses, _statuses)&&const DeepCollectionEquality().equals(other.unavailablePluginIds, _unavailablePluginIds));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_statuses),const DeepCollectionEquality().hash(_unavailablePluginIds));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_statuses),const DeepCollectionEquality().hash(_unavailablePluginIds));
+}
 
 @override
 String toString() {
-  return 'SessionStatusResponse(statuses: $statuses, unavailablePluginIds: $unavailablePluginIds)';
+    return 'SessionStatusResponse(statuses: $statuses, unavailablePluginIds: $unavailablePluginIds)';
 }
 
 
@@ -200,7 +207,7 @@ mixin _$SessionStatus {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatus);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatus);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -209,7 +216,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SessionStatus()';
+    return 'SessionStatus()';
 }
 
 
@@ -243,7 +250,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusIdle);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -252,7 +259,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SessionStatus.idle()';
+    return 'SessionStatus.idle()';
 }
 
 
@@ -282,7 +289,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusBusy);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusBusy);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -291,7 +298,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SessionStatus.busy()';
+    return 'SessionStatus.busy()';
 }
 
 
@@ -328,16 +335,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusRetry&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.message, message) || other.message == message)&&(identical(other.next, next) || other.next == next));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusRetry&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.message, message) || other.message == message)&&(identical(other.next, next) || other.next == next));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,attempt,message,next);
+int get hashCode {
+    return Object.hash(runtimeType,attempt,message,next);
+}
 
 @override
 String toString() {
-  return 'SessionStatus.retry(attempt: $attempt, message: $message, next: $next)';
+    return 'SessionStatus.retry(attempt: $attempt, message: $message, next: $next)';
 }
 
 

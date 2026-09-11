@@ -29,16 +29,21 @@ $FilesystemSuggestionsRequestCopyWith<FilesystemSuggestionsRequest> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestionsRequest&&(identical(other.maxResults, maxResults) || other.maxResults == maxResults)&&(identical(other.prefix, prefix) || other.prefix == prefix));
+  final _this = this as FilesystemSuggestionsRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestionsRequest&&(identical(other.maxResults, _this.maxResults) || other.maxResults == _this.maxResults)&&(identical(other.prefix, _this.prefix) || other.prefix == _this.prefix));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,maxResults,prefix);
+int get hashCode {
+  final _this = this as FilesystemSuggestionsRequest;
+  return Object.hash(runtimeType,_this.maxResults,_this.prefix);
+}
 
 @override
 String toString() {
-  return 'FilesystemSuggestionsRequest(maxResults: $maxResults, prefix: $prefix)';
+  final _this = this as FilesystemSuggestionsRequest;
+  return 'FilesystemSuggestionsRequest(maxResults: ${_this.maxResults}, prefix: ${_this.prefix})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestionsRequest&&(identical(other.maxResults, maxResults) || other.maxResults == maxResults)&&(identical(other.prefix, prefix) || other.prefix == prefix));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestionsRequest&&(identical(other.maxResults, maxResults) || other.maxResults == maxResults)&&(identical(other.prefix, prefix) || other.prefix == prefix));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,maxResults,prefix);
+int get hashCode {
+    return Object.hash(runtimeType,maxResults,prefix);
+}
 
 @override
 String toString() {
-  return 'FilesystemSuggestionsRequest(maxResults: $maxResults, prefix: $prefix)';
+    return 'FilesystemSuggestionsRequest(maxResults: $maxResults, prefix: $prefix)';
 }
 
 
@@ -166,16 +173,21 @@ $FilesystemSuggestionsCopyWith<FilesystemSuggestions> get copyWith => _$Filesyst
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, data)&&(identical(other.path, path) || other.path == path));
+  final _this = this as FilesystemSuggestions;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, _this.data)&&(identical(other.path, _this.path) || other.path == _this.path));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data),path);
+int get hashCode {
+  final _this = this as FilesystemSuggestions;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data),_this.path);
+}
 
 @override
 String toString() {
-  return 'FilesystemSuggestions(data: $data, path: $path)';
+  final _this = this as FilesystemSuggestions;
+  return 'FilesystemSuggestions(data: ${_this.data}, path: ${_this.path})';
 }
 
 
@@ -244,16 +256,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestions&&const DeepCollectionEquality().equals(other._data, _data)&&(identical(other.path, path) || other.path == path));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestions&&const DeepCollectionEquality().equals(other.data, _data)&&(identical(other.path, path) || other.path == path));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),path);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),path);
+}
 
 @override
 String toString() {
-  return 'FilesystemSuggestions(data: $data, path: $path)';
+    return 'FilesystemSuggestions(data: $data, path: $path)';
 }
 
 
@@ -309,16 +323,21 @@ $FilesystemSuggestionCopyWith<FilesystemSuggestion> get copyWith => _$Filesystem
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestion&&(identical(other.path, path) || other.path == path)&&(identical(other.name, name) || other.name == name)&&(identical(other.isGitRepo, isGitRepo) || other.isGitRepo == isGitRepo));
+  final _this = this as FilesystemSuggestion;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemSuggestion&&(identical(other.path, _this.path) || other.path == _this.path)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.isGitRepo, _this.isGitRepo) || other.isGitRepo == _this.isGitRepo));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,name,isGitRepo);
+int get hashCode {
+  final _this = this as FilesystemSuggestion;
+  return Object.hash(runtimeType,_this.path,_this.name,_this.isGitRepo);
+}
 
 @override
 String toString() {
-  return 'FilesystemSuggestion(path: $path, name: $name, isGitRepo: $isGitRepo)';
+  final _this = this as FilesystemSuggestion;
+  return 'FilesystemSuggestion(path: ${_this.path}, name: ${_this.name}, isGitRepo: ${_this.isGitRepo})';
 }
 
 
@@ -383,16 +402,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestion&&(identical(other.path, path) || other.path == path)&&(identical(other.name, name) || other.name == name)&&(identical(other.isGitRepo, isGitRepo) || other.isGitRepo == isGitRepo));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemSuggestion&&(identical(other.path, path) || other.path == path)&&(identical(other.name, name) || other.name == name)&&(identical(other.isGitRepo, isGitRepo) || other.isGitRepo == isGitRepo));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,path,name,isGitRepo);
+int get hashCode {
+    return Object.hash(runtimeType,path,name,isGitRepo);
+}
 
 @override
 String toString() {
-  return 'FilesystemSuggestion(path: $path, name: $name, isGitRepo: $isGitRepo)';
+    return 'FilesystemSuggestion(path: $path, name: $name, isGitRepo: $isGitRepo)';
 }
 
 
@@ -449,16 +470,21 @@ $FilesystemCreateDirectoryRequestCopyWith<FilesystemCreateDirectoryRequest> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemCreateDirectoryRequest&&(identical(other.parentPath, parentPath) || other.parentPath == parentPath)&&(identical(other.name, name) || other.name == name));
+  final _this = this as FilesystemCreateDirectoryRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is FilesystemCreateDirectoryRequest&&(identical(other.parentPath, _this.parentPath) || other.parentPath == _this.parentPath)&&(identical(other.name, _this.name) || other.name == _this.name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,parentPath,name);
+int get hashCode {
+  final _this = this as FilesystemCreateDirectoryRequest;
+  return Object.hash(runtimeType,_this.parentPath,_this.name);
+}
 
 @override
 String toString() {
-  return 'FilesystemCreateDirectoryRequest(parentPath: $parentPath, name: $name)';
+  final _this = this as FilesystemCreateDirectoryRequest;
+  return 'FilesystemCreateDirectoryRequest(parentPath: ${_this.parentPath}, name: ${_this.name})';
 }
 
 
@@ -521,16 +547,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemCreateDirectoryRequest&&(identical(other.parentPath, parentPath) || other.parentPath == parentPath)&&(identical(other.name, name) || other.name == name));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _FilesystemCreateDirectoryRequest&&(identical(other.parentPath, parentPath) || other.parentPath == parentPath)&&(identical(other.name, name) || other.name == name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,parentPath,name);
+int get hashCode {
+    return Object.hash(runtimeType,parentPath,name);
+}
 
 @override
 String toString() {
-  return 'FilesystemCreateDirectoryRequest(parentPath: $parentPath, name: $name)';
+    return 'FilesystemCreateDirectoryRequest(parentPath: $parentPath, name: $name)';
 }
 
 

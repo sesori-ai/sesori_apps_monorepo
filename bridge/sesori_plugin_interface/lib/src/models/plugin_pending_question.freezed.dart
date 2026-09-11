@@ -28,16 +28,21 @@ $PluginQuestionOptionCopyWith<PluginQuestionOption> get copyWith => _$PluginQues
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
+  final _this = this as PluginQuestionOption;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQuestionOption&&(identical(other.label, _this.label) || other.label == _this.label)&&(identical(other.description, _this.description) || other.description == _this.description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,label,description);
+int get hashCode {
+  final _this = this as PluginQuestionOption;
+  return Object.hash(runtimeType,_this.label,_this.description);
+}
 
 @override
 String toString() {
-  return 'PluginQuestionOption(label: $label, description: $description)';
+  final _this = this as PluginQuestionOption;
+  return 'PluginQuestionOption(label: ${_this.label}, description: ${_this.description})';
 }
 
 
@@ -100,16 +105,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,label,description);
+int get hashCode {
+    return Object.hash(runtimeType,label,description);
+}
 
 @override
 String toString() {
-  return 'PluginQuestionOption(label: $label, description: $description)';
+    return 'PluginQuestionOption(label: $label, description: $description)';
 }
 
 
@@ -164,16 +171,21 @@ $PluginQuestionInfoCopyWith<PluginQuestionInfo> get copyWith => _$PluginQuestion
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQuestionInfo&&(identical(other.question, question) || other.question == question)&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other.options, options)&&(identical(other.multiple, multiple) || other.multiple == multiple)&&(identical(other.custom, custom) || other.custom == custom));
+  final _this = this as PluginQuestionInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginQuestionInfo&&(identical(other.question, _this.question) || other.question == _this.question)&&(identical(other.header, _this.header) || other.header == _this.header)&&const DeepCollectionEquality().equals(other.options, _this.options)&&(identical(other.multiple, _this.multiple) || other.multiple == _this.multiple)&&(identical(other.custom, _this.custom) || other.custom == _this.custom));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,question,header,const DeepCollectionEquality().hash(options),multiple,custom);
+int get hashCode {
+  final _this = this as PluginQuestionInfo;
+  return Object.hash(runtimeType,_this.question,_this.header,const DeepCollectionEquality().hash(_this.options),_this.multiple,_this.custom);
+}
 
 @override
 String toString() {
-  return 'PluginQuestionInfo(question: $question, header: $header, options: $options, multiple: $multiple, custom: $custom)';
+  final _this = this as PluginQuestionInfo;
+  return 'PluginQuestionInfo(question: ${_this.question}, header: ${_this.header}, options: ${_this.options}, multiple: ${_this.multiple}, custom: ${_this.custom})';
 }
 
 
@@ -248,16 +260,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQuestionInfo&&(identical(other.question, question) || other.question == question)&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other._options, _options)&&(identical(other.multiple, multiple) || other.multiple == multiple)&&(identical(other.custom, custom) || other.custom == custom));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginQuestionInfo&&(identical(other.question, question) || other.question == question)&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other.options, _options)&&(identical(other.multiple, multiple) || other.multiple == multiple)&&(identical(other.custom, custom) || other.custom == custom));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,question,header,const DeepCollectionEquality().hash(_options),multiple,custom);
+int get hashCode {
+    return Object.hash(runtimeType,question,header,const DeepCollectionEquality().hash(_options),multiple,custom);
+}
 
 @override
 String toString() {
-  return 'PluginQuestionInfo(question: $question, header: $header, options: $options, multiple: $multiple, custom: $custom)';
+    return 'PluginQuestionInfo(question: $question, header: $header, options: $options, multiple: $multiple, custom: $custom)';
 }
 
 
@@ -317,16 +331,21 @@ $PluginPendingQuestionCopyWith<PluginPendingQuestion> get copyWith => _$PluginPe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, questions));
+  final _this = this as PluginPendingQuestion;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginPendingQuestion&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sessionID, _this.sessionID) || other.sessionID == _this.sessionID)&&(identical(other.displaySessionId, _this.displaySessionId) || other.displaySessionId == _this.displaySessionId)&&const DeepCollectionEquality().equals(other.questions, _this.questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(questions));
+int get hashCode {
+  final _this = this as PluginPendingQuestion;
+  return Object.hash(runtimeType,_this.id,_this.sessionID,_this.displaySessionId,const DeepCollectionEquality().hash(_this.questions));
+}
 
 @override
 String toString() {
-  return 'PluginPendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
+  final _this = this as PluginPendingQuestion;
+  return 'PluginPendingQuestion(id: ${_this.id}, sessionID: ${_this.sessionID}, displaySessionId: ${_this.displaySessionId}, questions: ${_this.questions})';
 }
 
 
@@ -401,16 +420,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginPendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other._questions, _questions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginPendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, _questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
+}
 
 @override
 String toString() {
-  return 'PluginPendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
+    return 'PluginPendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
 }
 
 

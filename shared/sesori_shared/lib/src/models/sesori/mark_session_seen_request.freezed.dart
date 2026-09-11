@@ -29,16 +29,21 @@ $MarkSessionSeenRequestCopyWith<MarkSessionSeenRequest> get copyWith => _$MarkSe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is MarkSessionSeenRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.read, read) || other.read == read));
+  final _this = this as MarkSessionSeenRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is MarkSessionSeenRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.read, _this.read) || other.read == _this.read));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,read);
+int get hashCode {
+  final _this = this as MarkSessionSeenRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.read);
+}
 
 @override
 String toString() {
-  return 'MarkSessionSeenRequest(sessionId: $sessionId, read: $read)';
+  final _this = this as MarkSessionSeenRequest;
+  return 'MarkSessionSeenRequest(sessionId: ${_this.sessionId}, read: ${_this.read})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _MarkSessionSeenRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.read, read) || other.read == read));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _MarkSessionSeenRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.read, read) || other.read == read));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,read);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,read);
+}
 
 @override
 String toString() {
-  return 'MarkSessionSeenRequest(sessionId: $sessionId, read: $read)';
+    return 'MarkSessionSeenRequest(sessionId: $sessionId, read: $read)';
 }
 
 

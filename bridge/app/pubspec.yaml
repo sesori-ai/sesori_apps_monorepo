@@ -18,7 +18,7 @@ dependencies:
   qr: ^4.0.0
   sesori_shared:
     path: ../../shared/sesori_shared
-  clock: ^1.1.2
+  clock: ^1.1.3
   freezed_annotation: ^3.1.0
   json_annotation: ^4.12.0
   rxdart: ^0.28.0
@@ -50,20 +50,20 @@ dependencies:
     path: ../sesori_plugin_omp
   meta: ^1.19.0
   # Keep runtime and codegen on the same patch; skew breaks the Drift schema verifier.
-  drift: 2.34.3
+  drift: 2.35.0
   collection: ^1.19.1
   win32: ^6.4.0
 
 dev_dependencies:
   acp_plugin:
     path: ../sesori_plugin_acp
-  test: ^1.31.2
+  test: ^1.32.0
   lints: ^6.1.0
   fake_async: ^1.3.3
   # Tests exercise raw sqlite3 directly (drift migrations, DAO tests);
   # production code reaches sqlite3 only transitively through drift.
   sqlite3: ^3.5.2
   build_runner: any
-  freezed: ^4.0.0
+  freezed: ^4.0.1
   json_serializable: ^6.14.1
-  drift_dev: 2.34.3
+  drift_dev: 2.35.0

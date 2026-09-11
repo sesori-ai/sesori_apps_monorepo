@@ -56,16 +56,21 @@ $StoredProductAnalyticsPreferenceCopyWith<StoredProductAnalyticsPreference> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsPreference&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey));
+  final _this = this as StoredProductAnalyticsPreference;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsPreference&&(identical(other.userId, _this.userId) || other.userId == _this.userId)&&(identical(other.revision, _this.revision) || other.revision == _this.revision)&&(identical(other.userKey, _this.userKey) || other.userKey == _this.userKey));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,revision,userKey);
+int get hashCode {
+  final _this = this as StoredProductAnalyticsPreference;
+  return Object.hash(runtimeType,_this.userId,_this.revision,_this.userKey);
+}
 
 @override
 String toString() {
-  return 'StoredProductAnalyticsPreference(userId: $userId, revision: $revision, userKey: $userKey)';
+  final _this = this as StoredProductAnalyticsPreference;
+  return 'StoredProductAnalyticsPreference(userId: ${_this.userId}, revision: ${_this.revision}, userKey: ${_this.userKey})';
 }
 
 
@@ -135,16 +140,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsSynced&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey)&&(identical(other.preference, preference) || other.preference == preference));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsSynced&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey)&&(identical(other.preference, preference) || other.preference == preference));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,revision,userKey,preference);
+int get hashCode {
+    return Object.hash(runtimeType,userId,revision,userKey,preference);
+}
 
 @override
 String toString() {
-  return 'StoredProductAnalyticsPreference.synced(userId: $userId, revision: $revision, userKey: $userKey, preference: $preference)';
+    return 'StoredProductAnalyticsPreference.synced(userId: $userId, revision: $revision, userKey: $userKey, preference: $preference)';
 }
 
 
@@ -214,16 +221,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsPendingDisable&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey)&&(identical(other.operationId, operationId) || other.operationId == operationId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsPendingDisable&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey)&&(identical(other.operationId, operationId) || other.operationId == operationId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,revision,userKey,operationId);
+int get hashCode {
+    return Object.hash(runtimeType,userId,revision,userKey,operationId);
+}
 
 @override
 String toString() {
-  return 'StoredProductAnalyticsPreference.pendingDisable(userId: $userId, revision: $revision, userKey: $userKey, operationId: $operationId)';
+    return 'StoredProductAnalyticsPreference.pendingDisable(userId: $userId, revision: $revision, userKey: $userKey, operationId: $operationId)';
 }
 
 
@@ -293,16 +302,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsPendingEnable&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey)&&(identical(other.operationId, operationId) || other.operationId == operationId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is StoredProductAnalyticsPendingEnable&&(identical(other.userId, userId) || other.userId == userId)&&(identical(other.revision, revision) || other.revision == revision)&&(identical(other.userKey, userKey) || other.userKey == userKey)&&(identical(other.operationId, operationId) || other.operationId == operationId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,userId,revision,userKey,operationId);
+int get hashCode {
+    return Object.hash(runtimeType,userId,revision,userKey,operationId);
+}
 
 @override
 String toString() {
-  return 'StoredProductAnalyticsPreference.pendingEnable(userId: $userId, revision: $revision, userKey: $userKey, operationId: $operationId)';
+    return 'StoredProductAnalyticsPreference.pendingEnable(userId: $userId, revision: $revision, userKey: $userKey, operationId: $operationId)';
 }
 
 

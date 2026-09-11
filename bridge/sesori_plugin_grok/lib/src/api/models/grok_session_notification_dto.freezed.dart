@@ -27,16 +27,21 @@ $GrokSessionNotificationDtoCopyWith<GrokSessionNotificationDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSessionNotificationDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.update, update) || other.update == update));
+  final _this = this as GrokSessionNotificationDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSessionNotificationDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.update, _this.update) || other.update == _this.update));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,update);
+int get hashCode {
+  final _this = this as GrokSessionNotificationDto;
+  return Object.hash(runtimeType,_this.sessionId,_this.update);
+}
 
 @override
 String toString() {
-  return 'GrokSessionNotificationDto(sessionId: $sessionId, update: $update)';
+  final _this = this as GrokSessionNotificationDto;
+  return 'GrokSessionNotificationDto(sessionId: ${_this.sessionId}, update: ${_this.update})';
 }
 
 
@@ -105,16 +110,18 @@ _$GrokSessionNotificationDtoCopyWith<_GrokSessionNotificationDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSessionNotificationDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.update, update) || other.update == update));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSessionNotificationDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.update, update) || other.update == update));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,update);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,update);
+}
 
 @override
 String toString() {
-  return 'GrokSessionNotificationDto(sessionId: $sessionId, update: $update)';
+    return 'GrokSessionNotificationDto(sessionId: $sessionId, update: $update)';
 }
 
 
@@ -200,7 +207,7 @@ mixin _$GrokSubagentUpdate {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentUpdate);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentUpdate);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -209,7 +216,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate()';
+    return 'GrokSubagentUpdate()';
 }
 
 
@@ -250,16 +257,18 @@ $GrokSubagentSpawnedCopyWith<GrokSubagentSpawned> get copyWith => _$GrokSubagent
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentSpawned&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.subagentType, subagentType) || other.subagentType == subagentType)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentSpawned&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.subagentType, subagentType) || other.subagentType == subagentType)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subagentId,childSessionId,subagentType,description,model);
+int get hashCode {
+    return Object.hash(runtimeType,subagentId,childSessionId,subagentType,description,model);
+}
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate.subagentSpawned(subagentId: $subagentId, childSessionId: $childSessionId, subagentType: $subagentType, description: $description, model: $model)';
+    return 'GrokSubagentUpdate.subagentSpawned(subagentId: $subagentId, childSessionId: $childSessionId, subagentType: $subagentType, description: $description, model: $model)';
 }
 
 
@@ -324,16 +333,18 @@ $GrokSubagentProgressCopyWith<GrokSubagentProgress> get copyWith => _$GrokSubage
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentProgress&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentProgress&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subagentId);
+int get hashCode {
+    return Object.hash(runtimeType,subagentId);
+}
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate.subagentProgress(subagentId: $subagentId)';
+    return 'GrokSubagentUpdate.subagentProgress(subagentId: $subagentId)';
 }
 
 
@@ -399,16 +410,18 @@ $GrokSubagentFinishedCopyWith<GrokSubagentFinished> get copyWith => _$GrokSubage
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentFinished&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&(identical(other.willWake, willWake) || other.willWake == willWake));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentFinished&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.childSessionId, childSessionId) || other.childSessionId == childSessionId)&&(identical(other.status, status) || other.status == status)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&(identical(other.willWake, willWake) || other.willWake == willWake));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,subagentId,childSessionId,status,output,error,willWake);
+int get hashCode {
+    return Object.hash(runtimeType,subagentId,childSessionId,status,output,error,willWake);
+}
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate.subagentFinished(subagentId: $subagentId, childSessionId: $childSessionId, status: $status, output: $output, error: $error, willWake: $willWake)';
+    return 'GrokSubagentUpdate.subagentFinished(subagentId: $subagentId, childSessionId: $childSessionId, status: $status, output: $output, error: $error, willWake: $willWake)';
 }
 
 
@@ -474,16 +487,18 @@ $GrokTurnCompletedCopyWith<GrokTurnCompleted> get copyWith => _$GrokTurnComplete
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokTurnCompleted&&(identical(other.promptId, promptId) || other.promptId == promptId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokTurnCompleted&&(identical(other.promptId, promptId) || other.promptId == promptId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,promptId);
+int get hashCode {
+    return Object.hash(runtimeType,promptId);
+}
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate.turnCompleted(promptId: $promptId)';
+    return 'GrokSubagentUpdate.turnCompleted(promptId: $promptId)';
 }
 
 
@@ -539,7 +554,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentUpdateUnknown);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentUpdateUnknown);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -548,7 +563,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'GrokSubagentUpdate.unknown()';
+    return 'GrokSubagentUpdate.unknown()';
 }
 
 
@@ -572,16 +587,21 @@ $GrokToolCallMetaDtoCopyWith<GrokToolCallMetaDto> get copyWith => _$GrokToolCall
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokToolCallMetaDto&&(identical(other.tool, tool) || other.tool == tool));
+  final _this = this as GrokToolCallMetaDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokToolCallMetaDto&&(identical(other.tool, _this.tool) || other.tool == _this.tool));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tool);
+int get hashCode {
+  final _this = this as GrokToolCallMetaDto;
+  return Object.hash(runtimeType,_this.tool);
+}
 
 @override
 String toString() {
-  return 'GrokToolCallMetaDto(tool: $tool)';
+  final _this = this as GrokToolCallMetaDto;
+  return 'GrokToolCallMetaDto(tool: ${_this.tool})';
 }
 
 
@@ -651,16 +671,18 @@ _$GrokToolCallMetaDtoCopyWith<_GrokToolCallMetaDto> get copyWith => __$GrokToolC
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokToolCallMetaDto&&(identical(other.tool, tool) || other.tool == tool));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokToolCallMetaDto&&(identical(other.tool, tool) || other.tool == tool));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tool);
+int get hashCode {
+    return Object.hash(runtimeType,tool);
+}
 
 @override
 String toString() {
-  return 'GrokToolCallMetaDto(tool: $tool)';
+    return 'GrokToolCallMetaDto(tool: $tool)';
 }
 
 
@@ -725,16 +747,21 @@ $GrokToolIdentityDtoCopyWith<GrokToolIdentityDto> get copyWith => _$GrokToolIden
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokToolIdentityDto&&(identical(other.name, name) || other.name == name)&&(identical(other.kind, kind) || other.kind == kind));
+  final _this = this as GrokToolIdentityDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokToolIdentityDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.kind, _this.kind) || other.kind == _this.kind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,kind);
+int get hashCode {
+  final _this = this as GrokToolIdentityDto;
+  return Object.hash(runtimeType,_this.name,_this.kind);
+}
 
 @override
 String toString() {
-  return 'GrokToolIdentityDto(name: $name, kind: $kind)';
+  final _this = this as GrokToolIdentityDto;
+  return 'GrokToolIdentityDto(name: ${_this.name}, kind: ${_this.kind})';
 }
 
 
@@ -794,16 +821,18 @@ _$GrokToolIdentityDtoCopyWith<_GrokToolIdentityDto> get copyWith => __$GrokToolI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokToolIdentityDto&&(identical(other.name, name) || other.name == name)&&(identical(other.kind, kind) || other.kind == kind));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokToolIdentityDto&&(identical(other.name, name) || other.name == name)&&(identical(other.kind, kind) || other.kind == kind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,kind);
+int get hashCode {
+    return Object.hash(runtimeType,name,kind);
+}
 
 @override
 String toString() {
-  return 'GrokToolIdentityDto(name: $name, kind: $kind)';
+    return 'GrokToolIdentityDto(name: $name, kind: $kind)';
 }
 
 
@@ -857,16 +886,21 @@ $GrokTerminalInputDtoCopyWith<GrokTerminalInputDto> get copyWith => _$GrokTermin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokTerminalInputDto&&(identical(other.command, command) || other.command == command));
+  final _this = this as GrokTerminalInputDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokTerminalInputDto&&(identical(other.command, _this.command) || other.command == _this.command));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,command);
+int get hashCode {
+  final _this = this as GrokTerminalInputDto;
+  return Object.hash(runtimeType,_this.command);
+}
 
 @override
 String toString() {
-  return 'GrokTerminalInputDto(command: $command)';
+  final _this = this as GrokTerminalInputDto;
+  return 'GrokTerminalInputDto(command: ${_this.command})';
 }
 
 
@@ -924,16 +958,18 @@ _$GrokTerminalInputDtoCopyWith<_GrokTerminalInputDto> get copyWith => __$GrokTer
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokTerminalInputDto&&(identical(other.command, command) || other.command == command));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokTerminalInputDto&&(identical(other.command, command) || other.command == command));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,command);
+int get hashCode {
+    return Object.hash(runtimeType,command);
+}
 
 @override
 String toString() {
-  return 'GrokTerminalInputDto(command: $command)';
+    return 'GrokTerminalInputDto(command: $command)';
 }
 
 

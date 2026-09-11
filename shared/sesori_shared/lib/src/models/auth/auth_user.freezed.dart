@@ -29,16 +29,21 @@ $AuthUserCopyWith<AuthUser> get copyWith => _$AuthUserCopyWithImpl<AuthUser>(thi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthUser&&(identical(other.id, id) || other.id == id)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.providerUserId, providerUserId) || other.providerUserId == providerUserId)&&(identical(other.providerUsername, providerUsername) || other.providerUsername == providerUsername));
+  final _this = this as AuthUser;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthUser&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.provider, _this.provider) || other.provider == _this.provider)&&(identical(other.providerUserId, _this.providerUserId) || other.providerUserId == _this.providerUserId)&&(identical(other.providerUsername, _this.providerUsername) || other.providerUsername == _this.providerUsername));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,provider,providerUserId,providerUsername);
+int get hashCode {
+  final _this = this as AuthUser;
+  return Object.hash(runtimeType,_this.id,_this.provider,_this.providerUserId,_this.providerUsername);
+}
 
 @override
 String toString() {
-  return 'AuthUser(id: $id, provider: $provider, providerUserId: $providerUserId, providerUsername: $providerUsername)';
+  final _this = this as AuthUser;
+  return 'AuthUser(id: ${_this.id}, provider: ${_this.provider}, providerUserId: ${_this.providerUserId}, providerUsername: ${_this.providerUsername})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthUser&&(identical(other.id, id) || other.id == id)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.providerUserId, providerUserId) || other.providerUserId == providerUserId)&&(identical(other.providerUsername, providerUsername) || other.providerUsername == providerUsername));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthUser&&(identical(other.id, id) || other.id == id)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.providerUserId, providerUserId) || other.providerUserId == providerUserId)&&(identical(other.providerUsername, providerUsername) || other.providerUsername == providerUsername));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,provider,providerUserId,providerUsername);
+int get hashCode {
+    return Object.hash(runtimeType,id,provider,providerUserId,providerUsername);
+}
 
 @override
 String toString() {
-  return 'AuthUser(id: $id, provider: $provider, providerUserId: $providerUserId, providerUsername: $providerUsername)';
+    return 'AuthUser(id: $id, provider: $provider, providerUserId: $providerUserId, providerUsername: $providerUsername)';
 }
 
 

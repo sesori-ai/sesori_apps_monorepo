@@ -29,16 +29,21 @@ $GhPullRequestBatchResponseCopyWith<GhPullRequestBatchResponse> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestBatchResponse&&(identical(other.errorCount, errorCount) || other.errorCount == errorCount)&&(identical(other.viewerLogin, viewerLogin) || other.viewerLogin == viewerLogin)&&const DeepCollectionEquality().equals(other.pages, pages));
+  final _this = this as GhPullRequestBatchResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestBatchResponse&&(identical(other.errorCount, _this.errorCount) || other.errorCount == _this.errorCount)&&(identical(other.viewerLogin, _this.viewerLogin) || other.viewerLogin == _this.viewerLogin)&&const DeepCollectionEquality().equals(other.pages, _this.pages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,errorCount,viewerLogin,const DeepCollectionEquality().hash(pages));
+int get hashCode {
+  final _this = this as GhPullRequestBatchResponse;
+  return Object.hash(runtimeType,_this.errorCount,_this.viewerLogin,const DeepCollectionEquality().hash(_this.pages));
+}
 
 @override
 String toString() {
-  return 'GhPullRequestBatchResponse(errorCount: $errorCount, viewerLogin: $viewerLogin, pages: $pages)';
+  final _this = this as GhPullRequestBatchResponse;
+  return 'GhPullRequestBatchResponse(errorCount: ${_this.errorCount}, viewerLogin: ${_this.viewerLogin}, pages: ${_this.pages})';
 }
 
 
@@ -109,16 +114,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestBatchResponse&&(identical(other.errorCount, errorCount) || other.errorCount == errorCount)&&(identical(other.viewerLogin, viewerLogin) || other.viewerLogin == viewerLogin)&&const DeepCollectionEquality().equals(other._pages, _pages));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestBatchResponse&&(identical(other.errorCount, errorCount) || other.errorCount == errorCount)&&(identical(other.viewerLogin, viewerLogin) || other.viewerLogin == viewerLogin)&&const DeepCollectionEquality().equals(other.pages, _pages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,errorCount,viewerLogin,const DeepCollectionEquality().hash(_pages));
+int get hashCode {
+    return Object.hash(runtimeType,errorCount,viewerLogin,const DeepCollectionEquality().hash(_pages));
+}
 
 @override
 String toString() {
-  return 'GhPullRequestBatchResponse(errorCount: $errorCount, viewerLogin: $viewerLogin, pages: $pages)';
+    return 'GhPullRequestBatchResponse(errorCount: $errorCount, viewerLogin: $viewerLogin, pages: $pages)';
 }
 
 
@@ -175,16 +182,21 @@ $GhPullRequestCandidatePageCopyWith<GhPullRequestCandidatePage> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestCandidatePage&&(identical(other.requestIndex, requestIndex) || other.requestIndex == requestIndex)&&(identical(other.stateGroup, stateGroup) || other.stateGroup == stateGroup)&&(identical(other.repositoryIdentity, repositoryIdentity) || other.repositoryIdentity == repositoryIdentity)&&(identical(other.connection, connection) || other.connection == connection));
+  final _this = this as GhPullRequestCandidatePage;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestCandidatePage&&(identical(other.requestIndex, _this.requestIndex) || other.requestIndex == _this.requestIndex)&&(identical(other.stateGroup, _this.stateGroup) || other.stateGroup == _this.stateGroup)&&(identical(other.repositoryIdentity, _this.repositoryIdentity) || other.repositoryIdentity == _this.repositoryIdentity)&&(identical(other.connection, _this.connection) || other.connection == _this.connection));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestIndex,stateGroup,repositoryIdentity,connection);
+int get hashCode {
+  final _this = this as GhPullRequestCandidatePage;
+  return Object.hash(runtimeType,_this.requestIndex,_this.stateGroup,_this.repositoryIdentity,_this.connection);
+}
 
 @override
 String toString() {
-  return 'GhPullRequestCandidatePage(requestIndex: $requestIndex, stateGroup: $stateGroup, repositoryIdentity: $repositoryIdentity, connection: $connection)';
+  final _this = this as GhPullRequestCandidatePage;
+  return 'GhPullRequestCandidatePage(requestIndex: ${_this.requestIndex}, stateGroup: ${_this.stateGroup}, repositoryIdentity: ${_this.repositoryIdentity}, connection: ${_this.connection})';
 }
 
 
@@ -260,16 +272,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestCandidatePage&&(identical(other.requestIndex, requestIndex) || other.requestIndex == requestIndex)&&(identical(other.stateGroup, stateGroup) || other.stateGroup == stateGroup)&&(identical(other.repositoryIdentity, repositoryIdentity) || other.repositoryIdentity == repositoryIdentity)&&(identical(other.connection, connection) || other.connection == connection));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestCandidatePage&&(identical(other.requestIndex, requestIndex) || other.requestIndex == requestIndex)&&(identical(other.stateGroup, stateGroup) || other.stateGroup == stateGroup)&&(identical(other.repositoryIdentity, repositoryIdentity) || other.repositoryIdentity == repositoryIdentity)&&(identical(other.connection, connection) || other.connection == connection));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,requestIndex,stateGroup,repositoryIdentity,connection);
+int get hashCode {
+    return Object.hash(runtimeType,requestIndex,stateGroup,repositoryIdentity,connection);
+}
 
 @override
 String toString() {
-  return 'GhPullRequestCandidatePage(requestIndex: $requestIndex, stateGroup: $stateGroup, repositoryIdentity: $repositoryIdentity, connection: $connection)';
+    return 'GhPullRequestCandidatePage(requestIndex: $requestIndex, stateGroup: $stateGroup, repositoryIdentity: $repositoryIdentity, connection: $connection)';
 }
 
 
@@ -336,16 +350,21 @@ $GhPullRequestConnectionCopyWith<GhPullRequestConnection> get copyWith => _$GhPu
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestConnection&&const DeepCollectionEquality().equals(other.nodes, nodes)&&(identical(other.pageInfo, pageInfo) || other.pageInfo == pageInfo));
+  final _this = this as GhPullRequestConnection;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestConnection&&const DeepCollectionEquality().equals(other.nodes, _this.nodes)&&(identical(other.pageInfo, _this.pageInfo) || other.pageInfo == _this.pageInfo));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(nodes),pageInfo);
+int get hashCode {
+  final _this = this as GhPullRequestConnection;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.nodes),_this.pageInfo);
+}
 
 @override
 String toString() {
-  return 'GhPullRequestConnection(nodes: $nodes, pageInfo: $pageInfo)';
+  final _this = this as GhPullRequestConnection;
+  return 'GhPullRequestConnection(nodes: ${_this.nodes}, pageInfo: ${_this.pageInfo})';
 }
 
 
@@ -423,16 +442,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestConnection&&const DeepCollectionEquality().equals(other._nodes, _nodes)&&(identical(other.pageInfo, pageInfo) || other.pageInfo == pageInfo));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestConnection&&const DeepCollectionEquality().equals(other.nodes, _nodes)&&(identical(other.pageInfo, pageInfo) || other.pageInfo == pageInfo));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_nodes),pageInfo);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_nodes),pageInfo);
+}
 
 @override
 String toString() {
-  return 'GhPullRequestConnection(nodes: $nodes, pageInfo: $pageInfo)';
+    return 'GhPullRequestConnection(nodes: $nodes, pageInfo: $pageInfo)';
 }
 
 
@@ -497,16 +518,21 @@ $GhPullRequestPageInfoCopyWith<GhPullRequestPageInfo> get copyWith => _$GhPullRe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestPageInfo&&(identical(other.hasNextPage, hasNextPage) || other.hasNextPage == hasNextPage)&&(identical(other.endCursor, endCursor) || other.endCursor == endCursor));
+  final _this = this as GhPullRequestPageInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GhPullRequestPageInfo&&(identical(other.hasNextPage, _this.hasNextPage) || other.hasNextPage == _this.hasNextPage)&&(identical(other.endCursor, _this.endCursor) || other.endCursor == _this.endCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,hasNextPage,endCursor);
+int get hashCode {
+  final _this = this as GhPullRequestPageInfo;
+  return Object.hash(runtimeType,_this.hasNextPage,_this.endCursor);
+}
 
 @override
 String toString() {
-  return 'GhPullRequestPageInfo(hasNextPage: $hasNextPage, endCursor: $endCursor)';
+  final _this = this as GhPullRequestPageInfo;
+  return 'GhPullRequestPageInfo(hasNextPage: ${_this.hasNextPage}, endCursor: ${_this.endCursor})';
 }
 
 
@@ -569,16 +595,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestPageInfo&&(identical(other.hasNextPage, hasNextPage) || other.hasNextPage == hasNextPage)&&(identical(other.endCursor, endCursor) || other.endCursor == endCursor));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GhPullRequestPageInfo&&(identical(other.hasNextPage, hasNextPage) || other.hasNextPage == hasNextPage)&&(identical(other.endCursor, endCursor) || other.endCursor == endCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,hasNextPage,endCursor);
+int get hashCode {
+    return Object.hash(runtimeType,hasNextPage,endCursor);
+}
 
 @override
 String toString() {
-  return 'GhPullRequestPageInfo(hasNextPage: $hasNextPage, endCursor: $endCursor)';
+    return 'GhPullRequestPageInfo(hasNextPage: $hasNextPage, endCursor: $endCursor)';
 }
 
 

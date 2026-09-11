@@ -29,16 +29,21 @@ $PluginCommandCopyWith<PluginCommand> get copyWith => _$PluginCommandCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCommand&&(identical(other.name, name) || other.name == name)&&(identical(other.template, template) || other.template == template)&&const DeepCollectionEquality().equals(other.hints, hints)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.source, source) || other.source == source)&&(identical(other.subtask, subtask) || other.subtask == subtask));
+  final _this = this as PluginCommand;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginCommand&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.template, _this.template) || other.template == _this.template)&&const DeepCollectionEquality().equals(other.hints, _this.hints)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.agent, _this.agent) || other.agent == _this.agent)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.provider, _this.provider) || other.provider == _this.provider)&&(identical(other.source, _this.source) || other.source == _this.source)&&(identical(other.subtask, _this.subtask) || other.subtask == _this.subtask));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,template,const DeepCollectionEquality().hash(hints),description,agent,model,provider,source,subtask);
+int get hashCode {
+  final _this = this as PluginCommand;
+  return Object.hash(runtimeType,_this.name,_this.template,const DeepCollectionEquality().hash(_this.hints),_this.description,_this.agent,_this.model,_this.provider,_this.source,_this.subtask);
+}
 
 @override
 String toString() {
-  return 'PluginCommand(name: $name, template: $template, hints: $hints, description: $description, agent: $agent, model: $model, provider: $provider, source: $source, subtask: $subtask)';
+  final _this = this as PluginCommand;
+  return 'PluginCommand(name: ${_this.name}, template: ${_this.template}, hints: ${_this.hints}, description: ${_this.description}, agent: ${_this.agent}, model: ${_this.model}, provider: ${_this.provider}, source: ${_this.source}, subtask: ${_this.subtask})';
 }
 
 
@@ -121,16 +126,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCommand&&(identical(other.name, name) || other.name == name)&&(identical(other.template, template) || other.template == template)&&const DeepCollectionEquality().equals(other._hints, _hints)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.source, source) || other.source == source)&&(identical(other.subtask, subtask) || other.subtask == subtask));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginCommand&&(identical(other.name, name) || other.name == name)&&(identical(other.template, template) || other.template == template)&&const DeepCollectionEquality().equals(other.hints, _hints)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.model, model) || other.model == model)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.source, source) || other.source == source)&&(identical(other.subtask, subtask) || other.subtask == subtask));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,template,const DeepCollectionEquality().hash(_hints),description,agent,model,provider,source,subtask);
+int get hashCode {
+    return Object.hash(runtimeType,name,template,const DeepCollectionEquality().hash(_hints),description,agent,model,provider,source,subtask);
+}
 
 @override
 String toString() {
-  return 'PluginCommand(name: $name, template: $template, hints: $hints, description: $description, agent: $agent, model: $model, provider: $provider, source: $source, subtask: $subtask)';
+    return 'PluginCommand(name: $name, template: $template, hints: $hints, description: $description, agent: $agent, model: $model, provider: $provider, source: $source, subtask: $subtask)';
 }
 
 

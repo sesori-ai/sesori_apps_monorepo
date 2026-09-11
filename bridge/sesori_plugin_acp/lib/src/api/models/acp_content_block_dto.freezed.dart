@@ -54,7 +54,7 @@ mixin _$AcpContentBlockDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -63,7 +63,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AcpContentBlockDto()';
+    return 'AcpContentBlockDto()';
 }
 
 
@@ -99,16 +99,18 @@ $AcpTextContentBlockDtoCopyWith<AcpTextContentBlockDto> get copyWith => _$AcpTex
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpTextContentBlockDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpTextContentBlockDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'AcpContentBlockDto.text(text: $text)';
+    return 'AcpContentBlockDto.text(text: $text)';
 }
 
 
@@ -171,16 +173,18 @@ $AcpImageContentBlockDtoCopyWith<AcpImageContentBlockDto> get copyWith => _$AcpI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpImageContentBlockDto&&(identical(other.data, data) || other.data == data)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType)&&(identical(other.uri, uri) || other.uri == uri));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpImageContentBlockDto&&(identical(other.data, data) || other.data == data)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType)&&(identical(other.uri, uri) || other.uri == uri));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,data,mimeType,uri);
+int get hashCode {
+    return Object.hash(runtimeType,data,mimeType,uri);
+}
 
 @override
 String toString() {
-  return 'AcpContentBlockDto.image(data: $data, mimeType: $mimeType, uri: $uri)';
+    return 'AcpContentBlockDto.image(data: $data, mimeType: $mimeType, uri: $uri)';
 }
 
 
@@ -238,7 +242,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnsupportedAudioContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnsupportedAudioContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -247,7 +251,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AcpContentBlockDto.unsupportedAudio()';
+    return 'AcpContentBlockDto.unsupportedAudio()';
 }
 
 
@@ -274,7 +278,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnsupportedResourceContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnsupportedResourceContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -283,7 +287,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AcpContentBlockDto.unsupportedResource()';
+    return 'AcpContentBlockDto.unsupportedResource()';
 }
 
 
@@ -310,7 +314,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnsupportedResourceLinkContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnsupportedResourceLinkContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -319,7 +323,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AcpContentBlockDto.unsupportedResourceLink()';
+    return 'AcpContentBlockDto.unsupportedResourceLink()';
 }
 
 
@@ -346,7 +350,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnknownContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpUnknownContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -355,7 +359,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AcpContentBlockDto.unknown()';
+    return 'AcpContentBlockDto.unknown()';
 }
 
 

@@ -61,7 +61,7 @@ mixin _$ApiError {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiError);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ApiError);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -70,7 +70,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ApiError()';
+    return 'ApiError()';
 }
 
 
@@ -106,16 +106,18 @@ $JsonParsingErrorCopyWith<JsonParsingError> get copyWith => _$JsonParsingErrorCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is JsonParsingError&&(identical(other.jsonString, jsonString) || other.jsonString == jsonString));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is JsonParsingError&&(identical(other.jsonString, jsonString) || other.jsonString == jsonString));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,jsonString);
+int get hashCode {
+    return Object.hash(runtimeType,jsonString);
+}
 
 @override
 String toString() {
-  return 'ApiError.jsonParsing(jsonString: $jsonString)';
+    return 'ApiError.jsonParsing(jsonString: $jsonString)';
 }
 
 
@@ -176,16 +178,18 @@ $DartHttpClientErrorCopyWith<DartHttpClientError> get copyWith => _$DartHttpClie
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DartHttpClientError&&const DeepCollectionEquality().equals(other.innerError, innerError));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is DartHttpClientError&&const DeepCollectionEquality().equals(other.innerError, innerError));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(innerError));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(innerError));
+}
 
 @override
 String toString() {
-  return 'ApiError.dartHttpClient(innerError: $innerError)';
+    return 'ApiError.dartHttpClient(innerError: $innerError)';
 }
 
 
@@ -240,7 +244,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenericError);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is GenericError);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -249,7 +253,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ApiError.generic()';
+    return 'ApiError.generic()';
 }
 
 
@@ -276,7 +280,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NotAuthenticatedError);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NotAuthenticatedError);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -285,7 +289,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ApiError.notAuthenticated()';
+    return 'ApiError.notAuthenticated()';
 }
 
 
@@ -318,16 +322,18 @@ $NonSuccessCodeErrorCopyWith<NonSuccessCodeError> get copyWith => _$NonSuccessCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NonSuccessCodeError&&(identical(other.errorCode, errorCode) || other.errorCode == errorCode)&&(identical(other.rawErrorString, rawErrorString) || other.rawErrorString == rawErrorString));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NonSuccessCodeError&&(identical(other.errorCode, errorCode) || other.errorCode == errorCode)&&(identical(other.rawErrorString, rawErrorString) || other.rawErrorString == rawErrorString));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,errorCode,rawErrorString);
+int get hashCode {
+    return Object.hash(runtimeType,errorCode,rawErrorString);
+}
 
 @override
 String toString() {
-  return 'ApiError.nonSuccessCode(errorCode: $errorCode, rawErrorString: $rawErrorString)';
+    return 'ApiError.nonSuccessCode(errorCode: $errorCode, rawErrorString: $rawErrorString)';
 }
 
 
@@ -384,7 +390,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is EmptyResponseError);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is EmptyResponseError);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -393,7 +399,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'ApiError.emptyResponse()';
+    return 'ApiError.emptyResponse()';
 }
 
 

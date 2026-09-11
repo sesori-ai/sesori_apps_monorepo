@@ -28,16 +28,21 @@ $PluginAgentModelCopyWith<PluginAgentModel> get copyWith => _$PluginAgentModelCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
+  final _this = this as PluginAgentModel;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgentModel&&(identical(other.modelID, _this.modelID) || other.modelID == _this.modelID)&&(identical(other.providerID, _this.providerID) || other.providerID == _this.providerID)&&(identical(other.variant, _this.variant) || other.variant == _this.variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
+int get hashCode {
+  final _this = this as PluginAgentModel;
+  return Object.hash(runtimeType,_this.modelID,_this.providerID,_this.variant);
+}
 
 @override
 String toString() {
-  return 'PluginAgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
+  final _this = this as PluginAgentModel;
+  return 'PluginAgentModel(modelID: ${_this.modelID}, providerID: ${_this.providerID}, variant: ${_this.variant})';
 }
 
 
@@ -102,16 +107,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
+int get hashCode {
+    return Object.hash(runtimeType,modelID,providerID,variant);
+}
 
 @override
 String toString() {
-  return 'PluginAgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
+    return 'PluginAgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
 }
 
 
@@ -167,16 +174,21 @@ $PluginAgentCopyWith<PluginAgent> get copyWith => _$PluginAgentCopyWithImpl<Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgent&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  final _this = this as PluginAgent;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAgent&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.mode, _this.mode) || other.mode == _this.mode)&&(identical(other.hidden, _this.hidden) || other.hidden == _this.hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
+int get hashCode {
+  final _this = this as PluginAgent;
+  return Object.hash(runtimeType,_this.name,_this.description,_this.model,_this.mode,_this.hidden);
+}
 
 @override
 String toString() {
-  return 'PluginAgent(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
+  final _this = this as PluginAgent;
+  return 'PluginAgent(name: ${_this.name}, description: ${_this.description}, model: ${_this.model}, mode: ${_this.mode}, hidden: ${_this.hidden})';
 }
 
 
@@ -257,16 +269,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgent&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginAgent&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
+int get hashCode {
+    return Object.hash(runtimeType,name,description,model,mode,hidden);
+}
 
 @override
 String toString() {
-  return 'PluginAgent(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
+    return 'PluginAgent(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
 }
 
 

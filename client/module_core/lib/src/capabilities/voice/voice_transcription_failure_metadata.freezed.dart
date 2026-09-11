@@ -27,16 +27,21 @@ $VoiceTranscriptionFailureMetadataCopyWith<VoiceTranscriptionFailureMetadata> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceTranscriptionFailureMetadata&&(identical(other.retryable, retryable) || other.retryable == retryable));
+  final _this = this as VoiceTranscriptionFailureMetadata;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceTranscriptionFailureMetadata&&(identical(other.retryable, _this.retryable) || other.retryable == _this.retryable));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,retryable);
+int get hashCode {
+  final _this = this as VoiceTranscriptionFailureMetadata;
+  return Object.hash(runtimeType,_this.retryable);
+}
 
 @override
 String toString() {
-  return 'VoiceTranscriptionFailureMetadata(retryable: $retryable)';
+  final _this = this as VoiceTranscriptionFailureMetadata;
+  return 'VoiceTranscriptionFailureMetadata(retryable: ${_this.retryable})';
 }
 
 
@@ -94,16 +99,18 @@ _$VoiceTranscriptionFailureMetadataCopyWith<_VoiceTranscriptionFailureMetadata> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _VoiceTranscriptionFailureMetadata&&(identical(other.retryable, retryable) || other.retryable == retryable));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _VoiceTranscriptionFailureMetadata&&(identical(other.retryable, retryable) || other.retryable == retryable));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,retryable);
+int get hashCode {
+    return Object.hash(runtimeType,retryable);
+}
 
 @override
 String toString() {
-  return 'VoiceTranscriptionFailureMetadata(retryable: $retryable)';
+    return 'VoiceTranscriptionFailureMetadata(retryable: $retryable)';
 }
 
 

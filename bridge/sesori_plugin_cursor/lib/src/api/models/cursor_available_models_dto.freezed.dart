@@ -27,16 +27,21 @@ $CursorAvailableModelsDtoCopyWith<CursorAvailableModelsDto> get copyWith => _$Cu
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorAvailableModelsDto&&const DeepCollectionEquality().equals(other.models, models));
+  final _this = this as CursorAvailableModelsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorAvailableModelsDto&&const DeepCollectionEquality().equals(other.models, _this.models));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(models));
+int get hashCode {
+  final _this = this as CursorAvailableModelsDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.models));
+}
 
 @override
 String toString() {
-  return 'CursorAvailableModelsDto(models: $models)';
+  final _this = this as CursorAvailableModelsDto;
+  return 'CursorAvailableModelsDto(models: ${_this.models})';
 }
 
 
@@ -100,16 +105,18 @@ _$CursorAvailableModelsDtoCopyWith<_CursorAvailableModelsDto> get copyWith => __
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorAvailableModelsDto&&const DeepCollectionEquality().equals(other._models, _models));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorAvailableModelsDto&&const DeepCollectionEquality().equals(other.models, _models));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_models));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_models));
+}
 
 @override
 String toString() {
-  return 'CursorAvailableModelsDto(models: $models)';
+    return 'CursorAvailableModelsDto(models: $models)';
 }
 
 
@@ -162,16 +169,21 @@ $CursorAvailableModelDtoCopyWith<CursorAvailableModelDto> get copyWith => _$Curs
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorAvailableModelDto&&(identical(other.value, value) || other.value == value)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.configOptions, configOptions));
+  final _this = this as CursorAvailableModelDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorAvailableModelDto&&(identical(other.value, _this.value) || other.value == _this.value)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.configOptions, _this.configOptions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,value,name,const DeepCollectionEquality().hash(configOptions));
+int get hashCode {
+  final _this = this as CursorAvailableModelDto;
+  return Object.hash(runtimeType,_this.value,_this.name,const DeepCollectionEquality().hash(_this.configOptions));
+}
 
 @override
 String toString() {
-  return 'CursorAvailableModelDto(value: $value, name: $name, configOptions: $configOptions)';
+  final _this = this as CursorAvailableModelDto;
+  return 'CursorAvailableModelDto(value: ${_this.value}, name: ${_this.name}, configOptions: ${_this.configOptions})';
 }
 
 
@@ -239,16 +251,18 @@ _$CursorAvailableModelDtoCopyWith<_CursorAvailableModelDto> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorAvailableModelDto&&(identical(other.value, value) || other.value == value)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._configOptions, _configOptions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorAvailableModelDto&&(identical(other.value, value) || other.value == value)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.configOptions, _configOptions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,value,name,const DeepCollectionEquality().hash(_configOptions));
+int get hashCode {
+    return Object.hash(runtimeType,value,name,const DeepCollectionEquality().hash(_configOptions));
+}
 
 @override
 String toString() {
-  return 'CursorAvailableModelDto(value: $value, name: $name, configOptions: $configOptions)';
+    return 'CursorAvailableModelDto(value: $value, name: $name, configOptions: $configOptions)';
 }
 
 
@@ -303,16 +317,21 @@ $CursorModelConfigOptionDtoCopyWith<CursorModelConfigOptionDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorModelConfigOptionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.category, category) || other.category == category)&&(identical(other.currentValue, currentValue) || other.currentValue == currentValue)&&const DeepCollectionEquality().equals(other.options, options));
+  final _this = this as CursorModelConfigOptionDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorModelConfigOptionDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.currentValue, _this.currentValue) || other.currentValue == _this.currentValue)&&const DeepCollectionEquality().equals(other.options, _this.options));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,category,currentValue,const DeepCollectionEquality().hash(options));
+int get hashCode {
+  final _this = this as CursorModelConfigOptionDto;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.description,_this.category,_this.currentValue,const DeepCollectionEquality().hash(_this.options));
+}
 
 @override
 String toString() {
-  return 'CursorModelConfigOptionDto(id: $id, name: $name, description: $description, category: $category, currentValue: $currentValue, options: $options)';
+  final _this = this as CursorModelConfigOptionDto;
+  return 'CursorModelConfigOptionDto(id: ${_this.id}, name: ${_this.name}, description: ${_this.description}, category: ${_this.category}, currentValue: ${_this.currentValue}, options: ${_this.options})';
 }
 
 
@@ -386,16 +405,18 @@ _$CursorModelConfigOptionDtoCopyWith<_CursorModelConfigOptionDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorModelConfigOptionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.category, category) || other.category == category)&&(identical(other.currentValue, currentValue) || other.currentValue == currentValue)&&const DeepCollectionEquality().equals(other._options, _options));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorModelConfigOptionDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.category, category) || other.category == category)&&(identical(other.currentValue, currentValue) || other.currentValue == currentValue)&&const DeepCollectionEquality().equals(other.options, _options));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,description,category,currentValue,const DeepCollectionEquality().hash(_options));
+int get hashCode {
+    return Object.hash(runtimeType,id,name,description,category,currentValue,const DeepCollectionEquality().hash(_options));
+}
 
 @override
 String toString() {
-  return 'CursorModelConfigOptionDto(id: $id, name: $name, description: $description, category: $category, currentValue: $currentValue, options: $options)';
+    return 'CursorModelConfigOptionDto(id: $id, name: $name, description: $description, category: $category, currentValue: $currentValue, options: $options)';
 }
 
 
@@ -453,16 +474,21 @@ $CursorConfigOptionValueDtoCopyWith<CursorConfigOptionValueDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorConfigOptionValueDto&&(identical(other.value, value) || other.value == value)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description));
+  final _this = this as CursorConfigOptionValueDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorConfigOptionValueDto&&(identical(other.value, _this.value) || other.value == _this.value)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,value,name,description);
+int get hashCode {
+  final _this = this as CursorConfigOptionValueDto;
+  return Object.hash(runtimeType,_this.value,_this.name,_this.description);
+}
 
 @override
 String toString() {
-  return 'CursorConfigOptionValueDto(value: $value, name: $name, description: $description)';
+  final _this = this as CursorConfigOptionValueDto;
+  return 'CursorConfigOptionValueDto(value: ${_this.value}, name: ${_this.name}, description: ${_this.description})';
 }
 
 
@@ -524,16 +550,18 @@ _$CursorConfigOptionValueDtoCopyWith<_CursorConfigOptionValueDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorConfigOptionValueDto&&(identical(other.value, value) || other.value == value)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorConfigOptionValueDto&&(identical(other.value, value) || other.value == value)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,value,name,description);
+int get hashCode {
+    return Object.hash(runtimeType,value,name,description);
+}
 
 @override
 String toString() {
-  return 'CursorConfigOptionValueDto(value: $value, name: $name, description: $description)';
+    return 'CursorConfigOptionValueDto(value: $value, name: $name, description: $description)';
 }
 
 

@@ -28,16 +28,21 @@ $SettingsStateCopyWith<SettingsState> get copyWith => _$SettingsStateCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState&&(identical(other.account, account) || other.account == account)&&(identical(other.logoutStatus, logoutStatus) || other.logoutStatus == logoutStatus));
+  final _this = this as SettingsState;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SettingsState&&(identical(other.account, _this.account) || other.account == _this.account)&&(identical(other.logoutStatus, _this.logoutStatus) || other.logoutStatus == _this.logoutStatus));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,account,logoutStatus);
+int get hashCode {
+  final _this = this as SettingsState;
+  return Object.hash(runtimeType,_this.account,_this.logoutStatus);
+}
 
 @override
 String toString() {
-  return 'SettingsState(account: $account, logoutStatus: $logoutStatus)';
+  final _this = this as SettingsState;
+  return 'SettingsState(account: ${_this.account}, logoutStatus: ${_this.logoutStatus})';
 }
 
 
@@ -111,16 +116,18 @@ _$SettingsStateCopyWith<_SettingsState> get copyWith => __$SettingsStateCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SettingsState&&(identical(other.account, account) || other.account == account)&&(identical(other.logoutStatus, logoutStatus) || other.logoutStatus == logoutStatus));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SettingsState&&(identical(other.account, account) || other.account == account)&&(identical(other.logoutStatus, logoutStatus) || other.logoutStatus == logoutStatus));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,account,logoutStatus);
+int get hashCode {
+    return Object.hash(runtimeType,account,logoutStatus);
+}
 
 @override
 String toString() {
-  return 'SettingsState(account: $account, logoutStatus: $logoutStatus)';
+    return 'SettingsState(account: $account, logoutStatus: $logoutStatus)';
 }
 
 

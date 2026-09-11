@@ -29,16 +29,21 @@ $GenerateSessionMetadataRequestCopyWith<GenerateSessionMetadataRequest> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataRequest&&(identical(other.firstMessage, firstMessage) || other.firstMessage == firstMessage));
+  final _this = this as GenerateSessionMetadataRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataRequest&&(identical(other.firstMessage, _this.firstMessage) || other.firstMessage == _this.firstMessage));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,firstMessage);
+int get hashCode {
+  final _this = this as GenerateSessionMetadataRequest;
+  return Object.hash(runtimeType,_this.firstMessage);
+}
 
 @override
 String toString() {
-  return 'GenerateSessionMetadataRequest(firstMessage: $firstMessage)';
+  final _this = this as GenerateSessionMetadataRequest;
+  return 'GenerateSessionMetadataRequest(firstMessage: ${_this.firstMessage})';
 }
 
 
@@ -99,16 +104,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataRequest&&(identical(other.firstMessage, firstMessage) || other.firstMessage == firstMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataRequest&&(identical(other.firstMessage, firstMessage) || other.firstMessage == firstMessage));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,firstMessage);
+int get hashCode {
+    return Object.hash(runtimeType,firstMessage);
+}
 
 @override
 String toString() {
-  return 'GenerateSessionMetadataRequest(firstMessage: $firstMessage)';
+    return 'GenerateSessionMetadataRequest(firstMessage: $firstMessage)';
 }
 
 

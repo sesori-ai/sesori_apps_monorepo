@@ -29,16 +29,21 @@ $RegisterBridgeRequestCopyWith<RegisterBridgeRequest> get copyWith => _$Register
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterBridgeRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+  final _this = this as RegisterBridgeRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterBridgeRequest&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,platform,bridgeId);
+int get hashCode {
+  final _this = this as RegisterBridgeRequest;
+  return Object.hash(runtimeType,_this.name,_this.platform,_this.bridgeId);
+}
 
 @override
 String toString() {
-  return 'RegisterBridgeRequest(name: $name, platform: $platform, bridgeId: $bridgeId)';
+  final _this = this as RegisterBridgeRequest;
+  return 'RegisterBridgeRequest(name: ${_this.name}, platform: ${_this.platform}, bridgeId: ${_this.bridgeId})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterBridgeRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterBridgeRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,platform,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,name,platform,bridgeId);
+}
 
 @override
 String toString() {
-  return 'RegisterBridgeRequest(name: $name, platform: $platform, bridgeId: $bridgeId)';
+    return 'RegisterBridgeRequest(name: $name, platform: $platform, bridgeId: $bridgeId)';
 }
 
 

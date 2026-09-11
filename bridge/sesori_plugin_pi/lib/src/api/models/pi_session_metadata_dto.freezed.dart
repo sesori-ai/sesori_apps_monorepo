@@ -45,7 +45,7 @@ mixin _$PiSessionMetadataDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionMetadataDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionMetadataDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -90,12 +90,14 @@ $PiSessionHeaderDtoCopyWith<PiSessionHeaderDto> get copyWith => _$PiSessionHeade
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionHeaderDto&&(identical(other.version, version) || other.version == version)&&(identical(other.id, id) || other.id == id)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.parentSession, parentSession) || other.parentSession == parentSession));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionHeaderDto&&(identical(other.version, version) || other.version == version)&&(identical(other.id, id) || other.id == id)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.parentSession, parentSession) || other.parentSession == parentSession));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,id,timestamp,cwd,parentSession);
+int get hashCode {
+    return Object.hash(runtimeType,version,id,timestamp,cwd,parentSession);
+}
 
 
 
@@ -160,12 +162,14 @@ $PiSessionInfoDtoCopyWith<PiSessionInfoDto> get copyWith => _$PiSessionInfoDtoCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionInfoDto&&(identical(other.name, name) || other.name == name));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionInfoDto&&(identical(other.name, name) || other.name == name));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name);
+int get hashCode {
+    return Object.hash(runtimeType,name);
+}
 
 
 
@@ -218,12 +222,16 @@ $PiSettingsDtoCopyWith<PiSettingsDto> get copyWith => _$PiSettingsDtoCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSettingsDto&&(identical(other.sessionDir, sessionDir) || other.sessionDir == sessionDir));
+  final _this = this as PiSettingsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSettingsDto&&(identical(other.sessionDir, _this.sessionDir) || other.sessionDir == _this.sessionDir));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionDir);
+int get hashCode {
+  final _this = this as PiSettingsDto;
+  return Object.hash(runtimeType,_this.sessionDir);
+}
 
 
 
@@ -281,12 +289,14 @@ _$PiSettingsDtoCopyWith<_PiSettingsDto> get copyWith => __$PiSettingsDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSettingsDto&&(identical(other.sessionDir, sessionDir) || other.sessionDir == sessionDir));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSettingsDto&&(identical(other.sessionDir, sessionDir) || other.sessionDir == sessionDir));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionDir);
+int get hashCode {
+    return Object.hash(runtimeType,sessionDir);
+}
 
 
 

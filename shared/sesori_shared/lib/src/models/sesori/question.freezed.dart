@@ -29,16 +29,21 @@ $QuestionInfoCopyWith<QuestionInfo> get copyWith => _$QuestionInfoCopyWithImpl<Q
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is QuestionInfo&&(identical(other.question, question) || other.question == question)&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other.options, options)&&(identical(other.multiple, multiple) || other.multiple == multiple)&&(identical(other.custom, custom) || other.custom == custom));
+  final _this = this as QuestionInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is QuestionInfo&&(identical(other.question, _this.question) || other.question == _this.question)&&(identical(other.header, _this.header) || other.header == _this.header)&&const DeepCollectionEquality().equals(other.options, _this.options)&&(identical(other.multiple, _this.multiple) || other.multiple == _this.multiple)&&(identical(other.custom, _this.custom) || other.custom == _this.custom));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,question,header,const DeepCollectionEquality().hash(options),multiple,custom);
+int get hashCode {
+  final _this = this as QuestionInfo;
+  return Object.hash(runtimeType,_this.question,_this.header,const DeepCollectionEquality().hash(_this.options),_this.multiple,_this.custom);
+}
 
 @override
 String toString() {
-  return 'QuestionInfo(question: $question, header: $header, options: $options, multiple: $multiple, custom: $custom)';
+  final _this = this as QuestionInfo;
+  return 'QuestionInfo(question: ${_this.question}, header: ${_this.header}, options: ${_this.options}, multiple: ${_this.multiple}, custom: ${_this.custom})';
 }
 
 
@@ -113,16 +118,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _QuestionInfo&&(identical(other.question, question) || other.question == question)&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other._options, _options)&&(identical(other.multiple, multiple) || other.multiple == multiple)&&(identical(other.custom, custom) || other.custom == custom));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QuestionInfo&&(identical(other.question, question) || other.question == question)&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other.options, _options)&&(identical(other.multiple, multiple) || other.multiple == multiple)&&(identical(other.custom, custom) || other.custom == custom));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,question,header,const DeepCollectionEquality().hash(_options),multiple,custom);
+int get hashCode {
+    return Object.hash(runtimeType,question,header,const DeepCollectionEquality().hash(_options),multiple,custom);
+}
 
 @override
 String toString() {
-  return 'QuestionInfo(question: $question, header: $header, options: $options, multiple: $multiple, custom: $custom)';
+    return 'QuestionInfo(question: $question, header: $header, options: $options, multiple: $multiple, custom: $custom)';
 }
 
 
@@ -181,16 +188,21 @@ $QuestionOptionCopyWith<QuestionOption> get copyWith => _$QuestionOptionCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is QuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
+  final _this = this as QuestionOption;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is QuestionOption&&(identical(other.label, _this.label) || other.label == _this.label)&&(identical(other.description, _this.description) || other.description == _this.description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,label,description);
+int get hashCode {
+  final _this = this as QuestionOption;
+  return Object.hash(runtimeType,_this.label,_this.description);
+}
 
 @override
 String toString() {
-  return 'QuestionOption(label: $label, description: $description)';
+  final _this = this as QuestionOption;
+  return 'QuestionOption(label: ${_this.label}, description: ${_this.description})';
 }
 
 
@@ -253,16 +265,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _QuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QuestionOption&&(identical(other.label, label) || other.label == label)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,label,description);
+int get hashCode {
+    return Object.hash(runtimeType,label,description);
+}
 
 @override
 String toString() {
-  return 'QuestionOption(label: $label, description: $description)';
+    return 'QuestionOption(label: $label, description: $description)';
 }
 
 
