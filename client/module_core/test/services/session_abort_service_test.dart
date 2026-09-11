@@ -42,20 +42,27 @@ Future<void> _abort(_FakeRepository repository) => SessionAbortService(
 ).abortSession(sessionId: "root", subAgents: SessionAbortSubAgentPolicy.stop);
 
 void main() {
-  test("reads fresh nested repository topology only after root abort", () async {
+  test("fresh traversal settles nested and sibling aborts after parent abort failure", () async {
     final repository = _FakeRepository();
     final rootAbort = Completer<ApiResponse<bool>>();
     final descendantFailure = StateError("child 409");
-    repository.abortResponses["root"] = () => rootAbort.future;
-    repository.abortResponses["grandchild"] = () => Future.error(descendantFailure);
+    repository.abortResponses.addAll({
+      "root": () => rootAbort.future,
+      "child": () => Future.error(descendantFailure),
+      "grandchild": () async => ApiResponse.success(true),
+      "sibling": () async => ApiResponse.success(true),
+    });
     repository.statusResponses.addAll(const [
-      SessionStatusResponse(statuses: {}),
+      SessionStatusResponse(statuses: {"child": SessionStatus.busy(), "sibling": SessionStatus.busy()}),
       SessionStatusResponse(statuses: {"grandchild": SessionStatus.busy()}),
     ]);
 
     final aborting = _abort(repository);
     expect(repository.childrenReads, isEmpty);
-    repository.children["root"] = [testSession(id: "child", parentID: "root", pluginId: "cursor")];
+    repository.children["root"] = [
+      testSession(id: "child", parentID: "root", pluginId: "cursor"),
+      testSession(id: "sibling", parentID: "root", pluginId: "cursor"),
+    ];
     repository.children["child"] = [testSession(id: "grandchild", parentID: "child", pluginId: "cursor")];
     rootAbort.complete(ApiResponse.success(false));
 
@@ -65,7 +72,7 @@ void main() {
     } on SessionAbortDescendantFailureException catch (error) {
       expect(error.cause, same(descendantFailure));
     }
-    expect(repository.abortedIds, ["root", "grandchild"]);
+    expect(repository.abortedIds, ["root", "child", "sibling", "grandchild"]);
     expect(repository.childrenReads, ["root", "child"]);
   });
 

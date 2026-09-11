@@ -47,13 +47,24 @@ class SessionAbortService({required final SessionRepository _repository}) {
       throw SessionAbortDescendantStatusUnavailableException(sessionId: session.id, pluginId: session.pluginId);
     }
     final status = snapshot.statuses[session.id];
+    // ignore: no_slop_linter/prefer_specific_type, Dart permits non-Exception thrown objects
+    (Object, StackTrace)? abortFailure;
     if (status is SessionStatusBusy || status is SessionStatusRetry) {
-      final handled = _data(
-        await _repository.abortSession(sessionId: session.id, subAgents: SessionAbortSubAgentPolicy.stop),
-      );
-      if (handled) return;
+      try {
+        final handled = _data(
+          await _repository.abortSession(sessionId: session.id, subAgents: SessionAbortSubAgentPolicy.stop),
+        );
+        if (handled) return;
+      } on Object catch (cause, stackTrace) {
+        abortFailure = (cause, stackTrace);
+      }
     }
-    await _abortDescendantsOf(sessionId: session.id);
+    try {
+      await _abortDescendantsOf(sessionId: session.id);
+    } finally {
+      final failure = abortFailure;
+      if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
+    }
   }
 
   T _data<T>(ApiResponse<T> response) => switch (response) {

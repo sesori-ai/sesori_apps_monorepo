@@ -458,7 +458,7 @@ abstract class AcpPlugin({
     eventMapper.map(notification).forEach(_eventBuffer.add);
   }
 
-  void _handleAgentServerRequest({required AcpServerRequest request}) {
+  void handleAgentServerRequest({required AcpServerRequest request}) {
     final registry = _approvalRegistry;
     if (registry == null) return;
     final attribution = _serverRequestAttribution(request: request);
@@ -607,7 +607,7 @@ abstract class AcpPlugin({
         final registry = buildApprovalRegistry(client: client);
         _approvalRegistry = registry;
         _serverRequestSubscription = client.serverRequests.listen(
-          (request) => _handleAgentServerRequest(request: request),
+          (request) => handleAgentServerRequest(request: request),
         );
         final initResult = await _initialize(client);
         captureLiveInitializeResult(initResult);
