@@ -163,8 +163,8 @@ defaults and queued client sends coherent.
   After generic JSON-RPC unwrapping, each Grok child-cancel ACK must contain the
   native application `{result: {subagentId, cancelled, outcome}}` envelope.
   Missing, non-object, malformed, or synthetic flat responses fail at the typed
-  API boundary; identity and outcome validation remain in the control
-  repository. `cancelled` and `already_finished` ACKs mean work was not
+  API boundary, which also validates child identity; outcome validation remains
+  in the control repository. `cancelled` and `already_finished` ACKs mean work was not
   retained, but only native `subagent_finished` and turn completion settle
   lifecycle state. Named child stop excludes its root and siblings. Bounded
   Grok 1.0.5 actual-plugin QA passed side-effect-free root `confirm`, partially
