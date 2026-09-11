@@ -511,6 +511,10 @@ void main() {
         const _Response(result: {}),
       ]);
 
+      final settled = plugin.events
+          .where((event) => event is BridgeSsePromptSettled)
+          .cast<BridgeSsePromptSettled>()
+          .first;
       await plugin.sendCommand(
         promptId: "prompt-1",
         sessionId: "t-compact",
@@ -521,6 +525,9 @@ void main() {
         agent: null,
         model: null,
       );
+      final settlement = await settled.timeout(const Duration(seconds: 1));
+      expect(settlement.sessionID, "t-compact");
+      expect(settlement.promptID, "prompt-1");
       final idle = plugin.events.firstWhere(
         (event) => event is BridgeSseSessionStatus && event.status is PluginSessionStatusIdle,
       );

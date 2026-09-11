@@ -129,7 +129,10 @@ sealed class _PiCommandTurn({
   required super.variant,
   required super.userVisibleText,
   required final Completer<void> acceptance,
-}) extends _PiTurn;
+}) extends _PiTurn {
+  /// True only after Pi produced an authoritative success signal for this command.
+  bool accepted = false;
+}
 
 final class _PiSlashCommandTurn({
   required super.promptId,
@@ -455,9 +458,7 @@ final class PiSessionService({
     if (state.isAdmitted(promptId: turn.promptId)) {
       // The retry of a send whose response was lost: the turn is already
       // admitted (queued, running, or finished), so accept idempotently.
-      if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
-        turn.acceptance.complete();
-      }
+      if (turn is _PiCommandTurn) _acceptCommand(turn);
       return;
     }
     state.directory = directory;
@@ -557,9 +558,7 @@ final class PiSessionService({
       }
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       turn.responseSucceeded = true;
-      if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
-        turn.acceptance.complete();
-      }
+      if (turn is _PiCommandTurn) _acceptCommand(turn);
       if (turn is _PiCompactionTurn) {
         _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
         return;
@@ -709,7 +708,7 @@ final class PiSessionService({
             if (!turn.userMessageEmitted) {
               _emitMissingUserMessage(sessionId: processFrame.sessionId, turn: turn);
             }
-            if (!turn.acceptance.isCompleted) turn.acceptance.complete();
+            _acceptCommand(turn);
           }
         }
         final now = _clock.now();
@@ -759,8 +758,8 @@ final class PiSessionService({
         }
       case PiExtensionUiFrame(:final request):
         final commandTurn = _pendingCommandTurn(state: state, processGeneration: processFrame.generation);
-        if (commandTurn != null && request is PiExtensionDialogRequest && !commandTurn.acceptance.isCompleted) {
-          commandTurn.acceptance.complete();
+        if (commandTurn != null && request is PiExtensionDialogRequest) {
+          _acceptCommand(commandTurn);
         }
         unawaited(
           _extensionUi
@@ -932,11 +931,7 @@ final class PiSessionService({
       );
     }
     if (failed && turn is _PiCompactionTurn) _clearCompaction(sessionId: sessionId);
-    if (!failed && turn.promptDispatched && !turn.userMessageEmitted) {
-      _emitMissingUserMessage(sessionId: sessionId, turn: turn);
-    } else if (!turn.userMessageEmitted) {
-      _dispatcher.cancelPrompt(sessionId: sessionId, promptId: turn.promptId);
-    }
+    _settleTurnPresentation(sessionId: sessionId, turn: turn, failed: failed);
     if (identical(state.active, turn)) state.active = null;
     state
       ..inFlight.remove(turn)
@@ -971,6 +966,30 @@ final class PiSessionService({
     _emit(const BridgeSseProjectUpdated());
     _syncWorkState();
     _scheduleIdleReap(sessionId: sessionId, state: state);
+  }
+
+  void _acceptCommand(_PiCommandTurn turn) {
+    if (turn.acceptance.isCompleted) return;
+    turn.accepted = true;
+    turn.acceptance.complete();
+  }
+
+  void _settleTurnPresentation({
+    required String sessionId,
+    required _PiTurn turn,
+    required bool failed,
+  }) {
+    if (turn.userMessageEmitted) return;
+    if (turn case _PiSlashCommandTurn(accepted: true) when failed || !turn.agentStarted) {
+      _dispatcher.cancelPrompt(sessionId: sessionId, promptId: turn.promptId);
+      _emit(BridgeSsePromptSettled(sessionID: sessionId, promptID: turn.promptId));
+      return;
+    }
+    if (!failed && turn.promptDispatched) {
+      _emitMissingUserMessage(sessionId: sessionId, turn: turn);
+    } else {
+      _dispatcher.cancelPrompt(sessionId: sessionId, promptId: turn.promptId);
+    }
   }
 
   void _emitMissingUserMessage({required String sessionId, required _PiTurn turn}) {
@@ -1041,7 +1060,7 @@ final class PiSessionService({
       ..queue.clear()
       ..status = const PluginSessionStatus.idle();
     for (final turn in cancelled) {
-      _dispatcher.cancelPrompt(sessionId: sessionId, promptId: turn.promptId);
+      _settleTurnPresentation(sessionId: sessionId, turn: turn, failed: true);
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);
       }

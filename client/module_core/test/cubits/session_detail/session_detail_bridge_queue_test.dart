@@ -1205,6 +1205,103 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a prompt-settled event removes an accepted command with no transcript output", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      await cubit.sendMessage(
+        text: "/fast",
+        command: "fast",
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.promptId;
+
+      sessionEvents.add(
+        SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: promptId) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.sendingSubmission, isNull);
+      expect(state.queuedMessages, isEmpty);
+      expect(state.awaitingBridgeSubmissions, isEmpty);
+      expect(state.bridgeQueuedPrompts, isEmpty);
+    });
+
+    test("prompt settlement racing the response resumes the staged FIFO", () async {
+      final sends = <Completer<ApiResponse<void>>>[];
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) {
+        final send = Completer<ApiResponse<void>>();
+        sends.add(send);
+        return send.future;
+      });
+      final cubit = await createLoadedCubit();
+      unawaited(
+        cubit.sendMessage(
+          text: "/fast",
+          command: "fast",
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        ),
+      );
+      await _awaitCondition(() => sends.length == 1);
+      final firstPromptId = (cubit.state as SessionDetailLoaded).sendingSubmission!.promptId;
+      unawaited(
+        cubit.sendMessage(
+          text: "next",
+          command: null,
+          inputMode: ComposerInputMode.typed,
+          attachments: const [],
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).queuedMessages.single.text, "next");
+
+      sessionEvents.add(
+        SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: firstPromptId) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      var state = cubit.state as SessionDetailLoaded;
+      expect(state.sendingSubmission, isNull, reason: "settled in-flight prompt is hidden immediately");
+      expect(state.queuedMessages.single.text, "next");
+
+      sends.first.complete(ApiResponse.success(null));
+      await _awaitCondition(() => sends.length == 2);
+      state = cubit.state as SessionDetailLoaded;
+      final secondPromptId = state.sendingSubmission!.promptId;
+      expect(state.sendingSubmission!.text, "next");
+
+      sends.last.complete(ApiResponse.success(null));
+      await Future<void>.delayed(Duration.zero);
+      sessionEvents.add(
+        SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: secondPromptId) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+    });
+
     test("a send whose entry was consumed before its response settles on its echo", () async {
       final send = Completer<ApiResponse<void>>();
       when(

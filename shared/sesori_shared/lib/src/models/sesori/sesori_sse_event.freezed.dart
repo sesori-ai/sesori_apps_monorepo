@@ -76,6 +76,10 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriSessionCompacted.fromJson(
             json
           );
+                case 'session.prompt-settled':
+          return SesoriSessionPromptSettled.fromJson(
+            json
+          );
                 case 'session.prompt_defaults_changed':
           return SesoriSessionPromptDefaultsChanged.fromJson(
             json
@@ -1264,6 +1268,83 @@ class _$SesoriSessionCompactedCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') $Res call({Object? sessionID = null,}) {
   return _then(SesoriSessionCompacted(
 sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class SesoriSessionPromptSettled implements SesoriSseEvent, SesoriSessionEvent {
+  const SesoriSessionPromptSettled({required this.sessionID, required this.promptID,  String? $type}): $type = $type ?? 'session.prompt-settled';
+  factory SesoriSessionPromptSettled.fromJson(Map<String, dynamic> json) => _$SesoriSessionPromptSettledFromJson(json);
+
+ final  String sessionID;
+ final  String promptID;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SesoriSessionPromptSettledCopyWith<SesoriSessionPromptSettled> get copyWith => _$SesoriSessionPromptSettledCopyWithImpl<SesoriSessionPromptSettled>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SesoriSessionPromptSettledToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionPromptSettled&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.promptID, promptID) || other.promptID == promptID));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,sessionID,promptID);
+}
+
+@override
+String toString() {
+    return 'SesoriSseEvent.sessionPromptSettled(sessionID: $sessionID, promptID: $promptID)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $SesoriSessionPromptSettledCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
+  factory $SesoriSessionPromptSettledCopyWith(SesoriSessionPromptSettled value, $Res Function(SesoriSessionPromptSettled) _then) = _$SesoriSessionPromptSettledCopyWithImpl;
+@useResult
+$Res call({
+ String sessionID, String promptID
+});
+
+
+
+
+}
+/// @nodoc
+class _$SesoriSessionPromptSettledCopyWithImpl<$Res>
+    implements $SesoriSessionPromptSettledCopyWith<$Res> {
+  _$SesoriSessionPromptSettledCopyWithImpl(this._self, this._then);
+
+  final SesoriSessionPromptSettled _self;
+  final $Res Function(SesoriSessionPromptSettled) _then;
+
+/// Create a copy of SesoriSseEvent
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? sessionID = null,Object? promptID = null,}) {
+  return _then(SesoriSessionPromptSettled(
+sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
+as String,promptID: null == promptID ? _self.promptID : promptID // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }

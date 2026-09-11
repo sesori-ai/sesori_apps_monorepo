@@ -46,6 +46,7 @@ class const SessionEventMapper() {
       BridgeSseTerminalHandoff(:final event) => backendSessionIds(event: event),
       BridgeSseSessionDiff(:final sessionID) ||
       BridgeSseSessionCompacted(:final sessionID) ||
+      BridgeSsePromptSettled(:final sessionID) ||
       BridgeSseSessionPromptDefaultsChanged(:final sessionID) ||
       BridgeSseSessionStatus(:final sessionID) ||
       BridgeSseSessionIdle(:final sessionID) ||
@@ -148,6 +149,10 @@ class const SessionEventMapper() {
       },
       BridgeSseSessionCompacted(:final sessionID) => switch (mapped(sessionID)) {
         final sessionId? => BridgeSseSessionCompacted(sessionID: sessionId),
+        null => null,
+      },
+      BridgeSsePromptSettled(:final sessionID, :final promptID) => switch (mapped(sessionID)) {
+        final sessionId? => BridgeSsePromptSettled(sessionID: sessionId, promptID: promptID),
         null => null,
       },
       BridgeSseSessionPromptDefaultsChanged(

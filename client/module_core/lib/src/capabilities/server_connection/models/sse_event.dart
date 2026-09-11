@@ -14,6 +14,7 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriSessionDiff(:final sessionID) => sessionID,
     SesoriSessionError(:final sessionID) => sessionID,
     SesoriSessionCompacted(:final sessionID) => sessionID,
+    SesoriSessionPromptSettled(:final sessionID) => sessionID,
     SesoriSessionStatus(:final sessionID) => sessionID,
     SesoriCommandExecuted(:final sessionID) => sessionID,
     SesoriMessageUpdated(:final info) => info.sessionID,

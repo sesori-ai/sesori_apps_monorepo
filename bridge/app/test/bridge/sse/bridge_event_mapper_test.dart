@@ -184,6 +184,14 @@ void main() {
       expect((result! as SesoriSessionDiff).sessionID, equals("s1"));
     });
 
+    test("maps prompt settlement events", () {
+      final result = mapEvent(
+        const BridgeSsePromptSettled(sessionID: "s1", promptID: "prompt-1"),
+      );
+
+      expect(result, const SesoriSessionPromptSettled(sessionID: "s1", promptID: "prompt-1"));
+    });
+
     test("maps command.executed events", () {
       final result = mapEvent(
         const BridgeSseCommandExecuted(

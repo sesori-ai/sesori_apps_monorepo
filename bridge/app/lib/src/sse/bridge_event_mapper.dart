@@ -50,6 +50,10 @@ class BridgeEventMapper({
         BridgeSseSessionDiff(:final sessionID) => SesoriSseEvent.sessionDiff(sessionID: sessionID),
         BridgeSseSessionError(:final sessionID) => SesoriSseEvent.sessionError(sessionID: sessionID),
         BridgeSseSessionCompacted(:final sessionID) => SesoriSseEvent.sessionCompacted(sessionID: sessionID),
+        BridgeSsePromptSettled(:final sessionID, :final promptID) => SesoriSseEvent.sessionPromptSettled(
+          sessionID: sessionID,
+          promptID: promptID,
+        ),
         BridgeSseSessionStatus() => throw StateError("session status is normalized before it reaches the mapper"),
         BridgeSseSessionIdle(:final sessionID) => SesoriSseEvent.sessionStatus(
           sessionID: sessionID,

@@ -42,8 +42,9 @@ class PromptSendQueue() {
   }
 
   /// Parks the accepted in-flight submission until the bridge's own view of
-  /// the prompt arrives — a queue event, a snapshot, or its delivered
-  /// message, all of which land in [removeByPromptId]. Rendering from here
+  /// the prompt arrives — a queue event, a snapshot, its delivered message,
+  /// or explicit terminal settlement, all of which land in [removeByPromptId].
+  /// Rendering from here
   /// covers the gap when the acceptance response outruns the
   /// `session.queued-prompts` event, so the bubble never blanks between
   /// "sending" and "queued". A submission the bridge already settled is

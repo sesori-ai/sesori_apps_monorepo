@@ -699,6 +699,8 @@ void main() {
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
 
     final accepted = service.sendCommand(
       sessionId: "session",
@@ -729,6 +731,16 @@ void main() {
       data: {"isStreaming": false, "pendingMessageCount": 0},
     );
     await _waitForIdle(service: service, sessionId: "session");
+    expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
+    expect(
+      events.whereType<BridgeSseMessageUpdated>().where(
+        (event) => switch (event.info) {
+          PluginMessageUser(promptId: "prompt-6") => true,
+          _ => false,
+        },
+      ),
+      hasLength(1),
+    );
 
     final failed = service.sendCommand(
       sessionId: "session",
@@ -747,6 +759,7 @@ void main() {
 
     await expectLater(failed, throwsA(isA<PiRpcCommandFailureException>()));
     await _waitForIdle(service: service, sessionId: "session");
+    expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
   });
 
   test("prompt admission is immediate, busy follow-ups steer in FIFO, and sessions run concurrently", () async {
@@ -1328,6 +1341,64 @@ void main() {
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
   });
 
+  test("notification-only command settles without synthesizing a user message", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    final accepted = service.sendCommand(
+      sessionId: "session",
+      promptId: "silent-command",
+      directory: "/project",
+      command: "fast",
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      model: null,
+    );
+    var commandAccepted = false;
+    unawaited(accepted.then((_) => commandAccepted = true));
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(
+      frame: {
+        "type": "extension_ui_request",
+        "id": "notify",
+        "method": "notify",
+        "message": "Fast mode enabled",
+      },
+    );
+    await pump();
+    expect(commandAccepted, isFalse, reason: "notification does not prove command acceptance");
+
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    await accepted;
+    final state = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: state["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
+    await _waitForEvent<BridgeSsePromptSettled>(events: events);
+    await _waitForIdle(service: service, sessionId: "session");
+
+    final settlement = events.whereType<BridgeSsePromptSettled>().single;
+    expect(settlement.sessionID, "session");
+    expect(settlement.promptID, "silent-command");
+    expect(
+      events.whereType<BridgeSseMessageUpdated>().where(
+        (event) => switch (event.info) {
+          PluginMessageUser(promptId: "silent-command") => true,
+          _ => false,
+        },
+      ),
+      isEmpty,
+    );
+  });
+
   test("startup no-model failure emits privacy-safe login guidance", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -1363,6 +1434,8 @@ void main() {
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
 
     final accepted = service.sendCommand(
       sessionId: "session",
@@ -1380,6 +1453,7 @@ void main() {
 
     await expectLater(accepted, throwsA(isA<PiRpcProcessExitException>()));
     await _waitForIdle(service: service, sessionId: "session");
+    expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
   });
 
   test("post-acceptance process exit fails the active turn", () async {
@@ -1415,6 +1489,8 @@ void main() {
 
     await _waitForIdle(service: service, sessionId: "session");
     expect(events.whereType<BridgeSseSessionError>(), hasLength(1));
+    final settlement = events.whereType<BridgeSsePromptSettled>().single;
+    expect(settlement.promptID, "prompt-19");
   });
 
   test("process exit removes an active compaction card", () async {
@@ -1664,6 +1740,45 @@ void main() {
     expect(service.getActiveSessionsSummary().single.activeSessions.single.isRetrying, isFalse);
     process.emit(frame: {"type": "agent_settled"});
     await _waitForIdle(service: service, sessionId: "child");
+  });
+
+  test("abort settles a command already accepted by an extension dialog", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    final accepted = service.sendCommand(
+      sessionId: "session",
+      promptId: "accepted-before-abort",
+      directory: "/project",
+      command: "configure",
+      arguments: "",
+      userVisibleArguments: null,
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    await waitForCommand(process: process, type: "prompt");
+    process.emit(
+      frame: {
+        "type": "extension_ui_request",
+        "id": "dialog",
+        "method": "input",
+        "title": "Input",
+      },
+    );
+    await accepted;
+
+    final abort = service.abort(sessionId: "session");
+    final abortCommand = await waitForCommand(process: process, type: "abort");
+    process.emitResponse(id: abortCommand["id"]! as String, command: "abort");
+    await abort;
+
+    final settlement = events.whereType<BridgeSsePromptSettled>().single;
+    expect(settlement.promptID, "accepted-before-abort");
   });
 
   test("abort invalidates queue, removes compaction, sends abort, and tears down process", () async {

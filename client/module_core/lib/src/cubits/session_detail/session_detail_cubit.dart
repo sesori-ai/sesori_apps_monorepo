@@ -1056,6 +1056,8 @@ class SessionDetailCubit(
           _onPromptDefaultsChanged(promptDefaults);
         case SesoriSessionQueuedPrompts(:final prompts):
           _onBridgeQueueUpdated(prompts);
+        case SesoriSessionPromptSettled(:final promptID):
+          _settlePromptRepresentation(promptId: promptID);
         case SesoriSessionCreated() ||
             SesoriSessionDeleted() ||
             SesoriSessionDiff() ||
@@ -1154,6 +1156,7 @@ class SessionDetailCubit(
       SesoriSessionDiff() ||
       SesoriSessionError() ||
       SesoriSessionCompacted() ||
+      SesoriSessionPromptSettled() ||
       SesoriCommandExecuted() ||
       SesoriMessageUpdated() ||
       SesoriMessageRemoved() ||
@@ -1214,6 +1217,7 @@ class SessionDetailCubit(
             SesoriSessionDiff() ||
             SesoriSessionError() ||
             SesoriSessionCompacted() ||
+            SesoriSessionPromptSettled() ||
             SesoriServerConnected() ||
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
@@ -1433,8 +1437,18 @@ class SessionDetailCubit(
     // echo carries none — and a wrong match would discard a send the user
     // still owns. Harness echoes reach the client with an id because each
     // plugin stamps the echo of its own dispatch; a harness that publishes no
-    // user echo leaves the staged prompt to snapshot reconciliation.
+    // user echo leaves the staged prompt to snapshot reconciliation or an
+    // explicit prompt-settled event from a silent harness action.
     if (promptId == null) return;
+    _settlePromptRepresentation(promptId: promptId);
+  }
+
+  /// Drops every local and bridge-owned representation of a prompt the bridge
+  /// has terminally accounted for, then resumes staged FIFO delivery.
+  void _settlePromptRepresentation({required String promptId}) {
+    if (isClosed) return;
+    final current = state;
+    if (current is! SessionDetailLoaded) return;
     _promptQueue.removeByPromptId(promptId);
     final bridgePrompts = [
       for (final prompt in current.bridgeQueuedPrompts)
@@ -1449,8 +1463,8 @@ class SessionDetailCubit(
         sendingSubmission: queue.sendingSubmission,
       ),
     );
-    // The delivered prompt's own send may have stopped the drain on a lost
-    // response; anything staged behind it must not stay parked.
+    // A settlement can outrun the send response. Keep the single-flight slot
+    // until that response lands, then its completion path drains again.
     _tryDrainQueue();
   }
 
