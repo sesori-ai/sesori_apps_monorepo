@@ -41,7 +41,7 @@ void main() {
           ..consumeNotification(notification: _notification(update: _toolCall()..["toolCallId"] = 42));
       }, stderr: () => CapturingStdout(lines: stderrLines));
       expect(stderrLines.join(), allOf(contains("malformed replay Task output"), isNot(contains("secret"))));
-      expect(stderrLines.join(), contains("malformed replay update envelope"));
+      expect(stderrLines.join(), contains("malformed replay tool-call ID"));
       expect(
         _build(tracker: tracker),
         standard.buildWithAssistantSelection(modelId: "model", providerId: "cursor", variant: "high"),
@@ -64,6 +64,7 @@ void main() {
             },
           ],
         ),
+        _terminal(status: "future"),
         _text(text: "after"),
       ];
       final first = _build(tracker: _load(updates: updates));
@@ -135,25 +136,14 @@ void main() {
     test("update-only, unmatched, foreign-session, and absent facts never synthesize tiles", () {
       final updateOnly = _load(
         updates: [
-          {
-            "sessionUpdate": "tool_call_update",
-            "toolCallId": "task-1",
-            "status": "completed",
-            "rawInput": _input(),
-            "rawOutput": {"isBackground": false},
-          },
+          _terminal(rawOutput: {"isBackground": false}),
         ],
       );
       expect(_build(tracker: updateOnly).single.parts.single, isA<PluginMessagePartTool>());
       final unmatched = _load(
         updates: [
           _toolCall(),
-          {
-            "sessionUpdate": "tool_call_update",
-            "toolCallId": "other",
-            "status": "completed",
-            "rawOutput": {"isBackground": false},
-          },
+          _terminal(rawOutput: {"isBackground": false})..["toolCallId"] = "other",
         ],
       );
       expect(_build(tracker: unmatched).expand((message) => message.parts), everyElement(isA<PluginMessagePartTool>()));

@@ -94,7 +94,7 @@ final class CursorTaskReplayTracker({
     required CursorTaskReplayUpdateDto update,
     required Map<String, dynamic> updateJson,
   }) {
-    task.status = update.status ?? task.status;
+    if (update.status == CursorTaskReplayStatus.completed) task.status = CursorTaskReplayStatus.completed;
     final rawOutput = updateJson["rawOutput"];
     if (rawOutput == null) return;
     final outputJson = _asMap(rawOutput);

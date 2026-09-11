@@ -213,8 +213,8 @@ Cursor boundary and repository changes:
   any ACP child/root activity API. `CursorEventMapper` keeps the two Step 2
   terminal projections private: both preserve exact generic-card identity and
   presentation fields, and failure text is bounded. Step 3 adds its completed
-  foreground projection privately. Step 5 may extract shared pure projection
-  only when live and replay become current consumers. Complete correlated
+  foreground projection privately. Step 5 extracts one shared pure `CursorTaskMapper`
+  for the current live/replay consumers. Complete correlated
   foreground facts then produce one completed childless
   `PluginMessagePart.subtask`; pending, background, malformed, incomplete,
   cancelled, and failed cases remain generic. `agentId` is correlation data,
@@ -567,8 +567,8 @@ Step 5 automated scope:
   keep replay-local identity; live/replay fields converge without requiring
   live-id equality; background/missing/malformed facts retain generic; cancelled
   absence stays absent.
-- Composition test proves `CursorTaskReplayTracker` receives one configured
-  `AcpReplayCollector` and the shared pure projection extracted when replay lands; tracker
+- Composition tests prove `CursorTaskReplayTracker` receives one configured
+  `AcpReplayCollector` and the shared injected `CursorTaskMapper`; the tracker
   has no live state, transport, or I/O. Run Cursor/ACP replay-focused tests and
   analyzers plus `git diff --check`.
 
