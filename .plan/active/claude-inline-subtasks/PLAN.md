@@ -11,9 +11,11 @@
   Step 1 merged as PR #1435 at `b83b64901c`; Step 2 merged as PR #1438 at
   `116392cb71`, settling generic Task lifecycle and acknowledging `cursor/task`.
   Step 3 merged as PR #1441 at `bb85f48148`; Step 4 safe stop merged as PR
-  #1442 at `a7d3014e1a`; Step 5 replay is open as PR #1443. Step 5 includes
-  configured standard replay plus Cursor-local typed replacement; final coverage
-  remains Step 6. Step 4 includes the typed refusal, Cursor-only residency,
+  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6
+  actual-plugin coverage passed its executed scope and repaired the exact native
+  live/replay tagged presentation shapes; the native cancellation race settled
+  before background resolution and remains automated coverage. Step 4 includes
+  the typed refusal, Cursor-only residency,
   bounded named-root cancellation with post-settlement re-check/HTTP 502 partial
   failure, repository-owned concurrent descendant fallback, client queue gate,
   and limitation UI, with no replay/native QA. Full reviewed checkpoint
@@ -22,9 +24,8 @@
   `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
   Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
   evidence. None of these refs may be mutated or deleted. Retirement remains
-  blocked by Cursor delivery/coverage and the Grok phone
-  gate, whose WebDriverAgent 0.0.23 infrastructure failure occurred before any
-  visible case
+  blocked by the Grok phone gate, whose WebDriverAgent 0.0.23 infrastructure
+  failure occurred before any visible case.
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Historical original implementation base:** `main` at `ba725ec84`
@@ -60,7 +61,7 @@
   remains open rather than becoming a fabricated pass. DeepSeek's final
   documentation reconciles the passed phone stop/input scope and the
   user-deferred desktop matrix without changing adapter 0.1.4 evidence. The
-  plan remains active for the Grok phone gate and Cursor follow-ups.
+  plan remains active for the Grok phone gate; Cursor follow-ups are complete.
 
 ## Goal
 

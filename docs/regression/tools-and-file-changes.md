@@ -106,8 +106,14 @@ sub-agent parts, plus the signal that a tool changed files.
   into one root-level unresolved observation without creating a task id set,
   running count, completion, tile, or child. Prompt-write ordering keeps the
   accepted user message and buffered generic terminal update ahead of the routed
-  request. No child session, root/session activity effect, background terminal
-  lifecycle, or replay is claimed.
+  request. The managed target's live request uses the nested tagged shape
+  `custom → unspecified`, while replay uses the distinct `unspecified` tagged
+  shape; both parse into one closed presentation value. Unknown or malformed
+  variants retain the generic card. No child session, root/session activity
+  effect, or background terminal lifecycle is claimed. Bounded production-
+  composition QA verified live replacement after the generic terminal card,
+  generic mode-unknown presentation, generic background presentation, and two
+  equivalent cold replay replacements.
 - Antigravity normalizes its `formatted_output`, `exit_code`, `command_line`, and `working_dir` aliases before the
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
@@ -176,8 +182,9 @@ guarantee.
   changes; a non-foreground terminal becomes a tile; prior-turn active or
   completed correlation survives the next turn; identity changes during
   replacement; `cursor/task` is not acknowledged or overtakes its accepted user
-  message/generic terminal card; or prompt cancellation/failure leaves a current
-  generic Task running.
+  message/generic terminal card; prompt cancellation/failure leaves a current
+  generic Task running; live/replay tagged sub-agent shapes are conflated; or
+  either exact known shape fails replacement.
 - Antigravity changes ACP status from an exit code, loses an exit note to truncation, leaks an image path as a fetched
   attachment, retains unbounded/redundant raw fields, drops differing text, or
   produces different live/replay tool state.

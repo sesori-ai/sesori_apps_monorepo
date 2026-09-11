@@ -190,7 +190,7 @@ class CursorEventMapper({
       genericPart: genericPart,
       prompt: request.prompt,
       description: request.description,
-      subagentType: request.subagentType,
+      subagentPresentation: request.subagentType.presentation,
     );
     return replacement == null ? const [] : [BridgeSseMessagePartUpdated(part: replacement)];
   }

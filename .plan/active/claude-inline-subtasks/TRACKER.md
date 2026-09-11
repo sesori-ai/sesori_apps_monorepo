@@ -3,7 +3,7 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** Cursor Step 4 PR #1442 merged at `a7d3014e1a`.
+- **Implementation base:** Cursor Step 5 merged at `f5e4e7f67a`.
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -11,22 +11,27 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** Merge Cursor Step 5 PR #1443, then run Step 6 actual-plugin coverage.
+- **Next action:** Publish Cursor Step 6, then keep the plan active for the
+  Grok phone WebDriverAgent gate. Cursor actual-plugin coverage passed its
+  executed scope; one native cancellation race remains automated-only.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
   was split to stay near the owner's 1,500-line publication limit. Refs
   `c5c0def` and `ab03528` remain stale, unpublishable historical evidence. None
   of these refs may be mutated or deleted.
-  The 2026-09-11 native probe used current managed target
+  Step 6 used the same current managed target through `CursorPlugin`
+  production composition, found and repaired distinct exact live/replay tagged
+  sub-agent presentation shapes, and cleaned every owned resource. The
+  2026-09-11 native probe used current managed target
   `2026.08.11-e8db854`, not the old plan's installed PATH build. Foreground
   Task correlation, mode-unknown pre-terminal state, cancellation authority,
   post-turn background survival, repeated `session/load` facts, and the
   corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
-  #1431. Overall plan remains **ACTIVE** for Cursor delivery/coverage and the
-  Grok phone gate blocked by WebDriverAgent 0.0.23 before any visible case; no
-  Grok phone pass is claimed.
+  #1431. Overall plan remains **ACTIVE** for the Grok phone gate blocked by
+  WebDriverAgent 0.0.23 before any visible case; no Grok phone pass is claimed.
+  Cursor follow-ups are complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -206,8 +211,8 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | [PR #1443](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1443) open: configured ACP collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
-| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
+| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
+| [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Implemented on current branch: actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
 
@@ -523,7 +528,18 @@ post-merge E2E gates are unchanged.
 - **Cursor Step 4/6:** PR #1442 merged at `a7d3014e1a`; exact Task count,
   residency, typed refusal, bounded root stop, concurrent descendant fallback,
   queue gate, and restart UI shipped without replay or native QA.
-- **Cursor Step 5/6:** PR #1443 is open with a standard ACP collector/shared typed projection; no analytics or native QA.
+- **Cursor Step 5/6:** PR #1443 merged at `f5e4e7f67a` with a standard ACP collector/shared typed projection; no analytics or native QA.
+- **Cursor Step 6/6:** managed-target production-composition QA passed live
+  foreground terminal replacement, two cold loads, generic mode-unknown and
+  background cards, exact side-effect-free active confirmation/keep rejection,
+  authoritative named-root cancellation, process/session reuse, root idle before
+  later background permission, residency, and identical non-mutating
+  post-background refusal. It exposed distinct native presentation tags: live
+  `custom → unspecified`, replay direct `unspecified`; separate typed DTOs now
+  converge through one closed presentation value. A bounded race attempt
+  cancelled before background resolution, leaving HTTP 502 race coverage
+  automated-only. All private evidence and owned resources were deleted. No
+  analytics event was added because no product-decision consumer appeared.
 
 ## Plan Review
 

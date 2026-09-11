@@ -9,14 +9,14 @@ final class const CursorTaskMapper() {
     required PluginMessagePartTool genericPart,
     required String prompt,
     required String description,
-    required CursorSubagentTypeDto subagentType,
+    required CursorSubagentPresentation subagentPresentation,
   }) {
     if (genericPart.state.status != PluginToolStatus.completed) return null;
     final usefulPrompt = _nonblank(prompt);
     final usefulDescription = _nonblank(description);
-    final agent = switch (subagentType.custom) {
-      CursorSubagentType.unspecified => CursorSubagentType.unspecified.name,
-      CursorSubagentType.unknown || null => null,
+    final agent = switch (subagentPresentation) {
+      CursorSubagentPresentation.unspecified => "unspecified",
+      CursorSubagentPresentation.unknown => null,
     };
     if (usefulPrompt == null || usefulDescription == null || agent == null) return null;
 

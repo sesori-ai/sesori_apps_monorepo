@@ -344,7 +344,9 @@ void main() {
           "agentId": "agent-1",
           "description": "Inspect",
           "prompt": "Inspect code",
-          "subagentType": {"custom": "unspecified"},
+          "subagentType": {
+            "custom": {"unspecified": <String, Object?>{}},
+          },
           "model": "cursor-model",
           "durationMs": 42,
         },

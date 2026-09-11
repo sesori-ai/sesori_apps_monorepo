@@ -195,8 +195,14 @@ defaults and queued client sends coherent.
   HTTP 409 `notPerformed` before input or cancellation. That variant preserves
   queued prompts and shows restart guidance even for an unknown reason; malformed
   bodies and unknown variants stay ambiguous and clear queued work. Background
-  launches affect neither counts nor root/session status. Cursor still cannot
-  stop, count, or observe escaped background Tasks or expose child sessions.
+  launches affect neither counts nor root/session status. Bounded production-
+  composition QA verified exact side-effect-free active-Task `confirm` and
+  `keep`, accepted named-root `stop` with a generic cancelled card, root/session
+  reuse, and identical non-mutating three-policy refusal after a background
+  permission arrived. One bounded race attempt cancelled before background
+  resolution, so the post-cancel background-transition HTTP 502 case remains
+  focused automated coverage, not native evidence. Cursor still cannot stop,
+  count, or observe escaped background Tasks or expose child sessions.
 - Codex supports the same side-effect-free `confirm` preflight for any named
   root or child thread. It reports the exact active descendant count, including
   pending-input-only work, plus the named thread's own running state, and offers
@@ -373,7 +379,9 @@ defaults and queued client sends coherent.
   admission, the accepted user message and buffered terminal card publish before
   the acknowledged/reinjected request. Tracking and tiles do not affect root
   status, child ids/status/counts, fanout, or replay. Background terminal
-  lifecycle, full scoped stop, child sessions, and replay remain unavailable.
+  lifecycle, full scoped stop, and child sessions remain unavailable. Complete
+  foreground replay uses its distinct typed tagged presentation shape and keeps
+  the same childless completed projection.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
   `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori

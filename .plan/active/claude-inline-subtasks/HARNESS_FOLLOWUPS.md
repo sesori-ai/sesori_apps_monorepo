@@ -2,10 +2,10 @@
 
 ## Status
 
-- **Plan slug:** `claude-inline-subtasks`; status **ACTIVE**. Codex and
-  DeepSeek coverage are reconciled. Cursor delivery/coverage remains open, and
-  the Grok phone gate remains blocked on WebDriverAgent 0.0.23 before any
-  visible case; a docs PR does not close that live gate.
+- **Plan slug:** `claude-inline-subtasks`; status **ACTIVE**. Codex, DeepSeek,
+  and Cursor coverage are reconciled. The Grok phone gate remains blocked on
+  WebDriverAgent 0.0.23 before any visible case; Cursor completion does not
+  close that live gate.
 - **Plan date:** 2026-09-02; Cursor probe/design refreshed 2026-09-11.
 - **Base:** `main` at merged DeepSeek coverage documentation `7dd323d1d7`
   ([#1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431)).
@@ -760,6 +760,16 @@ against the required behavior rather than requiring byte-for-byte source parity.
   terminal update with `{durationMs, isBackground}`. Its replay-local tool id
   was stable across two loads but differed from the original live id. The
   cancelled foreground Task was absent on load.
+- Step 6 production-composition QA found the exact presentation-shape split:
+  live `cursor/task` uses nested `custom → unspecified`, while replay uses
+  direct `unspecified`. Separate typed Freezed DTOs map both into one closed
+  presentation value. Managed-target QA then passed live terminal replacement,
+  two cold loads, generic mode-unknown/background presentation, active-Task
+  confirm/keep rejection, named-root cancellation, reuse, root idle before a
+  later background permission, residency, and identical non-mutating refusal
+  for all three post-background policies. The bounded native race attempt
+  cancelled before background resolution, so that HTTP 502 path remains
+  automated-only. Private evidence and owned resources were deleted.
 
 ### Design
 
@@ -794,7 +804,8 @@ The architecture corrections are summarized here:
   only its required prompt/description/subagent presentation and replaces exact
   `isBackground: false` completion with one childless completed tile. Missing,
   unknown, malformed, background, failed, or cancelled facts keep the generic
-  card. Child sessions, replay, background terminal lifecycle, and full scoped
+  card. Step 5 added completed foreground replay through its distinct typed
+  native shape. Child sessions, background terminal lifecycle, and full scoped
   stop remain unsupported.
 - Step 4 makes `CursorPlugin.scopedStopCapability` return
   `AcpScopedStopCapability.rootSessionCancel`, reaching a dedicated
@@ -870,8 +881,8 @@ those refs. Regenerate each successor from its merged predecessor.
 | 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | PR #1438 merged at `116392cb71`: active generic-part tracking, terminal settlement, request ack, transport ordering regressions, typed-refusal plan correction, and behavior docs; no tile |
 | 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | PR #1441 merged at `bb85f48148`: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
 | 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | PR #1442 merged at `a7d3014e1a`: exact count, process residency, typed refusal, bounded root cancel/re-check, concurrent descendant fallback, bridge/client/UI flow, tests, and docs; no replay/native QA |
-| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 open: configured collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
-| 6/6 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; unsupported/unexecuted matrix remains explicit |
+| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
+| 6/6 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Current branch: actual-plugin executed scope passed; exact distinct live/replay presentation tags repaired with typed generated DTOs; unsupported/unexecuted matrix remains explicit |
 
 ### Probe questions
 

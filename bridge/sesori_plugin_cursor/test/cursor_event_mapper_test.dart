@@ -112,7 +112,9 @@ void main() {
     AcpNotification validTaskRequest({required String toolCallId, required String? sessionId}) => taskRequest(
       toolCallId: toolCallId,
       sessionId: sessionId,
-      subagentType: const {"custom": "unspecified"},
+      subagentType: const {
+        "custom": {"unspecified": <String, Object?>{}},
+      },
       prompt: "Inspect code",
       description: "Inspect",
     );
@@ -338,10 +340,28 @@ void main() {
 
     test("incomplete and unknown completed requests retain generic card and consume correlation", () {
       for (final requestCase in <({String prompt, String description, Object type})>[
-        (prompt: " ", description: "Inspect", type: const {"custom": "unspecified"}),
-        (prompt: "Inspect code", description: "", type: const {"custom": "unspecified"}),
+        (
+          prompt: " ",
+          description: "Inspect",
+          type: const {
+            "custom": {"unspecified": <String, Object?>{}},
+          },
+        ),
+        (
+          prompt: "Inspect code",
+          description: "",
+          type: const {
+            "custom": {"unspecified": <String, Object?>{}},
+          },
+        ),
         (prompt: "Inspect code", description: "Inspect", type: const <String, Object?>{}),
-        (prompt: "Inspect code", description: "Inspect", type: const {"custom": "future-agent"}),
+        (
+          prompt: "Inspect code",
+          description: "Inspect",
+          type: const {
+            "custom": {"futureAgent": <String, Object?>{}},
+          },
+        ),
       ]) {
         final target = buildMapper(activeSessionResolver: () => "root")
           ..beginTurn(sessionId: "root", messageId: "turn");

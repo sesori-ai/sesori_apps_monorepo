@@ -2009,7 +2009,9 @@ final class _PromptWriteCursorProcess({required final String sessionId, required
           "toolCallId": toolCallId,
           "description": "Inspect",
           "prompt": "Inspect code",
-          "subagentType": {"custom": "unspecified"},
+          "subagentType": {
+            "custom": {"unspecified": <String, Object?>{}},
+          },
         },
       });
     },
