@@ -46,58 +46,57 @@ class const UserMessageBubble({
     final prego = context.prego;
     final markdown = this.markdown;
 
-    return Align(
-      alignment: .centerRight,
-      child: AnimatedContainer(
-        duration: transitionDuration,
-        curve: Curves.easeInOutCubic,
-        margin: const EdgeInsets.symmetric(
-          horizontal: PregoSpacing.xl,
-          vertical: PregoSpacing.xs,
-        ),
-        padding: const EdgeInsets.symmetric(
-          horizontal: PregoSpacing.xl,
-          vertical: PregoSpacing.lg,
-        ),
-        constraints: BoxConstraints(
-          maxWidth: MediaQuery.sizeOf(context).width * 0.85,
-        ),
-        decoration: BoxDecoration(
-          color: prego.colors.bgBrandPrimary,
-          borderRadius: BorderRadius.circular(PregoRadius.x2l),
-        ),
-        foregroundDecoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(PregoRadius.x2l),
-          border: Border.all(
-            color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
+    return LayoutBuilder(
+      builder: (context, constraints) => Align(
+        alignment: .centerRight,
+        child: AnimatedContainer(
+          duration: transitionDuration,
+          curve: Curves.easeInOutCubic,
+          margin: const EdgeInsets.symmetric(
+            horizontal: PregoSpacing.xl,
+            vertical: PregoSpacing.xs,
           ),
-        ),
-        child: Column(
-          crossAxisAlignment: .end,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            ...attachments,
-            if (markdown != null)
-              PregoReadableSelectionArea(
-                child: MarkdownBody(
-                  data: markdown,
-                  selectable: false,
-                  softLineBreak: true,
-                  onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
-                  imageBuilder: (uri, title, alt) => _userMarkdownImage(
-                    context: context,
-                    uri: uri,
-                    semanticLabel: alt,
-                  ),
-                  styleSheet: buildUserMessageMarkdownStyleSheet(prego: prego),
-                  blockSyntaxes: sessionMarkdownBlockSyntaxes,
-                  builders: buildSessionMarkdownBuilders(
-                    highlightEnabled: true,
-                    copyTooltip: context.loc.sessionDetailCopy,
+          padding: const EdgeInsets.all(10),
+          constraints: BoxConstraints(
+            maxWidth: (constraints.maxWidth - PregoSpacing.xl * 2) * 0.76,
+          ),
+          decoration: BoxDecoration(
+            color: prego.colors.bgSurface2,
+            borderRadius: BorderRadius.circular(PregoRadius.xl),
+          ),
+          foregroundDecoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(PregoRadius.xl),
+            border: Border.all(
+              color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
+            ),
+          ),
+          child: Column(
+            crossAxisAlignment: .end,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              ...attachments,
+              if (markdown != null)
+                PregoReadableSelectionArea(
+                  child: MarkdownBody(
+                    data: markdown,
+                    selectable: false,
+                    softLineBreak: true,
+                    onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
+                    imageBuilder: (uri, title, alt) => _userMarkdownImage(
+                      context: context,
+                      uri: uri,
+                      semanticLabel: alt,
+                    ),
+                    styleSheet: buildChatMessageMarkdownStyleSheet(prego: prego),
+                    blockSyntaxes: sessionMarkdownBlockSyntaxes,
+                    builders: buildSessionMarkdownBuilders(
+                      highlightEnabled: true,
+                      copyTooltip: context.loc.sessionDetailCopy,
+                    ),
                   ),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -125,8 +124,8 @@ class const UserMessageBubble({
       icon: const Icon(TablerRegular.photo, size: 16),
       label: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
       style: TextButton.styleFrom(
-        foregroundColor: prego.colors.textBrandPrimary,
-        backgroundColor: prego.colors.textBrandPrimary.withValues(alpha: 0.08),
+        foregroundColor: prego.colors.textPrimary,
+        backgroundColor: prego.colors.textPrimary.withValues(alpha: 0.08),
         minimumSize: const Size(44, 44),
         padding: const EdgeInsetsDirectional.symmetric(
           horizontal: PregoSpacing.lg,
@@ -136,7 +135,7 @@ class const UserMessageBubble({
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(PregoRadius.md),
           side: BorderSide(
-            color: prego.colors.textBrandPrimary.withValues(alpha: 0.24),
+            color: prego.colors.textPrimary.withValues(alpha: 0.24),
           ),
         ),
       ),
