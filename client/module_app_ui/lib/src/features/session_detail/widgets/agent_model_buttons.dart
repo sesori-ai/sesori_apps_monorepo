@@ -240,6 +240,7 @@ class const _VariantMenu({
       flat: true,
       menuWidth: 220,
       menuMaxHeight: _pickerMaxHeight,
+      reverseScroll: true,
       triggerBuilder: (context, toggle) => PregoPickerButton(
         leadingIcon: Icons.speed_outlined,
         label: selectedVariant ?? availableVariants.first.id,
@@ -248,7 +249,8 @@ class const _VariantMenu({
       ),
       entriesBuilder: () => [
         PregoMenuLabel(text: loc.sessionDetailPickerVariant),
-        for (final variant in availableVariants)
+        // Catalogs are strongest-first; keep those efforts nearest the composer.
+        for (final variant in availableVariants.reversed)
           PregoMenuItem(
             title: variant.id,
             subtitle: null,

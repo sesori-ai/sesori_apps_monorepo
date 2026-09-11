@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 Widget _harness(
   List<PregoMenuEntry> entries, {
   bool flat = false,
+  bool reverseScroll = false,
   PregoMenuSpotlight? spotlight,
   double? maxHeight,
 }) {
@@ -18,6 +19,7 @@ Widget _harness(
           menuWidth: 240,
           menuMaxHeight: maxHeight,
           flat: flat,
+          reverseScroll: reverseScroll,
           spotlight: spotlight,
           entriesBuilder: () => entries,
           triggerBuilder: (context, toggle) => ElevatedButton(
@@ -44,8 +46,7 @@ List<PregoMenuEntry> _agentEntries(List<String> names, {void Function(String nam
 ];
 
 /// The scroll position of the open glass popup.
-ScrollPosition _popupScroll(WidgetTester tester) =>
-    tester.state<ScrollableState>(find.byType(Scrollable)).position;
+ScrollPosition _popupScroll(WidgetTester tester) => tester.state<ScrollableState>(find.byType(Scrollable)).position;
 
 void main() {
   group("Android (flat) path", () {
@@ -87,6 +88,42 @@ void main() {
       // Selecting an item closes the menu.
       expect(find.text("Alpha"), findsNothing);
     }, variant: TargetPlatformVariant.only(TargetPlatform.android));
+
+    testWidgets("reverse scrolling opens at the last entries without reordering rows", (tester) async {
+      await tester.pumpWidget(
+        _harness(
+          [
+            for (final name in ["First", "Second", "Third", "Last"])
+              PregoMenuItem(title: name, subtitle: null, isSelected: false, onTap: () {}),
+          ],
+          flat: true,
+          reverseScroll: true,
+          maxHeight: 120,
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final first = find.widgetWithText(InkWell, "First");
+      final last = find.widgetWithText(InkWell, "Last");
+      expect(last.hitTestable(), findsOneWidget);
+      expect(first.hitTestable(), findsNothing);
+      expect(tester.getTopLeft(first).dy, lessThan(tester.getTopLeft(last).dy));
+      await tester.drag(find.byType(SingleChildScrollView), const Offset(0, 300));
+      await tester.pumpAndSettle();
+      expect(first.hitTestable(), findsOneWidget);
+    });
+
+    test("reverse scrolling requires the flat path", () {
+      expect(
+        () => PregoAnchorMenu(
+          reverseScroll: true,
+          entriesBuilder: () => [],
+          triggerBuilder: (context, toggle) => const SizedBox.shrink(),
+        ),
+        throwsAssertionError,
+      );
+    });
 
     testWidgets("first and last item highlights reach the panel edges", (tester) async {
       await tester.pumpWidget(
