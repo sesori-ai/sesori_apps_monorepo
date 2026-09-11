@@ -131,7 +131,8 @@ class CodexToolLifecycleTracker({
     bool useAggregatedOutput = false,
   }) {
     if (event case CodexCommandExecutionEventDto(:final command, :final aggregatedOutput)) {
-      tool.title ??= _rolloutToolMapper.logicalCommandTitle(command);
+      tool.shellCommand = _rolloutToolMapper.logicalCommandTitle(command) ?? tool.shellCommand;
+      tool.title ??= tool.shellCommand;
       if (aggregatedOutput != null) {
         final clippedOutput = _rolloutToolMapper.clipOutput(aggregatedOutput);
         tool.appServerOutput = clippedOutput;
@@ -414,6 +415,7 @@ class CodexToolLifecycleTracker({
       );
       tool.time ??= time;
       tool.title ??= call.title;
+      tool.shellCommand = call.shellCommand ?? tool.shellCommand;
       if (fileChangePatch != null) {
         tool.rolloutOutput ??= _rolloutToolMapper.clipOutput(fileChangePatch);
         thread.codeModeFileCallIds.add(call.id);
@@ -703,9 +705,12 @@ class CodexToolLifecycleTracker({
   }) {
     if (isCommandExecution) {
       final command = item["command"];
-      tool.title ??= _rolloutToolMapper.logicalCommandTitle(
-        command is String ? command : null,
-      );
+      tool.shellCommand =
+          _rolloutToolMapper.logicalCommandTitle(
+            command is String ? command : null,
+          ) ??
+          tool.shellCommand;
+      tool.title ??= tool.shellCommand;
       if (item["aggregatedOutput"] case final String output) {
         final clippedOutput = _rolloutToolMapper.clipOutput(output);
         tool.appServerOutput = clippedOutput;
@@ -840,6 +845,7 @@ class _TrackedTool({
   required final bool isRolloutCall,
 }) {
   PluginToolStatus status = PluginToolStatus.running;
+  String? shellCommand;
   String? rolloutOutput;
   String? appServerOutput;
   PluginMessageTime? time;
@@ -852,6 +858,7 @@ class _TrackedTool({
     tool: tool,
     presentation: presentation,
     title: title,
+    shellCommand: shellCommand,
     status: status,
     output: rolloutOutput ?? appServerOutput,
     time: time,

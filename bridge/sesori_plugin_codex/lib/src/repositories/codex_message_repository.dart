@@ -391,6 +391,7 @@ class CodexMessageRepository({
               tool: tool.tool,
               presentation: tool.presentation,
               title: tool.title,
+              shellCommand: tool.shellCommand,
               status: structuredToolStatusByCallId[tool.canonicalId] ?? tool.status,
               output: tool.output,
               time: tool.time,
@@ -841,6 +842,7 @@ class CodexMessageRepository({
           state: PluginToolState(
             status: status,
             title: title,
+            shellCommand: null,
             output: output,
             error: status == PluginToolStatus.error ? output : null,
             attachments: attachments,

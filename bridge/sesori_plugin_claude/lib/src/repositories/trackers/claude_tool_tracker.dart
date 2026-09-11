@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 import "../../models/claude_subagent_session_id.dart";
 import "../../models/claude_task_status.dart";
 import "../../models/claude_tool_use_result.dart";
+import "../mappers/claude_shell_command_mapper.dart";
 import "../mappers/claude_task_status_mapping.dart";
 
 /// An immutable presentation snapshot of one Claude tool call.
@@ -410,7 +411,14 @@ final class _TrackedTool({
   bool get isTask => kind == _ClaudeToolKind.task;
 
   ClaudeTrackedTool snapshot({required bool sessionDiffRequired, bool todoRefreshRequired = false}) {
-    final state = PluginToolState(status: status, title: null, output: output, error: error, attachments: attachments);
+    final state = PluginToolState(
+      status: status,
+      title: null,
+      shellCommand: ClaudeShellCommandMapper.map(name: name, input: input),
+      output: output,
+      error: error,
+      attachments: attachments,
+    );
     return isTask
         ? ClaudeTrackedTask(
             childSessionId: switch (taskId) {

@@ -121,7 +121,8 @@ MessagePartTool _runningCompactionPart() {
     tool: "compact",
     state: ToolState(
       status: ToolStatus.running,
-      title: "Compacting context",
+      title: null,
+      shellCommand: null,
       output: null,
       error: null,
       attachments: [],
@@ -244,7 +245,7 @@ void main() {
       ),
     );
 
-    expect(find.text("Compacting context"), findsOneWidget);
+    expect(find.text("compact"), findsOneWidget);
     expect(find.text("Running"), findsOneWidget);
   });
 

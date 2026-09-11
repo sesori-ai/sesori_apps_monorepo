@@ -377,6 +377,7 @@ sealed class PiContentDto with _$PiContentDto {
   const factory toolCall({
     required String id,
     required String name,
+    required Object? arguments,
   }) = PiToolCallContentDto;
 
   const factory unknown() = PiUnknownContentDto;

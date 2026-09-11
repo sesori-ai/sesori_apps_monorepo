@@ -2151,6 +2151,7 @@ abstract class AcpPlugin({
     AcpReplayCollector collectorFactory({required AcpReplayToolPartSuppression? toolPartSuppression}) =>
         AcpReplayCollector(
           sessionUpdateNormalizer: eventMapper.normalizeSessionUpdate,
+          shellCommandResolver: eventMapper.shellCommandForToolUpdate,
           sessionId: sessionId,
           // Replayed messages must carry the same `agent` the live mapper stamps,
           // or a reloaded session reports a different agent than the live one did.

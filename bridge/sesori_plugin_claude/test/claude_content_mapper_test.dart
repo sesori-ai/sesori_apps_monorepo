@@ -147,6 +147,30 @@ void main() {
       expect(parts, everyElement(predicate<PluginMessagePart>((part) => part.messageID == "message-1")));
     });
 
+    test("retains only explicit Bash commands as shell command data", () {
+      final parts = mapper.mapParts(
+        sessionId: "session-1",
+        messageId: "message-1",
+        content: [
+          {
+            "type": "tool_use",
+            "id": "toolu-bash",
+            "name": "Bash",
+            "input": {"command": "git diff --stat", "description": "inspect changes"},
+          },
+          {
+            "type": "tool_use",
+            "id": "toolu-read",
+            "name": "Read",
+            "input": {"command": "must not leak"},
+          },
+        ],
+      );
+
+      expect(parts[0].state.shellCommand, "git diff --stat");
+      expect(parts[1].state.shellCommand, isNull);
+    });
+
     test("maps tool result state without inventing a tool name", () {
       final success = mapper
           .mapParts(

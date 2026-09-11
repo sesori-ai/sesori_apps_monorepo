@@ -119,6 +119,7 @@ class GrokSessionReplayCollector({
           taskState: PluginToolState(
             status: tile.status,
             title: null,
+            shellCommand: null,
             output: tile.output,
             error: tile.error,
             attachments: const [],

@@ -108,3 +108,10 @@ sealed class GrokToolIdentityDto with _$GrokToolIdentityDto {
 
   factory fromJson(Map<String, dynamic> json) => _$GrokToolIdentityDtoFromJson(json);
 }
+
+/// The command payload corroborated by Grok's run_terminal_command fixture.
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokTerminalInputDto with _$GrokTerminalInputDto {
+  const factory({required String? command}) = _GrokTerminalInputDto;
+  factory fromJson(Map<String, dynamic> json) => _$GrokTerminalInputDtoFromJson(json);
+}

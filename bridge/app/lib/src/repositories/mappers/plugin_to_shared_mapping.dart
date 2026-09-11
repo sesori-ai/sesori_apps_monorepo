@@ -67,13 +67,21 @@ extension PluginMessageAttachmentMapping on PluginMessageAttachment {
 
 /// Maps [PluginToolState] to the shared [ToolState].
 extension PluginToolStateMapping on PluginToolState {
-  ToolState toShared() => ToolState(
-    status: status.toShared(),
-    title: title,
-    output: output,
-    error: error,
-    attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
-  );
+  ToolState toShared({required bool retainSummary}) {
+    final boundedShellCommand = _boundedToolText(text: shellCommand);
+    final isShellCommand = boundedShellCommand != null;
+    return ToolState(
+      status: status.toShared(),
+      title: retainSummary ? _boundedToolText(text: title) : boundedShellCommand,
+      shellCommand: boundedShellCommand,
+      output: isShellCommand || retainSummary ? _boundedToolText(text: output) : null,
+      error: isShellCommand || retainSummary ? _boundedToolText(text: error) : null,
+      attachments: attachments.map((attachment) => attachment.toShared()).toList(growable: false),
+    );
+  }
+
+  static String? _boundedToolText({required String? text}) =>
+      text == null ? null : String.fromCharCodes(text.runes.take(maxToolOutputLength));
 }
 
 /// Maps a plugin-interface [PluginQuestionInfo] to the shared [QuestionInfo]
@@ -109,7 +117,7 @@ extension PluginMessagePartMapping on PluginMessagePart {
       sessionID: sessionId,
       messageID: messageID,
       tool: tool ?? "",
-      state: state.toShared(),
+      state: state.toShared(retainSummary: false),
     ),
     PluginMessagePartSubtask(
       :final id,
@@ -127,7 +135,7 @@ extension PluginMessagePartMapping on PluginMessagePart {
         prompt: prompt,
         description: description,
         agent: agent,
-        taskState: taskState?.toShared(),
+        taskState: taskState?.toShared(retainSummary: true),
         // Carried through as the plugin reported it. The live path translates
         // it in `SessionEventMapper`; the history path in `SessionRepository`.
         childSessionID: childSessionID,

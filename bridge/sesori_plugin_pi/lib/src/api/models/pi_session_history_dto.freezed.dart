@@ -3790,11 +3790,12 @@ as bool?,
 @JsonSerializable(createToJson: false)
 
 class PiToolCallContentDto implements PiContentDto {
-  const PiToolCallContentDto({required this.id, required this.name,  String? $type}): $type = $type ?? 'toolCall';
+  const PiToolCallContentDto({required this.id, required this.name, required this.arguments,  String? $type}): $type = $type ?? 'toolCall';
   factory PiToolCallContentDto.fromJson(Map<String, dynamic> json) => _$PiToolCallContentDtoFromJson(json);
 
  final  String id;
  final  String name;
+ final  Object? arguments;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -3810,12 +3811,12 @@ $PiToolCallContentDtoCopyWith<PiToolCallContentDto> get copyWith => _$PiToolCall
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolCallContentDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolCallContentDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.arguments, arguments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name);
+int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(arguments));
 
 
 
@@ -3826,7 +3827,7 @@ abstract mixin class $PiToolCallContentDtoCopyWith<$Res> implements $PiContentDt
   factory $PiToolCallContentDtoCopyWith(PiToolCallContentDto value, $Res Function(PiToolCallContentDto) _then) = _$PiToolCallContentDtoCopyWithImpl;
 @useResult
 $Res call({
- String id, String name
+ String id, String name, Object? arguments
 });
 
 
@@ -3843,11 +3844,11 @@ class _$PiToolCallContentDtoCopyWithImpl<$Res>
 
 /// Create a copy of PiContentDto
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? name = null,Object? arguments = freezed,}) {
   return _then(PiToolCallContentDto(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
-as String,
+as String,arguments: freezed == arguments ? _self.arguments : arguments ,
   ));
 }
 

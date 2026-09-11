@@ -68,7 +68,7 @@ void main() {
       expect((stored["s3"]! as MessagePartSubtask).taskState, isNull, reason: "OpenCode shape is untouched");
     });
 
-    test("keeps title and output of a finalized part", () async {
+    test("keeps shell command and output of a finalized part", () async {
       final history = createTestChatHistory();
       await history.service.captureMessage(
         sessionId: "ses_a",
@@ -76,13 +76,19 @@ void main() {
       );
       await history.service.capturePart(
         sessionId: "ses_a",
-        part: _toolPart(id: "t1", messageId: "m1", status: ToolStatus.running, title: "Edit", output: "partial"),
+        part: _toolPart(
+          id: "t1",
+          messageId: "m1",
+          status: ToolStatus.running,
+          shellCommand: "git status",
+          output: "partial",
+        ),
       );
 
       await history.service.finalizeOpenToolParts(sessionId: "ses_a");
 
       final stored = await _storedParts(history: history, sessionId: "ses_a");
-      expect(_stateOf(stored["t1"]!).title, "Edit");
+      expect(_stateOf(stored["t1"]!).shellCommand, "git status");
       expect(_stateOf(stored["t1"]!).output, "partial");
     });
 
@@ -278,14 +284,14 @@ MessagePart _toolPart({
   required String id,
   required String messageId,
   required ToolStatus status,
-  String? title,
+  String? shellCommand,
   String? output,
 }) => MessagePart.tool(
   id: id,
   sessionID: "ses_a",
   messageID: messageId,
   tool: "Edit",
-  state: ToolState(status: status, title: title, output: output, error: null),
+  state: ToolState(status: status, title: shellCommand, shellCommand: shellCommand, output: output, error: null),
 );
 
 MessagePart _subtaskPart({required String id, required String messageId, required ToolStatus? status}) =>
@@ -298,7 +304,14 @@ MessagePart _subtaskPart({required String id, required String messageId, require
       agent: "general-purpose",
       taskState: status == null
           ? null
-          : ToolState(status: status, title: null, output: null, error: null, attachments: const []),
+          : ToolState(
+              status: status,
+              title: null,
+              shellCommand: null,
+              output: null,
+              error: null,
+              attachments: const [],
+            ),
       childSessionID: "child-1",
     );
 

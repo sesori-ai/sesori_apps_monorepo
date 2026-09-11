@@ -304,7 +304,7 @@ as String,
 @JsonSerializable()
 
 class MessagePartTool extends MessagePart {
-  const MessagePartTool({required this.id, required this.sessionID, required this.messageID, this.tool = "", this.state = const ToolState(status: ToolStatus.pending, title: null, output: null, error: null),  String? $type}): $type = $type ?? 'tool',super._();
+  const MessagePartTool({required this.id, required this.sessionID, required this.messageID, this.tool = "", this.state = const ToolState(status: ToolStatus.pending, title: null, shellCommand: null, output: null, error: null),  String? $type}): $type = $type ?? 'tool',super._();
   factory MessagePartTool.fromJson(Map<String, dynamic> json) => _$MessagePartToolFromJson(json);
 
 @override final  String id;
@@ -1518,7 +1518,7 @@ int get hashCode => runtimeType.hashCode;
 /// @nodoc
 mixin _$ToolState {
 
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get output; String? get error;@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments;
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus get status; String? get title; String? get shellCommand; String? get output; String? get error;@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> get attachments;
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1531,16 +1531,16 @@ $ToolStateCopyWith<ToolState> get copyWith => _$ToolStateCopyWithImpl<ToolState>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(attachments));
+int get hashCode => Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(attachments));
 
 @override
 String toString() {
-  return 'ToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
+  return 'ToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -1551,7 +1551,7 @@ abstract mixin class $ToolStateCopyWith<$Res>  {
   factory $ToolStateCopyWith(ToolState value, $Res Function(ToolState) _then) = _$ToolStateCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? shellCommand, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
 });
 
 
@@ -1568,10 +1568,11 @@ class _$ToolStateCopyWithImpl<$Res>
 
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? status = null,Object? title = freezed,Object? shellCommand = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(ToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,shellCommand: freezed == shellCommand ? _self.shellCommand : shellCommand // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self.attachments : attachments // ignore: cast_nullable_to_non_nullable
@@ -1587,11 +1588,12 @@ as List<MessageAttachment>,
 @JsonSerializable()
 
 class _ToolState implements ToolState {
-  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.output, required this.error, @JsonKey(fromJson: _messageAttachmentsFromJson)  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
+  const _ToolState({@JsonKey(unknownEnumValue: ToolStatus.unknown) required this.status, required this.title, required this.shellCommand, required this.output, required this.error, @JsonKey(fromJson: _messageAttachmentsFromJson)  List<MessageAttachment> attachments = const <MessageAttachment>[]}): _attachments = attachments;
   factory _ToolState.fromJson(Map<String, dynamic> json) => _$ToolStateFromJson(json);
 
 @override@JsonKey(unknownEnumValue: ToolStatus.unknown) final  ToolStatus status;
 @override final  String? title;
+@override final  String? shellCommand;
 @override final  String? output;
 @override final  String? error;
  final  List<MessageAttachment> _attachments;
@@ -1615,16 +1617,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,output,error,const DeepCollectionEquality().hash(_attachments));
+int get hashCode => Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(_attachments));
 
 @override
 String toString() {
-  return 'ToolState(status: $status, title: $title, output: $output, error: $error, attachments: $attachments)';
+  return 'ToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -1635,7 +1637,7 @@ abstract mixin class _$ToolStateCopyWith<$Res> implements $ToolStateCopyWith<$Re
   factory _$ToolStateCopyWith(_ToolState value, $Res Function(_ToolState) _then) = __$ToolStateCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
+@JsonKey(unknownEnumValue: ToolStatus.unknown) ToolStatus status, String? title, String? shellCommand, String? output, String? error,@JsonKey(fromJson: _messageAttachmentsFromJson) List<MessageAttachment> attachments
 });
 
 
@@ -1652,10 +1654,11 @@ class __$ToolStateCopyWithImpl<$Res>
 
 /// Create a copy of ToolState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? status = null,Object? title = freezed,Object? shellCommand = freezed,Object? output = freezed,Object? error = freezed,Object? attachments = null,}) {
   return _then(_ToolState(
 status: null == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
 as ToolStatus,title: freezed == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
+as String?,shellCommand: freezed == shellCommand ? _self.shellCommand : shellCommand // ignore: cast_nullable_to_non_nullable
 as String?,output: freezed == output ? _self.output : output // ignore: cast_nullable_to_non_nullable
 as String?,error: freezed == error ? _self.error : error // ignore: cast_nullable_to_non_nullable
 as String?,attachments: null == attachments ? _self._attachments : attachments // ignore: cast_nullable_to_non_nullable

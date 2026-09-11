@@ -18,6 +18,32 @@ not been verified, so the sub-agent table makes no claim about it.
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Explicit shell-command presentation
+
+Ordinary tools retain name, status and attachments; only adapter-verified shell
+commands retain command/output/error. Subtask outcome/error summaries are separate
+and remain available. All retained tool text is rune-bounded at live/history wire
+projection; the released title alias remains available to older clients.
+
+| Harness | Status and established command source |
+|---|---|
+| Claude | Implemented: exact `Bash` input command, retained through tool-result correlation and transcript replay. |
+| OpenCode | Implemented: exact `bash` tool input command in generated SSE/REST tool parts. |
+| Codex | Implemented: `commandExecution.command`, `exec_command` arguments, literal single-invocation code-mode commands, and correlated command-execution evidence. Normalized `shell` names and arbitrary JavaScript/title text are not authority. |
+| Pi | Implemented: `bash` tool-call arguments and typed `bashExecution.command`, live and replay. |
+| Grok | Implemented: exact `_meta["x.ai/tool"].name == "run_terminal_command"` plus typed `rawInput.command`. Evidence is the owning repository fixture, not a fresh upstream capture. |
+| Antigravity | Implemented: canonical native command normalized from `CommandLine`, `command_line`, `commandLine`, `command`, or native output command aliases. Evidence is owning generated DTOs corroborated against pinned `AntigravityProtocol.ts` and synthetic fixtures; no new upstream/runtime verification. |
+| Cursor, OMP, Hermes, DeepSeek, Copilot | Not implemented / command source not yet verified. Existing execute permission/kind or launch-command fixtures do not establish session shell-command provenance. This does **not** mean not supported by the harness. |
+
+Generic ACP does not infer commands from titles, execute kinds, arbitrary content,
+or command-shaped inputs. Adapter command evidence merges through the same live
+and replay hook; status/output-only updates retain the last verified command.
+Codex code-mode extraction accepts JSON argument objects or a literal first `cmd`
+property in one real `tools.exec_command` invocation (single/double quotes and
+whitespace accepted). Expressions, multiple commands and other JavaScript forms
+need trustworthy correlated command-execution evidence; raw scripts never become
+commands. No general JavaScript parser or runtime execution is involved.
+
 ## Managed runtime
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

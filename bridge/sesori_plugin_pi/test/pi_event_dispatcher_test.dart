@@ -103,14 +103,14 @@ void main() {
           "type": "toolcall_start",
           "contentIndex": 0,
           "id": "call-start",
-          "toolName": "write",
+          "toolName": "bash",
         },
       }),
     );
     final part = started.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(started.whereType<BridgeSseMessageUpdated>(), hasLength(1));
     expect(part.id, "call-start");
-    expect(part.tool, "write");
+    expect(part.tool, "bash");
     expect(part.state.status, PluginToolStatus.pending);
 
     final ended = dispatcher.map(
@@ -119,11 +119,31 @@ void main() {
         "assistantMessageEvent": {
           "type": "toolcall_end",
           "contentIndex": 0,
-          "toolCall": {"id": "call-start", "name": "write", "arguments": <String, Object?>{}},
+          "toolCall": {
+            "id": "call-start",
+            "name": "bash",
+            "arguments": {"command": "pwd"},
+          },
         },
       }),
     );
     expect(ended, isEmpty);
+
+    final completed = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("tool_execution_end", {
+        "toolCallId": "call-start",
+        "toolName": "bash",
+        "result": {
+          "content": [
+            {"type": "text", "text": "/project"},
+          ],
+        },
+      }),
+    );
+    final completedState = completed.whereType<BridgeSseMessagePartUpdated>().single.part.state;
+    expect(completedState.shellCommand, "pwd");
+    expect(completedState.output, "/project");
   });
 
   test("correlates early and terminal tool visibility by content index", () {
@@ -490,6 +510,43 @@ void main() {
     expect(completed.whereType<BridgeSseMessagePartUpdated>().single.part.state.output, "done");
     expect(completed.whereType<BridgeSseSessionDiff>(), hasLength(1));
     expect(duplicate, isEmpty);
+  });
+
+  test("shell tool results retain the tracked command", () {
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_end", {
+        "message": _assistant(
+          content: [
+            {
+              "type": "toolCall",
+              "id": "call-1",
+              "name": "bash",
+              "arguments": {"command": "git status --short"},
+            },
+          ],
+          timestamp: 1,
+          stopReason: "toolUse",
+        ),
+      }),
+    );
+
+    final completed = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("tool_execution_end", {
+        "toolCallId": "call-1",
+        "toolName": "bash",
+        "result": {
+          "content": [
+            {"type": "text", "text": " M file.dart"},
+          ],
+        },
+      }),
+    );
+
+    final state = completed.whereType<BridgeSseMessagePartUpdated>().single.part.state;
+    expect(state.shellCommand, "git status --short");
+    expect(state.output, " M file.dart");
   });
 
   test("malformed tool results are omitted without ending the turn", () {

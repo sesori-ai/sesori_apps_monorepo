@@ -466,7 +466,14 @@ final class _Child({
       prompt: prompt.toString(),
       description: description,
       agent: agent,
-      taskState: PluginToolState(status: status, title: null, output: output, error: error, attachments: const []),
+      taskState: PluginToolState(
+        status: status,
+        title: null,
+        shellCommand: null,
+        output: output,
+        error: error,
+        attachments: const [],
+      ),
       childSessionID: childSessionId,
     );
   }

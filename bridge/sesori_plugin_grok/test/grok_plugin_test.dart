@@ -1286,6 +1286,29 @@ void main() {
           "params": {
             "sessionId": "child",
             "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "shell",
+              "title": "Run tests",
+              "status": "completed",
+              "rawInput": {"command": "dart test"},
+              "_meta": {
+                "x.ai/tool": {"name": "run_terminal_command", "kind": "execute"},
+              },
+              "content": [
+                {
+                  "type": "content",
+                  "content": {"type": "text", "text": "All tests passed"},
+                },
+              ],
+            },
+          },
+        })
+        ..emit({
+          "jsonrpc": "2.0",
+          "method": AcpMethods.sessionUpdate,
+          "params": {
+            "sessionId": "child",
+            "update": {
               "sessionUpdate": "agent_message_chunk",
               "content": {"type": "text", "text": "Child response"},
             },
@@ -1300,7 +1323,11 @@ void main() {
       final messages = await replaying;
       expect(messages.map((message) => message.info.sessionID), everyElement("child"));
       expect(messages.expand((message) => message.parts).whereType<PluginMessagePartText>(), hasLength(2));
-      expect(messages.expand((message) => message.parts).whereType<PluginMessagePartTool>(), hasLength(1));
+      final tools = messages.expand((message) => message.parts).whereType<PluginMessagePartTool>().toList();
+      expect(tools, hasLength(2));
+      expect(tools.first.state.shellCommand, isNull);
+      expect(tools.last.state.shellCommand, "dart test");
+      expect(tools.last.state.output, "All tests passed");
     });
 
     test("root history maps persisted child context and drains late lifecycle without live state", () async {

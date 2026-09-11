@@ -25,6 +25,7 @@ void main() {
   void createCollector({required Map<String, String> prompts}) {
     collector = AcpReplayCollector(
       sessionUpdateNormalizer: null,
+      shellCommandResolver: null,
       sessionId: "root",
       agentId: "grok",
       initialUserMessageId: null,

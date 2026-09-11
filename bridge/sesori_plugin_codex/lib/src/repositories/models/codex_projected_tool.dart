@@ -6,6 +6,7 @@ final class CodexProjectedTool({
   required final String tool,
   required final CodexToolPresentation presentation,
   required final String? title,
+  required final String? shellCommand,
   required final PluginToolStatus status,
   required final String? output,
   required final PluginMessageTime? time,

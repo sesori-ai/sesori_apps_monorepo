@@ -842,4 +842,133 @@ as String?,
 
 }
 
+
+/// @nodoc
+mixin _$GrokTerminalInputDto {
+
+ String? get command;
+/// Create a copy of GrokTerminalInputDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokTerminalInputDtoCopyWith<GrokTerminalInputDto> get copyWith => _$GrokTerminalInputDtoCopyWithImpl<GrokTerminalInputDto>(this as GrokTerminalInputDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokTerminalInputDto&&(identical(other.command, command) || other.command == command));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,command);
+
+@override
+String toString() {
+  return 'GrokTerminalInputDto(command: $command)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokTerminalInputDtoCopyWith<$Res>  {
+  factory $GrokTerminalInputDtoCopyWith(GrokTerminalInputDto value, $Res Function(GrokTerminalInputDto) _then) = _$GrokTerminalInputDtoCopyWithImpl;
+@useResult
+$Res call({
+ String? command
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokTerminalInputDtoCopyWithImpl<$Res>
+    implements $GrokTerminalInputDtoCopyWith<$Res> {
+  _$GrokTerminalInputDtoCopyWithImpl(this._self, this._then);
+
+  final GrokTerminalInputDto _self;
+  final $Res Function(GrokTerminalInputDto) _then;
+
+/// Create a copy of GrokTerminalInputDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? command = freezed,}) {
+  return _then(GrokTerminalInputDto(
+command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokTerminalInputDto implements GrokTerminalInputDto {
+  const _GrokTerminalInputDto({required this.command});
+  factory _GrokTerminalInputDto.fromJson(Map<String, dynamic> json) => _$GrokTerminalInputDtoFromJson(json);
+
+@override final  String? command;
+
+/// Create a copy of GrokTerminalInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokTerminalInputDtoCopyWith<_GrokTerminalInputDto> get copyWith => __$GrokTerminalInputDtoCopyWithImpl<_GrokTerminalInputDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokTerminalInputDto&&(identical(other.command, command) || other.command == command));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,command);
+
+@override
+String toString() {
+  return 'GrokTerminalInputDto(command: $command)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokTerminalInputDtoCopyWith<$Res> implements $GrokTerminalInputDtoCopyWith<$Res> {
+  factory _$GrokTerminalInputDtoCopyWith(_GrokTerminalInputDto value, $Res Function(_GrokTerminalInputDto) _then) = __$GrokTerminalInputDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String? command
+});
+
+
+
+
+}
+/// @nodoc
+class __$GrokTerminalInputDtoCopyWithImpl<$Res>
+    implements _$GrokTerminalInputDtoCopyWith<$Res> {
+  __$GrokTerminalInputDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokTerminalInputDto _self;
+  final $Res Function(_GrokTerminalInputDto) _then;
+
+/// Create a copy of GrokTerminalInputDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? command = freezed,}) {
+  return _then(_GrokTerminalInputDto(
+command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
 // dart format on

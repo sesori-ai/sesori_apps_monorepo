@@ -1,6 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "acp_event_mapper.dart" show AcpHaltNotice, AcpSessionUpdateNormalizer;
+import "acp_event_mapper.dart" show AcpHaltNotice, AcpSessionUpdateNormalizer, AcpShellCommandResolver;
 import "acp_protocol.dart" show AcpMethods;
 import "acp_stdio_client.dart" show AcpNotification;
 import "repositories/mappers/acp_content_mapper.dart";
@@ -45,6 +45,7 @@ class AcpReplayCollector({
 
   /// The live mapper's pure hook. Null retains standard ACP envelopes unchanged.
   required final AcpSessionUpdateNormalizer? sessionUpdateNormalizer,
+  required final AcpShellCommandResolver? shellCommandResolver,
 
   /// Overrides a replayed user's ACP message id with backend authority.
   required final AcpReplayUserMessageIdOverride? messageIdOverride,
@@ -121,6 +122,7 @@ class AcpReplayCollector({
             tool: _ToolDraft(
               tool: _contentMapper.toolName(update: update),
               title: _toolTitle(update),
+              shellCommand: shellCommandResolver?.call(update: update),
               status: mappedStatus ?? PluginToolStatus.pending,
               contentTracker: contentTracker,
               hasExplicitKind: hasKind,
@@ -134,6 +136,7 @@ class AcpReplayCollector({
             draft.tool = _contentMapper.toolName(update: update);
           }
           draft.title ??= _toolTitle(update);
+          draft.shellCommand ??= shellCommandResolver?.call(update: update);
           if (!draft.hasExplicitStatus && mappedStatus != null) {
             draft.status = mappedStatus;
           }
@@ -161,6 +164,7 @@ class AcpReplayCollector({
             tool: _ToolDraft(
               tool: _contentMapper.toolName(update: update),
               title: _toolTitle(update),
+              shellCommand: shellCommandResolver?.call(update: update),
               status: mappedStatus ?? PluginToolStatus.pending,
               contentTracker: contentTracker,
               hasExplicitKind: hasKind,
@@ -185,6 +189,7 @@ class AcpReplayCollector({
           draft.hasExplicitKind = true;
         }
         if (update.containsKey("title")) draft.title = _toolTitle(update);
+        draft.shellCommand = shellCommandResolver?.call(update: update) ?? draft.shellCommand;
         draft.contentTracker.apply(mutation: contentMutation);
     }
   }
@@ -514,6 +519,7 @@ class AcpReplayCollector({
       state: PluginToolState(
         status: tool.status,
         title: tool.title,
+        shellCommand: tool.shellCommand,
         output: content.output,
         error: tool.status == PluginToolStatus.error ? content.output : null,
         attachments: content.attachments,
@@ -685,6 +691,7 @@ final class const _PendingAssistantContent({
 });
 
 class _ToolDraft({
+  required var String? shellCommand,
   required var String tool,
   required var String? title,
   required var PluginToolStatus status,
