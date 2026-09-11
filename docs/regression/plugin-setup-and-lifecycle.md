@@ -124,7 +124,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   unexpected exit degrades only Grok, demand reconnects it, and owned shutdown
   remains idempotent and is not reported as a crash. Exit cleanup publishes
   cancellation and idle for every running Grok child, clears autonomous-root
-  holds, then clears tracker state and releases a deferred root idle.
+  holds, then clears tracker state and releases a deferred root idle. Corrected
+  production-composition QA after PR #1429 kept the same runtime usable through
+  named-child cleanup, already-finished handling, full-stop settlement, and
+  fresh-session dispatch. Phone setup separately verified source bridge health
+  and relay connection before UI automation failed to start; this is no visible
+  lifecycle claim.
 - Pi and Oh My Pi are registered harnesses with managed installs where a platform
   archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
   sessions always launch with `--approve` (project-local Pi settings, extensions,

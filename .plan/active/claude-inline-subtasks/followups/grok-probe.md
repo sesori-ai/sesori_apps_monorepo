@@ -105,16 +105,44 @@ no permission-outcome model or generic-card replay guarantee is justified.
 
 ## 2026-09-10 actual-plugin scoped-stop QA
 
-Bounded production-composition QA passed side-effect-free root `confirm` with
-two live children. Active-root `keep` returned the same typed rejection and
-emitted no outbound cancel, but remains partial because the scratch harness
-compared bidirectional frames and counted legitimate inbound progress. Root full
-stop sent root cancellation first and both exact child requests; native
-`subagent_finished {status: cancelled}` settled both children, but the plugin
-then failed parsing each application envelope as the inner DTO. Step 6/7 repairs
-that boundary. Full stop, plugin settlement, fresh-session usability,
-named-child/idle-child isolation, `already_finished`, history, pending input,
-phone, and relay remain unproven until corrected actual-plugin QA reruns.
+Corrected bounded QA ran through the production Grok plugin, ACP transport,
+API/repository/service/tracker/event layers, and real Grok 1.0.5 processes after
+Step 6/7 merged as PR #1429. Executed scope passed:
+
+- Active-root `keep` returned the typed rejection with two children and no
+  outbound cancellation or local input mutation.
+- Named-child stop sent one exact child request, no root cancellation, parsed
+  `cancelled`, settled that child, and left the root and sibling active.
+- Idle-root child-only `keep` sent no cancellation, retained the child through
+  natural completion with `will_wake: true`, observed its autonomous root turn,
+  and released one final root idle.
+- Root and child replay preserved one exact parent/child link and used the
+  nonblank child-owned first prompt for the one root tile.
+- Cancelling a naturally finished child parsed `already_finished`, retained no
+  work, and did not rewrite terminal lifecycle.
+- Full stop sent root cancellation before the immutable two-child fanout,
+  parsed both nested `cancelled` outcomes, observed authoritative cancelled
+  root/child terminals and plugin idle settlement, and kept the runtime usable.
+- Fresh sessions after named cleanup, already-finished handling, and full stop
+  dispatched and settled on the same runtime.
+
+Root `confirm` was not rerun: its earlier side-effect-free production-composition
+pass remains valid because Step 6 changed only response-envelope decoding.
+Unchanged configuration emitted zero `session/request_permission` requests, so
+permission preservation, isolation, and cleanup remain unexecuted. No Grok
+question capability is claimed.
+
+## 2026-09-10 phone-through-relay gate
+
+Source phone build, source bridge health, production relay connection, and phone
+connection all succeeded. `mobile-mcp` then timed out starting WebDriverAgent
+0.0.23 before the first screenshot or visible interaction. An
+agent reinstall scoped to the owned simulator succeeded, but the next startup
+timed out identically. This is an infrastructure blocker, not a product failure.
+Every phone case remains unexecuted: no stop, history, read-only child,
+permission, notification, or push result is claimed. Owned bridge, app,
+simulator, scratch, and isolated runtime resources were cleaned; protected
+resources were not touched.
 
 ## Consequences for the design
 

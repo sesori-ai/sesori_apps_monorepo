@@ -166,12 +166,18 @@ defaults and queued client sends coherent.
   API boundary, which also validates child identity; outcome validation remains
   in the control repository. `cancelled` and `already_finished` ACKs mean work was not
   retained, but only native `subagent_finished` and turn completion settle
-  lifecycle state. Named child stop excludes its root and siblings. Bounded
-  Grok 1.0.5 actual-plugin QA passed side-effect-free root `confirm`, partially
-  exercised active-root `keep`, and then blocked root full stop on the now-fixed
-  envelope parser. Full-stop settlement, named/idle-child isolation,
-  `already_finished`, fresh-session, history, pending-input, phone, and relay
-  coverage remain unproven until the corrected QA rerun.
+  lifecycle state. Named child stop excludes its root and siblings. Corrected
+  Grok 1.0.5 production-composition QA after PR #1429 passed
+  active-root `keep` rejection, exact named-child isolation, idle-child
+  retention through autonomous wake-up, `already_finished`, root-first full
+  stop with authoritative settlement, fresh-session checks, and runtime reuse.
+  Root/child history replay also passed, including exact parent/child links and
+  tile prompt equality with the child-owned transcript prompt.
+  Root `confirm` reuses its earlier side-effect-free passing run. Zero standard
+  permission requests surfaced, so live pending-input coverage remains
+  unexecuted. Phone setup reached a healthy source build and relay connection,
+  but UI automation failed before any visible interaction; no phone stop or
+  related client behavior is claimed.
 - Codex supports the same side-effect-free `confirm` preflight for any named
   root or child thread. It reports the exact active descendant count, including
   pending-input-only work, plus the named thread's own running state, and offers

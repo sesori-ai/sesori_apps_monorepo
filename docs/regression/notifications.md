@@ -108,6 +108,8 @@ provider because current payload content leaves the encrypted channel.
 
 - Provider delivery is external and best effort; a missing notification may be throttling or OS policy. Never record
   unobserved delivery as pass or claim a delivery rate.
+- Grok Step 7 phone automation was blocked before any visible UI interaction;
+  no Grok notification or push behavior was exercised or passed.
 - Current provider payloads can include question or permission text, a session
   title, an assistant-response prefix, an update version, and a project identity
   that may be a local path. The ten-word completion limit has no character bound

@@ -291,8 +291,14 @@ not complete native subtree authority: accepted results deliberately report
 stop is unsupported because root cancellation stopped every observed child;
 idle-root child-only `keep` remains side-effect free. Automated coverage proves
 rejection, fanout, outcome mapping, lifecycle-only settlement, and exact pending
-permission/queue isolation. Actual-plugin, phone, and live pending-input coverage
-remain unexecuted for Step 6; Grok question support is not claimed.
+permission/queue isolation. Production-composition QA after PR #1429 passed its
+executed named-isolation, full-stop, idle-keep/wake, already-finished, replay,
+settlement, fresh-session, and runtime-reuse scope; root confirmation reuses an
+earlier passing run. Unchanged configuration emitted no live permission request,
+so live permission behavior remains unexecuted and no question support is
+claimed. Source phone build and relay connection were healthy, but UI automation
+failed to start before any visible case; all phone behavior remains blocked and
+unexecuted, including stop, history, read-only child, notification, and push QA.
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the

@@ -3,33 +3,38 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `3934f32ec9`, containing merged Grok
-  scoped stop [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428).
+- **Implementation base:** `main` at `2ebcc7d01a`, containing merged Grok
+  child-cancel envelope repair
+  [PR #1429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1429).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
-  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–5 are merged;
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–6 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Harness follow-ups remain active.
-- **Next action:** Grok Step 6/7 repairs the required child-cancel application
-  envelope under exact title
+- **Next action:** Grok Step 7/7 reconciles coverage under proposed title
+  `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]`.
+  PR #1428 remains the historical Step 5 title `[step 5/6]`; PR #1429 merged
+  Step 6/7 at `2ebcc7d01a` under exact title
   `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]`.
-  PR #1428 merged historical Step 5 at `3934f32ec956edc9de5744883403a7595a03111c`
-  under its existing `[step 5/6]` title. Bounded actual-plugin QA passed root
-  `confirm`, partially exercised active-root `keep`, then blocked root full stop
-  when the API parsed the native application envelope as the inner DTO. Final
-  actual-plugin and phone coverage moves to Step 7/7 and remains unexecuted.
-  [Policy QA](followups/codex-plugin-qa.md) verified side-effect-free
-  root/named-child confirmation, root-only `keep`, named-child subtree
-  isolation, root full-stop snapshot fanout, authoritative terminals plus
-  plugin settlement, false atomic acknowledgment, and runtime survival. No
-  pending input surfaced, so the executed policy scope passed but the live
-  matrix is partial; no phone, relay, or desktop coverage is claimed. DeepSeek #1363, #1370, and
-  live-QA crash fix #1379 are merged. Codex coverage #1424 merged at
-  `b945755bfe`; historical Codex titles remain unchanged. Requested phone-only stop/input checks
-  passed; see `followups/deepseek-phone-qa.md`. Desktop remains deferred by
-  user choice; overall plan stays active for Grok, DeepSeek documentation, and
-  Cursor follow-ups.
+  Corrected production-composition QA passed active-root `keep`, named-child
+  isolation, root full stop, idle-child keep and wake-up, already-finished,
+  exact child/root replay, authoritative settlement, fresh-session checks, and
+  runtime reuse. Root `confirm` reuses its earlier passing actual-plugin run.
+  The unchanged Grok configuration emitted zero standard permission requests,
+  leaving permission preservation/isolation/cleanup unexecuted; no question
+  capability is claimed. Source phone build, bridge, and relay connection were
+  healthy, but `mobile-mcp` timed out starting WebDriverAgent 0.0.23 before
+  the first visible UI case, including after an owned-simulator agent reinstall.
+  Every phone case is blocked and unexecuted, not failed product behavior; no
+  phone stop, history, read-only child, notification, or push QA is claimed.
+  Owned QA resources were cleaned without touching protected resources. Codex
+  [policy QA](followups/codex-plugin-qa.md) remains passed for its executed
+  scope, with pending input unexecuted. DeepSeek #1363, #1370, and live-QA crash
+  fix #1379 are merged; its requested phone-only stop/input checks passed in
+  `followups/deepseek-phone-qa.md`, while final documentation remains pending
+  and desktop is deferred by user choice. Overall plan stays active for the
+  Grok phone gate, DeepSeek final documentation, and Cursor follow-ups.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -192,8 +197,8 @@ post-merge E2E gates are unchanged.
 | [x] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) merged at `517cbb9703`; historical title unchanged (now step 3/7); approved production, root/direct-child integration, and no-`loadSession` coverage |
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; historical title unchanged (now step 4/7); approved collector/repository/service coverage and docs |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428) merged at `3934f32ec9`; historical title unchanged (now step 5/7) |
-| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | Current repair after actual-plugin QA exposed required nested application result |
-| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 7/7]` | Actual-plugin rerun and phone coverage unexecuted; root confirm alone passed |
+| [x] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | [PR #1429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1429) merged at `2ebcc7d01a`; exact title unchanged |
+| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | Current coverage reconciliation: actual-plugin executed scope passed; live permission unexecuted; phone gate blocked before visible UI |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
@@ -825,16 +830,33 @@ semantics, not unfinished preparation work. Original Step 4 stays untouched at
 `fb47206bd`.
 
 Grok scoped stop Step 5 merged as PR #1428 at `3934f32ec9`; its `[step 5/6]`
-title remains historical. Bounded actual-plugin QA on Grok 1.0.5 passed
-side-effect-free root `confirm` with two children and exact rejection fields.
-Active-root `keep` returned the same rejection and emitted no outbound cancel,
-but its scratch assertion incorrectly counted legitimate inbound progress, so
-that case remains partial. Root full stop sent root cancellation first, then two
-exact child requests; native lifecycle cancelled both children, but each request
-returned JSON-RPC `result` containing an application `{result: child outcome}`
-envelope. The API parsed that envelope as the inner DTO and threw. Step 6/7 now
-adds the required typed envelope and replaces flat synthetic fixtures; Step 7/7
-must rerun root full stop, named-child isolation, idle-child `keep`,
-`already_finished`, history, fresh-session, pending-input when surfaced, and
-phone coverage. No full-stop, plugin-settlement, fresh-session, phone, relay, or
-pending-input pass is claimed before that rerun.
+title remains historical. Step 6/7 merged as PR #1429 at `2ebcc7d01a` under its
+exact `[step 6/7]` title, repairing the required application envelope without a
+flat-format fallback.
+
+Corrected Grok 1.0.5 production-composition QA then passed its executed scope.
+Active-root `keep` rejected without outbound cancellation or local input
+mutation. Named-child stop targeted exactly one child and left root and sibling
+active. Idle-child `keep` retained work through natural completion,
+`will_wake`, the autonomous root turn, and one final idle. Root replay linked
+exactly one tile to the exact child transcript and its child-owned prompt.
+`already_finished` remained non-retained without changing terminal state. Root
+full stop sent root cancellation before the immutable two-child snapshot,
+parsed both nested cancelled outcomes, reached authoritative root/child and
+plugin idle settlement, and left the runtime usable. Fresh sessions after named
+cleanup, already-finished, and full stop all settled on the same runtime. Root
+`confirm` was not rerun; its earlier side-effect-free actual-plugin pass remains
+valid because the envelope repair did not affect preflight policy.
+
+Live matrix remains partial. Unchanged configuration produced zero standard
+permission requests, so permission preservation, isolation, and cleanup are
+unexecuted; no question support is claimed. Source phone build plus bridge/relay
+connection were healthy, but `mobile-mcp` could not start WebDriverAgent
+0.0.23 before any visible UI interaction, even after reinstalling the agent on
+the owned simulator. Phone coverage is infrastructure-blocked and entirely
+unexecuted, not a product failure: no stop dialog/action, history, read-only
+child view, notification, or push behavior is claimed. Owned bridge, app,
+simulator, scratch project, and isolated runtime resources were cleaned;
+protected resources were untouched. Step 7/7 may record this partial coverage,
+but the broader plan stays active until the Grok phone gate plus remaining
+DeepSeek documentation and Cursor work are resolved.

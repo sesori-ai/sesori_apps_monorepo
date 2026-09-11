@@ -2,16 +2,22 @@
 
 ## Status
 
-- **Plan slug:** `claude-inline-subtasks` (the plan is reactivated under
-  `.plan/active` until the four coverage PRs, Codex, Grok Build, DeepSeek,
-  and Cursor, merge, then moved back)
+- **Plan slug:** `claude-inline-subtasks` (the plan remains under
+  `.plan/active` until the Codex, Grok Build, DeepSeek, and Cursor coverage
+  gates are reconciled or explicitly accepted; a docs PR does not close a
+  blocked live gate)
 - **Plan date:** 2026-09-02
-- **Base:** `main` at merged Grok scoped stop `3934f32ec9` (#1428).
+- **Base:** `main` at merged Grok child-cancel envelope repair `2ebcc7d01a`
+  (#1429).
 - **Delivery:** one open PR at a time, following current repository rules.
-  Grok Step 6/7 child-cancel envelope repair is current after bounded
-  actual-plugin QA blocked root full stop; final actual-plugin and phone coverage
-  moves to Step 7/7 and remains unexecuted. Codex has nine steps: merged metadata, child-session, historical prompt
-  preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
+  Grok Step 6/7 merged under its exact title. Corrected actual-plugin coverage
+  passed its executed stop, lifecycle, replay, and runtime-reuse scope; live
+  permission coverage remains unexecuted because no request surfaced. Phone
+  setup reached a healthy source build and relay connection, but UI automation
+  was blocked before any visible case. Step 7/7 records that partial matrix and
+  keeps the phone gate open. Codex has nine steps: merged metadata,
+  child-session, historical prompt preparation, and cleanup remain steps
+  1/9–4/9. Native rollout facts are
   step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
   stop 8/9, and coverage 9/9. Step 8 merged as PR #1421 at `77165f784f`;
   Step 9 merged as PR #1424 at `b945755bfe` after actual-plugin policy QA
@@ -374,6 +380,15 @@ confirmation, no child session or partial stop) and gets that subset.
   inner DTO; the repository's identity/outcome policy is unchanged. Native ACKs
   never settle lifecycle. History uses inherited ACP `session/load` plus
   extension-aware root projection without a second transport.
+- Corrected Grok 1.0.5 production-composition QA after PR #1429 passed
+  active-root keep rejection, named-child isolation, idle-child retention and
+  autonomous wake-up, already-finished handling, root full-stop fanout and
+  settlement, exact root/child replay, fresh-session checks, and runtime reuse.
+  Root confirmation reuses its earlier passing run. Zero standard permission
+  requests surfaced under unchanged configuration, so live permission behavior
+  remains unexecuted and no question channel is claimed. Source phone and relay
+  setup was healthy, but `mobile-mcp` could not start WebDriverAgent before any
+  visible case; no phone behavior is claimed.
 
 ### Design
 
@@ -450,8 +465,8 @@ confirmation, no child session or partial stop) and gets that subset.
 | 🚧 | `grok: child session history [step 3/6]` | Historical title unchanged (now step 3/7); full root/child replay production, generated DTOs, essential ACP and Grok integration/regression coverage, and supported-behavior docs |
 | 🌿 | `grok: cover child session history [step 4/6]` | Historical title unchanged (now step 4/7); PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
 | ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged (now step 5/7); ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
-| 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | Current repair: required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
-| 🌱 | `docs: record Grok Build sub-agent coverage [step 7/7]` | Unexecuted: corrected actual-plugin rerun, phone, and any surfaced live pending-permission coverage plus final reconciliation |
+| 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | PR #1429 merged at `2ebcc7d01a` under exact title; required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
+| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Current reconciliation: actual-plugin executed scope passed; permissions unexecuted; phone gate infrastructure-blocked before visible UI |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 
@@ -481,15 +496,20 @@ confirmation, no child session or partial stop) and gets that subset.
   turn. Its JSON-RPC response is structurally `result -> result ->
   {subagentId, cancelled, outcome}`: after generic transport unwraps the outer
   result, Grok's application envelope still contains required `result`.
-- Bounded actual-plugin QA after PR #1428 passed side-effect-free root `confirm`
-  with two live children. Active-root `keep` returned the same typed rejection
-  and emitted no outbound cancellation, but remains partial because its scratch
-  assertion counted legitimate inbound progress. Root full stop dispatched root
-  cancellation before two exact child requests and received authoritative
-  cancelled lifecycle for both, then failed while parsing their application
-  envelopes. No full-stop result, plugin settlement, fresh-session, named-child,
-  idle-child, `already_finished`, pending-input, history, phone, or relay pass is
-  claimed before Step 7/7 reruns them.
+- Bounded actual-plugin QA after PR #1429 passed the corrected executed scope:
+  active-root `keep` rejection with no effect, exact named-child isolation,
+  idle-child retention through autonomous wake-up, both child-cancel outcomes,
+  root-first full-stop fanout, authoritative lifecycle/plugin settlement, exact
+  root/child replay, fresh-session checks, and runtime reuse. Root `confirm`
+  reuses its earlier passing actual-plugin result. Zero standard permission
+  requests surfaced, leaving permission preservation/isolation/cleanup
+  unexecuted; no question support is claimed.
+- Phone setup verified the source build, bridge, and relay path, but
+  `mobile-mcp` timed out starting WebDriverAgent 0.0.23 before any visible UI
+  interaction, including after reinstalling the agent only on the owned
+  simulator. Every phone case is blocked and unexecuted, not a product failure.
+  Owned resources were cleaned; protected resources were untouched. No phone
+  stop, history, read-only child, notification, or push QA is claimed.
 
 ### Open questions (resolved by the probe)
 
