@@ -510,7 +510,7 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    post-settlement re-check, bridge/client/UI flow, tests, and stop/lifecycle/
    capability docs.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
-   (expected 650–1,000 changed lines): configured collector/shared mapper,
+   (expected 650–1,000 changed lines): configured collector/shared pure projection,
    stable completed projection, fallbacks, tests, and history doc.
 6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
    (expected 60–140 changed lines): bounded actual-plugin evidence and final
