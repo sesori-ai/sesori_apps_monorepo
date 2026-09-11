@@ -227,7 +227,7 @@ Cursor boundary and repository changes:
   already-configured standard collector, and indexes typed Task input/output by
   replay-local `toolCallId`. At build it calls the collector's required
   `buildWithToolPartReplacement` seam with its own state-backed replacement,
-  which delegates presentation to the injected pure mapper. It owns replay-
+  which delegates presentation to the injected pure projection. It owns replay-
   local maps only: no ACP client, factory, file I/O, live tracker read, event-
   buffer write, or peer construction.
 - `bridge/sesori_plugin_cursor/lib/src/cursor_event_mapper.dart` keeps the
@@ -259,7 +259,7 @@ Cursor boundary and repository changes:
   String sessionId, required
   AcpReplayCollectorFactory collectorFactory})` override first calls
   `collectorFactory(toolPartSuppression: null)` for one fully configured
-  standard collector, then injects that collector and the stored mapper into
+  standard collector, then injects that collector and the stored projection into
   `CursorTaskReplayTracker`. The tracker receives no factory, and neither
   mapper nor tracker constructs its peer.
 - `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart`
