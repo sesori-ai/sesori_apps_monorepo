@@ -577,11 +577,10 @@ final class PiSessionService({
           _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
           return;
         }
-        if (turn.settlementObservedBeforeAcceptance && !agentState.streaming && agentState.pendingMessageCount == 0) {
-          _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
-          return;
-        }
-        var hasAgentWork = turn.agentStarted || agentState.streaming || agentState.pendingMessageCount > 0;
+        var hasAgentWork =
+            (turn.agentStarted && !turn.settlementObservedBeforeAcceptance) ||
+            agentState.streaming ||
+            agentState.pendingMessageCount > 0;
         if (!hasAgentWork && !turn.userMessageEmitted) {
           // Pi acknowledges a prompt after preflight, but an extension command can
           // start an agent turn through its fire-and-forget sendUserMessage API.
@@ -595,7 +594,10 @@ final class PiSessionService({
             _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
             return;
           }
-          hasAgentWork = turn.agentStarted || agentState.streaming || agentState.pendingMessageCount > 0;
+          hasAgentWork =
+              (turn.agentStarted && !turn.settlementObservedBeforeAcceptance) ||
+              agentState.streaming ||
+              agentState.pendingMessageCount > 0;
         }
         if (!hasAgentWork) {
           _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);

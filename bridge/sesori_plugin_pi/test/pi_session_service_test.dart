@@ -730,6 +730,12 @@ void main() {
       command: "get_state",
       data: {"isStreaming": false, "pendingMessageCount": 0},
     );
+    final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
+    process.emitResponse(
+      id: confirmedState["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
     await _waitForIdle(service: service, sessionId: "session");
     expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
     expect(
@@ -1411,7 +1417,7 @@ void main() {
     );
   });
 
-  test("agent start delayed behind the first idle snapshot preserves command transcript behavior", () async {
+  test("agent start delayed behind the first idle snapshot overrides pre-response settlement", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -1431,6 +1437,8 @@ void main() {
     );
     await _answerEntries(process);
     final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emit(frame: {"type": "agent_start"});
+    process.emit(frame: {"type": "agent_settled"});
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");
     await accepted;
 
