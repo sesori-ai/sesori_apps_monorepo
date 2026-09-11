@@ -371,19 +371,17 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       final rawBody = error.rawErrorString;
       if (error.errorCode == 409 && rawBody != null) {
         try {
-          final refusal = SessionAbortRefusal.fromJson(jsonDecodeMap(rawBody));
-          if (refusal.kind == SessionAbortRefusalKind.notPerformed) {
-            throw SessionAbortApiNotAcceptedException(refusal: refusal, innerError: error);
+          final body = jsonDecodeMap(rawBody);
+          if (body.containsKey("kind")) {
+            final refusal = SessionAbortRefusal.fromJson(body);
+            if (refusal.kind == SessionAbortRefusalKind.notPerformed) {
+              throw SessionAbortApiNotAcceptedException(refusal: refusal, innerError: error);
+            }
+            return response;
           }
+          throw SessionAbortApiRejectedException(rejection: SessionAbortRejection.fromJson(body));
         } on SessionAbortApiNotAcceptedException {
           rethrow;
-        } on Object {
-          // Existing count-based rejection may have no refusal discriminator.
-        }
-        try {
-          throw SessionAbortApiRejectedException(
-            rejection: SessionAbortRejection.fromJson(jsonDecodeMap(rawBody)),
-          );
         } on SessionAbortApiRejectedException {
           rethrow;
         } on Object catch (e, st) {

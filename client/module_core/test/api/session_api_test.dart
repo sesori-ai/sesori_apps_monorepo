@@ -548,6 +548,12 @@ void main() {
           "kind": "future",
           "reason": "residentWorkCompletionUnknown",
         }),
+        jsonEncode(const <String, Object?>{
+          "kind": "future",
+          "reason": "future",
+          "runningSubAgentCount": 1,
+          "mainAgentRunning": true,
+        }),
       ]) {
         final transportError = NonSuccessCodeError(errorCode: 409, rawErrorString: body);
         stubAbortError(transportError);
