@@ -3,6 +3,17 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("sessionPromptSettled exposes its sessionId", () {
+    final event = SseEvent(
+      data: const SesoriSseEvent.sessionPromptSettled(
+        sessionID: "session-123",
+        promptID: "prompt-1",
+      ),
+    );
+
+    expect(event.sessionId, equals("session-123"));
+  });
+
   test("sessionPromptDefaultsChanged exposes its sessionId", () {
     final event = SseEvent(
       data: const SesoriSseEvent.sessionPromptDefaultsChanged(

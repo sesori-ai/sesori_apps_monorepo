@@ -209,6 +209,23 @@ including numbered invocation aliases, while preserving user commands with the
 same name. This command is **not supported** through Pi RPC; ordinary extension,
 prompt, and skill commands remain available.
 
+## Accepted prompts without transcript output
+
+An accepted prompt must gain a bridge-queue or transcript representation, or
+end with `session.prompt-settled` so clients can remove its optimistic row.
+
+| Harness | Status and settlement source |
+|---|---|
+| Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
+| OpenCode | ✅ Reserved message identity correlates the backend user echo. |
+| Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
+| Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
+| Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |
+
+The explicit event is additive across the client/bridge wire boundary. Older
+clients ignore it and converge on refresh; newer clients retain snapshot
+reconciliation when connected to an older bridge.
+
 ## Sub-agents
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |

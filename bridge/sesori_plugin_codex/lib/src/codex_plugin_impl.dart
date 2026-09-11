@@ -1000,6 +1000,7 @@ class CodexPlugin._({
           threadId: sessionId,
           evidenceRevision: evidenceRevision,
         );
+        _eventBuffer.add(BridgeSsePromptSettled(sessionID: sessionId, promptID: promptId));
       }
       _syncWorkState();
     } on Object {

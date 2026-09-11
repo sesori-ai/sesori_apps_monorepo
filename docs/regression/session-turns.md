@@ -62,7 +62,14 @@ defaults and queued client sends coherent.
   queue-owning plugin refuses a duplicate id (already queued or within its
   bounded recently-dispatched window) as an idempotent success, so a retry of
   a send whose response was lost does not become a second turn within that
-  window.
+  window. When an accepted prompt completes without either a bridge-queue entry
+  or a transcript representation, the bridge emits the terminal
+  `session.prompt-settled` event with that prompt id. Clients remove only the
+  matching optimistic copy and resume FIFO delivery. Event-before-response and
+  response-before-event order both settle once; pre-acceptance failure emits no
+  settlement and remains retryable. The event is additive: older clients ignore
+  it and retain snapshot reconciliation, while newer clients keep that same
+  fallback with older bridges.
 - Sends to an archived session are refused in the serialized lane archiving
   uses, so a send cannot slip past a concurrent archive.
 - Work enters a short per-plugin admission lane in arrival order, then execution
@@ -92,7 +99,9 @@ defaults and queued client sends coherent.
   therefore remains visible without exposing the generated context. A plain
   follow-up is sent immediately through `turn/start`; Codex's app server starts
   a turn while idle and steers the active turn while busy, preserving the
-  client user-message id in either case. The bridge keeps the authoritative
+  client user-message id in either case. Native `compact`, which produces no
+  turn or user-message identity, settles its accepted prompt explicitly instead
+  of leaving the optimistic command visible. The bridge keeps the authoritative
   active turn until its terminal event even when an older app server returns a
   separate submission id for the steering request.
 - Codex spawn calls render as one inline subtask card in the direct parent's
@@ -237,9 +246,12 @@ defaults and queued client sends coherent.
   through startup and selection until Pi echoes its correlated user message,
   including an attachment-only echo; it can be
   cancelled before dispatch, and its undispatched prompt id remains immediately
-  retryable while cancellation settles. If a successful run omits an echo, Pi
-  maps each stored payload through the same user-message path before clearing
-  the queue. Process exit settles dispatched work before queued work reconnects.
+  retryable while cancellation settles. If a successful ordinary or
+  agent-running command turn omits an echo, Pi maps its stored payload through
+  the same user-message path before clearing the queue. A successfully accepted
+  slash command that starts no agent work instead emits prompt settlement and
+  does not invent a transcript message. Process exit settles dispatched work
+  before queued work reconnects.
   A resident Pi extension may initiate a turn after the bridge queue becomes
   idle. Its visible custom message is attributed as system automation live and
   after replay, while assistant/tool output remains agent-authored. The client
@@ -256,8 +268,10 @@ defaults and queued client sends coherent.
   running compaction card, accepts on Pi's `compaction_start`, then keeps the
   resident busy until the native RPC finishes. A rejected native compaction clears
   its running card. Commands reject while that session is busy, and a successful
-  ordinary command with no agent run crosses `get_state`
-  before returning the lane idle. A command absent from Pi's current project
+  ordinary command with no agent run crosses `get_state` before emitting prompt
+  settlement and returning the lane idle. A notification alone does not prove
+  acceptance. Post-acceptance failure, process exit, and abort also settle a
+  silent command; failure before response/dialog does not. A command absent from Pi's current project
   catalog is a stale-options rejection, allowing clients to refresh and show it
   as unavailable rather than mistaking the deterministic refusal for a
   transient queued send.
@@ -522,7 +536,7 @@ defaults and queued client sends coherent.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: representative selectable transcript content renders through the shared session-detail view, the desktop session route is present, and desktop renders the text-first composer and declared attachment/diff actions without resolving voice capture. A loaded blocked fixture shows its reason in the composer's place with the transcript still rendered, an unavailable-history fixture shows it full-screen, and neither shows pending-input banners; setup-relevant fixtures retain Harness Settings, authentication-required fixtures alone additionally show Recheck, and local queue cancellation remains available. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
-| L2 Routine | Automated core and shared UI: blocked-state calculation covers every reason; reconnect/loading retains the last decision and composer focus/draft until a new result arrives; blocked cubit coverage refuses send, stop, bridge-owned queued-prompt cancellation, question answers and permission replies without remote dispatch; an already-open response dialog closes; local cancellation remains local; loaded transcript/events survive reload overlap and metadata/content failure; restoration refreshes prerequisites before controls return. Ready dormant/degraded and existing busy queue behavior remain interactive. Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Cursor coverage proves generic Task terminal retirement, initial-terminal foreground correlation, duplicate-id ambiguity rejection, full prior-turn cleanup, cancellation/error ordering before root settlement, prompt-write user/terminal/request ordering through production composition, active-Task process-exit failure before correlation reset, and reset cleanup without a synthetic terminal event. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text. Automated Codex coverage holds root idle through a running child, releases it once, rolls child pending input into the root summary, reconciles an already-idle child abort, and proves scoped-stop preflight, named-child isolation, pending-admission fencing, pending-input cancellation, false atomic acknowledgment, and complete attempted fanout on failure. Live Codex plugin coverage exercises side-effect-free confirmation, root-only `keep`, named-child subtree isolation, root full-stop fanout, authoritative terminal evidence plus plugin status, false atomic acknowledgment, and runtime survival. Include pending-input preservation/cancellation when requests are present; plugin-only evidence does not establish client end-to-end coverage. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
+| L2 Routine | Automated core and shared UI: blocked-state calculation covers every reason; reconnect/loading retains the last decision and composer focus/draft until a new result arrives; blocked cubit coverage refuses send, stop, bridge-owned queued-prompt cancellation, question answers and permission replies without remote dispatch; an already-open response dialog closes; local cancellation remains local; loaded transcript/events survive reload overlap and metadata/content failure; restoration refreshes prerequisites before controls return. Ready dormant/degraded and existing busy queue behavior remain interactive. Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Cursor coverage proves generic Task terminal retirement, initial-terminal foreground correlation, duplicate-id ambiguity rejection, full prior-turn cleanup, cancellation/error ordering before root settlement, prompt-write user/terminal/request ordering through production composition, active-Task process-exit failure before correlation reset, and reset cleanup without a synthetic terminal event. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text, and proves notification-only command settlement, agent-running command synthesis, pre-acceptance failure, post-acceptance process exit, and abort. Automated client queue coverage proves prompt settlement before and after the send response, including resumed FIFO drain. Automated Codex coverage includes native-compaction settlement and holds root idle through a running child, releases it once, rolls child pending input into the root summary, reconciles an already-idle child abort, and proves scoped-stop preflight, named-child isolation, pending-admission fencing, pending-input cancellation, false atomic acknowledgment, and complete attempted fanout on failure. Live Codex plugin coverage exercises side-effect-free confirmation, root-only `keep`, named-child subtree isolation, root full-stop fanout, authoritative terminal evidence plus plugin status, false atomic acknowledgment, and runtime survival. Include pending-input preservation/cancellation when requests are present; plugin-only evidence does not establish client end-to-end coverage. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
 | L3 Release | Client end to end on phone: an existing chat blocked by a representative setup/runtime state keeps navigation, selection/copy and rendered history, opens shared Harness Settings, and restores controls only after a successful refresh. Every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; a stale selection refreshes, warns, and retries once without losing the queued prompt; and a removed command becomes visibly unavailable and removable without being retried or overtaken. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. Codex: exercise `confirm`, `keep`, and `stop` through the client scope dialog, including named-child scope and client fallback; plugin-only QA does not satisfy this boundary. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Client end to end on macOS desktop and iOS, plus one Android unavailable-to-usable variation against a macOS bridge: cold and live blocks, settings recovery, successful post-recovery send, archive/route-read-only precedence, a second harness remaining usable, and a block triggered from another surface while input or a response dialog is active. Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
@@ -564,8 +578,11 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
 - Controls return after a known block before management and session prerequisites refresh, require a
   route reopen after successful recovery, override archive/route read-only mode,
   or describe a content-load failure as a harness-status failure.
-- A slash command holds the client request open for the whole run, or a slow
-  plugin blocks unrelated sessions, other plugins, or relay traffic.
+- A slash command holds the client request open for the whole run, a successfully
+  accepted silent command remains as an optimistic bubble, settlement removes a
+  different prompt or fails to resume FIFO delivery, a pre-acceptance failure is
+  incorrectly settled, or a slow plugin blocks unrelated sessions, other plugins,
+  or relay traffic.
 - An accepted ACP prompt rejection returns the session to idle without a durable
   inline error containing the backend's diagnostic detail. An active ACP turn
   times out after 30 total minutes despite continuing same-session updates, or

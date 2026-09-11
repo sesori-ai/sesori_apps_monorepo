@@ -129,6 +129,14 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String sessionID,
   }) = SesoriSessionCompacted;
 
+  /// An accepted prompt completed without a queue or transcript representation.
+  @FreezedUnionValue("session.prompt-settled")
+  @Implements<SesoriSessionEvent>()
+  const factory sessionPromptSettled({
+    required String sessionID,
+    required String promptID,
+  }) = SesoriSessionPromptSettled;
+
   @FreezedUnionValue("session.prompt_defaults_changed")
   @Implements<SesoriSessionEvent>()
   const factory sessionPromptDefaultsChanged({
