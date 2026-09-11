@@ -1336,6 +1336,12 @@ void main() {
       command: "get_state",
       data: {"isStreaming": false, "pendingMessageCount": 0},
     );
+    final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
+    process.emitResponse(
+      id: confirmedState["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
     await idle;
     await _waitForIdle(service: service, sessionId: "session");
     expect(service.sessionStatuses["session"], const PluginSessionStatus.idle());
@@ -1382,6 +1388,12 @@ void main() {
       command: "get_state",
       data: {"isStreaming": false, "pendingMessageCount": 0},
     );
+    final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
+    process.emitResponse(
+      id: confirmedState["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
     await _waitForEvent<BridgeSsePromptSettled>(events: events);
     await _waitForIdle(service: service, sessionId: "session");
 
@@ -1397,6 +1409,74 @@ void main() {
       ),
       isEmpty,
     );
+  });
+
+  test("agent start delayed behind the first idle snapshot preserves command transcript behavior", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    final events = <BridgeSseEvent>[];
+    service.events.listen(events.add);
+
+    final accepted = service.sendCommand(
+      sessionId: "session",
+      promptId: "delayed-command",
+      directory: "/project",
+      command: "ask",
+      arguments: "question",
+      userVisibleArguments: "question",
+      variant: null,
+      model: null,
+    );
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    await accepted;
+
+    final firstState = await waitForCommand(process: process, type: "get_state");
+    process.emitResponse(
+      id: firstState["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
+    final confirmedState = await _waitForNthCommand(process: process, type: "get_state", count: 2);
+    process.emit(frame: {"type": "agent_start"});
+    process.emitResponse(
+      id: confirmedState["id"]! as String,
+      command: "get_state",
+      data: {"isStreaming": false, "pendingMessageCount": 0},
+    );
+    await pump();
+
+    expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
+    expect(service.sessionStatuses["session"], const PluginSessionStatus.busy());
+
+    process.emit(
+      frame: {
+        "type": "message_end",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "text", "text": "question"},
+          ],
+          "timestamp": 1,
+        },
+      },
+    );
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+
+    expect(
+      events.whereType<BridgeSseMessageUpdated>().where(
+        (event) => switch (event.info) {
+          PluginMessageUser(promptId: "delayed-command") => true,
+          _ => false,
+        },
+      ),
+      hasLength(1),
+    );
+    expect(events.whereType<BridgeSsePromptSettled>(), isEmpty);
   });
 
   test("startup no-model failure emits privacy-safe login guidance", () async {
@@ -1742,7 +1822,7 @@ void main() {
     await _waitForIdle(service: service, sessionId: "child");
   });
 
-  test("abort settles a command already accepted by an extension dialog", () async {
+  test("abort settles and deduplicates a command already accepted by an extension dialog", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
     addTearDown(fixture.dispose);
@@ -1779,6 +1859,21 @@ void main() {
 
     final settlement = events.whereType<BridgeSsePromptSettled>().single;
     expect(settlement.promptID, "accepted-before-abort");
+
+    await expectLater(
+      service.sendCommand(
+        sessionId: "session",
+        promptId: "accepted-before-abort",
+        directory: "/project",
+        command: "configure",
+        arguments: "",
+        userVisibleArguments: null,
+        variant: null,
+        model: null,
+      ),
+      completes,
+    );
+    expect(process.written.where((frame) => frame["type"] == "prompt"), hasLength(1));
   });
 
   test("abort invalidates queue, removes compaction, sends abort, and tears down process", () async {

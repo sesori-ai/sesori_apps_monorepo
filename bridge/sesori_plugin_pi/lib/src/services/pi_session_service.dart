@@ -570,14 +570,33 @@ final class PiSessionService({
         return;
       }
       if (turn.settlementObservedBeforeAcceptance || !turn.agentStarted) {
-        final agentState = await _processes.getState(connection: connection);
+        var agentState = await _processes.getState(connection: connection);
         await Future<void>.delayed(Duration.zero);
         if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
         if (turn.agentSettled) {
           _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
           return;
         }
-        final hasAgentWork = agentState.streaming || agentState.pendingMessageCount > 0;
+        if (turn.settlementObservedBeforeAcceptance && !agentState.streaming && agentState.pendingMessageCount == 0) {
+          _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
+          return;
+        }
+        var hasAgentWork = turn.agentStarted || agentState.streaming || agentState.pendingMessageCount > 0;
+        if (!hasAgentWork && !turn.userMessageEmitted) {
+          // Pi acknowledges a prompt after preflight, but an extension command can
+          // start an agent turn through its fire-and-forget sendUserMessage API.
+          // Keep the accepted turn correlated through a second ordered state
+          // barrier so a lifecycle frame delayed behind the first idle snapshot
+          // wins over silent-command settlement.
+          agentState = await _processes.getState(connection: connection);
+          await Future<void>.delayed(Duration.zero);
+          if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
+          if (turn.agentSettled) {
+            _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
+            return;
+          }
+          hasAgentWork = turn.agentStarted || agentState.streaming || agentState.pendingMessageCount > 0;
+        }
         if (!hasAgentWork) {
           _finish(sessionId: sessionId, state: state, turn: turn, failed: false, failure: null);
           return;
@@ -1060,6 +1079,7 @@ final class PiSessionService({
       ..queue.clear()
       ..status = const PluginSessionStatus.idle();
     for (final turn in cancelled) {
+      if (turn.promptDispatched) state.recordSettledPromptId(promptId: turn.promptId);
       _settleTurnPresentation(sessionId: sessionId, turn: turn, failed: true);
       if (turn is _PiCommandTurn && !turn.acceptance.isCompleted) {
         turn.acceptance.completeError(PiTurnCancelledException(sessionId: sessionId), StackTrace.current);

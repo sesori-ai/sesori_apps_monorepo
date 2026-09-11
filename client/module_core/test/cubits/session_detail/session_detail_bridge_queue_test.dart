@@ -1287,6 +1287,32 @@ void main() {
       expect(state.sendingSubmission, isNull, reason: "settled in-flight prompt is hidden immediately");
       expect(state.queuedMessages.single.text, "next");
 
+      final refreshStates = <SessionDetailLoaded>[];
+      final refreshSubscription = cubit.stream.whereType<SessionDetailLoaded>().listen(refreshStates.add);
+      sessionEvents.add(
+        const SesoriCommandExecuted(
+          name: "refresh",
+          sessionID: _sessionId,
+          arguments: "",
+          messageID: "refresh-message",
+        ),
+      );
+      await _awaitCondition(
+        () => refreshStates.any((candidate) => candidate.isRefreshing) && !refreshStates.last.isRefreshing,
+      );
+      for (final refreshState in refreshStates) {
+        expect(
+          [
+            ...refreshState.queuedMessages.map((item) => item.promptId),
+            ...refreshState.awaitingBridgeSubmissions.map((item) => item.promptId),
+            refreshState.sendingSubmission?.promptId,
+          ],
+          isNot(contains(firstPromptId)),
+          reason: "refresh emissions must retain the bridge-aware settlement projection",
+        );
+      }
+      await refreshSubscription.cancel();
+
       sends.first.complete(ApiResponse.success(null));
       await _awaitCondition(() => sends.length == 2);
       state = cubit.state as SessionDetailLoaded;

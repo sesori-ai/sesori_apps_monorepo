@@ -737,13 +737,14 @@ class SessionDetailCubit(
     // An older page still in flight describes the transcript this refresh is
     // about to replace, so it must not join the refreshed one.
     _transcriptGeneration++;
+    final queue = _queueView(bridgePrompts: current.bridgeQueuedPrompts);
     emit(
       current.copyWith(
         isRefreshing: true,
         isLoadingOlderMessages: false,
-        queuedMessages: _promptQueue.items,
-        awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-        sendingSubmission: _promptQueue.active,
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
 
@@ -932,12 +933,13 @@ class SessionDetailCubit(
   void _emitRefreshEnded() {
     final latest = state;
     if (latest is! SessionDetailLoaded) return;
+    final queue = _queueView(bridgePrompts: latest.bridgeQueuedPrompts);
     emit(
       latest.copyWith(
         isRefreshing: false,
-        queuedMessages: _promptQueue.items,
-        awaitingBridgeSubmissions: _promptQueue.awaitingBridge,
-        sendingSubmission: _promptQueue.active,
+        queuedMessages: queue.queuedMessages,
+        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+        sendingSubmission: queue.sendingSubmission,
       ),
     );
   }
