@@ -4,7 +4,7 @@ import "../../api/models/cursor_task_dto.dart";
 
 /// Pure completed-foreground Cursor Task presentation shared by live mapping
 /// and replay-local history projection.
-final class const CursorTaskProjection() {
+final class const CursorTaskMapper() {
   PluginMessagePart? completedForeground({
     required PluginMessagePartTool genericPart,
     required String prompt,

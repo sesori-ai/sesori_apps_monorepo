@@ -2,14 +2,13 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../api/models/cursor_task_dto.dart";
-import "../mappers/cursor_task_projection.dart";
+import "../mappers/cursor_task_mapper.dart";
 
-/// Replay-local Cursor Task fact index around one fully configured standard ACP
-/// collector. It owns no transport, process, file, live-tracker, or event state.
+/// Replay-local Task facts around one configured ACP collector; owns no transport, process, file, or live state.
 final class CursorTaskReplayTracker({
   required final String sessionId,
   required final AcpReplayCollector standardCollector,
-  required final CursorTaskProjection taskProjection,
+  required final CursorTaskMapper taskMapper,
 }) implements AcpSessionReplayCollector {
   final Map<String, _CursorReplayTask> _tasksByToolCallId = {};
 
@@ -17,7 +16,6 @@ final class CursorTaskReplayTracker({
   void consumeNotification({required AcpNotification notification}) {
     standardCollector.consumeNotification(notification: notification);
     if (notification.method != AcpMethods.sessionUpdate) return;
-
     if (notification.params["sessionId"] != sessionId) return;
     final updateJson = _asMap(notification.params["update"]);
     if (updateJson == null) return;
@@ -31,7 +29,6 @@ final class CursorTaskReplayTracker({
       Log.w("[cursor] malformed replay update envelope ignored", error, stackTrace);
       return;
     }
-
     final toolCallId = envelope.toolCallId;
     if (toolCallId == null || toolCallId.isEmpty) return;
     switch (envelope.sessionUpdate) {
@@ -79,13 +76,13 @@ final class CursorTaskReplayTracker({
     variant: variant,
     toolPartReplacement: ({required toolCallId, required toolPart}) {
       final task = _tasksByToolCallId[toolCallId];
-      if (task == null || !task.hasCompleted || (task.isBackground ?? true)) return null;
+      if (task == null || task.lifecycle != _Lifecycle.completed || task.mode != _Mode.foreground) return null;
       final input = task.input;
       final prompt = input.prompt;
       final description = input.description;
       final subagentType = input.subagentType;
       if (prompt == null || description == null || subagentType == null) return null;
-      return taskProjection.completedForeground(
+      return taskMapper.completedForeground(
         genericPart: toolPart,
         prompt: prompt,
         description: description,
@@ -99,7 +96,7 @@ final class CursorTaskReplayTracker({
     required CursorTaskReplayUpdateDto update,
     required Map<String, dynamic> updateJson,
   }) {
-    if (update.status == CursorTaskReplayStatus.completed) task.hasCompleted = true;
+    if (update.status == CursorTaskReplayStatus.completed) task.lifecycle = _Lifecycle.completed;
     final rawOutput = updateJson["rawOutput"];
     if (rawOutput == null) return;
     final outputJson = _asMap(rawOutput);
@@ -108,7 +105,8 @@ final class CursorTaskReplayTracker({
       return;
     }
     try {
-      task.isBackground = CursorTaskOutputDto.fromJson({"isBackground": outputJson["isBackground"]}).isBackground;
+      final output = CursorTaskOutputDto.fromJson({"isBackground": outputJson["isBackground"]});
+      task.mode = output.isBackground ? _Mode.background : _Mode.foreground;
     } on Object catch (error, stackTrace) {
       Log.w("[cursor] malformed replay Task output ignored", error, stackTrace);
     }
@@ -123,15 +121,24 @@ final class CursorTaskReplayTracker({
     }
   }
 
-  static void _logMalformedTaskFact() {
-    // Task input may contain transcript text. Do not attach parser errors.
-    Log.w("[cursor] malformed replay Task fact ignored");
-  }
+  // A complete Task fact may contain transcript text. Do not attach parser errors.
+  static void _logMalformedTaskFact() => Log.w("[cursor] malformed replay Task fact ignored");
 
   static Map<String, dynamic>? _asMap(Object? value) => value is Map ? value.cast<String, dynamic>() : null;
 }
 
+enum _Lifecycle() {
+  active,
+  completed,
+}
+
+enum _Mode() {
+  unknown,
+  foreground,
+  background,
+}
+
 final class _CursorReplayTask({required final CursorTaskReplayInputDto input}) {
-  bool hasCompleted = false;
-  bool? isBackground;
+  _Lifecycle lifecycle = _Lifecycle.active;
+  _Mode mode = _Mode.unknown;
 }

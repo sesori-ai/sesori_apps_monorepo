@@ -220,14 +220,14 @@ Cursor boundary and repository changes:
   cancelled, and failed cases remain generic. `agentId` is correlation data,
   never child identity.
 - `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/cursor_task_replay_tracker.dart`
-  adds the only renamed replay class,
+  adds the replay-local class,
   `CursorTaskReplayTracker({required String sessionId, required
-  AcpReplayCollector standardCollector, required CursorTaskProjection taskProjection})`.
+  AcpReplayCollector standardCollector, required CursorTaskMapper taskMapper})`.
   It implements `AcpSessionReplayCollector`, forwards each notification to the
   already-configured standard collector, and indexes typed Task input/output by
   replay-local `toolCallId`. At build it calls the collector's required
   `buildWithToolPartReplacement` seam with its own state-backed replacement,
-  which delegates presentation to the injected pure projection. It owns replay-
+  which delegates presentation to the shared injected pure mapper. It owns replay-
   local maps only: no ACP client, factory, file I/O, live tracker read, event-
   buffer write, or peer construction.
 - `bridge/sesori_plugin_cursor/lib/src/cursor_event_mapper.dart` keeps the
@@ -510,7 +510,7 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    residency, typed refusal, safe `rootSessionCancel`, and concurrent descendant
    fallback with mandatory settlement re-check; no replay/native QA.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
-   is open as PR #1443 with a standard ACP collector, typed `CursorTaskProjection`, tests, docs, and no native QA.
+   PR #1443 uses one configured standard ACP collector and shared injected `CursorTaskMapper`; tests pass; no native QA.
 6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
    (expected 60–140 changed lines): bounded actual-plugin evidence and final
    reconciliation only; unsupported/unexecuted boundaries remain explicit.

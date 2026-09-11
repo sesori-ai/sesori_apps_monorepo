@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
-import "package:cursor_plugin/src/repositories/mappers/cursor_task_projection.dart";
+import "package:cursor_plugin/src/repositories/mappers/cursor_task_mapper.dart";
 import "package:cursor_plugin/src/repositories/trackers/cursor_task_replay_tracker.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -16,13 +16,11 @@ void main() {
       final tracker = _tracker(standardCollector: standard);
       const foreign = AcpNotification(method: "cursor/task", params: {"toolCallId": "task-1"});
       final task = _notification(update: _toolCall());
-
       tracker
         ..consumeNotification(notification: foreign)
         ..consumeNotification(notification: task);
       expect(standard.notifications, [foreign, task]);
     });
-
     test("preserves non-Task output and safely diagnoses malformed Task output", () {
       final update = _toolCall(input: const {"_toolName": "shell"}, status: "completed")
         ..["rawOutput"] = const {"stdout": "done"};
@@ -31,7 +29,6 @@ void main() {
       final tracker = _tracker();
       final malformedTracker = _tracker();
       final stderrLines = <String>[];
-
       IOOverrides.runZoned(() {
         tracker.consumeNotification(notification: notification);
         malformedTracker
@@ -40,10 +37,11 @@ void main() {
             notification: _notification(
               update: _terminal(rawOutput: {"isBackground": "false", "transcript": "secret"}),
             ),
-          );
+          )
+          ..consumeNotification(notification: _notification(update: _toolCall()..["toolCallId"] = 42));
       }, stderr: () => CapturingStdout(lines: stderrLines));
-
       expect(stderrLines.join(), allOf(contains("malformed replay Task output"), isNot(contains("secret"))));
+      expect(stderrLines.join(), contains("malformed replay update envelope"));
       expect(
         _build(tracker: tracker),
         standard.buildWithAssistantSelection(modelId: "model", providerId: "cursor", variant: "high"),
@@ -69,7 +67,6 @@ void main() {
         ),
         _text(text: "after"),
       ];
-
       final first = _build(tracker: _load(updates: updates));
       final second = _build(tracker: _load(updates: updates));
       expect(second, first, reason: "independent loads use equivalent replay-local fields");
@@ -108,7 +105,6 @@ void main() {
       ];
       expect(_build(tracker: _load(updates: updates)).single.parts.single, isA<PluginMessagePartSubtask>());
     });
-
     test("background, incomplete, malformed, unknown, and nonterminal facts stay generic", () {
       final foreground = {"isBackground": false};
       final cases = <(String, Object, Map<String, dynamic>?)>[
@@ -126,7 +122,6 @@ void main() {
         ("failed", _input(), _terminal(status: "failed")),
         ("unknown status", _input(), _terminal(status: "future")),
       ];
-
       for (final taskCase in cases) {
         final part = _build(
           tracker: _load(
@@ -139,7 +134,6 @@ void main() {
         expect(part, isA<PluginMessagePartTool>(), reason: taskCase.$1);
       }
     });
-
     test("update-only, unmatched, foreign-session, and absent facts never synthesize tiles", () {
       final updateOnly = _load(
         updates: [
@@ -153,7 +147,6 @@ void main() {
         ],
       );
       expect(_build(tracker: updateOnly).single.parts.single, isA<PluginMessagePartTool>());
-
       final unmatched = _load(
         updates: [
           _toolCall(),
@@ -166,7 +159,6 @@ void main() {
         ],
       );
       expect(_build(tracker: unmatched).expand((message) => message.parts), everyElement(isA<PluginMessagePartTool>()));
-
       final foreign = _tracker()
         ..consumeNotification(
           notification: _notification(
@@ -191,7 +183,6 @@ Map<String, dynamic> _input({
   "description": description,
   "subagentType": subagentType,
 };
-
 Map<String, dynamic> _toolCall({Object? input, String title = "Task", String status = "pending"}) => {
   "sessionUpdate": "tool_call",
   "toolCallId": "task-1",
@@ -200,7 +191,6 @@ Map<String, dynamic> _toolCall({Object? input, String title = "Task", String sta
   "rawInput": input ?? _input(),
   if (status == "completed") "rawOutput": {"isBackground": false},
 };
-
 Map<String, dynamic> _terminal({String status = "completed", Object? rawOutput, Object? content}) => {
   "sessionUpdate": "tool_call_update",
   "toolCallId": "task-1",
@@ -208,24 +198,20 @@ Map<String, dynamic> _terminal({String status = "completed", Object? rawOutput, 
   "rawOutput": ?rawOutput,
   "content": ?content,
 };
-
 Map<String, dynamic> _text({required String text}) => {
   "sessionUpdate": "agent_message_chunk",
   "messageId": "m1",
   "content": {"type": "text", "text": text},
 };
-
 AcpNotification _notification({required Map<String, dynamic> update, String sessionId = _sessionId}) => AcpNotification(
   method: AcpMethods.sessionUpdate,
   params: {"sessionId": sessionId, "update": update},
 );
-
 CursorTaskReplayTracker _tracker({AcpReplayCollector? standardCollector}) => CursorTaskReplayTracker(
   sessionId: _sessionId,
   standardCollector: standardCollector ?? _collector(),
-  taskProjection: const CursorTaskProjection(),
+  taskMapper: const CursorTaskMapper(),
 );
-
 CursorTaskReplayTracker _load({required List<Map<String, dynamic>> updates}) {
   final tracker = _tracker();
   for (final update in updates) {
@@ -239,7 +225,6 @@ List<PluginMessageWithParts> _build({required CursorTaskReplayTracker tracker}) 
   providerId: "cursor",
   variant: "high",
 );
-
 AcpReplayCollector _collector() => AcpReplayCollector(
   sessionUpdateNormalizer: null,
   shellCommandResolver: null,
@@ -267,9 +252,7 @@ final class _RecordingReplayCollector() extends AcpReplayCollector {
         toolPartReplacement: null,
         toolPartSuppression: null,
       );
-
   final List<AcpNotification> notifications = [];
-
   @override
   void consumeNotification({required AcpNotification notification}) {
     notifications.add(notification);

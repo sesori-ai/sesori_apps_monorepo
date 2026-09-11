@@ -4,7 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/cursor_task_dto.dart";
 import "repositories/cursor_generated_image_reader.dart";
-import "repositories/mappers/cursor_task_projection.dart";
+import "repositories/mappers/cursor_task_mapper.dart";
 import "trackers/cursor_task_tracker.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
@@ -23,7 +23,7 @@ class CursorEventMapper({
   required super.childSessions,
   required final CursorGeneratedImageReader _generatedImageReader,
   required final CursorTaskTracker _taskTracker,
-  required final CursorTaskProjection _taskProjection,
+  required final CursorTaskMapper _taskMapper,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
   /// last-resort attribution for Cursor extension payloads that omit
@@ -186,7 +186,7 @@ class CursorEventMapper({
       toolCallId: request.toolCallId,
     );
     if (genericPart == null) return const [];
-    final replacement = _taskProjection.completedForeground(
+    final replacement = _taskMapper.completedForeground(
       genericPart: genericPart,
       prompt: request.prompt,
       description: request.description,

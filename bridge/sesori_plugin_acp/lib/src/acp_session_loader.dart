@@ -107,7 +107,7 @@ class AcpReplayCollector({
       case "user_message_chunk":
         _consumeUserContent(update: update, time: time);
       case "tool_call":
-        final id = update["toolCallId"] as String?;
+        final id = _asString(value: update["toolCallId"]);
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
@@ -145,7 +145,7 @@ class AcpReplayCollector({
           draft.hasExplicitStatus = draft.hasExplicitStatus || mappedStatus != null;
         }
       case "tool_call_update":
-        final id = update["toolCallId"] as String?;
+        final id = _asString(value: update["toolCallId"]);
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
@@ -676,6 +676,8 @@ class AcpReplayCollector({
     if (value is Map) return value.cast<String, dynamic>();
     return null;
   }
+
+  String? _asString({required Object? value}) => value is String ? value : null;
 
   Object? _stripUserImageUris(Object? content) {
     if (content is List) {
