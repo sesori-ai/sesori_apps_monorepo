@@ -53,16 +53,6 @@ sealed class SessionAbortResponse with _$SessionAbortResponse {
   factory fromJson(Map<String, dynamic> json) => _$SessionAbortResponseFromJson(json);
 }
 
-/// Closed class of typed abort refusals.
-@JsonEnum()
-enum SessionAbortRefusalKind() {
-  @JsonValue("notPerformed")
-  notPerformed,
-
-  @JsonValue("unknown")
-  unknownEnumValue,
-}
-
 /// Why the bridge could not safely perform an abort.
 @JsonEnum()
 enum SessionAbortRefusalReason() {
@@ -73,13 +63,24 @@ enum SessionAbortRefusalReason() {
   unknownEnumValue,
 }
 
-/// Typed 409 body when the bridge performed no abort side effect.
-@Freezed(copyWith: false, fromJson: true, toJson: true)
+SessionAbortRefusalReason _abortRefusalReasonFromJson(String value) => value == "residentWorkCompletionUnknown"
+    ? SessionAbortRefusalReason.residentWorkCompletionUnknown
+    : SessionAbortRefusalReason.unknownEnumValue;
+
+String _abortRefusalReasonToJson(SessionAbortRefusalReason value) => switch (value) {
+  SessionAbortRefusalReason.residentWorkCompletionUnknown => "residentWorkCompletionUnknown",
+  SessionAbortRefusalReason.unknownEnumValue => "unknown",
+};
+
+/// Typed 409 body. Only [SessionAbortNotPerformedRefusal] proves no abort side effect.
+@Freezed(unionKey: "kind", fallbackUnion: "unknown", copyWith: false, fromJson: true, toJson: true)
 sealed class SessionAbortRefusal with _$SessionAbortRefusal {
-  const factory({
-    @JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) required SessionAbortRefusalKind kind,
-    @JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) required SessionAbortRefusalReason reason,
-  }) = _SessionAbortRefusal;
+  const factory notPerformed({
+    @JsonKey(fromJson: _abortRefusalReasonFromJson, toJson: _abortRefusalReasonToJson)
+    required SessionAbortRefusalReason reason,
+  }) = SessionAbortNotPerformedRefusal;
+
+  const factory unknown() = SessionAbortUnknownRefusal;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionAbortRefusalFromJson(json);
 }

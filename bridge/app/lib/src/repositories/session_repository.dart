@@ -30,8 +30,7 @@ import "package:sesori_shared/sesori_shared.dart"
         PullRequestInfo,
         QueuedSessionPrompt,
         Session,
-        SessionAbortRefusal,
-        SessionAbortRefusalKind,
+        SessionAbortNotPerformedRefusal,
         SessionAbortSubAgentPolicy,
         SessionPromptDefaults,
         SessionStatus,
@@ -1013,10 +1012,7 @@ class SessionRepository({
         ),
         final PluginAbortRejectedSubAgentsRunning rejected => SessionAbortRejected(rejection: rejected.toShared()),
         PluginAbortNotPerformed(:final reason) => SessionAbortNotPerformed(
-          refusal: SessionAbortRefusal(
-            kind: SessionAbortRefusalKind.notPerformed,
-            reason: reason.toShared(),
-          ),
+          refusal: SessionAbortNotPerformedRefusal(reason: reason.toShared()),
         ),
       };
     },

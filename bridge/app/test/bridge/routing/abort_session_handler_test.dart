@@ -59,8 +59,7 @@ void main() {
         expect(response.status, 409);
         expect(
           SessionAbortRefusal.fromJson(jsonDecodeMap(response.body!)),
-          const SessionAbortRefusal(
-            kind: SessionAbortRefusalKind.notPerformed,
+          const SessionAbortNotPerformedRefusal(
             reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
           ),
         );

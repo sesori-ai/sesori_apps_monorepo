@@ -41,37 +41,26 @@ Map<String, dynamic> _$SessionAbortResponseToJson(
   _SessionAbortResponse instance,
 ) => <String, dynamic>{'subAgentsHandled': instance.subAgentsHandled};
 
-_SessionAbortRefusal _$SessionAbortRefusalFromJson(Map json) =>
-    _SessionAbortRefusal(
-      kind: $enumDecode(
-        _$SessionAbortRefusalKindEnumMap,
-        json['kind'],
-        unknownValue: SessionAbortRefusalKind.unknownEnumValue,
-      ),
-      reason: $enumDecode(
-        _$SessionAbortRefusalReasonEnumMap,
-        json['reason'],
-        unknownValue: SessionAbortRefusalReason.unknownEnumValue,
-      ),
-    );
+SessionAbortNotPerformedRefusal _$SessionAbortNotPerformedRefusalFromJson(
+  Map json,
+) => SessionAbortNotPerformedRefusal(
+  reason: _abortRefusalReasonFromJson(json['reason'] as String),
+  $type: json['kind'] as String?,
+);
 
-Map<String, dynamic> _$SessionAbortRefusalToJson(
-  _SessionAbortRefusal instance,
+Map<String, dynamic> _$SessionAbortNotPerformedRefusalToJson(
+  SessionAbortNotPerformedRefusal instance,
 ) => <String, dynamic>{
-  'kind': _$SessionAbortRefusalKindEnumMap[instance.kind]!,
-  'reason': _$SessionAbortRefusalReasonEnumMap[instance.reason]!,
+  'reason': _abortRefusalReasonToJson(instance.reason),
+  'kind': instance.$type,
 };
 
-const _$SessionAbortRefusalKindEnumMap = {
-  SessionAbortRefusalKind.notPerformed: 'notPerformed',
-  SessionAbortRefusalKind.unknownEnumValue: 'unknown',
-};
+SessionAbortUnknownRefusal _$SessionAbortUnknownRefusalFromJson(Map json) =>
+    SessionAbortUnknownRefusal($type: json['kind'] as String?);
 
-const _$SessionAbortRefusalReasonEnumMap = {
-  SessionAbortRefusalReason.residentWorkCompletionUnknown:
-      'residentWorkCompletionUnknown',
-  SessionAbortRefusalReason.unknownEnumValue: 'unknown',
-};
+Map<String, dynamic> _$SessionAbortUnknownRefusalToJson(
+  SessionAbortUnknownRefusal instance,
+) => <String, dynamic>{'kind': instance.$type};
 
 _SessionAbortRejection _$SessionAbortRejectionFromJson(Map json) =>
     _SessionAbortRejection(

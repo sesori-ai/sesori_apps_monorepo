@@ -78,7 +78,7 @@ Future<void> _stopSessionWithScope({required BuildContext context, required Sess
   }
 }
 
-Future<void> _showNotAccepted({required BuildContext context, required SessionAbortRefusal refusal}) async {
+Future<void> _showNotAccepted({required BuildContext context, required SessionAbortNotPerformedRefusal refusal}) async {
   final message = switch (refusal.reason) {
     SessionAbortRefusalReason.residentWorkCompletionUnknown =>
       context.loc.sessionDetailStopNotAcceptedBackgroundMessage,

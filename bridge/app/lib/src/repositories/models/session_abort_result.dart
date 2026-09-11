@@ -13,4 +13,6 @@ final class const SessionAborted({
 final class const SessionAbortRejected({required final SessionAbortRejection rejection}) extends SessionAbortResult;
 
 /// The plugin performed no stop because safety could not be established.
-final class const SessionAbortNotPerformed({required final SessionAbortRefusal refusal}) extends SessionAbortResult;
+final class const SessionAbortNotPerformed({
+  required final SessionAbortNotPerformedRefusal refusal,
+}) extends SessionAbortResult;

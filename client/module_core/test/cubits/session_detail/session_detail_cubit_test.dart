@@ -185,7 +185,8 @@ void main() {
         addTearDown(cubit.close);
         await awaitState(
           cubit: cubit,
-          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
+          predicate: (state) =>
+              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
           description: "initial harness state",
         );
         final before = cubit.state;

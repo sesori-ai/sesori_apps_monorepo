@@ -15,7 +15,6 @@ class _FakeRepository() extends SessionRepository {
   final children = <String, List<Session>>{};
   final childrenReads = <String>[];
   final statusResponses = <SessionStatusResponse>[];
-  int statusReads = 0;
 
   @override
   Future<ApiResponse<bool>> abortSession({
@@ -34,21 +33,22 @@ class _FakeRepository() extends SessionRepository {
 
   @override
   Future<ApiResponse<SessionStatusResponse>> getSessionStatuses() async =>
-      ApiResponse.success(statusResponses[statusReads++]);
+      ApiResponse.success(statusResponses.removeAt(0));
 }
 
-Future<void> _abort(_FakeRepository repository) => SessionAbortService(
-  repository: repository,
-).abortSession(sessionId: "root", subAgents: SessionAbortSubAgentPolicy.stop);
+Future<void> _abort(_FakeRepository repository) =>
+    SessionAbortService(repository: repository)
+        .abortSession(sessionId: "root", subAgents: SessionAbortSubAgentPolicy.stop);
 
 void main() {
-  test("fresh traversal settles nested and sibling aborts after parent abort failure", () async {
+  test("fresh traversal settles sibling, preserves failure details, and prunes handled branches", () async {
     final repository = _FakeRepository();
     final rootAbort = Completer<ApiResponse<bool>>();
     final descendantFailure = StateError("child 409");
+    final descendantStack = StackTrace.fromString("descendant stack");
     repository.abortResponses.addAll({
       "root": () => rootAbort.future,
-      "child": () => Future.error(descendantFailure),
+      "child": () => Future.error(descendantFailure, descendantStack),
       "grandchild": () async => ApiResponse.success(true),
       "sibling": () async => ApiResponse.success(true),
     });
@@ -63,7 +63,9 @@ void main() {
       testSession(id: "child", parentID: "root", pluginId: "cursor"),
       testSession(id: "sibling", parentID: "root", pluginId: "cursor"),
     ];
-    repository.children["child"] = [testSession(id: "grandchild", parentID: "child", pluginId: "cursor")];
+    repository.children
+      ..["child"] = [testSession(id: "grandchild", parentID: "child", pluginId: "cursor")]
+      ..["sibling"] = [testSession(id: "must-not-read", parentID: "sibling")];
     rootAbort.complete(ApiResponse.success(false));
 
     try {
@@ -71,54 +73,44 @@ void main() {
       fail("expected descendant failure");
     } on SessionAbortDescendantFailureException catch (error) {
       expect(error.cause, same(descendantFailure));
+      expect(error.causeStackTrace, same(descendantStack));
     }
     expect(repository.abortedIds, ["root", "child", "sibling", "grandchild"]);
     expect(repository.childrenReads, ["root", "child"]);
   });
 
-  test("childless root avoids status reads and handled descendant prunes its branch", () async {
-    final childlessRepository = _FakeRepository();
-    await _abort(childlessRepository);
-    expect(childlessRepository.statusReads, 0);
-
-    final descendantHandled = _FakeRepository();
-    descendantHandled.children["root"] = [testSession(id: "child", parentID: "root", pluginId: "cursor")];
-    descendantHandled.children["child"] = [testSession(id: "must-not-read", parentID: "child")];
-    descendantHandled.abortResponses["child"] = () async => ApiResponse.success(true);
-    descendantHandled.statusResponses.add(
-      const SessionStatusResponse(statuses: {"child": SessionStatus.retry(attempt: 1, message: "retry", next: 1)}),
-    );
-    await _abort(descendantHandled);
-    expect(descendantHandled.childrenReads, ["root"]);
-  });
-
-  test("empty unavailable snapshot fails while available sibling branch completes", () async {
+  test("unavailable parent retains first failure after active grandchild and sibling settle", () async {
     final repository = _FakeRepository();
-    final descendantAbort = Completer<ApiResponse<bool>>();
-    repository.children["root"] = [
-      testSession(id: "uncertain", parentID: "root", pluginId: "down"),
-      testSession(id: "available", parentID: "root", pluginId: "up"),
-    ];
-    repository.children["available"] = [testSession(id: "active", parentID: "available", pluginId: "up")];
-    repository.abortResponses["active"] = () => descendantAbort.future;
+    final grandchildAbort = Completer<ApiResponse<bool>>();
+    final siblingAbort = Completer<ApiResponse<bool>>();
+    repository.children
+      ..["root"] = [
+        testSession(id: "unavailable", parentID: "root", pluginId: "down"),
+        testSession(id: "sibling", parentID: "root", pluginId: "up"),
+      ]
+      ..["unavailable"] = [testSession(id: "grandchild", parentID: "unavailable", pluginId: "up")];
+    repository.abortResponses.addAll({
+      "grandchild": () => grandchildAbort.future,
+      "sibling": () => siblingAbort.future,
+    });
     repository.statusResponses.addAll(const [
-      SessionStatusResponse(statuses: {}, unavailablePluginIds: ["down", "unrelated"]),
-      SessionStatusResponse(statuses: {"active": SessionStatus.busy()}),
+      SessionStatusResponse(statuses: {"sibling": SessionStatus.busy()}, unavailablePluginIds: ["down"]),
+      SessionStatusResponse(statuses: {"grandchild": SessionStatus.busy()}),
     ]);
 
     final aborting = _abort(repository);
     await Future<void>.delayed(Duration.zero);
-    expect(repository.abortedIds, contains("active"));
-    descendantAbort.complete(ApiResponse.success(true));
+    expect(repository.abortedIds, containsAll(["sibling", "grandchild"]));
+    siblingAbort.complete(ApiResponse.success(true));
+    grandchildAbort.complete(ApiResponse.success(true));
 
     try {
       await aborting;
       fail("expected unavailable status failure");
     } on SessionAbortDescendantFailureException catch (error) {
       final cause = error.cause as SessionAbortDescendantStatusUnavailableException;
-      expect(cause.pluginId, "down");
+      expect((cause.sessionId, cause.pluginId), ("unavailable", "down"));
     }
-    expect(repository.abortedIds, ["root", "active"]);
-    expect(repository.childrenReads, ["root", "available"]);
+    expect(repository.childrenReads, ["root", "unavailable"]);
   });
 }

@@ -9,7 +9,6 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
-
 import "../helpers/test_helpers.dart";
 
 void main() {
@@ -505,12 +504,8 @@ void main() {
         ),
       );
 
-      await api.getMessages(
-        sessionId: "session-1",
-        limit: 50,
-        before: 100,
-        storedOnly: false,
-      );
+      await api.getMessages(sessionId: "session-1", limit: 50, before: 100,
+storedOnly: false,);
 
       final verification = verify(
         () => client.post<MessageWithPartsResponse>(
@@ -544,16 +539,8 @@ void main() {
       for (final body in [
         "not-json",
         jsonEncode(const <String, Object?>{"kind": "notPerformed"}),
-        jsonEncode(const <String, Object?>{
-          "kind": "future",
-          "reason": "residentWorkCompletionUnknown",
-        }),
-        jsonEncode(const <String, Object?>{
-          "kind": "future",
-          "reason": "future",
-          "runningSubAgentCount": 1,
-          "mainAgentRunning": true,
-        }),
+        jsonEncode(const {"kind": "future", "reason": "residentWorkCompletionUnknown"}),
+        jsonEncode(const {"kind": "future", "reason": "future", "runningSubAgentCount": 1, "mainAgentRunning": true}),
       ]) {
         final transportError = NonSuccessCodeError(errorCode: 409, rawErrorString: body);
         stubAbortError(transportError);

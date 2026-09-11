@@ -802,8 +802,8 @@ The architecture corrections are summarized here:
   checks unresolved background: `confirm`, `keep`, and `stop` all return the
   same `PluginAbortNotPerformed` with closed backend-neutral
   `residentWorkCompletionUnknown` reason before root/input preparation,
-  cancellation, or fanout. Bridge layers map that result to a required
-  `SessionAbortRefusal(kind: notPerformed, reason: ...)` HTTP 409 body; no
+  cancellation, or fanout. Bridge layers map that result to the concrete
+  `SessionAbortRefusal.notPerformed(reason: ...)` HTTP 409 variant; no
   successful retained-work ACK or inferred count is added. Without that observation, `confirm` and `keep` map exact
   `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning` → `SessionAbortRejection` path with

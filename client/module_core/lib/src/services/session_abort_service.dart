@@ -28,6 +28,8 @@ class SessionAbortService({required final SessionRepository _repository}) {
 
     try {
       await _abortDescendantsOf(sessionId: sessionId);
+    } on SessionAbortDescendantFailureException {
+      rethrow;
     } on Object catch (cause, stackTrace) {
       throw SessionAbortDescendantFailureException(cause: cause, causeStackTrace: stackTrace);
     }
@@ -43,28 +45,31 @@ class SessionAbortService({required final SessionRepository _repository}) {
   }
 
   Future<void> _abortDescendant({required Session session, required SessionStatusResponse snapshot}) async {
+    SessionAbortDescendantFailureException? branchFailure;
     if (snapshot.unavailablePluginIds.contains(session.pluginId)) {
-      throw SessionAbortDescendantStatusUnavailableException(sessionId: session.id, pluginId: session.pluginId);
-    }
-    final status = snapshot.statuses[session.id];
-    // ignore: no_slop_linter/prefer_specific_type, Dart permits non-Exception thrown objects
-    (Object, StackTrace)? abortFailure;
-    if (status is SessionStatusBusy || status is SessionStatusRetry) {
+      branchFailure = SessionAbortDescendantFailureException(
+        cause: SessionAbortDescendantStatusUnavailableException(sessionId: session.id, pluginId: session.pluginId),
+        causeStackTrace: StackTrace.current,
+      );
+    } else if (snapshot.statuses[session.id] case SessionStatusBusy() || SessionStatusRetry()) {
       try {
         final handled = _data(
           await _repository.abortSession(sessionId: session.id, subAgents: SessionAbortSubAgentPolicy.stop),
         );
         if (handled) return;
       } on Object catch (cause, stackTrace) {
-        abortFailure = (cause, stackTrace);
+        branchFailure = SessionAbortDescendantFailureException(cause: cause, causeStackTrace: stackTrace);
       }
     }
     try {
       await _abortDescendantsOf(sessionId: session.id);
-    } finally {
-      final failure = abortFailure;
-      if (failure != null) Error.throwWithStackTrace(failure.$1, failure.$2);
+    } on SessionAbortDescendantFailureException catch (failure) {
+      branchFailure ??= failure;
+    } on Object catch (cause, stackTrace) {
+      branchFailure ??= SessionAbortDescendantFailureException(cause: cause, causeStackTrace: stackTrace);
     }
+    final failure = branchFailure;
+    if (failure != null) Error.throwWithStackTrace(failure, failure.causeStackTrace);
   }
 
   T _data<T>(ApiResponse<T> response) => switch (response) {

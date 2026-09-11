@@ -1572,8 +1572,7 @@ void main() {
       );
       expect(
         (refusalResult as SessionAbortNotPerformed).refusal,
-        const SessionAbortRefusal(
-          kind: SessionAbortRefusalKind.notPerformed,
+        const SessionAbortNotPerformedRefusal(
           reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
         ),
       );

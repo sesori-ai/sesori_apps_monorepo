@@ -2633,6 +2633,10 @@ class SessionDetailCubit(
       return SessionAbortOutcome.rejected(rejection: error.rejection);
     } on SessionAbortNotAcceptedException catch (error) {
       return SessionAbortOutcome.notAccepted(refusal: error.refusal);
+    } on SessionAbortDescendantFailureException catch (error) {
+      _clearLocalPromptQueue();
+      loge("Failed to abort session descendants", error.cause, error.causeStackTrace);
+      return const SessionAbortOutcome.failed();
     } on Object catch (error, stackTrace) {
       // Response loss and partial bridge failures may follow a mutating stop.
       _clearLocalPromptQueue();

@@ -1525,9 +1525,7 @@ void main() {
           sessionId: _sessionId,
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(false),
-      );
+      ).thenAnswer((_) async => ApiResponse.success(true));
       final cubit = await createLoadedCubit();
       await cubit.sendMessage(text: "parked", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await Future<void>.delayed(Duration.zero);
@@ -1596,8 +1594,7 @@ void main() {
       );
       expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
 
-      const refusal = SessionAbortRefusal(
-        kind: SessionAbortRefusalKind.notPerformed,
+      const refusal = SessionAbortNotPerformedRefusal(
         reason: SessionAbortRefusalReason.unknownEnumValue,
       );
       abortCompleter.completeError(
@@ -1903,9 +1900,7 @@ void main() {
           sessionId: _sessionId,
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(false),
-      );
+      ).thenAnswer((_) async => ApiResponse.success(true));
       final sendCompleter = Completer<ApiResponse<void>>();
       when(
         () => mockSessionRepository.sendMessage(

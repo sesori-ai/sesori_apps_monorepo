@@ -272,33 +272,32 @@ Cursor boundary and repository changes:
   Cursor's pre-mutation guard returns this neutral result; no backend term enters
   shared or client layers.
 - `shared/sesori_shared/lib/src/models/sesori/abort_session_request.dart` adds
-  typed `SessionAbortRefusal` with required
-  `SessionAbortRefusalKind.notPerformed` and required backend-neutral
-  `SessionAbortRefusalReason.residentWorkCompletionUnknown`. Both closed enums
-  include `unknown` JSON fallbacks, but no `@Default`; missing discriminators do
-  not become trusted refusals. Generated serializers are regenerated from this
-  source only.
+  a `kind`-keyed `SessionAbortRefusal` union: concrete `notPerformed` requires a
+  backend-neutral `SessionAbortRefusalReason`, while the unknown/future fallback
+  carries no reason. Unknown non-null reasons on `notPerformed` map to the closed
+  enum fallback; missing or malformed variant data never becomes trusted.
+  Generated serializers are regenerated from source only.
 - `bridge/app/lib/src/repositories/models/session_abort_result.dart`,
   `bridge/app/lib/src/repositories/mappers/plugin_to_shared_mapping.dart`, and
   `bridge/app/lib/src/repositories/session_repository.dart` map the plugin result
-  exhaustively to `SessionAbortNotPerformed({required SessionAbortRefusal
+  exhaustively to `SessionAbortNotPerformed({required SessionAbortNotPerformedRefusal
   refusal})`. `SessionAbortService` treats it as failed/no completion push, and
   `AbortSessionHandler` serializes the typed refusal body with HTTP 409. No
   plugin exception or string matching carries this expected outcome.
 - `client/module_core/lib/src/api/session_api.dart` decodes abort 409 bodies as
   either the existing `SessionAbortRejection` or `SessionAbortRefusal`. Only an
   exact `kind: notPerformed` throws
-  `SessionAbortApiNotAcceptedException({required SessionAbortRefusal refusal,
+  `SessionAbortApiNotAcceptedException({required SessionAbortNotPerformedRefusal refusal,
   required Object innerError})`; malformed and unknown-kind 409s stay ordinary
   ambiguous errors. A post-cancel partial failure does not use 409.
 - New
   `client/module_core/lib/src/repositories/models/session_abort_not_accepted_exception.dart`
-  adds `SessionAbortNotAcceptedException({required SessionAbortRefusal refusal,
+  adds `SessionAbortNotAcceptedException({required SessionAbortNotPerformedRefusal refusal,
   required Object innerError})`. `SessionRepository.abortSession` translates the
   API exception at the existing API → repository boundary and retains it as
   `innerError`.
 - `client/module_core/lib/src/cubits/session_detail/session_abort_outcome.dart`
-  adds closed `SessionAbortNotAccepted({required SessionAbortRefusal refusal})`.
+  adds closed `SessionAbortNotAccepted({required SessionAbortNotPerformedRefusal refusal})`.
   This is distinct from generic `failed` and from the existing sub-agent-count
   rejection; each variant carries only its valid data.
 - `client/module_core/lib/src/cubits/session_detail/session_detail_cubit.dart`
@@ -417,7 +416,7 @@ Its first operation checks the unresolved-background observation. When present,
 all three policies return the same side-effect-free
 `PluginAbortNotPerformed(reason:
 PluginAbortRefusalReason.residentWorkCompletionUnknown)`. The bridge maps it to
-`SessionAbortRefusal(kind: SessionAbortRefusalKind.notPerformed, reason:
+`SessionAbortRefusal.notPerformed(reason:
 SessionAbortRefusalReason.residentWorkCompletionUnknown)` and an HTTP 409 before
 queued/writing work, pending interaction, root cancellation, settlement
 capture, descendant collection, or fanout. `SessionApi.abortSession` recognizes

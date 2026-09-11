@@ -86,8 +86,7 @@ void main() {
 
     test("marks typed not-performed result as failed without an aborted signal", () async {
       sessionRepository.abortResult = const SessionAbortNotPerformed(
-        refusal: SessionAbortRefusal(
-          kind: SessionAbortRefusalKind.notPerformed,
+        refusal: SessionAbortNotPerformedRefusal(
           reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
         ),
       );

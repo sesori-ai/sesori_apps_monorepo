@@ -286,21 +286,16 @@ now replaces only an exact live standard completion with explicit
 completed childless tile with stable part identity. Missing/unknown/malformed,
 unmatched, background, failed, and cancelled cases stay generic. Replay remains
 unimplemented. Standard `session/cancel` authoritatively cancels an active root
-prompt. Sesori's safe Task subset provides side-effect-free confirmation with
-the exact observed active Task count and named-root stop when no unresolved
-background observation exists. Explicit stop waits at most 20 seconds for authoritative prompt settlement,
-then re-checks unresolved background and active mode-unknown work before acceptance;
-a timeout or surviving work yields HTTP 502—root cancellation already happened—never
-aborted success. A launched background Task survives root cancel,
-so overall “`stop` cancels them all” remains **not supported**. While such an
-observation remains unresolved, `confirm`, `keep`, and `stop` return an exact
-typed HTTP 409 not-performed refusal before root/input cancellation. Client queue
-drain pauses for the request; recognized `notPerformed` retains queued prompts and
-shows restart recovery even when its reason is unknown. Missing/malformed bodies,
-unknown refusal kinds, and post-cancel failures keep ambiguous cleanup. The observation
-keeps only ACP process work state busy until
-session deletion/process reset; root `end_turn` and root UI idle remain honest
-root-turn completion, never a background completion or tile claim.
+prompt. Safe Task confirmation is side-effect-free with exact active count;
+named-root stop waits up to 20 seconds, then rechecks background and active work.
+Timeout or survivors yield HTTP 502 after cancellation, never false success. A
+background Task survives root cancel, so “`stop` cancels them all” remains **not
+supported**. While that observation is unresolved, every policy returns concrete
+HTTP 409 `notPerformed` before input or cancellation. Client drain pauses; that
+variant retains queued prompts and shows restart recovery even for unknown reasons.
+Malformed bodies, unknown variants, and post-cancel failures remain ambiguous.
+The observation keeps only ACP process work state busy until session cleanup or
+process reset; root `end_turn` and UI idle never claim background completion.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a

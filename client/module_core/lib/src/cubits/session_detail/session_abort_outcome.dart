@@ -4,7 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 sealed class const SessionAbortOutcome() {
   const factory aborted() = SessionAbortAccepted;
   const factory rejected({required SessionAbortRejection rejection}) = SessionAbortRejected;
-  const factory notAccepted({required SessionAbortRefusal refusal}) = SessionAbortNotAccepted;
+  const factory notAccepted({required SessionAbortNotPerformedRefusal refusal}) = SessionAbortNotAccepted;
   const factory failed() = SessionAbortFailed;
 }
 
@@ -15,7 +15,9 @@ final class const SessionAbortAccepted() extends SessionAbortOutcome;
 final class const SessionAbortRejected({required final SessionAbortRejection rejection}) extends SessionAbortOutcome;
 
 /// The bridge performed no stop because safe completion cannot be verified.
-final class const SessionAbortNotAccepted({required final SessionAbortRefusal refusal}) extends SessionAbortOutcome;
+final class const SessionAbortNotAccepted({
+  required final SessionAbortNotPerformedRefusal refusal,
+}) extends SessionAbortOutcome;
 
 /// The stop request failed (transport or bridge error); already logged.
 final class const SessionAbortFailed() extends SessionAbortOutcome;

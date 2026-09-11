@@ -178,22 +178,16 @@ defaults and queued client sends coherent.
   unexecuted. Phone setup reached a healthy source build and relay connection,
   but UI automation failed before any visible interaction; no phone stop or
   related client behavior is claimed.
-- Cursor supports a narrower named-root safe stop for mode-unknown Task calls.
-  With no unresolved background launch, `confirm` and `keep` reject without side
-  effects while active Tasks exist and report their exact count; `stop` cancels
-  only the named root, waits at most 20 seconds for its active prompt settlement,
-  and accepts only after rechecking unresolved background and active Task work.
-  Timeout or surviving work returns HTTP 502 because cancellation already occurred. Any prior
-  unresolved background observation makes every policy return the exact typed
-  HTTP 409 not-performed refusal before queued input, pending interaction, or
-  native cancellation. That refusal preserves locally queued prompts, resumes
-  normal drain after the request, and shows restart guidance. Recognized
-  `notPerformed` stays non-mutating when its reason is unknown; missing/malformed
-  bodies and unknown refusal kinds remain ambiguous and clear queued work. Background launches are
-  not counted as running sub-agents and never affect root/session status or
-  summaries. Cursor still cannot stop, count, or observe completion of escaped
-  background Tasks, so full scoped stop and child-session behavior remain
-  unsupported.
+- Cursor supports narrower named-root stop for mode-unknown Task calls. Without
+  unresolved background work, `confirm` and `keep` reject side-effect-free with
+  exact active count; `stop` cancels only the root, waits up to 20 seconds, then
+  rechecks background and active work. Timeout or survivors return HTTP 502 after
+  cancellation. Any unresolved background observation instead returns concrete
+  HTTP 409 `notPerformed` before input or cancellation. That variant preserves
+  queued prompts and shows restart guidance even for an unknown reason; malformed
+  bodies and unknown variants stay ambiguous and clear queued work. Background
+  launches affect neither counts nor root/session status. Cursor still cannot
+  stop, count, or observe escaped background Tasks or expose child sessions.
 - Codex supports the same side-effect-free `confirm` preflight for any named
   root or child thread. It reports the exact active descendant count, including
   pending-input-only work, plus the named thread's own running state, and offers

@@ -150,8 +150,7 @@ void main() {
     });
 
     test("a failed load keeps the cursor so the user can retry", () async {
-      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false))
-          .thenAnswer((_) async => null);
+      when(() => loadService.loadOlderMessages(sessionId: _sessionId, before: 5, storedOnly: false)).thenAnswer((_) async => null);
 
       await cubit.loadOlderMessages();
 

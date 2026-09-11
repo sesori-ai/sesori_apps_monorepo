@@ -1106,10 +1106,7 @@ class FakeSessionRepository({
       ),
       final PluginAbortRejectedSubAgentsRunning rejection => SessionAbortRejected(rejection: rejection.toShared()),
       PluginAbortNotPerformed(:final reason) => SessionAbortNotPerformed(
-        refusal: SessionAbortRefusal(
-          kind: SessionAbortRefusalKind.notPerformed,
-          reason: reason.toShared(),
-        ),
+        refusal: SessionAbortNotPerformedRefusal(reason: reason.toShared()),
       ),
     };
   }

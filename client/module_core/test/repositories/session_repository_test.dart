@@ -45,14 +45,8 @@ void main() {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
 
-    when(
-      () => api.getMessages(
-        sessionId: "session-1",
-        limit: null,
-        before: null,
-        storedOnly: false,
-      ),
-    ).thenAnswer(
+    when(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
+storedOnly: false,)).thenAnswer(
       (_) async => ApiResponse.success(
         const MessageWithPartsResponse(
           messages: <MessageWithParts>[],
@@ -117,12 +111,8 @@ void main() {
     when(
       () => api.rejectQuestion(requestId: "question-1", sessionId: "session-1"),
     ).thenAnswer((_) async => ApiResponse.success(null));
-    await repository.getMessages(
-      sessionId: "session-1",
-      limit: null,
-      before: null,
-      storedOnly: false,
-    );
+    await repository.getMessages(sessionId: "session-1", limit: null, before: null,
+storedOnly: false,);
     await repository.getPendingQuestions(sessionId: "session-1");
     await repository.getPendingPermissions(sessionId: "session-1");
     await repository.getChildren(sessionId: "session-1");
@@ -153,14 +143,8 @@ void main() {
       ],
     );
     await repository.rejectQuestion(requestId: "question-1", sessionId: "session-1");
-    verify(
-      () => api.getMessages(
-        sessionId: "session-1",
-        limit: null,
-        before: null,
-        storedOnly: false,
-      ),
-    ).called(1);
+    verify(() => api.getMessages(sessionId: "session-1", limit: null, before: null,
+storedOnly: false,)).called(1);
     verify(() => api.getPendingQuestions(sessionId: "session-1")).called(1);
     verify(() => api.getPendingPermissions(sessionId: "session-1")).called(1);
     verify(() => api.getChildren(sessionId: "session-1")).called(1);
@@ -196,8 +180,7 @@ void main() {
   test("abort translates typed not-accepted failure and retains API cause", () async {
     final api = MockSessionApi();
     final repository = SessionRepository(api: api);
-    const refusal = SessionAbortRefusal(
-      kind: SessionAbortRefusalKind.notPerformed,
+    const refusal = SessionAbortNotPerformedRefusal(
       reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
     );
     final transport = NonSuccessCodeError(errorCode: 409, rawErrorString: jsonEncode(refusal.toJson()));

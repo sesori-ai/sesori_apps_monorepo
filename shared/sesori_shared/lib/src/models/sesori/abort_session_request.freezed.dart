@@ -300,11 +300,27 @@ as bool,
 
 }
 
+SessionAbortRefusal _$SessionAbortRefusalFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['kind']) {
+                  case 'notPerformed':
+          return SessionAbortNotPerformedRefusal.fromJson(
+            json
+          );
+        
+          default:
+            return SessionAbortUnknownRefusal.fromJson(
+  json
+);
+        }
+      
+}
 
 /// @nodoc
 mixin _$SessionAbortRefusal {
 
-@JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) SessionAbortRefusalKind get kind;@JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) SessionAbortRefusalReason get reason;
+
 
   /// Serializes this SessionAbortRefusal to a JSON map.
   Map<String, dynamic> toJson();
@@ -312,21 +328,16 @@ mixin _$SessionAbortRefusal {
 
 @override
 bool operator ==(Object other) {
-  final _this = this as SessionAbortRefusal;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortRefusal&&(identical(other.kind, _this.kind) || other.kind == _this.kind)&&(identical(other.reason, _this.reason) || other.reason == _this.reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortRefusal);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode {
-  final _this = this as SessionAbortRefusal;
-  return Object.hash(runtimeType,_this.kind,_this.reason);
-}
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  final _this = this as SessionAbortRefusal;
-  return 'SessionAbortRefusal(kind: ${_this.kind}, reason: ${_this.reason})';
+    return 'SessionAbortRefusal()';
 }
 
 
@@ -339,33 +350,75 @@ String toString() {
 /// @nodoc
 @JsonSerializable()
 
-class _SessionAbortRefusal implements SessionAbortRefusal {
-  const _SessionAbortRefusal({@JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) required this.kind, @JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) required this.reason});
-  factory _SessionAbortRefusal.fromJson(Map<String, dynamic> json) => _$SessionAbortRefusalFromJson(json);
+class SessionAbortNotPerformedRefusal implements SessionAbortRefusal {
+  const SessionAbortNotPerformedRefusal({@JsonKey(fromJson: _abortRefusalReasonFromJson, toJson: _abortRefusalReasonToJson) required this.reason,  String? $type}): $type = $type ?? 'notPerformed';
+  factory SessionAbortNotPerformedRefusal.fromJson(Map<String, dynamic> json) => _$SessionAbortNotPerformedRefusalFromJson(json);
 
-@override@JsonKey(unknownEnumValue: SessionAbortRefusalKind.unknownEnumValue) final  SessionAbortRefusalKind kind;
-@override@JsonKey(unknownEnumValue: SessionAbortRefusalReason.unknownEnumValue) final  SessionAbortRefusalReason reason;
+@JsonKey(fromJson: _abortRefusalReasonFromJson, toJson: _abortRefusalReasonToJson) final  SessionAbortRefusalReason reason;
+
+@JsonKey(name: 'kind')
+final String $type;
+
 
 
 @override
 Map<String, dynamic> toJson() {
-  return _$SessionAbortRefusalToJson(this, );
+  return _$SessionAbortNotPerformedRefusalToJson(this, );
 }
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionAbortRefusal&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortNotPerformedRefusal&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,kind,reason);
+    return Object.hash(runtimeType,reason);
 }
 
 @override
 String toString() {
-    return 'SessionAbortRefusal(kind: $kind, reason: $reason)';
+    return 'SessionAbortRefusal.notPerformed(reason: $reason)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class SessionAbortUnknownRefusal implements SessionAbortRefusal {
+  const SessionAbortUnknownRefusal({ String? $type}): $type = $type ?? 'unknown';
+  factory SessionAbortUnknownRefusal.fromJson(Map<String, dynamic> json) => _$SessionAbortUnknownRefusalFromJson(json);
+
+
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionAbortUnknownRefusalToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortUnknownRefusal);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'SessionAbortRefusal.unknown()';
 }
 
 

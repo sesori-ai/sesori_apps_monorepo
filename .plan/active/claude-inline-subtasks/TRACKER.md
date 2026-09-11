@@ -276,24 +276,17 @@ post-merge E2E gates are unchanged.
   typed backend-neutral `PluginAbortNotPerformed` path before root/input
   preparation or cancel because `workKept` cannot qualify a success omitted
   from the client wire. Bridge/shared layers serialize a required
-  `SessionAbortRefusal(kind: notPerformed, reason:
-  residentWorkCompletionUnknown)` HTTP 409; no count or successful ACK is
-  invented. Client-local API/repository not-accepted exceptions trust only that
-  decoded discriminator, and a request-lifetime cubit drain gate preserves the
-  local prompt queue; the cubit exposes a typed not-accepted outcome and shared
-  UI explains the limitation/restart recovery. Recognized `notPerformed` with an
-  unknown reason stays non-mutating; missing/malformed bodies, unknown kinds,
-  accepted responses, and ambiguous failures retain existing queue cleanup. Active mode-unknown
+  `SessionAbortRefusal.notPerformed(reason: residentWorkCompletionUnknown)`
+  HTTP 409 variant. Client-local exceptions, cubit outcome, queue gate, and UI
+  trust only that variant; unknown reasons retain the queue, while unknown kinds
+  and malformed bodies remain ambiguous. Active mode-unknown
   confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
   map exact `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
   main-only false and no wire change;
-  explicit `stop` waits at most 20 seconds for authoritative prompt settlement
-  and must re-check unresolved background plus active Task count before
-  acceptance. Timeout, surviving active work, or a Task that transitions to
-  background returns an HTTP 502 partial failure—root cancellation has already
-  happened—while accepted responses require no unresolved background or active Task and
-  `workKept: false`.
+  explicit `stop` waits at most 20 seconds, then rechecks background and active
+  work. Timeout or survivors return HTTP 502 after cancellation; acceptance
+  requires both absent and `workKept: false`.
 - [x] Corrected rendering scope to completed foreground tiles only.
   Pending/in-progress are mode-unknown and remain generic; cancelled and failed
   prompts settle generic cancelled/error standard cards and retire active
@@ -528,21 +521,13 @@ post-merge E2E gates are unchanged.
   focused ACP/Cursor/runtime tests, analyzers, and diff checks passed. It added
   no completed tile, replay, stop/refusal, residency, child session, client, or
   runtime/config change.
-- **Cursor Step 3/6:** merged as PR #1441 at `bb85f48148`; completed foreground
-  live Task correlation and one-shot childless replacement include closed Task
-  lookup, prior-turn cleanup, initial-terminal support, unknown-status
-  settlement, and ACP-owned prompt-write ordering. Step 4 is regenerated from
-  merged-main commit `bb85f48148`; pre-squash `d3297ad4b9` has the same tree.
-- **Cursor Step 4/6 (local, checked; unpublished):** exact active Task count,
-  unresolved-background process residency, typed HTTP 409 refusal, named-root
-  cancellation with mandatory post-settlement re-check/HTTP 502 partial failure,
-  repository-owned concurrent descendant fallback, client queue gate, and
-  restart guidance are implemented; no replay, child session, runtime/config, native QA, or push,
-  or publication is included. No analytics event was added: this typed limit is
-  part of the existing abort action and has no product decision or reporting
-  consumer. The publication branch was regenerated from merged main and its
-  pre-reconciliation tree matched reviewed checkpoint `eae039ca27`; Step 5
-  remains blocked until Step 4 merges.
+- **Cursor Step 3/6:** PR #1441 merged at `bb85f48148`; Step 4 was regenerated
+  from that tree (matching pre-squash `d3297ad4b9`).
+- **Cursor Step 4/6 (local, checked; unpublished):** exact Task count, process
+  residency, typed refusal, bounded named-root stop, concurrent descendant
+  fallback, queue gate, and restart UI are implemented. Replay, child sessions,
+  runtime/config, native QA, push, analytics, and publication remain absent;
+  Step 5 stays blocked until merge.
 
 ## Plan Review
 

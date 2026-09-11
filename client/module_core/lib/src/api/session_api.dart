@@ -17,7 +17,7 @@ class const SessionAbortApiRejectedException({required final SessionAbortRejecti
 
 /// A typed 409 proving the bridge performed no abort side effect.
 class const SessionAbortApiNotAcceptedException({
-  required final SessionAbortRefusal refusal,
+  required final SessionAbortNotPerformedRefusal refusal,
   required final Object innerError,
 }) implements Exception;
 
@@ -374,8 +374,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
           final body = jsonDecodeMap(rawBody);
           if (body.containsKey("kind")) {
             final refusal = SessionAbortRefusal.fromJson(body);
-            if (refusal.kind == SessionAbortRefusalKind.notPerformed) {
-              throw SessionAbortApiNotAcceptedException(refusal: refusal, innerError: error);
+            if (refusal case final SessionAbortNotPerformedRefusal notPerformed) {
+              throw SessionAbortApiNotAcceptedException(refusal: notPerformed, innerError: error);
             }
             return response;
           }

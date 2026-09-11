@@ -9,6 +9,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends Mock implements SessionDetailCubit;
+
+SessionAbortOutcome _refusal(SessionAbortRefusalReason reason) =>
+    SessionAbortOutcome.notAccepted(refusal: SessionAbortNotPerformedRefusal(reason: reason));
+
 Future<void> _pumpStopButton(WidgetTester tester, _MockSessionDetailCubit cubit) async {
   final router = GoRouter(
     routes: [
@@ -46,36 +50,22 @@ void main() {
     );
     when(
       () => cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop),
-    ).thenAnswer(
-      (_) async => const SessionAbortOutcome.notAccepted(
-        refusal: SessionAbortRefusal(
-          kind: SessionAbortRefusalKind.notPerformed,
-          reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
-        ),
-      ),
-    );
+    ).thenAnswer((_) async => _refusal(SessionAbortRefusalReason.residentWorkCompletionUnknown));
 
     await _pumpStopButton(tester, cubit);
     await tester.tap(find.text("Stop main agent and 1 sub-agent"));
     await tester.pumpAndSettle();
     expect(find.text("Session not stopped"), findsOneWidget);
     expect(find.textContaining("Restart the harness, then try again."), findsOneWidget);
-  });
 
-  testWidgets("recognized not-performed refusal with unknown reason uses generic recovery", (tester) async {
-    final cubit = _MockSessionDetailCubit();
+    await tester.tap(find.text("Cancel"));
+    await tester.pumpAndSettle();
+    reset(cubit);
     when(
       () => cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm),
-    ).thenAnswer(
-      (_) async => const SessionAbortOutcome.notAccepted(
-        refusal: SessionAbortRefusal(
-          kind: SessionAbortRefusalKind.notPerformed,
-          reason: SessionAbortRefusalReason.unknownEnumValue,
-        ),
-      ),
-    );
-
-    await _pumpStopButton(tester, cubit);
+    ).thenAnswer((_) async => _refusal(SessionAbortRefusalReason.unknownEnumValue));
+    await tester.tap(find.text("stop"));
+    await tester.pumpAndSettle();
     expect(find.text("Sesori couldn’t safely stop this session. Restart the harness, then try again."), findsOneWidget);
   });
 }

@@ -16,28 +16,30 @@ void main() {
     expect(response.toJson(), {"subAgentsHandled": false});
   });
 
-  test("typed not-performed refusal requires both discriminators", () {
-    const refusal = SessionAbortRefusal(
-      kind: SessionAbortRefusalKind.notPerformed,
+  test("abort refusal keeps variant-specific fields and conservative fallback", () {
+    const refusal = SessionAbortRefusal.notPerformed(
       reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
     );
-
+    expect(refusal.toJson(), {"kind": "notPerformed", "reason": "residentWorkCompletionUnknown"});
     expect(SessionAbortRefusal.fromJson(refusal.toJson()), refusal);
+    expect(
+      SessionAbortRefusal.fromJson(const {"kind": "notPerformed", "reason": "future"}),
+      const SessionAbortRefusal.notPerformed(reason: SessionAbortRefusalReason.unknownEnumValue),
+    );
     for (final invalid in const [
       <String, Object?>{"kind": "notPerformed"},
-      <String, Object?>{"reason": "residentWorkCompletionUnknown"},
-      <String, Object?>{"kind": null, "reason": "residentWorkCompletionUnknown"},
       <String, Object?>{"kind": "notPerformed", "reason": null},
+      <String, Object?>{"kind": "notPerformed", "reason": 1},
     ]) {
       expect(() => SessionAbortRefusal.fromJson(invalid), throwsA(anything));
     }
-    expect(
-      SessionAbortRefusal.fromJson(const {"kind": "future", "reason": "future"}),
-      const SessionAbortRefusal(
-        kind: SessionAbortRefusalKind.unknownEnumValue,
-        reason: SessionAbortRefusalReason.unknownEnumValue,
-      ),
-    );
+    for (final ambiguous in const [
+      <String, Object?>{"reason": "residentWorkCompletionUnknown"},
+      <String, Object?>{"kind": null, "reason": "residentWorkCompletionUnknown"},
+      <String, Object?>{"kind": "future", "reason": "residentWorkCompletionUnknown"},
+    ]) {
+      expect(SessionAbortRefusal.fromJson(ambiguous), const SessionAbortRefusal.unknown());
+    }
   });
 
   test("current handshake round-trips explicit atomic handling", () {
