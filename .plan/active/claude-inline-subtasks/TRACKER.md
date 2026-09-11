@@ -3,20 +3,22 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `4d0d8de7e3`, containing merged Grok
-  history coverage [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427).
+- **Implementation base:** `main` at `3934f32ec9`, containing merged Grok
+  scoped stop [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
-  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–4 are merged;
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–5 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Harness follow-ups remain active.
-- **Next action:** Grok Step 5 is current on
-  `claude-inline-subtasks-grok-scoped-stop-step5` under exact title
-  `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]`.
-  PR #1427 merged Step 4 at `4d0d8de7e34ad4b19ce152a4ee4091189544cb3a`.
-  Step 5 remains unchecked until its PR merges; Step 6 actual-plugin and phone
-  coverage remains unexecuted.
+- **Next action:** Grok Step 6/7 repairs the required child-cancel application
+  envelope under exact title
+  `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]`.
+  PR #1428 merged historical Step 5 at `3934f32ec956edc9de5744883403a7595a03111c`
+  under its existing `[step 5/6]` title. Bounded actual-plugin QA passed root
+  `confirm`, partially exercised active-root `keep`, then blocked root full stop
+  when the API parsed the native application envelope as the inner DTO. Final
+  actual-plugin and phone coverage moves to Step 7/7 and remains unexecuted.
   [Policy QA](followups/codex-plugin-qa.md) verified side-effect-free
   root/named-child confirmation, root-only `keep`, named-child subtree
   isolation, root full-stop snapshot fanout, authoritative terminals plus
@@ -185,12 +187,13 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | [PR #1420](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1420) merged at `ae2a9297e3`; write-path/lifecycle coverage and docs |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) merged at `77165f784f`; per-thread snapshot fanout, non-atomic (not native subtree cancellation); automated coverage included |
 | [x] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) merged at `b945755bfe`; managed-0.153.4 actual-plugin policy QA passed; pending-input live case unexecuted |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/6) |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/6) |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/7) |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/7) |
 | [x] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) merged at `517cbb9703`; approved production, root/direct-child integration, and no-`loadSession` coverage |
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; approved collector/repository/service coverage and docs |
-| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | Current on `claude-inline-subtasks-grok-scoped-stop-step5`; implementation and focused automation complete locally, unchecked until merged |
-| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 6/6]` | Unexecuted actual-plugin/phone coverage |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428) merged at `3934f32ec9`; historical title unchanged |
+| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | Current repair after actual-plugin QA exposed required nested application result |
+| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 7/7]` | Actual-plugin rerun and phone coverage unexecuted; root confirm alone passed |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
@@ -820,3 +823,18 @@ collector, repository, service, malformed-boundary, privacy, cancellation, and
 missing-prompt coverage remain present. This records completed async call
 semantics, not unfinished preparation work. Original Step 4 stays untouched at
 `fb47206bd`.
+
+Grok scoped stop Step 5 merged as PR #1428 at `3934f32ec9`; its `[step 5/6]`
+title remains historical. Bounded actual-plugin QA on Grok 1.0.5 passed
+side-effect-free root `confirm` with two children and exact rejection fields.
+Active-root `keep` returned the same rejection and emitted no outbound cancel,
+but its scratch assertion incorrectly counted legitimate inbound progress, so
+that case remains partial. Root full stop sent root cancellation first, then two
+exact child requests; native lifecycle cancelled both children, but each request
+returned JSON-RPC `result` containing an application `{result: child outcome}`
+envelope. The API parsed that envelope as the inner DTO and threw. Step 6/7 now
+adds the required typed envelope and replaces flat synthetic fixtures; Step 7/7
+must rerun root full stop, named-child isolation, idle-child `keep`,
+`already_finished`, history, fresh-session, pending-input when surfaced, and
+phone coverage. No full-stop, plugin-settlement, fresh-session, phone, relay, or
+pending-input pass is claimed before that rerun.

@@ -14,9 +14,10 @@ metadata. With no credentials, it advertised only interactive `grok.com` authent
 The JSON fixtures preserve only that schema. Model IDs, names, descriptions, effort labels, and session IDs are
 synthetic; no account data, credentials, prompts, transcripts, source paths, or raw released response are retained.
 
-The `subagent_*.json` fixtures were captured on 2026-09-02 from the same artifact during an authenticated live
-probe of the sub-agent lifecycle (`.plan/completed/claude-inline-subtasks/followups/grok-probe.md`): the standard
-`spawn_subagent` `tool_call` with its `_meta`, the `_x.ai/session_notification` frames `subagent_spawned`,
-`subagent_progress`, and `subagent_finished` (completed and cancelled), plus the autonomous parent `turn_completed`
-under `_x.ai/session/update`. Field names, nesting, and enum values are verbatim; ids, descriptions, prompts, outputs,
-and counters are synthetic.
+The `subagent_*.json` fixtures preserve structures captured from the same artifact during authenticated live probes
+recorded in `.plan/active/claude-inline-subtasks/followups/grok-probe.md`. The 2026-09-02 lifecycle probe recorded the
+standard `spawn_subagent` `tool_call` with its `_meta`, the
+`_x.ai/session_notification` frames `subagent_spawned`, `subagent_progress`, and `subagent_finished` (completed and
+cancelled), plus the autonomous parent `turn_completed` under `_x.ai/session/update`. The 2026-09-10 scoped-stop QA
+recorded the child-cancel application envelope returned inside the outer JSON-RPC result. Field names, nesting, and
+enum values are verbatim; ids, descriptions, prompts, outputs, and counters are synthetic.

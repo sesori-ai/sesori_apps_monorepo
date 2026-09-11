@@ -160,9 +160,18 @@ defaults and queued client sends coherent.
   prove atomic subtree completion across separate HTTP/SSE channels. Grok also
   reports false atomic authority: current clients receive root-first native
   cancellation plus exact per-child snapshot fanout, then retain their fallback.
-  `cancelled` and `already_finished` ACKs mean work was not retained, but only
-  native `subagent_finished` and turn completion settle lifecycle state. Named
-  child stop excludes its root and siblings.
+  After generic JSON-RPC unwrapping, each Grok child-cancel ACK must contain the
+  native application `{result: {subagentId, cancelled, outcome}}` envelope.
+  Missing, non-object, malformed, or synthetic flat responses fail at the typed
+  API boundary; identity and outcome validation remain in the control
+  repository. `cancelled` and `already_finished` ACKs mean work was not
+  retained, but only native `subagent_finished` and turn completion settle
+  lifecycle state. Named child stop excludes its root and siblings. Bounded
+  Grok 1.0.5 actual-plugin QA passed side-effect-free root `confirm`, partially
+  exercised active-root `keep`, and then blocked root full stop on the now-fixed
+  envelope parser. Full-stop settlement, named/idle-child isolation,
+  `already_finished`, fresh-session, history, pending-input, phone, and relay
+  coverage remain unproven until the corrected QA rerun.
 - Codex supports the same side-effect-free `confirm` preflight for any named
   root or child thread. It reports the exact active descendant count, including
   pending-input-only work, plus the named thread's own running state, and offers
@@ -500,6 +509,9 @@ advertised command, tool use, a selected-option change, a queued follow-up
 cancellation, abort, and two independent sessions. For Grok, include text,
 reasoning and tool updates, default and changed model/effort, stale selection,
 provider failure, early and late abort, busy stop-and-send, and two sessions.
+For Grok scoped stop, inspect outbound frames separately from inbound native
+progress, exercise both cancel outcomes through the nested application envelope,
+and require authoritative lifecycle plus plugin settlement before claiming pass.
 
 ## Failure Signals
 
@@ -614,7 +626,9 @@ provider failure, early and late abort, busy stop-and-send, and two sessions.
   model/variant or output between live and replay, or reconnects without clearing connection state.
 - A Grok turn dispatches before exact model/effort selection settles, accepts a
   stale tuple, overlaps same-session prompts, serializes unrelated sessions, or
-  loses text, reasoning, tool, status, or terminal failure output. A child lets
+  loses text, reasoning, tool, status, or terminal failure output. Child-cancel
+  parsing skips the required application `result`, accepts a flat synthetic
+  response, loses requested-child identity, or bypasses outcome validation. A child lets
   its root report idle while still running, finishes after the derived root idle,
   fails to invalidate the project summary, drops root busy state between a waking
   child's finish and its autonomous completion, dispatches a user prompt before

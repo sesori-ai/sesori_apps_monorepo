@@ -32,7 +32,15 @@ sealed class GrokSubagentCancelOutcomeDto with _$GrokSubagentCancelOutcomeDto {
   factory fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelOutcomeDtoFromJson(json);
 }
 
-/// Typed response from Grok's sub-agent cancellation extension.
+/// Application envelope returned inside the JSON-RPC result for child cancellation.
+@Freezed(fromJson: true, toJson: false)
+sealed class GrokSubagentCancelResponseEnvelopeDto with _$GrokSubagentCancelResponseEnvelopeDto {
+  const factory({required GrokSubagentCancelResponseDto result}) = _GrokSubagentCancelResponseEnvelopeDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelResponseEnvelopeDtoFromJson(json);
+}
+
+/// Typed result inside Grok's sub-agent cancellation application envelope.
 @Freezed(fromJson: true, toJson: false)
 sealed class GrokSubagentCancelResponseDto with _$GrokSubagentCancelResponseDto {
   const factory({

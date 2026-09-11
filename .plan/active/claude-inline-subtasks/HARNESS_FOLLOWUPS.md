@@ -6,10 +6,11 @@
   `.plan/active` until the four coverage PRs, Codex, Grok Build, DeepSeek,
   and Cursor, merge, then moved back)
 - **Plan date:** 2026-09-02
-- **Base:** `main` at merged Grok history coverage `4d0d8de7e3` (#1427).
+- **Base:** `main` at merged Grok scoped stop `3934f32ec9` (#1428).
 - **Delivery:** one open PR at a time, following current repository rules.
-  Grok Step 5 scoped-stop implementation is current; Step 6 actual-plugin and
-  phone coverage remains unexecuted. Codex has nine steps: merged metadata, child-session, historical prompt
+  Grok Step 6/7 child-cancel envelope repair is current after bounded
+  actual-plugin QA blocked root full stop; final actual-plugin and phone coverage
+  moves to Step 7/7 and remains unexecuted. Codex has nine steps: merged metadata, child-session, historical prompt
   preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
   step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
   stop 8/9, and coverage 9/9. Step 8 merged as PR #1421 at `77165f784f`;
@@ -368,8 +369,11 @@ confirmation, no child session or partial stop) and gets that subset.
   catalog recovery. It never reads credential or configuration files.
 - Scoped stop uses ACP-owned policy and immutable snapshot fanout. Exact child
   cancellation stays behind Grok API → control repository → session service →
-  plugin layers; native ACKs never settle lifecycle. History uses inherited ACP
-  `session/load` plus extension-aware root projection without a second transport.
+  plugin layers. After ACP transport unwraps JSON-RPC, the Grok API requires the
+  native application `{result: child outcome}` envelope and returns its existing
+  inner DTO; the repository's identity/outcome policy is unchanged. Native ACKs
+  never settle lifecycle. History uses inherited ACP `session/load` plus
+  extension-aware root projection without a second transport.
 
 ### Design
 
@@ -441,12 +445,13 @@ confirmation, no child session or partial stop) and gets that subset.
 
 | Emoji | Description | Scope |
 |---|---|---|
-| ⚙️ | `grok: parse sub-agent lifecycle notifications` | Historical original title unchanged (now step 1/6); DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker`, exact metadata-based generic spawn suppression, and lifecycle cleanup |
-| ⚙️ | `acp: child sessions keep the root busy` | Historical original title unchanged (now step 2/6); typed tracker-change stream and owned subscription teardown, persisted children, and Layer-3 catalog/live merging |
+| ⚙️ | `grok: parse sub-agent lifecycle notifications` | Historical original title unchanged (now step 1/7); DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker`, exact metadata-based generic spawn suppression, and lifecycle cleanup |
+| ⚙️ | `acp: child sessions keep the root busy` | Historical original title unchanged (now step 2/7); typed tracker-change stream and owned subscription teardown, persisted children, and Layer-3 catalog/live merging |
 | 🚧 | `grok: child session history [step 3/6]` | full root/child replay production, generated DTOs, essential ACP and Grok integration/regression coverage, and supported-behavior docs |
 | 🌿 | `grok: cover child session history [step 4/6]` | PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
-| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | Current implementation: ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, typed layered Grok child cancellation, and automated isolation/failure coverage |
-| 🌱 | `docs: record Grok Build sub-agent coverage [step 6/6]` | Unexecuted: actual-plugin, phone, and any surfaced live pending-permission coverage plus final reconciliation |
+| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged; ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
+| 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | Current repair: required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
+| 🌱 | `docs: record Grok Build sub-agent coverage [step 7/7]` | Unexecuted: corrected actual-plugin rerun, phone, and any surfaced live pending-permission coverage plus final reconciliation |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 
@@ -472,8 +477,19 @@ confirmation, no child session or partial stop) and gets that subset.
 - A root `session/cancel` cancels foreground and background children alike
   (`subagent_finished {status: cancelled}`), so every Grok child is recorded
   as foreground and `mainAgentOnlySupported` is false. `_x.ai/subagent/cancel`
-  with `{subagentId}` cancels one child without touching siblings or the root turn
-  and returns `{subagentId, cancelled, outcome: cancelled | already_finished}`.
+  with `{subagentId}` cancels one child without touching siblings or the root
+  turn. Its JSON-RPC response is structurally `result -> result ->
+  {subagentId, cancelled, outcome}`: after generic transport unwraps the outer
+  result, Grok's application envelope still contains required `result`.
+- Bounded actual-plugin QA after PR #1428 passed side-effect-free root `confirm`
+  with two live children. Active-root `keep` returned the same typed rejection
+  and emitted no outbound cancellation, but remains partial because its scratch
+  assertion counted legitimate inbound progress. Root full stop dispatched root
+  cancellation before two exact child requests and received authoritative
+  cancelled lifecycle for both, then failed while parsing their application
+  envelopes. No full-stop result, plugin settlement, fresh-session, named-child,
+  idle-child, `already_finished`, pending-input, history, phone, or relay pass is
+  claimed before Step 7/7 reruns them.
 
 ### Open questions (resolved by the probe)
 

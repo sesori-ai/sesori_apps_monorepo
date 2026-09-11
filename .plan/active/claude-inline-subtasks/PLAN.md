@@ -25,8 +25,10 @@
   5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9
   (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 merged as #1420,
   and scoped stop 8/9 merged as #1421 at `77165f784f`. Final coverage 9/9
-  records a passed bounded actual-plugin policy scope and a partial live matrix;
-  it stays unchecked until its documentation PR merges. Historical merged PR
+  records a passed bounded actual-plugin policy scope and a partial live matrix.
+  Grok scoped stop merged as PR #1428 at `3934f32ec9`; bounded actual-plugin QA
+  then exposed its nested child-cancel response envelope, so Grok now has seven
+  steps: envelope repair is 6/7 and final coverage is 7/7. Historical merged PR
   titles remain unchanged. Overall harness plan remains active for remaining
   harness gates.
 
