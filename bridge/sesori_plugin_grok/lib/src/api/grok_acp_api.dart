@@ -4,14 +4,16 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../grok_binary.dart";
+import "models/grok_protocol_dto.dart";
 
-/// Grok's initialize-only catalog probe and legacy model-selection RPC.
+/// Grok's ACP extensions, initialize-only catalog probe, and model selection.
 class GrokAcpApi({
   required final String _binaryPath,
   required final AcpProcessFactory _processFactory,
   required final Map<String, String> _environment,
 }) {
   static const String sessionSetModelMethod = "session/set_model";
+  static const String subagentCancelMethod = "_x.ai/subagent/cancel";
   static const Set<String> headlessAuthMethodIds = {"xai.api_key", "cached_token"};
 
   Future<AcpInitializeResult> probeCatalog({
@@ -73,6 +75,32 @@ class GrokAcpApi({
     },
     timeout: timeout,
   );
+
+  Future<GrokSubagentCancelResponseDto> cancelSubagent({
+    required AcpStdioClient client,
+    required String subagentId,
+  }) async {
+    if (subagentId.trim().isEmpty) {
+      throw const FormatException("Grok sub-agent cancellation requires a nonblank subagentId");
+    }
+    final request = GrokSubagentCancelRequestDto(subagentId: subagentId);
+    final raw = await client.request(
+      method: subagentCancelMethod,
+      params: request.toJson(),
+      timeout: AcpAgentApi.defaultRequestTimeout,
+    );
+    if (raw is! Map || !raw.keys.every((key) => key is String)) {
+      throw const FormatException("Grok sub-agent cancellation returned a non-object response");
+    }
+    // ignore: no_slop_linter/prefer_specific_type, generated DTO accepts JSON maps
+    final response = GrokSubagentCancelResponseDto.fromJson(raw.cast<String, dynamic>());
+    if (response.subagentId != subagentId) {
+      throw FormatException(
+        "Grok sub-agent cancellation returned id ${response.subagentId} for requested child $subagentId",
+      );
+    }
+    return response;
+  }
 
   Future<AcpInitializeResult> _initialize({
     required AcpStdioClient client,

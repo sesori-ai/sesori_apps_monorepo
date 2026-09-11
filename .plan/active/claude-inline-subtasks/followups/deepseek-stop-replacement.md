@@ -29,8 +29,8 @@ Native input flows through `AcpStdioClient.serverRequests -> AcpPlugin._handleAg
 DeepSeekApprovalRegistry -> DeepSeekAcpApi` parsing and the existing pending-input owner. The same prompt-write buffer
 orders old input, cancellation, and later input, including reused question IDs.
 This makes the 0.1.4 pin safe independently.
-`deepseek/session/stop` is outbound, not unsolicited: this slice has no production caller for it. Current
-`supportsScopedStop`/direct-parent cancellation, bridge/public contracts, and clients remain unchanged.
+`deepseek/session/stop` is outbound, not unsolicited: this slice has no production caller for it. Current per-child
+snapshot capability/direct-parent cancellation, bridge/public contracts, and clients remain unchanged.
 
 ## Step 5/5 — one complete ACP-owned stop
 

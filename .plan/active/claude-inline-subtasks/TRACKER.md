@@ -3,20 +3,20 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `517cbb9703`, containing merged Grok
-  history [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426).
+- **Implementation base:** `main` at `4d0d8de7e3`, containing merged Grok
+  history coverage [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
-  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–3 are merged;
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–4 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Harness follow-ups remain active.
-- **Next action:** [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427)
-  is current on `claude-inline-subtasks-grok-history-coverage-step4-current`
-  under exact title
-  `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]`.
-  PR #1426 merged Step 3 at `517cbb9703025633efbb2658136d8aa0879daa75`;
-  Step 4 remains unchecked until PR #1427 merges.
+- **Next action:** Grok Step 5 is current on
+  `claude-inline-subtasks-grok-scoped-stop-step5` under exact title
+  `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]`.
+  PR #1427 merged Step 4 at `4d0d8de7e34ad4b19ce152a4ee4091189544cb3a`.
+  Step 5 remains unchecked until its PR merges; Step 6 actual-plugin and phone
+  coverage remains unexecuted.
   [Policy QA](followups/codex-plugin-qa.md) verified side-effect-free
   root/named-child confirmation, root-only `keep`, named-child subtree
   isolation, root full-stop snapshot fanout, authoritative terminals plus
@@ -188,9 +188,9 @@ post-merge E2E gates are unchanged.
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/6) |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/6) |
 | [x] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) merged at `517cbb9703`; approved production, root/direct-child integration, and no-`loadSession` coverage |
-| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | Integrated on `claude-inline-subtasks-grok-history-coverage-step4-current`; original `fb47206bd` tests/docs plus moved ACP collector and Grok repository coverage use the approved Collector/async API; remains unchecked until merged |
-| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | Not started |
-| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 6/6]` | Not started |
+| [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; approved collector/repository/service coverage and docs |
+| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | Current on `claude-inline-subtasks-grok-scoped-stop-step5`; implementation and focused automation complete locally, unchecked until merged |
+| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage [step 6/6]` | Unexecuted actual-plugin/phone coverage |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |

@@ -6,6 +6,52 @@ part of 'grok_protocol_dto.dart';
 // JsonSerializableGenerator
 // **************************************************************************
 
+_GrokSubagentCancelRequestDto _$GrokSubagentCancelRequestDtoFromJson(
+  Map json,
+) => _GrokSubagentCancelRequestDto(subagentId: json['subagentId'] as String);
+
+Map<String, dynamic> _$GrokSubagentCancelRequestDtoToJson(
+  _GrokSubagentCancelRequestDto instance,
+) => <String, dynamic>{'subagentId': instance.subagentId};
+
+_GrokSubagentCancelOutcomeDto _$GrokSubagentCancelOutcomeDtoFromJson(
+  Map json,
+) => _GrokSubagentCancelOutcomeDto(
+  kind: $enumDecode(
+    _$GrokSubagentCancelOutcomeKindEnumMap,
+    json['kind'],
+    unknownValue: GrokSubagentCancelOutcomeKind.unknown,
+  ),
+  status: $enumDecodeNullable(
+    _$GrokSubagentStatusEnumMap,
+    json['status'],
+    unknownValue: GrokSubagentStatus.unknown,
+  ),
+);
+
+const _$GrokSubagentCancelOutcomeKindEnumMap = {
+  GrokSubagentCancelOutcomeKind.cancelled: 'cancelled',
+  GrokSubagentCancelOutcomeKind.alreadyFinished: 'already_finished',
+  GrokSubagentCancelOutcomeKind.unknown: 'unknown',
+};
+
+const _$GrokSubagentStatusEnumMap = {
+  GrokSubagentStatus.completed: 'completed',
+  GrokSubagentStatus.failed: 'failed',
+  GrokSubagentStatus.cancelled: 'cancelled',
+  GrokSubagentStatus.unknown: 'unknown',
+};
+
+_GrokSubagentCancelResponseDto _$GrokSubagentCancelResponseDtoFromJson(
+  Map json,
+) => _GrokSubagentCancelResponseDto(
+  subagentId: json['subagentId'] as String,
+  cancelled: json['cancelled'] as bool,
+  outcome: GrokSubagentCancelOutcomeDto.fromJson(
+    Map<String, dynamic>.from(json['outcome'] as Map),
+  ),
+);
+
 _GrokReasoningEffortOptionDto _$GrokReasoningEffortOptionDtoFromJson(
   Map json,
 ) => _GrokReasoningEffortOptionDto(
