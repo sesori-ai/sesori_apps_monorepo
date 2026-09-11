@@ -18,11 +18,12 @@
   `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]`,
   then regenerate completed-tile Step 2/5 from this revision. No Cursor feature
   implementation has landed. Preserved code refs `c5c0def` and `ab03528` are
-  not publication candidates and must not be mutated or deleted.
+  stale, unpublishable historical evidence and must not be mutated or deleted.
   The 2026-09-11 native probe used current managed target
   `2026.08.11-e8db854`, not the old plan's installed PATH build. Foreground
-  Task correlation, cancellation authority, post-turn background survival,
-  repeated `session/load` facts, and the corrected exact ownership/stop policy
+  Task correlation, mode-unknown pre-terminal state, cancellation authority,
+  post-turn background survival, repeated `session/load` facts, and the
+  corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
   #1431. Overall plan remains **ACTIVE** for Cursor delivery/coverage and the
   Grok phone gate blocked by WebDriverAgent 0.0.23 before any visible case; no
@@ -203,8 +204,8 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Current documentation PR; privacy-safe evidence and exact ownership/policy plan, with no feature implementation |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Regenerate after step 1 merge; approximately 1,550–1,700 lines for DTO/codegen, generic pending/in-progress/cancelled cards, completed terminal replacement, focused tests, and tools/session-turn docs |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: foreground-only scoped Task stop [step 3/5]` | Regenerate after Step 2; approximately 500–700 lines for exact foreground count, unresolved-background process residency/all-policy failure, root-only stop, tests, and stop/lifecycle/capability docs |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Regenerate after step 1 merge; approximately 1,550–1,750 lines for DTO/codegen, generic mode-unknown pending/in-progress plus cancelled/error cards, completed terminal replacement, focused tests, and tools/session-turn docs |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Regenerate after Step 2; approximately 550–750 lines for exact active mode-unknown Task count, unresolved-background process residency/all-policy first guard, named-root stop with post-settlement re-check, tests, and stop/lifecycle/capability docs |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 4/5]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared mapper, stable completed projection, fallbacks, tests, and history doc |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
@@ -225,8 +226,9 @@ post-merge E2E gates are unchanged.
 - [x] Background launch: standard completion had `isBackground: true`; later
   permission activity proved work continued after root end. Active root cancel
   returned `cancelled`, but background requests continued 5–21 seconds later,
-  so full background stop is not supported and `workKept` cannot be constant
-  false.
+  so full background stop is not supported. No accepted response may report
+  `workKept: false` while that observation remains, and the client wire cannot
+  carry `workKept: true` as a qualifier.
 - [x] Replay: `session/load` emitted full standard Task input and terminal facts,
   no `cursor/task`; replay-local id was stable across two loads but differed
   from live. Cancelled Task replay was absent. No child session/transcript.
@@ -241,12 +243,21 @@ post-merge E2E gates are unchanged.
   one root cancel, existing prompt settlement, no child id/fanout;
   DeepSeek/Grok behavior unchanged.
 - [x] Named every new source file, constructor, required named field, and
-  `CursorPlugin.factory` composition owner. New replay role is
+  `CursorPlugin.factory` composition owner. Pre-terminal phase/count names are
+  `activeModeUnknown` and `activeTaskCount`; foreground is asserted only after
+  terminal `isBackground: false`. New replay role is
   `CursorTaskReplayTracker` under the Cursor repository tracker layer; it
   receives a configured ACP collector and the shared injected pure mapper.
-- [x] Routed standard Task updates, re-injected `cursor/task`, and neutral
-  prompt results through existing `CursorEventMapper` plus
-  `AcpChildSessionTracker`; abort policy has no presentation mutation.
+- [x] Routed standard Task updates, re-injected `cursor/task`, parsed prompt
+  results, and prompt lifecycle failures through existing `CursorEventMapper`
+  plus `AcpChildSessionTracker`; abort policy has no presentation mutation. The
+  new neutral mapper hook is `mapPromptLifecycleFailure({required String
+  sessionId, required String failureMessage})`, distinct from
+  `AcpPlugin.mapPromptFailure`, and
+  runs in the existing catch path after `mapPromptError` but before
+  `_finishTurn`; Cursor maps every active mode-unknown generic Task to error and
+  retires its record. Parsed cancellation maps those records to cancelled and
+  retires them. Other ACP mappers return no events.
 - [x] Replaced turn-bounded background retention with one root-level unresolved
   observation lasting until authoritative terminal/session or process teardown.
   Backend-neutral `requiresProcessResidency` feeds only ACP
@@ -257,31 +268,54 @@ post-merge E2E gates are unchanged.
   `workKept`, `AbortSessionHandler` omits it, and `SessionDetailCubit.abort`
   treats every 2xx as aborted. While unresolved background exists, all
   `confirm`/`keep`/`stop` requests now fail through one side-effect-free
-  `PluginOperationException`/HTTP path before root/input preparation or cancel;
-  no count, shared wire, or successful ACK is invented. Foreground-only
-  confirmation/count and root-only stop remain planned.
+  `PluginOperationException`/HTTP path before root/input preparation or cancel
+  because `workKept` cannot qualify a success omitted from the client wire. No
+  count, shared wire, or successful ACK is invented. Active mode-unknown
+  confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
+  reject side-effect-free with exact `activeTaskCount` and main-only false;
+  explicit `stop` awaits authoritative prompt settlement and must re-check
+  unresolved background before acceptance. A Task that transitions to
+  background returns the same failure after root cancellation may already have
+  happened; accepted responses require no unresolved background and
+  `workKept: false`.
 - [x] Corrected rendering scope to completed foreground tiles only.
-  Pending/in-progress remain generic, cancelled remains a generic cancelled
-  standard card, and only complete correlated terminal facts create a completed
-  childless tile. Native root `end_turn` remains honest root idle, not
+  Pending/in-progress are mode-unknown and remain generic; cancelled and failed
+  prompts settle generic cancelled/error standard cards and retire active
+  records. Only complete correlated terminal `isBackground: false` facts create
+  a completed childless tile. Missing nullable `subagentType.custom` stays null
+  and incomplete/generic; `unknownEnumValue` applies only to unrecognized
+  non-null enum strings, with no default or converter. Native root `end_turn`
+  remains honest root idle, not
   background completion; no background completion notification/tile is claimed.
 - [x] Assigned behavior docs to their implementation slices: Step 2 tools/live
   turns, Step 3 stop/lifecycle/capability, Step 4 replay/history. Step 5 owns
   actual-plugin evidence and final reconciliation only.
 - [x] Kept Cursor vocabulary/DTO parsing in Cursor and unobservable background
   lifecycle/full stop/history/child sessions unsupported with the generic card.
-  Added no lock, timer, poller, controller, recovery path, shared wire, or
-  client contract.
+  Task terminal frames preceding a prompt result are assumed mapped before
+  active settlement completes; no quiet timer, poller, speculative `end_turn`
+  missing-terminal machinery, lock, controller, recovery path, shared wire, or
+  client contract was added.
 - The earlier architecture correction is superseded on process residency,
   successful retained-work ACKs, tile lifecycle claims, and documentation
   timing by the verified bridge transport/client path and native presentation
   facts above. Its other ownership/layering decisions remain current. Preserved
-  code refs `c5c0def` and `ab03528` are historical evidence only, not
-  publication candidates; regenerate successors from the revised plan without
+  code refs `c5c0def` and `ab03528` are preserved stale, unpublishable
+  historical evidence; regenerate successors from the revised plan without
   mutating or deleting those refs.
 - Architecture review verdict was rejected with six findings. All six valid
   findings were applied directly to this plan; the corrected version was not
   re-reviewed and does not claim approval.
+- PR #1435 review at `ec0553d97d` produced three later Codex findings, all
+  applied directly: pre-terminal Task mode is unknown and explicit stop now
+  re-checks unresolved background after authoritative settlement; missing
+  nullable enum keys remain null/incomplete rather than falsely becoming
+  `unknown`; and the current prompt-error catch path gains the distinct neutral
+  mapper lifecycle hook before `_finishTurn`, retiring every active generic Task
+  as error. Cubic independently duplicated the stop-race finding. Its separate
+  `workKept` wording comment is also applied: no sentence suggests relying on a
+  field omitted from the client wire. Per user direction after two architecture
+  passes, there is no further architecture-review loop.
 
 ## Step 1 Checklist
 

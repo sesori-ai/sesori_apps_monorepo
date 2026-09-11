@@ -92,16 +92,17 @@ Consequences:
   `AbortSessionHandler` serializes only `subAgentsHandled`; the client maps every
   successful 2xx abort response to `SessionAbortOutcome.aborted`. Cursor must
   therefore never acknowledge `confirm`, `keep`, or `stop` while an unresolved
-  background observation exists and rely on `workKept` to qualify that success.
+  background observation exists because `workKept` cannot qualify a success omitted
+  from the client wire.
 - Every policy fails through one explicit existing plugin/HTTP error path before
   root/input preparation or cancellation. No count, successful ACK, or shared
   wire field is invented for work whose current running count is unknowable.
 - Background Task lifecycle cannot render completion merely because its launch
   call completed. Until Cursor exposes a terminal fact, background Tasks keep
   the honest generic Task card and remain a declared capability gap.
-- Supported foreground-only confirmation reports the exact tracked count,
-  `mainAgentOnlySupported: false`, and no `keep` action. There is no per-task
-  cancel request.
+- Supported confirmation for active mode-unknown Tasks reports the exact
+  observed Task count, `mainAgentOnlySupported: false`, and no `keep` action.
+  There is no per-task cancel request.
 
 ### `session/load`
 
@@ -147,39 +148,58 @@ ACP changes stay backend-neutral:
 
 - `bridge/sesori_plugin_acp/lib/src/repositories/trackers/acp_child_session_tracker.dart`
   extends the existing composition-owned `AcpChildSessionTracker`; no second
-  live tracker is added. It gains tile-only foreground records keyed by
+  live tracker is added. It gains tile-only Task records keyed by
   `(rootSessionId, toolCallId)` plus one session-level unresolved-background
   observation. Existing session-backed `_Child` records remain the only state
   carrying child ids, emitting child session/status events, contributing to
   child fanout, or keeping a root/session UI busy. The tracker exposes the
   backend-neutral aggregate `requiresProcessResidency` separately for ACP
   process work-state derivation.
-- New private `_AcpTileTask({required genericPart, required phase})` lives in
-  that tracker file; the enclosing nested maps own the root-session and
-  tool-call keys. Closed `AcpTileTaskPhase` values are `activeInvocation` and
-  `foregroundInvocationCompleted`; neither phase has a child-session field.
-  Backend-neutral tracker methods record a generic `PluginMessagePartTool`,
-  mark foreground completion, convert a launch into the root-level unresolved
-  background observation, expose the exact active-foreground count, return the
-  matching completed record for replacement, and return active generic parts
-  for cancellation settlement. Their parameters are all required and named.
+- New private `_AcpTileTask({required var PluginMessagePartTool genericPart,
+  required var AcpTileTaskPhase phase})` lives in that tracker file; the
+  enclosing nested maps own the root-session and
+  tool-call keys. Closed `AcpTileTaskPhase` values are `activeModeUnknown` and
+  `foregroundCompleted`; neither phase has a child-session field. A pending or
+  in-progress standard Task is mode-unknown because `isBackground` appears only
+  on its terminal frame. Backend-neutral tracker methods record that generic
+  `PluginMessagePartTool`, mark terminal foreground completion, convert a
+  terminal background launch into the root-level unresolved observation, expose
+  the exact `activeTaskCount({required String rootSessionId})`, return the
+  matching completed record through `takeCompletedForegroundTile({required
+  String rootSessionId, required String toolCallId})`, and take-and-retire active
+  generic parts through `takeActiveTaskInvocations({required String
+  rootSessionId})` for cancellation or prompt-failure settlement. Existing
+  method names `recordTileInvocation`, `updateTileInvocation`,
+  `hasTileInvocation`, `completeForegroundTileInvocation`,
+  `recordUnresolvedBackground`, `forgetTileInvocation`, and `beginTileTurn`
+  remain, with required named parameters. No method calls `AcpChildSpawn` for
+  tile-only state.
   Pending/in-progress parts stay generic. Only complete correlated terminal
-  facts replace one generic part with a completed childless tile; prompt
-  cancellation settles the standard generic card to cancelled and creates no
-  subtask tile.
-- `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart` adds
+  `isBackground: false` facts replace one generic part with a completed
+  childless tile; prompt cancellation or failure settles the standard generic
+  card and creates no subtask tile.
+- `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart` adds two neutral
+  mapper lifecycle hooks:
   `mapPromptResult({required String sessionId, required AcpStopReason
-  stopReason})`. Base behavior is empty. `CursorEventMapper` overrides it; ACP
-  never imports Cursor types. `AcpPlugin._runTurn` emits this method's events
-  after `AcpPromptResult.fromJson` and before `_finishTurn` completes the
-  existing `activeSettlement` future.
+  stopReason})` and `mapPromptLifecycleFailure({required String sessionId,
+  required String failureMessage})`. Base behavior returns no events for both.
+  The latter name is deliberately distinct from existing
+  `AcpPlugin.mapPromptFailure`. `CursorEventMapper` overrides both; ACP never
+  imports Cursor types, and every other harness remains unchanged. On parsed
+  results, `AcpPlugin._runTurn` emits
+  `mapPromptResult` events before `_finishTurn` completes the existing
+  `activeSettlement` future. In the current catch path it keeps
+  `eventMapper.mapPromptError`, then emits `mapPromptLifecycleFailure` with the
+  same privacy-safe rendered failure message, then calls `_finishTurn`, then
+  invokes plugin-level `mapPromptFailure` exactly as today.
 - `bridge/sesori_plugin_acp/lib/src/acp_plugin.dart` adds neutral
   `AcpScopedStopCapability.rootSessionCancel` and one explicit branch in
   `abortSession`. Its unresolved-background guard is the first branch action,
   before root/input preparation and before descendant collection; it throws the
-  one unsupported plugin operation described below. The remaining foreground-
-  only branch cannot enter snapshot fanout, `cancelChild`, `stopScopedTree`, or
-  child-id sets.
+  one unsupported plugin operation described below. The remaining safe-Task
+  branch cannot enter snapshot fanout, `cancelChild`, `stopScopedTree`, or
+  child-id sets. After an explicit root stop awaits authoritative prompt
+  settlement, it re-checks unresolved background before returning accepted.
   Existing `unsupported`, `perChildSnapshot` (Grok), and
   `completeNativeAtomic` (DeepSeek) branches keep their behavior.
 - `bridge/sesori_plugin_acp/lib/src/models/acp_scoped_stop.dart` is inspected
@@ -208,23 +228,27 @@ Cursor boundary and repository changes:
   String agentId, required String description, required String prompt,
   required CursorSubagentTypeDto subagentType, required String model, required
   int durationMs})`. `CursorTaskTool` and `CursorSubagentType` are closed enums
-  with `unknown`; their JSON fields use `unknownEnumValue`, never a Freezed
-  `@Default`. A missing recognized key in the object-shaped subagent DTO also
-  resolves to `unknown`, so an unfamiliar object shape stays typed rather than
-  failing or becoming a magic string. Generated `cursor_task_dto.freezed.dart` and
-  `cursor_task_dto.g.dart` come only from codegen.
+  with `unknown`; their JSON fields use `unknownEnumValue` for unrecognized
+  non-null enum strings, never a Freezed `@Default`. A missing `custom` key in
+  the object-shaped subagent DTO honestly decodes to null through the nullable
+  field, so the input stays incomplete and preserves the generic card. No
+  converter or JSON `defaultValue` is added. Generated
+  `cursor_task_dto.freezed.dart` and `cursor_task_dto.g.dart` come only from
+  codegen.
 - `bridge/sesori_plugin_cursor/lib/src/repositories/mappers/cursor_task_mapper.dart`
   adds pure `const CursorTaskMapper()`. It has no dependencies or mutable
   fields. `mapLiveCompleted({required PluginMessagePartTool genericPart,
   required CursorTaskRequestDto request})`, `mapReplay({required
   PluginMessagePartTool genericPart, required CursorTaskInputDto input,
-  required CursorTaskOutputDto output})`, and `mapCancelled({required
-  PluginMessagePartTool genericPart})` are the only presentation projections.
-  Complete correlated foreground terminal facts produce one completed
-  `PluginMessagePart.subtask` reusing the generic part's id/session/message
-  identity and setting `childSessionID: null`; pending, in-progress,
-  background, malformed, or incomplete facts keep the generic card.
-  Cancellation maps the generic standard Task card to cancelled and never
+  required CursorTaskOutputDto output})`, `mapCancelled({required
+  PluginMessagePartTool genericPart})`, and `mapFailed({required
+  PluginMessagePartTool genericPart, required String failureMessage})` are the
+  only presentation projections. Complete correlated foreground terminal facts
+  produce one completed `PluginMessagePart.subtask` reusing the generic part's
+  id/session/message identity and setting `childSessionID: null`; pending,
+  in-progress, background, malformed, or incomplete facts keep the generic
+  card. Cancellation maps the generic standard Task card to cancelled and
+  prompt failure maps it to error with the privacy-safe failure message; neither
   creates a subtask tile. `agentId` remains Cursor correlation data and is never
   used as child identity.
 - `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/cursor_task_replay_tracker.dart`
@@ -245,9 +269,13 @@ Cursor boundary and repository changes:
   Override `map` parses standard Task DTOs and feeds the tracker after standard
   generic projection; `mapExtension` parses the re-injected `cursor/task` and
   asks the injected mapper to replace only a correlated completed foreground
-  record; `mapPromptResult` settles cancelled active foreground records through
-  the same tracker and mapper. One private task-observation method serves all
-  three triggers. `abortSession` never creates or mutates presentation parts.
+  record; `mapPromptResult` takes every active mode-unknown record on a parsed
+  cancelled result, maps its generic card to cancelled, and retires it;
+  `mapPromptLifecycleFailure` takes every active mode-unknown record, maps its
+  generic card to error with the supplied privacy-safe message, and retires it.
+  Both use the same tracker plus injected `CursorTaskMapper`. One private task-
+  observation method serves the standard/extension triggers. `abortSession`
+  never creates or mutates presentation parts.
 - `bridge/sesori_plugin_cursor/lib/src/cursor_approval_registry.dart`
   acknowledges `cursor/task` with the existing empty fire-and-forget response
   and re-injects one `AcpNotification`, like generated-image/todo handling.
@@ -281,31 +309,39 @@ in ACP.
 1. `CursorEventMapper.map` lets `AcpEventMapper` create the standard generic
    Task card, then parses `CursorTaskInputDto`/`CursorTaskOutputDto` and records
    that exact generic part in `AcpChildSessionTracker`.
-2. Pending/in-progress is a known active foreground invocation, but remains a
-   generic Task card because those frames lack prompt and description.
-   Foreground standard completion changes the correlation record to
-   `foregroundInvocationCompleted`; the generic completed card remains visible
-   while the record awaits the immediately following request.
+2. Pending/in-progress is an active mode-unknown Task and remains a generic card
+   because those frames lack prompt, description, and `isBackground`.
+   A terminal standard update with `isBackground: false` changes the correlation
+   record to `foregroundCompleted`; the generic completed card remains visible
+   while the record awaits the immediately following request. A terminal update
+   with `isBackground: true` retires the Task record into the session-level
+   unresolved-background observation and never reaches tile projection.
 3. Re-injected `cursor/task` parses to `CursorTaskRequestDto`. Only an exact
-   `toolCallId` match in `foregroundInvocationCompleted` with complete terminal
-   facts reaches `CursorTaskMapper.mapLiveCompleted`; one completed childless
-   tile replaces the same part. A background launch never reaches tile
-   projection.
+   `toolCallId` match in `foregroundCompleted` with complete terminal facts
+   reaches `CursorTaskMapper.mapLiveCompleted`; one completed childless tile
+   replaces the same part.
 4. `AcpPlugin._runTurn` routes every parsed prompt result through
    `eventMapper.mapPromptResult` before `_finishTurn`. On `cancelled`, the
-   Cursor override takes the active foreground generic parts from the same
-   tracker and maps their standard-card status to cancelled. It creates no
-   cancelled subtask tile. Other prompt results do not fabricate Task or
-   background completion. Native `end_turn` still idles the root honestly; it
-   says nothing about background completion and produces no background tile or
-   completion notification.
-5. A later turn may clear only completed foreground correlation records through
+   Cursor override takes and retires all active mode-unknown generic parts and
+   maps their standard-card status to cancelled. On dispatch timeout, RPC error,
+   or malformed prompt response, the catch path emits the existing prompt error,
+   invokes `mapPromptLifecycleFailure` before `_finishTurn`, and the Cursor
+   override takes and retires those same records after mapping their generic
+   cards to error. Neither path creates a subtask tile. Other parsed prompt
+   results do not fabricate Task or background completion; specifically, no
+   speculative missing-terminal handling is added for `end_turn`.
+5. Ordering assumption, stated narrowly: standard Task terminal frames that
+   precede the prompt result are mapped before active prompt settlement
+   completes. The explicit-stop path can therefore await that settlement and
+   re-check whether a mode-unknown Task became unresolved background. No quiet
+   timer or poller is added.
+6. A later turn may clear only completed foreground correlation records through
    the already-called `beginTurn` path. It must not clear the unresolved
    background observation.
 
 ### Background observation and process residency
 
-`rawOutput.isBackground: true` removes that tool id from known foreground state
+`rawOutput.isBackground: true` removes that tool id from active Task state
 and records only `rootSessionId` in a set such as
 `_rootsWithUnresolvedTileBackgroundWork`. It is deliberately a boolean fact per
 session, not a tool-id set or running-task count: native ACP proves at least one
@@ -346,47 +382,55 @@ explicit session cleanup remain possible and clear the observation; they may
 terminate native background work. Cursor background lifecycle and full-stop
 guarantees remain unsupported.
 
-`knownForegroundActiveCount` is exact: it counts only standard Task
-invocations observed pending/in-progress and not yet terminal/prompt-cancelled.
-The unresolved-background flag is separate and never contributes a fabricated
-`runningSubAgentCount`.
+`activeTaskCount` is exact: it counts standard Task invocations observed
+pending/in-progress and not yet terminal or prompt-settled. Their mode remains
+unknown until terminal `isBackground` arrives. The unresolved-background flag
+is separate and never contributes a fabricated `runningSubAgentCount`.
 
-### Explicit foreground-only root stop policy
+### Safe Task root stop policy
 
 The `rootSessionCancel` branch targets only the method's named `sessionId`.
 Its first operation checks the unresolved-background observation. When present,
 all three policies throw the same side-effect-free
 `PluginOperationException` for operation `abortSession`, HTTP status 409, and
-backend-neutral message `Cannot stop while resident background work has unknown completion`.
-This uses the existing plugin-operation → router HTTP failure path, introduces no
+backend-neutral message
+`Cannot stop while resident background work has unknown completion`. This uses
+existing plugin-operation → router HTTP failure path, introduces no
 new shared response, and runs before queued/writing work, pending interaction,
 root cancellation, settlement capture, descendant collection, or fanout.
 `SessionApi.abortSession` cannot parse this plain 409 as the existing typed
 confirmation rejection, so it returns the ordinary `ErrorResponse`;
 `SessionDetailCubit.abort` returns failed rather than aborted.
 
-Without an unresolved-background observation, the branch captures the existing
-`activeSettlement` future when a prompt is in flight, prepares only that root's
-queued/writing work and pending interaction, sends exactly one standard
-`session/cancel` for that root when the live client exists (and zero only when
-no process exists to notify), and waits for that captured settlement. Because
-`_runTurn` maps the prompt result before completing settlement, a foreground
-accepted stop cannot return before the authoritative `cancelled` result has
-settled the generic Task card. No child id, Task id, known client child id,
-ancestor, sibling, or descendant enters preparation or native dispatch.
+Without an unresolved-background observation, `confirm` and `keep` with
+`activeTaskCount > 0` reject side-effect-free with that exact observed Task
+count, `mainAgentRunning: true`, and `mainAgentOnlySupported: false`. Explicit
+`stop` captures the existing `activeSettlement` future when a prompt is in
+flight, prepares only that root's queued/writing work and pending interaction,
+sends exactly one standard `session/cancel` for that root when the live client
+exists (and zero only when no process exists to notify), and waits for that
+captured settlement. It then **must re-check** unresolved background before any
+accepted response. If a mode-unknown Task terminal changed to background while
+cancellation settled, the branch throws the same backend-neutral
+`PluginOperationException`; root cancellation may already have happened, but the
+client never receives false aborted success. Only when settlement leaves no
+unresolved background may the branch return
+`PluginAbortAccepted(workKept: false, subAgentsHandled: false)`. No child id,
+Task id, known client child id, ancestor, sibling, or descendant enters
+preparation or native dispatch.
 
 | Named-root state | Policy | Effect | Result |
 |---|---|---|---|
-| Any unresolved-background observation | `confirm` / `keep` / `stop` | None | Same explicit unsupported HTTP failure |
-| Known foreground `N > 0`, no unresolved background | `confirm` | None | Exact typed rejection `N`; main running; main-only false |
-| Known foreground `N > 0`, no unresolved background | `keep` | None | Same exact typed rejection |
-| Known foreground `N > 0`, no unresolved background | `stop` | Root prepare/cancel; await prompt | ACK kept=false, handled=false |
-| No foreground/background fact | `confirm` / `stop` / `keep` | Existing root cancel | ACK kept=false, handled=false |
+| Any prior unresolved-background observation | `confirm` / `keep` / `stop` | None | Same explicit unsupported HTTP failure |
+| Active mode-unknown Tasks `N > 0`, no prior unresolved background | `confirm` | None | Exact typed rejection `N`; main running; main-only false |
+| Active mode-unknown Tasks `N > 0`, no prior unresolved background | `keep` | None | Same exact typed rejection |
+| Active mode-unknown Tasks `N > 0`, no prior unresolved background | `stop` | Named-root prepare/cancel; await authoritative prompt settlement; re-check background | ACK kept=false/handled=false only if no unresolved background; otherwise explicit failure after cancellation |
+| No active Task/background fact | `confirm` / `stop` / `keep` | Existing named-root cancellation; re-check after any captured settlement | ACK kept=false, handled=false only while no unresolved background |
 
 `subAgentsHandled` is always false because Cursor exposes no child targets or
-complete background authority. No accepted Cursor path depends on bridge-
-internal `workKept`; every accepted foreground/no-observation path reports
-`workKept: false`. Background full stop remains unsupported.
+complete background authority. Every accepted Cursor path reports
+`workKept: false` only after proving no unresolved background remains at the
+post-settlement re-check. Background full stop remains unsupported.
 
 ### Replay and unsupported behavior
 
@@ -406,36 +450,38 @@ false child id, tile completion, or history row is produced.
 ### Delivery slices
 
 Five slices preserve the actual review diff: native probe/corrected-plan docs
-land first, then completed live tiles, foreground-only scoped stop, replay, and
-final actual-plugin evidence. Feature implementation has not landed; successors
-must be regenerated from this revised plan. Line sizes include source, generated
+land first, then completed live tiles, safe Task stop policy, replay, and final
+actual-plugin evidence. Feature implementation has not landed; successors must
+be regenerated from this revised plan. Line sizes include source, generated
 serializers, tests, each behavior slice's regression docs, and tracker
 bookkeeping.
 
 Existing code refs `c5c0def` (former live slice) and `ab03528` (former scoped-
-stop slice) remain preserved as historical implementation evidence. Neither is a
-publication candidate after the transport/client, process-residency, and
-completion-only corrections here; do not mutate or delete them. Regenerate both
-successors from this revised plan.
+stop slice) remain preserved as stale, unpublishable historical implementation
+evidence after the transport/client, process-residency, and completion-only
+corrections here; do not mutate or delete them. Regenerate both successors from
+this revised plan.
 
 1. `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]`:
    this privacy-safe native evidence, corrected ownership/policy design, and
    exact delivery sequence only. No feature implementation. This step remains
    unchecked until its PR merges.
 2. `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]`
-   (expected approximately 1,550–1,700 changed lines): neutral tile-only
-   correlation, prompt-result mapper hook, Cursor DTOs/codegen, one injected
-   `CursorTaskMapper`, request forwarding, completed foreground replacement,
-   generic cancelled settlement, focused ACP/Cursor tests, and corresponding
+   (expected approximately 1,550–1,750 changed lines): neutral tile-only
+   correlation, parsed-result and prompt-failure mapper lifecycle hooks, Cursor
+   DTOs/codegen, one injected `CursorTaskMapper`, request forwarding, completed
+   foreground replacement, generic cancelled/error settlement with record
+   retirement, focused ACP/Cursor tests, and corresponding
    `docs/regression/tools-and-file-changes.md` plus
    `docs/regression/session-turns.md` behavior updates. Pending/in-progress and
    background calls stay generic; cancellation creates no tile. No scoped-stop
    authority, unresolved-background residency state, or replay wrapper.
-3. `⚙️ [claude-inline-subtasks] cursor: foreground-only scoped Task stop [step 3/5]`
-   (expected approximately 500–700 changed lines): exact foreground count,
-   durable unresolved-background observation and
+3. `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]`
+   (expected approximately 550–750 changed lines): exact active mode-unknown
+   Task count, durable unresolved-background observation and
    `requiresProcessResidency`, first-action unsupported guard for all policies,
-   foreground-only `rootSessionCancel`, root settlement, focused tests, and
+   safe `rootSessionCancel` with mandatory post-settlement background re-check,
+   focused tests, and
    corresponding scoped-stop/lifecycle/capability updates in
    `docs/regression/session-turns.md`,
    `docs/regression/plugin-setup-and-lifecycle.md`, and
@@ -459,29 +505,33 @@ successors from this revised plan.
 Step 2 automated scope:
 
 - `bridge/sesori_plugin_acp`: tracker tests prove session-backed children remain
-  the only child-id/fanout/root-busy state and tile-only foreground correlation
-  does not alter those snapshots; prompt results map before root turn
-  settlement.
+  the only child-id/fanout/root-busy state and tile-only Task correlation does
+  not alter those snapshots; parsed prompt results and prompt lifecycle failures
+  map before root turn settlement.
 - `bridge/sesori_plugin_cursor`: DTO valid/unknown/malformed fixtures,
-  object-shaped `subagentType`, `cursor/task` ack/re-injection, standard →
-  request correlation, pending/in-progress generic cards, completed foreground
-  tile replacement only after complete correlated terminal facts, prompt-cancel
-  generic-card settlement with no tile, background generic retention, no child
-  id, and constructor/composition tests. Run package analyzers/tests and
-  `git diff --check`.
+  object-shaped `subagentType` (including missing `custom` → null/incomplete),
+  `cursor/task` ack/re-injection, standard → request correlation, pending/in-
+  progress mode-unknown generic cards, completed foreground tile replacement
+  only after complete correlated terminal facts, prompt-cancel generic-card
+  cancellation and prompt-failure generic-card error with record retirement,
+  background generic retention, no child id, and constructor/composition tests.
+  Run package analyzers/tests and `git diff --check`.
 
 Step 3 automated scope:
 
-- Exact foreground count and unresolved background remain independent; the
-  observation survives turns, clears on session/process teardown, leaves root
-  status/active summaries/deferred idle/counts unchanged, and alone keeps ACP
-  `PluginWorkState` busy through `requiresProcessResidency`.
+- Exact `activeTaskCount` for mode-unknown Tasks and unresolved background remain
+  independent; the observation survives turns, clears on session/process
+  teardown, leaves root status/active summaries/deferred idle/counts unchanged,
+  and alone keeps ACP `PluginWorkState` busy through
+  `requiresProcessResidency`.
 - Every unresolved-background `confirm`/`keep`/`stop` takes the same explicit
   failure before root/input preparation or cancellation; tests assert no
   outbound cancel, queue/input mutation, successful ACK, or fabricated count.
-  Known foreground-only `confirm`/`keep`, root-only `stop`, prompt settlement
-  ordering, forced process cleanup, explicit session deletion, and unchanged
-  DeepSeek/Grok branches remain covered.
+  Active mode-unknown `confirm`/`keep`, named-root `stop`, prompt settlement
+  ordering, post-settlement background-transition failure (with root cancel
+  already allowed), accepted `workKept: false` only after the re-check, forced
+  process cleanup, explicit session deletion, and unchanged DeepSeek/Grok
+  branches remain covered.
 
 Step 4 automated scope:
 
@@ -496,10 +546,12 @@ Step 4 automated scope:
 
 Step 5 actual-plugin scope uses `CursorPlugin` production composition and the
 managed `2026.08.11-e8db854` target: completed foreground replacement after
-terminal correlation; pending/in-progress generic presentation; exact side-
-effect-free foreground confirmation; rejected foreground keep; authoritative
-root-only foreground stop with a generic cancelled card; process/session reuse;
-repeated cold load; background generic card; honest root idle after native
+terminal correlation; pending/in-progress mode-unknown generic presentation;
+exact side-effect-free active-Task confirmation; rejected active-Task keep;
+authoritative named-root stop with a generic cancelled card; race coverage where
+a Task resolves background before prompt settlement and yields failure rather
+than aborted success; process/session reuse; repeated cold load; background
+generic card; honest root idle after native
 `end_turn`; process residency after later background permission; and identical
 side-effect-free unsupported failure for post-background `confirm`, `keep`, and
 `stop`. Verify no successful ACK, root/input cancellation, background

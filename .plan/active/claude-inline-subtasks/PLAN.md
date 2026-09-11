@@ -10,10 +10,11 @@
   recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Feature
   implementation has not landed. Cursor delivery remains five steps: unchecked
   docs/probe Step 1; completed foreground tiles plus tools/session-turn docs in
-  Step 2; foreground-only scoped stop plus lifecycle/capability docs in Step 3;
+  Step 2; safe Task stop policy plus lifecycle/capability docs in Step 3;
   completed-tile replay plus history docs in Step 4; actual-plugin evidence and
   final reconciliation only in Step 5. Preserved code refs `c5c0def` and
-  `ab03528` are not publication candidates; successors must be regenerated from
+  `ab03528` are stale, unpublishable historical evidence; successors must be
+  regenerated from
   the revised plan without mutating or deleting those refs. Retirement remains
   blocked by Cursor delivery/coverage and the Grok phone
   gate, whose WebDriverAgent 0.0.23 infrastructure failure occurred before any
