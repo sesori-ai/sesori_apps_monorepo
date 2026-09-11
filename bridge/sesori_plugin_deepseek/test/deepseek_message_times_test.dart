@@ -98,6 +98,7 @@ void main() {
       messageTimeResolver: ({required params}) => parser.parse(params),
       haltClassifier: null,
       toolPartReplacement: null,
+      toolPartSuppression: null,
     );
     collector.consume(
       notification({
@@ -150,6 +151,7 @@ void main() {
       messageTimeResolver: ({required params}) => parser.parse(params),
       haltClassifier: classifier,
       toolPartReplacement: null,
+      toolPartSuppression: null,
     );
     final halted = collector(({required text}) => const AcpHaltNotice(errorName: "halt"));
     halted.consume(

@@ -14,6 +14,572 @@ part of 'grok_protocol_dto.dart';
 T _$identity<T>(T value) => value;
 
 /// @nodoc
+mixin _$GrokSubagentCancelRequestDto {
+
+ String get subagentId;
+/// Create a copy of GrokSubagentCancelRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelRequestDtoCopyWith<GrokSubagentCancelRequestDto> get copyWith => _$GrokSubagentCancelRequestDtoCopyWithImpl<GrokSubagentCancelRequestDto>(this as GrokSubagentCancelRequestDto, _$identity);
+
+  /// Serializes this GrokSubagentCancelRequestDto to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentCancelRequestDto&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,subagentId);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelRequestDto(subagentId: $subagentId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokSubagentCancelRequestDtoCopyWith<$Res>  {
+  factory $GrokSubagentCancelRequestDtoCopyWith(GrokSubagentCancelRequestDto value, $Res Function(GrokSubagentCancelRequestDto) _then) = _$GrokSubagentCancelRequestDtoCopyWithImpl;
+@useResult
+$Res call({
+ String subagentId
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokSubagentCancelRequestDtoCopyWithImpl<$Res>
+    implements $GrokSubagentCancelRequestDtoCopyWith<$Res> {
+  _$GrokSubagentCancelRequestDtoCopyWithImpl(this._self, this._then);
+
+  final GrokSubagentCancelRequestDto _self;
+  final $Res Function(GrokSubagentCancelRequestDto) _then;
+
+/// Create a copy of GrokSubagentCancelRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? subagentId = null,}) {
+  return _then(GrokSubagentCancelRequestDto(
+subagentId: null == subagentId ? _self.subagentId : subagentId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class _GrokSubagentCancelRequestDto implements GrokSubagentCancelRequestDto {
+  const _GrokSubagentCancelRequestDto({required this.subagentId});
+  factory _GrokSubagentCancelRequestDto.fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelRequestDtoFromJson(json);
+
+@override final  String subagentId;
+
+/// Create a copy of GrokSubagentCancelRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokSubagentCancelRequestDtoCopyWith<_GrokSubagentCancelRequestDto> get copyWith => __$GrokSubagentCancelRequestDtoCopyWithImpl<_GrokSubagentCancelRequestDto>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$GrokSubagentCancelRequestDtoToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSubagentCancelRequestDto&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,subagentId);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelRequestDto(subagentId: $subagentId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokSubagentCancelRequestDtoCopyWith<$Res> implements $GrokSubagentCancelRequestDtoCopyWith<$Res> {
+  factory _$GrokSubagentCancelRequestDtoCopyWith(_GrokSubagentCancelRequestDto value, $Res Function(_GrokSubagentCancelRequestDto) _then) = __$GrokSubagentCancelRequestDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String subagentId
+});
+
+
+
+
+}
+/// @nodoc
+class __$GrokSubagentCancelRequestDtoCopyWithImpl<$Res>
+    implements _$GrokSubagentCancelRequestDtoCopyWith<$Res> {
+  __$GrokSubagentCancelRequestDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokSubagentCancelRequestDto _self;
+  final $Res Function(_GrokSubagentCancelRequestDto) _then;
+
+/// Create a copy of GrokSubagentCancelRequestDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? subagentId = null,}) {
+  return _then(_GrokSubagentCancelRequestDto(
+subagentId: null == subagentId ? _self.subagentId : subagentId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$GrokSubagentCancelOutcomeDto {
+
+@JsonKey(unknownEnumValue: GrokSubagentCancelOutcomeKind.unknown) GrokSubagentCancelOutcomeKind get kind;@JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) GrokSubagentStatus? get status;
+/// Create a copy of GrokSubagentCancelOutcomeDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelOutcomeDtoCopyWith<GrokSubagentCancelOutcomeDto> get copyWith => _$GrokSubagentCancelOutcomeDtoCopyWithImpl<GrokSubagentCancelOutcomeDto>(this as GrokSubagentCancelOutcomeDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentCancelOutcomeDto&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,kind,status);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelOutcomeDto(kind: $kind, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokSubagentCancelOutcomeDtoCopyWith<$Res>  {
+  factory $GrokSubagentCancelOutcomeDtoCopyWith(GrokSubagentCancelOutcomeDto value, $Res Function(GrokSubagentCancelOutcomeDto) _then) = _$GrokSubagentCancelOutcomeDtoCopyWithImpl;
+@useResult
+$Res call({
+@JsonKey(unknownEnumValue: GrokSubagentCancelOutcomeKind.unknown) GrokSubagentCancelOutcomeKind kind,@JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) GrokSubagentStatus? status
+});
+
+
+
+
+}
+/// @nodoc
+class _$GrokSubagentCancelOutcomeDtoCopyWithImpl<$Res>
+    implements $GrokSubagentCancelOutcomeDtoCopyWith<$Res> {
+  _$GrokSubagentCancelOutcomeDtoCopyWithImpl(this._self, this._then);
+
+  final GrokSubagentCancelOutcomeDto _self;
+  final $Res Function(GrokSubagentCancelOutcomeDto) _then;
+
+/// Create a copy of GrokSubagentCancelOutcomeDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? kind = null,Object? status = freezed,}) {
+  return _then(GrokSubagentCancelOutcomeDto(
+kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as GrokSubagentCancelOutcomeKind,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as GrokSubagentStatus?,
+  ));
+}
+
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokSubagentCancelOutcomeDto implements GrokSubagentCancelOutcomeDto {
+  const _GrokSubagentCancelOutcomeDto({@JsonKey(unknownEnumValue: GrokSubagentCancelOutcomeKind.unknown) required this.kind, @JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) required this.status});
+  factory _GrokSubagentCancelOutcomeDto.fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelOutcomeDtoFromJson(json);
+
+@override@JsonKey(unknownEnumValue: GrokSubagentCancelOutcomeKind.unknown) final  GrokSubagentCancelOutcomeKind kind;
+@override@JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) final  GrokSubagentStatus? status;
+
+/// Create a copy of GrokSubagentCancelOutcomeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokSubagentCancelOutcomeDtoCopyWith<_GrokSubagentCancelOutcomeDto> get copyWith => __$GrokSubagentCancelOutcomeDtoCopyWithImpl<_GrokSubagentCancelOutcomeDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSubagentCancelOutcomeDto&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.status, status) || other.status == status));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,kind,status);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelOutcomeDto(kind: $kind, status: $status)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokSubagentCancelOutcomeDtoCopyWith<$Res> implements $GrokSubagentCancelOutcomeDtoCopyWith<$Res> {
+  factory _$GrokSubagentCancelOutcomeDtoCopyWith(_GrokSubagentCancelOutcomeDto value, $Res Function(_GrokSubagentCancelOutcomeDto) _then) = __$GrokSubagentCancelOutcomeDtoCopyWithImpl;
+@override @useResult
+$Res call({
+@JsonKey(unknownEnumValue: GrokSubagentCancelOutcomeKind.unknown) GrokSubagentCancelOutcomeKind kind,@JsonKey(unknownEnumValue: GrokSubagentStatus.unknown) GrokSubagentStatus? status
+});
+
+
+
+
+}
+/// @nodoc
+class __$GrokSubagentCancelOutcomeDtoCopyWithImpl<$Res>
+    implements _$GrokSubagentCancelOutcomeDtoCopyWith<$Res> {
+  __$GrokSubagentCancelOutcomeDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokSubagentCancelOutcomeDto _self;
+  final $Res Function(_GrokSubagentCancelOutcomeDto) _then;
+
+/// Create a copy of GrokSubagentCancelOutcomeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? kind = null,Object? status = freezed,}) {
+  return _then(_GrokSubagentCancelOutcomeDto(
+kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as GrokSubagentCancelOutcomeKind,status: freezed == status ? _self.status : status // ignore: cast_nullable_to_non_nullable
+as GrokSubagentStatus?,
+  ));
+}
+
+
+}
+
+
+/// @nodoc
+mixin _$GrokSubagentCancelResponseEnvelopeDto {
+
+ GrokSubagentCancelResponseDto get result;
+/// Create a copy of GrokSubagentCancelResponseEnvelopeDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelResponseEnvelopeDtoCopyWith<GrokSubagentCancelResponseEnvelopeDto> get copyWith => _$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl<GrokSubagentCancelResponseEnvelopeDto>(this as GrokSubagentCancelResponseEnvelopeDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentCancelResponseEnvelopeDto&&(identical(other.result, result) || other.result == result));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,result);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelResponseEnvelopeDto(result: $result)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokSubagentCancelResponseEnvelopeDtoCopyWith<$Res>  {
+  factory $GrokSubagentCancelResponseEnvelopeDtoCopyWith(GrokSubagentCancelResponseEnvelopeDto value, $Res Function(GrokSubagentCancelResponseEnvelopeDto) _then) = _$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl;
+@useResult
+$Res call({
+ GrokSubagentCancelResponseDto result
+});
+
+
+$GrokSubagentCancelResponseDtoCopyWith<$Res> get result;
+
+}
+/// @nodoc
+class _$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl<$Res>
+    implements $GrokSubagentCancelResponseEnvelopeDtoCopyWith<$Res> {
+  _$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl(this._self, this._then);
+
+  final GrokSubagentCancelResponseEnvelopeDto _self;
+  final $Res Function(GrokSubagentCancelResponseEnvelopeDto) _then;
+
+/// Create a copy of GrokSubagentCancelResponseEnvelopeDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? result = null,}) {
+  return _then(GrokSubagentCancelResponseEnvelopeDto(
+result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
+as GrokSubagentCancelResponseDto,
+  ));
+}
+/// Create a copy of GrokSubagentCancelResponseEnvelopeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelResponseDtoCopyWith<$Res> get result {
+  
+  return $GrokSubagentCancelResponseDtoCopyWith<$Res>(_self.result, (value) {
+    return _then(_self.copyWith(result: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokSubagentCancelResponseEnvelopeDto implements GrokSubagentCancelResponseEnvelopeDto {
+  const _GrokSubagentCancelResponseEnvelopeDto({required this.result});
+  factory _GrokSubagentCancelResponseEnvelopeDto.fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelResponseEnvelopeDtoFromJson(json);
+
+@override final  GrokSubagentCancelResponseDto result;
+
+/// Create a copy of GrokSubagentCancelResponseEnvelopeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokSubagentCancelResponseEnvelopeDtoCopyWith<_GrokSubagentCancelResponseEnvelopeDto> get copyWith => __$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl<_GrokSubagentCancelResponseEnvelopeDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSubagentCancelResponseEnvelopeDto&&(identical(other.result, result) || other.result == result));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,result);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelResponseEnvelopeDto(result: $result)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokSubagentCancelResponseEnvelopeDtoCopyWith<$Res> implements $GrokSubagentCancelResponseEnvelopeDtoCopyWith<$Res> {
+  factory _$GrokSubagentCancelResponseEnvelopeDtoCopyWith(_GrokSubagentCancelResponseEnvelopeDto value, $Res Function(_GrokSubagentCancelResponseEnvelopeDto) _then) = __$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ GrokSubagentCancelResponseDto result
+});
+
+
+@override $GrokSubagentCancelResponseDtoCopyWith<$Res> get result;
+
+}
+/// @nodoc
+class __$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl<$Res>
+    implements _$GrokSubagentCancelResponseEnvelopeDtoCopyWith<$Res> {
+  __$GrokSubagentCancelResponseEnvelopeDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokSubagentCancelResponseEnvelopeDto _self;
+  final $Res Function(_GrokSubagentCancelResponseEnvelopeDto) _then;
+
+/// Create a copy of GrokSubagentCancelResponseEnvelopeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? result = null,}) {
+  return _then(_GrokSubagentCancelResponseEnvelopeDto(
+result: null == result ? _self.result : result // ignore: cast_nullable_to_non_nullable
+as GrokSubagentCancelResponseDto,
+  ));
+}
+
+/// Create a copy of GrokSubagentCancelResponseEnvelopeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelResponseDtoCopyWith<$Res> get result {
+  
+  return $GrokSubagentCancelResponseDtoCopyWith<$Res>(_self.result, (value) {
+    return _then(_self.copyWith(result: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$GrokSubagentCancelResponseDto {
+
+ String get subagentId; bool get cancelled; GrokSubagentCancelOutcomeDto get outcome;
+/// Create a copy of GrokSubagentCancelResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelResponseDtoCopyWith<GrokSubagentCancelResponseDto> get copyWith => _$GrokSubagentCancelResponseDtoCopyWithImpl<GrokSubagentCancelResponseDto>(this as GrokSubagentCancelResponseDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GrokSubagentCancelResponseDto&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.cancelled, cancelled) || other.cancelled == cancelled)&&(identical(other.outcome, outcome) || other.outcome == outcome));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,subagentId,cancelled,outcome);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelResponseDto(subagentId: $subagentId, cancelled: $cancelled, outcome: $outcome)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $GrokSubagentCancelResponseDtoCopyWith<$Res>  {
+  factory $GrokSubagentCancelResponseDtoCopyWith(GrokSubagentCancelResponseDto value, $Res Function(GrokSubagentCancelResponseDto) _then) = _$GrokSubagentCancelResponseDtoCopyWithImpl;
+@useResult
+$Res call({
+ String subagentId, bool cancelled, GrokSubagentCancelOutcomeDto outcome
+});
+
+
+$GrokSubagentCancelOutcomeDtoCopyWith<$Res> get outcome;
+
+}
+/// @nodoc
+class _$GrokSubagentCancelResponseDtoCopyWithImpl<$Res>
+    implements $GrokSubagentCancelResponseDtoCopyWith<$Res> {
+  _$GrokSubagentCancelResponseDtoCopyWithImpl(this._self, this._then);
+
+  final GrokSubagentCancelResponseDto _self;
+  final $Res Function(GrokSubagentCancelResponseDto) _then;
+
+/// Create a copy of GrokSubagentCancelResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? subagentId = null,Object? cancelled = null,Object? outcome = null,}) {
+  return _then(GrokSubagentCancelResponseDto(
+subagentId: null == subagentId ? _self.subagentId : subagentId // ignore: cast_nullable_to_non_nullable
+as String,cancelled: null == cancelled ? _self.cancelled : cancelled // ignore: cast_nullable_to_non_nullable
+as bool,outcome: null == outcome ? _self.outcome : outcome // ignore: cast_nullable_to_non_nullable
+as GrokSubagentCancelOutcomeDto,
+  ));
+}
+/// Create a copy of GrokSubagentCancelResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelOutcomeDtoCopyWith<$Res> get outcome {
+  
+  return $GrokSubagentCancelOutcomeDtoCopyWith<$Res>(_self.outcome, (value) {
+    return _then(_self.copyWith(outcome: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _GrokSubagentCancelResponseDto implements GrokSubagentCancelResponseDto {
+  const _GrokSubagentCancelResponseDto({required this.subagentId, required this.cancelled, required this.outcome});
+  factory _GrokSubagentCancelResponseDto.fromJson(Map<String, dynamic> json) => _$GrokSubagentCancelResponseDtoFromJson(json);
+
+@override final  String subagentId;
+@override final  bool cancelled;
+@override final  GrokSubagentCancelOutcomeDto outcome;
+
+/// Create a copy of GrokSubagentCancelResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$GrokSubagentCancelResponseDtoCopyWith<_GrokSubagentCancelResponseDto> get copyWith => __$GrokSubagentCancelResponseDtoCopyWithImpl<_GrokSubagentCancelResponseDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GrokSubagentCancelResponseDto&&(identical(other.subagentId, subagentId) || other.subagentId == subagentId)&&(identical(other.cancelled, cancelled) || other.cancelled == cancelled)&&(identical(other.outcome, outcome) || other.outcome == outcome));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => Object.hash(runtimeType,subagentId,cancelled,outcome);
+
+@override
+String toString() {
+  return 'GrokSubagentCancelResponseDto(subagentId: $subagentId, cancelled: $cancelled, outcome: $outcome)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$GrokSubagentCancelResponseDtoCopyWith<$Res> implements $GrokSubagentCancelResponseDtoCopyWith<$Res> {
+  factory _$GrokSubagentCancelResponseDtoCopyWith(_GrokSubagentCancelResponseDto value, $Res Function(_GrokSubagentCancelResponseDto) _then) = __$GrokSubagentCancelResponseDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ String subagentId, bool cancelled, GrokSubagentCancelOutcomeDto outcome
+});
+
+
+@override $GrokSubagentCancelOutcomeDtoCopyWith<$Res> get outcome;
+
+}
+/// @nodoc
+class __$GrokSubagentCancelResponseDtoCopyWithImpl<$Res>
+    implements _$GrokSubagentCancelResponseDtoCopyWith<$Res> {
+  __$GrokSubagentCancelResponseDtoCopyWithImpl(this._self, this._then);
+
+  final _GrokSubagentCancelResponseDto _self;
+  final $Res Function(_GrokSubagentCancelResponseDto) _then;
+
+/// Create a copy of GrokSubagentCancelResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? subagentId = null,Object? cancelled = null,Object? outcome = null,}) {
+  return _then(_GrokSubagentCancelResponseDto(
+subagentId: null == subagentId ? _self.subagentId : subagentId // ignore: cast_nullable_to_non_nullable
+as String,cancelled: null == cancelled ? _self.cancelled : cancelled // ignore: cast_nullable_to_non_nullable
+as bool,outcome: null == outcome ? _self.outcome : outcome // ignore: cast_nullable_to_non_nullable
+as GrokSubagentCancelOutcomeDto,
+  ));
+}
+
+/// Create a copy of GrokSubagentCancelResponseDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$GrokSubagentCancelOutcomeDtoCopyWith<$Res> get outcome {
+  
+  return $GrokSubagentCancelOutcomeDtoCopyWith<$Res>(_self.outcome, (value) {
+    return _then(_self.copyWith(outcome: value));
+  });
+}
+}
+
+
+/// @nodoc
 mixin _$GrokReasoningEffortOptionDto {
 
  String? get id; String? get value; String? get label; String? get description;@JsonKey(name: "default") bool get isDefault;

@@ -34,13 +34,30 @@ final class const CatalogRescanTotals({
 sealed class const CatalogRescanState() {
   const factory idle() = CatalogRescanIdle;
 
-  const factory starting({required Set<String> pluginIds}) = CatalogRescanStarting;
+  const factory preparingOne({
+    required String pendingPluginName,
+    required int finishedHarnessCount,
+    required Set<String> pluginIds,
+  }) = CatalogRescanPreparingOne;
 
-  const factory running({
+  const factory starting({
+    required String activePluginName,
+    required int finishedHarnessCount,
+    required Set<String> pluginIds,
+  }) = CatalogRescanStarting;
+
+  const factory reading({
     required String activePluginName,
     required int sessionsSeen,
+    required int finishedHarnessCount,
     required Set<String> pluginIds,
-  }) = CatalogRescanRunning;
+  }) = CatalogRescanReading;
+
+  const factory saving({
+    required String activePluginName,
+    required int finishedHarnessCount,
+    required Set<String> pluginIds,
+  }) = CatalogRescanSaving;
 
   const factory succeeded({
     required int harnessCount,
@@ -60,22 +77,42 @@ sealed class const CatalogRescanState() {
 
   /// Whether a rescan is in flight. Leaving this is what tells a list to
   /// refresh, since a committed import raises no invalidation of its own.
-  bool get isLive => this is CatalogRescanStarting || this is CatalogRescanRunning;
+  bool get isLive =>
+      this is CatalogRescanPreparingOne ||
+      this is CatalogRescanStarting ||
+      this is CatalogRescanReading ||
+      this is CatalogRescanSaving;
 }
 
 final class const CatalogRescanIdle() extends CatalogRescanState;
 
-/// Requests are dispatched but no progress has arrived yet.
-///
-/// Separate from [CatalogRescanRunning] because between dispatch and the first
-/// progress event there is no active harness and no session count, and a single
-/// running state carrying both would have to invent them.
-final class const CatalogRescanStarting({required final Set<String> pluginIds})
-    extends CatalogRescanState;
+/// The first scan member that has not reported a terminal progress state yet.
+final class const CatalogRescanPreparingOne({
+  required final String pendingPluginName,
+  required final int finishedHarnessCount,
+  required final Set<String> pluginIds,
+}) extends CatalogRescanState;
 
-final class const CatalogRescanRunning({
+/// One scan member is authoritatively reported as starting by this bridge's
+/// fresh management snapshot.
+final class const CatalogRescanStarting({
+  required final String activePluginName,
+  required final int finishedHarnessCount,
+  required final Set<String> pluginIds,
+}) extends CatalogRescanState;
+
+/// One scan member is enumerating its catalog.
+final class const CatalogRescanReading({
   required final String activePluginName,
   required final int sessionsSeen,
+  required final int finishedHarnessCount,
+  required final Set<String> pluginIds,
+}) extends CatalogRescanState;
+
+/// One scan member is committing its catalog snapshot.
+final class const CatalogRescanSaving({
+  required final String activePluginName,
+  required final int finishedHarnessCount,
   required final Set<String> pluginIds,
 }) extends CatalogRescanState;
 
@@ -95,8 +132,7 @@ final class const CatalogRescanPartlyFailed({
 
 /// Every harness failed. Carries no message: `CatalogImportFailed.message` is
 /// the bridge's raw `error.toString()` and is never lifted into client state.
-final class const CatalogRescanFailed({required final int harnessCount})
-    extends CatalogRescanState;
+final class const CatalogRescanFailed({required final int harnessCount}) extends CatalogRescanState;
 
 /// This bridge cannot rescan at all, because it predates the import route.
 final class const CatalogRescanUnsupported() extends CatalogRescanState;
@@ -136,5 +172,4 @@ final class const CatalogRescanStartUnsupported() extends CatalogRescanStartResu
 /// transport or decoding failure may never have reached the bridge and so
 /// cannot be explained by the bridge's own log. It is not for display: the card
 /// renders bounded text only.
-final class const CatalogRescanStartFailed({required final ApiError cause})
-    extends CatalogRescanStartResult;
+final class const CatalogRescanStartFailed({required final ApiError cause}) extends CatalogRescanStartResult;

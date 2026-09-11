@@ -134,6 +134,26 @@ void main() {
       "payload": {"type": "thread_rolled_back", "num_turns": numTurns},
     });
 
+    List<PluginMessageWithParts> projectRootMessagesWithoutChildReplay({
+      required String rolloutPath,
+      required String sessionId,
+      required CodexReplayToolDisposition replayToolDisposition,
+      required Map<String, PluginToolStatus> structuredToolStatusByCallId,
+    }) {
+      final read = messageRepository.prepareMessageRead(
+        rolloutPath: rolloutPath,
+        sessionId: sessionId,
+      );
+      return messageRepository.projectMessages(
+        read: read,
+        sessionId: sessionId,
+        children: const [],
+        replayToolDisposition: replayToolDisposition,
+        structuredToolStatusByCallId: structuredToolStatusByCallId,
+        childReplayDataById: const {},
+      );
+    }
+
     test("readIndex returns empty when session_index.jsonl is missing", () {
       expect(rolloutApi.readSessionIndex(), isEmpty);
     });
@@ -997,7 +1017,7 @@ void main() {
       expect(heartbeatCount, greaterThan(1));
     });
 
-    test("readMessages maps user/assistant text turns into PluginMessages", () {
+    test("message projection maps user/assistant text turns into PluginMessages", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl",
@@ -1050,10 +1070,9 @@ void main() {
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1077,7 +1096,7 @@ void main() {
       expect(messages[1].parts.single.id, "assistant-1-text");
     });
 
-    test("readMessages removes a rolled-back turn and keeps surrounding history", () {
+    test("message projection removes a rolled-back turn and keeps surrounding history", () {
       const sessionId = "rollback-surrounding-history";
       final path = _writeRollout(
         codexHome,
@@ -1146,7 +1165,7 @@ void main() {
       expect(spawn, isA<PluginMessagePartTool>(), reason: "missing activity must keep the generic spawn card");
     });
 
-    test("readMessages applies repeated rollback counts to surviving user turns", () {
+    test("message projection applies repeated rollback counts to surviving user turns", () {
       const sessionId = "rollback-cumulative-history";
       final path = _writeRollout(
         codexHome,
@@ -1189,7 +1208,7 @@ void main() {
       ]);
     });
 
-    test("readMessages hides bridge context while preserving authored text and images", () {
+    test("message projection hides bridge context while preserving authored text and images", () {
       const worktreeContext = """
 [SYSTEM CONTEXT \u2014 IMPORTANT]
 A dedicated git worktree and branch have been created for this session:
@@ -1249,10 +1268,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1268,7 +1286,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(image.base64, "AQ==");
     });
 
-    test("readMessages hides bridge context inside a command invocation", () {
+    test("message projection hides bridge context inside a command invocation", () {
       const invocation = r"""
 $review [SYSTEM CONTEXT — IMPORTANT]
 A dedicated git worktree and branch have been created for this session:
@@ -1306,10 +1324,9 @@ authored arguments
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaad",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1321,7 +1338,7 @@ authored arguments
       );
     });
 
-    test("readMessages hides bridge context from an argumentless command", () {
+    test("message projection hides bridge context from an argumentless command", () {
       const invocation = r"""
 $review [SYSTEM CONTEXT — IMPORTANT]
 A dedicated git worktree and branch have been created for this session:
@@ -1356,10 +1373,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaae",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1367,7 +1383,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.single.parts.single.text, r"$review ");
     });
 
-    test("readMessages skips a pending bridge-context-only user message", () {
+    test("message projection skips a pending bridge-context-only user message", () {
       const worktreeContext = """
 [SYSTEM CONTEXT — IMPORTANT]
 A dedicated git worktree and branch have been created for this session:
@@ -1403,10 +1419,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaac",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1414,7 +1429,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages, isEmpty);
     });
 
-    test("readMessages preserves a terminal Codex failure as an error message", () {
+    test("message projection preserves a terminal Codex failure as an error message", () {
       const sessionId = "019a0000-1111-2222-3333-eeeeeeeeeeee";
       final path = _writeRollout(
         codexHome,
@@ -1441,10 +1456,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: sessionId,
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1460,7 +1474,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.single.parts, isEmpty);
     });
 
-    test("readMessages excludes only generated Codex user context envelopes", () {
+    test("message projection excludes only generated Codex user context envelopes", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/08/03/rollout-generated-context.jsonl",
@@ -1574,10 +1588,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc1",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1597,7 +1610,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.last.parts.single.text, "Visible answer");
     });
 
-    test("readMessages excludes only complete generated repository instructions", () {
+    test("message projection excludes only complete generated repository instructions", () {
       const generatedWithPath =
           "# AGENTS.md instructions for /sanitized/project\n\n"
           "<INSTRUCTIONS>\nrepository marker\n</INSTRUCTIONS>";
@@ -1651,10 +1664,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1668,7 +1680,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.first.parts.single.text, generatedWithPath);
     });
 
-    test("readMessages preserves compacted rollout records as completed tools", () {
+    test("message projection preserves compacted rollout records as completed tools", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/07/23/rollout-compacted.jsonl",
@@ -1692,10 +1704,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-cccccccccccc",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1711,7 +1722,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(part.state.output, isNull);
     });
 
-    test("readMessages restores image generations with stable persisted and fallback ids", () {
+    test("message projection restores image generations with stable persisted and fallback ids", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/07/31/rollout-image-history.jsonl",
@@ -1741,17 +1752,15 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final firstRead = messageRepository.readMessages(
+      final firstRead = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
-      final secondRead = messageRepository.readMessages(
+      final secondRead = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiiii",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1806,17 +1815,15 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final busyMessages = messageRepository.readMessages(
+      final busyMessages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
         structuredToolStatusByCallId: const {},
       );
-      final idleMessages = messageRepository.readMessages(
+      final idleMessages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiii99",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1835,7 +1842,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
     });
 
-    test("readMessages prefers durable image events over duplicate response items", () {
+    test("message projection prefers durable image events over duplicate response items", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/08/03/rollout-durable-image-history.jsonl",
@@ -1865,10 +1872,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii2",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1883,7 +1889,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(attachment.filename, "final.png");
     });
 
-    test("readMessages correlates id-less image records by durable result", () {
+    test("message projection correlates id-less image records by durable result", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/08/03/rollout-idless-durable-image.jsonl",
@@ -1912,10 +1918,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii3",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1953,10 +1958,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-iiiiiiiiiii4",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -1964,16 +1968,15 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.single.info.id, "m-1");
     });
 
-    test("readMessages surfaces transcript read failures", () {
+    test("message projection surfaces transcript read failures", () {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       final path = p.join(codexHome.path, "broken-rollout.jsonl");
       File(path).writeAsBytesSync([0xFF]);
 
       expect(
-        () => messageRepository.readMessages(
+        () => projectRootMessagesWithoutChildReplay(
           rolloutPath: path,
           sessionId: sessionId,
-          children: const [],
           replayToolDisposition: CodexReplayToolDisposition.terminalize,
           structuredToolStatusByCallId: const {},
         ),
@@ -1994,7 +1997,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
     });
 
-    test("readMessages surfaces tool calls (function_call + output) as tool parts", () {
+    test("message projection surfaces tool calls (function_call + output) as tool parts", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/04/17/rollout-2026-04-17T11-00-00-019a0000-1111-2222-3333-bbbbbbbbbbbb.jsonl",
@@ -2039,10 +2042,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {
           "c2": PluginToolStatus.error,
@@ -2071,7 +2073,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(patch.state.status, equals(PluginToolStatus.error));
     });
 
-    test("readMessages closes calls from terminal or idle evidence", () {
+    test("message projection closes calls from terminal or idle evidence", () {
       Map<String, Object?> call({
         required String callId,
         required String command,
@@ -2272,17 +2274,15 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.preserveRunning,
         structuredToolStatusByCallId: const {},
       );
-      final idleMessages = messageRepository.readMessages(
+      final idleMessages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "019a0000-1111-2222-3333-ccccccccccc2",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
@@ -2358,17 +2358,16 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
           }),
         ],
       );
-      final messages = messageRepository.readMessages(
+      final messages = projectRootMessagesWithoutChildReplay(
         rolloutPath: path,
         sessionId: "async-question-thread",
-        children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
       );
       expect(messages.single.parts.single.text, "I will keep investigating.");
     });
 
-    test("readMessages restores current calls around malformed content items", () {
+    test("message projection restores current calls around malformed content items", () {
       final path = _writeRollout(
         codexHome,
         path: "sessions/2026/07/22/rollout-current-messages.jsonl",
@@ -2440,10 +2439,9 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
 
       late List<PluginMessageWithParts> messages;
       final output = _captureWarnings(() {
-        messages = messageRepository.readMessages(
+        messages = projectRootMessagesWithoutChildReplay(
           rolloutPath: path,
           sessionId: "019a0000-1111-2222-3333-bbbbbbbbbbbb",
-          children: const [],
           replayToolDisposition: CodexReplayToolDisposition.terminalize,
           structuredToolStatusByCallId: const {},
         );
@@ -2472,7 +2470,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect((assistant.info as PluginMessageAssistant).modelID, "gpt-5.4");
     });
 
-    test("readMessages clips tool output by complete Unicode code points", () {
+    test("message projection clips tool output by complete Unicode code points", () {
       final emoji = String.fromCharCode(0x1F600);
       final path = _writeRollout(
         codexHome,
@@ -2500,19 +2498,12 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final output = messageRepository
-          .readMessages(
-            rolloutPath: path,
-            sessionId: "019a0000-1111-2222-3333-cccccccccccc",
-            children: const [],
-            replayToolDisposition: CodexReplayToolDisposition.terminalize,
-            structuredToolStatusByCallId: const {},
-          )
-          .single
-          .parts
-          .single
-          .state
-          .output;
+      final output = projectRootMessagesWithoutChildReplay(
+        rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-cccccccccccc",
+        replayToolDisposition: CodexReplayToolDisposition.terminalize,
+        structuredToolStatusByCallId: const {},
+      ).single.parts.single.state.output;
 
       expect(output?.runes, hasLength(maxToolOutputLength));
       expect(output, endsWith(emoji));
@@ -2714,7 +2705,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(record.model, equals("gpt-5.2-codex"));
     });
 
-    test("readMessages stamps assistant model from the active turn_context", () {
+    test("message projection stamps assistant model from the active turn_context", () {
       final repository = CodexMessageRepository(
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
@@ -2762,12 +2753,17 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = repository.readMessages(
+      final read = repository.prepareMessageRead(
         rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-dddddddddddd",
+      );
+      final messages = repository.projectMessages(
+        read: read,
         sessionId: "019a0000-1111-2222-3333-dddddddddddd",
         children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
+        childReplayDataById: const {},
       );
       expect(messages, hasLength(2));
       final first = messages[0].info as PluginMessageAssistant;
@@ -2780,7 +2776,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(second.variant, equals("xhigh"));
     });
 
-    test("readMessages falls back to config model when no turn_context", () {
+    test("message projection falls back to config model when no turn_context", () {
       final repository = CodexMessageRepository(
         rolloutApi: CodexRolloutApi(
           environment: {"CODEX_HOME": codexHome.path},
@@ -2809,12 +2805,17 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
         ],
       );
 
-      final messages = repository.readMessages(
+      final read = repository.prepareMessageRead(
         rolloutPath: path,
+        sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
+      );
+      final messages = repository.projectMessages(
+        read: read,
         sessionId: "019a0000-1111-2222-3333-eeeeeeeeeeee",
         children: const [],
         replayToolDisposition: CodexReplayToolDisposition.terminalize,
         structuredToolStatusByCallId: const {},
+        childReplayDataById: const {},
         config: const CodexConfigDefaults(
           model: "gpt-5.5",
           modelProvider: "openai",

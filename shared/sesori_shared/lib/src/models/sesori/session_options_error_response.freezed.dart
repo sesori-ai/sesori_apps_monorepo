@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionOptionsErrorResponse {
 
-@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) SessionOptionsErrorCode get code;
+@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) SessionOptionsErrorCode get code;/// Privacy-safe, plugin-owned guidance for [SessionOptionsErrorCode.authenticationRequired].
+/// Null for every other code and for peers that do not provide guidance.
+ String? get actionHint;
 /// Create a copy of SessionOptionsErrorResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -29,16 +31,16 @@ $SessionOptionsErrorResponseCopyWith<SessionOptionsErrorResponse> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsErrorResponse&&(identical(other.code, code) || other.code == code));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionOptionsErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code);
+int get hashCode => Object.hash(runtimeType,code,actionHint);
 
 @override
 String toString() {
-  return 'SessionOptionsErrorResponse(code: $code)';
+  return 'SessionOptionsErrorResponse(code: $code, actionHint: $actionHint)';
 }
 
 
@@ -49,7 +51,7 @@ abstract mixin class $SessionOptionsErrorResponseCopyWith<$Res>  {
   factory $SessionOptionsErrorResponseCopyWith(SessionOptionsErrorResponse value, $Res Function(SessionOptionsErrorResponse) _then) = _$SessionOptionsErrorResponseCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) SessionOptionsErrorCode code
+@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) SessionOptionsErrorCode code, String? actionHint
 });
 
 
@@ -66,10 +68,11 @@ class _$SessionOptionsErrorResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionOptionsErrorResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? code = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? code = null,Object? actionHint = freezed,}) {
   return _then(SessionOptionsErrorResponse(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
-as SessionOptionsErrorCode,
+as SessionOptionsErrorCode,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -81,10 +84,13 @@ as SessionOptionsErrorCode,
 @JsonSerializable()
 
 class _SessionOptionsErrorResponse implements SessionOptionsErrorResponse {
-  const _SessionOptionsErrorResponse({@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) required this.code});
+  const _SessionOptionsErrorResponse({@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) required this.code, required this.actionHint});
   factory _SessionOptionsErrorResponse.fromJson(Map<String, dynamic> json) => _$SessionOptionsErrorResponseFromJson(json);
 
 @override@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) final  SessionOptionsErrorCode code;
+/// Privacy-safe, plugin-owned guidance for [SessionOptionsErrorCode.authenticationRequired].
+/// Null for every other code and for peers that do not provide guidance.
+@override final  String? actionHint;
 
 /// Create a copy of SessionOptionsErrorResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -99,16 +105,16 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsErrorResponse&&(identical(other.code, code) || other.code == code));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionOptionsErrorResponse&&(identical(other.code, code) || other.code == code)&&(identical(other.actionHint, actionHint) || other.actionHint == actionHint));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,code);
+int get hashCode => Object.hash(runtimeType,code,actionHint);
 
 @override
 String toString() {
-  return 'SessionOptionsErrorResponse(code: $code)';
+  return 'SessionOptionsErrorResponse(code: $code, actionHint: $actionHint)';
 }
 
 
@@ -119,7 +125,7 @@ abstract mixin class _$SessionOptionsErrorResponseCopyWith<$Res> implements $Ses
   factory _$SessionOptionsErrorResponseCopyWith(_SessionOptionsErrorResponse value, $Res Function(_SessionOptionsErrorResponse) _then) = __$SessionOptionsErrorResponseCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) SessionOptionsErrorCode code
+@JsonKey(unknownEnumValue: SessionOptionsErrorCode.unknown) SessionOptionsErrorCode code, String? actionHint
 });
 
 
@@ -136,10 +142,11 @@ class __$SessionOptionsErrorResponseCopyWithImpl<$Res>
 
 /// Create a copy of SessionOptionsErrorResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? code = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? code = null,Object? actionHint = freezed,}) {
   return _then(_SessionOptionsErrorResponse(
 code: null == code ? _self.code : code // ignore: cast_nullable_to_non_nullable
-as SessionOptionsErrorCode,
+as SessionOptionsErrorCode,actionHint: freezed == actionHint ? _self.actionHint : actionHint // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 

@@ -901,11 +901,11 @@ abstract class AppLocalizations {
   /// **'Log in'**
   String get harnessAuthenticationLogIn;
 
-  /// No description provided for @harnessAuthenticationContinue.
+  /// No description provided for @harnessAuthenticationViewProgress.
   ///
   /// In en, this message translates to:
-  /// **'Continue login'**
-  String get harnessAuthenticationContinue;
+  /// **'View sign-in'**
+  String get harnessAuthenticationViewProgress;
 
   /// No description provided for @harnessAuthenticationDescription.
   ///
@@ -934,14 +934,68 @@ abstract class AppLocalizations {
   /// No description provided for @harnessAuthenticationBrowserInstructions.
   ///
   /// In en, this message translates to:
-  /// **'Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.'**
+  /// **'Only continue if you started this login. Verify the provider\'s website address before signing in. Sesori will return automatically when authorization finishes.'**
   String get harnessAuthenticationBrowserInstructions;
 
-  /// No description provided for @harnessAuthenticationRedirectLabel.
+  /// No description provided for @harnessAuthenticationPreparing.
   ///
   /// In en, this message translates to:
-  /// **'Redirect URL'**
-  String get harnessAuthenticationRedirectLabel;
+  /// **'Preparing sign-in…'**
+  String get harnessAuthenticationPreparing;
+
+  /// No description provided for @harnessAuthenticationPreparingDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'The provider page will open after the bridge prepares this sign-in.'**
+  String get harnessAuthenticationPreparingDescription;
+
+  /// No description provided for @harnessAuthenticationOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the secure provider page…'**
+  String get harnessAuthenticationOpening;
+
+  /// No description provided for @harnessAuthenticationWaitingForBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Complete sign-in in the provider page. Sesori will return automatically.'**
+  String get harnessAuthenticationWaitingForBrowser;
+
+  /// No description provided for @harnessAuthenticationFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Finishing sign-in with the bridge…'**
+  String get harnessAuthenticationFinalizing;
+
+  /// No description provided for @harnessAuthenticationSucceeded.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in completed successfully.'**
+  String get harnessAuthenticationSucceeded;
+
+  /// No description provided for @harnessAuthenticationCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was cancelled. No account was connected.'**
+  String get harnessAuthenticationCancelled;
+
+  /// No description provided for @harnessAuthenticationRetry.
+  ///
+  /// In en, this message translates to:
+  /// **'Try again'**
+  String get harnessAuthenticationRetry;
+
+  /// No description provided for @harnessAuthenticationDone.
+  ///
+  /// In en, this message translates to:
+  /// **'Done'**
+  String get harnessAuthenticationDone;
+
+  /// No description provided for @harnessAuthenticationClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get harnessAuthenticationClose;
 
   /// No description provided for @harnessAuthenticationCodeLabel.
   ///
@@ -1038,12 +1092,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
   String get harnessAuthenticationInvalidChallenge;
-
-  /// No description provided for @harnessAuthenticationInvalidRedirect.
-  ///
-  /// In en, this message translates to:
-  /// **'Paste the full redirect URL from the local callback page.'**
-  String get harnessAuthenticationInvalidRedirect;
 
   /// No description provided for @harnessAuthenticationBrowserFailed.
   ///
@@ -1596,6 +1644,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Untitled session'**
   String get sessionListUntitled;
+
+  /// Heading for sessions whose updated or archive timestamp is unavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown date'**
+  String get sessionListUnknownDate;
 
   /// No description provided for @sessionListRefreshSuccess.
   ///
@@ -2178,6 +2232,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Couldn’t apply updated prompt options. Your message remains queued.'**
   String get sessionDetailPromptOptionsRecoveryFailed;
+
+  /// No description provided for @sessionDetailAuthenticationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Provider login required'**
+  String get sessionDetailAuthenticationRequired;
 
   /// No description provided for @sessionDetailCommandUnavailable.
   ///
@@ -2947,6 +3007,12 @@ abstract class AppLocalizations {
   /// **'Refresh options'**
   String get newSessionOptionsRefresh;
 
+  /// Warning title shown when the selected coding harness has no authenticated provider/model available for this project.
+  ///
+  /// In en, this message translates to:
+  /// **'{plugin} login required'**
+  String newSessionAuthenticationRequiredTitle(String plugin);
+
   /// No description provided for @newSessionProjectUnavailable.
   ///
   /// In en, this message translates to:
@@ -3571,23 +3637,53 @@ abstract class AppLocalizations {
   /// **'Keep pulling to find new sessions'**
   String get catalogScanPullCaption;
 
-  /// Title of the row above a list while a catalog scan is in flight across every enabled harness.
+  /// Ordinary title of the row above a list while a catalog scan is in flight, including the number of terminal harnesses.
   ///
   /// In en, this message translates to:
-  /// **'Scanning all harnesses'**
-  String get catalogScanRunningTitle;
+  /// **'Scanning · {finished} of {total} finished'**
+  String catalogScanRunningTitle(int finished, int total);
 
-  /// Supporting line on the scan row between dispatch and the first progress event, when no harness has reported yet. Holds the line's place so the row does not change height when the real detail arrives.
+  /// Supporting line before one pending harness reports catalog progress.
   ///
   /// In en, this message translates to:
-  /// **'Starting…'**
-  String get catalogScanStartingDetail;
+  /// **'Preparing {harness} scan…'**
+  String catalogScanPreparingOneDetail(String harness);
 
-  /// Supporting line on the running scan row: the harness currently being scanned and how many sessions it has reported so far.
+  /// Supporting line while a fresh management snapshot authoritatively reports the named harness as starting.
   ///
   /// In en, this message translates to:
-  /// **'{harness} — {sessions, plural, =1{1 session} other{{sessions} sessions}}'**
-  String catalogScanRunningDetail(String harness, int sessions);
+  /// **'Starting {harness}…'**
+  String catalogScanStartingDetail(String harness);
+
+  /// Supporting line while the named harness is enumerating but has not found a session yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Reading {harness} sessions…'**
+  String catalogScanReadingDetail(String harness);
+
+  /// Supporting line while the named harness enumerates sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} — {sessions, plural, =1{1 session found} other{{sessions} sessions found}}'**
+  String catalogScanReadingCountDetail(String harness, int sessions);
+
+  /// Supporting line while the named harness commits its catalog snapshot.
+  ///
+  /// In en, this message translates to:
+  /// **'Saving {harness} scan results…'**
+  String catalogScanSavingDetail(String harness);
+
+  /// Title after one harness has remained authoritatively in startup for three seconds, including the number of terminal harnesses.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for {harness} · {finished} of {total} finished'**
+  String catalogScanWaitingTitle(String harness, int finished, int total);
+
+  /// Wrapped explanation after one harness has remained authoritatively in startup for three seconds.
+  ///
+  /// In en, this message translates to:
+  /// **'{harness} must finish starting before scanning can continue. You can keep browsing.'**
+  String catalogScanWaitingDetail(String harness);
 
   /// Action on the running scan row that stops the catalog scan in flight.
   ///
@@ -3907,37 +4003,37 @@ abstract class AppLocalizations {
   /// **'Close archived sessions'**
   String get archivedSessionsClose;
 
-  /// No description provided for @archivedSessionsToday.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'Today'**
   String get archivedSessionsToday;
 
-  /// No description provided for @archivedSessionsYesterday.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'Yesterday'**
   String get archivedSessionsYesterday;
 
-  /// No description provided for @archivedSessionsThisWeek.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'This week'**
   String get archivedSessionsThisWeek;
 
-  /// No description provided for @archivedSessionsLastWeek.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'Last week'**
   String get archivedSessionsLastWeek;
 
-  /// No description provided for @archivedSessionsThisMonth.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'This month'**
   String get archivedSessionsThisMonth;
 
-  /// No description provided for @archivedSessionsLastMonth.
+  /// Date heading shared by regular and archived task lists.
   ///
   /// In en, this message translates to:
   /// **'One month ago'**

@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:ui" as ui;
 
 import "package:material_ui/material_ui.dart";
@@ -18,15 +19,16 @@ const double _entranceScaleFrom = 0.97;
 const double _entranceBlurSigma = 2;
 // Keep the leading footprint identical when loading becomes a result.
 const double _scanMarkSize = 20;
+const Duration _startupWaitThreshold = Duration(seconds: 3);
 
 /// The catalog scan reported as one quiet row above a list.
 ///
 /// Live scans use the coordinated loading card designed for this flow;
 /// terminal outcomes keep their severity-tinted report cards.
 ///
-/// Its height never changes while the scan is live. The supporting line always
-/// occupies a row, so a scan that starts before it can name a harness does not
-/// shove the list down again when the first progress event lands.
+/// Ordinary live phases keep one supporting row, so progress changes do not
+/// shove the list. The prolonged-startup heading and explanation may wrap and
+/// grow; preserving their guidance is more important than baseline card height.
 class const CatalogScanRow({
   super.key,
 
@@ -85,6 +87,10 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   /// an empty box collapsing behind it.
   _RowContent? _shown;
 
+  Timer? _startupWaitTimer;
+  String? _startupWaitPluginName;
+  bool _startupWaitElapsed = false;
+
   /// Whether the current scan has anything to report. Decided from the scan
   /// alone, so the animation can be driven from lifecycle callbacks rather than
   /// from [build], where starting a controller races its own frame.
@@ -98,6 +104,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     // its labels and its live action button stay mounted at zero height, where
     // a keyboard or screen reader can still reach an invisible control.
     _reveal.addStatusListener(_onRevealStatus);
+    _syncStartupWait();
   }
 
   @override
@@ -109,6 +116,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   @override
   void didUpdateWidget(CatalogScanRow oldWidget) {
     super.didUpdateWidget(oldWidget);
+    _syncStartupWait();
     final reducedMotion = _syncReducedMotionPreference();
     final hadContent = oldWidget._scan is! CatalogRescanIdle;
     if (_hasContent) {
@@ -153,8 +161,48 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     setState(() => _shown = null);
   }
 
+  void _syncStartupWait() {
+    final pluginName = switch (widget._scan) {
+      CatalogRescanStarting(:final activePluginName) => activePluginName,
+      CatalogRescanIdle() ||
+      CatalogRescanPreparingOne() ||
+      CatalogRescanReading() ||
+      CatalogRescanSaving() ||
+      CatalogRescanSucceeded() ||
+      CatalogRescanPartlyFailed() ||
+      CatalogRescanFailed() ||
+      CatalogRescanUnsupported() ||
+      CatalogRescanNoHarness() => null,
+    };
+    if (pluginName == _startupWaitPluginName && (_startupWaitTimer != null || _startupWaitElapsed)) return;
+    _startupWaitTimer?.cancel();
+    _startupWaitTimer = null;
+    _startupWaitPluginName = pluginName;
+    _startupWaitElapsed = false;
+    if (pluginName == null) return;
+    _startupWaitTimer = Timer(_startupWaitThreshold, () {
+      _startupWaitTimer = null;
+      if (!mounted) return;
+      final stillWaitingForSameHarness = switch (widget._scan) {
+        CatalogRescanStarting(:final activePluginName) => activePluginName == pluginName,
+        CatalogRescanIdle() ||
+        CatalogRescanPreparingOne() ||
+        CatalogRescanReading() ||
+        CatalogRescanSaving() ||
+        CatalogRescanSucceeded() ||
+        CatalogRescanPartlyFailed() ||
+        CatalogRescanFailed() ||
+        CatalogRescanUnsupported() ||
+        CatalogRescanNoHarness() => false,
+      };
+      if (!stillWaitingForSameHarness) return;
+      setState(() => _startupWaitElapsed = true);
+    });
+  }
+
   @override
   void dispose() {
+    _startupWaitTimer?.cancel();
     WidgetsBinding.instance.removeObserver(this);
     _reveal.removeStatusListener(_onRevealStatus);
     _entranceCurve.dispose();
@@ -181,7 +229,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
         // Announced when it appears without moving focus, the same treatment
         // the connection banner uses: a scan started by a pull finishes with
         // no other signal that it is done. Every state announces except the
-        // running one, whose session count changes with each enumerated
+        // reading one, whose session count changes with each enumerated
         // session and would otherwise interrupt a screen reader hundreds of
         // times during one scan.
         child: AnimatedBuilder(
@@ -212,11 +260,12 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
             // otherwise this live-region container merges its localized label
             // into the changing status announcement.
             explicitChildNodes: true,
-            liveRegion: widget._scan is! CatalogRescanRunning,
+            liveRegion: widget._scan is! CatalogRescanReading,
             child: shown.tone == _ScanTone.working
                 ? _ScanLoadingCard(
                     title: shown.title,
                     supportingText: shown.detail,
+                    wrapSupportingText: shown.wrapDetail,
                     cancelLabel: shown.actionLabel,
                     onCancel: shown.onAction,
                   )
@@ -235,20 +284,39 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   /// `null` is the idle row, which folds away to nothing.
   _RowContent? _contentFor({required AppLocalizations loc, required CatalogRescanState scan}) => switch (scan) {
     CatalogRescanIdle() => null,
-    // The spinner is the progress report: a scan has no total to count towards,
-    // so there is nothing to fill a bar with. The detail line holds its place
-    // until the first harness reports.
-    CatalogRescanStarting() => _RowContent(
+    CatalogRescanPreparingOne(:final pendingPluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
       tone: _ScanTone.working,
-      title: loc.catalogScanRunningTitle,
-      detail: loc.catalogScanStartingDetail,
+      title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
+      detail: loc.catalogScanPreparingOneDetail(pendingPluginName),
       actionLabel: loc.catalogScanCancel,
       onAction: widget._onCancel,
     ),
-    CatalogRescanRunning(:final activePluginName, :final sessionsSeen) => _RowContent(
+    CatalogRescanStarting(:final activePluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
       tone: _ScanTone.working,
-      title: loc.catalogScanRunningTitle,
-      detail: loc.catalogScanRunningDetail(activePluginName, sessionsSeen),
+      title: _startupWaitElapsed
+          ? loc.catalogScanWaitingTitle(activePluginName, finishedHarnessCount, pluginIds.length)
+          : loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
+      detail: _startupWaitElapsed
+          ? loc.catalogScanWaitingDetail(activePluginName)
+          : loc.catalogScanStartingDetail(activePluginName),
+      wrapDetail: _startupWaitElapsed,
+      actionLabel: loc.catalogScanCancel,
+      onAction: widget._onCancel,
+    ),
+    CatalogRescanReading(:final activePluginName, :final sessionsSeen, :final finishedHarnessCount, :final pluginIds) =>
+      _RowContent(
+        tone: _ScanTone.working,
+        title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
+        detail: sessionsSeen == 0
+            ? loc.catalogScanReadingDetail(activePluginName)
+            : loc.catalogScanReadingCountDetail(activePluginName, sessionsSeen),
+        actionLabel: loc.catalogScanCancel,
+        onAction: widget._onCancel,
+      ),
+    CatalogRescanSaving(:final activePluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
+      tone: _ScanTone.working,
+      title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
+      detail: loc.catalogScanSavingDetail(activePluginName),
       actionLabel: loc.catalogScanCancel,
       onAction: widget._onCancel,
     ),
@@ -350,6 +418,7 @@ class const _RowContent({
   final IconData? icon,
   required final String title,
   required final String detail,
+  final bool wrapDetail = false,
   required final String actionLabel,
   required final VoidCallback onAction,
 });
@@ -492,6 +561,7 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
 class const _ScanLoadingCard({
   required final String title,
   required final String supportingText,
+  required final bool wrapSupportingText,
   required final String cancelLabel,
   required final VoidCallback onCancel,
 }) extends StatefulWidget {
@@ -612,15 +682,15 @@ class _ScanLoadingCardState()
                           children: [
                             Text(
                               widget.title,
-                              maxLines: wrapsText ? null : 1,
-                              overflow: wrapsText ? null : TextOverflow.ellipsis,
+                              maxLines: wrapsText || widget.wrapSupportingText ? null : 1,
+                              overflow: wrapsText || widget.wrapSupportingText ? null : TextOverflow.ellipsis,
                               style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
                             ),
                             const SizedBox(height: PregoSpacing.xxs),
                             Text(
                               widget.supportingText,
-                              maxLines: wrapsText ? null : 1,
-                              overflow: wrapsText ? null : TextOverflow.ellipsis,
+                              maxLines: wrapsText || widget.wrapSupportingText ? null : 1,
+                              overflow: wrapsText || widget.wrapSupportingText ? null : TextOverflow.ellipsis,
                               style: prego.textTheme.textSm.regular.copyWith(color: colors.textSecondary),
                             ),
                           ],

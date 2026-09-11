@@ -51,6 +51,7 @@ ToolState _parity({required AcpEventMapper mapper, required List<Map<String, dyn
     messageTimeResolver: null,
     haltClassifier: null,
     toolPartReplacement: null,
+    toolPartSuppression: null,
   );
   MessagePartTool? live;
   for (final update in updates) {

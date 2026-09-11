@@ -12,35 +12,12 @@ class GrokEventMapper({
   required super.configurationTracker,
   required super.childSessions,
 }) extends AcpEventMapper {
-  /// Grok extension lifecycle methods. Live sub-agent updates use the
-  /// notification form; replay and autonomous settlement can use the update
-  /// form with the same `params` shape.
-  static const String sessionNotificationMethod = "_x.ai/session_notification";
-  static const String sessionUpdateMethod = "_x.ai/session/update";
-
-  /// The tool whose call launches a sub-agent, as named in `_meta["x.ai/tool"]`.
-  static const String spawnSubagentToolName = "spawn_subagent";
-
-  /// The agent Grok runs when a spawn names none.
-  static const String defaultSubagentType = "general-purpose";
-
-  /// Prefix used by Grok for the prompt-less root turn that reports a
-  /// completed background child.
-  static const String autonomousTurnPromptPrefix = "subagent-completed-";
-
   /// The `spawn_subagent` call and the `subagent_spawned` notification share
   /// no id, so the call renders nothing and the notification owns the tile.
   @override
-  bool isSubagentSpawnToolCall({required Map<String, dynamic> update}) {
-    final rawMeta = update["_meta"];
-    if (rawMeta is! Map) return false;
-    try {
-      return GrokToolCallMetaDto.fromJson(rawMeta.cast<String, dynamic>()).tool?.name == spawnSubagentToolName;
-    } on Object catch (error, stackTrace) {
-      Log.w("[grok] tool call metadata could not be parsed; rendering a tool card", error, stackTrace);
-      return false;
-    }
-  }
+  // ignore: no_slop_linter/prefer_specific_type, ACP override requires open JSON
+  bool isSubagentSpawnToolCall({required Map<String, dynamic> update}) =>
+      GrokSessionProtocol.isSpawnSubagentUpdate(update: update);
 
   @override
   String? shellCommandForToolUpdate({required Map<String, dynamic> update}) {
@@ -59,7 +36,8 @@ class GrokEventMapper({
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
-    if (notification.method != sessionNotificationMethod && notification.method != sessionUpdateMethod) {
+    if (notification.method != GrokSessionProtocol.notificationMethod &&
+        notification.method != GrokSessionProtocol.updateMethod) {
       return super.mapExtension(notification);
     }
     final GrokSessionNotificationDto dto;
@@ -77,7 +55,7 @@ class GrokEventMapper({
         spawn: AcpChildSpawn(
           childSessionId: childSessionId,
           description: description,
-          agent: subagentType ?? defaultSubagentType,
+          agent: subagentType ?? GrokSessionProtocol.defaultSubagentType,
           // The notification carries no prompt: the child's own first user
           // message supplies it. It carries no launch mode either, and a root
           // `session/cancel` stops background children too, so every child is
@@ -119,8 +97,8 @@ class GrokEventMapper({
     required String rootSessionId,
     required String? promptId,
   }) {
-    if (promptId == null || !promptId.startsWith(autonomousTurnPromptPrefix)) return const [];
-    final holdId = promptId.substring(autonomousTurnPromptPrefix.length);
+    if (promptId == null || !promptId.startsWith(GrokSessionProtocol.autonomousTurnPromptPrefix)) return const [];
+    final holdId = promptId.substring(GrokSessionProtocol.autonomousTurnPromptPrefix.length);
     if (holdId.isEmpty) return const [];
     childSessions.releaseRootHold(rootSessionId: rootSessionId, holdId: holdId);
     return const [];

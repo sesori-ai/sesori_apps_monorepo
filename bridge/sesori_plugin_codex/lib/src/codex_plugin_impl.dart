@@ -1019,15 +1019,64 @@ class CodexPlugin._({
     required bool useAtomicStop,
     required Set<String> knownSubAgentSessionIds,
   }) async {
-    await _abortSession(sessionId: sessionId);
+    // Codex has exact per-thread interrupts, but no atomic subtree primitive.
+    // Snapshot the complete known scope before policy handling or side effects.
+    final descendantSessionIds = <String>{
+      ..._sessionService.scopedDescendantSessionIds(sessionId: sessionId),
+      ...knownSubAgentSessionIds,
+    };
+    final pendingInputSessionIds = _approvalRegistry?.pendingSessionIds ?? const <String>{};
+    final activeDescendantSessionIds = {
+      for (final descendantId in descendantSessionIds)
+        if (_hasTurnOrAdmissionEvidence(sessionId: descendantId) || pendingInputSessionIds.contains(descendantId))
+          descendantId,
+    };
+    final mainAgentRunning =
+        _hasTurnOrAdmissionEvidence(sessionId: sessionId) || pendingInputSessionIds.contains(sessionId);
+
+    if (subAgents == PluginAbortSubAgentPolicy.confirm && activeDescendantSessionIds.isNotEmpty) {
+      return PluginAbortRejectedSubAgentsRunning(
+        runningSubAgentCount: activeDescendantSessionIds.length,
+        mainAgentRunning: mainAgentRunning,
+        mainAgentOnlySupported: true,
+      );
+    }
+
+    if (subAgents == PluginAbortSubAgentPolicy.keep && activeDescendantSessionIds.isNotEmpty) {
+      if (mainAgentRunning) {
+        await _abortSessions(sessionIds: {sessionId});
+      }
+      return const PluginAbortAccepted(workKept: true, subAgentsHandled: false);
+    }
+
+    final sessionIdsToStop = <String>{sessionId};
+    if (subAgents != PluginAbortSubAgentPolicy.keep) {
+      sessionIdsToStop.addAll(activeDescendantSessionIds);
+    }
+    await _abortSessions(sessionIds: sessionIdsToStop);
     return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);
   }
 
+  bool _hasTurnOrAdmissionEvidence({required String sessionId}) =>
+      _activeTurnByThread.containsKey(sessionId) ||
+      _provisionalAcceptedTurnThreadIds.contains(sessionId) ||
+      _hasCurrentPendingTurnRequest(sessionId) ||
+      _isActiveStatus(_sessionStatuses[sessionId]) ||
+      _sessionService.isActiveTrackedChild(sessionId: sessionId);
+
+  Future<void> _abortSessions({required Set<String> sessionIds}) => Future.wait([
+    // Construct every future before awaiting, so one exact-thread failure
+    // cannot prevent another target in the immutable snapshot from starting.
+    for (final sessionId in sessionIds) _abortSession(sessionId: sessionId),
+  ]);
+
   Future<void> _abortSession({required String sessionId}) async {
+    final hasTurnOrAdmissionEvidence = _hasTurnOrAdmissionEvidence(sessionId: sessionId);
+    final pendingNativeTurnId = _approvalRegistry?.pendingNativeTurnIdForSession(sessionId: sessionId);
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
-    final turnId = _activeTurnByThread[sessionId];
+    final turnId = _activeTurnByThread[sessionId] ?? pendingNativeTurnId;
     if (turnId == null) {
-      if (_sessionService.isActiveTrackedChild(sessionId: sessionId)) {
+      if (hasTurnOrAdmissionEvidence) {
         _interruptOnTurnStartThreadIds.add(sessionId);
       }
       _syncWorkState();
@@ -1162,15 +1211,15 @@ class CodexPlugin._({
       final activeSessionIds = <String>{
         ..._provisionalAcceptedTurnThreadIds,
         ..._activeTurnByThread.keys,
+        for (final entry in _pendingTurnRequestRevisionByThread.entries)
+          if (_hasCurrentPendingTurnRequest(entry.key)) entry.key,
         for (final entry in _sessionStatuses.entries)
           if (_isActiveStatus(entry.value)) entry.key,
         ...?_approvalRegistry?.pendingSessionIds,
       };
       if (activeSessionIds.isEmpty) return const <String>{};
 
-      await Future.wait([
-        for (final sessionId in activeSessionIds) _abortSession(sessionId: sessionId),
-      ]);
+      await _abortSessions(sessionIds: activeSessionIds);
       await _notificationWork;
       if (currentWorkState != PluginWorkState.idle) {
         await workState.firstWhere((state) => state == PluginWorkState.idle);
@@ -1289,6 +1338,7 @@ class CodexPlugin._({
   int _recordPendingTurnRequest(String threadId) {
     final revision = _turnEvidenceRevisionByThread[threadId] ?? 0;
     _pendingTurnRequestRevisionByThread[threadId] = revision;
+    _syncWorkState();
     return revision;
   }
 
@@ -1301,6 +1351,8 @@ class CodexPlugin._({
   }) {
     if (_pendingTurnRequestRevisionByThread[threadId] == evidenceRevision) {
       _pendingTurnRequestRevisionByThread.remove(threadId);
+      _interruptOnTurnStartThreadIds.remove(threadId);
+      _syncWorkState();
     }
   }
 
@@ -1635,6 +1687,7 @@ class CodexPlugin._({
     final busy =
         _provisionalAcceptedTurnThreadIds.isNotEmpty ||
         _activeTurnByThread.isNotEmpty ||
+        _pendingTurnRequestRevisionByThread.keys.any(_hasCurrentPendingTurnRequest) ||
         (_approvalRegistry?.hasAnyPendingInput ?? false) ||
         _sessionStatuses.values.any(
           (status) => status is PluginSessionStatusBusy || status is PluginSessionStatusRetry,

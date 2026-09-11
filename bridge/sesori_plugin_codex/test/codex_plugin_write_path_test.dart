@@ -82,6 +82,61 @@ void main() {
       expect(plugin.currentWorkState, PluginWorkState.busy);
     }
 
+    void writeScopedThread({required String id, required String? parentId}) {
+      final rollout = File(
+        p.join(
+          codexHome.path,
+          "sessions/2026/09/08/rollout-2026-09-08T12-00-00-$id.jsonl",
+        ),
+      )..createSync(recursive: true);
+      rollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {
+            "id": id,
+            "timestamp": "2026-09-08T12:00:00Z",
+            "cwd": "/work/sample",
+            "parent_thread_id": ?parentId,
+            if (parentId != null) "thread_source": "subagent",
+          },
+        })}\n",
+      );
+    }
+
+    Future<void> connectWithScopedTree({
+      required Set<String> activeSessionIds,
+      Set<String> pendingInputSessionIds = const {},
+    }) async {
+      writeScopedThread(id: _scopeAncestorId, parentId: null);
+      writeScopedThread(id: _scopeRootId, parentId: _scopeAncestorId);
+      writeScopedThread(id: _scopeChildId, parentId: _scopeRootId);
+      writeScopedThread(id: _scopeGrandchildId, parentId: _scopeChildId);
+      writeScopedThread(id: _scopeInactiveChildId, parentId: _scopeRootId);
+      writeScopedThread(id: _scopeSiblingId, parentId: _scopeAncestorId);
+      fake.respondInOrder([const _Response(result: _initOk)]);
+      await plugin.healthCheck();
+      for (final sessionId in activeSessionIds) {
+        fake.pushNotification("turn/started", {
+          "threadId": sessionId,
+          "turn": {"id": "turn-$sessionId"},
+        });
+      }
+      var requestId = 500;
+      for (final sessionId in pendingInputSessionIds) {
+        fake.pushServerRequest(
+          id: requestId++,
+          method: "item/commandExecution/requestApproval",
+          params: {
+            "threadId": sessionId,
+            "turnId": "turn-$sessionId",
+            "itemId": "approval-$sessionId",
+            "command": "ls",
+          },
+        );
+      }
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+    }
+
     for (final running in [true, false]) {
       test("async question answers reach the owning ${running ? 'running' : 'completed'} conversation", () async {
         fake.respondInOrder([const _Response(result: _initOk)]);
@@ -1374,6 +1429,396 @@ void main() {
         fake.sentMethods,
         equals(["initialize", "thread/start", "turn/start", "thread/resume", "turn/start"]),
       );
+    });
+
+    test("scoped confirm rejects before effects with exact descendant and named-thread state", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {_scopeRootId, _scopeChildId, _scopeGrandchildId},
+        pendingInputSessionIds: {_scopeRootId, _scopeChildId},
+      );
+
+      final runningRoot = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId, _scopeInactiveChildId},
+      );
+
+      expect(
+        runningRoot,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 2)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isTrue)
+            .having((result) => result.mainAgentOnlySupported, "mainAgentOnlySupported", isTrue),
+      );
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID).toSet(),
+        {_scopeRootId, _scopeChildId},
+      );
+
+      fake.pushNotification("turn/completed", {
+        "threadId": _scopeRootId,
+        "turn": {"id": "turn-$_scopeRootId"},
+      });
+      PluginAbortResult idleRoot = runningRoot;
+      for (var attempt = 0; attempt < 100; attempt++) {
+        idleRoot = await plugin.abortSession(
+          sessionId: _scopeRootId,
+          subAgents: PluginAbortSubAgentPolicy.confirm,
+          useAtomicStop: false,
+          knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId, _scopeInactiveChildId},
+        );
+        if (idleRoot case PluginAbortRejectedSubAgentsRunning(mainAgentRunning: false)) break;
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+
+      expect(
+        idleRoot,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 2)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isTrue)
+            .having((result) => result.mainAgentOnlySupported, "mainAgentOnlySupported", isTrue),
+      );
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID).toSet(),
+        {_scopeRootId, _scopeChildId},
+      );
+    });
+
+    test("scoped confirm counts pending-input-only tracked and bridge-known descendants", () async {
+      await connectWithScopedTree(
+        activeSessionIds: const {},
+        pendingInputSessionIds: {_scopeChildId, _scopeBridgeKnownId},
+      );
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeBridgeKnownId},
+      );
+
+      expect(
+        result,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 2)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isFalse)
+            .having((result) => result.mainAgentOnlySupported, "mainAgentOnlySupported", isTrue),
+      );
+      expect(fake.sentMethods.where((method) => method == "turn/interrupt"), isEmpty);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeChildId)).map((permission) => permission.sessionID),
+        [_scopeChildId],
+      );
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeBridgeKnownId)).map((permission) => permission.sessionID),
+        [_scopeBridgeKnownId],
+      );
+    });
+
+    test("scoped keep interrupts the named pending permission's exact native turn", () async {
+      await connectWithScopedTree(
+        activeSessionIds: const {},
+        pendingInputSessionIds: {_scopeRootId, _scopeChildId, _scopeBridgeKnownId},
+      );
+      fake.respondInOrder([const _Response(result: null)]);
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeBridgeKnownId},
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: true, subAgentsHandled: false));
+      expect(fake.sentParamsForAll(method: "turn/interrupt"), [
+        {"threadId": _scopeRootId, "turnId": "turn-$_scopeRootId"},
+      ]);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID),
+        [_scopeChildId],
+      );
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeBridgeKnownId)).map((permission) => permission.sessionID),
+        [_scopeBridgeKnownId],
+      );
+
+      fake.pushNotification("turn/started", {
+        "threadId": _scopeRootId,
+        "turn": {"id": "turn-after-pending-only-stop"},
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt"),
+        [
+          {"threadId": _scopeRootId, "turnId": "turn-$_scopeRootId"},
+        ],
+        reason: "exact pending-turn interruption must not fence a later turn start",
+      );
+    });
+
+    test("scoped stop interrupts a pending user-input request's exact native turn", () async {
+      await connectWithScopedTree(activeSessionIds: const {});
+      final asked = plugin.events.where((event) => event is BridgeSseQuestionAsked).first;
+      fake.pushServerRequest(
+        id: 700,
+        method: "item/tool/requestUserInput",
+        params: {
+          "threadId": _scopeRootId,
+          "turnId": "native-question-turn",
+          "itemId": "question-item",
+          "questions": [
+            {"id": "scope", "header": "Scope", "question": "Which scope?"},
+          ],
+        },
+      );
+      await asked.timeout(const Duration(seconds: 1));
+      fake.respondInOrder([const _Response(result: null)]);
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
+      expect(fake.sentParamsForAll(method: "turn/interrupt"), [
+        {"threadId": _scopeRootId, "turnId": "native-question-turn"},
+      ]);
+      expect(await plugin.getPendingQuestions(sessionId: _scopeRootId), isEmpty);
+
+      fake.pushNotification("turn/started", {
+        "threadId": _scopeRootId,
+        "turn": {"id": "later-unrelated-turn"},
+      });
+      await Future<void>.delayed(const Duration(milliseconds: 20));
+      expect(fake.sentParamsForAll(method: "turn/interrupt"), [
+        {"threadId": _scopeRootId, "turnId": "native-question-turn"},
+      ]);
+    });
+
+    test("scoped keep stops only a running named thread and preserves descendant work", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {_scopeRootId, _scopeChildId, _scopeGrandchildId, _scopeSiblingId},
+        pendingInputSessionIds: {_scopeRootId, _scopeChildId},
+      );
+      fake.respondInOrder([const _Response(result: null)]);
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.keep,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId, _scopeInactiveChildId},
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: true, subAgentsHandled: false));
+      expect(fake.sentParamsForAll(method: "turn/interrupt"), [
+        {"threadId": _scopeRootId, "turnId": "turn-$_scopeRootId"},
+      ]);
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeRootId)).map((permission) => permission.sessionID),
+        [_scopeChildId],
+      );
+      final statuses = await plugin.getSessionStatuses();
+      expect(statuses[_scopeChildId], isA<PluginSessionStatusBusy>());
+      expect(statuses[_scopeGrandchildId], isA<PluginSessionStatusBusy>());
+      expect(statuses[_scopeSiblingId], isA<PluginSessionStatusBusy>());
+    });
+
+    test("scoped stop fans out across active and pending-input descendants but excludes outside scope", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {
+          _scopeAncestorId,
+          _scopeRootId,
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeSiblingId,
+        },
+        pendingInputSessionIds: {
+          _scopeAncestorId,
+          _scopeRootId,
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeInactiveChildId,
+          _scopeSiblingId,
+          _scopeBridgeKnownId,
+        },
+      );
+      fake.respondInOrder(List.filled(5, const _Response(result: null)));
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeRootId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: {
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeInactiveChildId,
+          _scopeBridgeKnownId,
+        },
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").toSet(),
+        {
+          {"threadId": _scopeRootId, "turnId": "turn-$_scopeRootId"},
+          {"threadId": _scopeChildId, "turnId": "turn-$_scopeChildId"},
+          {"threadId": _scopeGrandchildId, "turnId": "turn-$_scopeGrandchildId"},
+          {"threadId": _scopeInactiveChildId, "turnId": "turn-$_scopeInactiveChildId"},
+          {"threadId": _scopeBridgeKnownId, "turnId": "turn-$_scopeBridgeKnownId"},
+        },
+      );
+      expect(
+        (await plugin.getPendingPermissions(sessionId: _scopeAncestorId))
+            .map((permission) => permission.sessionID)
+            .toSet(),
+        {_scopeAncestorId, _scopeSiblingId},
+      );
+      expect(await plugin.getPendingPermissions(sessionId: _scopeInactiveChildId), isEmpty);
+      expect(await plugin.getPendingPermissions(sessionId: _scopeBridgeKnownId), isEmpty);
+    });
+
+    test("named-child policy scopes confirmation and stop to its own descendants", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {
+          _scopeAncestorId,
+          _scopeRootId,
+          _scopeChildId,
+          _scopeGrandchildId,
+          _scopeSiblingId,
+        },
+      );
+
+      final confirmation = await plugin.abortSession(
+        sessionId: _scopeChildId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeGrandchildId},
+      );
+      expect(
+        confirmation,
+        isA<PluginAbortRejectedSubAgentsRunning>()
+            .having((result) => result.runningSubAgentCount, "runningSubAgentCount", 1)
+            .having((result) => result.mainAgentRunning, "mainAgentRunning", isTrue),
+      );
+      fake.respondInOrder(List.filled(2, const _Response(result: null)));
+
+      final result = await plugin.abortSession(
+        sessionId: _scopeChildId,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: {_scopeGrandchildId},
+      );
+
+      expect(result, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
+        {_scopeChildId, _scopeGrandchildId},
+      );
+    });
+
+    test("scoped stop starts every snapshot interrupt and surfaces the original failure", () async {
+      await connectWithScopedTree(
+        activeSessionIds: {_scopeRootId, _scopeChildId, _scopeGrandchildId},
+      );
+      fake.respondInOrder([
+        const _Response(error: {"code": -32603, "message": "root interrupt failed"}),
+        const _Response(result: null),
+        const _Response(result: null),
+      ]);
+
+      await expectLater(
+        plugin.abortSession(
+          sessionId: _scopeRootId,
+          subAgents: PluginAbortSubAgentPolicy.stop,
+          useAtomicStop: true,
+          knownSubAgentSessionIds: {_scopeChildId, _scopeGrandchildId},
+        ),
+        throwsA(
+          isA<CodexRpcException>()
+              .having((error) => error.code, "code", -32603)
+              .having((error) => error.message, "message", "root interrupt failed"),
+        ),
+      );
+      expect(
+        fake.sentParamsForAll(method: "turn/interrupt").map((params) => params["threadId"]).toSet(),
+        {_scopeRootId, _scopeChildId, _scopeGrandchildId},
+      );
+    });
+
+    test("stop and headless interruption fence an in-flight root turn admission", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "root-pending-turn", "cwd": "/work/sample"},
+          },
+        ),
+      ]);
+      await plugin.healthCheck();
+      fake.holdNextResponse("turn/start");
+      final send = plugin.sendPrompt(
+        promptId: "prompt-pending-turn",
+        sessionId: "root-pending-turn",
+        parts: const [PluginPromptPart.text(text: "long task")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      for (var attempt = 0; attempt < 100 && !fake.sentMethods.contains("turn/start"); attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+
+      expect(
+        await plugin.abortSession(
+          sessionId: "root-pending-turn",
+          subAgents: PluginAbortSubAgentPolicy.stop,
+          useAtomicStop: false,
+          knownSubAgentSessionIds: const {},
+        ),
+        const PluginAbortAccepted(workKept: false, subAgentsHandled: false),
+      );
+      expect(fake.sentMethods, isNot(contains("turn/interrupt")));
+      var headlessFinished = false;
+      final headless = plugin
+          .interruptActiveWork(budget: const Duration(seconds: 2))
+          .whenComplete(() => headlessFinished = true);
+      await Future<void>.delayed(Duration.zero);
+      expect(headlessFinished, isFalse);
+
+      fake.respondInOrder([const _Response(result: null)]);
+      fake.respondToHeld(
+        "turn/start",
+        const _Response(
+          result: {
+            "turn": {"id": "pending-turn-id"},
+          },
+        ),
+      );
+      await send;
+      fake.pushNotification("turn/started", {
+        "threadId": "root-pending-turn",
+        "turn": {"id": "pending-turn-id"},
+      });
+      for (var attempt = 0; attempt < 100 && !fake.sentMethods.contains("turn/interrupt"); attempt++) {
+        await Future<void>.delayed(Duration.zero);
+      }
+      expect(fake.sentParamsFor("turn/interrupt"), {
+        "threadId": "root-pending-turn",
+        "turnId": "pending-turn-id",
+      });
+      expect(headlessFinished, isFalse);
+
+      fake.pushNotification("turn/completed", {
+        "threadId": "root-pending-turn",
+        "turn": {"id": "pending-turn-id"},
+      });
+      expect(await headless, {"root-pending-turn"});
+      expect(plugin.currentWorkState, PluginWorkState.idle);
     });
 
     test("abortSession calls turn/interrupt on the active turn", () async {
@@ -2799,18 +3244,6 @@ void main() {
     });
 
     test("a spawned sub-agent thread becomes a child session that keeps the root busy", () async {
-      const rootId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
-      final rolloutDirectory = Directory(p.join(codexHome.path, "sessions", "2026", "09", "05"))
-        ..createSync(recursive: true);
-      final parentRollout = File(
-        p.join(rolloutDirectory.path, "rollout-2026-09-05T12-00-00-$rootId.jsonl"),
-      );
-      parentRollout.writeAsStringSync(
-        "${jsonEncode({
-          "type": "session_meta",
-          "payload": {"id": rootId, "cwd": "/work/other"},
-        })}\n",
-      );
       fake.respondInOrder([
         const _Response(result: _initOk),
       ]);
@@ -2823,16 +3256,37 @@ void main() {
           .timeout(
             const Duration(seconds: 2),
           );
+      final rolloutDirectory = Directory(p.join(codexHome.path, "sessions", "2026", "09", "05"))
+        ..createSync(recursive: true);
+      final parentRollout = File(
+        p.join(rolloutDirectory.path, "rollout-2026-09-05T12-00-00-019a0000-1111-2222-3333-aaaaaaaaaaaa.jsonl"),
+      );
+      parentRollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {"id": "019a0000-1111-2222-3333-aaaaaaaaaaaa", "cwd": "/work/other"},
+        })}\n",
+      );
       await plugin.healthCheck();
 
       fake.pushNotification("thread/started", {
-        "thread": {"id": rootId, "cwd": "/work/other", "createdAt": 1700000000, "updatedAt": 1700000000},
+        "thread": {
+          "id": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+          "cwd": "/work/other",
+          "createdAt": 1700000000,
+          "updatedAt": 1700000000,
+        },
       });
       fake.pushNotification("turn/started", {
-        "threadId": rootId,
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         "turn": {"id": "u-root", "startedAt": 1700000005},
       });
       await Future<void>.delayed(const Duration(milliseconds: 20));
+      // The child announces itself by status before the parent names it.
+      fake.pushNotification("thread/status/changed", {
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        "status": {"type": "idle"},
+      });
       parentRollout.writeAsStringSync(
         "${jsonEncode({
           "type": "response_item",
@@ -2849,25 +3303,23 @@ void main() {
         })}\n",
         mode: FileMode.append,
       );
-      // The child announces itself by status before the parent names it.
-      fake.pushNotification("thread/status/changed", {
-        "threadId": "child-1",
-        "status": {"type": "idle"},
-      });
       fake.holdNextResponse("thread/read");
       final readRequested = Completer<void>();
       fake.onRequest = (method) {
         if (method == "thread/read" && !readRequested.isCompleted) readRequested.complete();
       };
-      final created = next<BridgeSseSessionCreated>((event) => event.info["id"] == "child-1");
+      final created = next<BridgeSseSessionCreated>(
+        (event) => event.info["id"] == "019a0000-1111-2222-3333-aaaaaaaaaaab",
+      );
+      final fallbackTile = next<BridgeSseMessagePartUpdated>((event) => event.part is PluginMessagePartSubtask);
       fake.pushNotification("item/started", {
-        "threadId": rootId,
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         "turnId": "u-root",
         "item": {
           "type": "subAgentActivity",
           "id": "call_spawn",
           "kind": "started",
-          "agentThreadId": "child-1",
+          "agentThreadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
           "agentPath": "/root/sleeper",
         },
       });
@@ -2875,30 +3327,32 @@ void main() {
 
       // Server requests use a separate stream. Parent routing is available
       // even while thread/read is still enriching the child announcement.
-      final permissionAsked = next<BridgeSsePermissionAsked>((event) => event.sessionID == "child-1");
+      final permissionAsked = next<BridgeSsePermissionAsked>(
+        (event) => event.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaab",
+      );
       fake.pushServerRequest(
         id: 201,
         method: "item/commandExecution/requestApproval",
         params: {
-          "threadId": "child-1",
+          "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
           "turnId": "u-child",
           "itemId": "item-permission",
           "command": "ls",
         },
       );
       final permissionEvent = await permissionAsked;
-      expect(permissionEvent.displaySessionId, rootId);
-      final pendingDuringRead = await plugin.getPendingPermissions(sessionId: rootId);
-      expect(pendingDuringRead.single.sessionID, "child-1");
-      expect(pendingDuringRead.single.displaySessionId, rootId);
+      expect(permissionEvent.displaySessionId, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+      final pendingDuringRead = await plugin.getPendingPermissions(sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+      expect(pendingDuringRead.single.sessionID, "019a0000-1111-2222-3333-aaaaaaaaaaab");
+      expect(pendingDuringRead.single.displaySessionId, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
 
       fake.respondToHeld(
         "thread/read",
         const _Response(
           result: {
             "thread": {
-              "id": "child-1",
-              "parentThreadId": rootId,
+              "id": "019a0000-1111-2222-3333-aaaaaaaaaaab",
+              "parentThreadId": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
               "agentNickname": "Raman",
               "agentRole": null,
               "threadSource": null,
@@ -2911,93 +3365,199 @@ void main() {
       );
       fake.onRequest = null;
       final childSession = shared.Session.fromJson((await created).info);
-      expect(childSession.parentID, rootId);
+      expect(childSession.parentID, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
       expect(childSession.title, "Raman");
       expect(childSession.projectID, "/work/other");
-      expect(fake.sentParamsFor("thread/read"), {"threadId": "child-1", "includeTurns": false});
-      await Future<void>.delayed(Duration.zero);
-      final inlineTask = events
+      expect(fake.sentParamsFor("thread/read"), {
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        "includeTurns": false,
+      });
+      final fallbackTask = (await fallbackTile).part as PluginMessagePartSubtask;
+      expect(fallbackTask.prompt, "Exact delegated task.");
+
+      final childRollout = File(
+        p.join(rolloutDirectory.path, "rollout-2026-09-05T12-00-01-019a0000-1111-2222-3333-aaaaaaaaaaab.jsonl"),
+      );
+      childRollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "session_meta",
+          "payload": {
+            "id": "019a0000-1111-2222-3333-aaaaaaaaaaab",
+            "cwd": "/work/other",
+            "parent_thread_id": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+            "thread_source": "subagent",
+          },
+        })}\n"
+        "${jsonEncode({
+          "type": "event_msg",
+          "payload": {"type": "task_started", "turn_id": "u-child"},
+        })}\n",
+      );
+      final childUpdated = next<BridgeSseSessionUpdated>(
+        (event) => event.info["id"] == "019a0000-1111-2222-3333-aaaaaaaaaaab",
+      );
+      fake.pushNotification("turn/started", {
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        "turn": {"id": "u-child", "startedAt": 1700000007},
+      });
+      expect(shared.Session.fromJson((await childUpdated).info).parentID, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+
+      final tileCountBeforeEncrypted = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .where((event) => event.part is PluginMessagePartSubtask)
+          .length;
+      childRollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "inter_agent_communication_metadata",
+          "payload": {"trigger_turn": true},
+        })}\n"
+        "${jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "agent_message",
+            "id": "amsg-encrypted",
+            "author": "/root",
+            "recipient": "/root/sleeper",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "Message Type: NEW_TASK\nTask name: /root/sleeper\nSender: /root\nPayload:\n",
+              },
+              {"type": "encrypted_content", "encrypted_content": "opaque"},
+            ],
+            "internal_chat_message_metadata_passthrough": {"turn_id": "u-child"},
+          },
+        })}\n",
+        mode: FileMode.append,
+      );
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+      final tilesAfterEncrypted = events
           .whereType<BridgeSseMessagePartUpdated>()
           .map((event) => event.part)
           .whereType<PluginMessagePartSubtask>()
-          .single;
+          .toList();
+      expect(tilesAfterEncrypted, hasLength(tileCountBeforeEncrypted));
+      expect(tilesAfterEncrypted.every((tile) => !tile.prompt.contains("Message Type:")), isTrue);
+
+      final nativeTile = next<BridgeSseMessagePartUpdated>(
+        (event) =>
+            event.part is PluginMessagePartSubtask &&
+            (event.part as PluginMessagePartSubtask).prompt == "Native child prompt.",
+      );
+      childRollout.writeAsStringSync(
+        "${jsonEncode({
+          "type": "inter_agent_communication_metadata",
+          "payload": {"trigger_turn": true},
+        })}\n"
+        "${jsonEncode({
+          "type": "response_item",
+          "payload": {
+            "type": "agent_message",
+            "id": "amsg-child",
+            "author": "/root",
+            "recipient": "/root/sleeper",
+            "content": [
+              {
+                "type": "input_text",
+                "text": "Message Type: NEW_TASK\nTask name: /root/sleeper\nSender: /root\nPayload:\nNative child prompt.",
+              },
+            ],
+            "internal_chat_message_metadata_passthrough": {"turn_id": "u-child"},
+          },
+        })}\n",
+        mode: FileMode.append,
+      );
+      final inlineTask = (await nativeTile).part as PluginMessagePartSubtask;
+      expect(inlineTask.id, fallbackTask.id);
       expect(inlineTask.messageID, "call_spawn");
       expect(inlineTask.description, "Raman");
-      expect(inlineTask.childSessionID, "child-1");
-      expect(inlineTask.prompt, "Exact delegated task.");
+      expect(inlineTask.childSessionID, "019a0000-1111-2222-3333-aaaaaaaaaaab");
+      expect(inlineTask.prompt, "Native child prompt.");
       expect(inlineTask.taskState?.status, PluginToolStatus.running);
       expect(
-        events.whereType<BridgeSseSessionStatus>().where((event) => event.sessionID == "child-1").last.status,
+        events
+            .whereType<BridgeSseSessionStatus>()
+            .where((event) => event.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaab")
+            .last
+            .status,
         const PluginSessionStatus.busy(),
         reason: "the started activity supersedes Codex's pre-start idle status",
       );
       var statuses = await plugin.getSessionStatuses();
-      expect(statuses[rootId], isA<PluginSessionStatusBusy>());
-      expect(statuses["child-1"], isA<PluginSessionStatusBusy>());
+      expect(statuses["019a0000-1111-2222-3333-aaaaaaaaaaaa"], isA<PluginSessionStatusBusy>());
+      expect(statuses["019a0000-1111-2222-3333-aaaaaaaaaaab"], isA<PluginSessionStatusBusy>());
       var summary = plugin.getActiveSessionsSummary();
       expect(summary.single.id, "/work/other");
-      expect(summary.single.activeSessions.single.id, rootId);
+      expect(summary.single.activeSessions.single.id, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
       expect(summary.single.activeSessions.single.mainAgentRunning, isTrue);
-      expect(summary.single.activeSessions.single.childSessionIds, ["child-1"]);
+      expect(summary.single.activeSessions.single.childSessionIds, ["019a0000-1111-2222-3333-aaaaaaaaaaab"]);
 
-      final children = await plugin.getChildSessions(rootId);
-      expect(children.single.id, "child-1");
-      expect(children.single.parentID, rootId);
+      final children = await plugin.getChildSessions("019a0000-1111-2222-3333-aaaaaaaaaaaa");
+      expect(children.single.id, "019a0000-1111-2222-3333-aaaaaaaaaaab");
+      expect(children.single.parentID, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
       expect(children.single.directory, "/work/other");
 
       // The root can complete before Codex's later active notification for the
       // child. The activity-start fact already holds the root busy.
-      final rootUpdated = next<BridgeSseSessionUpdated>((event) => event.info["id"] == rootId);
+      final rootUpdated = next<BridgeSseSessionUpdated>(
+        (event) => event.info["id"] == "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+      );
       fake.pushNotification("turn/completed", {
-        "threadId": rootId,
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         "turn": {"id": "u-root", "completedAt": 1700000010},
       });
       fake.pushNotification("thread/status/changed", {
-        "threadId": rootId,
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         "status": {"type": "idle"},
       });
       await rootUpdated;
       await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(events.whereType<BridgeSseSessionIdle>().where((event) => event.sessionID == rootId), isEmpty);
+      expect(
+        events.whereType<BridgeSseSessionIdle>().where(
+          (event) => event.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        ),
+        isEmpty,
+      );
       statuses = await plugin.getSessionStatuses();
-      expect(statuses[rootId], isA<PluginSessionStatusBusy>());
+      expect(statuses["019a0000-1111-2222-3333-aaaaaaaaaaaa"], isA<PluginSessionStatusBusy>());
       summary = plugin.getActiveSessionsSummary();
       expect(summary.single.activeSessions.single.mainAgentRunning, isFalse);
-      expect(summary.single.activeSessions.single.childSessionIds, ["child-1"]);
+      expect(summary.single.activeSessions.single.childSessionIds, ["019a0000-1111-2222-3333-aaaaaaaaaaab"]);
       expect(plugin.currentWorkState, PluginWorkState.busy);
 
       // A repeated activity item does not re-announce, and later child session
       // updates retain the parent required by the bridge projection.
       fake.pushNotification("item/completed", {
-        "threadId": rootId,
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaaa",
         "turnId": "u-root",
         "item": {
           "type": "subAgentActivity",
           "id": "call_spawn",
           "kind": "started",
-          "agentThreadId": "child-1",
+          "agentThreadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
           "agentPath": "/root/sleeper",
         },
       });
-      final childUpdated = next<BridgeSseSessionUpdated>((event) => event.info["id"] == "child-1");
-      fake.pushNotification("turn/started", {
-        "threadId": "child-1",
-        "turn": {"id": "u-child", "startedAt": 1700000007},
-      });
-      expect(shared.Session.fromJson((await childUpdated).info).parentID, rootId);
-      expect(events.whereType<BridgeSseSessionCreated>().where((event) => event.info["id"] == "child-1"), hasLength(1));
+      expect(
+        events.whereType<BridgeSseSessionCreated>().where(
+          (event) => event.info["id"] == "019a0000-1111-2222-3333-aaaaaaaaaaab",
+        ),
+        hasLength(1),
+      );
       expect(fake.sentMethods.where((method) => method == "thread/read"), hasLength(1));
 
-      final pendingPermissions = await plugin.getPendingPermissions(sessionId: rootId);
-      expect(pendingPermissions.single.sessionID, "child-1");
-      expect(pendingPermissions.single.displaySessionId, rootId);
+      final pendingPermissions = await plugin.getPendingPermissions(sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+      expect(pendingPermissions.single.sessionID, "019a0000-1111-2222-3333-aaaaaaaaaaab");
+      expect(pendingPermissions.single.displaySessionId, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
 
-      final questionAsked = next<BridgeSseQuestionAsked>((event) => event.sessionID == "child-1");
+      final questionAsked = next<BridgeSseQuestionAsked>(
+        (event) => event.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaab",
+      );
       fake.pushServerRequest(
         id: 202,
         method: "item/tool/requestUserInput",
         params: {
-          "threadId": "child-1",
+          "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
           "turnId": "u-child",
           "itemId": "item-question",
           "questions": [
@@ -3006,30 +3566,32 @@ void main() {
         },
       );
       final questionEvent = await questionAsked;
-      expect(questionEvent.displaySessionId, rootId);
-      final pendingQuestions = await plugin.getPendingQuestions(sessionId: rootId);
-      expect(pendingQuestions.single.sessionID, "child-1");
-      expect(pendingQuestions.single.displaySessionId, rootId);
+      expect(questionEvent.displaySessionId, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+      final pendingQuestions = await plugin.getPendingQuestions(sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+      expect(pendingQuestions.single.sessionID, "019a0000-1111-2222-3333-aaaaaaaaaaab");
+      expect(pendingQuestions.single.displaySessionId, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
       expect(plugin.getActiveSessionsSummary().single.activeSessions.single.awaitingInput, isTrue);
 
       await plugin.replyToPermission(
         requestId: permissionEvent.requestID,
-        sessionId: "child-1",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
         reply: PluginPermissionReply.once,
       );
       await plugin.replyToQuestion(
         questionId: questionEvent.id,
-        sessionId: "child-1",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
         answers: const [
           ["yes"],
         ],
       );
-      expect(await plugin.getPendingPermissions(sessionId: rootId), isEmpty);
-      expect(await plugin.getPendingQuestions(sessionId: rootId), isEmpty);
+      expect(await plugin.getPendingPermissions(sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa"), isEmpty);
+      expect(await plugin.getPendingQuestions(sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa"), isEmpty);
 
-      final asyncQuestionAsked = next<BridgeSseQuestionAsked>((event) => event.sessionID == "child-1");
+      final asyncQuestionAsked = next<BridgeSseQuestionAsked>(
+        (event) => event.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaab",
+      );
       fake.pushNotification("item/completed", {
-        "threadId": "child-1",
+        "threadId": "019a0000-1111-2222-3333-aaaaaaaaaaab",
         "turnId": "u-child",
         "item": {
           "type": "agentMessage",
@@ -3045,12 +3607,15 @@ void main() {
         },
       });
       final asyncQuestion = await asyncQuestionAsked;
-      expect(asyncQuestion.displaySessionId, rootId);
-      expect((await plugin.getPendingQuestions(sessionId: rootId)).single.sessionID, "child-1");
+      expect(asyncQuestion.displaySessionId, "019a0000-1111-2222-3333-aaaaaaaaaaaa");
+      expect(
+        (await plugin.getPendingQuestions(sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa")).single.sessionID,
+        "019a0000-1111-2222-3333-aaaaaaaaaaab",
+      );
       fake.respondInOrder([
         const _Response(
           result: {
-            "thread": {"id": "child-1", "cwd": "/work/other"},
+            "thread": {"id": "019a0000-1111-2222-3333-aaaaaaaaaaab", "cwd": "/work/other"},
           },
         ),
         const _Response(
@@ -3061,36 +3626,60 @@ void main() {
       ]);
       await plugin.replyToQuestion(
         questionId: asyncQuestion.id,
-        sessionId: "child-1",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
         answers: const [
           ["CLI"],
         ],
       );
-      expect(fake.sentParamsForAll(method: "turn/start").last["threadId"], "child-1");
-      expect(await plugin.getPendingQuestions(sessionId: rootId), isEmpty);
+      expect(fake.sentParamsForAll(method: "turn/start").last["threadId"], "019a0000-1111-2222-3333-aaaaaaaaaaab");
+      expect(await plugin.getPendingQuestions(sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa"), isEmpty);
 
       // A no-active-turn interrupt reconciles the child to idle and releases
       // the root's deferred transition once.
-      final rootIdle = next<BridgeSseSessionIdle>((event) => event.sessionID == rootId);
+      final rootIdle = next<BridgeSseSessionIdle>((event) => event.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaaa");
       fake.respondInOrder([
         const _Response(
           error: {"code": -32600, "message": "no active turn to interrupt"},
         ),
       ]);
       await plugin.abortSession(
-        sessionId: "child-1",
+        sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaab",
         subAgents: PluginAbortSubAgentPolicy.stop,
         useAtomicStop: false,
         knownSubAgentSessionIds: const {},
       );
       await rootIdle;
       await Future<void>.delayed(const Duration(milliseconds: 20));
-      expect(events.whereType<BridgeSseSessionIdle>().where((event) => event.sessionID == rootId), hasLength(1));
+      expect(
+        events.whereType<BridgeSseSessionIdle>().where(
+          (event) => event.sessionID == "019a0000-1111-2222-3333-aaaaaaaaaaaa",
+        ),
+        hasLength(1),
+      );
       statuses = await plugin.getSessionStatuses();
-      expect(statuses[rootId], isA<PluginSessionStatusIdle>());
-      expect(statuses["child-1"], isA<PluginSessionStatusIdle>());
+      expect(statuses["019a0000-1111-2222-3333-aaaaaaaaaaaa"], isA<PluginSessionStatusIdle>());
+      expect(statuses["019a0000-1111-2222-3333-aaaaaaaaaaab"], isA<PluginSessionStatusIdle>());
       expect(plugin.getActiveSessionsSummary(), isEmpty);
       expect(plugin.currentWorkState, PluginWorkState.idle);
+      final settledTask = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .last;
+      expect(settledTask.id, inlineTask.id);
+      expect(settledTask.taskState?.status, PluginToolStatus.cancelled);
+      final spawnUpdates = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .where((part) => part.id == inlineTask.id)
+          .toList();
+      expect(spawnUpdates.first, isA<PluginMessagePartTool>());
+      expect(spawnUpdates.last, isA<PluginMessagePartSubtask>());
+      expect(
+        spawnUpdates.whereType<PluginMessagePartTool>(),
+        hasLength(1),
+        reason: "updates after exact-id replacement must not restore the generic spawn card",
+      );
       await subscription.cancel();
     });
 
@@ -3310,6 +3899,14 @@ void main() {
     });
   });
 }
+
+const String _scopeAncestorId = "019a0000-1111-2222-3333-000000000001";
+const String _scopeRootId = "019a0000-1111-2222-3333-000000000002";
+const String _scopeChildId = "019a0000-1111-2222-3333-000000000003";
+const String _scopeGrandchildId = "019a0000-1111-2222-3333-000000000004";
+const String _scopeInactiveChildId = "019a0000-1111-2222-3333-000000000005";
+const String _scopeSiblingId = "019a0000-1111-2222-3333-000000000006";
+const String _scopeBridgeKnownId = "019a0000-1111-2222-3333-000000000007";
 
 const Map<String, dynamic> _initOk = {
   "userAgent": "codex-cli/0.121.0",

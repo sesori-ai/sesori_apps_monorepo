@@ -5,7 +5,9 @@
 - **Plan slug:** `claude-inline-subtasks`
 - **Status:** Series completed 2026-09-02 (Step 8/8; L4 matrix recorded in
   `TRACKER.md`); reactivated 2026-09-02 for the harness follow-ups in
-  `HARNESS_FOLLOWUPS.md`, retired again when their coverage PRs merge
+  `HARNESS_FOLLOWUPS.md`; remains active until their required coverage gates
+  are reconciled or explicitly accepted, including the blocked Grok phone gate
+  and the unstarted Cursor work
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
@@ -22,9 +24,25 @@
   `followups/deepseek-phone-qa.md`. Desktop is deferred by user choice. Codex
   now uses nine steps after automatic size-based splitting: #1387 remains
   historical preparation, and cleanup #1396 is merged. Native facts are step
-  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9,
-  lifecycle coverage 7/9, scoped stop 8/9, and final coverage 9/9. Historical merged PR titles
-  remain unchanged. Overall harness plan remains active.
+  5/9 (#1398, merged at `d801d722f2`), live/replay tile integration 6/9
+  (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 merged as #1420,
+  and scoped stop 8/9 merged as #1421 at `77165f784f`. Final coverage 9/9
+  records a passed bounded actual-plugin policy scope and a partial live matrix.
+  Grok scoped stop merged as PR #1428 at `3934f32ec9`; its child-cancel
+  envelope repair merged as PR #1429 at `2ebcc7d01a`, so Grok has seven steps.
+  Corrected production-composition QA passed named-child isolation, root full
+  stop, idle-child keep and wake-up, already-finished handling, exact replay,
+  lifecycle settlement, and runtime reuse; root confirmation reuses its earlier
+  passing run. The unchanged runtime emitted no live permission request, so
+  permission handling remains unexecuted and no question support is claimed.
+  Source phone build and relay setup were healthy, but WebDriverAgent startup
+  timed out before any visible case; all phone coverage remains blocked and
+  unexecuted. Historical merged PR titles remain unchanged. Grok coverage
+  documentation merged as PR #1430 at `a28e860557`; its blocked phone gate
+  remains open rather than becoming a fabricated pass. DeepSeek's final
+  documentation reconciles the passed phone stop/input scope and the
+  user-deferred desktop matrix without changing adapter 0.1.4 evidence. The
+  plan remains active for the Grok phone gate and Cursor follow-ups.
 
 ## Goal
 

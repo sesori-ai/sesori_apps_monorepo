@@ -517,7 +517,7 @@ void main() {
       expect(state.queuedMessages, isEmpty);
       expect(state.sendingSubmission, isNull);
       expect(state.awaitingBridgeSubmissions.map((submission) => submission.promptId), [promptIds.first]);
-      expect(notices, [SessionDetailNotice.promptOptionsUpdated]);
+      expect(notices, [const SessionDetailPromptOptionsUpdated()]);
     });
 
     test("marks a removed command unavailable and waits for explicit removal", () async {
@@ -573,7 +573,7 @@ void main() {
       expect(state.queuedMessages.single.displayText, "/review src");
       expect(state.sendingSubmission, isNull);
       expect(sentCommands, ["review"]);
-      expect(notices, [SessionDetailNotice.commandUnavailable]);
+      expect(notices, [const SessionDetailCommandUnavailable()]);
 
       await cubit.sendMessage(
         text: "continue",
@@ -668,7 +668,7 @@ void main() {
       expect(state.queuedMessages.single.displayText, "/review src");
       expect(state.sendingSubmission, isNull);
       expect(sentCommands, ["review"]);
-      expect(notices, [SessionDetailNotice.commandUnavailable]);
+      expect(notices, [const SessionDetailCommandUnavailable()]);
 
       await cubit.sendMessage(
         text: "continue",
@@ -783,7 +783,7 @@ void main() {
       ).called(1);
       // The user was told their rejected selection was corrected, even though
       // the reload that delivered it was not the one recovery started.
-      expect(notices, [SessionDetailNotice.promptOptionsUpdated]);
+      expect(notices, [const SessionDetailPromptOptionsUpdated()]);
     });
 
     test("parks the prompt after one stale-options recovery attempt", () async {
@@ -854,7 +854,7 @@ void main() {
       expect(state.awaitingBridgeSubmissions, isEmpty);
       expect(
         notices,
-        [SessionDetailNotice.promptOptionsUpdated, SessionDetailNotice.promptOptionsRecoveryFailed],
+        [const SessionDetailPromptOptionsUpdated(), const SessionDetailPromptOptionsRecoveryFailed()],
       );
     });
 
@@ -923,6 +923,72 @@ void main() {
       final state = cubit.state as SessionDetailLoaded;
       expect(state.queuedMessages.map((submission) => submission.text), ["first", "second"]);
       expect(state.sendingSubmission, isNull);
+      expect(state.awaitingBridgeSubmissions, isEmpty);
+    });
+
+    test("surfaces authentication guidance when stale-option recovery needs provider login", () async {
+      final staleError = ApiError.nonSuccessCode(
+        errorCode: 409,
+        rawErrorString: jsonEncode(
+          const SendPromptErrorResponse(
+            code: SendPromptErrorCode.staleSessionOptions,
+            message: "unsupported Claude agent",
+          ).toJson(),
+        ),
+      );
+      when(
+        () => mockSessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "claude",
+          mode: SessionOptionsRequestMode.forceRefresh,
+        ),
+      ).thenAnswer(
+        (_) async => const SessionOptionsRepositoryAuthenticationRequired(
+          actionHint: "Authenticate locally.",
+        ),
+      );
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: "hello",
+          attachments: const [],
+          agent: any(named: "agent"),
+          model: null,
+          variant: null,
+          command: null,
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(staleError));
+      final cubit = await createLoadedCubit(
+        agents: const [
+          AgentInfo(name: "Default", description: "Default", model: null, mode: AgentMode.primary),
+        ],
+        promptDefaults: const SessionPromptDefaults(agent: "Default", model: null),
+      );
+      final notices = <SessionDetailNotice>[];
+      final noticeSubscription = cubit.noticeStream.listen(notices.add);
+      addTearDown(noticeSubscription.cancel);
+
+      await cubit.sendMessage(
+        text: "hello",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(
+        notices,
+        [
+          isA<SessionDetailAuthenticationRequired>().having(
+            (notice) => notice.actionHint,
+            "action hint",
+            "Authenticate locally.",
+          ),
+        ],
+      );
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.queuedMessages.single.text, "hello");
       expect(state.awaitingBridgeSubmissions, isEmpty);
     });
 

@@ -94,17 +94,29 @@ That bump step is the source of truth for the release version. It must keep `bri
 
 ### 2. Merge to main and wait for the hourly release
 
-`release-all-platforms.yml` checks main hourly at **45 minutes past the hour** (`45 * * * *`, UTC), not on each merge. GitHub may delay scheduled runs. Each run uses its triggering main SHA throughout; later merges wait for the next run. The existing concurrency group serializes main releases without cancelling an active build.
+Internal releases are triggered by **Alex's Google Cloud Scheduler** job `sesori-internal-release` in
+`sesori-ai/europe-west1` at **45 minutes past the hour** (`45 * * * *`, UTC), not on each merge.
+The job calls the private Cloud Run service `sesori-release-scheduler`, which uses the repository-limited GitHub App to
+invoke `release-all-platforms.yml` on `main` with `automatic=true`. The workflow has no GitHub cron.
+Each run uses its triggering main SHA throughout; later merges wait for the next run. The existing concurrency group
+serializes main releases without cancelling an active build.
 
-Scheduled runs skip commits that already carry a release tag or match the rolling `internal-release-attempt` tag. Otherwise, they compare the whole batch against that attempt (or the nearest release tag before the first attempt). Only mobile-product, shared, bridge, or release-automation changes qualify; desktop-only and unrelated documentation changes do not consume store uploads. The exact paths live in `.github/scripts/check_internal_release.sh`.
+For missing hourly releases, inspect [Alex's scheduler job](https://console.cloud.google.com/cloudscheduler/jobs/edit/europe-west1/sesori-internal-release?project=sesori-ai)
+and the Cloud Run delivery/dispatch logs before checking the GitHub workflow run. Dispatch-failure alerts route to
+`alex@vespr.xyz`; GitHub owns build status and failed-action notifications. See the
+[dispatcher runbook](../tool/release_scheduler/README.md) for pause/resume, IAM, retry, and key-rotation instructions.
+
+Automatic runs skip commits that already carry a release tag or match the rolling `internal-release-attempt` tag. Otherwise, they compare the whole batch against that attempt (or the nearest release tag before the first attempt). Only mobile-product, shared, bridge, or release-automation changes qualify; desktop-only and unrelated documentation changes do not consume store uploads. The exact paths live in `.github/scripts/check_internal_release.sh`.
 
 Before version validation, store queries, or builds, the workflow moves the lightweight `internal-release-attempt` tag to the chosen SHA. A failure or cancellation therefore cannot cause hourly retries of that commit. A later relevant change allows another attempt; the marker is not a release and creates no GitHub release object. If recording the marker fails, no build starts.
 
 An eligible run uploads the mobile apps to TestFlight / Play internal, builds all six bridge platform archives with `X.Y.Z-internal.<N>` baked in, and — only when everything succeeded — pushes a `v<X.Y.Z>-internal.<N>` tag and rolls the single internal GitHub pre-release onto it (binaries + `checksums.txt` + regenerated notes). Existing internal release tags remain immutable build-number-to-commit mappings. The auto-updater ignores pre-releases on the default `stable` track; bridges switched to the `internal` track (`sesori-bridge config track internal`) pick up these `-internal.<N>` pre-releases.
 
-For an immediate build or a retry after fixing credentials/store issues, open **Actions → Release All Platforms → Run workflow**, normally on `main`. Manual dispatch bypasses the scheduled tag/path checks but still validates versions and allocates a fresh aligned build number. Manual builds on another branch do not move main's attempt marker. The standalone iOS/Android manual workflows remain available.
+For an immediate build or a retry after fixing credentials/store issues, open **Actions → Release All Platforms → Run workflow**, normally on `main`, leaving **automatic** unchecked (`false`). This explicit manual retry bypasses the automatic tag/path checks but still validates versions and allocates a fresh aligned build number. Manual builds on another branch do not move main's attempt marker. The standalone iOS/Android manual workflows remain available.
 
-The cron provides 24 scheduled opportunities per day, not a strict store quota: delayed runs and manual uploads still count against each store's limits.
+Cloud Scheduler provides hourly release opportunities with bounded delivery retries, not a strict store quota:
+delayed runs and manual uploads still count against each store's limits. Re-running the Scheduler job is an automatic
+dispatch, so it does not retry an already-attempted build; use GitHub's manual path above for that.
 
 ### 3. Submit to production
 

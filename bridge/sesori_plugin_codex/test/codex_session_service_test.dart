@@ -349,6 +349,43 @@ void main() {
     }
   });
 
+  test("scoped descendant ids include nested children and exclude named-child siblings", () {
+    final tracker = CodexSubAgentTracker();
+    final service = _newService(subAgentTracker: tracker);
+    CodexThreadRecord child({required String id, required String parentId}) => CodexThreadRecord(
+      id: id,
+      name: null,
+      directory: "/repo",
+      createdAt: null,
+      updatedAt: null,
+      model: null,
+      modelProvider: null,
+      parentId: parentId,
+      agentNickname: null,
+      agentPath: null,
+    );
+    tracker
+      ..record(
+        child: child(id: "child", parentId: "root"),
+      )
+      ..record(
+        child: child(id: "sibling", parentId: "root"),
+      )
+      ..record(
+        child: child(id: "grandchild", parentId: "child"),
+      );
+
+    expect(
+      service.scopedDescendantSessionIds(sessionId: "root"),
+      {"child", "sibling", "grandchild"},
+    );
+    expect(
+      service.scopedDescendantSessionIds(sessionId: "child"),
+      {"grandchild"},
+    );
+    expect(service.scopedDescendantSessionIds(sessionId: "sibling"), isEmpty);
+  });
+
   test("prepares the transcript before replay activity is supplied", () async {
     final messageRepository = _RecordingMessageRepository();
     final outcomes = _DelayedToolOutcomeRepository();
@@ -385,6 +422,7 @@ CodexSessionService _newService({
   CodexMessageRepository? messageRepository,
   CodexMetadataRepository? metadataRepository,
   CodexToolOutcomeRepository? toolOutcomeRepository,
+  CodexSubAgentTracker? subAgentTracker,
 }) {
   final rolloutApi = CodexRolloutApi(environment: const {});
   return CodexSessionService(
@@ -404,7 +442,7 @@ CodexSessionService _newService({
           configReader: CodexConfigReader(environment: const {}),
         ),
     toolOutcomeRepository: toolOutcomeRepository ?? createMemoryCodexToolOutcomeRepository(),
-    subAgentTracker: CodexSubAgentTracker(),
+    subAgentTracker: subAgentTracker ?? CodexSubAgentTracker(),
     sessionMapper: const CodexSessionMapper(),
     launchDirectory: "/repo",
   );

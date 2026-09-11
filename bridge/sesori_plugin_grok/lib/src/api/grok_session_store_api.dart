@@ -1,3 +1,4 @@
+import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as p;
@@ -94,27 +95,62 @@ class GrokSessionStoreApi({
     return GrokSessionSummaryDto.fromJson(jsonDecodeMap(file.readAsStringSync()));
   }
 
-  /// The `subagent_spawned` records [sessionId] persisted, in file order.
-  /// Unparseable lines and other update kinds are skipped.
-  List<GrokSubagentSpawned> readSpawnRecords({required String cwd, required String sessionId}) {
+  /// All persisted updates for one known session, in file order. Unknown typed
+  /// variants and malformed records are retained as boundaries. Malformed
+  /// records are also logged so one damaged record remains observable without
+  /// hiding unrelated history.
+  List<GrokPersistedUpdateDto> readUpdates({required String cwd, required String sessionId}) {
     final project = _projectDirectory(cwd: cwd);
     if (project == null) return const [];
     final file = File(p.join(_sessionDirectory(project: project, sessionId: sessionId), updatesFileName));
     if (!file.existsSync()) return const [];
-    final spawns = <GrokSubagentSpawned>[];
+    final updates = <GrokPersistedUpdateDto>[];
+    var lineNumber = 0;
     for (final line in file.readAsLinesSync()) {
+      lineNumber++;
       if (line.trim().isEmpty) continue;
-      try {
-        final envelope = GrokPersistedUpdateDto.fromJson(jsonDecodeMap(line));
-        if (envelope case GrokPersistedSessionUpdateDto(:final params)) {
-          if (params.update case final GrokSubagentSpawned spawned) spawns.add(spawned);
-        }
-      } on Object catch (error, stackTrace) {
-        // The file carries many unrelated update variants. Typed unknown
-        // variants are skipped above; malformed envelopes remain observable.
-        Log.w("[$pluginId] skipping unreadable session update at ${file.path}", error, stackTrace);
-      }
+      updates.add(_parseUpdate(line: line, file: file, lineNumber: lineNumber));
     }
-    return spawns;
+    return updates;
   }
+
+  /// Lazily streams typed persisted updates for history consumers. Cancelling
+  /// iteration closes the file stream without reading the remaining transcript.
+  Stream<GrokPersistedUpdateDto> streamUpdates({required String cwd, required String sessionId}) async* {
+    final project = _projectDirectory(cwd: cwd);
+    if (project == null) return;
+    final file = File(p.join(_sessionDirectory(project: project, sessionId: sessionId), updatesFileName));
+    if (!file.existsSync()) return;
+    var lineNumber = 0;
+    await for (final line in file.openRead().transform(utf8.decoder).transform(const LineSplitter())) {
+      lineNumber++;
+      if (line.trim().isEmpty) continue;
+      yield _parseUpdate(line: line, file: file, lineNumber: lineNumber);
+    }
+  }
+
+  GrokPersistedUpdateDto _parseUpdate({
+    required String line,
+    required File file,
+    required int lineNumber,
+  }) {
+    try {
+      return GrokPersistedUpdateDto.fromJson(jsonDecodeMap(line));
+    } on Object catch (error, stackTrace) {
+      final safeError = error is FormatException ? FormatException(error.message, null, error.offset) : error;
+      Log.w(
+        "[$pluginId] retaining unreadable session update boundary at ${file.path}, line $lineNumber",
+        safeError,
+        stackTrace,
+      );
+      return const GrokPersistedUpdateDto.unknown();
+    }
+  }
+
+  /// The `subagent_spawned` records [sessionId] persisted, in file order.
+  List<GrokSubagentSpawned> readSpawnRecords({required String cwd, required String sessionId}) => [
+    for (final envelope in readUpdates(cwd: cwd, sessionId: sessionId))
+      if (envelope case GrokPersistedGrokSessionUpdateDto(:final params))
+        if (params.update case final GrokSubagentSpawned spawned) spawned,
+  ];
 }

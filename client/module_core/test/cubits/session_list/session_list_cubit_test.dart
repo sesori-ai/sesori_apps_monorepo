@@ -2453,9 +2453,10 @@ void main() {
         await cubit.stream.firstWhere((state) => state is SessionListLoaded);
 
         fakeCatalogRescanService.emit(
-          const CatalogRescanState.running(
+          const CatalogRescanState.reading(
             activePluginName: "Codex",
             sessionsSeen: 148,
+            finishedHarnessCount: 0,
             pluginIds: {"codex"},
           ),
         );
@@ -2463,7 +2464,7 @@ void main() {
 
         expect(
           (cubit.state as SessionListLoaded).catalogScan,
-          isA<CatalogRescanRunning>().having((s) => s.activePluginName, "activePluginName", "Codex"),
+          isA<CatalogRescanReading>().having((s) => s.activePluginName, "activePluginName", "Codex"),
         );
       });
 

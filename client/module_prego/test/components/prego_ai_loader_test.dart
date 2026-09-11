@@ -1,18 +1,19 @@
 import "dart:ui" as ui;
 
 import "package:flutter/rendering.dart";
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 /// Behavioural guards for the AI activity sparkle.
 ///
-/// The twinkle is an infinite repeating animation, so these tests pump fixed
+/// The rotation is an infinite repeating animation, so these tests pump fixed
 /// durations and never `pumpAndSettle` — it would pump to its timeout and throw.
 ///
-/// The painter tests pin a platform without a native twinkle renderer (Linux):
+/// The painter tests pin a platform without a native rotation renderer (Linux):
 /// on iOS and macOS the animated sparkle is a platform view, which cannot
-/// paint pixels in a widget test. The `native twinkle` group covers those
+/// paint pixels in a widget test. The `native rotation` group covers those
 /// branches and the deliberate Android fallback explicitly.
 void main() {
   Widget harness(Widget child, {bool disableAnimations = false}) {
@@ -28,9 +29,9 @@ void main() {
 
   /// The colour actually painted at the middle of the sparkle.
   ///
-  /// The keyframes differ in the fill, not just the tint: a solid sparkle has
-  /// an opaque brand-coloured body, while the hollow outline keyframe leaves
-  /// the middle transparent. Reading the pixel therefore says which keyframe is
+  /// The states differ in fill, not just tint: an unread sparkle has
+  /// an opaque brand-coloured body, while the working outline leaves
+  /// the middle transparent. Reading the pixel therefore says which state is
   /// on screen — asserting the widget merely "renders" would not.
   Future<Color> sparkleCentre(WidgetTester tester) async {
     final boundary = tester.renderObject<RenderRepaintBoundary>(
@@ -65,8 +66,8 @@ void main() {
     return visiblePixels;
   }
 
-  /// Where in the loop the sparkle is at its hollowest.
-  const outlineKeyframe = Duration(milliseconds: 560);
+  /// A non-cardinal rotation, so a jump to the resting angle is visible.
+  const loadingSample = Duration(milliseconds: 250);
 
   group("phaseFor", () {
     test("derives a stable phase in [0, 1) from a seed", () {
@@ -84,7 +85,7 @@ void main() {
     });
   });
 
-  testWidgets("twinkles by default", (tester) async {
+  testWidgets("rotates by default", (tester) async {
     await tester.pumpWidget(harness(const PregoAiLoader()));
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -123,35 +124,43 @@ void main() {
     expect(await sparkleVisiblePixels(tester), greaterThan(0));
   });
 
-  testWidgets("hollows out mid-twinkle", (tester) async {
+  testWidgets("keeps the working sparkle hollow through the loop", (tester) async {
     await tester.pumpWidget(harness(const PregoAiLoader()));
-    await tester.pump(outlineKeyframe);
+    await tester.pump(loadingSample);
 
     expect((await sparkleCentre(tester)).a, 0);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
   testWidgets("settles back on the solid keyframe when the loop is switched off", (tester) async {
     await tester.pumpWidget(harness(const PregoAiLoader()));
-    await tester.pump(outlineKeyframe);
+    await tester.pump(loadingSample);
 
     await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
     await tester.pump();
 
+    expect(tester.hasRunningAnimations, isTrue);
+    expect((await sparkleCentre(tester)).a, 0);
+    await tester.pump(const Duration(milliseconds: 175));
+    final filling = await sparkleCentre(tester);
+    expect(filling.a, greaterThan(0));
+    expect(filling.a, lessThan(1));
+    await tester.pump(const Duration(milliseconds: 526));
     expect(tester.hasRunningAnimations, isFalse);
-    // Stopping a controller leaves it wherever it was — a sparkle frozen
-    // half-faded would read as a rendering bug.
     expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
+    await tester.pump(const Duration(seconds: 3));
+    expect(tester.hasRunningAnimations, isFalse);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
   testWidgets("a phase offset moves it through the loop, but never off its resting frame", (tester) async {
     await tester.pumpWidget(harness(const PregoAiLoader(phase: 0.4)));
     await tester.pump();
 
-    // Phase 0.4 starts where an unoffset sparkle would be at its hollowest.
+    // Loading is hollow at every phase, including the first visible frame.
     expect((await sparkleCentre(tester)).a, 0);
 
-    await tester.pumpWidget(harness(const PregoAiLoader(phase: 0.4, animate: false)));
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 700));
 
     expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
@@ -161,6 +170,8 @@ void main() {
     await tester.pump(const Duration(milliseconds: 200));
 
     expect(tester.hasRunningAnimations, isFalse);
+    expect((await sparkleCentre(tester)).a, 0);
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false), disableAnimations: true));
     expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
@@ -206,12 +217,87 @@ void main() {
     expect(tester.getSize(find.byType(PregoAiLoader)), const Size(24, 24));
   }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
 
-  group("native twinkle", () {
+  testWidgets("a new turn interrupts the completion without flashing the fill", (tester) async {
+    await tester.pumpWidget(harness(const PregoAiLoader()));
+    await tester.pump(loadingSample);
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 175));
+    final beforeRestart = await sparkleCentre(tester);
+
+    await tester.pumpWidget(harness(const PregoAiLoader()));
+    expect(await sparkleCentre(tester), beforeRestart);
+    await tester.pump(const Duration(milliseconds: 75));
+    final clearing = await sparkleCentre(tester);
+    expect(clearing.a, greaterThan(0));
+    expect(clearing.a, lessThan(beforeRestart.a));
+    // Finishing again mid-clear must preserve this exact displayed colour.
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
+    expect(await sparkleCentre(tester), clearing);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 701));
+    expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
+    expect(tester.hasRunningAnimations, isFalse);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets("starting a new turn clears idle without replaying the completion highlight", (tester) async {
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
+    await tester.pumpWidget(harness(const PregoAiLoader()));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 75));
+    final clearing = await sparkleCentre(tester);
+    expect(clearing.a, greaterThan(0));
+    expect(clearing.a, lessThan(1));
+    await tester.pump(const Duration(milliseconds: 76));
+    expect((await sparkleCentre(tester)).a, 0);
+    expect(tester.hasRunningAnimations, isTrue);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets("changing Reduce Motion during completion settles without replay", (tester) async {
+    await tester.pumpWidget(harness(const PregoAiLoader()));
+    await tester.pump(loadingSample);
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 175));
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false), disableAnimations: true));
+    expect(tester.hasRunningAnimations, isFalse);
+    expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
+
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
+    await tester.pump(const Duration(seconds: 1));
+    expect(tester.hasRunningAnimations, isFalse);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.linux));
+
+  testWidgets("sends completion and restart to the same native view without Flutter ticks", (tester) async {
+    const channel = MethodChannel("sesori/native-ai-loader/99");
+    final calls = <MethodCall>[];
+    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, (call) async {
+      calls.add(call);
+      return null;
+    });
+    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(channel, null));
+
+    await tester.pumpWidget(harness(const PregoAiLoader(phase: 0.4)));
+    final original = tester.state(find.byType(AppKitView));
+    tester.widget<AppKitView>(find.byType(AppKitView)).onPlatformViewCreated!(99);
+    await tester.pump();
+    await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
+    await tester.pump();
+    await tester.pumpWidget(harness(const PregoAiLoader(phase: 0.4)));
+    await tester.pump();
+
+    expect(tester.state(find.byType(AppKitView)), same(original));
+    expect(calls.map((call) => call.method), everyElement("setLoading"));
+    expect(calls.map((call) => call.arguments), [true, false, true]);
+    expect(tester.hasRunningAnimations, isFalse);
+  }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
+
+  group("native rotation", () {
     final expectedParams = <String, Object>{
       "solid": PregoColorsLight.textPrimaryOnBrand.toARGB32(),
       "outline": PregoColorsLight.textPrimary.toARGB32(),
-      "faded": PregoColorsLight.textDisabled.toARGB32(),
       "phase": 0.25,
+      "loading": true,
     };
 
     Finder painter() => find.descendant(of: find.byType(PregoAiLoader), matching: find.byType(CustomPaint));
@@ -240,7 +326,7 @@ void main() {
 
     testWidgets("Android keeps the animated Flutter painter in list rows", (tester) async {
       // Deliberate: a platform view per visible session row wrecks Android
-      // scroll performance (measured on-device), so Android twinkles in Flutter.
+      // scroll performance (measured on-device), so Android rotations in Flutter.
       await tester.pumpWidget(harness(const PregoAiLoader(phase: 0.25)));
       await tester.pump(const Duration(milliseconds: 200));
 
@@ -257,16 +343,16 @@ void main() {
       expect(find.byType(AppKitView), findsNothing);
       expect(painter(), findsOneWidget);
       expect(tester.hasRunningAnimations, isFalse);
-      expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
+      expect((await sparkleCentre(tester)).a, 0);
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-    testWidgets("a resting sparkle never creates a platform view", (tester) async {
+    testWidgets("an initially unread sparkle uses a static native view", (tester) async {
       await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
 
-      expect(find.byType(AppKitView), findsNothing);
-      expect(painter(), findsOneWidget);
+      final view = tester.widget<AppKitView>(find.byType(AppKitView));
+      expect((view.creationParams! as Map)["loading"], isFalse);
+      expect(painter(), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
-      expect(await sparkleCentre(tester), PregoColorsLight.textPrimaryOnBrand);
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets("disabled TickerMode keeps the static painter", (tester) async {
@@ -280,7 +366,7 @@ void main() {
       expect(tester.hasRunningAnimations, isFalse);
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
-    testWidgets("recreates the native view when the phase changes", (tester) async {
+    testWidgets("retains the native view when the unread caller drops its phase", (tester) async {
       await tester.pumpWidget(harness(const PregoAiLoader(phase: 0.25)));
       final firstKey = tester
           .widget<KeyedSubtree>(
@@ -288,14 +374,14 @@ void main() {
           )
           .key;
 
-      await tester.pumpWidget(harness(const PregoAiLoader(phase: 0.5)));
+      await tester.pumpWidget(harness(const PregoAiLoader(animate: false)));
       final secondKey = tester
           .widget<KeyedSubtree>(
             find.ancestor(of: find.byType(AppKitView), matching: find.byType(KeyedSubtree)).first,
           )
           .key;
 
-      expect(secondKey, isNot(firstKey));
+      expect(secondKey, firstKey);
     }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
   });
 }

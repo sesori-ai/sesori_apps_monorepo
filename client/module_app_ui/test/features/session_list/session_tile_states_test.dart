@@ -18,13 +18,14 @@ Finder findBrandLogo(String pluginId) => find.byWidgetPredicate(
 /// pump fixed durations and never `pumpAndSettle` — it would pump to its
 /// timeout and throw.
 void main() {
-  /// The row is laid out from the type scale it renders — a 16/24 title over a
-  /// 14/20 footer line, inside 12px of padding — and the whole list is pitched
-  /// on it. A style change that drifts this drifts the list.
-  const rowHeight = 70.0;
+  /// A 24px title inside 12px vertical padding. A populated footer adds its
+  /// 20px minimum line height and 2px inter-line spacing.
+  const titleOnlyHeight = 48.0;
+  const subtitleHeight = 70.0;
 
   SessionTile tile({
     required Session session,
+    bool isArchived = false,
     bool isActive = false,
     bool unseen = false,
     bool selected = false,
@@ -35,7 +36,7 @@ void main() {
   }) {
     return SessionTile(
       session: session,
-      isArchived: false,
+      isArchived: isArchived,
       isActive: isActive,
       unseen: unseen,
       selected: selected,
@@ -80,6 +81,7 @@ void main() {
       // A plain live turn carries no words — the twinkle is the signal.
       expect(find.text("Running"), findsNothing);
       expect(titleWeight(tester, "My Session"), FontWeight.w400);
+      expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
     });
 
     testWidgets("still tells assistive technology it is running", (tester) async {
@@ -104,6 +106,7 @@ void main() {
 
       final label = tester.widget<Text>(find.text("Awaiting input"));
       expect(label.style?.color, kStatusAmber);
+      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
     });
 
     testWidgets("keeps its words when retrying", (tester) async {
@@ -114,6 +117,7 @@ void main() {
 
       final label = tester.widget<Text>(find.text("Running (retrying)"));
       expect(label.style?.color, PregoDesignSystem.light.colors.fgErrorPrimary);
+      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
     });
 
     testWidgets("counts the tasks running behind the turn", (tester) async {
@@ -123,6 +127,7 @@ void main() {
       );
 
       expect(find.text("2 background tasks"), findsOneWidget);
+      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
     });
   });
 
@@ -135,6 +140,7 @@ void main() {
       // must not animate, or a list nobody is working in would twinkle forever.
       expect(sparkleTwinkles(tester), isFalse);
       expect(titleWeight(tester, "My Session"), FontWeight.w500);
+      expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
     });
 
     testWidgets("still tells assistive technology about the unopened activity", (tester) async {
@@ -336,6 +342,11 @@ void main() {
 
       expect(find.text("PR #42"), findsOneWidget);
       expect(find.text("Open"), findsOneWidget);
+      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
+
+      await pumpTile(tester, tile(session: session.copyWith(branchName: null)));
+      expect(find.text("PR #42"), findsOneWidget);
+      expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
     });
 
     testWidgets("share the line without overflowing under scaled-up accessibility text", (tester) async {
@@ -405,23 +416,28 @@ void main() {
       expect(ink.decoration, isNull);
     });
 
-    testWidgets("keeps the list's pitch with or without anything to say", (tester) async {
-      await pumpTile(tester, tile(session: testSession(title: "Full").copyWith(time: null)));
-      expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+    for (final isArchived in [false, true]) {
+      testWidgets("${isArchived ? 'archived' : 'regular'} rows shrink when the footer disappears", (tester) async {
+        final session = testSession(title: "My Session", updatedAt: DateTime.now().millisecondsSinceEpoch);
 
-      await pumpTile(
-        tester,
-        tile(
-          session: testSession(
-            title: "Quiet",
-            branchName: "main",
-            updatedAt: DateTime.now().millisecondsSinceEpoch,
+        await pumpTile(tester, tile(session: session, isArchived: isArchived));
+        expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
+
+        await pumpTile(
+          tester,
+          tile(
+            session: session.copyWith(branchName: "main"),
+            isArchived: isArchived,
           ),
-          isActive: true,
-        ),
-      );
-      expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
-    });
+        );
+        expect(find.text("main"), findsOneWidget);
+        expect(tester.getSize(find.byType(SessionTile)).height, subtitleHeight);
+
+        await pumpTile(tester, tile(session: session, isArchived: isArchived));
+        expect(find.text("main"), findsNothing);
+        expect(tester.getSize(find.byType(SessionTile)).height, titleOnlyHeight);
+      });
+    }
 
     testWidgets("does not announce a dead button when the shell has no detail route", (tester) async {
       final semantics = tester.ensureSemantics();

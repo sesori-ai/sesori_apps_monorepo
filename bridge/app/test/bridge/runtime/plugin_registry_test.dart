@@ -34,7 +34,7 @@ void main() {
   test("Antigravity remains a plugin-owned opaque identity", () {
     final descriptor = knownPlugins.singleWhere((plugin) => plugin.id == AntigravityIdentity.pluginId);
 
-    expect(Harness.values.map((harness) => harness.name), isNot(contains(descriptor.id)));
+    expect(descriptor.id, Harness.antigravity.name);
     expect(descriptor.displayName, AntigravityIdentity.displayName);
     expect(descriptor.options.map((option) => option.name), contains("bin"));
     expect(descriptor.managementCapabilities(config: const PluginConfig(values: {"bin": null})), {

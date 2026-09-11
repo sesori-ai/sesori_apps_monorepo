@@ -60,9 +60,10 @@ state.
   The consumed schema is OpenCode v1.18.19's `project`, `project_directory`, and
   `session` table shapes: additive columns are allowed, while incompatible required
   columns, types, or values trigger the live-import fallback.
-  Complete discovery includes real global roots stored in ancestor directories;
-  unlike the old project-list API, it does not exclude them from their best matching
-  project family.
+  Complete discovery includes real global roots stored in ancestor directories and
+  retains non-global roots under their validated `project_id` when no recorded
+  directory alias matches; unlike the old project-list API, it does not exclude
+  global roots from their best matching project family.
   The complete read-only transaction runs in a short-lived worker isolate so the
   bridge isolate remains responsive to cancellation and bounded force-stop while
   native SQLite finishes. The connection uses the live database and WAL normally
@@ -73,25 +74,39 @@ state.
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
   attach/no-auto-start mode always retains its existing server path.
-- One scan is one row above the list, however many harnesses take part. Between
-  dispatch and the first progress event it can name neither a harness nor a
-  count and says only that it is starting; from that event on it names the
-  harness being read and how many sessions it has seen so far. It offers to
-  cancel while it runs. Starting and running share the same Deep Scan
-  loading-card geometry, so the first progress event does not move the list, and
-  the row scrolls with the list rather than pinning. The entrance animation plays
-  once when a pull first reveals the row; later updates do not replay it, and the
-  scan indicator keeps animating until a terminal outcome replaces it. Android
-  Remove Animations and iOS Reduce Motion both hold the intentional first frame
-  without the entrance bounce, and the pull-caption invitation keeps only its
-  gentle opacity transition. Finished outcomes use the shared PREGO result-card
-  geometry, expanding rather than clipping at accessibility text sizes: a
-  success, warning, or error glow rises from the lower edge and the matching
-  tinted Dismiss action remains available until the result clears. Loading and
-  every result state use a vertically centered 20px leading mark with identical
-  edge inset and icon-to-text gap. Titles do not shift horizontally between
-  states; at standard text size, icon and title positions stay fixed vertically
-  too. Enlarged text may grow the card without changing those horizontal insets.
+- One scan is one row above the list, however many harnesses take part. The
+  service chooses the first unfinished harness in the operation's fixed
+  membership order, including members with no progress event yet, and keeps
+  later harness progress in stored state without letting it steal focus. Focus
+  advances only when the selected harness completes, fails, is cancelled, or
+  is removed by an unavailable/not-found start outcome. The row names that
+  harness while preparing, distinguishes confirmed harness startup from
+  catalog reading, reports found-session counts during enumeration, and says
+  when results are being saved. Every live phase also reports finished
+  harnesses out of the current membership; completed, failed, and cancelled
+  members count as finished, while unavailable/not-found members removed from
+  membership do not. Startup
+  wording is driven only by a fresh management snapshot for the same bridge;
+  unknown or older metadata does not infer it. After the same harness remains
+  confirmed as starting for three seconds, the row explains that scanning is
+  waiting for startup and that the user can keep browsing. This one-shot
+  presentation timer resets on any phase or harness change and never polls or
+  changes bridge work. It offers to cancel throughout live work. Every live
+  phase shares the same Deep Scan loading-card treatment, and the row scrolls
+  with the list rather than pinning. The entrance animation plays once when a
+  pull first reveals the row; later updates do not replay it, and the scan
+  indicator keeps animating until a terminal outcome replaces it. Android
+  Remove Animations and iOS Reduce Motion both hold the intentional first
+  frame without the entrance bounce, and the pull-caption invitation keeps
+  only its gentle opacity transition. Finished outcomes use the shared PREGO
+  result-card geometry, expanding rather than clipping at accessibility text
+  sizes: a success, warning, or error glow rises from the lower edge and the
+  matching tinted Dismiss action remains available until the result clears.
+  Loading and every result state use a vertically centered 20px leading mark
+  with identical edge inset and icon-to-text gap. Titles do not shift
+  horizontally between states; at standard text size, icon and title
+  positions stay fixed vertically too. Enlarged text may grow the card without
+  changing those horizontal insets.
 - A scan the pull started is reported by that row alone: the pull raises no
   confirmation of its own, having run no ordinary refresh. A scan started from
   harness settings is the exception, because that surface has no row — it
@@ -182,6 +197,15 @@ state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
+- Regular and archived session rows omit the subtitle line and its spacing
+  when no branch, pull request, or status label is shown. Title-only rows are
+  48px at standard text size; a populated subtitle retains the 70px row height.
+  Running and unread sparkles alone do not reserve a subtitle. Both layouts
+  grow with accessibility text rather than clipping. Regular rows show a
+  Running section first, then idle rows grouped by updated-time date buckets;
+  archived rows retain archive-time date buckets. Awaiting-input-only rows stay
+  in their updated-time bucket, and missing timestamps use an Unknown date
+  heading rather than an invented epoch.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.
@@ -270,7 +294,10 @@ state.
   Malformed summaries and unreadable files remain visible failures; an isolated
   malformed update line is logged and skipped. Import remains
   non-destructive, never reads credentials or configuration, and never resumes a
-  listed session merely to catalog it.
+  listed session merely to catalog it. Corrected production-composition QA after
+  PR #1429 verified an exact persisted root/child catalog link. Phone automation
+  did not reach visible project, session, or child lists, so no phone catalog
+  presentation is claimed.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the
@@ -326,6 +353,11 @@ disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
+For session-row sizing and grouping, compare regular and archived title-only
+rows against branch-only, PR-only, and status-only subtitles. Toggle subtitle
+content and check compact spacing, preserved swipe/menu actions, and enlarged
+text. Verify regular Running-first ordering, awaiting-only date grouping,
+updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
@@ -395,6 +427,11 @@ leave the surface that started one. Restore harness eligibility afterwards.
   navigation loses project/session/read-only identity, the New task or root
   file-changes action cannot reach its typed route, or desktop renders dead
   voice/attachment controls instead of honoring declared capabilities.
+- A title-only session row reserves an empty subtitle line, or a populated
+  subtitle is clipped or loses its spacing in regular or archived lists.
+- Regular session rows lose their Running-first section, promote awaiting-only
+  rows into it, use archive time instead of updated time, or render an epoch
+  date when a timestamp is missing.
 - A project or session row animates under a system back gesture, or an edge that
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
@@ -425,6 +462,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Live client end-to-end catalog coverage remains phone-only. Desktop session
   creation and diffs have automated shared-view and typed-route coverage but
   still need a live desktop release exercise.
+- DeepSeek phone scoped-stop QA addressed an existing child independently and
+  observed its running grandchild for stop scope, but did not exercise catalog
+  import, parent/child list presentation, cold reload, or read-only child
+  navigation. Those cases are not client E2E coverage from this gate.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.

@@ -1,6 +1,8 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "acp_event_mapper.dart" show AcpHaltNotice, AcpSessionUpdateNormalizer, AcpShellCommandResolver;
+import "acp_protocol.dart" show AcpMethods;
+import "acp_stdio_client.dart" show AcpNotification;
 import "repositories/mappers/acp_content_mapper.dart";
 import "repositories/trackers/acp_content_tracker.dart";
 import "repositories/trackers/acp_tool_content_tracker.dart";
@@ -11,7 +13,24 @@ typedef AcpReplayToolPartReplacement = PluginMessagePart? Function({
   required String toolCallId,
   required PluginMessagePartTool toolPart,
 });
+typedef AcpReplayToolPartSuppression = bool Function({required Map<String, dynamic> update});
+typedef AcpReplayCollectorFactory = AcpReplayCollector Function({
+  required AcpReplayToolPartSuppression? toolPartSuppression,
+});
 typedef _AcpReplayAssistantSelection = ({String? modelId, String? providerId, String? variant});
+
+/// Collects replay-process notifications into one immutable session history.
+/// Harness implementations may consume extension notifications while the
+/// default collector accepts only standard `session/update` frames.
+abstract interface class AcpSessionReplayCollector() {
+  void consumeNotification({required AcpNotification notification});
+
+  List<PluginMessageWithParts> buildWithAssistantSelection({
+    required String? modelId,
+    required String? providerId,
+    required String? variant,
+  });
+}
 
 /// Accumulates the `session/update` notifications replayed by `session/load`
 /// into ordered [PluginMessageWithParts] for `getSessionMessages`.
@@ -44,13 +63,26 @@ class AcpReplayCollector({
   /// Null retains the generic ACP projection. This synchronous projection is
   /// replay-local; it must not read or mutate live lifecycle state.
   required final AcpReplayToolPartReplacement? toolPartReplacement,
-}) {
+
+  /// Suppresses a standard tool when typed wire metadata says a
+  /// harness-specific replay entry owns its presentation. Kept separate from
+  /// [toolPartReplacement] so DeepSeek's null-means-generic contract remains.
+  required final AcpReplayToolPartSuppression? toolPartSuppression,
+}) implements AcpSessionReplayCollector {
   static const AcpContentMapper _contentMapper = AcpContentMapper();
 
   final List<_Draft> _drafts = [];
+  final List<_ReplayEntry> _entries = [];
+  final Map<String, _InsertedAssistantMessage> _insertedById = {};
+  final Map<String, int> _draftIdOccurrences = {};
   int _seq = 0;
   bool _hasUserDraft = false;
   _PendingAssistantContent? _pendingAssistantContent;
+
+  @override
+  void consumeNotification({required AcpNotification notification}) {
+    if (notification.method == AcpMethods.sessionUpdate) consume(notification.params);
+  }
 
   void consume(Map<String, dynamic> rawParams) {
     final params = sessionUpdateNormalizer?.call(params: rawParams) ?? rawParams;
@@ -82,6 +114,7 @@ class AcpReplayCollector({
         _retainTime(draft: draft == null ? _assistantForTool() : _draftForTool(id)!, time: time);
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
+        final suppressed = toolPartSuppression?.call(update: update) ?? false;
         if (draft == null) {
           final contentTracker = AcpToolContentTracker()..applyInitial(mutation: contentMutation);
           _addTool(
@@ -94,9 +127,11 @@ class AcpReplayCollector({
               contentTracker: contentTracker,
               hasExplicitKind: hasKind,
               hasExplicitStatus: mappedStatus != null,
+              suppressed: suppressed,
             ),
           );
         } else {
+          draft.suppressed = draft.suppressed || suppressed;
           if (!draft.hasExplicitKind && (hasKind || draft.tool == "tool")) {
             draft.tool = _contentMapper.toolName(update: update);
           }
@@ -117,6 +152,7 @@ class AcpReplayCollector({
         _retainTime(draft: draft == null ? _assistantForTool() : _draftForTool(id)!, time: time);
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
+        final suppressed = toolPartSuppression?.call(update: update) ?? false;
         if (draft == null) {
           // No prior `tool_call` was replayed for this id (loaded history can
           // carry only the update). Seed a tool draft from the update payload so
@@ -133,10 +169,12 @@ class AcpReplayCollector({
               contentTracker: contentTracker,
               hasExplicitKind: hasKind,
               hasExplicitStatus: mappedStatus != null,
+              suppressed: suppressed,
             ),
           );
           return;
         }
+        draft.suppressed = draft.suppressed || suppressed;
         // A `tool_call_update` is partial: only advance a field when the update
         // carries it, else a later output-only update would reset a
         // completed/failed replayed tool card back to pending (status) or drop a
@@ -217,6 +255,31 @@ class AcpReplayCollector({
     }
   }
 
+  /// Inserts or updates one harness-owned assistant message at its first
+  /// observed replay position. Updating preserves that position, so a later
+  /// terminal lifecycle frame settles the original tile rather than appending.
+  void upsertAssistantMessage({
+    required String messageId,
+    required List<PluginMessagePart> parts,
+    required PluginMessageTime? time,
+  }) {
+    final existing = _insertedById[messageId];
+    if (existing != null) {
+      existing
+        ..parts = List.unmodifiable(parts)
+        ..time = time;
+      return;
+    }
+    final inserted = _InsertedAssistantMessage(
+      messageId: messageId,
+      parts: List.unmodifiable(parts),
+      time: time,
+    );
+    _insertedById[messageId] = inserted;
+    _entries.add(inserted);
+    _pendingAssistantContent = null;
+  }
+
   /// Materializes replay without model-selection metadata.
   List<PluginMessageWithParts> build() => _build(
     selection: (modelId: null, providerId: null, variant: null),
@@ -226,6 +289,7 @@ class AcpReplayCollector({
   ///
   /// Selection is supplied only after `session/load` settles, so callers never
   /// mutate partially-known collector state while notifications are arriving.
+  @override
   List<PluginMessageWithParts> buildWithAssistantSelection({
     required String? modelId,
     required String? providerId,
@@ -233,12 +297,34 @@ class AcpReplayCollector({
   }) => _build(selection: (modelId: modelId, providerId: providerId, variant: variant));
 
   List<PluginMessageWithParts> _build({required _AcpReplayAssistantSelection selection}) {
-    return [
-      for (final draft in _drafts) _buildMessage(draft: draft, selection: selection),
-    ];
+    final messages = <PluginMessageWithParts>[];
+    for (final entry in _entries) {
+      switch (entry) {
+        case _Draft():
+          final message = _buildMessage(draft: entry, selection: selection);
+          if (message != null) messages.add(message);
+        case _InsertedAssistantMessage():
+          messages.add(
+            PluginMessageWithParts(
+              info: PluginMessage.assistant(
+                id: entry.messageId,
+                sessionID: sessionId,
+                agent: agentId,
+                modelID: selection.modelId,
+                providerID: selection.providerId,
+                variant: selection.variant,
+                sender: PluginMessageSender.agent,
+                time: entry.time,
+              ),
+              parts: entry.parts,
+            ),
+          );
+      }
+    }
+    return messages;
   }
 
-  PluginMessageWithParts _buildMessage({
+  PluginMessageWithParts? _buildMessage({
     required _Draft draft,
     required _AcpReplayAssistantSelection selection,
   }) {
@@ -280,6 +366,7 @@ class AcpReplayCollector({
       parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
     }
     parts.addAll(_chronologicalAssistantParts(draft: draft));
+    if (parts.isEmpty && draft.tools.values.any((tool) => tool.suppressed)) return null;
     return PluginMessageWithParts(
       info: _message(draft: draft, selection: selection),
       parts: parts,
@@ -351,7 +438,8 @@ class AcpReplayCollector({
           }
         case _AssistantToolEntry(:final toolId, :final tool):
           flushText();
-          parts.add(_toolPart(draft: draft, toolId: toolId, tool: tool));
+          final part = _toolPart(draft: draft, toolId: toolId, tool: tool);
+          if (part != null) parts.add(part);
       }
     }
     flushText();
@@ -416,11 +504,12 @@ class AcpReplayCollector({
     );
   }
 
-  PluginMessagePart _toolPart({
+  PluginMessagePart? _toolPart({
     required _Draft draft,
     required String toolId,
     required _ToolDraft tool,
   }) {
+    if (tool.suppressed) return null;
     final content = tool.contentTracker.snapshot;
     final toolPart = PluginMessagePartTool(
       id: "${draft.id}-tool-$toolId",
@@ -455,10 +544,12 @@ class AcpReplayCollector({
   // Tool calls carry no messageId (they are not ContentChunks) and attach to
   // the current assistant message even when its content chunks are stamped.
   _Draft _assistantForTool() {
-    if (_drafts.isNotEmpty && _drafts.last.role == "assistant") {
-      final last = _drafts.last;
-      if (last.acpMessageId != null || (last.text.isEmpty && last.reasoning.isEmpty && last.entries.isEmpty)) {
-        return last;
+    if (_entries.isNotEmpty) {
+      final entry = _entries.last;
+      if (entry is _Draft && entry.role == "assistant") {
+        if (entry.acpMessageId != null || (entry.text.isEmpty && entry.reasoning.isEmpty && entry.entries.isEmpty)) {
+          return entry;
+        }
       }
     }
     return _newDraft(
@@ -493,12 +584,13 @@ class AcpReplayCollector({
   }
 
   _Draft? _matchingRole({required String role, required String? messageId}) {
-    if (_drafts.isEmpty || _drafts.last.role != role) return null;
-    final last = _drafts.last;
-    if (last.acpMessageId != messageId || (messageId == null && last.tools.isNotEmpty)) {
+    if (_entries.isEmpty) return null;
+    final entry = _entries.last;
+    if (entry is! _Draft || entry.role != role) return null;
+    if (entry.acpMessageId != messageId || (messageId == null && entry.tools.isNotEmpty)) {
       return null;
     }
-    return last;
+    return entry;
   }
 
   _Draft _newDraft({
@@ -512,13 +604,17 @@ class AcpReplayCollector({
     final defaultId =
         overrideId ??
         (messageId != null && messageId.isNotEmpty ? "$sessionId-m$messageId-$role" : "$sessionId-h${_seq++}-$role");
+    final identity = isFirstUser && initialUserMessageId != null ? initialUserMessageId! : defaultId;
+    final occurrence = (_draftIdOccurrences[identity] ?? 0) + 1;
+    _draftIdOccurrences[identity] = occurrence;
     final draft = _Draft(
       role: role,
-      id: isFirstUser && initialUserMessageId != null ? initialUserMessageId! : defaultId,
+      id: occurrence == 1 ? identity : "$identity-segment-$occurrence",
       acpMessageId: messageId,
       contentTracker: contentTracker ?? AcpContentTracker(),
     );
     _drafts.add(draft);
+    _entries.add(draft);
     return draft;
   }
 
@@ -558,6 +654,14 @@ class AcpReplayCollector({
       update["title"] is String ? update["title"] as String? : null;
 }
 
+sealed class _ReplayEntry();
+
+final class _InsertedAssistantMessage({
+  required final String messageId,
+  required var List<PluginMessagePart> parts,
+  required var PluginMessageTime? time,
+}) extends _ReplayEntry;
+
 class _Draft({
   required final String role,
   required final String id,
@@ -565,7 +669,7 @@ class _Draft({
   /// The ACP `messageId` this draft groups, when the agent stamped one.
   required var String? acpMessageId,
   required final AcpContentTracker contentTracker,
-}) {
+}) extends _ReplayEntry {
   final StringBuffer text = StringBuffer();
   final StringBuffer reasoning = StringBuffer();
   final List<_AssistantDraftEntry> entries = [];
@@ -594,6 +698,7 @@ class _ToolDraft({
   required final AcpToolContentTracker contentTracker,
   required var bool hasExplicitKind,
   required var bool hasExplicitStatus,
+  required var bool suppressed,
 }) {
   // Reassigned as later tool_call_update notifications arrive during replay.
 }

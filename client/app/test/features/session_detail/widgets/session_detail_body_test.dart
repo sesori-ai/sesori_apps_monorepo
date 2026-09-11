@@ -792,7 +792,7 @@ void main() {
 
     expect(find.text("Diffs"), findsOneWidget);
 
-    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -1013,6 +1013,33 @@ void main() {
     );
   });
 
+  for (final (name, interaction) in [
+    ("legacy", const SessionInteractionState.legacyUnverified()),
+    ("refresh-error", SessionInteractionState.available(refreshError: ApiError.generic())),
+  ]) {
+    testWidgets("archiving hides the $name harness warning", (tester) async {
+      final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+        interaction: interaction,
+      );
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(cubit, states.stream, initialState: loaded);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("session_harness_settings")), findsOneWidget);
+      expect(find.byType(PromptInput), findsOneWidget);
+
+      states.add(loaded.copyWith(isArchived: true));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(const Key("session_harness_settings")), findsNothing);
+      expect(find.text("This session is archived and read-only."), findsOneWidget);
+      expect(find.byType(PromptInput), findsNothing);
+      expect(tester.takeException(), isNull);
+    });
+  }
+
   testWidgets("covered current routes suppress questions, permissions and notices", (tester) async {
     final questions = StreamController<SesoriQuestionAsked>.broadcast();
     final permissions = StreamController<SesoriPermissionAsked>.broadcast();
@@ -1035,7 +1062,7 @@ void main() {
     state = state.copyWith(pendingQuestions: const [_question], pendingPermissions: const [_permission]);
     questions.add(_question);
     permissions.add(_permission);
-    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pumpAndSettle();
     expect(find.text("Choose a release channel"), findsNothing);
     expect(find.text("write_release_notes"), findsNothing);
@@ -1055,7 +1082,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    notices.add(SessionDetailNotice.promptOptionsUpdated);
+    notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 
@@ -1063,6 +1090,22 @@ void main() {
       find.text("Prompt options changed. Updated settings and retrying your message."),
       findsOneWidget,
     );
+  });
+
+  testWidgets("shows privacy-safe authentication guidance from stale option recovery", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    notices.add(const SessionDetailAuthenticationRequired(actionHint: "Authenticate locally, then retry."));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+
+    expect(find.text("Provider login required"), findsOneWidget);
+    expect(find.text("Authenticate locally, then retry."), findsOneWidget);
   });
 
   testWidgets("explains when a queued command is no longer available", (tester) async {
@@ -1073,7 +1116,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    notices.add(SessionDetailNotice.commandUnavailable);
+    notices.add(const SessionDetailCommandUnavailable());
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 200));
 

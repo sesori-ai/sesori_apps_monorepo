@@ -54,11 +54,18 @@ directories. Raw logs/transcripts must be reviewed and redacted before sharing.
 File-watch/stream-trigger timing probes were inconclusive; the successful HTTP
 write/response-timed probe and phone observations above are the evidence.
 
-## Handoff
+## Final coverage disposition
 
-The requested phone stop/input checks are complete. Codex #1387 remains
-historical preparation, and cleanup #1396 is merged. Continue through native
-facts 5/9, live/replay tiles 6/9, lifecycle coverage 7/9, scoped stop 8/9, and
-final coverage 9/9. Metadata and child-session foundations
-already merged in #1263, #1273, and #1280. Do not mark remaining harness
-coverage or the whole plan complete on the strength of this phone-only handoff.
+The requested phone stop/input checks are complete. This evidence passes only
+that scoped subset: confirmation/dismissal, keep, atomic descendant stop,
+runtime reuse, a follow-up turn, earlier pending-input cleanup, and preservation
+of one later interleaved prompt/question. It does not prove cold tile/history
+reload, read-only child navigation, push delivery, bridge restart/reconnect,
+multiple clients, alternate mobile platforms, or macOS desktop. Desktop remains
+unexecuted by explicit user choice.
+
+Codex coverage later merged through Step 9/9. Grok coverage documentation merged
+as PR #1430 at `a28e860557`, but its phone gate remains blocked before visible
+UI and is not converted into a pass. Cursor implementation and coverage remain.
+Do not retire the overall plan on the strength of this DeepSeek phone-only
+handoff.

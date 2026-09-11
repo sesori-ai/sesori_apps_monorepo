@@ -64,18 +64,32 @@ sub-agent parts, plus the signal that a tool changed files.
   as `cancelled`.
   Process exit — natural or an explicit stop — cancels every running task.
   OpenCode subtask parts keep a null lifecycle and the child-status fallback.
+- Codex replaces a generic `spawn_agent` tool by exact call id with one subtask
+  tile linked to the direct child thread. A complete child-owned plaintext
+  `NEW_TASK` input owns prompt provenance for the initial child turn; normally
+  encrypted input instead retains only the exact nonblank message from the
+  matching parent `spawn_agent` call. Parent history, labels, order, timing,
+  envelope headers, encrypted content, later resumed input, and metadata-only
+  `thread/read` never supply prompt text. Child completion, failure,
+  interruption, close, and disconnect settle the tile, with the initial turn's
+  first terminal state winning. Parent spawn completion and parent turn
+  completion do not settle it. Replay performs the same exact-id replacement
+  and takes provenance-safe prompt and terminal facts from the catalogued child
+  rollout, never live tracker state.
 - DeepSeek projects tool calls and updates through standard ACP with exact call
-  identity, terminal state, attachments, and diff content. Presenter failure
-  degrades to a generic lightweight tool card instead of dropping the call.
-  With adapter 0.1.3 and protocol v2, correlated sub-agent starts replace exact
-  `subagent`/`subagent_fork` cards with one child-linked tile; identifiable
-  updates arriving before their call are deferred too. Start/end events retain
-  the direct parent's transcript and keep root activity busy. Launch prompts
-  remain authoritative without child prompt echoes; malformed ends finalize
-  known children as error. Startup failures retain one generic terminal card.
-  Replay projects typed delegation metadata into the same tile identity and
-  terminal policy, or an unlinked tile when no child was created; unrelated
-  tools retain the generic ACP projection. Initialization requires v2.
+  identity, terminal state, attachments, and diff content. Its native `web_search`
+  and `web_fetch` tools use the same tool lifecycle; they make outbound requests
+  when invoked, without starting a Web BFF, HTTP listener, or another process.
+  Telemetry remains disabled. Presenter failure degrades to a generic lightweight
+  tool card instead of dropping the call. With protocol v2, correlated sub-agent
+  starts replace exact `subagent`/`subagent_fork` cards with one child-linked tile;
+  identifiable updates arriving before their call are deferred too. Start/end
+  events retain the direct parent's transcript and keep root activity busy.
+  Launch prompts remain authoritative without child prompt echoes; malformed
+  ends finalize known children as error. Startup failures retain one generic
+  terminal card. Replay projects typed delegation metadata into the same tile
+  identity and terminal policy, or an unlinked tile when no child was created;
+  unrelated tools retain the generic ACP projection. Initialization requires v2.
 - Cursor's fire-and-forget tool extensions preserve their top-level tool-call
   correlation before falling back to the active turn, including while another
   session is in flight.
@@ -89,9 +103,20 @@ sub-agent parts, plus the signal that a tool changed files.
   decisions are process-local and are not part of replay. Backend tool names
   remain presentation data rather than shared behavior.
 - Grok uses that standard ACP lifecycle with exact live permission linkage.
-  Tool-call identity, pending-to-terminal status, and diff content converge
-  between live events and `session/load`; Grok tool names
-  remain presentation data and never become shared domain vocabulary.
+  Root history replaces only metadata-identified `spawn_subagent` tools with one
+  deterministic child-linked subtask tile, using the exact child's persisted
+  first user-message run as prompt only when that run is nonblank, plus typed
+  lifecycle for terminal state/output. A blank or missing first run produces no
+  tile; later runs never substitute. Ordinary tools remain generic and ordered
+  around the tile, without an empty assistant message after spawn suppression.
+  Tool-call identity, pending-to-terminal status, and diff content otherwise
+  converge between live events and `session/load`; verified shell commands also
+  retain bounded output or error. Grok tool names remain presentation data and
+  never become shared domain vocabulary.
+  Corrected production-composition QA after PR #1429 verified exact root/child
+  replay linkage and child-owned prompt provenance. Phone automation stopped
+  before visible UI, so phone tile rendering and read-only child navigation
+  remain unexecuted.
 
 ## Regression Levels
 
@@ -99,7 +124,7 @@ sub-agent parts, plus the signal that a tool changed files.
 |---|---|
 | L1 Smoke | Not included because proving tool behavior requires a live turn. |
 | L2 Routine | Live plugin, representative: a file-editing tool produces a lightweight tool part with name and terminal status, while a shell tool preserves its command and bounded result. |
-| L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok covers a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. |
+| L3 Release | Client end to end (phone), every supporting production plugin: status normalizes consistently, non-shell tool snippets are absent, and shell commands/results/errors render; a mutating tool emits the file-change signal once and a read-only tool emits none; tool cards and subtask/agent parts render. Claude covers a foreground and a background sub-agent tile going running → completed with the result text, tapping the tile opening the child transcript, and a cancelled tile after the process is killed; OpenCode proves a null-lifecycle subtask part still renders and opens as before. Copilot covers one read-only tool, one file mutation with permission linkage and diff invalidation, and one failing tool. Grok target coverage: a complete lightweight tool lifecycle, a file diff and invalidation, live permission linkage, and cold-replay identity/status parity. Grok phone cases remain infrastructure-blocked; live permission linkage remains unexecuted. |
 | L4 Extended | Live plugin, every supporting production plugin: tool parts survive history reload with identity and status intact, shell commands retain their results, and non-shell snippets remain absent; a failing shell command surfaces an error rather than a stuck running state; child-session tool activity is attributed correctly; repeated completion updates do not duplicate the file-change signal. Claude: a reloaded session with a finished background sub-agent shows one completed subtask tile with the same identity and `childSessionID`, a still-running one stays running while its process lives, a resumed terminal agent returns to running in both its tile and child status, and a failed sub-agent renders `error` with the notification summary. |
 | L5 Full | Client end to end, every supporting production plugin: rune-boundary truncation is exact for multi-byte shell output; attachments render where emitted and unsafe or malformed sources degrade to metadata; unknown status from a newer peer degrades gracefully. |
 
@@ -115,7 +140,10 @@ cold-replay the resulting call identity, terminal tool state, and diff without
 expecting its process-local permission decision to replay. For Grok, compare
 read-only, mutating, and failing tools live and after `session/load`, including
 one permission-gated mutation, one repeated terminal update, and a verified
-shell command with long output.
+shell command with long output. Reload a root with completed/cancelled children
+and each child transcript; verify prompt provenance, tile order, and both
+lifecycle extension methods. Denial remains unverified and carries no replay
+guarantee.
 
 ## Failure Signals
 
@@ -136,8 +164,11 @@ shell command with long output.
 - A Copilot tool loses permission correlation while live, or its call identity,
   terminal status, or diff changes when reopened through ACP history.
 - A Grok tool loses live permission correlation, changes call identity or status
-  after replay, exposes non-shell output, loses diff content, or emits the wrong
-  number of file-change invalidations.
+  after replay, exposes ordinary non-shell output or unbounded shell output,
+  loses diff content, emits the wrong number of file-change invalidations,
+  leaves a generic spawn beside its tile, binds by description/order instead of
+  child id, crosses the first prompt-run boundary, or leaves an empty message
+  after spawn suppression.
 - The file-change signal is missing after a real mutation, emitted for a
   read-only tool, emitted repeatedly for one call, or wrongly attributed.
 - A Claude sub-agent renders as a generic `Agent` tool card, its tile stays
@@ -146,6 +177,9 @@ shell command with long output.
   result overwrites a notification-set status, tapping the tile opens the wrong
   or no child transcript, or the tile shows placeholder text before its input
   is complete.
+- A Codex spawn remains both a generic tool and subtask tile, pairs by label or
+  order instead of exact call id, uses copied parent history as its prompt,
+  ignores later native child text, or loses child terminal state after reload.
 
 ## Known Limitations
 
@@ -159,6 +193,10 @@ shell command with long output.
 - Available tools, attachments, and sub-agents are backend-specific; a plugin
   that cannot produce a case is not a failure but is also not coverage.
 - Rendering needs the client; the phone is the only transcript surface.
+- The final DeepSeek phone gate exercised scoped stop and ordered pending input,
+  not cold tile/history reload, tool-card parity, or read-only child navigation.
+  Those presentation cases remain automated or unexecuted at the client boundary;
+  no desktop transcript case was run.
 - ACP permission decisions and pending requests are process-local interaction
   state. Cold replay restores the resulting tool lifecycle and diff, not the
   earlier decision or its linkage event.

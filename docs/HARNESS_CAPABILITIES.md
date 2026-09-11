@@ -107,15 +107,17 @@ import-only idle residency cap.
 
 | Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|---|
-| Effort variants listed strongest first, default declared separately | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
+| Effort variants listed strongest first, default declared separately | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁷ | ✅ | ✅ | ✅ | ✅ |
 | Anthropic and OpenAI models listed strongest first | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫¹⁸ | ✅ |
 
 The picker shows each plugin's declared order. Every plugin ranks through the
 shared `CatalogStrengthOrder`; models of other vendors keep the plugin's own
 order after the ranked ones (OpenCode newest release first, others backend
-order). Antigravity's account-advertised order is what remains for its
-unranked models, and before the first real session catalog in a process it
-exposes no model choice and uses the account default.
+order). Antigravity's account-advertised order remains for its unranked models.
+Exact account IDs ending in `-high`, `-medium`, or `-low` become strongest-first
+variants only when labels carry the matching suffix. Its pre-chat catalog uses
+one retained hidden no-prompt native session because the pinned runtime exposes
+models only from new/resume responses and has no deletion capability.
 
 ## Codex question input
 
@@ -172,12 +174,16 @@ it does not claim an unprobed upstream ACP/RPC login API is supported or unsuppo
 | OMP | Not implemented | Run `omp` locally and log into/configure a provider. |
 | DeepSeek | Not implemented | Local provider setup; adapter `check` verifies readiness. |
 | Grok | Not implemented | `grok login` on the bridge machine. |
-| Antigravity | Implemented: personal Google browser OAuth | No local fallback; current client required. |
+| Antigravity | Implemented: automatic personal Google browser OAuth on mobile and desktop | No copy/paste fallback; current client required. |
 
 Codex and Antigravity implement `InteractivePluginAuthenticationDescriptor.authenticate`.
-Codex uses the existing Sesori device-code UI; Antigravity implements the browser-return action:
-a current phone/desktop client opens Google's authorization page and returns
-the callback through Sesori. It permits personal Google OAuth only, suppresses
+Codex uses the existing Sesori device-code UI; Antigravity implements automatic browser return. Current iOS/Android
+clients use a system authentication browser and nonce-only app return; remote desktop uses exact loopback capture and
+a static return page, while desktop connected to its exact supervised bridge lets the bridge receive callback directly.
+Browser kickoff survives settings dismissal, retained phases replay on reopening, and the one callback-listener lifetime
+is bounded to five minutes; only launch failure can retry an issued challenge against that same live listener.
+Synthetic iOS Simulator and Android emulator coverage proves raw loopback-to-app return; real Google OAuth remains a
+manual verification gap. It permits personal Google OAuth only, suppresses
 the bridge host's browser, and uses the same isolated profile for login and live
 sessions. Ambient Google login is not imported. Neither row is a general API-key
 entry form or a claim of support for every provider authentication method.
@@ -207,15 +213,15 @@ prompt, and skill commands remain available.
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ⬜³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ⬜¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ⬜³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
-Plugins that report a scoped-stop rejection declare whether "main agent only"
-is honored through `mainAgentOnlySupported`; the app offers the action only
-when it is true.
+ACP plugins declare one closed scoped-stop capability: `unsupported`, `perChildSnapshot` (Grok), or
+`completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare whether "main agent only" is
+honored through `mainAgentOnlySupported`; the app offers the action only when it is true.
 
 ¹ Claude Code's only stop primitive (`interrupt`, verified on 2.1.257) stops
 background sub-agents together with the running main turn.
@@ -230,18 +236,34 @@ its observed-child snapshot retains legacy client fanout.
 through parent activity and status, never `thread/started`; persisted activity
 is `event_msg/item_completed/item/SubAgentActivity`, whose item id exactly
 matches `spawn_agent.call_id`. Normal initial child input is encrypted in the
-rollout and absent from `thread/read`. Live/replayed tiles now join by exact
-parent-local call ID and use that spawn call's message for encrypted input;
-validated initial child plaintext `NEW_TASK` can override it. Missing activity
+rollout and absent from `thread/read`. Live/replayed tiles join by exact
+parent-local call ID and use that spawn call's exact nonblank message for the
+encrypted-input fallback; they never use parent user history, task names,
+labels, order, timing, or the encrypted envelope header. Validated initial
+child-owned plaintext `NEW_TASK` can override the fallback. Missing activity
 leaves the generic tool card. Native-plugin QA verified forked/nonforked tiles,
-cold replay, busy-root handling, and disconnect cleanup. Direct app-server
-`turn/start` input to v2 sub-agents is **not supported** by Codex 0.153.4;
-differently-terminal resumed-child live QA remains unexecuted.
-Sesori exposes child threads under their direct parent. Metadata-only
+cold replay, busy-root handling, and disconnect cleanup. Duplicate display
+names, plaintext input, and a differently-terminal resumed child were not run
+live. Direct app-server `turn/start` input to v2 sub-agents is **not supported**
+by Codex 0.153.4; this does not establish a parent-mediated messaging limit.
+Sesori exposes child threads under their direct parent and keeps running
+descendants in root busy state. Metadata-only
 `thread/read(includeTurns: false)` retains parent and nickname enrichment.
 Raw task paths are formatted for display, not used for tile correlation.
 `turn/interrupt` works per child with its `turnId`, while parent interrupt
-leaves children running, so main-agent-only is supportable.
+leaves children running, so main-agent-only stop is implemented. Full scoped
+stop snapshots the named thread's known running descendants and fans out exact
+per-thread interrupts; it is not atomic subtree authority, so accepted results
+deliberately report `subAgentsHandled: false` and retain client fallback.
+Managed-0.153.4 actual-plugin QA on 2026-09-10 passed its executed scope:
+side-effect-free root and named-child confirmation, accurate descendant counts
+and named-thread state, root-only `keep`, named-child subtree isolation,
+full-root snapshot fanout, authoritative `turn_aborted` for every selected
+target, and a surviving runtime. Full-stop targets became non-busy in plugin
+status; root `keep` stopped its own turn while effective root status remained
+busy for retained descendants. Live matrix is partial: no
+pending-input request surfaced, so that case remains automated rather than
+live-plugin coverage.
 
 ⁴ Copilot CLI (plugin targets 1.0.80) runs custom agents as subagents, but its
 Agent Client Protocol server exposes no subagent lifecycle, no child session,
@@ -266,18 +288,53 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.4 over dsh 0.1.1-rc.2 is the managed target
+⁹ DeepSeek's published adapter 0.1.5 over dsh 0.1.5-rc.2 is the managed target
 and minimum accepted runtime. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
-Released clients retain their own child fanout; final phone/desktop E2E remains outstanding.
+Released clients retain their own child fanout. Phone QA on unchanged published
+adapter 0.1.4 passed the requested stop/input scope after the shared transport fix:
+confirmation dismissal, main-only keep, root/independently resumed child/grandchild
+cancellation, authoritative settlement, runtime reuse, a follow-up turn, earlier
+pending-input cleanup, and one later question preserved and answered. The
+permission sheet's generic label and opaque call ID are not presentation coverage,
+and surviving root-owned shell jobs do not imply failed descendant cancellation or
+broader process-stop support. Cold tile/history reload, read-only child navigation,
+push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
+and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
+user choice. This 0.1.4 evidence does not requalify the current 0.1.5 managed target.
+The native model catalog includes `deepseek-flash` (DeepSeek V4.1 Flash) with
+image input and reasoning controls. Refresh rereads the installed harness's
+configured catalog; it does not upgrade that harness or fetch a live provider catalog.
+Native `web_search` and `web_fetch` tools are enabled: outbound requests occur
+when invoked, without a Web BFF, HTTP listener, extra process, or telemetry exporter.
 
-¹⁰ Grok Build (1.0.5, probed 2026-09-03) sends `subagent_spawned`/`subagent_progress`/
-`subagent_finished` with parent and child session ids as
-`_x.ai/session_notification` extension notifications, streams child updates
-under the child id, and exposes `_x.ai/subagent/cancel` per child. A root
-`session/cancel` cancels background children too, so main-agent-only is not
-supported.
+¹⁰ Grok Build (1.0.5, probed 2026-09-03 and 2026-09-10) sends
+`subagent_spawned`/`subagent_progress`/`subagent_finished` with parent and child
+session ids as `_x.ai/session_notification` extension notifications and streams
+child updates under the child id. Root `session/load` replays lifecycle as
+`_x.ai/session/update`; an unfinished loaded episode can settle later through
+`_x.ai/session_notification`, so both remain in the replay drain. Sesori exposes
+persisted/live children, loads child transcripts by exact native id, and rebuilds
+root tiles from each exact child's first user-message run only when that run is
+nonblank, without reading live tracker state. A blank or missing first run
+produces no tile; later runs never substitute. Permission denial persistence is
+unverified and has no outcome model. Grok scoped stop snapshots the named
+scope before mutation, sends root `session/cancel` first, and fans out exact
+`_x.ai/subagent/cancel {subagentId}` requests for its running children. This is
+not complete native subtree authority: accepted results deliberately report
+`subAgentsHandled: false` and retain current-client fallback. Main-agent-only
+stop is unsupported because root cancellation stopped every observed child;
+idle-root child-only `keep` remains side-effect free. Automated coverage proves
+rejection, fanout, outcome mapping, lifecycle-only settlement, and exact pending
+permission/queue isolation. Production-composition QA after PR #1429 passed its
+executed named-isolation, full-stop, idle-keep/wake, already-finished, replay,
+settlement, fresh-session, and runtime-reuse scope; root confirmation reuses an
+earlier passing run. Unchanged configuration emitted no live permission request,
+so live permission behavior remains unexecuted and no question support is
+claimed. Source phone build and relay connection were healthy, but UI automation
+failed to start before any visible case; all phone behavior remains blocked and
+unexecuted, including stop, history, read-only child, notification, and push QA.
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the
@@ -322,8 +379,7 @@ setup; unrecognized wording leaves setup ready rather than blocking a working
 install on a phrase a later release may change.
 
 ¹⁷ Hermes (hermes-agent 0.19.0) exposes no effort or thinking levels over its
-ACP seam, and Antigravity has no Sesori effort variants, so for both there is
-nothing to order.
+ACP seam, so there is nothing to order.
 
 ¹⁸ DeepSeek model ids are deliberately opaque tokens with no vendor signal, so
 its models keep DeepSeek's catalog order; its efforts are ordered.

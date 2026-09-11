@@ -3,21 +3,33 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `86ccc283fb`
-- **Series state:** all eight steps merged, including the L4-found fix
-  [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257), which
-  also made the scoped stop harness-neutral (OpenCode honors it; rejections
-  declare `mainAgentOnlySupported`) and added `docs/HARNESS_CAPABILITIES.md`;
-  the original Claude series is complete; harness follow-ups remain active
-- **Next action:** finalize Codex live/replay integration
-  [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399)
-  (step 6/9) after native-facts PR #1398 merged at `d801d722f2`;
-  actual-plugin QA passed its bounded cases, then preserved lifecycle coverage
-  step 7/9 follows. Cleanup #1396 merged at `7f6fb8cb50`; #1387 is
-  historical preparation superseded by the verified 0.153.4 rollout seam. DeepSeek #1363,
-  #1370, and the live-QA crash fix #1379 are merged. Requested phone-only
-  stop/input checks passed; see `followups/deepseek-phone-qa.md`. Desktop
-  remains deferred by user choice; the overall plan remains active.
+- **Implementation base:** `main` at `a28e860557`, containing merged Grok
+  coverage documentation
+  [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430).
+- **Series state:** all eight original Claude steps merged, including the
+  L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
+  which made scoped stop harness-neutral and added
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–7 are merged;
+  bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
+  2026-09-10. Grok documentation is delivered, while its phone gate remains
+  infrastructure-blocked. Harness follow-ups remain active.
+- **Next action:** DeepSeek coverage reconciliation uses the exact planned title
+  `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage`; the
+  plan defines no step suffix for this separate final gate. PR #1430 merged
+  Grok Step 7/7 at `a28e860557`, delivering its partial documentation without
+  clearing the infrastructure-blocked phone gate. DeepSeek #1363, #1370, and
+  live-QA crash fix #1379 are merged. Its requested phone stop/input scope passed
+  on published adapter 0.1.4: confirmation/dismissal, main-only keep, atomic root
+  stop across an independently resumed child and grandchild, authoritative idle
+  settlement, runtime reuse, a follow-up turn, earlier permission/question
+  cleanup, and preservation plus answering of one later interleaved question.
+  Generic permission labeling was not accepted as presentation coverage, and
+  surviving root-owned shell jobs were not treated as failed descendant stop or
+  broader capability evidence. Desktop is unexecuted by explicit user choice;
+  cold tile/history reload, read-only child navigation, push/notification,
+  restart/reconnect, multiple-client, and alternate-mobile coverage also remain
+  unexecuted in this gate. Overall plan stays active for the blocked Grok phone
+  gate and Cursor follow-ups.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -171,15 +183,17 @@ post-merge E2E gates are unchanged.
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse typed child prompts from thread reads [step 3/6]` | #1387 merged; historical title unchanged (now step 3/9) |
 | [x] | Codex | `🌿 [claude-inline-subtasks] codex: remove obsolete child-prompt cache [step 4/7]` | #1396 merged at `7f6fb8cb50`; no tile code |
 | [x] | Codex | `⚙️ [claude-inline-subtasks] codex: parse native rollout facts for sub-agent tiles [step 5/9]` | [PR #1398](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1398) merged at `d801d722f2`; no tile capability activated |
-| [ ] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) open; full live/replay production, tests and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases, with explicit unexecuted coverage |
-| [ ] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | Preserved local successor `e33c33caa4`; write-path coverage, remaining docs, and removal of test-only `CodexMessageRepository.readMessages` with caller migration |
-| [ ] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | Not started |
-| [ ] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | Final matrix outstanding; bounded actual-plugin results in [QA handoff](followups/codex-plugin-qa.md) |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged |
-| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged |
-| [ ] | Grok | `🌿 [claude-inline-subtasks] grok: child session history` | Not started |
-| [ ] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents` | Not started |
-| [ ] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok Build sub-agent coverage` | Not started |
+| [x] | Codex | `🚧 [claude-inline-subtasks] codex: integrate live and replay tiles [step 6/9]` | [PR #1399](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1399) merged at `db2b71134d`; full live/replay production and behavior docs; [actual-plugin QA](followups/codex-plugin-qa.md) passed bounded cases with explicit unexecuted coverage |
+| [x] | Codex | `🌿 [claude-inline-subtasks] codex: cover live tile lifecycle [step 7/9]` | [PR #1420](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1420) merged at `ae2a9297e3`; write-path/lifecycle coverage and docs |
+| [x] | Codex | `⚙️ [claude-inline-subtasks] codex: scoped stop for sub-agent threads [step 8/9]` | [PR #1421](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1421) merged at `77165f784f`; per-thread snapshot fanout, non-atomic (not native subtree cancellation); automated coverage included |
+| [x] | Codex | `🌱 [claude-inline-subtasks] docs: record Codex sub-agent coverage [step 9/9]` | [PR #1424](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1424) merged at `b945755bfe`; managed-0.153.4 actual-plugin policy QA passed; pending-input live case unexecuted |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: parse sub-agent lifecycle notifications` | [PR #1270](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1270) merged; historical original title unchanged (now step 1/7) |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] acp: child sessions keep the root busy` | [PR #1272](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1272) merged; historical original title unchanged (now step 2/7) |
+| [x] | Grok | `🚧 [claude-inline-subtasks] grok: child session history [step 3/6]` | [PR #1426](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1426) merged at `517cbb9703`; historical title unchanged (now step 3/7); approved production, root/direct-child integration, and no-`loadSession` coverage |
+| [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; historical title unchanged (now step 4/7); approved collector/repository/service coverage and docs |
+| [x] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428) merged at `3934f32ec9`; historical title unchanged (now step 5/7) |
+| [x] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | [PR #1429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1429) merged at `2ebcc7d01a`; exact title unchanged |
+| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin executed scope passed; live permission unexecuted; phone gate remains blocked before visible UI |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
@@ -190,7 +204,7 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
-| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
+| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Current documentation gate: requested phone stop/input scope passed; desktop explicitly deferred; other unexecuted client matrices recorded; no overall plan retirement |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
 
@@ -539,11 +553,13 @@ and prompt-id conventions before invoking backend-neutral hold/release
 operations.
 
 A second follow-up `architecture-plan-review` on 2026-09-03 covered the later
-stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. It
-rejected one finding, applied without re-review: deferred Grok tool-call state
-moved out of `AcpEventMapper` into a Layer-2
-`AcpDeferredToolCallTracker` with session, disconnect, and process-exit
-cleanup. The stop policy and DeepSeek adapter/plugin ownership passed.
+stop-policy, Grok denied-spawn, and DeepSeek prompt/settlement amendments. Its
+historical deferred Grok permission-state finding was superseded before
+implementation: current production has no `AcpDeferredToolCallTracker`, and the
+2026-09-10 unchanged-config probe exposed no denyable permission request or
+persisted outcome. This history step therefore keeps exact spawn suppression
+and accepts denied generic-card omission. The stop policy and DeepSeek
+adapter/plugin ownership passed.
 
 A third follow-up `architecture-plan-review` on 2026-09-03 approved the Codex
 service-owned lifecycle flow and replay replacement, the proportional Grok
@@ -752,6 +768,11 @@ its item id exactly matches `spawn_agent.call_id`. Normal child input appends as
 `inter_agent_communication_metadata` plus encrypted
 `response_item/agent_message`; `thread/read` exposes no initial child user item.
 The existing rollout tail sees this append, so no new watcher or timer is needed.
+A bounded managed-0.153.4 stop probe then proved exact-thread interruption:
+parent interrupt left two direct children and a grandchild running; direct
+child interrupt stopped only that child while its sibling and grandchild stayed
+running. Scoped full stop therefore uses per-thread snapshot fanout and cannot
+claim atomic subtree authority.
 
 User decision: for encrypted child input, tile prompt may use only the exact
 nonblank `message` from the matching `spawn_agent` call. It must never use an
@@ -763,11 +784,100 @@ Merged cleanup #1396 (historical step 4/7, now 4/9) removed obsolete #1387 machi
 thread DTOs, `includeTurns: true`, prompt cache/lookups/cleanup, and synthetic
 prompt-cache tests. Parent/source/nickname metadata remains. Workspace codegen,
 focused metadata/write-path/service tests, the complete Codex package suite,
-and `dart analyze --fatal-infos` passed. Native facts are step 5/9, full
-live/replay integration 6/9, lifecycle coverage 7/9, scoped stop 8/9, and final
-coverage 9/9. Rejected tile work remains at
+and `dart analyze --fatal-infos` passed. Native facts are step 5/9. Full
+live/replay integration 6/9 merged as #1399 at `db2b71134d` after bounded
+actual-plugin QA passed the cases recorded in `followups/codex-plugin-qa.md`.
+Lifecycle coverage 7/9 merged as PR #1420 at `ae2a9297e3`. Scoped stop
+8/9 merged as PR #1421 at `77165f784f`. Bounded Step 9 actual-plugin policy QA
+passed root/named-child confirmation and scoped interruption, including
+persisted native terminals, plugin settlement, runtime survival, and the
+non-atomic `subAgentsHandled: false` acknowledgment that retains client fanout.
+The live matrix remains partial because no pending question or permission
+surfaced. Final coverage 9/9 merged as PR #1424 at `b945755bfe`; the overall
+plan remains active for the other harness gates.
+Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-step4-integrated` (`c6aa29a8ce`), while
 `claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and
 `claude-inline-subtasks-codex-tiles-successor-ready` (`8a2952f318`) remain
 untouched. No runtime pin, native source, client/shared contract, database, or
 stop behavior changed in cleanup #1396.
+
+Grok history Step 3/6 keeps inherited ACP load/auth/drain ownership while a
+replay-local collector consumes standard updates plus both Grok lifecycle
+methods. Typed store → history repository → session service context uses each
+exact child's first child-owned user-message run only when nonblank; a blank or
+missing first run emits no tile, and later runs never substitute. Exact
+metadata-based spawn suppression leaves ordinary tools intact and no empty
+envelope, while one collector preserves deterministic identities/order around
+inserted tiles. DeepSeek's nullable replacement contract remains unchanged.
+Review follow-up renamed the new stateful replay seam and Grok implementation
+from mapper to collector, moved shared protocol classification below the
+live/replay collectors, and made history prompt discovery consume lazy typed
+records with first-run cancellation. Architecture and correctness review
+approved production at `b0d4974e`; packaging preserves that checkpoint on a
+named branch and changes no production/generated blob. Step 4 coverage is
+current on `claude-inline-subtasks-grok-history-coverage-step4-current` in PR
+#1427: Collector imports/names replace Mapper, tests use Dart `await` when
+calling asynchronous repository/service preparation, and original plus moved
+collector, repository, service, malformed-boundary, privacy, cancellation, and
+missing-prompt coverage remain present. This records completed async call
+semantics, not unfinished preparation work. Original Step 4 stays untouched at
+`fb47206bd`.
+
+Grok scoped stop Step 5 merged as PR #1428 at `3934f32ec9`; its `[step 5/6]`
+title remains historical. Step 6/7 merged as PR #1429 at `2ebcc7d01a` under its
+exact `[step 6/7]` title, repairing the required application envelope without a
+flat-format fallback.
+
+Corrected Grok 1.0.5 production-composition QA then passed its executed scope.
+Active-root `keep` rejected without outbound cancellation or local input
+mutation. Named-child stop targeted exactly one child and left root and sibling
+active. Idle-child `keep` retained work through natural completion,
+`will_wake`, the autonomous root turn, and one final idle. Root replay linked
+exactly one tile to the exact child transcript and its child-owned prompt.
+`already_finished` remained non-retained without changing terminal state. Root
+full stop sent root cancellation before the immutable two-child snapshot,
+parsed both nested cancelled outcomes, reached authoritative root/child and
+plugin idle settlement, and left the runtime usable. Fresh sessions after named
+cleanup, already-finished, and full stop all settled on the same runtime. Root
+`confirm` was not rerun; its earlier side-effect-free actual-plugin pass remains
+valid because the envelope repair did not affect preflight policy.
+
+Live matrix remains partial. Unchanged configuration produced zero standard
+permission requests, so permission preservation, isolation, and cleanup are
+unexecuted; no question support is claimed. Source phone build plus bridge/relay
+connection were healthy, but `mobile-mcp` could not start WebDriverAgent
+0.0.23 before any visible UI interaction, even after reinstalling the agent on
+the owned simulator. Phone coverage is infrastructure-blocked and entirely
+unexecuted, not a product failure: no stop dialog/action, history, read-only
+child view, notification, or push behavior is claimed. Owned bridge, app,
+simulator, scratch project, and isolated runtime resources were cleaned;
+protected resources were untouched. Step 7/7 recorded this partial coverage in
+PR #1430 at `a28e860557`; delivery of documentation did not clear the blocked
+phone gate.
+
+DeepSeek final coverage reconciliation used existing private summary reports and
+structural artifact summaries only; raw logs, screenshots, transcripts, prompts,
+and credentials were not inspected or copied. The first phone run against merged
+#1370 and published adapter 0.1.4 passed permission cancellation, dialog dismissal,
+and main-only keep, then exposed the shared IOSink concurrent-dispatch crash on
+an independently resumed child with a running grandchild. #1379 fixed that crash.
+The post-fix rerun passed root/child/grandchild cancellation with authoritative
+idle settlement while bridge and native runtime survived, followed by a successful
+new turn. Final phone input checks passed cancellation of an earlier real question
+and preservation of one distinct prompt submitted after Stop was written; the new
+question it produced remained visible, was answered on the phone, and cleared
+normally.
+The earlier permission case used API-triggered Stop and proved cancellation only:
+its generic tool label and opaque call ID remain a separate UX gap. Root-owned
+background shell jobs surviving agent-turn cancellation are outside descendant
+agent stop semantics and were cleaned explicitly.
+
+Unexecuted DeepSeek scope remains explicit: macOS desktop by user choice; cold
+live/replay tile convergence, history reload, and read-only child navigation;
+push/notification delivery; bridge restart/reconnect; multiple clients; and
+alternate mobile platforms. Existing automated package coverage still applies to
+its own bounded cases but is not relabeled client E2E. This documentation-only
+gate changes no adapter/runtime, production/configuration/authentication code,
+persisted data, or capability implementation. The plan remains active for the
+Grok phone gate and both Cursor gates.

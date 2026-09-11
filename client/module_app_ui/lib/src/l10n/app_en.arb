@@ -277,13 +277,22 @@
   "harnessManagementUncertain": "The connection changed before the result could be confirmed. Refresh before trying again.",
   "harnessManagementRequestFailed": "Check your connection and try again.",
   "harnessAuthenticationLogIn": "Log in",
-  "harnessAuthenticationContinue": "Continue login",
+  "harnessAuthenticationViewProgress": "View sign-in",
   "harnessAuthenticationDescription": "Authorize this harness from your phone.",
   "harnessAuthenticationSheetTitle": "Log in to harness",
   "harnessAuthenticationSecurityDescription": "Only continue if you started this login. Sesori will open the harness provider's secure website; verify the address before entering the code.",
   "harnessAuthenticationSecuritySemantics": "Security notice. Only continue if you started this login. Verify the website address before entering the code.",
-  "harnessAuthenticationBrowserInstructions": "Only continue if you started this login. Verify the website address before signing in. If the local callback page does not load, copy its full address and paste it below.",
-  "harnessAuthenticationRedirectLabel": "Redirect URL",
+  "harnessAuthenticationBrowserInstructions": "Only continue if you started this login. Verify the provider's website address before signing in. Sesori will return automatically when authorization finishes.",
+  "harnessAuthenticationPreparing": "Preparing sign-in…",
+  "harnessAuthenticationPreparingDescription": "The provider page will open after the bridge prepares this sign-in.",
+  "harnessAuthenticationOpening": "Opening the secure provider page…",
+  "harnessAuthenticationWaitingForBrowser": "Complete sign-in in the provider page. Sesori will return automatically.",
+  "harnessAuthenticationFinalizing": "Finishing sign-in with the bridge…",
+  "harnessAuthenticationSucceeded": "Sign-in completed successfully.",
+  "harnessAuthenticationCancelled": "Sign-in was cancelled. No account was connected.",
+  "harnessAuthenticationRetry": "Try again",
+  "harnessAuthenticationDone": "Done",
+  "harnessAuthenticationClose": "Close",
   "harnessAuthenticationCodeLabel": "One-time code",
   "harnessAuthenticationCopyCode": "Copy one-time code",
   "harnessAuthenticationCodeCopied": "Code copied",
@@ -300,7 +309,6 @@
   "harnessAuthenticationConflict": "The harness is busy with another management action. Refresh before trying again.",
   "harnessAuthenticationUncertain": "The connection changed before the result could be confirmed. Refresh before trying again.",
   "harnessAuthenticationInvalidChallenge": "The bridge returned an invalid login website. Check the bridge logs for details.",
-  "harnessAuthenticationInvalidRedirect": "Paste the full redirect URL from the local callback page.",
   "harnessAuthenticationBrowserFailed": "The secure website could not be opened. Try again.",
   "harnessAuthenticationRequestFailed": "Check your connection and try again.",
   "harnessesRegisteredSection": "Registered Harnesses",
@@ -451,6 +459,10 @@
     "description": "Headline on the sessions list when a project has no active sessions yet, inviting the user to begin."
   },
   "sessionListUntitled": "Untitled session",
+  "sessionListUnknownDate": "Unknown date",
+  "@sessionListUnknownDate": {
+    "description": "Heading for sessions whose updated or archive timestamp is unavailable."
+  },
   "sessionListRefreshSuccess": "Sessions updated",
   "sessionListRefreshFailed": "Could not refresh sessions",
   "sessionListErrorTitle": "Failed to load sessions",
@@ -684,6 +696,7 @@
   "sessionDetailSendingMessage": "Sending",
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",
+  "sessionDetailAuthenticationRequired": "Provider login required",
   "sessionDetailCommandUnavailable": "That command is no longer available. Remove it from the queue to continue.",
   "sessionDetailCancelQueued": "Cancel",
   "sessionDetailRemoveQueued": "Remove",
@@ -900,6 +913,15 @@
   "newSessionNoHarnessDescription": "The connected bridge has no coding harness it can run. Install one from Harness settings.",
   "newSessionOptionsLoadingSemantics": "Loading session options",
   "newSessionOptionsRefresh": "Refresh options",
+  "newSessionAuthenticationRequiredTitle": "{plugin} login required",
+  "@newSessionAuthenticationRequiredTitle": {
+    "description": "Warning title shown when the selected coding harness has no authenticated provider/model available for this project.",
+    "placeholders": {
+      "plugin": {
+        "type": "String"
+      }
+    }
+  },
   "newSessionProjectUnavailable": "Couldn’t verify whether this project supports dedicated workspaces. Try again before creating the session.",
   "newSessionOptionsCached": "Using cached coding tool options.",
   "newSessionOptionsUnavailable": "No cached options are available. You can create with defaults or refresh now.",
@@ -1144,17 +1166,51 @@
   "@catalogScanPullCaption": {
     "description": "Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan. Names what the user gets rather than the mechanism: scanning harnesses is how it works, not what it is for."
   },
-  "catalogScanRunningTitle": "Scanning all harnesses",
+  "catalogScanRunningTitle": "Scanning · {finished} of {total} finished",
   "@catalogScanRunningTitle": {
-    "description": "Title of the row above a list while a catalog scan is in flight across every enabled harness."
+    "description": "Ordinary title of the row above a list while a catalog scan is in flight, including the number of terminal harnesses.",
+    "placeholders": {
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
   },
-  "catalogScanStartingDetail": "Starting…",
+  "catalogScanPreparingOneDetail": "Preparing {harness} scan…",
+  "@catalogScanPreparingOneDetail": {
+    "description": "Supporting line before one pending harness reports catalog progress.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
+  },
+  "catalogScanStartingDetail": "Starting {harness}…",
   "@catalogScanStartingDetail": {
-    "description": "Supporting line on the scan row between dispatch and the first progress event, when no harness has reported yet. Holds the line's place so the row does not change height when the real detail arrives."
+    "description": "Supporting line while a fresh management snapshot authoritatively reports the named harness as starting.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
   },
-  "catalogScanRunningDetail": "{harness} — {sessions, plural, =1{1 session} other{{sessions} sessions}}",
-  "@catalogScanRunningDetail": {
-    "description": "Supporting line on the running scan row: the harness currently being scanned and how many sessions it has reported so far.",
+  "catalogScanReadingDetail": "Reading {harness} sessions…",
+  "@catalogScanReadingDetail": {
+    "description": "Supporting line while the named harness is enumerating but has not found a session yet.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
+  },
+  "catalogScanReadingCountDetail": "{harness} — {sessions, plural, =1{1 session found} other{{sessions} sessions found}}",
+  "@catalogScanReadingCountDetail": {
+    "description": "Supporting line while the named harness enumerates sessions.",
     "placeholders": {
       "harness": {
         "type": "String",
@@ -1162,6 +1218,42 @@
       },
       "sessions": {
         "type": "int"
+      }
+    }
+  },
+  "catalogScanSavingDetail": "Saving {harness} scan results…",
+  "@catalogScanSavingDetail": {
+    "description": "Supporting line while the named harness commits its catalog snapshot.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      }
+    }
+  },
+  "catalogScanWaitingTitle": "Waiting for {harness} · {finished} of {total} finished",
+  "@catalogScanWaitingTitle": {
+    "description": "Title after one harness has remained authoritatively in startup for three seconds, including the number of terminal harnesses.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
+      },
+      "finished": {
+        "type": "int"
+      },
+      "total": {
+        "type": "int"
+      }
+    }
+  },
+  "catalogScanWaitingDetail": "{harness} must finish starting before scanning can continue. You can keep browsing.",
+  "@catalogScanWaitingDetail": {
+    "description": "Wrapped explanation after one harness has remained authoritatively in startup for three seconds.",
+    "placeholders": {
+      "harness": {
+        "type": "String",
+        "example": "Codex"
       }
     }
   },
@@ -1353,9 +1445,15 @@
   "archivedSessionsTitle": "Archived tasks",
   "archivedSessionsClose": "Close archived sessions",
   "archivedSessionsToday": "Today",
+  "@archivedSessionsToday": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsYesterday": "Yesterday",
+  "@archivedSessionsYesterday": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsThisWeek": "This week",
+  "@archivedSessionsThisWeek": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsLastWeek": "Last week",
+  "@archivedSessionsLastWeek": {"description": "Date heading shared by regular and archived task lists."},
   "archivedSessionsThisMonth": "This month",
-  "archivedSessionsLastMonth": "One month ago"
+  "@archivedSessionsThisMonth": {"description": "Date heading shared by regular and archived task lists."},
+  "archivedSessionsLastMonth": "One month ago",
+  "@archivedSessionsLastMonth": {"description": "Date heading shared by regular and archived task lists."}
 }

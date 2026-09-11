@@ -66,6 +66,9 @@ jobs:
     steps:
       - name: Checkout repository
         uses: actions/checkout@v6
+        with:
+          # Store notes need every commit since the previous successful release.
+          fetch-depth: 0
 
       - name: Set up Xcode ${{ env.XCODE_VERSION }}
         uses: maxim-lobanov/setup-xcode@v1

@@ -63,8 +63,8 @@ idle suspension, the management snapshot, and lifecycle commands.
   Hermes entries give local setup guidance rather than offering bridge-managed login.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
-  release (`>=0.1.3`) and then a managed release at or above that minimum,
-  preferring the pinned `0.1.3` target. An outdated explicit
+  release (`>=0.1.5`) and then a managed release at or above that minimum,
+  preferring the pinned `0.1.5` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -74,7 +74,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   validates standard ACP v1 plus DeepSeek extension protocol v2, owns one stdio
   child through the host process seam, degrades on an unexpected exit, lazily
   reconnects on demand, and shuts down idempotently without treating its own
-  termination as a crash.
+  termination as a crash. Scoped-stop phone QA on unchanged published adapter
+  0.1.4 verified that the bridge and native runtime survived atomic cancellation
+  of an independently resumed child and its grandchild after #1379, and accepted
+  a successful follow-up turn. That evidence does not requalify current managed
+  target 0.1.5 or cover setup selection, crash reconnect, idle suspension/reap,
+  bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,
   and correlated sub-agent lifecycle on that same connection. Normal `DSH_HOME` remains the source
@@ -124,7 +129,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   unexpected exit degrades only Grok, demand reconnects it, and owned shutdown
   remains idempotent and is not reported as a crash. Exit cleanup publishes
   cancellation and idle for every running Grok child, clears autonomous-root
-  holds, then clears tracker state and releases a deferred root idle.
+  holds, then clears tracker state and releases a deferred root idle. Corrected
+  production-composition QA after PR #1429 kept the same runtime usable through
+  named-child cleanup, already-finished handling, full-stop settlement, and
+  fresh-session dispatch. Phone setup separately verified source bridge health
+  and relay connection before UI automation failed to start; this is no visible
+  lifecycle claim.
 - Pi and Oh My Pi are registered harnesses with managed installs where a platform
   archive exists and explicit `--pi-bin`/`--omp-bin` paths stay authoritative. Pi
   sessions always launch with `--approve` (project-local Pi settings, extensions,
@@ -210,9 +220,16 @@ idle suspension, the management snapshot, and lifecycle commands.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
   A root remains busy for lifecycle and safe-stop purposes while any tracked
-  child turn runs, even after the root's own turn completes; disconnect clears
-  that connection-scoped child state and emits visible idle cleanup for both a
-  provisional child and its effective root before resetting work state.
+  child turn runs, even after the root's own turn completes. Lifecycle-wide
+  interruption snapshots active roots, children, pending turn admissions, and
+  pending input, then starts an exact per-thread interrupt for every selected
+  session; native terminal notifications settle status without synthetic idle.
+  Thus safe stop continues to refuse tracked descendant work, while forced stop
+  drains that work through the same owned transport before teardown. Disconnect
+  first cancels every open inline child tile, then clears connection-scoped
+  child state and emits visible idle cleanup for both a provisional child and
+  its effective root before resetting work state. Already-terminal tiles retain
+  their child-derived state.
 - Codex session metadata uses the top-level `model` and `model_provider` values from
   `~/.codex/config.toml` when durable rollout metadata omits them; rollout metadata
   remains authoritative when present.
@@ -329,7 +346,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge inspects every registered harness and publishes coherent setup and management snapshots. A ready fixture has a selectable default; a fixture with no usable harness has zero selectable entries and no default without failing startup. Automated client projection covers the exact session harness for ready/routable versus disabled, setup-blocked, stopping, failed, unknown, missing-entry, initial-loading, initial-failure and public-old-bridge unsupported evidence. Headless bridge; all registered harnesses listed. |
-| L2 Routine | Automated client coverage retains an established block through disconnect, requires current evidence after reconnect, preserves a supported snapshot's decision across refresh failure, and retains an initial check failure's original cause for local diagnosis. Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, setup refresh, and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. Automated client service coverage separately proves that a management SSE-triggered GET during enable/restart preserves the correlated acknowledgment without publishing its superseded snapshot; a failed reconciliation retains its typed refresh error. Representative neutral fixtures, no live plugin or rendered UI claim. Cubit/service composition and shared-widget automation prove two independent toggles dispatch before either response, per-target progress/errors and peer padding taps; bridge lifecycle fixtures prove independent named command slots and settings preservation. |
+| L2 Routine | Automated client coverage retains an established block through disconnect, requires current evidence after reconnect, preserves a supported snapshot's decision across refresh failure, and retains an initial check failure's original cause for local diagnosis. Demand-driven start of a ready harness, non-blocking session-open warm-up plus immediate app-setting enable/disable, clean lifecycle-owned bridge shutdown, Codex keepalive traffic remaining local and stopping on disposal, Codex root work remaining busy until its last child settles, and Codex lifecycle interruption covering active descendants plus pending turn admission without synthetic settlement; setup refresh and the disable list surviving restart with eligibility and ordering intact. Package automation covers DeepSeek explicit/PATH/managed selection, immutable six-platform archive metadata, readiness, extension refusal, crash/reconnect, and idempotent shutdown. Copilot package automation covers branded version parsing, explicit/PATH/managed precedence, exact six-archive metadata, provisioning-authoritative startup, and local-login-required failure. Grok package automation covers explicit/PATH authority, bounded branded version parsing, read-only inspection, local-login-required startup, crash/reconnect, and owned shutdown. Automated runtime coverage proves the bounded cold start reports connected on success, degraded on failure, and degraded on budget exhaustion while absorbing the late failure. Headless bridge; representative managed harness for start and shutdown, every registered harness for listing and ordering. Automated client service coverage separately proves that a management SSE-triggered GET during enable/restart preserves the correlated acknowledgment without publishing its superseded snapshot; a failed reconciliation retains its typed refresh error. Representative neutral fixtures, no live plugin or rendered UI claim. Cubit/service composition and shared-widget automation prove two independent toggles dispatch before either response, per-target progress/errors and peer padding taps; bridge lifecycle fixtures prove independent named command slots and settings preservation. |
 | L3 Release | The shared mobile and desktop management surface as rendered: per-harness selected runtime version when reported, setup, runtime and work state, capability-appropriate controls, built-in name and light/dark artwork, grouped overview and per-harness detail navigation, enable/disable, restart, idle-timeout default plus override persisted across a bridge restart, and the per-harness catalog scan on a routable harness including its in-place progress and the announcement of what it found. Copilot renders the exact `GitHub Copilot` name and Primer interface icon in both themes. Grok renders as `Grok Build` with the official contrasting mark, selected version, local setup guidance, and no managed-install control. Client end to end on both product surfaces; every harness declaring the relevant capability must pass. |
 | L4 Extended | Client end to end for an existing chat: Claude authentication-required then restored, one managed runtime missing then restored, and one supporting ACP harness disabled then enabled; another harness remains usable throughout, and an unrelated-harness management change leaves the open chat untouched. Repeat one unavailable-to-usable transition from a second surface and one reconnect against a different bridge identity. Busy conflict with force confirmation and cancellation, authentication start/join/cancel plus shutdown cleanup, peer harness login rows disabled throughout a retained authentication operation, an owning row reopening a dismissed or `cancellingUncertain` challenge, idle suspension elapsing then returning on demand, harnesses blocked by missing runtime or authentication with no catalog-scan action offered on them, a targeted scan rejected by the bridge reporting on its own card, a terminally failed harness leaving others usable, a bridge with no usable harness, an externally managed configuration, two harnesses active at once, second mobile platform. Copilot live coverage includes an unexpected owned-process exit followed by demand reconnect and a deliberate clean shutdown that is not reported as a crash. Grok live coverage includes the same failure isolation and demand reconnect with a supported user-installed release. Live plugin where a real backend must start or be interrupted, client end to end where card state is claimed. Automated client service ordering coverage separately exercises reversed command completion, bridge mismatch after an intervening GET, and disconnect/reconnect, replacement, unsupported management or disposal during reconciliation; old responses stay fenced and uncertain results stay uncertain despite active/idle metadata. Cubit/widget automation also covers same-harness duplicates, global-timeout exclusion, retained auth/install exclusion, both completion orders, reset/retry fencing, and two safe conflicts with explicit Review and stale dialog callbacks. |
 | L5 Full | Every registered production harness through inspect, enable, disable, restart, refresh, and idle behavior on a supported platform, plus forward-compatible presentation of an unknown harness or capability and the reported state of a session interrupted by a forced disable. Compatibility pairs prove an older client treats `copilot` and `grok` as unknown raw-id/generic-icon harnesses without decode failure, while an older bridge simply supplies no corresponding entry to a newer client. Live plugin and client end to end as each entry requires. |
@@ -367,6 +384,9 @@ owned-process exit; and restart.
   Back/X header controls, or a missing ID displaying another harness.
 - A setup-blocked switch falsely shown off, unknown preference represented as disabled,
   degraded grouped as healthy, or controls overflowing at phone width with larger text.
+- DeepSeek scoped STOP crashes the bridge or native runtime, prevents a later
+  turn on the retained runtime, or mistakes surviving root-owned background
+  shell jobs for failed descendant-agent cancellation.
 
 - An isolated child receiving ambient variables, an inert JSON child selection creating
   directories, repeated child scopes losing concurrent updates, consumed ACP output appearing

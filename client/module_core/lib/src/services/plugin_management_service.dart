@@ -1,6 +1,8 @@
 import "dart:async";
+import "dart:io";
 import "dart:math";
 
+import "package:collection/collection.dart";
 import "package:get_it/get_it.dart";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
@@ -11,11 +13,14 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
+import "../foundation/platform/active_bridge_locality.dart";
+import "../foundation/platform/plugin_authentication_browser.dart";
 import "../logging/logging.dart";
 import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/models/plugin_management_result.dart";
 import "../repositories/plugin_repository.dart";
 import "models/plugin_install_state.dart";
+import "plugin_authentication_browser_service.dart";
 import "product_analytics_service.dart";
 
 typedef _ManagementRequestFence = ({
@@ -32,6 +37,26 @@ typedef _CapturedManagementRequest = ({
 
 typedef PluginAuthenticationTerminalUpdate = ({String pluginId, PluginAuthenticationProgress progress});
 
+sealed class const PluginAuthenticationBrowserState();
+
+final class const PluginAuthenticationBrowserOpening() extends PluginAuthenticationBrowserState;
+
+final class const PluginAuthenticationBrowserWaiting() extends PluginAuthenticationBrowserState;
+
+final class const PluginAuthenticationBrowserFinalizing() extends PluginAuthenticationBrowserState;
+
+final class const PluginAuthenticationBrowserCancelling() extends PluginAuthenticationBrowserState;
+
+final class const PluginAuthenticationBrowserCancellingUncertain() extends PluginAuthenticationBrowserState;
+
+final class const PluginAuthenticationBrowserRetryableFailure({
+  required final PluginAuthenticationBrowserFlowFailed failure,
+}) extends PluginAuthenticationBrowserState;
+
+final class const PluginAuthenticationBrowserFatalFailure({
+  required final PluginAuthenticationBrowserFlowFailed failure,
+}) extends PluginAuthenticationBrowserState;
+
 sealed class const PluginManagementIdleTimeoutInput() {
   const factory noTimeout() = PluginManagementIdleTimeoutInputNoTimeout;
 
@@ -43,18 +68,13 @@ final class const PluginManagementIdleTimeoutInputNoTimeout() extends PluginMana
 final class const PluginManagementIdleTimeoutInputCustom({required final String input})
     extends PluginManagementIdleTimeoutInput;
 
-sealed class const PluginAuthenticationContinuationIntent() {
-  const factory pasted({required String rawInput}) = PluginAuthenticationPastedContinuationIntent;
-}
-
-final class const PluginAuthenticationPastedContinuationIntent({required final String rawInput})
-    extends PluginAuthenticationContinuationIntent;
-
 @lazySingleton
 class PluginManagementService({
   required final PluginRepository _pluginRepository,
   required final ConnectionService _connectionService,
   required final ProductAnalyticsService _productAnalyticsService,
+  required final PluginAuthenticationBrowserService _authenticationBrowserService,
+  required final ActiveBridgeLocality _activeBridgeLocality,
 }) with Disposable {
   this {
     _subscriptions
@@ -70,6 +90,8 @@ class PluginManagementService({
   );
   final StreamController<PluginAuthenticationTerminalUpdate> _authenticationTerminalController =
       StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
+  final BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> _authenticationBrowserStates =
+      BehaviorSubject.seeded(const {}, sync: true);
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
   bool _connected = _connectionService.currentStatus is ConnectionConnected;
@@ -99,11 +121,19 @@ class PluginManagementService({
   /// Plugin ids with an install command still awaiting its response, used only
   /// to decide whether a terminal event must be held until acceptance is known.
   final Set<String> _installRequestsInFlight = {};
-  final Set<String> _authenticationRequestsInFlight = {};
+
+  /// Per-request identity prevents a stale same-plugin completion from
+  /// releasing pending outcome coordination owned by a replacement attempt.
+  final Map<String, ({_AuthenticationRequestToken token, _ManagementRequestFence fence})> _authenticationRequestOwners =
+      {};
   final Set<String> _selfStartedAuthentications = {};
   final Map<String, PluginAuthenticationProgress> _pendingAuthenticationOutcomes = {};
   final Map<String, _ManagementRequestFence> _authenticationFences = {};
   final Map<String, _ManagementRequestFence> _authenticationRedirectClaims = {};
+  final Map<String, Uri> _heldAuthenticationCallbacks = {};
+  final Map<String, PluginAuthenticationProgress> _heldAuthenticationProgress = {};
+  int _authenticationBrowserGeneration = 0;
+  String? _activeAuthenticationBrowserPluginId;
 
   ValueStream<PluginManagementLoadResult> get snapshots => _snapshots.stream;
 
@@ -114,6 +144,9 @@ class PluginManagementService({
       _authenticationChallenges.stream;
 
   Stream<PluginAuthenticationTerminalUpdate> get authenticationTerminal => _authenticationTerminalController.stream;
+
+  ValueStream<Map<String, PluginAuthenticationBrowserState>> get authenticationBrowserStates =>
+      _authenticationBrowserStates.stream;
 
   Future<void> refresh() {
     _markStale();
@@ -180,21 +213,33 @@ class PluginManagementService({
   }
 
   Future<PluginAuthenticationStartResult> startAuthentication({required String pluginId}) async {
-    if (_disposed || !_connected || !_activeBridgeIdentityKnown) {
+    if (_disposed || !_connected || !_activeBridgeIdentityKnown || _selfStartedAuthentications.contains(pluginId)) {
       return PluginAuthenticationStartResult.failed(
         failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
       );
     }
     final captured = _captureRequest(staleGeneration: _staleGeneration);
+    final requestOwner = _AuthenticationRequestToken();
     _selfStartedAuthentications.add(pluginId);
-    _authenticationRequestsInFlight.add(pluginId);
+    _authenticationRequestOwners[pluginId] = (token: requestOwner, fence: captured.fence);
     _authenticationFences[pluginId] = captured.fence;
     final result = await _pluginRepository.startAuthentication(pluginId: pluginId);
-    _authenticationRequestsInFlight.remove(pluginId);
-    if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
-      _forgetAuthentication(pluginId: pluginId);
+    final requestOwnership = _authenticationRequestOwners[pluginId];
+    final currentFence = _authenticationFences[pluginId];
+    final ownsStartResult =
+        identical(requestOwnership?.token, requestOwner) &&
+        requestOwnership?.fence == captured.fence &&
+        _selfStartedAuthentications.contains(pluginId) &&
+        currentFence != null &&
+        _isConnectionFenceCurrent(currentFence) &&
+        _activeBridgeIdentityKnown &&
+        captured.fence.bridgeId == _activeBridgeId &&
+        currentFence.bridgeId == captured.fence.bridgeId;
+    if (!ownsStartResult) {
+      if (identical(requestOwnership?.token, requestOwner)) _forgetAuthentication(pluginId: pluginId);
       return const PluginAuthenticationStartResult.failed(failure: PluginAuthenticationFailure.uncertain());
     }
+    _authenticationRequestOwners.remove(pluginId);
 
     switch (result) {
       case PluginAuthenticationStartChallenge(:final challenge)
@@ -213,7 +258,11 @@ class PluginManagementService({
       case PluginAuthenticationStartChallenge(:final challenge):
         _publishAuthenticationChallenge(pluginId: pluginId, challenge: challenge);
         final pending = _pendingAuthenticationOutcomes.remove(pluginId);
-        if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
+        if (pending != null) {
+          _settleAuthentication(pluginId: pluginId, progress: pending);
+        } else if (challenge is PluginAuthenticationBrowserChallenge) {
+          _runBrowserAuthentication(pluginId: pluginId, reuseActiveListener: false);
+        }
         return result;
       // An uncertain start may still have reached the bridge, so keep tracking
       // the plugin and let a pending outcome settle it.
@@ -227,9 +276,211 @@ class PluginManagementService({
     }
   }
 
+  Future<void> retryBrowserAuthentication({required String pluginId}) async {
+    if (_authenticationBrowserStates.value[pluginId] is! PluginAuthenticationBrowserRetryableFailure) return;
+    await _beginBrowserAuthentication(pluginId: pluginId, reuseActiveListener: true);
+  }
+
+  void _runBrowserAuthentication({required String pluginId, required bool reuseActiveListener}) {
+    unawaited(
+      _beginBrowserAuthentication(pluginId: pluginId, reuseActiveListener: reuseActiveListener).catchError(
+        (Object error, StackTrace stackTrace) {
+          loge(
+            "Unexpected plugin authentication browser orchestration failure",
+            _AuthenticationBrowserDiagnosticError(innerError: error),
+            stackTrace,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _beginBrowserAuthentication({
+    required String pluginId,
+    required bool reuseActiveListener,
+  }) async {
+    final challenge = _authenticationChallenges.value[pluginId];
+    final fence = _authenticationFences[pluginId];
+    final bridgeId = fence?.bridgeId;
+    if (challenge is! PluginAuthenticationBrowserChallenge ||
+        fence == null ||
+        bridgeId == null ||
+        !_activeBridgeIdentityKnown ||
+        bridgeId != _activeBridgeId) {
+      return;
+    }
+    final generation = reuseActiveListener ? _authenticationBrowserGeneration : ++_authenticationBrowserGeneration;
+    _activeAuthenticationBrowserPluginId = pluginId;
+    final result = await _authenticationBrowserService.authenticate(
+      challenge: challenge,
+      isLocalBridge: _activeBridgeLocality.isLocalBridge(bridgeId: bridgeId),
+      reuseActiveListener: reuseActiveListener,
+      onPhase: (phase) {
+        if (!_ownsBrowserOperation(pluginId: pluginId, generation: generation)) return;
+        _publishAuthenticationBrowserState(
+          pluginId: pluginId,
+          browserState: switch (phase) {
+            PluginAuthenticationBrowserPhase.opening => const PluginAuthenticationBrowserOpening(),
+            PluginAuthenticationBrowserPhase.waiting => const PluginAuthenticationBrowserWaiting(),
+          },
+        );
+      },
+      onDetachedFailure: (failure) {
+        _runDetachedBrowserFailure(pluginId: pluginId, generation: generation, failure: failure);
+      },
+    );
+    if (!_ownsBrowserOperation(pluginId: pluginId, generation: generation)) return;
+    switch (result) {
+      case PluginAuthenticationBrowserDirect():
+        _publishAuthenticationBrowserState(
+          pluginId: pluginId,
+          browserState: const PluginAuthenticationBrowserWaiting(),
+        );
+      case PluginAuthenticationBrowserCaptured(:final callbackUri):
+        _heldAuthenticationCallbacks[pluginId] = callbackUri;
+        _publishAuthenticationBrowserState(
+          pluginId: pluginId,
+          browserState: const PluginAuthenticationBrowserFinalizing(),
+        );
+        _runHeldAuthenticationCallback(pluginId: pluginId, generation: generation);
+      case PluginAuthenticationBrowserFlowCancelled():
+        _publishAuthenticationBrowserState(
+          pluginId: pluginId,
+          browserState: const PluginAuthenticationBrowserCancelling(),
+        );
+        _runAuthenticationCancellation(pluginId: pluginId);
+      case final PluginAuthenticationBrowserFlowFailed failure when failure.retryableWithActiveListener:
+        _recordBrowserFailure(failure: failure);
+        _publishAuthenticationBrowserState(
+          pluginId: pluginId,
+          browserState: PluginAuthenticationBrowserRetryableFailure(failure: failure),
+        );
+      case final PluginAuthenticationBrowserFlowFailed failure:
+        await _handleFatalBrowserFailure(pluginId: pluginId, generation: generation, failure: failure);
+    }
+  }
+
+  bool _ownsBrowserOperation({required String pluginId, required int generation}) =>
+      !_disposed &&
+      generation == _authenticationBrowserGeneration &&
+      _activeAuthenticationBrowserPluginId == pluginId &&
+      _selfStartedAuthentications.contains(pluginId);
+
+  void _runDetachedBrowserFailure({
+    required String pluginId,
+    required int generation,
+    required PluginAuthenticationBrowserFlowFailed failure,
+  }) {
+    unawaited(
+      _handleFatalBrowserFailure(pluginId: pluginId, generation: generation, failure: failure).catchError(
+        (Object error, StackTrace stackTrace) {
+          loge(
+            "Unexpected detached plugin authentication browser failure",
+            _AuthenticationBrowserDiagnosticError(innerError: error),
+            stackTrace,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _handleFatalBrowserFailure({
+    required String pluginId,
+    required int generation,
+    required PluginAuthenticationBrowserFlowFailed failure,
+  }) async {
+    _recordBrowserFailure(failure: failure);
+    if (!_ownsBrowserOperation(pluginId: pluginId, generation: generation)) return;
+    _publishAuthenticationBrowserState(
+      pluginId: pluginId,
+      browserState: PluginAuthenticationBrowserFatalFailure(failure: failure),
+    );
+    await _completeAuthenticationCancellation(pluginId: pluginId);
+  }
+
+  void _recordBrowserFailure({required PluginAuthenticationBrowserFlowFailed failure}) {
+    loge(
+      "Plugin authentication browser flow failed",
+      _AuthenticationBrowserDiagnosticError(innerError: failure.innerError),
+      failure.stackTrace,
+    );
+  }
+
+  void _runAuthenticationCancellation({required String pluginId}) {
+    unawaited(_completeAuthenticationCancellation(pluginId: pluginId));
+  }
+
+  Future<void> _completeAuthenticationCancellation({required String pluginId}) async {
+    try {
+      final result = await cancelAuthentication(pluginId: pluginId);
+      if (result is PluginAuthenticationCancelFailed &&
+          result.failure is! PluginAuthenticationFailureUncertain &&
+          _selfStartedAuthentications.contains(pluginId)) {
+        _settleAuthentication(
+          pluginId: pluginId,
+          progress: const PluginAuthenticationProgress.failed(message: "Browser authentication could not continue"),
+        );
+      }
+    } on Object catch (error, stackTrace) {
+      loge(
+        "Unexpected plugin authentication cancellation failure",
+        _AuthenticationBrowserDiagnosticError(innerError: error),
+        stackTrace,
+      );
+      if (_selfStartedAuthentications.contains(pluginId)) {
+        _settleAuthentication(
+          pluginId: pluginId,
+          progress: const PluginAuthenticationProgress.failed(message: "Browser authentication could not continue"),
+        );
+      }
+    }
+  }
+
+  void _runHeldAuthenticationCallback({required String pluginId, required int generation}) {
+    unawaited(
+      _dispatchHeldAuthenticationCallback(pluginId: pluginId, generation: generation).catchError(
+        (Object error, StackTrace stackTrace) {
+          loge(
+            "Unexpected plugin authentication callback forwarding failure",
+            _AuthenticationBrowserDiagnosticError(innerError: error),
+            stackTrace,
+          );
+        },
+      ),
+    );
+  }
+
+  Future<void> _dispatchHeldAuthenticationCallback({required String pluginId, required int generation}) async {
+    final callbackUri = _heldAuthenticationCallbacks[pluginId];
+    if (callbackUri == null || !_connected || !_isAuthenticationFenceCurrent(pluginId: pluginId)) return;
+    final result = await submitAuthenticationRedirect(pluginId: pluginId, capturedRedirectUri: callbackUri);
+    if (_disposed ||
+        generation != _authenticationBrowserGeneration ||
+        _heldAuthenticationCallbacks[pluginId] != callbackUri) {
+      return;
+    }
+    switch (result) {
+      case PluginAuthenticationContinuationApplied() ||
+          PluginAuthenticationContinuationUncertain() ||
+          PluginAuthenticationContinuationRejected(reason: PluginAuthenticationContinuationRejection.alreadySubmitted):
+        _heldAuthenticationCallbacks.remove(pluginId);
+      case PluginAuthenticationContinuationInvalidRedirect() ||
+          PluginAuthenticationContinuationNotFound() ||
+          PluginAuthenticationContinuationRejected() ||
+          PluginAuthenticationContinuationRequestFailure():
+        _heldAuthenticationCallbacks.remove(pluginId);
+        final failure = PluginAuthenticationBrowserFlowFailed(
+          innerError: PluginAuthenticationBrowserFailureReason.bridgeRejectedCallback,
+          stackTrace: StackTrace.current,
+          retryableWithActiveListener: false,
+        );
+        await _handleFatalBrowserFailure(pluginId: pluginId, generation: generation, failure: failure);
+    }
+  }
+
   Future<PluginAuthenticationContinuationResult> submitAuthenticationRedirect({
     required String pluginId,
-    required PluginAuthenticationContinuationIntent intent,
+    required Uri capturedRedirectUri,
   }) async {
     final fence = _authenticationFences[pluginId];
     if (_disposed || !_connected || fence == null || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
@@ -251,10 +502,10 @@ class PluginManagementService({
         reason: PluginAuthenticationContinuationRejection.alreadySubmitted,
       );
     }
-    final rawInput = switch (intent) {
-      PluginAuthenticationPastedContinuationIntent(:final rawInput) => rawInput,
-    };
-    final redirectUri = _validatedAuthenticationRedirect(rawInput: rawInput, challenge: challenge);
+    final redirectUri = _validatedAuthenticationRedirect(
+      rawInput: capturedRedirectUri.toString(),
+      challenge: challenge,
+    );
     if (redirectUri == null) return const PluginAuthenticationContinuationResult.invalidRedirect();
 
     _authenticationRedirectClaims[pluginId] = fence;
@@ -276,20 +527,88 @@ class PluginManagementService({
   }
 
   Future<PluginAuthenticationCancelResult> cancelAuthentication({required String pluginId}) async {
-    if (_disposed || !_connected || !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+    final originalFence = _authenticationFences[pluginId];
+    if (originalFence == null || !_ownsAuthenticationFence(pluginId: pluginId, fence: originalFence)) {
       return PluginAuthenticationCancelResult.failed(
         failure: PluginAuthenticationFailure.request(error: ApiError.generic()),
       );
     }
-    _authenticationRequestsInFlight.add(pluginId);
-    final result = await _pluginRepository.cancelAuthentication(pluginId: pluginId);
-    _authenticationRequestsInFlight.remove(pluginId);
-    if (!_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+    if (_authenticationChallenges.value[pluginId] is PluginAuthenticationBrowserChallenge &&
+        _authenticationBrowserStates.value[pluginId] is! PluginAuthenticationBrowserFatalFailure) {
+      _publishAuthenticationBrowserState(
+        pluginId: pluginId,
+        browserState: const PluginAuthenticationBrowserCancelling(),
+      );
+    }
+    await _cancelOwnedBrowserCapture(pluginId: pluginId);
+    if (!_ownsAuthenticationFence(pluginId: pluginId, fence: originalFence)) {
+      return const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain());
+    }
+
+    final requestOwner = _AuthenticationRequestToken();
+    _authenticationRequestOwners[pluginId] = (token: requestOwner, fence: originalFence);
+    late final PluginAuthenticationCancelResult result;
+    try {
+      try {
+        result = await _pluginRepository.cancelAuthentication(pluginId: pluginId);
+      } finally {
+        if (identical(_authenticationRequestOwners[pluginId]?.token, requestOwner)) {
+          _authenticationRequestOwners.remove(pluginId);
+        }
+      }
+    } on Object {
+      if (!_ownsAuthenticationFence(pluginId: pluginId, fence: originalFence)) {
+        _reissuePendingAuthenticationCancellation(pluginId: pluginId);
+        return const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain());
+      }
+      rethrow;
+    }
+    if (!_ownsAuthenticationFence(pluginId: pluginId, fence: originalFence)) {
+      _reissuePendingAuthenticationCancellation(pluginId: pluginId);
       return const PluginAuthenticationCancelResult.failed(failure: PluginAuthenticationFailure.uncertain());
     }
     final pending = _pendingAuthenticationOutcomes.remove(pluginId);
     if (pending != null) _settleAuthentication(pluginId: pluginId, progress: pending);
+    if (result case PluginAuthenticationCancelFailed(failure: PluginAuthenticationFailureUncertain())
+        when _authenticationChallenges.value[pluginId] is PluginAuthenticationBrowserChallenge &&
+            _authenticationBrowserStates.value[pluginId] is! PluginAuthenticationBrowserFatalFailure) {
+      _publishAuthenticationBrowserState(
+        pluginId: pluginId,
+        browserState: const PluginAuthenticationBrowserCancellingUncertain(),
+      );
+    }
     return result;
+  }
+
+  bool _ownsAuthenticationFence({required String pluginId, required _ManagementRequestFence fence}) =>
+      !_disposed &&
+      _selfStartedAuthentications.contains(pluginId) &&
+      _authenticationFences[pluginId] == fence &&
+      _isConnectionFenceCurrent(fence) &&
+      _activeBridgeIdentityKnown &&
+      _activeBridgeId == fence.bridgeId;
+
+  bool _authenticationCancellationPending({required String pluginId}) =>
+      switch (_authenticationBrowserStates.value[pluginId]) {
+        PluginAuthenticationBrowserFatalFailure() ||
+        PluginAuthenticationBrowserCancelling() ||
+        PluginAuthenticationBrowserCancellingUncertain() => true,
+        PluginAuthenticationBrowserOpening() ||
+        PluginAuthenticationBrowserWaiting() ||
+        PluginAuthenticationBrowserFinalizing() ||
+        PluginAuthenticationBrowserRetryableFailure() ||
+        null => false,
+      };
+
+  void _reissuePendingAuthenticationCancellation({required String pluginId}) {
+    final fence = _authenticationFences[pluginId];
+    if (!_authenticationCancellationPending(pluginId: pluginId) ||
+        fence == null ||
+        _authenticationRequestOwners[pluginId]?.fence == fence ||
+        !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+      return;
+    }
+    _runAuthenticationCancellation(pluginId: pluginId);
   }
 
   PluginManagementCommandPlan planApplyAllIdleTimeout({required PluginManagementIdleTimeoutInput input}) {
@@ -339,10 +658,11 @@ class PluginManagementService({
     if (_disposed) return;
     final nextConnected = status is ConnectionConnected;
     if (nextConnected != _connected) {
+      final preserveAuthentication = _selfStartedAuthentications.isNotEmpty;
       _connectionEpoch++;
       _connected = nextConnected;
       _forgetActiveBridgeIdentity();
-      _invalidatePublishedSnapshot();
+      _invalidatePublishedSnapshot(preserveAuthentication: preserveAuthentication);
     }
     if (nextConnected) _markStale();
   }
@@ -372,20 +692,79 @@ class PluginManagementService({
   void _applyAuthenticationProgress({required String pluginId, required PluginAuthenticationProgress progress}) {
     if (_disposed) return;
     _markStale();
-    if (_authenticationRequestsInFlight.contains(pluginId)) {
+    if (_authenticationRequestOwners.containsKey(pluginId)) {
       _pendingAuthenticationOutcomes[pluginId] = progress;
+      return;
+    }
+    if (_selfStartedAuthentications.contains(pluginId) &&
+        _authenticationFences.containsKey(pluginId) &&
+        !_isAuthenticationFenceCurrent(pluginId: pluginId)) {
+      _heldAuthenticationProgress[pluginId] = progress;
       return;
     }
     _settleAuthentication(pluginId: pluginId, progress: progress);
   }
 
   void _settleAuthentication({required String pluginId, required PluginAuthenticationProgress progress}) {
-    final startedHere =
-        _selfStartedAuthentications.contains(pluginId) && _isAuthenticationFenceCurrent(pluginId: pluginId);
+    _finishAuthentication(
+      pluginId: pluginId,
+      progress: progress,
+      startedHere: _selfStartedAuthentications.contains(pluginId) && _isAuthenticationFenceCurrent(pluginId: pluginId),
+    );
+  }
+
+  void _settleRetainedAuthentication({required String pluginId, required PluginAuthenticationProgress progress}) {
+    _finishAuthentication(
+      pluginId: pluginId,
+      progress: progress,
+      startedHere: _selfStartedAuthentications.contains(pluginId),
+    );
+  }
+
+  void _finishAuthentication({
+    required String pluginId,
+    required PluginAuthenticationProgress progress,
+    required bool startedHere,
+  }) {
+    if (!startedHere) return;
+    _runOwnedBrowserCaptureCancellation(pluginId: pluginId);
     _forgetAuthentication(pluginId: pluginId);
-    if (startedHere && !_authenticationTerminalController.isClosed) {
+    if (!_authenticationTerminalController.isClosed) {
       _authenticationTerminalController.add((pluginId: pluginId, progress: progress));
     }
+  }
+
+  void _runOwnedBrowserCaptureCancellation({required String pluginId}) {
+    unawaited(
+      _cancelOwnedBrowserCapture(pluginId: pluginId).catchError((Object error, StackTrace stackTrace) {
+        loge(
+          "Unexpected plugin authentication browser cleanup failure",
+          _AuthenticationBrowserDiagnosticError(innerError: error),
+          stackTrace,
+        );
+      }),
+    );
+  }
+
+  Future<void> _cancelOwnedBrowserCapture({required String pluginId}) async {
+    if (_activeAuthenticationBrowserPluginId != pluginId) return;
+    _activeAuthenticationBrowserPluginId = null;
+    _authenticationBrowserGeneration++;
+    final failure = await _authenticationBrowserService.cancelActive();
+    if (failure != null) _recordBrowserFailure(failure: failure);
+  }
+
+  void _publishAuthenticationBrowserState({
+    required String pluginId,
+    required PluginAuthenticationBrowserState browserState,
+  }) {
+    if (_disposed || _authenticationBrowserStates.isClosed) return;
+    _authenticationBrowserStates.add(
+      Map<String, PluginAuthenticationBrowserState>.unmodifiable({
+        ..._authenticationBrowserStates.value,
+        pluginId: browserState,
+      }),
+    );
   }
 
   Uri? _validatedAuthenticationRedirect({
@@ -435,10 +814,21 @@ class PluginManagementService({
 
   void _forgetAuthentication({required String pluginId}) {
     _selfStartedAuthentications.remove(pluginId);
-    _authenticationRequestsInFlight.remove(pluginId);
+    _authenticationRequestOwners.remove(pluginId);
     _pendingAuthenticationOutcomes.remove(pluginId);
     _authenticationFences.remove(pluginId);
     _authenticationRedirectClaims.remove(pluginId);
+    _heldAuthenticationCallbacks.remove(pluginId);
+    _heldAuthenticationProgress.remove(pluginId);
+    if (!_disposed &&
+        !_authenticationBrowserStates.isClosed &&
+        _authenticationBrowserStates.value.containsKey(pluginId)) {
+      _authenticationBrowserStates.add(
+        Map<String, PluginAuthenticationBrowserState>.unmodifiable(
+          Map<String, PluginAuthenticationBrowserState>.from(_authenticationBrowserStates.value)..remove(pluginId),
+        ),
+      );
+    }
     if (_disposed || _authenticationChallenges.isClosed || !_authenticationChallenges.value.containsKey(pluginId)) {
       return;
     }
@@ -449,12 +839,26 @@ class PluginManagementService({
     );
   }
 
-  void _clearAuthentications() {
+  void _clearAuthentications({bool cancelBrowser = true}) {
     _selfStartedAuthentications.clear();
-    _authenticationRequestsInFlight.clear();
+    _authenticationRequestOwners.clear();
     _pendingAuthenticationOutcomes.clear();
     _authenticationFences.clear();
     _authenticationRedirectClaims.clear();
+    _heldAuthenticationCallbacks.clear();
+    _heldAuthenticationProgress.clear();
+    _authenticationBrowserGeneration++;
+    _activeAuthenticationBrowserPluginId = null;
+    if (cancelBrowser) {
+      unawaited(
+        _authenticationBrowserService.cancelActive().then((failure) {
+          if (failure != null) _recordBrowserFailure(failure: failure);
+        }),
+      );
+    }
+    if (!_disposed && !_authenticationBrowserStates.isClosed && _authenticationBrowserStates.value.isNotEmpty) {
+      _authenticationBrowserStates.add(const {});
+    }
     if (_disposed || _authenticationChallenges.isClosed || _authenticationChallenges.value.isEmpty) return;
     _authenticationChallenges.add(const {});
   }
@@ -625,7 +1029,12 @@ class PluginManagementService({
   Future<PluginManagementMutationResult> _runMutation({
     required Future<PluginManagementMutationResult> Function() request,
   }) async {
-    if (_disposed || !_connected) {
+    final snapshot = _currentSnapshot;
+    if (_disposed ||
+        !_connected ||
+        !_activeBridgeIdentityKnown ||
+        snapshot is! PluginManagementLoadResultSupported ||
+        snapshot.response.bridgeId != _activeBridgeId) {
       return PluginManagementMutationResult.failure(error: ApiError.generic());
     }
 
@@ -721,6 +1130,7 @@ class PluginManagementService({
       case PluginManagementLoadResultSupported(:final response):
         _activeBridgeIdentityKnown = true;
         _activeBridgeId = response.bridgeId;
+        _reconcileAuthenticationAfterRefresh(response: response);
         final installs = Map<String, PluginInstallState>.from(_installStates.value);
         for (final plugin in response.plugins) {
           final runtimeInstalled =
@@ -781,27 +1191,80 @@ class PluginManagementService({
     _invalidatePublishedSnapshot();
   }
 
-  void _invalidatePublishedSnapshot() {
+  void _invalidatePublishedSnapshot({bool preserveAuthentication = false}) {
     _publicationGeneration++;
     // Progress belongs to the bridge connection that reported it; a new
     // connection or bridge identity re-reports whatever is still running.
     _clearInstallStates();
-    _clearAuthentications();
-    _snapshots.add(const PluginManagementLoadResult.loading());
+    if (!preserveAuthentication) {
+      _clearAuthentications();
+      _snapshots.add(const PluginManagementLoadResult.loading());
+    }
+  }
+
+  void _reconcileAuthenticationAfterRefresh({required PluginManagementResponse response}) {
+    for (final pluginId in _selfStartedAuthentications.toList(growable: false)) {
+      final fence = _authenticationFences[pluginId];
+      if (fence == null || _isConnectionFenceCurrent(fence)) continue;
+      final plugin = response.plugins.firstWhereOrNull((candidate) => candidate.setup.id == pluginId);
+      if (fence.bridgeId == response.bridgeId) {
+        _authenticationFences[pluginId] = (
+          connectionEpoch: _connectionEpoch,
+          publicationGeneration: _publicationGeneration,
+          staleGeneration: _staleGeneration,
+          bridgeId: response.bridgeId,
+        );
+        final heldProgress = _heldAuthenticationProgress.remove(pluginId);
+        if (heldProgress != null) {
+          _settleAuthentication(pluginId: pluginId, progress: heldProgress);
+        } else if (plugin?.authenticationState == PluginAuthenticationState.inProgress) {
+          if (_authenticationCancellationPending(pluginId: pluginId)) {
+            _reissuePendingAuthenticationCancellation(pluginId: pluginId);
+          } else {
+            final generation = _authenticationBrowserGeneration;
+            _runHeldAuthenticationCallback(pluginId: pluginId, generation: generation);
+          }
+        } else {
+          _settleAuthentication(pluginId: pluginId, progress: const PluginAuthenticationProgress.unknown());
+        }
+      } else {
+        _settleRetainedAuthentication(
+          pluginId: pluginId,
+          progress: const PluginAuthenticationProgress.unknown(),
+        );
+      }
+    }
   }
 
   @override
   Future<void> onDispose() async {
     if (_disposed) return;
     _disposed = true;
-    _clearAuthentications();
+    final cleanupFailure = await _authenticationBrowserService.cancelActive();
+    if (cleanupFailure != null) _recordBrowserFailure(failure: cleanupFailure);
+    _clearAuthentications(cancelBrowser: false);
     await _subscriptions.dispose();
     await _refreshTail;
     await _snapshots.close();
     await _installStates.close();
     await _authenticationChallenges.close();
     await _authenticationTerminalController.close();
+    await _authenticationBrowserStates.close();
   }
+}
+
+final class _AuthenticationRequestToken();
+
+final class _AuthenticationBrowserDiagnosticError({required final Object innerError}) {
+  @override
+  String toString() => switch (innerError) {
+    final PluginAuthenticationBrowserFailureReason reason => reason.toString(),
+    final PluginAuthenticationBrowserPlatformException error => error.toString(),
+    SocketException(:final osError, :final address, :final port) =>
+      "Authentication socket failure (${osError?.toString()}; address=${address?.address}; port=${port?.toString()})",
+    TimeoutException(:final duration) => "Authentication browser timed out (duration=${duration?.toString()})",
+    _ => "Authentication browser failure (${innerError.runtimeType.toString()})",
+  };
 }
 
 int? _parseIdleTimeoutMins({required PluginManagementIdleTimeoutInput input}) {

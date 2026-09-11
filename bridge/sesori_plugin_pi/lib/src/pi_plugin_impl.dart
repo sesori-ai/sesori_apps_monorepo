@@ -117,6 +117,9 @@ final class PiPlugin._({
   }
 
   static const String pluginId = PiPluginIdentity.id;
+  static const String _missingModelActionHint =
+      "Pi has no model available. Run Pi locally and use /login, then try again.";
+
   final List<StreamSubscription<Object?>> _subscriptions = [];
   Future<void>? _disposeFuture;
   bool _disposed = false;
@@ -154,7 +157,19 @@ final class PiPlugin._({
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
-  }) => _catalogService.getSessionOptions(projectId: projectId, discoveryMode: discoveryMode);
+  }) async {
+    final result = await _catalogService.getSessionOptions(
+      projectId: projectId,
+      discoveryMode: discoveryMode,
+    );
+    return switch (result) {
+      PiOptionsObserved(:final options) => PluginSessionOptionsDiscoveryResult.observed(options: options),
+      PiOptionsNoModels() => const PluginSessionOptionsDiscoveryResult.authenticationRequired(
+        actionHint: _missingModelActionHint,
+      ),
+      PiOptionsDiscoveryFailed() => const PluginSessionOptionsDiscoveryResult.failed(),
+    };
+  }
 
   @override
   Future<PluginSession> createSession({

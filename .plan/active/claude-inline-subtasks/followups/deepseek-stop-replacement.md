@@ -29,8 +29,8 @@ Native input flows through `AcpStdioClient.serverRequests -> AcpPlugin._handleAg
 DeepSeekApprovalRegistry -> DeepSeekAcpApi` parsing and the existing pending-input owner. The same prompt-write buffer
 orders old input, cancellation, and later input, including reused question IDs.
 This makes the 0.1.4 pin safe independently.
-`deepseek/session/stop` is outbound, not unsolicited: this slice has no production caller for it. Current
-`supportsScopedStop`/direct-parent cancellation, bridge/public contracts, and clients remain unchanged.
+`deepseek/session/stop` is outbound, not unsolicited: this slice has no production caller for it. Current per-child
+snapshot capability/direct-parent cancellation, bridge/public contracts, and clients remain unchanged.
 
 ## Step 5/5 — one complete ACP-owned stop
 
@@ -90,5 +90,5 @@ loads, keep/confirm, partial failure, frames before responses, later-work surviv
 and legacy reload fallback. Run relevant bridge/client and impacted mobile title-hydration/split-pane tests,
 not the old DI fix.
 Feature E2E remains separate from package/CI checks. The requested agent-run phone stop/input checks passed;
-`deepseek-phone-qa.md` records the handoff to Codex and outstanding desktop/UX coverage. Do not retire the overall
-plan while its required final matrix remains incomplete.
+`deepseek-phone-qa.md` records their bounded final evidence and outstanding desktop/UX coverage. Do not retire the
+overall plan while the blocked Grok phone gate and Cursor work remain.

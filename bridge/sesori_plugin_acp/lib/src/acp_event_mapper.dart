@@ -87,6 +87,8 @@ class AcpEventMapper({
       _configurationTracker.snapshotForSession(sessionId: sessionId).modelId;
   String? providerForSession({required String sessionId}) =>
       _configurationTracker.snapshotForSession(sessionId: sessionId).providerId;
+  String? variantForSession({required String sessionId}) =>
+      _configurationTracker.snapshotForSession(sessionId: sessionId).variantId;
 
   /// Identity for standard ACP. Harness overrides delegate to their Layer-2 mapper.
   /// Replay invokes the same hook before retaining any tool content.
@@ -302,7 +304,7 @@ class AcpEventMapper({
       agent: pluginId,
       modelID: modelForSession(sessionId: sessionId),
       providerID: providerForSession(sessionId: sessionId),
-      variant: null,
+      variant: variantForSession(sessionId: sessionId),
       errorName: "ACP prompt failed",
       errorMessage: message,
       time: null,
@@ -992,7 +994,7 @@ class AcpEventMapper({
           agent: pluginId,
           modelID: modelForSession(sessionId: sessionId),
           providerID: providerForSession(sessionId: sessionId),
-          variant: null,
+          variant: variantForSession(sessionId: sessionId),
           errorName: notice.errorName,
           errorMessage: message,
           time: time,
@@ -1179,7 +1181,7 @@ class AcpEventMapper({
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        variant: null,
+        variant: variantForSession(sessionId: sessionId),
         sender: PluginMessageSender.agent,
         time: time,
       ),
@@ -1237,7 +1239,7 @@ class AcpEventMapper({
         agent: pluginId,
         modelID: modelForSession(sessionId: sessionId),
         providerID: providerForSession(sessionId: sessionId),
-        variant: null,
+        variant: variantForSession(sessionId: sessionId),
         sender: PluginMessageSender.agent,
         time: time,
       ),

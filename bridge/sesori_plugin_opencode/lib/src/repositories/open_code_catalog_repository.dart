@@ -169,16 +169,16 @@ class OpenCodeCatalogRepository({
     }
 
     for (final root in sessionsById.values.where((session) => session.parentId == null)) {
-      final familyId = _bestFamilyFor(directory: root.directory, aliasesByProjectId: aliasesByProjectId);
-      if (familyId == null) {
-        if (root.projectId != _globalProjectId) {
-          throw const OpenCodeCatalogDatabaseException(
-            message: "OpenCode root session is outside its project directories",
-            cause: null,
-          );
-        }
+      // A validated project id retains roots whose directory is no longer
+      // recorded. Only the global project has no real family and falls through.
+      final familyId =
+          _bestFamilyFor(directory: root.directory, aliasesByProjectId: aliasesByProjectId) ?? root.projectId;
+      final family = families[familyId];
+      if (family != null) {
+        family.roots.add(root);
+      } else {
         final virtualId = "virtual:${_normalizedPath(root.directory)}";
-        families.putIfAbsent(
+        final virtualFamily = families.putIfAbsent(
           virtualId,
           () => _CatalogFamily(
             project: OpenCodeCatalogProjectRow(
@@ -193,9 +193,7 @@ class OpenCodeCatalogRepository({
             sessions: [],
           ),
         );
-        families[virtualId]!.roots.add(root);
-      } else {
-        families[familyId]!.roots.add(root);
+        virtualFamily.roots.add(root);
       }
     }
 

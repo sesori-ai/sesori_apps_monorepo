@@ -1,14 +1,19 @@
 /// One-shot outcomes the session-detail shell should surface to the user.
-enum SessionDetailNotice() {
-  /// A send used stale agent/model/variant data; fresh options were applied and
-  /// the queued submission is being retried automatically.
-  promptOptionsUpdated,
+sealed class const SessionDetailNotice();
 
-  /// Fresh options could not be applied, or the corrected selection was still
-  /// rejected; the submission remains queued.
-  promptOptionsRecoveryFailed,
+/// A send used stale agent/model/variant data; fresh options were applied and
+/// the queued submission is being retried automatically.
+final class const SessionDetailPromptOptionsUpdated() extends SessionDetailNotice;
 
-  /// A refreshed command catalog no longer contains the queued command. The
-  /// command remains visible but blocked until the user removes it.
-  commandUnavailable,
-}
+/// Fresh options could not be applied, or the corrected selection was still
+/// rejected; the submission remains queued.
+final class const SessionDetailPromptOptionsRecoveryFailed() extends SessionDetailNotice;
+
+/// Fresh options could not be applied because this harness has no authenticated
+/// provider/model available in the requested scope. [actionHint] is bounded,
+/// privacy-safe presentation supplied by the plugin.
+final class const SessionDetailAuthenticationRequired({required final String actionHint}) extends SessionDetailNotice;
+
+/// A refreshed command catalog no longer contains the queued command. The
+/// command remains visible but blocked until the user removes it.
+final class const SessionDetailCommandUnavailable() extends SessionDetailNotice;

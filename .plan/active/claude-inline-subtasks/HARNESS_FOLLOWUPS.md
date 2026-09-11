@@ -2,16 +2,29 @@
 
 ## Status
 
-- **Plan slug:** `claude-inline-subtasks` (the plan is reactivated under
-  `.plan/active` until the four coverage PRs, Codex, Grok Build, DeepSeek,
-  and Cursor, merge, then moved back)
+- **Plan slug:** `claude-inline-subtasks` (the plan remains under
+  `.plan/active` until the Codex, Grok Build, DeepSeek, and Cursor coverage
+  gates are reconciled or explicitly accepted; a docs PR does not close a
+  blocked live gate)
 - **Plan date:** 2026-09-02
-- **Base:** `main` at `6e9028c4c6`
+- **Base:** `main` at merged Grok coverage documentation `a28e860557`
+  ([#1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430)).
 - **Delivery:** one open PR at a time, following current repository rules.
-  Codex now has nine steps: merged metadata, child-session, historical prompt
-  preparation, and cleanup remain steps 1/9–4/9. Native rollout facts are
-  step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped stop 8/9, and
-  coverage 9/9. Historical PR titles are unchanged. Progress is tracked in
+  Grok Step 6/7 merged under its exact title. Corrected actual-plugin coverage
+  passed its executed stop, lifecycle, replay, and runtime-reuse scope; live
+  permission coverage remains unexecuted because no request surfaced. Phone
+  setup reached a healthy source build and relay connection, but UI automation
+  was blocked before any visible case. Step 7/7 merged as PR #1430 and records
+  that partial matrix while keeping the phone gate open. DeepSeek final coverage
+  documentation now records its passed phone stop/input scope and explicitly
+  deferred desktop scope. Codex has nine steps: merged metadata,
+  child-session, historical prompt preparation, and cleanup remain steps
+  1/9–4/9. Native rollout facts are
+  step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
+  stop 8/9, and coverage 9/9. Step 8 merged as PR #1421 at `77165f784f`;
+  Step 9 merged as PR #1424 at `b945755bfe` after actual-plugin policy QA
+  passed against managed 0.153.4. Historical
+  PR titles are unchanged. Progress is tracked in
   `TRACKER.md` "Harness Follow-Ups". The DeepSeek phone handoff is recorded in
   `followups/deepseek-phone-qa.md`; desktop remains deferred.
 
@@ -81,28 +94,15 @@ confirmation, no child session or partial stop) and gets that subset.
      deleted (siblings under other roots keep their busy state and cancel
      targets), and calls `clear()` only on process exit. The child directory
      is `directoryForSession(root)`, never the launch directory.
-  2. A protected tool-call classification method on `AcpEventMapper` returns a
-     sealed `AcpToolCallClassification`: render as a tool card, suppress because
-     a lifecycle-derived tile represents the same work, defer a permission-
-     gated decision, or track a tile-only task. A Layer-2
-     `AcpDeferredToolCallTracker`
-     (`bridge/sesori_plugin_acp/lib/src/repositories/trackers/acp_deferred_tool_call_tracker.dart`)
-     is constructed at the harness composition point and injected into
-     `AcpEventMapper`. For `defer`, that tracker—not the mapper—owns the typed
-     standard call by session and tool call id and resolves it from the later
-     permission/tool update; denial or cancellation can then emit and
-     terminally settle the generic card even when no child is spawned. The
-     mapper only classifies each update and delegates the state transition.
-     `AcpPlugin` forgets one session's deferred calls on deletion and clears the
-     tracker on disconnect and process exit. The tile-only outcome carries the
-     stable tool call id, prompt,
-     agent/description, and observed tool state; the generic standard-update
-     path feeds that typed fact into `AcpChildSessionTracker` instead of
-     rendering a card. A session-backed tile is still opened only from a
-     lifecycle event that carries the child id. Grok uses `defer` because its
-     tool call and child lifecycle share no id; Cursor uses the tile-only
-     outcome because its standard and extension frames do. Neither path matches
-     by description or arrival order, so concurrent spawns stay deterministic.
+  2. `AcpEventMapper.isSubagentSpawnToolCall` is the current narrow live
+     classifier: exact backend metadata may suppress a generic card when a
+     lifecycle-derived tile owns presentation. Grok uses this because its
+     standard call and child lifecycle share no id. No deferred permission
+     tracker or permission-outcome model exists; a denied Grok generic card may
+     be absent after replay. Replay has a separate typed suppression callback,
+     while DeepSeek's existing nullable replacement callback keeps null meaning
+     “retain generic.” Cursor's future tile-only mapping must land with its own
+     production need rather than prebuilding unused classification machinery.
   3. The scoped-stop policy, once, in `AcpPlugin.abortSession`: `confirm` with
      running children is side-effect free and rejects with their count,
      `mainAgentRunning` from pending prompts or an active named child, and `mainAgentOnlySupported` true only
@@ -112,18 +112,21 @@ confirmation, no child session or partial stop) and gets that subset.
      main turn is running but
      `mainAgentOnlySupported` is false, it returns the typed rejection before
      any side effect, so a stale or direct caller cannot silently cancel
-     children; otherwise `keep` sends `session/cancel` only. `stop` sends
-     `session/cancel` plus `cancelChild` with each child's direct parent.
-     Outcomes are typed; no `canCancel` field is invented. Foreground children
+     children; otherwise `keep` sends `session/cancel` only. Current atomic
+     opt-in `stop` either invokes declared complete native authority or snapshots
+     and fans out named plus exact child targets; released-client opt-out keeps
+     root/named cancellation and client fanout. Outcomes are typed; no
+     `canCancel` field is invented. Foreground children
      are covered by cancellation of their parent; directly targeting a child
      with no effective interrupt retains that child without cancelling siblings.
      `workKept` means retained work, not pending lifecycle delivery. Unknown-child
      responses do not fabricate either retained work or terminal state.
      `interruptActiveWork` uses `stop` and waits for authoritative lifecycle.
-  4. Capability opt-in `supportsScopedStop` plus a typed `AcpPlugin.cancelChild`
-     hook matches current composition (the per-harness APIs are standalone).
-     DeepSeek supplies its typed request/response API; other ACP harnesses keep
-     their existing behavior until their transport seam lands. A child with a
+  4. Closed `AcpScopedStopCapability` plus a typed `AcpPlugin.cancelChild`
+     hook matches current composition. `unsupported` is the standard ACP default,
+     `perChildSnapshot` selects exact-child fanout for Grok, and
+     `completeNativeAtomic` declares DeepSeek's complete native subtree authority.
+     Other ACP harnesses keep existing behavior until their transport seam lands. A child with a
      bridge-owned standard prompt uses `session/cancel`, not its former ancestry.
   5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into
@@ -163,7 +166,7 @@ confirmation, no child session or partial stop) and gets that subset.
   verifies or lifts a limitation, not deferred to the coverage PR; cells
   change when the capability ships.
 
-## Codex (codex-cli 0.148.0, app-server v2)
+## Codex (codex-cli 0.153.4, app-server v2)
 
 ### Verified facts
 
@@ -171,15 +174,12 @@ confirmation, no child session or partial stop) and gets that subset.
   `agentNickname`, `agentRole`, `threadSource` (`subAgent`,
   `subAgentReview`, `subAgentCompact`, `subAgentThreadSpawn`, ...).
   `thread/list` accepts `sourceKinds` and `parentThreadId`.
-- Item `collabAgentToolCall` (`tool`: `spawnAgent | sendInput | resumeAgent |
-  wait | closeAgent`; `senderThreadId`, `receiverThreadIds`, `prompt`,
-  `status`, `agentsStates` with agent status `pendingInit | running |
-  completed | failed | interrupted | errored | shutdown | notFound`). Item
-  `subAgentActivity` (`kind`: `started | interacted | interrupted |
-  completed`; `agentThreadId`, `agentPath`). Upstream `main` has renamed the
-  item to `collabToolCall`; 0.148.0 does not carry that shape, so the parser
-  accepts only `collabAgentToolCall` and is updated when the pinned release
-  changes and a probe confirms the new shape.
+- Current 0.153.4 persisted activity is nested under
+  `event_msg/item_completed/item/SubAgentActivity`; its item id exactly
+  matches the preceding `spawn_agent.call_id`. Live app-server activity uses
+  `subAgentActivity` with `agentThreadId` and `agentPath`. Historical 0.148.0
+  probes also observed `collabAgentToolCall` wait items, but those empty
+  receiver/state fields are not current tile identity or lifecycle authority.
 - Parent-owned children reject `turn/start` and `turn/steer`
   (`direct app-server input is not allowed for multi-agent v2 sub-agents`);
   `turn/interrupt` is allowed on them. `thread/delete` and `thread/archive`
@@ -194,15 +194,30 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### Current plugin
 
-- `codex_thread_dto.dart` and `codex_thread_record.dart` have no parent
-  fields. `codex_event_mapper.dart` `mapThreadStarted` emits `parentID: null`;
-  `_itemToEvents` drops collab and activity items.
-- `codex_plugin_impl.dart`: `abortSession` ignores the policy and interrupts
-  only the named thread; `getChildSessions` returns `[]`;
-  `getActiveSessionsSummary` hard-codes `childSessionIds: const []`.
-- `codex_catalog_repository.dart` maps every rollout as a root.
-- History: `CodexMessageRepository.projectMessages` renders a persisted
-  `spawn_agent` call as a generic tool card.
+- Thread and rollout metadata preserve direct parent identity. The catalog
+  keeps children out of root lists while exposing them under their direct
+  parent, and the service merges persisted and live children.
+- `CodexSubAgentTracker` owns ancestry, exact call-correlated tile lifecycle,
+  recursive descendants, root busy roll-up, and deferred idle. Current
+  `event_msg/item_completed/item/SubAgentActivity` facts replace only the
+  matching parent-local generic `spawn_agent` card.
+- `CodexPlugin.abortSession` applies side-effect-free scoped preflight, exact
+  named-thread `keep`, and full per-thread snapshot fanout. Every accepted ACK
+  remains `subAgentsHandled: false` because Codex has no atomic subtree stop.
+- Active summaries keep named/root work distinct from busy descendants and
+  child pending input, while authoritative native notifications settle state.
+- Bounded [actual-plugin policy QA](followups/codex-plugin-qa.md) on
+  2026-09-10 used `CodexPlugin.composed`, production WebSocket transport,
+  managed 0.153.4, and only owned `/tmp` work. Root and named-child confirmation
+  had zero effects and exact counts; root `keep`, named-child subtree stop, and
+  root full stop preserved their scope. Every selected target produced
+  `turn_aborted`; full-stop targets became non-busy in plugin status. After root
+  `keep`, its own turn stopped but effective root status stayed busy for retained
+  descendants. The runtime survived each case; every
+  atomic-opt-in accepted response retained `subAgentsHandled: false`. Executed
+  policy scope passed. Live matrix remains partial because no pending input
+  surfaced; that case is unexecuted live and remains covered by focused
+  automation.
 
 ### Design
 
@@ -210,7 +225,7 @@ confirmation, no child session or partial stop) and gets that subset.
   the parent, nickname, role, source, and agent-path fields. A new Freezed
   parser yields sealed `CodexCollabItem` (`spawnAgent`, `wait`, `closeAgent`,
   `sendInput`, `resumeAgent`, `unknown`) and `CodexSubAgentActivity` with
-  closed enums and `unknown` fallbacks (only the 0.148.0 item names).
+  closed enums and `unknown` fallbacks at the current boundary.
 - **Child sessions.** `CodexThreadRecord.parentId`. Children never emit
   `thread/started` (probe), so the event mapper parses the parent's
   `subAgentActivity started` into a typed fact carrying `agentThreadId` and
@@ -249,13 +264,12 @@ confirmation, no child session or partial stop) and gets that subset.
   child `turn/interrupt` cancels it, and `thread/closed` cancels it only while
   it is pending or running; a prior completed, failed, interrupted, or errored
   terminal state wins over the later close. A child turn failure errors it,
-  and a disconnect cancels open tiles. `collabAgentToolCall` items
-  (`wait`, `closeAgent`, ...) and `agentsStates` only refresh the same tile's
-  state; `spawnAgent` items and `receiverThreadIds` are not relied on because
-  0.148.0 does not emit them. The tracker survives the root's idle transition
-  because child completion arrives after the parent `turn/completed`. Replay:
-  the parent rollout persists both `spawn_agent` and `sub_agent_activity
-  started`, whose activity id equals the function call id. A pure Codex history
+  and a disconnect cancels open tiles. Historical `collabAgentToolCall`
+  wait/state fields are not relied on. The tracker survives the root's idle
+  transition because child completion arrives after the parent
+  `turn/completed`. Replay: the current parent rollout persists `spawn_agent`
+  plus `event_msg/item_completed/item/SubAgentActivity`, whose item id equals
+  the function call id. A pure Codex history
   mapper joins them by that id and replaces the generic spawn tool part with
   the one subtask tile in both rollout-tail and full-history projection.
   `CodexSessionService.prepareSessionMessageRead` also reads the catalogued
@@ -272,12 +286,15 @@ confirmation, no child session or partial stop) and gets that subset.
   reaper and safe stops never kill a running child and the completion push
   fires once. Summary iterates roots; `childSessionIds` are the busy children;
   `mainAgentRunning` is the root's own turn.
-- **Scoped stop.** `confirm` with busy children rejects with the count,
-  `mainAgentRunning`, and `mainAgentOnlySupported: true` (children survive a
-  parent interrupt, probe). `stop` interrupts the root then each busy child
-  with the child's `turnId` tracked from its `turn/started`. `keep`
-  interrupts the root only and returns `workKept: true`. Busy state and cancel
-  targets roll descendants up to the root.
+- **Scoped stop.** `confirm` with running descendants rejects before effects
+  with the exact count, named-thread `mainAgentRunning`, and
+  `mainAgentOnlySupported: true`. `keep` interrupts only a running named
+  thread. `stop` initiates exact interrupts for the named thread plus every
+  active or pending-input descendant in the immutable known scope, including
+  pending admissions whose `turnId` arrives later; ancestors and siblings are
+  excluded. The 0.153.4 probe proves each interrupt is exact-thread, not atomic
+  subtree authority, so every accepted result reports
+  `subAgentsHandled: false` and retains client fallback.
 
 ### PRs
 
@@ -288,10 +305,10 @@ confirmation, no child session or partial stop) and gets that subset.
 | 3/9 | ⚙️ | `codex: parse typed child prompts from thread reads [step 3/6]` | PR #1387 merged under this historical title; preparation superseded by 0.153.4 evidence |
 | 4/9 | 🌿 | `codex: remove obsolete child-prompt cache [step 4/7]` | PR #1396 merged at `7f6fb8cb50`; metadata-only `thread/read`, no discarded cache |
 | 5/9 | ⚙️ | `codex: parse native rollout facts for sub-agent tiles [step 5/9]` | PR #1398 merged at `d801d722f2`; typed DTOs and repository facts only, no tile activation |
-| 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | Current local integration; full live/replay production integration, lifecycle, busy accounting, focused tests, and behavior docs |
-| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | Preserved local successor `e33c33caa4`; write-path coverage and remaining capability/regression documentation; no production changes |
-| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | policy switch, per-child interrupt, `mainAgentOnlySupported` per probe |
-| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | matrix closure after live plugin QA |
+| 6/9 | 🚧 | `codex: integrate live and replay tiles [step 6/9]` | PR #1399 merged at `db2b71134d`; full live/replay production integration, lifecycle, busy accounting, focused tests, and behavior docs |
+| 7/9 | 🌿 | `codex: cover live tile lifecycle [step 7/9]` | PR #1420 merged at `ae2a9297e3`; write-path/lifecycle regressions and documentation |
+| 8/9 | ⚙️ | `codex: scoped stop for sub-agent threads [step 8/9]` | PR #1421 merged at `77165f784f`; per-thread policy, pending-admission fencing, and automated isolation/failure coverage |
+| 9/9 | 🌱 | `docs: record Codex sub-agent coverage [step 9/9]` | PR #1424 merged at `b945755bfe`; managed-0.153.4 actual-plugin scoped-stop policy QA passed; pending-input live case unexecuted |
 
 ### Probe results (0.148.0 and 0.153.4; details in `followups/codex-probe.md`)
 
@@ -313,10 +330,10 @@ confirmation, no child session or partial stop) and gets that subset.
   `mainAgentOnlySupported` is true for Codex. A child `turn/interrupt`
   requires `turnId`, which arrives on the same connection in the child's
   `turn/started` and is tracked per child.
-- Parent rollouts persist the `spawn_agent`/`wait_agent` function calls and
-  `sub_agent_activity started` only; child rollouts copy the parent history
-  only with `fork_turns: true`. Replay opens tiles from `sub_agent_activity
-  started` and closes them from the child rollout's state.
+- Current parent rollouts persist `spawn_agent`/`wait_agent` function calls
+  and nested `event_msg/item_completed/item/SubAgentActivity`; child rollouts
+  copy parent history only with `fork_turns: true`. Replay opens tiles from the
+  nested activity item and closes them from the child rollout's state.
 - `thread/list {parentThreadId}` returned nothing; catalog children come from
   rollout metadata.
 
@@ -325,30 +342,27 @@ confirmation, no child session or partial stop) and gets that subset.
 1. Resolved: children never emit `thread/started` and `receiverThreadIds` is
    always empty; the child is learned from `subAgentActivity.agentThreadId`
    and read through the API/repository/service chain.
-2. Does interrupting the parent interrupt or shut down its children? Does a
-   child `turn/interrupt` need a turn id we may never receive?
-3. Do 0.148.0 parent rollouts persist collab and activity items, and do child
-   rollouts still copy the parent history?
+2. Resolved on 0.153.4: parent interrupt leaves direct and nested children
+   running. Exact child interrupt works with the child `turnId` received on the
+   same connection and leaves sibling/grandchild work untouched.
+3. Resolved for current shape: parent rollouts persist
+   `event_msg/item_completed/item/SubAgentActivity`; child rollouts still copy
+   parent history only when forked.
 4. Existing bridge-originated children already sit in users' lists as roots.
    Proposed: accept the re-parenting on the next catalog import; no migration.
 
 ## Grok Build (1.0.5, ACP stdio)
 
-### Verified facts (binary string survey)
+### Verified facts (native 1.0.5 probes)
 
-- Extension notification `x.ai/session_notification` wraps an internally
-  tagged `SessionUpdate` (`sessionUpdate` key, snake_case) including
-  `subagent_spawned` (`subagent_id`, `parent_session_id`,
-  `child_session_id`, `subagent_type`, `capability_mode`, `persona`,
-  `resumed_from`, `workflow_run_id`, ...), `subagent_progress`
-  (`duration_ms`, `turn_count`, `tool_call_count`, ...),
-  `subagent_finished` (`tool_calls`, `turns`, ...), plus `task_backgrounded`
-  and `task_completed` with `tool_call_id`.
-- Extension request `x.ai/subagent/cancel` with `subagentId`. The kill tool
-  sends cancel and shutdown to subagents. Nesting depth is one.
-- A turn cancel does not cancel subagents ("background tasks, subagents, and
-  the rest of the queue keep running"); `cancel_subagents_on_turn_cancel` is a
-  TUI-side preference, not agent behavior Sesori can toggle.
+- Extension notification `_x.ai/session_notification` wraps internally tagged
+  `subagent_spawned`, `subagent_progress`, and `subagent_finished` updates.
+  Captured lifecycle carried exact parent/child ids and `will_wake`, but no
+  background flag or task-background/task-completion lifecycle variants.
+- Extension request `_x.ai/subagent/cancel` takes exact `subagentId`. The probe
+  established exact child isolation; it did not establish nested-depth support.
+- `session/cancel` on the root cancels foreground and background children on
+  the ACP seam Sesori drives. Main-agent-only stop is therefore unsupported.
 - Root and child directories persist in the normal sessions tree. A child's
   `summary.json` carries `session_kind: "subagent"` and `agent_name` but no
   parent id; the root's `updates.jsonl` carries `subagent_spawned` records with
@@ -356,24 +370,36 @@ confirmation, no child session or partial stop) and gets that subset.
 
 ### Current plugin
 
-- `acp_event_mapper.dart` routes non-`session/update` methods to
-  `mapExtension`, whose base returns `[]`; Grok uses the base mapper, so every
-  `x.ai/*` notification is dropped. Child updates, if they arrive, lack a
-  preceding `session.created` and are discarded by the bridge binding.
-- `acp_plugin.dart`: `abortSession` ignores the policy and sends
-  `session/cancel`; `getChildSessions` returns `[]`; `childSessionIds` are
-  empty; work state derives from `pending` only. `sessionParentId` is an
-  overridable hook (DeepSeek already overrides it).
-- History replays `session/load` through `AcpReplayCollector`, which knows only
-  standard updates.
+- `GrokEventMapper` parses both Grok lifecycle methods into the shared
+  `AcpChildSessionTracker`; children render live, roll into root activity, and
+  survive restart through the persisted catalog chain.
+- `GrokSessionStoreApi` already reads typed session summaries/updates for
+  catalog recovery. It never reads credential or configuration files.
+- Scoped stop uses ACP-owned policy and immutable snapshot fanout. Exact child
+  cancellation stays behind Grok API → control repository → session service →
+  plugin layers. After ACP transport unwraps JSON-RPC, the Grok API requires the
+  native application `{result: child outcome}` envelope and returns its existing
+  inner DTO; the repository's identity/outcome policy is unchanged. Native ACKs
+  never settle lifecycle. History uses inherited ACP `session/load` plus
+  extension-aware root projection without a second transport.
+- Corrected Grok 1.0.5 production-composition QA after PR #1429 passed
+  active-root keep rejection, named-child isolation, idle-child retention and
+  autonomous wake-up, already-finished handling, root full-stop fanout and
+  settlement, exact root/child replay, fresh-session checks, and runtime reuse.
+  Root confirmation reuses its earlier passing run. Zero standard permission
+  requests surfaced under unchanged configuration, so live permission behavior
+  remains unexecuted and no question channel is claimed. Source phone and relay
+  setup was healthy, but `mobile-mcp` could not start WebDriverAgent before any
+  visible case; no phone behavior is claimed.
 
 ### Design
 
 - **Ownership.** `GrokEventMapper extends AcpEventMapper` overrides
-  `mapExtension`; Freezed DTOs parse the snake_case payloads into a sealed
-  `GrokSubagentUpdate` (`spawned | progress | finished`) with a closed status
-  enum and push into `AcpChildSessionTracker` (Shared Rules, seam 1). This
-  chain introduces the five shared seams.
+  `mapExtension`; Freezed DTOs parse snake_case payloads into a sealed
+  `GrokSubagentUpdate` and push into the existing `AcpChildSessionTracker`.
+  History adds only an extension-aware ACP replay collector plus typed immutable
+  context preparation; child tracking, busy ownership, generic replay
+  replacement, and scoped-stop policy seams already exist.
 - **Tiles.** `subagent_spawned` emits the child session (`parentID` = root,
   title = description, directory = root's) and busy status; the `subtask` part
   (`agent` = subagent type, `childSessionID` = child session id, running)
@@ -381,36 +407,22 @@ confirmation, no child session or partial stop) and gets that subset.
   the spawn notification lacks and arrives under the child id right after
   the spawn (merged in PR #1270 as `appendPrompt`).
   `subagent_progress` is ignored. `subagent_finished` completes, errors, or
-  cancels and sets the child idle. Tiles are lifecycle-derived only. For the
-  earlier standard `spawn_subagent` call, which shares no id with
-  `subagent_spawned`, the Grok classifier returns seam 2's deferred outcome
-  while permission is pending. `AcpDeferredToolCallTracker` owns the buffered
-  call; the mapper delegates the same tool call's permission/tool update to
-  resolve it. Approval suppresses it before the lifecycle tile arrives, while
-  denial or cancellation emits and terminally settles the generic card because
-  no child will exist.
-  This never pairs a standard call with a lifecycle event, so concurrent spawns
-  cannot duplicate or cross-bind tiles.
-- **Child history and streaming.** Child `session/update`s flow through the
-  existing mapper once the child exists, and `session/load` accepts child ids
-  (probe). A root load replays `subagent_spawned` and `subagent_finished` as
-  `_x.ai/session/update`, but the spawn still has no prompt and the standard
-  `spawn_subagent` call shares no id. The child-history PR first adds a bounded
-  denied/cancelled `session/load` capture. If Grok replays a typed permission
-  outcome, `GrokSessionHistoryRepository` includes it in the prepared replay
-  context and the replay-local deferred tracker retains the terminal generic
-  card. If no outcome is persisted, successful and denied calls cannot be
-  correlated safely: replay suppresses every standard spawn card to preserve
-  one tile per actual child, and a denied attempt remains visible live but is
-  absent after reload. That cosmetic omission is accepted rather than adding
-  Sesori-owned persistence for Grok history. Before the collector materialises
-  the root, `GrokSessionService` asks the Layer-2
-  `GrokSessionHistoryRepository` (backed only by Layer-1
-  `GrokSessionStoreApi`) for immutable replay context containing each
-  discovered child's initial `user_message_chunk`, keyed by child id. The pure
-  Grok projection receives that context and feeds spawn, prompt, and finish
-  into its replay-local tracker. The rebuilt tile is therefore deterministic
-  and never depends on description or ordering.
+  cancels and sets the child idle. Tiles are lifecycle-derived only. The exact
+  typed `_meta["x.ai/tool"].name == spawn_subagent` classifier suppresses the
+  generic card; there is no tool-call/lifecycle id join, deferred permission
+  tracker, description matching, or ordering correlation. Denied generic-card
+  replay may therefore be absent; native denial persistence remains unverified.
+- **Child history and streaming.** Child ids use inherited `session/load` and
+  replay their own standard prompt/tool/text stream. For root replay,
+  `GrokSessionStoreApi` preserves typed persisted records in file order;
+  `GrokSessionHistoryRepository` uses each exact spawned child's first child-owned
+  user-message run only when that run is nonblank; `GrokSessionService` resolves
+  the canonical directory and returns immutable context; and pure
+  `GrokSessionReplayCollector` inserts/settles deterministic tiles without reading
+  live state. Unknown non-user updates end the first run. A blank or missing first
+  run produces no tile, and later runs never substitute. Both Grok lifecycle
+  methods are consumed through the existing post-response quiet drain. No
+  permission outcome, persistence, or deferred machinery is implemented.
 - **Busy accounting.** Through seam 1: root idle is deferred while
   `busyChildIds` is non-empty. `GrokEventMapper` alone parses
   `subagent_finished.will_wake` and recognizes the matching root
@@ -435,23 +447,28 @@ confirmation, no child session or partial stop) and gets that subset.
   by `GrokPlugin.getChildSessions`. Replayed tiles then resolve their
   `childSessionID` to a stored session without looking for a nonexistent parent
   field in the child summary.
-- **Scoped stop.** Through seam 3; `GrokAcpApi.cancelChild` sends
+- **Scoped stop.** Through seam 3; `GrokAcpApi.cancelSubagent` sends
   `_x.ai/subagent/cancel {subagentId}` (leading underscore, as probed) with
-  the child session id, which the probe showed equals `subagent_id` in every
-  frame. `isBackground` comes from the spawn
-  payload; if it exposes no background flag and the probe shows a foreground
-  child dying with the parent tool call, every child is recorded as
-  foreground, so `mainAgentOnlySupported` is false as for OpenCode.
+  the child session id, which equalled `subagent_id` in every captured frame.
+  Lifecycle exposes no background flag, so every child is recorded as
+  foreground and active-root main-agent-only stop is unsupported. Current
+  clients get root-first cancellation plus every exact running-child request
+  from one pre-mutation snapshot; all futures are constructed before failures
+  are observed. This is non-atomic and reports `subAgentsHandled: false`.
+  `cancelled` and `already_finished` are non-retained outcomes; lifecycle alone
+  settles tracker state. Released-client `useAtomicStop: false` stays root-only.
 
 ### PRs
 
 | Emoji | Description | Scope |
 |---|---|---|
-| ⚙️ | `grok: parse sub-agent lifecycle notifications` | DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker` (seam 1), `AcpDeferredToolCallTracker` plus deferred classification and denied/cancelled generic-card retention (seam 2), mapper/tracker lifecycle fixtures including forget/disconnect/exit cleanup |
-| ⚙️ | `acp: child sessions keep the root busy` | typed tracker-change stream and owned subscription teardown; `AcpPlugin` composes tracker statuses, idle/wake-up deferral, summary `childSessionIds`, and exit cleanup; `GrokSessionStoreApi` → `GrokSessionCatalogRepository` returns persisted children and Layer-3 `GrokSessionService` merges them with the tracker for `getChildSessions` |
-| 🌿 | `grok: child session history` | `session/load` for child ids plus denied/cancelled replay probe; seam 5 replay context and pure Grok projection; `GrokSessionStoreApi` → `GrokSessionHistoryRepository` → `GrokSessionService` prepares child prompts and any persisted permission outcomes |
-| ⚙️ | `grok: scoped stop for sub-agents` | policy in `AcpPlugin.abortSession` (seam 3), including side-effect-free unsupported-`keep` rejection and child-only `keep`; `cancelChild` seam and its Grok request (seam 4); `interruptActiveWork` uses stop |
-| 🌱 | `docs: record Grok Build sub-agent coverage` | matrix footnote ¹⁰ resolved, regression docs |
+| ⚙️ | `grok: parse sub-agent lifecycle notifications` | Historical original title unchanged (now step 1/7); DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker`, exact metadata-based generic spawn suppression, and lifecycle cleanup |
+| ⚙️ | `acp: child sessions keep the root busy` | Historical original title unchanged (now step 2/7); typed tracker-change stream and owned subscription teardown, persisted children, and Layer-3 catalog/live merging |
+| 🚧 | `grok: child session history [step 3/6]` | Historical title unchanged (now step 3/7); full root/child replay production, generated DTOs, essential ACP and Grok integration/regression coverage, and supported-behavior docs |
+| 🌿 | `grok: cover child session history [step 4/6]` | Historical title unchanged (now step 4/7); PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
+| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged (now step 5/7); ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
+| 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | PR #1429 merged at `2ebcc7d01a` under exact title; required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
+| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Current reconciliation: actual-plugin executed scope passed; permissions unexecuted; phone gate infrastructure-blocked before visible UI |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 
@@ -476,9 +493,25 @@ confirmation, no child session or partial stop) and gets that subset.
   triggers a wake-up turn without a client prompt.
 - A root `session/cancel` cancels foreground and background children alike
   (`subagent_finished {status: cancelled}`), so every Grok child is recorded
-  as foreground and `mainAgentOnlySupported` is false. `_x.ai/subagent/cancel
-  {subagentId}` cancels one child without touching siblings or the root turn
-  and returns `{subagentId, cancelled, outcome: cancelled | already_finished}`.
+  as foreground and `mainAgentOnlySupported` is false. `_x.ai/subagent/cancel`
+  with `{subagentId}` cancels one child without touching siblings or the root
+  turn. Its JSON-RPC response is structurally `result -> result ->
+  {subagentId, cancelled, outcome}`: after generic transport unwraps the outer
+  result, Grok's application envelope still contains required `result`.
+- Bounded actual-plugin QA after PR #1429 passed the corrected executed scope:
+  active-root `keep` rejection with no effect, exact named-child isolation,
+  idle-child retention through autonomous wake-up, both child-cancel outcomes,
+  root-first full-stop fanout, authoritative lifecycle/plugin settlement, exact
+  root/child replay, fresh-session checks, and runtime reuse. Root `confirm`
+  reuses its earlier passing actual-plugin result. Zero standard permission
+  requests surfaced, leaving permission preservation/isolation/cleanup
+  unexecuted; no question support is claimed.
+- Phone setup verified the source build, bridge, and relay path, but
+  `mobile-mcp` timed out starting WebDriverAgent 0.0.23 before any visible UI
+  interaction, including after reinstalling the agent only on the owned
+  simulator. Every phone case is blocked and unexecuted, not a product failure.
+  Owned resources were cleaned; protected resources were untouched. No phone
+  stop, history, read-only child, notification, or push QA is claimed.
 
 ### Open questions (resolved by the probe)
 
@@ -490,7 +523,7 @@ confirmation, no child session or partial stop) and gets that subset.
 3. Do `session/load` and `session/list` accept or return child ids with a
    parent marker?
 4. Fate of a foreground child on `session/cancel`; response shape of
-   `x.ai/subagent/cancel` and the resulting `subagent_finished` status.
+   `_x.ai/subagent/cancel` and the resulting `subagent_finished` status.
 5. Is `spawn_subagent` also surfaced as a standard `tool_call`; does a
    background finish trigger a wake-up turn?
 
@@ -565,7 +598,7 @@ confirmation, no child session or partial stop) and gets that subset.
 | adapter | 🌱 | `release: prepare v0.1.4 for atomic-stop consumer` | #18 merged at `e2ea207f21`; v0.1.4 and six archives verified |
 | monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | Frozen native corpus, ordered input cancel, initialize floor, target and digests; no stop-policy change |
 | monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Replace direct-child fanout with complete native authority at the existing ACP owner |
-| monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Pending final E2E matrix and plan retirement |
+| monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Current reconciliation: requested phone stop/input scope passed; desktop explicitly deferred; other unexecuted client matrices remain explicit |
 
 ### Scoped-stop replacement
 
@@ -573,9 +606,10 @@ The [replacement design](followups/deepseek-stop-replacement.md) fixes both slic
 PR #1356 closed without merge; its former step 4/4 is superseded. Step 4/5
 lands only the verified native contract/input consumer and keeps current scoped
 stop behavior. Step 5/5 will use one ACP-owned operation, native atomic authority,
-and no residual-ID handshake or new long-lived state. Final phone/desktop E2E
-remains user-owned; finish DeepSeek before Codex. Automatic managed-runtime upgrade
-machinery remains outside this series.
+and no residual-ID handshake or new long-lived state. Requested phone stop/input
+E2E passed after #1379; desktop remains explicitly deferred. Final documentation
+records that partial matrix without reopening native probes. Automatic managed-runtime
+upgrade machinery remains outside this series.
 
 ### Completed live/replay consumer series (historical)
 
@@ -666,6 +700,28 @@ against the required behavior rather than requiring byte-for-byte source parity.
    result?
 3. Does the parent report idle while a continuable child runs, and does its
    later "subagent reported" turn arrive with no inflight prompt?
+
+### Final coverage reconciliation (published adapter 0.1.4, 2026-09-08)
+
+- Passed on the release-target phone path: scope confirmation and dismissal with
+  root plus two nested sub-agents, main-only keep, ancestor atomic stop covering
+  an independently resumed child and its grandchild, authoritative idle
+  settlement, bridge/native runtime survival, and a successful follow-up turn.
+- Passed for live pending input: Stop cleared an earlier permission and an
+  earlier question; a distinct prompt submitted after Stop was written survived,
+  its new question remained usable on the phone, and its answer completed. The
+  permission Stop was invoked through the bridge API, not the phone Stop button.
+- Not claimed: generic permission labeling was not useful presentation; surviving
+  root-owned background shell jobs were not descendant-agent failures or evidence
+  of broader process-stop capability. Owned jobs were cleaned explicitly.
+- Unexecuted in this gate: macOS desktop by explicit user choice, cold
+  tile/history reload and read-only child navigation, push/notification delivery,
+  bridge restart/reconnect, multiple clients, and alternate mobile platforms.
+  Package automation remains evidence for its own narrower cases only.
+- Evidence and privacy boundaries are in `followups/deepseek-phone-qa.md`. Raw
+  logs, screenshots, transcripts, and timing records remain private and require
+  redaction before sharing. No adapter, runtime, production, configuration, or
+  authentication change is part of this documentation gate.
 
 ## Cursor (cursor-agent 2026.07.23, ACP stdio)
 
