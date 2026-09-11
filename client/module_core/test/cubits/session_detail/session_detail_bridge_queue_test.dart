@@ -14,8 +14,10 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_notice
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
+import "package:sesori_dart_core/src/repositories/models/session_abort_not_accepted_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -219,6 +221,7 @@ void main() {
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,
+        sessionAbortService: SessionAbortService(repository: mockSessionRepository),
         promptDispatcher: mockSessionRepository,
         permissionRepository: MockPermissionRepository(),
         sessionViewingService: stubbedSessionViewingService(),
@@ -1645,9 +1648,7 @@ void main() {
           sessionId: _sessionId,
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(false),
-      );
+      ).thenAnswer((_) async => ApiResponse.success(true));
       final cubit = await createLoadedCubit();
       await cubit.sendMessage(text: "parked", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await Future<void>.delayed(Duration.zero);
@@ -1683,6 +1684,74 @@ void main() {
 
       expect(outcome, isA<SessionAbortRejected>().having((o) => o.rejection, "rejection", rejection));
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
+    });
+
+    test("not-performed refusal with unknown reason gates dispatch, preserves queue, then resumes drain", () async {
+      final abortCompleter = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionRepository.abortSession(
+          sessionId: _sessionId,
+          subAgents: SessionAbortSubAgentPolicy.confirm,
+        ),
+      ).thenAnswer((_) => abortCompleter.future);
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm);
+      await Future<void>.delayed(Duration.zero);
+      await cubit.sendMessage(
+        text: "queued during abort",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+
+      const refusal = SessionAbortNotPerformedRefusal(
+        reason: SessionAbortRefusalReason.unknownEnumValue,
+      );
+      abortCompleter.completeError(
+        SessionAbortNotAcceptedException(refusal: refusal, innerError: StateError("409")),
+      );
+      expect(await aborting, isA<SessionAbortNotAccepted>());
+      await _awaitCondition(
+        () => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty,
+      );
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
+    });
+
+    test("ambiguous abort failure clears work queued during request", () async {
+      final abortCompleter = Completer<ApiResponse<bool>>();
+      when(
+        () => mockSessionRepository.abortSession(
+          sessionId: _sessionId,
+          subAgents: SessionAbortSubAgentPolicy.stop,
+        ),
+      ).thenAnswer((_) => abortCompleter.future);
+      final cubit = await createLoadedCubit();
+      final aborting = cubit.abort(subAgents: SessionAbortSubAgentPolicy.stop);
+      await Future<void>.delayed(Duration.zero);
+      await cubit.sendMessage(
+        text: "ambiguous",
+        command: null,
+        inputMode: ComposerInputMode.typed,
+        attachments: const [],
+      );
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
+
+      abortCompleter.completeError(StateError("502 after cancellation"));
+      expect(await aborting, isA<SessionAbortFailed>());
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
     test("cancel removes the entry on success and on not-found, keeps it on transport failure", () async {
@@ -1954,9 +2023,7 @@ void main() {
           sessionId: _sessionId,
           subAgents: any(named: "subAgents"),
         ),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(false),
-      );
+      ).thenAnswer((_) async => ApiResponse.success(true));
       final sendCompleter = Completer<ApiResponse<void>>();
       when(
         () => mockSessionRepository.sendMessage(

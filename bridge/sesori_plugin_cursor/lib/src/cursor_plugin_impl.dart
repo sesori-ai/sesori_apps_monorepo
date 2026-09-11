@@ -132,7 +132,9 @@ class CursorPlugin._({
         id: pluginId,
         agentDisplayName: "Cursor",
         eventMapper: mapper,
-      );
+      ) {
+    registerProcessResidencyChanges(changes: _taskTracker.residencyChanges);
+  }
 
   final CursorSessionOptionsService _sessionOptionsService = cursorSessionOptionsService;
   String? _appliedModelId;
@@ -141,6 +143,19 @@ class CursorPlugin._({
 
   @override
   String? get authMethodId => CursorBinary.acpAuthMethodId;
+
+  @override
+  AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.rootSessionCancel;
+
+  @override
+  bool get requiresProcessResidency => _taskTracker.requiresProcessResidency;
+
+  @override
+  bool hasUnresolvedResidentWork({required String sessionId}) =>
+      _taskTracker.hasUnresolvedBackgroundWork(sessionId: sessionId);
+
+  @override
+  int activeScopedStopWorkCount({required String sessionId}) => _taskTracker.activeTaskCount(sessionId: sessionId);
 
   @override
   Map<String, dynamic>? get initializeCapabilityMeta => CursorBinary.acpCapabilityMeta;
@@ -366,5 +381,10 @@ class CursorPlugin._({
       Log.w("[cursor] failed to dispose catalog service", error, stack);
     }
     await super.dispose();
+    try {
+      await _taskTracker.dispose();
+    } on Object catch (error, stack) {
+      Log.w("[cursor] failed to dispose Task tracker", error, stack);
+    }
   }
 }

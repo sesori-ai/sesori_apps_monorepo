@@ -3,9 +3,8 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `116392cb711bf8fbe3cc21fea3ea0141f651c3e7`,
-  containing merged Cursor generic Task lifecycle
-  [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438).
+- **Implementation base:** Cursor Step 3 merged as
+  [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) at `bb85f48148`.
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -13,10 +12,10 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** review and merge Cursor completed foreground live tiles
-  Step 3/6. Step 2 merged as PR #1438 at `116392cb71`; Step 3 stays unchecked
-  pending merge. Full reviewed
-  checkpoint `5cc54ad013` is preserved by branches
+- **Next action:** Cursor safe Task stop Step 4/6 is implemented, reviewed,
+  regenerated from merged Step 3 on its publication branch, and ready to open
+  as a PR. No Step 5 replay or native QA is included.
+  Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
   was split to stay near the owner's 1,500-line publication limit. Refs
@@ -208,8 +207,8 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
 | [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Implemented locally, pending merge: exact completed-phase correlation, minimal presentation DTO fields, one-shot childless live replacement, tests, and capability/docs update |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerate after Step 3; approximately 1,300–1,700 lines for exact active mode-unknown Task count, unresolved-background process residency, typed plugin/bridge/shared refusal and exact client handling, all-policy first guard, named-root stop with post-settlement re-check, queue-drain gate, explicit shared UI limitation, tests, and stop/lifecycle/capability docs |
+| [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerated from merged main and checked locally, unpublished: exact active mode-unknown Task count, unresolved-background process residency, typed refusal, named-root safe stop, queue-drain gate, limitation UI, tests, and docs; no replay/native QA |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
@@ -277,22 +276,17 @@ post-merge E2E gates are unchanged.
   typed backend-neutral `PluginAbortNotPerformed` path before root/input
   preparation or cancel because `workKept` cannot qualify a success omitted
   from the client wire. Bridge/shared layers serialize a required
-  `SessionAbortRefusal(kind: notPerformed, reason:
-  residentWorkCompletionUnknown)` HTTP 409; no count or successful ACK is
-  invented. Client-local API/repository not-accepted exceptions trust only that
-  decoded discriminator, and a request-lifetime cubit drain gate preserves the
-  local prompt queue; the cubit exposes a typed not-accepted outcome and shared
-  UI explains the limitation/restart recovery. Malformed/unknown 409s, accepted
-  responses, and ambiguous failures retain existing queue cleanup. Active mode-unknown
+  `SessionAbortRefusal.notPerformed(reason: residentWorkCompletionUnknown)`
+  HTTP 409 variant. Client-local exceptions, cubit outcome, queue gate, and UI
+  trust only that variant; unknown reasons retain the queue, while unknown kinds
+  and malformed bodies remain ambiguous. Active mode-unknown
   confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
   map exact `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
   main-only false and no wire change;
-  explicit `stop` awaits authoritative prompt settlement and must re-check
-  unresolved background before acceptance. A Task that transitions to
-  background returns an HTTP 502 partial failure—root cancellation has already
-  happened—while accepted responses require no unresolved background and
-  `workKept: false`.
+  explicit `stop` waits at most 20 seconds, then rechecks background and active
+  work. Timeout or survivors return HTTP 502 after cancellation; acceptance
+  requires both absent and `workKept: false`.
 - [x] Corrected rendering scope to completed foreground tiles only.
   Pending/in-progress are mode-unknown and remain generic; cancelled and failed
   prompts settle generic cancelled/error standard cards and retire active
@@ -337,8 +331,9 @@ post-merge E2E gates are unchanged.
   inference was then rejected in a late post-merge Codex finding. The final
   Step 4 contract uses a discriminated backend-neutral typed not-performed
   result across plugin, bridge, shared transport, and client; only the exact
-  discriminator preserves the queue, malformed/unknown 409s remain ambiguous,
-  HTTP 502 remains the post-cancel partial failure, and `rootSessionCancel`
+  discriminator preserves the queue even with an unknown reason; missing/malformed
+  bodies and unknown kinds remain ambiguous, HTTP 502 remains the post-cancel
+  partial failure, and `rootSessionCancel`
   stays out of implemented capabilities until Step 4 lands. Per user direction
   after two architecture passes, there is no further architecture-review loop.
 
@@ -526,10 +521,13 @@ post-merge E2E gates are unchanged.
   focused ACP/Cursor/runtime tests, analyzers, and diff checks passed. It added
   no completed tile, replay, stop/refusal, residency, child session, client, or
   runtime/config change.
-- **Cursor Step 3/6 (local, pending merge):** completed foreground live Task
-  correlation and one-shot childless replacement implemented from merged Step 2.
-  Replay, safe stop/refusal, residency, child sessions, client/shared changes,
-  runtime/config changes, and native QA remain absent.
+- **Cursor Step 3/6:** PR #1441 merged at `bb85f48148`; Step 4 was regenerated
+  from that tree (matching pre-squash `d3297ad4b9`).
+- **Cursor Step 4/6 (local, checked; unpublished):** exact Task count, process
+  residency, typed refusal, bounded named-root stop, concurrent descendant
+  fallback, queue gate, and restart UI are implemented. Replay, child sessions,
+  runtime/config, native QA, push, analytics, and publication remain absent;
+  Step 5 stays blocked until merge.
 
 ## Plan Review
 

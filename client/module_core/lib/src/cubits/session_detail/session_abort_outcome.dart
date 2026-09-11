@@ -4,6 +4,7 @@ import "package:sesori_shared/sesori_shared.dart";
 sealed class const SessionAbortOutcome() {
   const factory aborted() = SessionAbortAccepted;
   const factory rejected({required SessionAbortRejection rejection}) = SessionAbortRejected;
+  const factory notAccepted({required SessionAbortNotPerformedRefusal refusal}) = SessionAbortNotAccepted;
   const factory failed() = SessionAbortFailed;
 }
 
@@ -12,6 +13,11 @@ final class const SessionAbortAccepted() extends SessionAbortOutcome;
 
 /// A `confirm` stop refused because sub-agents run; the user must choose.
 final class const SessionAbortRejected({required final SessionAbortRejection rejection}) extends SessionAbortOutcome;
+
+/// The bridge performed no stop because safe completion cannot be verified.
+final class const SessionAbortNotAccepted({
+  required final SessionAbortNotPerformedRefusal refusal,
+}) extends SessionAbortOutcome;
 
 /// The stop request failed (transport or bridge error); already logged.
 final class const SessionAbortFailed() extends SessionAbortOutcome;

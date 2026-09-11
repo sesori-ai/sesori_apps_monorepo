@@ -187,6 +187,16 @@ defaults and queued client sends coherent.
   unexecuted. Phone setup reached a healthy source build and relay connection,
   but UI automation failed before any visible interaction; no phone stop or
   related client behavior is claimed.
+- Cursor supports narrower named-root stop for mode-unknown Task calls. Without
+  unresolved background work, `confirm` and `keep` reject side-effect-free with
+  exact active count; `stop` cancels only the root, waits up to 20 seconds, then
+  rechecks background and active work. Timeout or survivors return HTTP 502 after
+  cancellation. Any unresolved background observation instead returns concrete
+  HTTP 409 `notPerformed` before input or cancellation. That variant preserves
+  queued prompts and shows restart guidance even for an unknown reason; malformed
+  bodies and unknown variants stay ambiguous and clear queued work. Background
+  launches affect neither counts nor root/session status. Cursor still cannot
+  stop, count, or observe escaped background Tasks or expose child sessions.
 - Codex supports the same side-effect-free `confirm` preflight for any named
   root or child thread. It reports the exact active descendant count, including
   pending-input-only work, plus the named thread's own running state, and offers
@@ -199,8 +209,11 @@ defaults and queued client sends coherent.
   whose start arrives after Stop. Native notifications remain authoritative for
   settlement. This is per-thread fanout, not atomic subtree authority, so every
   accepted result reports `subAgentsHandled: false` even under atomic opt-in.
-  Existing client fallback then aborts observed busy child sessions, retaining
-  the request snapshot if a concurrent reload replaces current status.
+  Existing client fallback reads fresh direct children and aggregate statuses
+  from the repository only after the root reports descendants unhandled, then
+  walks nested topology with sibling branches in parallel. Missing status from
+  an available plugin means idle; relevant plugin unavailability or any other
+  descendant failure stays ambiguous because root cancellation already succeeded.
   Managed-0.153.4 actual-plugin QA verifies
   root and named-child confirmation, root-only `keep`, named-child subtree
   isolation, full-root snapshot fanout, and native terminal plus plugin-status
@@ -359,8 +372,8 @@ defaults and queued client sends coherent.
   clears at the next turn, deletion, or process reset. During prompt-write
   admission, the accepted user message and buffered terminal card publish before
   the acknowledged/reinjected request. Tracking and tiles do not affect root
-  status, residency, child ids/status/counts, fanout, stop policy, or replay;
-  background lifecycle, safe stop, and replay remain unavailable.
+  status, child ids/status/counts, fanout, or replay. Background terminal
+  lifecycle, full scoped stop, child sessions, and replay remain unavailable.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
   `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori

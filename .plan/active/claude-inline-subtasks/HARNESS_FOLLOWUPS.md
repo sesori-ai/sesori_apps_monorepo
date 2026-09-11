@@ -794,24 +794,25 @@ The architecture corrections are summarized here:
   only its required prompt/description/subagent presentation and replaces exact
   `isBackground: false` completion with one childless completed tile. Missing,
   unknown, malformed, background, failed, or cancelled facts keep the generic
-  card. Child sessions, replay, background lifecycle, residency, and stop policy
-  remain unimplemented.
-- Step 4 will make `CursorPlugin.scopedStopCapability` return
+  card. Child sessions, replay, background terminal lifecycle, and full scoped
+  stop remain unsupported.
+- Step 4 makes `CursorPlugin.scopedStopCapability` return
   `AcpScopedStopCapability.rootSessionCancel`, reaching a dedicated
   `AcpPlugin.abortSession` branch before descendant logic. Its first action
   checks unresolved background: `confirm`, `keep`, and `stop` all return the
   same `PluginAbortNotPerformed` with closed backend-neutral
   `residentWorkCompletionUnknown` reason before root/input preparation,
-  cancellation, or fanout. Bridge layers map that result to a required
-  `SessionAbortRefusal(kind: notPerformed, reason: ...)` HTTP 409 body; no
+  cancellation, or fanout. Bridge layers map that result to the concrete
+  `SessionAbortRefusal.notPerformed(reason: ...)` HTTP 409 variant; no
   successful retained-work ACK or inferred count is added. Without that observation, `confirm` and `keep` map exact
   `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning` → `SessionAbortRejection` path with
   `mainAgentOnlySupported: false` and no wire change. Explicit `stop` prepares
   only the named root,
-  sends one root `session/cancel`, waits existing authoritative prompt
-  settlement, then must re-check unresolved background before acceptance. A
-  Task that transitions to background during that window produces an HTTP 502
+  sends one root `session/cancel`, waits at most 20 seconds for authoritative
+  prompt settlement, then must re-check unresolved background and active Task
+  count before acceptance. Timeout, surviving active work, or a Task that
+  transitions to background during that window produces an HTTP 502
   partial failure—root cancellation has already happened—never aborted success;
   only when no unresolved background remains does it return
   `workKept: false` and `subAgentsHandled: false`. Standard Task terminal frames
@@ -828,8 +829,9 @@ The architecture corrections are summarized here:
   retain queued prompts, accepted responses and ambiguous failures clear them,
   and drain resumes when the request settles. The cubit returns a distinct
   typed not-accepted outcome and shared UI explains that completion cannot be
-  verified and the harness must be restarted. Malformed, unknown-kind, and
-  version-skewed 409s never gain lifecycle meaning from parse failure. The new
+  verified and the harness must be restarted. A recognized `notPerformed` kind
+  remains non-mutating with an unknown reason; missing/malformed bodies, unknown
+  kinds, and version-skewed discriminators never gain lifecycle meaning. The new
   body is an additive error contract.
 - The only renamed new replay class is `CursorTaskReplayTracker` in
   `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/`. Cursor plugin
@@ -866,8 +868,8 @@ those refs. Regenerate each successor from its merged predecessor.
 |---|---|---|
 | 1/6 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | PR #1435 merged at `b83b64901c`; supervisor will update its GitHub title; docs only |
 | 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | PR #1438 merged at `116392cb71`: active generic-part tracking, terminal settlement, request ack, transport ordering regressions, typed-refusal plan correction, and behavior docs; no tile |
-| 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Implemented locally, pending merge: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
-| 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Approximately 1,300–1,700 lines: exact count, process residency, typed refusal, safe root cancel/re-check, bridge/client/UI flow, tests, and stop/lifecycle/capability docs |
+| 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | PR #1441 merged at `bb85f48148`: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
+| 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerated from merged main and checked locally, unpublished: exact count, process residency, typed refusal, safe root cancel/re-check, bridge/client/UI flow, tests, and docs; no replay/native QA |
 | 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Approximately 650–1,000 lines: configured collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | 6/6 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; unsupported/unexecuted matrix remains explicit |
 

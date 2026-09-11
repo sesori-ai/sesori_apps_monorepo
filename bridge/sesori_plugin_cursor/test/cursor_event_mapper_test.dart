@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:io";
 import "dart:typed_data";
 
@@ -469,9 +470,55 @@ void main() {
       );
     });
 
-    test("session and descendant deletion tombstones last until process reset", () {
+    test("active count and unresolved residency stay independent through cleanup", () async {
+      final taskTracker = CursorTaskTracker();
+      final target = buildMapper(taskTracker: taskTracker);
+      final changes = <void>[];
+      final done = Completer<void>();
+      taskTracker.residencyChanges.listen(changes.add, onDone: done.complete);
+
+      target.beginTurn(sessionId: "root", messageId: "turn");
+      for (final toolCallId in const ["active", "background"]) {
+        taskUpdate(
+          target: target,
+          sessionId: "root",
+          toolCallId: toolCallId,
+          status: "pending",
+          starts: true,
+          rawOutput: null,
+        );
+      }
+      expect(taskTracker.activeTaskCount(sessionId: "root"), 2);
+      taskUpdate(
+        target: target,
+        sessionId: "root",
+        toolCallId: "background",
+        status: "completed",
+        starts: false,
+        rawOutput: {"isBackground": true},
+      );
+      expect(taskTracker.activeTaskCount(sessionId: "root"), 1);
+      expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: "root"), isTrue);
+      expect(changes, hasLength(1));
+
+      target.beginTurn(sessionId: "root", messageId: "later");
+      expect(taskTracker.activeTaskCount(sessionId: "root"), 0);
+      expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: "root"), isTrue);
+      taskTracker.forgetSession(sessionId: "other");
+      expect(changes, hasLength(1));
+      taskTracker.forgetSession(sessionId: "root");
+      expect(taskTracker.requiresProcessResidency, isFalse);
+      expect(changes, hasLength(2));
+
+      await taskTracker.dispose();
+      await done.future;
+    });
+
+    test("session and descendant deletion tombstones last until process reset", () async {
       final taskTracker = CursorTaskTracker();
       final deletedMapper = buildMapper(taskTracker: taskTracker);
+      final residencyChanges = <void>[];
+      final subscription = taskTracker.residencyChanges.listen(residencyChanges.add);
       AcpNotification lateTask({required String sessionId}) => AcpNotification(
         method: AcpMethods.sessionUpdate,
         params: {
@@ -485,18 +532,38 @@ void main() {
           },
         },
       );
+      AcpNotification lateBackgroundTask({required String sessionId}) => AcpNotification(
+        method: AcpMethods.sessionUpdate,
+        params: {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "late-background-$sessionId",
+            "title": "Task",
+            "status": "completed",
+            "rawInput": {"_toolName": "task"},
+            "rawOutput": {"isBackground": true},
+          },
+        },
+      );
 
       for (final sessionId in const ["s-deleted", "s-descendant"]) {
         deletedMapper.beginTurn(sessionId: sessionId, messageId: "turn-$sessionId");
         deletedMapper.forgetSession(sessionId);
-        deletedMapper.map(lateTask(sessionId: sessionId));
+        deletedMapper
+          ..map(lateTask(sessionId: sessionId))
+          ..map(lateBackgroundTask(sessionId: sessionId));
         expect(taskTracker.hasInvocation(sessionId: sessionId, toolCallId: "late-$sessionId"), isFalse);
+        expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: sessionId), isFalse);
       }
+      expect(residencyChanges, isEmpty);
 
       taskTracker.clear();
       deletedMapper.map(lateTask(sessionId: "s-deleted"));
       expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-s-deleted"), isTrue);
       taskTracker.clear();
+      await subscription.cancel();
+      await taskTracker.dispose();
     });
 
     test("cursor/generate_image maps to a standard inline file part", () async {

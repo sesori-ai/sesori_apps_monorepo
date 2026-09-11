@@ -300,6 +300,133 @@ as bool,
 
 }
 
+SessionAbortRefusal _$SessionAbortRefusalFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['kind']) {
+                  case 'notPerformed':
+          return SessionAbortNotPerformedRefusal.fromJson(
+            json
+          );
+        
+          default:
+            return SessionAbortUnknownRefusal.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$SessionAbortRefusal {
+
+
+
+  /// Serializes this SessionAbortRefusal to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortRefusal);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'SessionAbortRefusal()';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class SessionAbortNotPerformedRefusal implements SessionAbortRefusal {
+  const SessionAbortNotPerformedRefusal({@JsonKey(fromJson: _abortRefusalReasonFromJson, toJson: _abortRefusalReasonToJson) required this.reason,  String? $type}): $type = $type ?? 'notPerformed';
+  factory SessionAbortNotPerformedRefusal.fromJson(Map<String, dynamic> json) => _$SessionAbortNotPerformedRefusalFromJson(json);
+
+@JsonKey(fromJson: _abortRefusalReasonFromJson, toJson: _abortRefusalReasonToJson) final  SessionAbortRefusalReason reason;
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionAbortNotPerformedRefusalToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortNotPerformedRefusal&&(identical(other.reason, reason) || other.reason == reason));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
+
+@override
+String toString() {
+    return 'SessionAbortRefusal.notPerformed(reason: $reason)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class SessionAbortUnknownRefusal implements SessionAbortRefusal {
+  const SessionAbortUnknownRefusal({ String? $type}): $type = $type ?? 'unknown';
+  factory SessionAbortUnknownRefusal.fromJson(Map<String, dynamic> json) => _$SessionAbortUnknownRefusalFromJson(json);
+
+
+
+@JsonKey(name: 'kind')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$SessionAbortUnknownRefusalToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionAbortUnknownRefusal);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'SessionAbortRefusal.unknown()';
+}
+
+
+}
+
+
+
+
 
 /// @nodoc
 mixin _$SessionAbortRejection {

@@ -15,6 +15,12 @@ class const SessionCleanupApiRejectedException({required final SessionCleanupRej
 /// A `confirm` stop the bridge refused because sub-agents are running.
 class const SessionAbortApiRejectedException({required final SessionAbortRejection rejection}) implements Exception;
 
+/// A typed 409 proving the bridge performed no abort side effect.
+class const SessionAbortApiNotAcceptedException({
+  required final SessionAbortNotPerformedRefusal refusal,
+  required final Object innerError,
+}) implements Exception;
+
 @lazySingleton
 class SessionApi({required final RelayHttpApiClient _client}) {
   static const Duration _attachmentRequestTimeout = Duration(minutes: 2);
@@ -350,8 +356,8 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
-  /// Stops a session with the given sub-agent scope. A 409 carrying a
-  /// [SessionAbortRejection] surfaces as [SessionAbortApiRejectedException].
+  /// Stops a session with the given sub-agent scope. Typed 409 bodies surface
+  /// as their exact refusal/rejection; malformed or unknown bodies stay errors.
   Future<ApiResponse<SessionAbortResponse>> abortSession({
     required String sessionId,
     required SessionAbortSubAgentPolicy subAgents,
@@ -361,15 +367,28 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       fromJson: SessionAbortResponse.fromJson,
       body: AbortSessionRequest(sessionId: sessionId, subAgents: subAgents, useAtomicStop: true),
     );
-    if (response case ErrorResponse(error: NonSuccessCodeError(errorCode: 409, rawErrorString: final String rawBody))) {
-      final SessionAbortRejection rejection;
-      try {
-        rejection = SessionAbortRejection.fromJson(jsonDecodeMap(rawBody));
-      } on Object catch (e, st) {
-        logw("Failed to parse 409 abort rejection body", e, st);
-        return response;
+    if (response case ErrorResponse(:final error) when error is NonSuccessCodeError) {
+      final rawBody = error.rawErrorString;
+      if (error.errorCode == 409 && rawBody != null) {
+        try {
+          final body = jsonDecodeMap(rawBody);
+          if (body.containsKey("kind")) {
+            final refusal = SessionAbortRefusal.fromJson(body);
+            if (refusal case final SessionAbortNotPerformedRefusal notPerformed) {
+              throw SessionAbortApiNotAcceptedException(refusal: notPerformed, innerError: error);
+            }
+            return response;
+          }
+          throw SessionAbortApiRejectedException(rejection: SessionAbortRejection.fromJson(body));
+        } on SessionAbortApiNotAcceptedException {
+          rethrow;
+        } on SessionAbortApiRejectedException {
+          rethrow;
+        } on Object catch (e, st) {
+          logw("Failed to parse 409 abort response body", e, st);
+          return response;
+        }
       }
-      throw SessionAbortApiRejectedException(rejection: rejection);
     }
     return response;
   }

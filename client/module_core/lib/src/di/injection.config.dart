@@ -171,6 +171,8 @@ import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
     as _i413;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
+import 'package:sesori_dart_core/src/services/session_abort_service.dart'
+    as _i386;
 import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
     as _i84;
 import 'package:sesori_dart_core/src/services/session_detail_load_service.dart'
@@ -527,6 +529,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i74.NewSessionOptionsService(
         sessionRepository: gh<_i7.SessionRepository>(),
       ),
+    );
+    gh.lazySingleton<_i386.SessionAbortService>(
+      () => _i386.SessionAbortService(repository: gh<_i7.SessionRepository>()),
     );
     gh.lazySingleton<_i18.SessionViewingService>(
       () => _i18.SessionViewingService(

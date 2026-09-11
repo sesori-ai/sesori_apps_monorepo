@@ -153,8 +153,15 @@ class CursorEventMapper({
       return;
     }
     final output = _parseTaskOutput(raw: update["rawOutput"]);
-    if (output == null || output.isBackground) {
+    if (output == null) {
       _taskTracker.forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
+      return;
+    }
+    if (output.isBackground) {
+      _taskTracker.recordUnresolvedBackgroundWork(
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+      );
       return;
     }
     _taskTracker.markForegroundCompleted(

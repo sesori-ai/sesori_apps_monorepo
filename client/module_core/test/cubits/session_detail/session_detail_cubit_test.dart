@@ -27,6 +27,7 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
+import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_detail_load_service.dart";
 import "package:sesori_dart_core/src/services/session_interaction_calculator.dart";
 import "package:sesori_dart_core/src/services/session_viewing_service.dart";
@@ -148,6 +149,7 @@ void main() {
       pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
+      sessionAbortService: SessionAbortService(repository: promptDispatcher),
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
@@ -1291,7 +1293,7 @@ void main() {
       await cubit.close();
     });
 
-    test("old bridge fallback retains the request snapshot while detail reloads", () async {
+    test("fallback reads fresh repository state while detail reloads", () async {
       const childId = "child-1";
       when(() => mockSessionService.getChildren(sessionId: sessionId)).thenAnswer(
         (_) async => ApiResponse.success(
@@ -1440,6 +1442,7 @@ void main() {
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
+        sessionAbortService: SessionAbortService(repository: promptDispatcher),
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),

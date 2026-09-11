@@ -130,11 +130,22 @@ void main() {
       throw StateError("agent never wrote a '$method' frame");
     }
 
-    Future<void> respond(String method, Map<String, dynamic> result) async {
-      final frame = await waitForFrame(method);
+    void respondFrame(Map<String, dynamic> frame, Map<String, dynamic> result) {
       fake.emit({"jsonrpc": "2.0", "id": frame["id"], "result": result});
+    }
+
+    Future<void> respond(String method, Map<String, dynamic> result) async {
+      respondFrame(await waitForFrame(method), result);
       await pump();
     }
+
+    Future<PluginAbortResult> abort({required String sessionId, required PluginAbortSubAgentPolicy policy}) =>
+        plugin.abortSession(
+          sessionId: sessionId,
+          subAgents: policy,
+          useAtomicStop: true,
+          knownSubAgentSessionIds: const {"must-not-fan-out"},
+        );
 
     Future<Map<String, dynamic>> startTaskPrompt({
       required String sessionId,
@@ -680,6 +691,84 @@ void main() {
         "id": secondPrompt["id"],
         "result": {"stopReason": "end_turn"},
       });
+    });
+
+    test("active Task rejects confirm and keep, while stop cancels only root and waits", () async {
+      const sessionId = "s-task-stop";
+      final prompt = await startTaskPrompt(sessionId: sessionId, toolCallId: "task-stop-1", connect: true);
+      final writesBeforePolicy = fake.written.length;
+      for (final policy in [PluginAbortSubAgentPolicy.confirm, PluginAbortSubAgentPolicy.keep]) {
+        expect(
+          await abort(sessionId: sessionId, policy: policy),
+          isA<PluginAbortRejectedSubAgentsRunning>().having((result) => result.runningSubAgentCount, "count", 1),
+        );
+      }
+      expect(fake.written, hasLength(writesBeforePolicy));
+
+      final stopping = abort(sessionId: sessionId, policy: PluginAbortSubAgentPolicy.stop);
+      await pump();
+      expect(fake.written.where((frame) => frame["method"] == AcpMethods.sessionCancel), hasLength(1));
+      respondFrame(prompt, {"stopReason": "cancelled"});
+      expect(await stopping, const PluginAbortAccepted(workKept: false, subAgentsHandled: false));
+    });
+
+    test("background transition makes stop partial, then every policy refuses without effects", () async {
+      final workStates = <PluginWorkState>[];
+      final workSubscription = plugin.workState.listen(workStates.add);
+      addTearDown(workSubscription.cancel);
+      const sessionId = "s-background-stop";
+      final prompt = await startTaskPrompt(
+        sessionId: sessionId,
+        toolCallId: "task-background-stop",
+        connect: true,
+      );
+      final stopping = abort(sessionId: sessionId, policy: PluginAbortSubAgentPolicy.stop);
+      await pump();
+      fake.emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call_update",
+            "toolCallId": "task-background-stop",
+            "status": "completed",
+            "rawOutput": {"durationMs": 5, "isBackground": true},
+          },
+        },
+      });
+      respondFrame(prompt, {"stopReason": "cancelled"});
+      await expectLater(
+        stopping,
+        throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 502)),
+      );
+      await pump();
+      expect(await plugin.getSessionStatuses(), {sessionId: const PluginSessionStatus.idle()});
+      expect(workStates.last, PluginWorkState.busy);
+
+      await plugin.sendPrompt(
+        sessionId: sessionId,
+        promptId: "prompt-after-background",
+        parts: const [PluginPromptPart.text(text: "must survive refusal")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final survivingPrompt = await waitForFrame("session/prompt");
+      final writesBeforeRefusals = fake.written.length;
+      for (final policy in PluginAbortSubAgentPolicy.values) {
+        expect(
+          await abort(sessionId: sessionId, policy: policy),
+          const PluginAbortNotPerformed(reason: PluginAbortRefusalReason.residentWorkCompletionUnknown),
+        );
+      }
+      expect(fake.written, hasLength(writesBeforeRefusals));
+      expect(plugin.getActiveSessionsSummary().single.activeSessions.single.mainAgentRunning, isTrue);
+      respondFrame(survivingPrompt, {"stopReason": "end_turn"});
+      await pump();
+
+      await plugin.resetConnectionAfterExit();
+      expect(workStates.last, PluginWorkState.idle);
     });
 
     test("captureSessionConfig populates providers, effort variants, and mode agents", () async {

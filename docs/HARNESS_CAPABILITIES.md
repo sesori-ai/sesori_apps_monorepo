@@ -236,9 +236,8 @@ reconciliation when connected to an older bridge.
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
-ACP plugins currently declare one closed scoped-stop capability: `unsupported`, `perChildSnapshot` (Grok), or
-`completeNativeAtomic` (DeepSeek). Cursor's planned safe Task subset will extend this enum with
-`rootSessionCancel` when Step 4 implements and tests the branch. Plugins that report a scoped-stop rejection declare
+ACP plugins declare one closed scoped-stop capability: `unsupported`, `rootSessionCancel` (Cursor),
+`perChildSnapshot` (Grok), or `completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare
 whether "main agent only" is honored through `mainAgentOnlySupported`; the app offers that action only when it is
 true.
 
@@ -304,25 +303,16 @@ now replaces only an exact live standard completion with explicit
 completed childless tile with stable part identity. Missing/unknown/malformed,
 unmatched, background, failed, and cancelled cases stay generic. Replay remains
 unimplemented. Standard `session/cancel` authoritatively cancels an active root
-prompt. The planned safe
-Task subset may provide side-effect-free confirmation with the exact observed
-active Task count and named-root stop when no unresolved background observation
-exists. Explicit stop must await authoritative prompt settlement and re-check
-unresolved background before acceptance; a Task that resolves as background in
-that window yields failure—root cancellation has already happened—never aborted
-success. A launched background Task survives root cancel, so the
-overall “`stop` cancels them all” capability is **not supported**. While such an
-observation remains unresolved, `confirm`, `keep`, and `stop` must all fail
-before root/input cancellation because bridge-internal `workKept` cannot qualify
-a success omitted from the client wire. Step 4 plans a discriminated
-backend-neutral typed not-performed result across plugin, bridge, shared
-transport, and client; only that exact HTTP 409 discriminator pauses local
-queue drain and retains queued prompts. A background transition discovered
-only after root cancellation instead uses an ambiguous HTTP 502 failure and
-existing queue cleanup. The observation may keep only
-ACP process work state busy until session deletion/process reset; root
-`end_turn` and root UI idle remain honest root-turn completion, never a
-background completion or tile claim.
+prompt. Safe Task confirmation is side-effect-free with exact active count;
+named-root stop waits up to 20 seconds, then rechecks background and active work.
+Timeout or survivors yield HTTP 502 after cancellation, never false success. A
+background Task survives root cancel, so “`stop` cancels them all” remains **not
+supported**. While that observation is unresolved, every policy returns concrete
+HTTP 409 `notPerformed` before input or cancellation. Client drain pauses; that
+variant retains queued prompts and shows restart recovery even for unknown reasons.
+Malformed bodies, unknown variants, and post-cancel failures remain ambiguous.
+The observation keeps only ACP process work state busy until session cleanup or
+process reset; root `end_turn` and UI idle never claim background completion.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a

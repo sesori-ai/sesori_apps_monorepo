@@ -28,38 +28,73 @@ final Set<SessionDetailCubit> _stopping = {};
 
 Future<void> _stopSessionWithScope({required BuildContext context, required SessionDetailCubit cubit}) async {
   final outcome = await cubit.abort(subAgents: SessionAbortSubAgentPolicy.confirm);
-  if (outcome case SessionAbortRejected(:final rejection) when context.mounted) {
-    final loc = context.loc;
-    final count = rejection.runningSubAgentCount;
-    final policy = await showDialog<SessionAbortSubAgentPolicy>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: Text(loc.sessionDetailStopScopeTitle),
-        content: Text(
-          rejection.mainAgentRunning
-              ? loc.sessionDetailStopScopeMessage(count)
-              : loc.sessionDetailStopScopeMessageMainIdle(count),
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => dialogContext.pop(),
-            child: Text(loc.sessionListDeleteConfirmCancel),
+  if (!context.mounted) return;
+  switch (outcome) {
+    case SessionAbortRejected(:final rejection):
+      final loc = context.loc;
+      final count = rejection.runningSubAgentCount;
+      final policy = await showDialog<SessionAbortSubAgentPolicy>(
+        context: context,
+        builder: (dialogContext) => AlertDialog(
+          title: Text(loc.sessionDetailStopScopeTitle),
+          content: Text(
+            rejection.mainAgentRunning
+                ? loc.sessionDetailStopScopeMessage(count)
+                : loc.sessionDetailStopScopeMessageMainIdle(count),
           ),
-          if (rejection.mainAgentRunning && rejection.mainAgentOnlySupported)
+          actions: [
             TextButton(
-              onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.keep),
-              child: Text(loc.sessionDetailStopMainAgentOnly),
+              onPressed: () => dialogContext.pop(),
+              child: Text(loc.sessionListDeleteConfirmCancel),
             ),
-          TextButton(
-            onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.stop),
-            child: Text(
-              rejection.mainAgentRunning ? loc.sessionDetailStopAll(count) : loc.sessionDetailStopSubAgentsOnly(count),
-              style: TextStyle(color: context.prego.colors.fgErrorPrimary),
+            if (rejection.mainAgentRunning && rejection.mainAgentOnlySupported)
+              TextButton(
+                onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.keep),
+                child: Text(loc.sessionDetailStopMainAgentOnly),
+              ),
+            TextButton(
+              onPressed: () => dialogContext.pop(SessionAbortSubAgentPolicy.stop),
+              child: Text(
+                rejection.mainAgentRunning
+                    ? loc.sessionDetailStopAll(count)
+                    : loc.sessionDetailStopSubAgentsOnly(count),
+                style: TextStyle(color: context.prego.colors.fgErrorPrimary),
+              ),
             ),
-          ),
-        ],
-      ),
-    );
-    if (policy != null && context.mounted) await cubit.abort(subAgents: policy);
+          ],
+        ),
+      );
+      if (policy != null && context.mounted) {
+        final followUpOutcome = await cubit.abort(subAgents: policy);
+        if (!context.mounted) return;
+        if (followUpOutcome case SessionAbortNotAccepted(:final refusal)) {
+          await _showNotAccepted(context: context, refusal: refusal);
+        }
+      }
+    case SessionAbortNotAccepted(:final refusal):
+      await _showNotAccepted(context: context, refusal: refusal);
+    case SessionAbortAccepted() || SessionAbortFailed():
+      break;
   }
+}
+
+Future<void> _showNotAccepted({required BuildContext context, required SessionAbortNotPerformedRefusal refusal}) async {
+  final message = switch (refusal.reason) {
+    SessionAbortRefusalReason.residentWorkCompletionUnknown =>
+      context.loc.sessionDetailStopNotAcceptedBackgroundMessage,
+    SessionAbortRefusalReason.unknownEnumValue => context.loc.sessionDetailStopNotAcceptedGenericMessage,
+  };
+  await showDialog<void>(
+    context: context,
+    builder: (dialogContext) => AlertDialog(
+      title: Text(context.loc.sessionDetailStopNotAcceptedTitle),
+      content: Text(message),
+      actions: [
+        TextButton(
+          onPressed: () => dialogContext.pop(),
+          child: Text(context.loc.sessionListDeleteConfirmCancel),
+        ),
+      ],
+    ),
+  );
 }

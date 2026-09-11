@@ -1879,6 +1879,24 @@ abstract class AppLocalizations {
   /// **'Stop'**
   String get sessionDetailAbort;
 
+  /// No description provided for @sessionDetailStopNotAcceptedTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Session not stopped'**
+  String get sessionDetailStopNotAcceptedTitle;
+
+  /// No description provided for @sessionDetailStopNotAcceptedBackgroundMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori couldn’t verify whether background work finished, so it didn’t stop this session. Restart the harness, then try again.'**
+  String get sessionDetailStopNotAcceptedBackgroundMessage;
+
+  /// No description provided for @sessionDetailStopNotAcceptedGenericMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori couldn’t safely stop this session. Restart the harness, then try again.'**
+  String get sessionDetailStopNotAcceptedGenericMessage;
+
   /// No description provided for @sessionDetailStopScopeTitle.
   ///
   /// In en, this message translates to:

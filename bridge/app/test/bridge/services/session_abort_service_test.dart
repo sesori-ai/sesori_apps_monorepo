@@ -84,6 +84,29 @@ void main() {
       expect(failedSessionIds, equals(["session-1"]));
     });
 
+    test("marks typed not-performed result as failed without an aborted signal", () async {
+      sessionRepository.abortResult = const SessionAbortNotPerformed(
+        refusal: SessionAbortNotPerformedRefusal(
+          reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+        ),
+      );
+      final aborted = <String>[];
+      final failed = <String>[];
+      addTearDown(service.abortedSessions.listen(aborted.add).cancel);
+      addTearDown(service.abortFailedSessions.listen(failed.add).cancel);
+
+      expect(
+        await service.abortSession(
+          sessionId: "session-1",
+          subAgents: SessionAbortSubAgentPolicy.confirm,
+          useAtomicStop: true,
+        ),
+        sessionRepository.abortResult,
+      );
+      expect(aborted, isEmpty);
+      expect(failed, ["session-1"]);
+    });
+
     test("emits abort failure when family resolution fails before execution", () async {
       final startedSessionIds = <String>[];
       final failedSessionIds = <String>[];
@@ -108,6 +131,7 @@ class _FakeSessionRepository() implements SessionRepository {
   final Completer<void> abortCompleter = Completer<void>();
   Future<void> Function({required String sessionId})? onAbort;
   Object? resolutionError;
+  SessionAbortResult abortResult = const SessionAborted(workKept: false, subAgentsHandled: false);
 
   @override
   Future<SessionAbortResult> abortSession({
@@ -116,7 +140,7 @@ class _FakeSessionRepository() implements SessionRepository {
     required bool useAtomicStop,
   }) async {
     await onAbort?.call(sessionId: sessionId);
-    return const SessionAborted(workKept: false, subAgentsHandled: false);
+    return abortResult;
   }
 
   @override

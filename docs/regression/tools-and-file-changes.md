@@ -102,9 +102,12 @@ sub-agent parts, plus the signal that a tool changed files.
   with a completed childless subtask tile. Missing, unknown, malformed, unmatched,
   background, failed, and cancelled facts retain the generic card. Every
   prior-turn Task record clears at the next turn; deletion and process reset also
-  clear correlation. Prompt-write ordering keeps the accepted user message and
-  buffered generic terminal update ahead of the routed request. No child session,
-  activity/busy effect, background lifecycle, or replay is claimed.
+  clear correlation. Explicit background completion retires that Task record
+  into one root-level unresolved observation without creating a task id set,
+  running count, completion, tile, or child. Prompt-write ordering keeps the
+  accepted user message and buffered generic terminal update ahead of the routed
+  request. No child session, root/session activity effect, background terminal
+  lifecycle, or replay is claimed.
 - Antigravity normalizes its `formatted_output`, `exit_code`, `command_line`, and `working_dir` aliases before the
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
