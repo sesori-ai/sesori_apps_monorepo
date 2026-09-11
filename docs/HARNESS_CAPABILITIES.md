@@ -243,10 +243,18 @@ live-plugin coverage.
 Agent Client Protocol server exposes no subagent lifecycle, no child session,
 and only the turn-wide `session/cancel`.
 
-⁵ Cursor (cursor-agent 2026.07.23) over ACP emits a subagent as a plain
-`Task: …` tool call plus a `cursor/task` notification without child transcript,
-so a tile is possible but a child session is not; the running count enables a
-confirmation, while ACP's turn-wide `session/cancel` rules out partial stops.
+⁵ Cursor (managed target `cursor-agent 2026.08.11-e8db854`, probed
+2026-09-11) emits a standard `Task: …` call and then one correlated
+`cursor/task` JSON-RPC request when that Task-tool invocation completes. A
+foreground invocation's completion is also sub-agent completion; a background
+invocation completes at launch and exposes `isBackground: true`, while the
+background work continues without a later terminal lifecycle or child
+transcript. `session/load` replays stable full standard Task input/result facts,
+not `cursor/task`, so completed foreground tiles are implementable without a
+child session. Standard `session/cancel` authoritatively cancels an active
+foreground prompt, but a launched background Task survives it. Background tile
+lifecycle and full stop are therefore not supported over the observed ACP seam;
+Sesori must keep those calls generic and report retained work honestly.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a

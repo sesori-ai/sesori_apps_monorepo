@@ -3,9 +3,10 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** `main` at `a28e860557`, containing merged Grok
+- **Implementation base:** `main` at
+  `7dd323d1d762009d9a6f530630eb0683f986ab3d`, containing merged DeepSeek
   coverage documentation
-  [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430).
+  [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -13,23 +14,18 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** DeepSeek coverage reconciliation uses the exact planned title
-  `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage`; the
-  plan defines no step suffix for this separate final gate. PR #1430 merged
-  Grok Step 7/7 at `a28e860557`, delivering its partial documentation without
-  clearing the infrastructure-blocked phone gate. DeepSeek #1363, #1370, and
-  live-QA crash fix #1379 are merged. Its requested phone stop/input scope passed
-  on published adapter 0.1.4: confirmation/dismissal, main-only keep, atomic root
-  stop across an independently resumed child and grandchild, authoritative idle
-  settlement, runtime reuse, a follow-up turn, earlier permission/question
-  cleanup, and preservation plus answering of one later interleaved question.
-  Generic permission labeling was not accepted as presentation coverage, and
-  surviving root-owned shell jobs were not treated as failed descendant stop or
-  broader capability evidence. Desktop is unexecuted by explicit user choice;
-  cold tile/history reload, read-only child navigation, push/notification,
-  restart/reconnect, multiple-client, and alternate-mobile coverage also remain
-  unexecuted in this gate. Overall plan stays active for the blocked Grok phone
-  gate and Cursor follow-ups.
+- **Next action:** publish Cursor docs-only step 1/5,
+  `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]`,
+  then deliver live tiles as step 2/5. No Cursor feature implementation has
+  landed; live delivery awaits publication after the docs step.
+  The 2026-09-11 native probe used current managed target
+  `2026.08.11-e8db854`, not the old plan's installed PATH build. Foreground
+  Task correlation, cancellation authority, post-turn background survival,
+  repeated `session/load` facts, and the corrected exact ownership/stop policy
+  are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
+  #1431. Overall plan remains **ACTIVE** for Cursor delivery/coverage and the
+  Grok phone gate blocked by WebDriverAgent 0.0.23 before any visible case; no
+  Grok phone pass is claimed.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -204,9 +200,66 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek (adapter) | `release: prepare v0.1.4 for atomic-stop consumer` | Adapter #18 merged at `e2ea207f21`; v0.1.4 published and verified |
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
-| [ ] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | Current documentation gate: requested phone stop/input scope passed; desktop explicitly deferred; other unexecuted client matrices recorded; no overall plan retirement |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: subtask tiles and stop confirmation for task subagents` | Not started |
-| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage` | Not started |
+| [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
+| [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Docs-only local candidate; privacy-safe evidence and exact ownership/policy plan, with no feature implementation |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: live foreground Task tiles [step 2/5]` | Awaits step 1 publication; approximately 1,642 changed lines for DTO/codegen, exact foreground replacement, prompt cancellation, and focused tests/docs |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: scoped Task stop policy [step 3/5]` | Preserved successor: exact foreground count, unresolved background, root-only cancel, policy tests/docs |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay foreground Task tiles [step 4/5]` | Planned; approximately 650–950 changed lines; `CursorTaskReplayTracker` receives configured ACP collector plus shared pure mapper; stable foreground facts |
+| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Planned; approximately 100–220 changed lines; actual-plugin private evidence retained after owned cleanup; background stop/lifecycle and child-session gaps remain explicit |
+
+### Cursor native probe (2026-09-11)
+
+- [x] Fetched `origin/main`, verified clean, and branched from merged PR #1431
+  at exact head `7dd323d1d762009d9a6f530630eb0683f986ab3d`; no reset, rebase, or new
+  worktree.
+- [x] Inspected current managed target `2026.08.11-e8db854`, installed PATH
+  runtime `2026.07.23-e383d2b`, and empty managed Cursor inventory. Ran only a
+  checksum-verified ephemeral current-target copy with existing login/model/
+  config and `/tmp` temp variables.
+- [x] Foreground natural: pending → in-progress → completed standard Task;
+  one matching `cursor/task` request followed completion; root ended normally.
+- [x] Foreground cancel: standard root cancel produced authoritative native
+  `stopReason: cancelled` within 9 ms; no Task terminal frame followed; same
+  process/session completed a follow-up.
+- [x] Background launch: standard completion had `isBackground: true`; later
+  permission activity proved work continued after root end. Active root cancel
+  returned `cancelled`, but background requests continued 5–21 seconds later,
+  so full background stop is not supported and `workKept` cannot be constant
+  false.
+- [x] Replay: `session/load` emitted full standard Task input and terminal facts,
+  no `cursor/task`; replay-local id was stable across two loads but differed
+  from live. Cancelled Task replay was absent. No child session/transcript.
+- [x] Private raw captures used mode 0700/0600 only and were deleted with owned
+  scratch/runtime/session resources after the privacy-safe facts in
+  `followups/cursor-probe.md` were recorded. No phone/desktop/client QA.
+
+### Cursor architecture-plan correction (2026-09-11)
+
+- [x] Added explicit neutral `rootSessionCancel` branch: named root only, one
+  root cancel, existing prompt settlement, no child id/fanout; DeepSeek/Grok
+  behavior unchanged.
+- [x] Named every new source file, constructor, required named field, and
+  `CursorPlugin.factory` composition owner. New replay role is
+  `CursorTaskReplayTracker` under the Cursor repository tracker layer; it
+  receives a configured ACP collector and the shared injected pure mapper.
+- [x] Routed standard Task updates, re-injected `cursor/task`, and neutral
+  prompt results through existing `CursorEventMapper` plus
+  `AcpChildSessionTracker`; abort policy has no presentation mutation.
+- [x] Replaced turn-bounded background retention with one root-level unresolved
+  observation lasting until authoritative terminal/session or process teardown.
+  It never marks root busy and never becomes an exact running count.
+- [x] Locked post-turn pending-interaction policy: zero-count `confirm`/`stop`
+  cancel named-root input and send one root cancel while returning conservative
+  retained work; root-idle `keep` is a no-op acceptance; root-active `keep`
+  fails side-effect-free as unsupported. All Cursor ACKs keep
+  `subAgentsHandled: false`.
+- [x] Kept Cursor vocabulary/DTO parsing in Cursor and unobservable background
+  lifecycle/full stop/history/child sessions unsupported with the generic card.
+  Added no lock, timer, poller, controller, recovery path, shared wire, or
+  client contract.
+- Architecture review verdict was rejected with six findings. All six valid
+  findings were applied directly to this plan; the corrected version was not
+  re-reviewed and does not claim approval.
 
 ## Step 1 Checklist
 
