@@ -90,8 +90,11 @@ reaches the backend so the turn continues.
   named child records the root ID and applies to the root session group.
   Process exit and disposal also cancel pending Grok requests rather than
   broadening or silently approving them. These guarantees have automated
-  fixture coverage only; actual-plugin pending input remains unexecuted, and no
-  native Grok question channel is claimed.
+  fixture coverage only: production-composition QA emitted zero standard
+  permission requests under unchanged configuration, so live permission
+  preservation, isolation, and cleanup remain unexecuted. Phone automation was
+  blocked before any visible interaction, so no phone permission result is
+  claimed. No native Grok question channel is claimed.
 - A sessionless ACP request first resolves its top-level or nested
   `toolCall.toolCallId` against tracked calls. An exact match retains its session;
   an ambiguous match cancels rather than falling back to another active turn.

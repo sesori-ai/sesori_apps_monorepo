@@ -5,7 +5,8 @@
 - **Plan slug:** `claude-inline-subtasks`
 - **Status:** Series completed 2026-09-02 (Step 8/8; L4 matrix recorded in
   `TRACKER.md`); reactivated 2026-09-02 for the harness follow-ups in
-  `HARNESS_FOLLOWUPS.md`, retired again when their coverage PRs merge
+  `HARNESS_FOLLOWUPS.md`; remains active until their required coverage gates
+  are reconciled or explicitly accepted, including the blocked Grok phone gate
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
@@ -26,11 +27,18 @@
   (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 merged as #1420,
   and scoped stop 8/9 merged as #1421 at `77165f784f`. Final coverage 9/9
   records a passed bounded actual-plugin policy scope and a partial live matrix.
-  Grok scoped stop merged as PR #1428 at `3934f32ec9`; bounded actual-plugin QA
-  then exposed its nested child-cancel response envelope, so Grok now has seven
-  steps: envelope repair is 6/7 and final coverage is 7/7. Historical merged PR
-  titles remain unchanged. Overall harness plan remains active for remaining
-  harness gates.
+  Grok scoped stop merged as PR #1428 at `3934f32ec9`; its child-cancel
+  envelope repair merged as PR #1429 at `2ebcc7d01a`, so Grok has seven steps.
+  Corrected production-composition QA passed named-child isolation, root full
+  stop, idle-child keep and wake-up, already-finished handling, exact replay,
+  lifecycle settlement, and runtime reuse; root confirmation reuses its earlier
+  passing run. The unchanged runtime emitted no live permission request, so
+  permission handling remains unexecuted and no question support is claimed.
+  Source phone build and relay setup were healthy, but WebDriverAgent startup
+  timed out before any visible case; all phone coverage remains blocked and
+  unexecuted. Historical merged PR titles remain unchanged. Step 7/7 records
+  this partial matrix without retiring the plan, which remains active for the
+  Grok phone gate, DeepSeek final documentation, and Cursor follow-ups.
 
 ## Goal
 

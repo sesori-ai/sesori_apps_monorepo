@@ -95,6 +95,10 @@ signal that a tool changed files.
   Tool-call identity, terminal outcome (status and bounded output or error), and
   diff content otherwise converge between live events and `session/load`; Grok
   tool names remain presentation data and never become shared domain vocabulary.
+  Corrected production-composition QA after PR #1429 verified exact root/child
+  replay linkage and child-owned prompt provenance. Phone automation stopped
+  before visible UI, so phone tile rendering and read-only child navigation
+  remain unexecuted.
 
 ## Regression Levels
 

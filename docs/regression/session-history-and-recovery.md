@@ -107,7 +107,11 @@ reconnect or restart.
   complete model/provider/effort selection stamps all assistant/error/tile
   envelopes. Both persisted `_x.ai/session/update` facts and late
   `_x.ai/session_notification` settlement remain inside the existing quiet drain
-  and never read or mutate live child state or the event stream.
+  and never read or mutate live child state or the event stream. Corrected
+  production-composition QA after PR #1429 verified one exact root/child catalog
+  link, one root tile linked to that child, and a nonblank child-owned prompt in
+  child replay. Phone automation did not reach visible history or the read-only
+  child view, so neither client path is claimed.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their

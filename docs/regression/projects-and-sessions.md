@@ -294,7 +294,10 @@ state.
   Malformed summaries and unreadable files remain visible failures; an isolated
   malformed update line is logged and skipped. Import remains
   non-destructive, never reads credentials or configuration, and never resumes a
-  listed session merely to catalog it.
+  listed session merely to catalog it. Corrected production-composition QA after
+  PR #1429 verified an exact persisted root/child catalog link. Phone automation
+  did not reach visible project, session, or child lists, so no phone catalog
+  presentation is claimed.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the
