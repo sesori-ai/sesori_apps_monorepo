@@ -19,3 +19,30 @@ const _$CursorTaskToolEnumMap = {
   CursorTaskTool.task: 'task',
   CursorTaskTool.unknown: 'unknown',
 };
+
+_CursorTaskOutputDto _$CursorTaskOutputDtoFromJson(Map json) =>
+    _CursorTaskOutputDto(isBackground: json['isBackground'] as bool);
+
+_CursorSubagentTypeDto _$CursorSubagentTypeDtoFromJson(Map json) =>
+    _CursorSubagentTypeDto(
+      custom: $enumDecodeNullable(
+        _$CursorSubagentTypeEnumMap,
+        json['custom'],
+        unknownValue: CursorSubagentType.unknown,
+      ),
+    );
+
+const _$CursorSubagentTypeEnumMap = {
+  CursorSubagentType.unspecified: 'unspecified',
+  CursorSubagentType.unknown: 'unknown',
+};
+
+_CursorTaskRequestDto _$CursorTaskRequestDtoFromJson(Map json) =>
+    _CursorTaskRequestDto(
+      toolCallId: json['toolCallId'] as String,
+      description: json['description'] as String,
+      prompt: json['prompt'] as String,
+      subagentType: CursorSubagentTypeDto.fromJson(
+        Map<String, dynamic>.from(json['subagentType'] as Map),
+      ),
+    );

@@ -21,4 +21,57 @@ void main() {
       expect(() => CursorTaskInputDto.fromJson(const {}), throwsArgumentError);
     });
   });
+
+  group("Cursor completed Task DTOs", () {
+    test("parses explicit foreground output and observed request presentation", () {
+      expect(CursorTaskOutputDto.fromJson(const {"isBackground": false}).isBackground, isFalse);
+
+      final request = CursorTaskRequestDto.fromJson(const {
+        "toolCallId": "task-1",
+        "agentId": "not-a-child-session",
+        "description": "Inspect",
+        "prompt": "Inspect code",
+        "subagentType": {"custom": "unspecified"},
+        "model": "ignored-model",
+        "durationMs": 42,
+      });
+      expect(request.toolCallId, "task-1");
+      expect(request.description, "Inspect");
+      expect(request.prompt, "Inspect code");
+      expect(request.subagentType.custom, CursorSubagentType.unspecified);
+    });
+
+    test("missing custom stays null and unfamiliar non-null custom becomes unknown", () {
+      expect(CursorSubagentTypeDto.fromJson(const {}).custom, isNull);
+      expect(
+        CursorSubagentTypeDto.fromJson(const {"custom": "future-agent"}).custom,
+        CursorSubagentType.unknown,
+      );
+    });
+
+    test("missing or malformed terminal facts do not parse", () {
+      expect(() => CursorTaskOutputDto.fromJson(const {}), throwsA(anything));
+      expect(
+        () => CursorTaskOutputDto.fromJson(const {"isBackground": "false"}),
+        throwsA(anything),
+      );
+      expect(
+        () => CursorTaskRequestDto.fromJson(const {
+          "toolCallId": "task-1",
+          "description": "Inspect",
+          "prompt": "Inspect code",
+        }),
+        throwsA(anything),
+      );
+      expect(
+        () => CursorTaskRequestDto.fromJson(const {
+          "toolCallId": "task-1",
+          "description": "Inspect",
+          "prompt": "Inspect code",
+          "subagentType": "unspecified",
+        }),
+        throwsA(anything),
+      );
+    });
+  });
 }

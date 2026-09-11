@@ -33,6 +33,12 @@ class CursorEventMapper({
   required final String? Function() _activeSessionResolver,
 }) extends AcpEventMapper {
   @override
+  void beginTurn({required String sessionId, required String? messageId}) {
+    _taskTracker.beginTurn(sessionId: sessionId);
+    super.beginTurn(sessionId: sessionId, messageId: messageId);
+  }
+
+  @override
   List<BridgeSseEvent> map(AcpNotification notification) {
     final events = super.map(notification);
     _observeStandardTask(notification: notification, events: events);
@@ -87,8 +93,10 @@ class CursorEventMapper({
         return [BridgeSseTodoUpdated(sessionID: sessionId)];
       case "cursor/generate_image":
         return _mapGenerateImage(notification: notification);
+      case "cursor/task":
+        return _mapTaskRequest(notification: notification);
     }
-    // cursor/task and other extension notifications have no sesori analog.
+    // Other extension notifications have no sesori analog.
     return super.mapExtension(notification);
   }
 
@@ -116,19 +124,81 @@ class CursorEventMapper({
       sessionId: sessionId,
       toolCallId: toolCallId,
     );
-    if (!knownTask) {
-      final input = _parseTaskInput(raw: update["rawInput"]);
-      if (input?.toolName != CursorTaskTool.task) return;
+    if (!genericPart.state.status.isTerminal) {
+      if (!knownTask) {
+        final input = _parseTaskInput(raw: update["rawInput"]);
+        if (input?.toolName != CursorTaskTool.task) return;
+      }
+      _taskTracker.recordActiveInvocation(
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+        genericPart: genericPart,
+      );
+      return;
     }
 
-    if (genericPart.state.status.isTerminal) {
+    if (!knownTask) return;
+    if (genericPart.state.status != PluginToolStatus.completed) {
       _taskTracker.forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
       return;
     }
-    _taskTracker.recordInvocation(
+    final output = _parseTaskOutput(raw: update["rawOutput"]);
+    if (output == null || output.isBackground) {
+      _taskTracker.forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
+      return;
+    }
+    _taskTracker.markForegroundCompleted(
       sessionId: sessionId,
       toolCallId: toolCallId,
       genericPart: genericPart,
+    );
+  }
+
+  List<BridgeSseEvent> _mapTaskRequest({required AcpNotification notification}) {
+    final request = _parseTaskRequest(raw: notification.params);
+    if (request == null) return const [];
+    final sessionId = _taskSessionId(params: notification.params);
+    if (sessionId == null) return const [];
+    final genericPart = _taskTracker.takeForegroundCompleted(
+      sessionId: sessionId,
+      toolCallId: request.toolCallId,
+    );
+    if (genericPart == null) return const [];
+    final replacement = _mapCompletedForeground(
+      genericPart: genericPart,
+      request: request,
+    );
+    return replacement == null ? const [] : [BridgeSseMessagePartUpdated(part: replacement)];
+  }
+
+  PluginMessagePart? _mapCompletedForeground({
+    required PluginMessagePartTool genericPart,
+    required CursorTaskRequestDto request,
+  }) {
+    final prompt = _nonblank(request.prompt);
+    final description = _nonblank(request.description);
+    final agent = switch (request.subagentType.custom) {
+      CursorSubagentType.unspecified => CursorSubagentType.unspecified.name,
+      CursorSubagentType.unknown || null => null,
+    };
+    if (prompt == null || description == null || agent == null) return null;
+
+    return PluginMessagePart.subtask(
+      id: genericPart.id,
+      sessionID: genericPart.sessionID,
+      messageID: genericPart.messageID,
+      prompt: prompt,
+      description: description,
+      agent: agent,
+      taskState: PluginToolState(
+        status: PluginToolStatus.completed,
+        title: genericPart.state.title,
+        shellCommand: null,
+        output: genericPart.state.output,
+        error: null,
+        attachments: genericPart.state.attachments,
+      ),
+      childSessionID: null,
     );
   }
 
@@ -162,6 +232,30 @@ class CursorEventMapper({
     }
   }
 
+  CursorTaskOutputDto? _parseTaskOutput({required Object? raw}) {
+    final json = _map(raw);
+    if (json == null) return null;
+    try {
+      return CursorTaskOutputDto.fromJson(json);
+    } on Object catch (error, stack) {
+      Log.w("[cursor] malformed standard Task output ignored", error, stack);
+      return null;
+    }
+  }
+
+  CursorTaskRequestDto? _parseTaskRequest({required Object? raw}) {
+    final json = _map(raw);
+    if (json == null) return null;
+    try {
+      return CursorTaskRequestDto.fromJson(json);
+    } on Object catch (error, stack) {
+      Log.w("[cursor] malformed cursor/task request ignored", error, stack);
+      return null;
+    }
+  }
+
+  static String? _nonblank(String value) => value.trim().isEmpty ? null : value;
+
   static Map<String, dynamic>? _map(Object? raw) => raw is Map ? raw.cast<String, dynamic>() : null;
 
   List<BridgeSseEvent> _mapGenerateImage({required AcpNotification notification}) {
@@ -189,6 +283,20 @@ class CursorEventMapper({
       messageId: rawMessageId is String && rawMessageId.isNotEmpty ? rawMessageId : null,
       blocks: blocks,
     );
+  }
+
+  String? _taskSessionId({required Map<String, dynamic> params}) {
+    final explicit = params["sessionId"];
+    if (explicit is String) {
+      final trimmed = explicit.trim();
+      if (trimmed.isNotEmpty) return trimmed;
+    }
+    final toolCallId = params["toolCallId"];
+    if (toolCallId is String && toolCallId.isNotEmpty) {
+      final fromTask = _taskTracker.sessionIdForToolCallId(toolCallId: toolCallId);
+      if (fromTask != null) return fromTask;
+    }
+    return _activeSessionResolver();
   }
 
   /// The session an extension payload belongs to: its explicit `sessionId`

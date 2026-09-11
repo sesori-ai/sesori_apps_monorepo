@@ -335,15 +335,15 @@ defaults and queued client sends coherent.
   process exit, and disposal cancel or clear child activity and holds without
   leaving the root busy or delivering tracker changes to a closed event stream.
 - Cursor standard Task presentation follows root prompt lifecycle without
-  inventing child lifecycle. Pending/in-progress cards remain generic. Every
-  standard terminal card retires its active correlation and remains generic.
-  An authoritative cancelled prompt result updates all still-active Task cards
-  to cancelled before root settlement; dispatch, RPC, timeout, malformed-
-  response, and process-exit failures emit normal prompt error, then error and
-  retire those cards, then settle root. Pending RPC failure runs before process
-  reset clears any remaining correlation; reset alone fabricates no cancellation
-  or error. Tracking does not affect root status, plugin residency, child ids/
-  status/counts, fanout, stop policy, or replay.
+  inventing child lifecycle. Pending/in-progress cards remain generic and
+  mode-unknown. Cancellation/failure settles them before root settlement. Only
+  exact terminal `isBackground: false` plus the following complete correlated
+  `cursor/task` request replaces the same live part once with a completed
+  childless tile; all other terminal/request shapes stay generic. Unconsumed
+  completion clears at the next turn, deletion, or process reset. Tracking and
+  tiles do not affect root status, residency, child ids/status/counts, fanout,
+  stop policy, or replay; background lifecycle, safe stop, and replay remain
+  unavailable.
 - Existing-session ACP prompts remain bridge-queued while an earlier same-session
   turn, declared process-wide lane, resume, or selection blocks their
   `session/prompt` frame. ACP v1 has no standard steering operation, so Sesori

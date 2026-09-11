@@ -42,6 +42,78 @@ void main() {
       return file;
     }
 
+    List<BridgeSseEvent> taskUpdate({
+      required CursorEventMapper target,
+      required String sessionId,
+      required String toolCallId,
+      required String status,
+      required bool starts,
+      required Object? rawOutput,
+    }) => target.map(
+      AcpNotification(
+        method: AcpMethods.sessionUpdate,
+        params: {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": starts ? "tool_call" : "tool_call_update",
+            "toolCallId": toolCallId,
+            "title": "Task: inspect",
+            "status": status,
+            "rawInput": {"_toolName": "task"},
+            "rawOutput": ?rawOutput,
+          },
+        },
+      ),
+    );
+
+    AcpNotification taskRequest({
+      required String toolCallId,
+      required String? sessionId,
+      required Object? subagentType,
+      required String prompt,
+      required String description,
+    }) => AcpNotification(
+      method: "cursor/task",
+      params: {
+        "toolCallId": toolCallId,
+        "description": description,
+        "prompt": prompt,
+        "subagentType": subagentType,
+        "sessionId": ?sessionId,
+      },
+    );
+
+    void completeForeground({
+      required CursorEventMapper target,
+      required String sessionId,
+      required String toolCallId,
+    }) {
+      taskUpdate(
+        target: target,
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+        status: "pending",
+        starts: true,
+        rawOutput: null,
+      );
+      taskUpdate(
+        target: target,
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+        status: "completed",
+        starts: false,
+        rawOutput: const {"durationMs": 42, "isBackground": false},
+      );
+    }
+
+    AcpNotification validTaskRequest({required String toolCallId, required String? sessionId}) => taskRequest(
+      toolCallId: toolCallId,
+      sessionId: sessionId,
+      subagentType: const {"custom": "unspecified"},
+      prompt: "Inspect code",
+      description: "Inspect",
+    );
+
     test("cursor/update_todos maps to a todo update", () {
       final events = mapper.map(
         const AcpNotification(
@@ -53,7 +125,7 @@ void main() {
       expect((events.single as BridgeSseTodoUpdated).sessionID, "s1");
     });
 
-    test("other cursor extensions are dropped", () {
+    test("malformed cursor/task extensions are dropped", () {
       expect(
         mapper.map(const AcpNotification(method: "cursor/task", params: {})),
         isEmpty,
@@ -77,91 +149,242 @@ void main() {
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hi");
     });
 
-    test("active standard Tasks settle from prompt lifecycle and terminal cards retire", () {
-      final taskMapper = buildMapper();
-      taskMapper.beginTurn(sessionId: "s-task", messageId: "turn-1");
+    test("Task correlation has only activeModeUnknown and foregroundCompleted phases", () {
+      expect(CursorTaskPhase.values, [CursorTaskPhase.activeModeUnknown, CursorTaskPhase.foregroundCompleted]);
+    });
 
-      void observeTask({required String id, required String status}) {
-        taskMapper.map(
-          AcpNotification(
-            method: AcpMethods.sessionUpdate,
-            params: {
-              "sessionId": "s-task",
-              "update": {
-                "sessionUpdate": id == "active" ? "tool_call" : "tool_call_update",
-                "toolCallId": id,
-                "title": "Task",
-                "status": status,
-                "rawInput": {"_toolName": "task"},
-              },
-            },
-          ),
+    test("foreground Task stays generic until cursor/task replaces its exact part once", () {
+      final childSessions = AcpChildSessionTracker();
+      final target = CursorEventMapper(
+        launchDirectory: "/repo",
+        pluginId: CursorPlugin.pluginId,
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: childSessions,
+        generatedImageReader: const CursorGeneratedImageReader(),
+        taskTracker: CursorTaskTracker(),
+        activeSessionResolver: () => "other-root",
+      );
+      target.beginTurn(sessionId: "root", messageId: "turn-1");
+      final pending = taskUpdate(
+        target: target,
+        sessionId: "root",
+        toolCallId: "task-1",
+        status: "pending",
+        starts: true,
+        rawOutput: null,
+      ).whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(pending, isA<PluginMessagePartTool>());
+      final running =
+          taskUpdate(
+                target: target,
+                sessionId: "root",
+                toolCallId: "task-1",
+                status: "in_progress",
+                starts: false,
+                rawOutput: null,
+              ).whereType<BridgeSseMessagePartUpdated>().single.part
+              as PluginMessagePartTool;
+      expect(running.state.status, PluginToolStatus.running);
+      final completed = taskUpdate(
+        target: target,
+        sessionId: "root",
+        toolCallId: "task-1",
+        status: "completed",
+        starts: false,
+        rawOutput: const {"durationMs": 42, "isBackground": false},
+      ).whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(completed, isA<PluginMessagePartTool>());
+
+      final tile =
+          target
+                  .map(validTaskRequest(toolCallId: "task-1", sessionId: null))
+                  .whereType<BridgeSseMessagePartUpdated>()
+                  .single
+                  .part
+              as PluginMessagePartSubtask;
+      expect((tile.id, tile.messageID, tile.sessionID), (pending.id, pending.messageID, "root"));
+      expect((tile.prompt, tile.description, tile.agent), ("Inspect code", "Inspect", "unspecified"));
+      expect(tile.taskState?.status, PluginToolStatus.completed);
+      expect(tile.childSessionID, isNull, reason: "agentId and tool ids never become child identity");
+      expect(childSessions.childStatuses, isEmpty);
+      expect(childSessions.hasActiveWork, isFalse);
+      expect(childSessions.activeRootSessionIds, isEmpty);
+      expect(target.map(validTaskRequest(toolCallId: "task-1", sessionId: null)), isEmpty);
+    });
+
+    test("background, failed, cancelled, unknown, and malformed terminal Tasks stay generic", () {
+      for (final taskCase in <({String id, String status, Object? output})>[
+        (id: "background", status: "completed", output: const {"isBackground": true}),
+        (id: "failed", status: "failed", output: null),
+        (id: "cancelled", status: "cancelled", output: null),
+        (id: "unknown", status: "future", output: null),
+        (id: "missing", status: "completed", output: const {"durationMs": 5}),
+        (id: "malformed", status: "completed", output: const {"isBackground": "false"}),
+      ]) {
+        final target = buildMapper(activeSessionResolver: () => "root");
+        target.beginTurn(sessionId: "root", messageId: "turn");
+        taskUpdate(
+          target: target,
+          sessionId: "root",
+          toolCallId: taskCase.id,
+          status: "pending",
+          starts: true,
+          rawOutput: null,
         );
+        expect(
+          taskUpdate(
+            target: target,
+            sessionId: "root",
+            toolCallId: taskCase.id,
+            status: taskCase.status,
+            starts: false,
+            rawOutput: taskCase.output,
+          ).whereType<BridgeSseMessagePartUpdated>().single.part,
+          isA<PluginMessagePartTool>(),
+        );
+        expect(target.map(validTaskRequest(toolCallId: taskCase.id, sessionId: null)), isEmpty);
+      }
+    });
+
+    test("incomplete and unknown completed requests retain generic card and consume correlation", () {
+      for (final requestCase in <({String prompt, String description, Object type})>[
+        (prompt: " ", description: "Inspect", type: const {"custom": "unspecified"}),
+        (prompt: "Inspect code", description: "", type: const {"custom": "unspecified"}),
+        (prompt: "Inspect code", description: "Inspect", type: const <String, Object?>{}),
+        (prompt: "Inspect code", description: "Inspect", type: const {"custom": "future-agent"}),
+      ]) {
+        final target = buildMapper(activeSessionResolver: () => "root")
+          ..beginTurn(sessionId: "root", messageId: "turn");
+        completeForeground(target: target, sessionId: "root", toolCallId: "task");
+        expect(
+          target.map(
+            taskRequest(
+              toolCallId: "task",
+              sessionId: null,
+              subagentType: requestCase.type,
+              prompt: requestCase.prompt,
+              description: requestCase.description,
+            ),
+          ),
+          isEmpty,
+        );
+        expect(target.map(validTaskRequest(toolCallId: "task", sessionId: null)), isEmpty);
       }
 
-      observeTask(id: "active", status: "pending");
-      final cancelled = taskMapper.mapPromptResult(
-        sessionId: "s-task",
+      final malformed = buildMapper(activeSessionResolver: () => "root")
+        ..beginTurn(sessionId: "root", messageId: "turn");
+      completeForeground(target: malformed, sessionId: "root", toolCallId: "task");
+      expect(
+        malformed.map(
+          taskRequest(
+            toolCallId: "task",
+            sessionId: null,
+            subagentType: "unspecified",
+            prompt: "Inspect code",
+            description: "Inspect",
+          ),
+        ),
+        isEmpty,
+      );
+      expect(malformed.map(validTaskRequest(toolCallId: "task", sessionId: null)), hasLength(1));
+    });
+
+    test("explicit session, exact lookup, ambiguity, then active fallback determine attribution", () {
+      final target = buildMapper(activeSessionResolver: () => null);
+      target.beginTurn(sessionId: "root-a", messageId: "turn-a");
+      target.beginTurn(sessionId: "root-b", messageId: "turn-b");
+      completeForeground(target: target, sessionId: "root-a", toolCallId: "duplicate");
+      completeForeground(target: target, sessionId: "root-b", toolCallId: "duplicate");
+
+      expect(
+        target.map(validTaskRequest(toolCallId: "duplicate", sessionId: null)),
+        isEmpty,
+        reason: "duplicate exact tool ids are ambiguous without another attribution source",
+      );
+      expect(
+        target.map(validTaskRequest(toolCallId: "duplicate", sessionId: "wrong-root")),
+        isEmpty,
+        reason: "a valid explicit session wins even when it does not match correlation",
+      );
+      final explicit = target
+          .map(validTaskRequest(toolCallId: "duplicate", sessionId: "root-a"))
+          .whereType<BridgeSseMessagePartUpdated>()
+          .single
+          .part;
+      expect(explicit.sessionID, "root-a");
+
+      final fallback = buildMapper(activeSessionResolver: () => "active-root");
+      fallback.beginTurn(sessionId: "active-root", messageId: "turn-active");
+      fallback.beginTurn(sessionId: "other-root", messageId: "turn-other");
+      completeForeground(target: fallback, sessionId: "active-root", toolCallId: "ambiguous");
+      completeForeground(target: fallback, sessionId: "other-root", toolCallId: "ambiguous");
+      final fallbackTile = fallback
+          .map(validTaskRequest(toolCallId: "ambiguous", sessionId: null))
+          .whereType<BridgeSseMessagePartUpdated>()
+          .single
+          .part;
+      expect(
+        fallbackTile.sessionID,
+        "active-root",
+        reason: "active-session fallback still requires an exact root/tool pair",
+      );
+    });
+
+    test("next turn clears stale completed correlation but cancellation still settles active Tasks", () {
+      final target = buildMapper(activeSessionResolver: () => "root");
+      target.beginTurn(sessionId: "root", messageId: "turn-1");
+      completeForeground(target: target, sessionId: "root", toolCallId: "completed");
+      target.beginTurn(sessionId: "root", messageId: "turn-2");
+      expect(target.map(validTaskRequest(toolCallId: "completed", sessionId: null)), isEmpty);
+
+      taskUpdate(
+        target: target,
+        sessionId: "root",
+        toolCallId: "active",
+        status: "pending",
+        starts: true,
+        rawOutput: null,
+      );
+      final cancelled = target.mapPromptResult(
+        sessionId: "root",
         stopReason: AcpStopReason.cancelled,
       );
       final cancelledPart = (cancelled.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
       expect(cancelledPart.state.status, PluginToolStatus.cancelled);
       expect(
-        taskMapper.mapPromptLifecycleFailure(sessionId: "s-task", failureMessage: "duplicate"),
-        isEmpty,
-      );
-
-      taskMapper.map(
-        const AcpNotification(
-          method: AcpMethods.sessionUpdate,
-          params: {
-            "sessionId": "s-task",
-            "update": {
-              "sessionUpdate": "tool_call",
-              "toolCallId": "terminal",
-              "title": "Task",
-              "status": "pending",
-              "rawInput": {"_toolName": "task"},
-            },
-          },
-        ),
-      );
-      observeTask(id: "terminal", status: "completed");
-      expect(
-        taskMapper.mapPromptResult(sessionId: "s-task", stopReason: AcpStopReason.cancelled),
+        target.mapPromptLifecycleFailure(sessionId: "root", failureMessage: "duplicate"),
         isEmpty,
       );
     });
 
-    test("late standard Task updates cannot recreate lifecycle state after session deletion", () {
+    test("session and descendant deletion tombstones last until process reset", () {
       final taskTracker = CursorTaskTracker();
       final deletedMapper = buildMapper(taskTracker: taskTracker);
-      deletedMapper.beginTurn(sessionId: "s-deleted", messageId: "turn-deleted");
-      deletedMapper.forgetSession("s-deleted");
-
-      const lateTask = AcpNotification(
+      AcpNotification lateTask({required String sessionId}) => AcpNotification(
         method: AcpMethods.sessionUpdate,
         params: {
-          "sessionId": "s-deleted",
+          "sessionId": sessionId,
           "update": {
             "sessionUpdate": "tool_call",
-            "toolCallId": "late-task",
+            "toolCallId": "late-$sessionId",
             "title": "Task",
             "status": "pending",
             "rawInput": {"_toolName": "task"},
           },
         },
       );
-      deletedMapper.map(lateTask);
 
-      expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-task"), isFalse);
-      expect(deletedMapper.mapPromptLifecycleFailure(sessionId: "s-deleted", failureMessage: "failed"), isEmpty);
+      for (final sessionId in const ["s-deleted", "s-descendant"]) {
+        deletedMapper.beginTurn(sessionId: sessionId, messageId: "turn-$sessionId");
+        deletedMapper.forgetSession(sessionId);
+        deletedMapper.map(lateTask(sessionId: sessionId));
+        expect(taskTracker.hasInvocation(sessionId: sessionId, toolCallId: "late-$sessionId"), isFalse);
+      }
 
       taskTracker.clear();
-      deletedMapper.map(lateTask);
-      expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-task"), isTrue);
+      deletedMapper.map(lateTask(sessionId: "s-deleted"));
+      expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-s-deleted"), isTrue);
       taskTracker.clear();
-      expect(deletedMapper.mapPromptLifecycleFailure(sessionId: "s-deleted", failureMessage: "failed"), isEmpty);
     });
 
     test("cursor/generate_image maps to a standard inline file part", () async {

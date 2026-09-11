@@ -8,8 +8,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 ///
 /// Cursor's non-blocking extension *requests* (`cursor/generate_image`,
 /// `cursor/update_todos`, `cursor/task`) are acknowledged and re-injected into
-/// its notification pipeline. Task notifications are intentionally ignored
-/// until completed-tile mapping lands in the next delivery slice.
+/// its notification pipeline. Completed foreground Task requests are
+/// correlated at the Cursor event-mapper boundary.
 ///
 /// NOTE: Cursor's exact reply payload shapes are not formally documented; the
 /// builders below are best-effort and should be confirmed against a real

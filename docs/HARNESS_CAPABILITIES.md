@@ -213,7 +213,7 @@ prompt, and skill commands remain available.
 
 | Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
 |---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
@@ -281,8 +281,13 @@ transcript. `session/load` replays stable full standard Task input/result facts,
 not `cursor/task`, so completed foreground tiles are planned without a child
 session. Pending/in-progress calls lack presentation facts and `isBackground`, so their
 mode is unknown and they remain generic; cancelled foreground calls also remain
-generic cancelled cards because no `cursor/task` follows cancellation. Standard
-`session/cancel` authoritatively cancels an active root prompt. The planned safe
+generic cancelled cards because no `cursor/task` follows cancellation. Sesori
+now replaces only an exact live standard completion with explicit
+`isBackground: false` plus a complete correlated request, producing one
+completed childless tile with stable part identity. Missing/unknown/malformed,
+unmatched, background, failed, and cancelled cases stay generic. Replay remains
+unimplemented. Standard `session/cancel` authoritatively cancels an active root
+prompt. The planned safe
 Task subset may provide side-effect-free confirmation with the exact observed
 active Task count and named-root stop when no unresolved background observation
 exists. Explicit stop must await authoritative prompt settlement and re-check
