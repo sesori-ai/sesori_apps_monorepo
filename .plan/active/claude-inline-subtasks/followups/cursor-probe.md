@@ -502,14 +502,14 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    correction only. No tile, completed correlation, residency, stop, or replay.
 3. `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]`
    merged as PR #1441 at `bb85f48148`: completed correlation/review fixes,
-   childless replacement, tests, and live-tile capability/docs. Step 4's local
-   predecessor is the latest pre-squash tree at `d3297ad4b9`.
+   childless replacement, tests, and live-tile capability/docs. Step 4 is based
+   on that merged commit; pre-squash `d3297ad4b9` has the same tree.
 4. `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]`
    is implemented and checked locally: exact active count, unresolved-background
    residency, typed refusal, safe `rootSessionCancel` with mandatory post-
    settlement re-check, bridge/client/UI flow, tests, and stop/lifecycle/
-   capability docs. It remains unpublished; regenerate its Step 4-only commits
-   from merged main and prove tree equivalence before publication.
+   capability docs. It remains unpublished on a branch regenerated from merged
+   main; its pre-reconciliation tree matched reviewed checkpoint `eae039ca27`.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
    (expected 650–1,000 changed lines): configured collector/shared pure projection,
    stable completed projection, fallbacks, tests, and history doc.

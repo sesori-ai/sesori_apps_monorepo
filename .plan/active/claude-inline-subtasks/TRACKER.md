@@ -12,9 +12,9 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** Cursor safe Task stop Step 4/6 is implemented and checked
-  locally on its predecessor-based successor branch, unpublished and ready to
-  regenerate from merged Step 3. No Step 5 replay or native QA is included.
+- **Next action:** Cursor safe Task stop Step 4/6 is implemented, reviewed,
+  regenerated from merged Step 3 on its publication branch, and ready to open
+  as a PR. No Step 5 replay or native QA is included.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
@@ -208,7 +208,7 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Implemented and checked locally, unpublished: exact active mode-unknown Task count, unresolved-background process residency, typed refusal, named-root safe stop, queue-drain gate, limitation UI, tests, and docs; no replay/native QA |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerated from merged main and checked locally, unpublished: exact active mode-unknown Task count, unresolved-background process residency, typed refusal, named-root safe stop, queue-drain gate, limitation UI, tests, and docs; no replay/native QA |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
@@ -528,8 +528,8 @@ post-merge E2E gates are unchanged.
 - **Cursor Step 3/6:** merged as PR #1441 at `bb85f48148`; completed foreground
   live Task correlation and one-shot childless replacement include closed Task
   lookup, prior-turn cleanup, initial-terminal support, unknown-status
-  settlement, and ACP-owned prompt-write ordering. Step 4's local predecessor
-  commit is `d3297ad4b9`.
+  settlement, and ACP-owned prompt-write ordering. Step 4 is regenerated from
+  merged-main commit `bb85f48148`; pre-squash `d3297ad4b9` has the same tree.
 - **Cursor Step 4/6 (local, checked; unpublished):** exact active Task count,
   unresolved-background process residency, typed HTTP 409 refusal, named-root
   cancellation with mandatory post-settlement re-check/HTTP 502 partial failure,
@@ -537,8 +537,9 @@ post-merge E2E gates are unchanged.
   implemented. No replay, child session, runtime/config change, native QA, push,
   or publication is included. No analytics event was added: this typed limit is
   part of the existing abort action and has no product decision or reporting
-  consumer. Publication must regenerate these Step 4-only commits from merged
-  main and prove tree equivalence; Step 5 remains blocked.
+  consumer. The publication branch was regenerated from merged main and its
+  pre-reconciliation tree matched reviewed checkpoint `eae039ca27`; Step 5
+  remains blocked until Step 4 merges.
 
 ## Plan Review
 
