@@ -292,8 +292,10 @@ Future<Map<String, dynamic>> _waitForFrame({
   Object? afterId,
 }) async {
   for (var attempt = 0; attempt < 50; attempt++) {
-    for (final frame in fake.written) {
-      if (frame["method"] == method && frame["id"] != afterId) return frame;
+    final frames = fake.written;
+    final start = afterId == null ? 0 : frames.indexWhere((frame) => frame["id"] == afterId) + 1;
+    for (final frame in frames.skip(start)) {
+      if (frame["method"] == method) return frame;
     }
     await Future<void>.delayed(Duration.zero);
   }
