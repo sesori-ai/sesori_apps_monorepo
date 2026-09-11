@@ -124,20 +124,29 @@ class CursorEventMapper({
       sessionId: sessionId,
       toolCallId: toolCallId,
     );
-    if (!genericPart.state.status.isTerminal) {
-      if (!knownTask) {
-        final input = _parseTaskInput(raw: update["rawInput"]);
-        if (input?.toolName != CursorTaskTool.task) return;
-      }
+    final terminalTaskUpdate = switch (update["status"]) {
+      "pending" || "in_progress" => false,
+      final String _ => true,
+      _ => genericPart.state.status.isTerminal,
+    };
+    if (!knownTask) {
+      final input = _parseTaskInput(raw: update["rawInput"]);
+      if (input?.toolName != CursorTaskTool.task) return;
+      if (terminalTaskUpdate && updateType != "tool_call") return;
       _taskTracker.recordActiveInvocation(
         sessionId: sessionId,
         toolCallId: toolCallId,
         genericPart: genericPart,
       );
-      return;
+    } else if (!terminalTaskUpdate) {
+      _taskTracker.recordActiveInvocation(
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+        genericPart: genericPart,
+      );
     }
+    if (!terminalTaskUpdate) return;
 
-    if (!knownTask) return;
     if (genericPart.state.status != PluginToolStatus.completed) {
       _taskTracker.forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
       return;
@@ -157,7 +166,10 @@ class CursorEventMapper({
   List<BridgeSseEvent> _mapTaskRequest({required AcpNotification notification}) {
     final request = _parseTaskRequest(raw: notification.params);
     if (request == null) return const [];
-    final sessionId = _taskSessionId(params: notification.params);
+    final sessionId = switch (_taskSessionLookup(params: notification.params)) {
+      CursorTaskSessionFound(:final sessionId) => sessionId,
+      CursorTaskSessionNotFound() || CursorTaskSessionAmbiguous() => null,
+    };
     if (sessionId == null) return const [];
     final genericPart = _taskTracker.takeForegroundCompleted(
       sessionId: sessionId,
@@ -285,18 +297,21 @@ class CursorEventMapper({
     );
   }
 
-  String? _taskSessionId({required Map<String, dynamic> params}) {
+  CursorTaskSessionLookup _taskSessionLookup({required Map<String, dynamic> params}) {
     final explicit = params["sessionId"];
     if (explicit is String) {
       final trimmed = explicit.trim();
-      if (trimmed.isNotEmpty) return trimmed;
+      if (trimmed.isNotEmpty) return CursorTaskSessionFound(sessionId: trimmed);
     }
     final toolCallId = params["toolCallId"];
     if (toolCallId is String && toolCallId.isNotEmpty) {
-      final fromTask = _taskTracker.sessionIdForToolCallId(toolCallId: toolCallId);
-      if (fromTask != null) return fromTask;
+      final lookup = _taskTracker.lookupSessionForToolCallId(toolCallId: toolCallId);
+      if (lookup is! CursorTaskSessionNotFound) return lookup;
     }
-    return _activeSessionResolver();
+    final activeSessionId = _activeSessionResolver();
+    return activeSessionId == null
+        ? const CursorTaskSessionNotFound()
+        : CursorTaskSessionFound(sessionId: activeSessionId);
   }
 
   /// The session an extension payload belongs to: its explicit `sessionId`

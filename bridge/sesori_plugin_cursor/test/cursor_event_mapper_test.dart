@@ -246,6 +246,83 @@ void main() {
       }
     });
 
+    test("an initial terminal Task correlates only a valid explicit foreground completion", () {
+      final completed = buildMapper(activeSessionResolver: () => "root")
+        ..beginTurn(sessionId: "root", messageId: "turn");
+      expect(
+        taskUpdate(
+          target: completed,
+          sessionId: "root",
+          toolCallId: "initial-completed",
+          status: "completed",
+          starts: true,
+          rawOutput: const {"isBackground": false},
+        ).whereType<BridgeSseMessagePartUpdated>().single.part,
+        isA<PluginMessagePartTool>(),
+      );
+      expect(
+        completed
+            .map(validTaskRequest(toolCallId: "initial-completed", sessionId: null))
+            .whereType<BridgeSseMessagePartUpdated>()
+            .single
+            .part,
+        isA<PluginMessagePartSubtask>(),
+      );
+
+      for (final taskCase in <({String id, String status, Object? output})>[
+        (id: "initial-background", status: "completed", output: const {"isBackground": true}),
+        (id: "initial-failed", status: "failed", output: null),
+        (id: "initial-cancelled", status: "cancelled", output: null),
+        (id: "initial-unknown", status: "future", output: null),
+        (id: "initial-missing", status: "completed", output: const {"durationMs": 5}),
+        (id: "initial-malformed-output", status: "completed", output: const {"isBackground": "false"}),
+      ]) {
+        final target = buildMapper(activeSessionResolver: () => "root")
+          ..beginTurn(sessionId: "root", messageId: "turn");
+        taskUpdate(
+          target: target,
+          sessionId: "root",
+          toolCallId: taskCase.id,
+          status: taskCase.status,
+          starts: true,
+          rawOutput: taskCase.output,
+        );
+        expect(target.map(validTaskRequest(toolCallId: taskCase.id, sessionId: null)), isEmpty);
+        expect(
+          target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled),
+          isEmpty,
+          reason: "an unsupported initial terminal must leave no active Task record",
+        );
+      }
+
+      final malformedInput = buildMapper(activeSessionResolver: () => "root")
+        ..beginTurn(sessionId: "root", messageId: "turn");
+      malformedInput.map(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "root",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "initial-malformed-input",
+              "title": "Task: inspect",
+              "status": "completed",
+              "rawInput": {"_toolName": 7},
+              "rawOutput": {"isBackground": false},
+            },
+          },
+        ),
+      );
+      expect(
+        malformedInput.map(validTaskRequest(toolCallId: "initial-malformed-input", sessionId: null)),
+        isEmpty,
+      );
+      expect(
+        malformedInput.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled),
+        isEmpty,
+      );
+    });
+
     test("incomplete and unknown completed requests retain generic card and consume correlation", () {
       for (final requestCase in <({String prompt, String description, Object type})>[
         (prompt: " ", description: "Inspect", type: const {"custom": "unspecified"}),
@@ -289,8 +366,14 @@ void main() {
       expect(malformed.map(validTaskRequest(toolCallId: "task", sessionId: null)), hasLength(1));
     });
 
-    test("explicit session, exact lookup, ambiguity, then active fallback determine attribution", () {
-      final target = buildMapper(activeSessionResolver: () => null);
+    test("explicit session wins, ambiguous Task ownership drops without active fallback", () {
+      var fallbackCalls = 0;
+      final target = buildMapper(
+        activeSessionResolver: () {
+          fallbackCalls++;
+          return "root-b";
+        },
+      );
       target.beginTurn(sessionId: "root-a", messageId: "turn-a");
       target.beginTurn(sessionId: "root-b", messageId: "turn-b");
       completeForeground(target: target, sessionId: "root-a", toolCallId: "duplicate");
@@ -299,57 +382,77 @@ void main() {
       expect(
         target.map(validTaskRequest(toolCallId: "duplicate", sessionId: null)),
         isEmpty,
-        reason: "duplicate exact tool ids are ambiguous without another attribution source",
+        reason: "duplicate exact tool ids are ambiguous and must not fall back",
       );
+      expect(fallbackCalls, 0);
       expect(
         target.map(validTaskRequest(toolCallId: "duplicate", sessionId: "wrong-root")),
         isEmpty,
         reason: "a valid explicit session wins even when it does not match correlation",
       );
-      final explicit = target
+      final first = target
           .map(validTaskRequest(toolCallId: "duplicate", sessionId: "root-a"))
           .whereType<BridgeSseMessagePartUpdated>()
           .single
           .part;
-      expect(explicit.sessionID, "root-a");
-
-      final fallback = buildMapper(activeSessionResolver: () => "active-root");
-      fallback.beginTurn(sessionId: "active-root", messageId: "turn-active");
-      fallback.beginTurn(sessionId: "other-root", messageId: "turn-other");
-      completeForeground(target: fallback, sessionId: "active-root", toolCallId: "ambiguous");
-      completeForeground(target: fallback, sessionId: "other-root", toolCallId: "ambiguous");
-      final fallbackTile = fallback
-          .map(validTaskRequest(toolCallId: "ambiguous", sessionId: null))
+      final second = target
+          .map(validTaskRequest(toolCallId: "duplicate", sessionId: "root-b"))
           .whereType<BridgeSseMessagePartUpdated>()
           .single
           .part;
+      expect((first.sessionID, second.sessionID), ("root-a", "root-b"));
+
       expect(
-        fallbackTile.sessionID,
-        "active-root",
-        reason: "active-session fallback still requires an exact root/tool pair",
+        target.map(validTaskRequest(toolCallId: "not-found", sessionId: null)),
+        isEmpty,
       );
+      expect(fallbackCalls, 1, reason: "active-session fallback remains available only for genuine not-found");
     });
 
-    test("next turn clears stale completed correlation but cancellation still settles active Tasks", () {
+    test("next turn clears prior active and completed Tasks before current cancellation", () {
       final target = buildMapper(activeSessionResolver: () => "root");
       target.beginTurn(sessionId: "root", messageId: "turn-1");
-      completeForeground(target: target, sessionId: "root", toolCallId: "completed");
-      target.beginTurn(sessionId: "root", messageId: "turn-2");
-      expect(target.map(validTaskRequest(toolCallId: "completed", sessionId: null)), isEmpty);
-
       taskUpdate(
         target: target,
         sessionId: "root",
-        toolCallId: "active",
+        toolCallId: "prior-active",
         status: "pending",
         starts: true,
         rawOutput: null,
       );
+      completeForeground(target: target, sessionId: "root", toolCallId: "prior-completed");
+
+      target.beginTurn(sessionId: "root", messageId: "turn-2");
+      expect(
+        target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled),
+        isEmpty,
+        reason: "prior active Task cannot be settled by the later turn",
+      );
+      expect(target.map(validTaskRequest(toolCallId: "prior-completed", sessionId: null)), isEmpty);
+      taskUpdate(
+        target: target,
+        sessionId: "root",
+        toolCallId: "prior-active",
+        status: "failed",
+        starts: false,
+        rawOutput: null,
+      );
+      expect(target.map(validTaskRequest(toolCallId: "prior-active", sessionId: null)), isEmpty);
+
+      final currentPart = taskUpdate(
+        target: target,
+        sessionId: "root",
+        toolCallId: "current-active",
+        status: "pending",
+        starts: true,
+        rawOutput: null,
+      ).whereType<BridgeSseMessagePartUpdated>().single.part;
       final cancelled = target.mapPromptResult(
         sessionId: "root",
         stopReason: AcpStopReason.cancelled,
       );
       final cancelledPart = (cancelled.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
+      expect(cancelledPart.id, currentPart.id);
       expect(cancelledPart.state.status, PluginToolStatus.cancelled);
       expect(
         target.mapPromptLifecycleFailure(sessionId: "root", failureMessage: "duplicate"),

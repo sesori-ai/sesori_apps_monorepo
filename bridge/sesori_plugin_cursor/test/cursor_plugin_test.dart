@@ -1,4 +1,6 @@
 import "dart:async";
+import "dart:convert";
+import "dart:io";
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
@@ -467,6 +469,129 @@ void main() {
       expect(idleIndex, greaterThan(taskErrorIndex));
       expect(sessionErrorIndex, greaterThan(idleIndex));
       expect(plugin.client, isNull);
+    });
+
+    test("prompt-write Task completion stays ordered before its acknowledged cursor/task request", () async {
+      const sessionId = "s-task-prompt-write";
+      const toolCallId = "task-prompt-write-1";
+      final promptWriteFake = _PromptWriteCursorProcess(
+        sessionId: sessionId,
+        toolCallId: toolCallId,
+      );
+      final promptWritePlugin = CursorPlugin(
+        launchDirectory: "/repo",
+        processFactory: (_) async => promptWriteFake,
+        sessionCleanupService: _FakeCursorSessionCleanupService(),
+      );
+      final events = <BridgeSseEvent>[];
+      final subscription = promptWritePlugin.events.listen(events.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await promptWritePlugin.dispose();
+        await promptWriteFake.close();
+      });
+
+      Future<Map<String, dynamic>> waitForPromptWriteFrame(String method) async {
+        for (var i = 0; i < 50; i++) {
+          final matches = promptWriteFake.written.where((frame) => frame["method"] == method);
+          if (matches.isNotEmpty) return matches.first;
+          await pump();
+        }
+        throw StateError("agent never wrote a '$method' frame");
+      }
+
+      final connecting = promptWritePlugin.ensureConnected();
+      final initialize = await waitForPromptWriteFrame("initialize");
+      promptWriteFake.emit({
+        "jsonrpc": "2.0",
+        "id": initialize["id"],
+        "result": {
+          "protocolVersion": 1,
+          "agentCapabilities": <String, dynamic>{},
+          "authMethods": <Object?>[],
+        },
+      });
+      expect(await connecting, isTrue);
+
+      final creating = promptWritePlugin.createSession(
+        directory: "/repo",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final sessionNew = await waitForPromptWriteFrame("session/new");
+      promptWriteFake.emit({
+        "jsonrpc": "2.0",
+        "id": sessionNew["id"],
+        "result": {"sessionId": sessionId},
+      });
+      final session = await creating;
+
+      await promptWritePlugin.sendPrompt(
+        sessionId: session.id,
+        promptId: "prompt-task-write",
+        parts: const [PluginPromptPart.text(text: "delegate")],
+        variant: null,
+        agent: null,
+        model: null,
+      );
+      final prompt = await waitForPromptWriteFrame("session/prompt");
+      for (
+        var i = 0;
+        i < 50 &&
+            (events
+                    .whereType<BridgeSseMessagePartUpdated>()
+                    .where((event) => event.part is PluginMessagePartSubtask)
+                    .isEmpty ||
+                promptWriteFake.written.every((frame) => frame["id"] != _PromptWriteCursorProcess.taskRequestId));
+        i++
+      ) {
+        await pump();
+      }
+
+      final userIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessageUpdated &&
+            event.info is PluginMessageUser &&
+            (event.info as PluginMessageUser).promptId == "prompt-task-write",
+      );
+      final genericIndex = events.indexWhere(
+        (event) =>
+            event is BridgeSseMessagePartUpdated &&
+            event.part is PluginMessagePartTool &&
+            event.part.id.contains(toolCallId) &&
+            (event.part as PluginMessagePartTool).state.status == PluginToolStatus.completed,
+      );
+      final tiles = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartSubtask>()
+          .where((part) => part.id.contains(toolCallId))
+          .toList(growable: false);
+      final tileIndex = events.indexWhere(
+        (event) => event is BridgeSseMessagePartUpdated && event.part is PluginMessagePartSubtask,
+      );
+      expect(userIndex, greaterThanOrEqualTo(0));
+      expect(genericIndex, greaterThan(userIndex), reason: "accepted user content precedes buffered Task output");
+      expect(tileIndex, greaterThan(genericIndex), reason: "terminal Task maps before cursor/task reinjection");
+      expect(tiles, hasLength(1));
+      expect(tiles.single.taskState?.status, PluginToolStatus.completed);
+      expect(
+        promptWriteFake.written.singleWhere(
+          (frame) => frame["id"] == _PromptWriteCursorProcess.taskRequestId,
+        )["result"],
+        isA<Map<Object?, Object?>>(),
+        reason: "cursor/task is acknowledged through production Cursor composition",
+      );
+
+      promptWriteFake.emit({
+        "jsonrpc": "2.0",
+        "id": prompt["id"],
+        "result": {"stopReason": "end_turn"},
+      });
     });
 
     test("tool-correlated extensions keep the earlier session with two turns in flight", () async {
@@ -1729,6 +1854,97 @@ void main() {
       );
     });
   });
+}
+
+final class _PromptWriteCursorProcess({required final String sessionId, required final String toolCallId})
+    implements AcpProcessHandle {
+  static const taskRequestId = 700;
+
+  final StreamController<List<int>> _stdout = StreamController<List<int>>();
+  final StreamController<List<int>> _stderr = StreamController<List<int>>();
+  final Completer<int> _exit = Completer<int>();
+  late final _PromptWriteCursorInput _stdin = _PromptWriteCursorInput(
+    onFrame: (frame) {
+      if (_emittedTaskFrames || frame["method"] != AcpMethods.sessionPrompt) return;
+      _emittedTaskFrames = true;
+      emit({
+        "jsonrpc": "2.0",
+        "method": AcpMethods.sessionUpdate,
+        "params": {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": toolCallId,
+            "title": "Task: inspect",
+            "status": "completed",
+            "rawInput": {"_toolName": "task"},
+            "rawOutput": {"isBackground": false},
+          },
+        },
+      });
+      emit({
+        "jsonrpc": "2.0",
+        "id": taskRequestId,
+        "method": "cursor/task",
+        "params": {
+          "toolCallId": toolCallId,
+          "description": "Inspect",
+          "prompt": "Inspect code",
+          "subagentType": {"custom": "unspecified"},
+        },
+      });
+    },
+  );
+  var _emittedTaskFrames = false;
+  var _stdoutTapped = false;
+  var _stderrTapped = false;
+
+  List<Map<String, dynamic>> get written => _stdin.frames;
+
+  @override
+  Stream<List<int>> get stdout {
+    _stdoutTapped = true;
+    return _stdout.stream;
+  }
+
+  @override
+  Stream<List<int>> get stderr {
+    _stderrTapped = true;
+    return _stderr.stream;
+  }
+
+  @override
+  IOSink get stdin => _stdin;
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  bool kill([ProcessSignal signal = ProcessSignal.sigterm]) {
+    if (!_exit.isCompleted) _exit.complete(-15);
+    return true;
+  }
+
+  void emit(Map<String, dynamic> message) {
+    _stdout.add(utf8.encode("${jsonEncode(message)}\n"));
+  }
+
+  Future<void> close() async {
+    if (!_stdoutTapped) _stdout.stream.listen(null);
+    if (!_stderrTapped) _stderr.stream.listen(null);
+    await _stdout.close();
+    await _stderr.close();
+  }
+}
+
+final class _PromptWriteCursorInput({required final void Function(Map<String, dynamic>) onFrame})
+    extends CapturingIOSink {
+  @override
+  void add(List<int> data) {
+    final priorLength = frames.length;
+    super.add(data);
+    frames.skip(priorLength).forEach(onFrame);
+  }
 }
 
 class _FakeCursorSessionCleanupService() implements CursorSessionCleanupService {

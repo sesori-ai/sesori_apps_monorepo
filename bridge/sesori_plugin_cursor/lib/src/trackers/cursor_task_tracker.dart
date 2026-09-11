@@ -6,6 +6,15 @@ enum CursorTaskPhase() {
   foregroundCompleted,
 }
 
+/// Closed result for Cursor-local Task tool-call ownership lookup.
+sealed class const CursorTaskSessionLookup();
+
+final class const CursorTaskSessionNotFound() extends CursorTaskSessionLookup;
+
+final class const CursorTaskSessionAmbiguous() extends CursorTaskSessionLookup;
+
+final class const CursorTaskSessionFound({required final String sessionId}) extends CursorTaskSessionLookup;
+
 /// Cursor-owned correlation for generic Task cards whose foreground/background
 /// mode becomes known only on an explicit terminal standard update.
 ///
@@ -50,16 +59,18 @@ final class CursorTaskTracker() {
       ..phase = CursorTaskPhase.foregroundCompleted;
   }
 
-  /// Resolves one exact tool-call identity. Duplicate ids across roots are
-  /// ambiguous and cannot provide session attribution.
-  String? sessionIdForToolCallId({required String toolCallId}) {
-    String? match;
-    for (final entry in _bySession.entries) {
-      if (!entry.value.containsKey(toolCallId)) continue;
-      if (match != null) return null;
-      match = entry.key;
-    }
-    return match;
+  /// Resolves one exact tool-call identity without collapsing duplicate ids
+  /// across roots into the not-found case.
+  CursorTaskSessionLookup lookupSessionForToolCallId({required String toolCallId}) {
+    final sessionIds = <String>{
+      for (final entry in _bySession.entries)
+        if (entry.value.containsKey(toolCallId)) entry.key,
+    };
+    return switch (sessionIds.toList(growable: false)) {
+      [final sessionId] => CursorTaskSessionFound(sessionId: sessionId),
+      [] => const CursorTaskSessionNotFound(),
+      _ => const CursorTaskSessionAmbiguous(),
+    };
   }
 
   void forgetInvocation({required String sessionId, required String toolCallId}) {
@@ -95,12 +106,9 @@ final class CursorTaskTracker() {
     return active;
   }
 
-  /// Clears stale unconsumed foreground completion at the next root turn.
+  /// Clears every prior-turn Task record at the next root turn.
   void beginTurn({required String sessionId}) {
-    final invocations = _bySession[sessionId];
-    if (invocations == null) return;
-    invocations.removeWhere((_, invocation) => invocation.phase == CursorTaskPhase.foregroundCompleted);
-    if (invocations.isEmpty) _bySession.remove(sessionId);
+    _bySession.remove(sessionId);
   }
 
   /// Forgets one deleted session and fences its late frames in this process.

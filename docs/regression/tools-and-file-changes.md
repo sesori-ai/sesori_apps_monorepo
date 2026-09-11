@@ -91,15 +91,20 @@ sub-agent parts, plus the signal that a tool changed files.
   identity and terminal policy, or an unlinked tile when no child was created;
   unrelated tools retain the generic ACP projection. Initialization requires v2.
 - Cursor's fire-and-forget extensions preserve exact tool-call attribution before
-  active-turn fallback. Standard Task pending/running cards remain generic and
+  active-turn fallback. Task lookup distinguishes one owner, no owner, and
+  duplicate-id ambiguity; an ambiguous request is dropped without fallback and
+  consumes neither root. Standard Task pending/running cards remain generic and
   mode-unknown. Cancellation/failure settles those generic cards before root
-  settlement. An explicit standard completion with `isBackground: false` retains
-  exact root/tool correlation for the following acknowledged `cursor/task`
-  request; complete nonblank prompt/description and known subagent presentation
-  replace that same part once with a completed childless subtask tile. Missing,
-  unknown, malformed, unmatched, background, failed, and cancelled facts retain
-  the generic card. Stale completion clears next turn, deletion, or process reset.
-  No child session, activity/busy effect, background lifecycle, or replay is claimed.
+  settlement. An explicit standard completion with `isBackground: false`,
+  including an initial terminal `tool_call`, retains exact root/tool correlation
+  for the following acknowledged `cursor/task` request; complete nonblank
+  prompt/description and known subagent presentation replace that same part once
+  with a completed childless subtask tile. Missing, unknown, malformed, unmatched,
+  background, failed, and cancelled facts retain the generic card. Every
+  prior-turn Task record clears at the next turn; deletion and process reset also
+  clear correlation. Prompt-write ordering keeps the accepted user message and
+  buffered generic terminal update ahead of the routed request. No child session,
+  activity/busy effect, background lifecycle, or replay is claimed.
 - Antigravity normalizes its `formatted_output`, `exit_code`, `command_line`, and `working_dir` aliases before the
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
@@ -163,11 +168,13 @@ guarantee.
 - A part carries fields owned by another variant, or a released known-type
   payload fails to decode because an older bridge omitted variant data, or a
   current peer serializes null variant data.
-- A Cursor extension cross-binds sessions; a pending/running Task becomes a
-  child/tile; root/activity state changes; a non-foreground terminal becomes a
-  tile; completed correlation is reused or survives the next turn; identity
-  changes during replacement; `cursor/task` is not acknowledged; or prompt
-  cancellation/failure leaves a generic Task running.
+- A Cursor extension cross-binds sessions or falls back across ambiguous duplicate
+  tool ids; a pending/running Task becomes a child/tile; root/activity state
+  changes; a non-foreground terminal becomes a tile; prior-turn active or
+  completed correlation survives the next turn; identity changes during
+  replacement; `cursor/task` is not acknowledged or overtakes its accepted user
+  message/generic terminal card; or prompt cancellation/failure leaves a current
+  generic Task running.
 - Antigravity changes ACP status from an exit code, loses an exit note to truncation, leaks an image path as a fetched
   attachment, retains unbounded/redundant raw fields, drops differing text, or
   produces different live/replay tool state.
