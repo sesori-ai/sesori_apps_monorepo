@@ -90,5 +90,5 @@ loads, keep/confirm, partial failure, frames before responses, later-work surviv
 and legacy reload fallback. Run relevant bridge/client and impacted mobile title-hydration/split-pane tests,
 not the old DI fix.
 Feature E2E remains separate from package/CI checks. The requested agent-run phone stop/input checks passed;
-`deepseek-phone-qa.md` records the handoff to Codex and outstanding desktop/UX coverage. Do not retire the overall
-plan while its required final matrix remains incomplete.
+`deepseek-phone-qa.md` records their bounded final evidence and outstanding desktop/UX coverage. Do not retire the
+overall plan while the blocked Grok phone gate and Cursor work remain.

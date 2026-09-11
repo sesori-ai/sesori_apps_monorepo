@@ -351,6 +351,10 @@ rules where supported.
   diagnostic logging is in place and any refresh correction is unfinished.
 - Antigravity's native personal-authenticated history, cold bridge restart, retained-history import/tombstone behavior,
   and cross-target pairs remain unverified.
+- The final DeepSeek phone gate did not cold-reload a root or child, open a
+  read-only child transcript, restart the bridge/plugin, or test reconnect
+  convergence. Existing package tests remain the evidence for replay identity
+  and ordering; no client E2E history pass is claimed from scoped-stop QA.
 - Grok permission denial persistence remains unverified because the unchanged
   1.0.5 runtime auto-resolved probe interactions without exposing a permission
   request. Replay therefore has no permission-outcome model; a denied generic

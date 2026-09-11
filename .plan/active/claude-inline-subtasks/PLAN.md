@@ -7,6 +7,7 @@
   `TRACKER.md`); reactivated 2026-09-02 for the harness follow-ups in
   `HARNESS_FOLLOWUPS.md`; remains active until their required coverage gates
   are reconciled or explicitly accepted, including the blocked Grok phone gate
+  and the unstarted Cursor work
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Implementation base:** `main` at `ba725ec84`
@@ -36,9 +37,12 @@
   permission handling remains unexecuted and no question support is claimed.
   Source phone build and relay setup were healthy, but WebDriverAgent startup
   timed out before any visible case; all phone coverage remains blocked and
-  unexecuted. Historical merged PR titles remain unchanged. Step 7/7 records
-  this partial matrix without retiring the plan, which remains active for the
-  Grok phone gate, DeepSeek final documentation, and Cursor follow-ups.
+  unexecuted. Historical merged PR titles remain unchanged. Grok coverage
+  documentation merged as PR #1430 at `a28e860557`; its blocked phone gate
+  remains open rather than becoming a fabricated pass. DeepSeek's final
+  documentation reconciles the passed phone stop/input scope and the
+  user-deferred desktop matrix without changing adapter 0.1.4 evidence. The
+  plan remains active for the Grok phone gate and Cursor follow-ups.
 
 ## Goal
 

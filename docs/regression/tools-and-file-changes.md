@@ -175,6 +175,10 @@ unverified and carries no replay guarantee.
 - Available tools, attachments, and sub-agents are backend-specific; a plugin
   that cannot produce a case is not a failure but is also not coverage.
 - Rendering needs the client; the phone is the only transcript surface.
+- The final DeepSeek phone gate exercised scoped stop and ordered pending input,
+  not cold tile/history reload, tool-card parity, or read-only child navigation.
+  Those presentation cases remain automated or unexecuted at the client boundary;
+  no desktop transcript case was run.
 - ACP permission decisions and pending requests are process-local interaction
   state. Cold replay restores the resulting tool lifecycle and diff, not the
   earlier decision or its linkage event.

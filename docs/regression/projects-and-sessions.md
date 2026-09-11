@@ -462,6 +462,10 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - Live client end-to-end catalog coverage remains phone-only. Desktop session
   creation and diffs have automated shared-view and typed-route coverage but
   still need a live desktop release exercise.
+- DeepSeek phone scoped-stop QA addressed an existing child independently and
+  observed its running grandchild for stop scope, but did not exercise catalog
+  import, parent/child list presentation, cold reload, or read-only child
+  navigation. Those cases are not client E2E coverage from this gate.
 - Derived lists are bounded by backend enumeration; a directory-scoped backend
   only rediscovers sessions in directories the bridge already knows.
 - Only plugins registered in the build under test count.

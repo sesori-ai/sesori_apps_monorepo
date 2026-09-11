@@ -110,6 +110,10 @@ provider because current payload content leaves the encrypted channel.
   unobserved delivery as pass or claim a delivery rate.
 - Grok Step 7 phone automation was blocked before any visible UI interaction;
   no Grok notification or push behavior was exercised or passed.
+- DeepSeek final phone QA exercised scoped stop and pending-input sheets only;
+  it did not exercise foreground, background, or terminated-app notifications,
+  completion delivery, suppression, collapse, or open routing. No DeepSeek push
+  pass is claimed.
 - Current provider payloads can include question or permission text, a session
   title, an assistant-response prefix, an update version, and a project identity
   that may be a local path. The ten-word completion limit has no character bound

@@ -74,7 +74,12 @@ idle suspension, the management snapshot, and lifecycle commands.
   validates standard ACP v1 plus DeepSeek extension protocol v2, owns one stdio
   child through the host process seam, degrades on an unexpected exit, lazily
   reconnects on demand, and shuts down idempotently without treating its own
-  termination as a crash.
+  termination as a crash. Scoped-stop phone QA on unchanged published adapter
+  0.1.4 verified that the bridge and native runtime survived atomic cancellation
+  of an independently resumed child and its grandchild after #1379, and accepted
+  a successful follow-up turn. That evidence does not requalify current managed
+  target 0.1.5 or cover setup selection, crash reconnect, idle suspension/reap,
+  bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,
   and correlated sub-agent lifecycle on that same connection. Normal `DSH_HOME` remains the source
@@ -379,6 +384,9 @@ owned-process exit; and restart.
   Back/X header controls, or a missing ID displaying another harness.
 - A setup-blocked switch falsely shown off, unknown preference represented as disabled,
   degraded grouped as healthy, or controls overflowing at phone width with larger text.
+- DeepSeek scoped STOP crashes the bridge or native runtime, prevents a later
+  turn on the retained runtime, or mistakes surviving root-owned background
+  shell jobs for failed descendant-agent cancellation.
 
 - An isolated child receiving ambient variables, an inert JSON child selection creating
   directories, repeated child scopes losing concurrent updates, consumed ACP output appearing
