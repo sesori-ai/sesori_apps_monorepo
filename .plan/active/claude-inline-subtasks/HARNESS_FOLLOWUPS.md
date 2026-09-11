@@ -447,9 +447,9 @@ confirmation, no child session or partial stop) and gets that subset.
 |---|---|---|
 | ⚙️ | `grok: parse sub-agent lifecycle notifications` | Historical original title unchanged (now step 1/7); DTOs, `GrokEventMapper.mapExtension`, `AcpChildSessionTracker`, exact metadata-based generic spawn suppression, and lifecycle cleanup |
 | ⚙️ | `acp: child sessions keep the root busy` | Historical original title unchanged (now step 2/7); typed tracker-change stream and owned subscription teardown, persisted children, and Layer-3 catalog/live merging |
-| 🚧 | `grok: child session history [step 3/6]` | full root/child replay production, generated DTOs, essential ACP and Grok integration/regression coverage, and supported-behavior docs |
-| 🌿 | `grok: cover child session history [step 4/6]` | PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
-| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged; ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
+| 🚧 | `grok: child session history [step 3/6]` | Historical title unchanged (now step 3/7); full root/child replay production, generated DTOs, essential ACP and Grok integration/regression coverage, and supported-behavior docs |
+| 🌿 | `grok: cover child session history [step 4/6]` | Historical title unchanged (now step 4/7); PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
+| ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged (now step 5/7); ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
 | 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | Current repair: required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
 | 🌱 | `docs: record Grok Build sub-agent coverage [step 7/7]` | Unexecuted: corrected actual-plugin rerun, phone, and any surfaced live pending-permission coverage plus final reconciliation |
 
