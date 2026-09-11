@@ -299,6 +299,13 @@ normal cleanup is session/process teardown. This state is not included in
 status, deferred idle, or `_syncWorkState`; it therefore cannot pin the root
 busy or block process policy forever. A later pending interaction remains busy
 through the existing approval registry only for that interaction's lifetime.
+The ACP process normally remains resident after `end_turn`, but once no turn or
+input is pending, configured safe idle suspension may eventually tear it down
+while native background work is still active. That limitation is intentional:
+without a native terminal fact, treating the observation as busy would also
+block safe suspension forever after silently completed work. Cursor background
+lifecycle and full-stop guarantees therefore remain unsupported; force stop or
+process teardown may terminate that work.
 
 `knownForegroundActiveCount` is exact: it counts only standard Task
 invocations observed pending/in-progress and not yet terminal/prompt-cancelled.
