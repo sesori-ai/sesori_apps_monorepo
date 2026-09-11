@@ -70,11 +70,10 @@ private struct ActivityIndicatorCreationParams {
   }
 }
 
-/// Theme colours, initial state, and phase supplied by the Flutter decoration.
+/// Theme colours and initial state supplied by the Flutter decoration.
 private struct AiLoaderCreationParams {
   let solid: CGColor
   let outline: CGColor
-  let phase: Double
   let loading: Bool
 
   init?(from args: Any?) {
@@ -82,12 +81,10 @@ private struct AiLoaderCreationParams {
       let dictionary = args as? [String: Any],
       let solid = dictionary["solid"] as? NSNumber,
       let outline = dictionary["outline"] as? NSNumber,
-      let phase = dictionary["phase"] as? NSNumber,
       let loading = dictionary["loading"] as? Bool
     else { return nil }
     self.solid = ColorComponents(fromARGB: solid.int64Value).cgColor
     self.outline = ColorComponents(fromARGB: outline.int64Value).cgColor
-    self.phase = phase.doubleValue
     self.loading = loading
   }
 }
@@ -98,6 +95,7 @@ private enum AiLoaderSparkle {
   static let viewBox: CGFloat = 20
   static let period: CFTimeInterval = 2
   static let completionDuration: CFTimeInterval = 0.7
+  static let resumeDuration: CFTimeInterval = 0.15
   static let clear = ColorComponents(fromARGB: 0x00b2d1ff).cgColor
   static let completionHighlight = ColorComponents(fromARGB: 0xffb2d1ff).cgColor
   static let colourTiming = CAMediaTimingFunction(controlPoints: 0.5, 0, 0.5, 1)
@@ -111,24 +109,32 @@ private enum AiLoaderSparkle {
     layer.lineCap = .round
     layer.fillColor = params.loading ? clear : params.solid
     layer.strokeColor = params.loading ? params.outline : params.solid
-    if params.loading {
-      layer.setValue(params.phase * .pi * 2, forKeyPath: "transform.rotation.z")
-    }
     return layer
   }
 
-  /// Capture the displayed angle and colours before replacing animations, so
-  /// finishing and a rapid restart never jump to a different visual frame.
-  static func animate(layer: CAShapeLayer, params: AiLoaderCreationParams, loading: Bool) {
+  /// Capture displayed geometry and colours before replacing animations, so
+  /// finishing and rapid restart never jump to a different visual frame.
+  static func animate(
+    layer: CAShapeLayer,
+    params: AiLoaderCreationParams,
+    loading: Bool,
+    loadingTransitionCompleted: (() -> Void)? = nil
+  ) {
     let displayed = layer.presentation() ?? layer
     let angle = (displayed.value(forKeyPath: "transform.rotation.z") as? NSNumber)?.doubleValue ?? 0
     let fill = displayed.fillColor ?? clear
     let stroke = displayed.strokeColor ?? params.outline
     let quarterTurn = Double.pi / 2
-    let target = loading ? angle : ceil((angle + 0.593) / quarterTurn) * quarterTurn
+    let synchronizedTarget = synchronizedAngle(at: Date(timeIntervalSinceNow: resumeDuration))
+    let target = loading
+      ? synchronizedTarget + round((angle - synchronizedTarget) / (.pi * 2)) * .pi * 2
+      : ceil((angle + 0.593) / quarterTurn) * quarterTurn
 
     CATransaction.begin()
     CATransaction.setDisableActions(true)
+    if loading {
+      CATransaction.setCompletionBlock(loadingTransitionCompleted)
+    }
     layer.removeAllAnimations()
     layer.setValue(target, forKeyPath: "transform.rotation.z")
     layer.fillColor = loading ? clear : params.solid
@@ -136,30 +142,56 @@ private enum AiLoaderSparkle {
 
     let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
     rotation.fromValue = angle
-    rotation.toValue = loading ? angle + .pi * 2 : target
-    rotation.duration = loading ? period : completionDuration
+    rotation.toValue = target
+    rotation.duration = loading ? resumeDuration : completionDuration
     rotation.timingFunction = loading
       ? CAMediaTimingFunction(name: .linear)
       : CAMediaTimingFunction(controlPoints: 0.45, 1.45, 0.833, 1.368)
-    if loading {
-      rotation.repeatCount = .infinity
-    }
     layer.add(rotation, forKey: loading ? "loading" : "completion")
 
     let fillAnimation = CAKeyframeAnimation(keyPath: "fillColor")
     fillAnimation.values = loading ? [fill, clear] : [fill, completionHighlight, params.solid]
     fillAnimation.keyTimes = loading ? [0, 1] : [0, 0.5, 1]
     fillAnimation.timingFunctions = loading ? [colourTiming] : [colourTiming, colourTiming]
-    fillAnimation.duration = loading ? 0.15 : completionDuration
+    fillAnimation.duration = loading ? resumeDuration : completionDuration
     layer.add(fillAnimation, forKey: "fill")
 
     let strokeAnimation = CABasicAnimation(keyPath: "strokeColor")
     strokeAnimation.fromValue = stroke
     strokeAnimation.toValue = loading ? params.outline : params.solid
-    strokeAnimation.duration = loading ? 0.15 : completionDuration
+    strokeAnimation.duration = loading ? resumeDuration : completionDuration
     strokeAnimation.timingFunction = colourTiming
     layer.add(strokeAnimation, forKey: "stroke")
     CATransaction.commit()
+  }
+
+  /// Start an unthrottled Core Animation loop at current Unix-clock phase.
+  /// Sampling here, rather than from Flutter creation arguments, also aligns
+  /// views mounted later and views resuming after suspension.
+  static func startSynchronizedLoading(layer: CAShapeLayer, params: AiLoaderCreationParams) {
+    let localNow = layer.convertTime(CACurrentMediaTime(), from: nil)
+    let epochOffset = Date().timeIntervalSince1970.truncatingRemainder(dividingBy: period)
+
+    CATransaction.begin()
+    CATransaction.setDisableActions(true)
+    layer.removeAllAnimations()
+    layer.setValue(synchronizedAngle(at: Date()), forKeyPath: "transform.rotation.z")
+    layer.fillColor = clear
+    layer.strokeColor = params.outline
+
+    let rotation = CABasicAnimation(keyPath: "transform.rotation.z")
+    rotation.fromValue = 0
+    rotation.toValue = Double.pi * 2
+    rotation.duration = period
+    rotation.repeatCount = .infinity
+    rotation.timingFunction = CAMediaTimingFunction(name: .linear)
+    rotation.beginTime = localNow - epochOffset
+    layer.add(rotation, forKey: "loading")
+    CATransaction.commit()
+  }
+
+  private static func synchronizedAngle(at date: Date) -> Double {
+    date.timeIntervalSince1970.truncatingRemainder(dividingBy: period) / period * .pi * 2
   }
 
   static func showStatic(layer: CAShapeLayer, params: AiLoaderCreationParams, loading: Bool) {
@@ -464,7 +496,11 @@ private enum AiLoaderSparkle {
       guard self.loading != loading else { return }
       self.loading = loading
       if canAnimate {
-        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: loading)
+        if loading {
+          startLoading()
+        } else {
+          AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: false)
+        }
       } else {
         AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
       }
@@ -474,7 +510,14 @@ private enum AiLoaderSparkle {
       if !canAnimate {
         AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
       } else if loading && sparkleLayer.animation(forKey: "loading") == nil {
-        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: true)
+        AiLoaderSparkle.startSynchronizedLoading(layer: sparkleLayer, params: params)
+      }
+    }
+
+    private func startLoading() {
+      AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: true) { [weak self] in
+        guard let self, self.loading, self.canAnimate else { return }
+        AiLoaderSparkle.startSynchronizedLoading(layer: self.sparkleLayer, params: self.params)
       }
     }
   }
@@ -715,7 +758,11 @@ private enum AiLoaderSparkle {
       guard self.loading != loading else { return }
       self.loading = loading
       if canAnimate {
-        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: loading)
+        if loading {
+          startLoading()
+        } else {
+          AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: false)
+        }
       } else {
         AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
       }
@@ -725,7 +772,14 @@ private enum AiLoaderSparkle {
       if !canAnimate {
         AiLoaderSparkle.showStatic(layer: sparkleLayer, params: params, loading: loading)
       } else if loading && sparkleLayer.animation(forKey: "loading") == nil {
-        AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: true)
+        AiLoaderSparkle.startSynchronizedLoading(layer: sparkleLayer, params: params)
+      }
+    }
+
+    private func startLoading() {
+      AiLoaderSparkle.animate(layer: sparkleLayer, params: params, loading: true) { [weak self] in
+        guard let self, self.loading, self.canAnimate else { return }
+        AiLoaderSparkle.startSynchronizedLoading(layer: self.sparkleLayer, params: self.params)
       }
     }
   }

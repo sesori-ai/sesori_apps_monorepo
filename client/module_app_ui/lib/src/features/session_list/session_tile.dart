@@ -314,7 +314,7 @@ class const SessionTile({
     if (isActive) {
       return (
         label: context.loc.sessionListRunning,
-        sparkle: PregoAiLoader(size: _stateIconSize, phase: PregoAiLoader.phaseFor(session.id)),
+        sparkle: const PregoAiLoader(size: _stateIconSize),
       );
     }
     if (unseen) {

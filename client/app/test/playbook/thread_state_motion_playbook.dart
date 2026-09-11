@@ -125,7 +125,7 @@ class _ThreadStateMotionPlaybookState() extends State<ThreadStateMotionPlaybook>
             onChanged: (value) => setState(() => _showThreads = value),
           ),
           Text(
-            "Scroll the threads beneath the glass header.",
+            "Scroll the threads beneath the glass header; working sparkles stay synchronized.",
             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
           ),
           const SizedBox(height: 12),
