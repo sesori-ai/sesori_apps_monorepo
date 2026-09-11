@@ -154,9 +154,9 @@ ACP changes stay backend-neutral:
   child fanout, or keeping a root/session UI busy. The tracker exposes the
   backend-neutral aggregate `requiresProcessResidency` separately for ACP
   process work-state derivation.
-- New private `_AcpTileTask({required rootSessionId, required toolCallId,
-  required genericPart, required phase})` lives in that tracker file. Closed
-  `AcpTileTaskPhase` values are `activeForeground` and
+- New private `_AcpTileTask({required genericPart, required phase})` lives in
+  that tracker file; the enclosing nested maps own the root-session and
+  tool-call keys. Closed `AcpTileTaskPhase` values are `activeInvocation` and
   `foregroundInvocationCompleted`; neither phase has a child-session field.
   Backend-neutral tracker methods record a generic `PluginMessagePartTool`,
   mark foreground completion, convert a launch into the root-level unresolved
@@ -257,7 +257,10 @@ Cursor boundary and repository changes:
   `const CursorTaskMapper()` and injects that same instance into
   `CursorEventMapper` and `CursorPlugin._`; `CursorPlugin._` adds required
   `CursorTaskMapper taskMapper` and retains it only to compose replay.
-  Its `createSessionReplayCollector({required String sessionId, required
+  `CursorPlugin.scopedStopCapability` explicitly returns
+  `AcpScopedStopCapability.rootSessionCancel`, making the dedicated neutral ACP
+  branch reachable in Step 3. Its `createSessionReplayCollector({required
+  String sessionId, required
   AcpReplayCollectorFactory collectorFactory})` override first calls
   `collectorFactory(toolPartSuppression: null)` for one fully configured
   standard collector, then injects that collector and the stored mapper into
@@ -354,7 +357,7 @@ The `rootSessionCancel` branch targets only the method's named `sessionId`.
 Its first operation checks the unresolved-background observation. When present,
 all three policies throw the same side-effect-free
 `PluginOperationException` for operation `abortSession`, HTTP status 409, and
-message `Cursor cannot safely stop while background Task completion is unknown`.
+backend-neutral message `Cannot stop while resident background work has unknown completion`.
 This uses the existing plugin-operation → router HTTP failure path, introduces no
 new shared response, and runs before queued/writing work, pending interaction,
 root cancellation, settlement capture, descendant collection, or fanout.

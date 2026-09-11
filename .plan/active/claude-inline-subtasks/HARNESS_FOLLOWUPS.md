@@ -77,11 +77,11 @@ stop.
      a harness whose spawn event carries none (Grok, Codex) emits the child
      session and its busy status at spawn and renders the tile only once the
      child's own first user message has streamed under the child id; nothing
-     is fabricated. The spawn input is sealed: a session-backed child carries
-     a required child session id and emits the child session and status,
-     while a tile-only task (Cursor) is keyed by its tool call id and emits
-     only the tile, with no nullable child id on the session-backed variant;
-     the Cursor PR introduces the second variant. Lifecycle ownership is
+     is fabricated. The session-backed `AcpChildSpawn` input remains unchanged
+     and always carries a required child session id. Cursor tile-only tasks use
+     separate backend-neutral tracker methods and private state keyed by root
+     plus tool-call id; they never enter the child spawn API, emit child
+     session/status events, or add a nullable child id. Lifecycle ownership is
      keyed by the root: descendants at any depth roll up into the root's busy
      set and cancel targets, while displayed parentage stays direct. On every
      change the
@@ -789,7 +789,8 @@ The architecture corrections are summarized here:
   terminal facts alone produce a completed `PluginMessagePart.subtask` with
   `childSessionID: null`; pending/in-progress/cancelled/background/malformed/
   incomplete facts retain a generic Task card.
-- `AcpScopedStopCapability.rootSessionCancel` gets an explicit
+- `CursorPlugin.scopedStopCapability` explicitly returns
+  `AcpScopedStopCapability.rootSessionCancel`, which reaches its dedicated
   `AcpPlugin.abortSession` branch before descendant logic. Its first action
   checks unresolved background: `confirm`, `keep`, and `stop` all throw the
   same `PluginOperationException` with HTTP 409 before root/input preparation,

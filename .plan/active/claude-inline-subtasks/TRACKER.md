@@ -236,9 +236,10 @@ post-merge E2E gates are unchanged.
 
 ### Cursor architecture-plan correction (2026-09-11)
 
-- [x] Added explicit neutral `rootSessionCancel` branch: named root only, one
-  root cancel, existing prompt settlement, no child id/fanout; DeepSeek/Grok
-  behavior unchanged.
+- [x] Added explicit neutral `rootSessionCancel` branch and the
+  `CursorPlugin.scopedStopCapability` override that selects it: named root only,
+  one root cancel, existing prompt settlement, no child id/fanout;
+  DeepSeek/Grok behavior unchanged.
 - [x] Named every new source file, constructor, required named field, and
   `CursorPlugin.factory` composition owner. New replay role is
   `CursorTaskReplayTracker` under the Cursor repository tracker layer; it
