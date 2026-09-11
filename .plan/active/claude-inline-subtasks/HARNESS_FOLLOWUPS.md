@@ -47,8 +47,10 @@ DeepSeek, work in Sesori's own adapter repository.
 
 Harnesses verified as not supportable over the seam Sesori drives (Copilot,
 Hermes, Pi, Oh My Pi) are out of scope; their verdicts and versions are
-recorded in the capability matrix. Cursor supports a subset (tile and stop
-confirmation, no child session or partial stop) and gets that subset.
+recorded in the capability matrix. Cursor's planned subset is completed
+foreground tiles plus exact foreground-only confirmation/root stop when no
+background observation is unresolved. It has no child session or full scoped
+stop.
 
 ## Shared Rules
 
@@ -124,9 +126,11 @@ confirmation, no child session or partial stop) and gets that subset.
      `interruptActiveWork` uses `stop` and waits for authoritative lifecycle.
   4. Closed `AcpScopedStopCapability` plus a typed `AcpPlugin.cancelChild`
      hook matches current composition. `unsupported` is the standard ACP default,
-     `perChildSnapshot` selects exact-child fanout for Grok, and
-     `completeNativeAtomic` declares DeepSeek's complete native subtree authority.
-     Other ACP harnesses keep existing behavior until their transport seam lands. A child with a
+     `rootSessionCancel` is Cursor's foreground-only named-root authority with
+     an unresolved-background failure guard, `perChildSnapshot` selects exact-
+     child fanout for Grok, and `completeNativeAtomic` declares DeepSeek's
+     complete native subtree authority. Other ACP harnesses keep existing
+     behavior until their transport seam lands. A child with a
      bridge-owned standard prompt uses `session/cancel`, not its former ancestry.
   5. A narrow backend-neutral replay replacement hook on
      `AcpReplayCollector`, which consumes `session/update` frames into
@@ -156,12 +160,13 @@ confirmation, no child session or partial stop) and gets that subset.
   (bounded facts only, no prompt or transcript text). Open questions below
   name the probe that resolves them; design branches that depend on a probe
   state both outcomes.
-- Each chain ends by updating `docs/HARNESS_CAPABILITIES.md` (footnote and
-  cells) and the regression documents `tools-and-file-changes.md`,
-  `session-turns.md`, `projects-and-sessions.md`,
-  `plugin-setup-and-lifecycle.md` (work state, safe stop, exit cleanup, and
-  idle-reap protection are harness-specific there), and where relevant
-  `session-history-and-recovery.md` and `notifications.md`.
+- Each behavior slice updates its relevant capability/regression documents:
+  `tools-and-file-changes.md`, `session-turns.md`,
+  `projects-and-sessions.md`, `plugin-setup-and-lifecycle.md` (work state, safe
+  stop, exit cleanup, and idle-reap protection are harness-specific there), and
+  where relevant `session-history-and-recovery.md` and `notifications.md`.
+  Final coverage reconciles executed evidence; it does not defer first behavior
+  documentation.
 - `docs/HARNESS_CAPABILITIES.md` footnotes are corrected as soon as a probe
   verifies or lifts a limitation, not deferred to the coverage PR; cells
   change when the capability ships.
@@ -763,35 +768,44 @@ The architecture corrections are summarized here:
 
 - Existing `AcpChildSessionTracker` owns tile-only foreground correlation and a
   separate root-level unresolved-background observation. Session-backed child
-  state remains the only child-id/fanout/busy source. Known active foreground
-  count is exact; unresolved background is a boolean fact, never a running
-  count. It survives turn boundaries and clears only on authoritative terminal
-  input or session/process teardown, while never keeping the root busy.
-- Existing `CursorEventMapper` is the common lifecycle entrypoint for standard
-  Task updates, re-injected `cursor/task`, and neutral prompt results routed by
-  `AcpPlugin._runTurn` before turn settlement. Existing tracker owns state;
-  injected pure `CursorTaskMapper` owns generic-cancel/completed-tile
-  presentation. `abortSession` mutates no card or tile.
+  state remains the only child-id/fanout/root-busy source. Known active
+  foreground count is exact; unresolved background is a boolean fact, never a
+  running count. It survives turn boundaries and clears only on authoritative
+  terminal input or session/process teardown. Its backend-neutral
+  `requiresProcessResidency` property contributes only to ACP
+  `PluginWorkState.busy`, blocking safe suspension without changing root status,
+  deferred idle, active-root summaries, or sub-agent counts.
+- Existing `CursorEventMapper` is the common observation entrypoint for
+  standard Task updates, re-injected `cursor/task`, and neutral prompt results
+  routed by `AcpPlugin._runTurn` before turn settlement. Existing tracker owns
+  state; injected pure `CursorTaskMapper` keeps pending/in-progress generic,
+  replaces only complete correlated terminal facts with a completed childless
+  tile, and settles prompt cancellation as a generic cancelled Task card.
+  `abortSession` mutates no card or tile.
 - Cursor Freezed DTOs live at
   `bridge/sesori_plugin_cursor/lib/src/api/models/cursor_task_dto.dart`.
   Backend vocabulary (`cursor/task`, `_toolName`, `isBackground`, `agentId`,
-  object-shaped `subagentType`) never enters ACP. Complete foreground facts
-  alone produce a `PluginMessagePart.subtask` with `childSessionID: null`;
-  background/malformed/incomplete facts retain the generic card.
+  object-shaped `subagentType`) never enters ACP. Complete correlated foreground
+  terminal facts alone produce a completed `PluginMessagePart.subtask` with
+  `childSessionID: null`; pending/in-progress/cancelled/background/malformed/
+  incomplete facts retain a generic Task card.
 - `AcpScopedStopCapability.rootSessionCancel` gets an explicit
-  `AcpPlugin.abortSession` branch before descendant logic. It prepares only the
-  named root, sends one root `session/cancel`, waits an existing in-flight
-  prompt settlement, never uses child ids/fanout, and always reports
+  `AcpPlugin.abortSession` branch before descendant logic. Its first action
+  checks unresolved background: `confirm`, `keep`, and `stop` all throw the
+  same `PluginOperationException` with HTTP 409 before root/input preparation,
+  cancellation, or fanout. No new shared wire or successful retained-work ACK
+  is added. Without that observation, the branch prepares only the named root,
+  sends one root `session/cancel`, waits an existing in-flight prompt
+  settlement, never uses child ids/fanout, and always reports
   `subAgentsHandled: false`. DeepSeek atomic and Grok snapshot branches remain
   unchanged.
-- Known foreground `confirm`/`keep` reject side-effect-free with exact count and
-  `mainAgentOnlySupported: false`. With unresolved background and no known
-  foreground, zero-count `confirm` follows current cancel semantics and reports
-  `workKept: true`; root-idle `keep` is a no-op acceptance retaining background
-  and pending input, while root-active `keep` fails side-effect-free through the
-  explicit unsupported-operation error. A later pending interaction is
-  cancelled by `confirm`/`stop`, but the ACK remains conservatively
-  `workKept: true, subAgentsHandled: false`.
+- Known foreground-only `confirm`/`keep` reject side-effect-free with exact
+  count and `mainAgentOnlySupported: false`; `stop` performs root-only
+  cancellation. This is required because bridge-internal `SessionAborted`
+  carries `workKept`, but `AbortSessionHandler` serializes only
+  `subAgentsHandled`, and `SessionDetailCubit.abort` treats every 2xx response as
+  aborted. No accepted Cursor path relies on `workKept` to qualify surviving
+  background work.
 - The only renamed new replay class is `CursorTaskReplayTracker` in
   `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/`. Cursor plugin
   composition injects one already-configured `AcpReplayCollector` and the same
@@ -800,26 +814,33 @@ The architecture corrections are summarized here:
   concrete `AcpReplayCollector` lets the tracker apply its local index without
   changing existing DeepSeek/Grok constructors or behavior. Replay state is
   local and has no I/O/live tracker access.
+- Native root `end_turn` remains an honest root-turn idle transition, not a
+  background completion signal. It produces no background completion
+  notification or tile. If native background work silently finishes, process
+  residency may remain blocked until session deletion/process reset; this
+  accepted safety tradeoff avoids silently killing possibly-running work.
+  Forced process stop and explicit session cleanup remain possible.
 - No new locks, timers, controllers, pollers, recovery hooks, shared wire,
-  client, bridge-app, database, child catalog, or fake history. Background
-  terminal lifecycle/full stop/history and Cursor child sessions remain
-  unsupported with the generic card.
+  client, bridge-app contract, database, child catalog, or fake history.
+  Background terminal lifecycle/full stop/history and Cursor child sessions
+  remain unsupported with the generic card.
 
 ### PRs
 
 The native probe and corrected plan are the docs-only first slice. Feature
-implementation has not landed: live tiles await publication after this plan,
-then scoped stop, replay, and docs/actual-plugin proof remain separate gates.
-The approximately 1,642-line live slice is coherent and accepted above the
-1,500-line soft target rather than dropping generated code, tests, or evidence.
+implementation has not landed. Existing code refs `c5c0def` and `ab03528`
+remain preserved but are not publication candidates; regenerate successors
+from this revised plan without mutating or deleting those refs. Each behavior
+slice lands its own regression documentation, while final coverage records
+actual-plugin evidence and reconciles claims.
 
 | Step | Emoji | Description | Target and scope |
 |---|---|---|---|
-| 1/5 | 🌱 | `docs: record Cursor native probe and corrected plan` | Docs only: privacy-safe native evidence, corrected ownership and stop policy, exact five-step delivery; no feature implementation |
-| 2/5 | 🚧 | `cursor: live foreground Task tiles` | Approximately 1,642 lines: DTO/codegen, active/completed tile-only correlation, request ACK/re-injection, exact replacement, prompt-cancel settlement, tests/docs |
-| 3/5 | ⚙️ | `cursor: scoped Task stop policy` | Exact foreground count, unresolved-background state, root-only cancel authority and policy matrix, tests/docs |
-| 4/5 | ⚙️ | `cursor: replay foreground Task tiles` | Approximately 650–950 lines: `CursorTaskReplayTracker`, configured collector/shared mapper injection, stable foreground projection and generic/absent fallbacks, tests |
-| 5/5 | 🌱 | `docs: record Cursor sub-agent coverage` | Approximately 100–220 lines: capability matrix, four affected regression docs, retained private actual-plugin evidence after owned cleanup, explicit unsupported/unexecuted matrix; Grok phone gate stays open |
+| 1/5 | 🌱 | `docs: record Cursor native probe and corrected plan` | Docs only: privacy-safe native evidence, corrected ownership and stop policy, exact five-step delivery; unchecked until merge; no feature implementation |
+| 2/5 | 🚧 | `cursor: completed foreground Task tiles` | Approximately 1,550–1,700 lines: DTO/codegen, generic pending/in-progress/cancelled presentation, completed terminal correlation/replacement, focused tests, tools/session-turn behavior docs |
+| 3/5 | ⚙️ | `cursor: foreground-only scoped Task stop` | Approximately 500–700 lines: exact foreground count, unresolved-background process residency and all-policy failure, foreground-only root cancel, focused tests, stop/lifecycle/capability docs |
+| 4/5 | ⚙️ | `cursor: replay completed foreground Task tiles` | Approximately 650–1,000 lines: `CursorTaskReplayTracker`, configured collector/shared mapper injection, stable completed foreground projection, generic/absent fallbacks, tests, history doc |
+| 5/5 | 🌱 | `docs: record Cursor sub-agent coverage` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; no first behavior-doc delivery; explicit unsupported/unexecuted matrix; Grok phone gate stays open |
 
 ### Probe questions
 

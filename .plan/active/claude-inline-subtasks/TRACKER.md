@@ -14,10 +14,11 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** publish Cursor docs-only step 1/5,
+- **Next action:** merge Cursor docs-only step 1/5,
   `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]`,
-  then deliver live tiles as step 2/5. No Cursor feature implementation has
-  landed; live delivery awaits publication after the docs step.
+  then regenerate completed-tile Step 2/5 from this revision. No Cursor feature
+  implementation has landed. Preserved code refs `c5c0def` and `ab03528` are
+  not publication candidates and must not be mutated or deleted.
   The 2026-09-11 native probe used current managed target
   `2026.08.11-e8db854`, not the old plan's installed PATH build. Foreground
   Task correlation, cancellation authority, post-turn background survival,
@@ -202,10 +203,10 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
 | [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Current documentation PR; privacy-safe evidence and exact ownership/policy plan, with no feature implementation |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: live foreground Task tiles [step 2/5]` | Awaits step 1 publication; approximately 1,642 changed lines for DTO/codegen, exact foreground replacement, prompt cancellation, and focused tests/docs |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: scoped Task stop policy [step 3/5]` | Preserved successor: exact foreground count, unresolved background, root-only cancel, policy tests/docs |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay foreground Task tiles [step 4/5]` | Planned; approximately 650–950 changed lines; `CursorTaskReplayTracker` receives configured ACP collector plus shared pure mapper; stable foreground facts |
-| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Planned; approximately 100–220 changed lines; actual-plugin private evidence retained after owned cleanup; background stop/lifecycle and child-session gaps remain explicit |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Regenerate after step 1 merge; approximately 1,550–1,700 lines for DTO/codegen, generic pending/in-progress/cancelled cards, completed terminal replacement, focused tests, and tools/session-turn docs |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: foreground-only scoped Task stop [step 3/5]` | Regenerate after Step 2; approximately 500–700 lines for exact foreground count, unresolved-background process residency/all-policy failure, root-only stop, tests, and stop/lifecycle/capability docs |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 4/5]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared mapper, stable completed projection, fallbacks, tests, and history doc |
+| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
 
@@ -247,16 +248,36 @@ post-merge E2E gates are unchanged.
   `AcpChildSessionTracker`; abort policy has no presentation mutation.
 - [x] Replaced turn-bounded background retention with one root-level unresolved
   observation lasting until authoritative terminal/session or process teardown.
-  It never marks root busy and never becomes an exact running count.
-- [x] Locked post-turn pending-interaction policy: zero-count `confirm`/`stop`
-  cancel named-root input and send one root cancel while returning conservative
-  retained work; root-idle `keep` is a no-op acceptance; root-active `keep`
-  fails side-effect-free as unsupported. All Cursor ACKs keep
-  `subAgentsHandled: false`.
+  Backend-neutral `requiresProcessResidency` feeds only ACP
+  `PluginWorkState.busy`; root/session status, deferred idle, active roots, and
+  counts stay unchanged. Accepted tradeoff: silent completion may block safe
+  suspension until session deletion/process reset.
+- [x] Corrected transport/client policy: bridge-internal `SessionAborted` has
+  `workKept`, `AbortSessionHandler` omits it, and `SessionDetailCubit.abort`
+  treats every 2xx as aborted. While unresolved background exists, all
+  `confirm`/`keep`/`stop` requests now fail through one side-effect-free
+  `PluginOperationException`/HTTP path before root/input preparation or cancel;
+  no count, shared wire, or successful ACK is invented. Foreground-only
+  confirmation/count and root-only stop remain planned.
+- [x] Corrected rendering scope to completed foreground tiles only.
+  Pending/in-progress remain generic, cancelled remains a generic cancelled
+  standard card, and only complete correlated terminal facts create a completed
+  childless tile. Native root `end_turn` remains honest root idle, not
+  background completion; no background completion notification/tile is claimed.
+- [x] Assigned behavior docs to their implementation slices: Step 2 tools/live
+  turns, Step 3 stop/lifecycle/capability, Step 4 replay/history. Step 5 owns
+  actual-plugin evidence and final reconciliation only.
 - [x] Kept Cursor vocabulary/DTO parsing in Cursor and unobservable background
   lifecycle/full stop/history/child sessions unsupported with the generic card.
   Added no lock, timer, poller, controller, recovery path, shared wire, or
   client contract.
+- The earlier architecture correction is superseded on process residency,
+  successful retained-work ACKs, tile lifecycle claims, and documentation
+  timing by the verified bridge transport/client path and native presentation
+  facts above. Its other ownership/layering decisions remain current. Preserved
+  code refs `c5c0def` and `ab03528` are historical evidence only, not
+  publication candidates; regenerate successors from the revised plan without
+  mutating or deleting those refs.
 - Architecture review verdict was rejected with six findings. All six valid
   findings were applied directly to this plan; the corrected version was not
   re-reviewed and does not claim approval.

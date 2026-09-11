@@ -189,13 +189,14 @@ prompt, and skill commands remain available.
 |---|---|---|---|---|---|---|---|---|---|---|
 | Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | ⬜⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
 | Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
 | Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
-ACP plugins declare one closed scoped-stop capability: `unsupported`, `perChildSnapshot` (Grok), or
-`completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare whether "main agent only" is
-honored through `mainAgentOnlySupported`; the app offers the action only when it is true.
+ACP plugins declare one closed scoped-stop capability: `unsupported`, planned `rootSessionCancel` (Cursor's
+foreground-only subset), `perChildSnapshot` (Grok), or `completeNativeAtomic` (DeepSeek). Plugins that report a
+scoped-stop rejection declare whether "main agent only" is honored through `mainAgentOnlySupported`; the app offers
+that action only when it is true.
 
 ¹ Claude Code's only stop primitive (`interrupt`, verified on 2.1.257) stops
 background sub-agents together with the running main turn.
@@ -250,11 +251,20 @@ foreground invocation's completion is also sub-agent completion; a background
 invocation completes at launch and exposes `isBackground: true`, while the
 background work continues without a later terminal lifecycle or child
 transcript. `session/load` replays stable full standard Task input/result facts,
-not `cursor/task`, so completed foreground tiles are implementable without a
-child session. Standard `session/cancel` authoritatively cancels an active
-foreground prompt, but a launched background Task survives it. Background tile
-lifecycle and full stop are therefore not supported over the observed ACP seam;
-Sesori must keep those calls generic and report retained work honestly.
+not `cursor/task`, so completed foreground tiles are planned without a child
+session. Pending/in-progress calls lack presentation facts and remain generic;
+cancelled foreground calls also remain generic cancelled cards because no
+`cursor/task` follows cancellation. Standard `session/cancel` authoritatively
+cancels an active foreground prompt, so the planned foreground-only subset may
+provide exact confirmation rejection and root-only stop when no unresolved
+background observation exists. A launched background Task survives that cancel,
+so the overall “`stop` cancels them all” capability is **not supported**. While
+such an observation remains unresolved, `confirm`, `keep`, and `stop` must all
+fail before root/input cancellation; no successful ACK can rely on bridge-
+internal `workKept`, which is not serialized to the client. The observation may
+keep only ACP process work state busy until session deletion/process reset; root
+`end_turn` and root UI idle remain honest root-turn completion, never a
+background completion or tile claim.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a
