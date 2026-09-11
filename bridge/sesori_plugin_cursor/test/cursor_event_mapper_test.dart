@@ -212,7 +212,7 @@ void main() {
       expect(target.map(validTaskRequest(toolCallId: "task-1", sessionId: null)), isEmpty);
     });
 
-    test("background, failed, cancelled, unknown, and malformed terminal Tasks stay generic", () {
+    test("background, failed, cancelled, unknown, and malformed Task updates stay generic", () {
       for (final taskCase in <({String id, String status, Object? output})>[
         (id: "background", status: "completed", output: const {"isBackground": true}),
         (id: "failed", status: "failed", output: null),
@@ -243,10 +243,17 @@ void main() {
           isA<PluginMessagePartTool>(),
         );
         expect(target.map(validTaskRequest(toolCallId: taskCase.id, sessionId: null)), isEmpty);
+        final settlement = target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled);
+        if (taskCase.status == "cancelled" || taskCase.status == "future") {
+          final settledPart = (settlement.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
+          expect(settledPart.state.status, PluginToolStatus.cancelled);
+        } else {
+          expect(settlement, isEmpty);
+        }
       }
     });
 
-    test("an initial terminal Task correlates only a valid explicit foreground completion", () {
+    test("an initial Task correlates only completion and keeps unknown status settleable", () {
       final completed = buildMapper(activeSessionResolver: () => "root")
         ..beginTurn(sessionId: "root", messageId: "turn");
       expect(
@@ -288,11 +295,13 @@ void main() {
           rawOutput: taskCase.output,
         );
         expect(target.map(validTaskRequest(toolCallId: taskCase.id, sessionId: null)), isEmpty);
-        expect(
-          target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled),
-          isEmpty,
-          reason: "an unsupported initial terminal must leave no active Task record",
-        );
+        final settlement = target.mapPromptResult(sessionId: "root", stopReason: AcpStopReason.cancelled);
+        if (taskCase.status == "cancelled" || taskCase.status == "future") {
+          final settledPart = (settlement.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
+          expect(settledPart.state.status, PluginToolStatus.cancelled);
+        } else {
+          expect(settlement, isEmpty, reason: "a known unsupported terminal must leave no active Task record");
+        }
       }
 
       final malformedInput = buildMapper(activeSessionResolver: () => "root")

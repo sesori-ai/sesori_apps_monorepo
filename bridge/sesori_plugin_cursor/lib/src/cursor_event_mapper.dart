@@ -124,10 +124,11 @@ class CursorEventMapper({
       sessionId: sessionId,
       toolCallId: toolCallId,
     );
-    final terminalTaskUpdate = switch (update["status"]) {
-      "pending" || "in_progress" => false,
-      final String _ => true,
-      _ => genericPart.state.status.isTerminal,
+    final taskStatus = _parseTaskUpdateStatus(rawStatus: update["status"]);
+    final terminalTaskUpdate = switch (taskStatus) {
+      _CursorTaskUpdateStatus.completed || _CursorTaskUpdateStatus.failed => true,
+      _CursorTaskUpdateStatus.active || _CursorTaskUpdateStatus.unknown => false,
+      _CursorTaskUpdateStatus.omitted => genericPart.state.status.isTerminal,
     };
     if (!knownTask) {
       final input = _parseTaskInput(raw: update["rawInput"]);
@@ -371,6 +372,14 @@ class CursorEventMapper({
     "check your settings to continue",
   };
 
+  static _CursorTaskUpdateStatus _parseTaskUpdateStatus({required Object? rawStatus}) => switch (rawStatus) {
+    "pending" || "in_progress" => _CursorTaskUpdateStatus.active,
+    "completed" => _CursorTaskUpdateStatus.completed,
+    "failed" => _CursorTaskUpdateStatus.failed,
+    null => _CursorTaskUpdateStatus.omitted,
+    _ => _CursorTaskUpdateStatus.unknown,
+  };
+
   static bool _isGateNotice(String text) => _gateNoticePhrases.contains(_normalize(text));
 
   /// Normalizes a notice for matching against [_gateNoticePhrases]: collapses
@@ -387,4 +396,12 @@ class CursorEventMapper({
       "",
     );
   }
+}
+
+enum _CursorTaskUpdateStatus() {
+  active,
+  completed,
+  failed,
+  unknown,
+  omitted,
 }
