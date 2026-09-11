@@ -27,16 +27,21 @@ $CodexSkillsListResponseDtoCopyWith<CodexSkillsListResponseDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillsListResponseDto&&const DeepCollectionEquality().equals(other.data, data));
+  final _this = this as CodexSkillsListResponseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillsListResponseDto&&const DeepCollectionEquality().equals(other.data, _this.data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+int get hashCode {
+  final _this = this as CodexSkillsListResponseDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data));
+}
 
 @override
 String toString() {
-  return 'CodexSkillsListResponseDto(data: $data)';
+  final _this = this as CodexSkillsListResponseDto;
+  return 'CodexSkillsListResponseDto(data: ${_this.data})';
 }
 
 
@@ -100,16 +105,18 @@ _$CodexSkillsListResponseDtoCopyWith<_CodexSkillsListResponseDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillsListResponseDto&&const DeepCollectionEquality().equals(other._data, _data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillsListResponseDto&&const DeepCollectionEquality().equals(other.data, _data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+}
 
 @override
 String toString() {
-  return 'CodexSkillsListResponseDto(data: $data)';
+    return 'CodexSkillsListResponseDto(data: $data)';
 }
 
 
@@ -162,16 +169,21 @@ $CodexSkillsListEntryDtoCopyWith<CodexSkillsListEntryDto> get copyWith => _$Code
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillsListEntryDto&&(identical(other.cwd, cwd) || other.cwd == cwd)&&const DeepCollectionEquality().equals(other.skills, skills));
+  final _this = this as CodexSkillsListEntryDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillsListEntryDto&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&const DeepCollectionEquality().equals(other.skills, _this.skills));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,cwd,const DeepCollectionEquality().hash(skills));
+int get hashCode {
+  final _this = this as CodexSkillsListEntryDto;
+  return Object.hash(runtimeType,_this.cwd,const DeepCollectionEquality().hash(_this.skills));
+}
 
 @override
 String toString() {
-  return 'CodexSkillsListEntryDto(cwd: $cwd, skills: $skills)';
+  final _this = this as CodexSkillsListEntryDto;
+  return 'CodexSkillsListEntryDto(cwd: ${_this.cwd}, skills: ${_this.skills})';
 }
 
 
@@ -237,16 +249,18 @@ _$CodexSkillsListEntryDtoCopyWith<_CodexSkillsListEntryDto> get copyWith => __$C
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillsListEntryDto&&(identical(other.cwd, cwd) || other.cwd == cwd)&&const DeepCollectionEquality().equals(other._skills, _skills));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillsListEntryDto&&(identical(other.cwd, cwd) || other.cwd == cwd)&&const DeepCollectionEquality().equals(other.skills, _skills));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,cwd,const DeepCollectionEquality().hash(_skills));
+int get hashCode {
+    return Object.hash(runtimeType,cwd,const DeepCollectionEquality().hash(_skills));
+}
 
 @override
 String toString() {
-  return 'CodexSkillsListEntryDto(cwd: $cwd, skills: $skills)';
+    return 'CodexSkillsListEntryDto(cwd: $cwd, skills: $skills)';
 }
 
 
@@ -300,16 +314,21 @@ $CodexSkillDtoCopyWith<CodexSkillDto> get copyWith => _$CodexSkillDtoCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.interface, interface) || other.interface == interface)&&(identical(other.enabled, enabled) || other.enabled == enabled));
+  final _this = this as CodexSkillDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.shortDescription, _this.shortDescription) || other.shortDescription == _this.shortDescription)&&(identical(other.interface, _this.interface) || other.interface == _this.interface)&&(identical(other.enabled, _this.enabled) || other.enabled == _this.enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,shortDescription,interface,enabled);
+int get hashCode {
+  final _this = this as CodexSkillDto;
+  return Object.hash(runtimeType,_this.name,_this.description,_this.shortDescription,_this.interface,_this.enabled);
+}
 
 @override
 String toString() {
-  return 'CodexSkillDto(name: $name, description: $description, shortDescription: $shortDescription, interface: $interface, enabled: $enabled)';
+  final _this = this as CodexSkillDto;
+  return 'CodexSkillDto(name: ${_this.name}, description: ${_this.description}, shortDescription: ${_this.shortDescription}, interface: ${_this.interface}, enabled: ${_this.enabled})';
 }
 
 
@@ -387,16 +406,18 @@ _$CodexSkillDtoCopyWith<_CodexSkillDto> get copyWith => __$CodexSkillDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.interface, interface) || other.interface == interface)&&(identical(other.enabled, enabled) || other.enabled == enabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillDto&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription)&&(identical(other.interface, interface) || other.interface == interface)&&(identical(other.enabled, enabled) || other.enabled == enabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,shortDescription,interface,enabled);
+int get hashCode {
+    return Object.hash(runtimeType,name,description,shortDescription,interface,enabled);
+}
 
 @override
 String toString() {
-  return 'CodexSkillDto(name: $name, description: $description, shortDescription: $shortDescription, interface: $interface, enabled: $enabled)';
+    return 'CodexSkillDto(name: $name, description: $description, shortDescription: $shortDescription, interface: $interface, enabled: $enabled)';
 }
 
 
@@ -465,16 +486,21 @@ $CodexSkillInterfaceDtoCopyWith<CodexSkillInterfaceDto> get copyWith => _$CodexS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillInterfaceDto&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription));
+  final _this = this as CodexSkillInterfaceDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSkillInterfaceDto&&(identical(other.shortDescription, _this.shortDescription) || other.shortDescription == _this.shortDescription));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,shortDescription);
+int get hashCode {
+  final _this = this as CodexSkillInterfaceDto;
+  return Object.hash(runtimeType,_this.shortDescription);
+}
 
 @override
 String toString() {
-  return 'CodexSkillInterfaceDto(shortDescription: $shortDescription)';
+  final _this = this as CodexSkillInterfaceDto;
+  return 'CodexSkillInterfaceDto(shortDescription: ${_this.shortDescription})';
 }
 
 
@@ -532,16 +558,18 @@ _$CodexSkillInterfaceDtoCopyWith<_CodexSkillInterfaceDto> get copyWith => __$Cod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillInterfaceDto&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSkillInterfaceDto&&(identical(other.shortDescription, shortDescription) || other.shortDescription == shortDescription));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,shortDescription);
+int get hashCode {
+    return Object.hash(runtimeType,shortDescription);
+}
 
 @override
 String toString() {
-  return 'CodexSkillInterfaceDto(shortDescription: $shortDescription)';
+    return 'CodexSkillInterfaceDto(shortDescription: $shortDescription)';
 }
 
 

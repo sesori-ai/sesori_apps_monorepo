@@ -29,16 +29,21 @@ $ProductAnalyticsPreferenceUpdateRequestCopyWith<ProductAnalyticsPreferenceUpdat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceUpdateRequest&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.expectedRevision, expectedRevision) || other.expectedRevision == expectedRevision)&&(identical(other.operationId, operationId) || other.operationId == operationId));
+  final _this = this as ProductAnalyticsPreferenceUpdateRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsPreferenceUpdateRequest&&(identical(other.preference, _this.preference) || other.preference == _this.preference)&&(identical(other.expectedRevision, _this.expectedRevision) || other.expectedRevision == _this.expectedRevision)&&(identical(other.operationId, _this.operationId) || other.operationId == _this.operationId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,preference,expectedRevision,operationId);
+int get hashCode {
+  final _this = this as ProductAnalyticsPreferenceUpdateRequest;
+  return Object.hash(runtimeType,_this.preference,_this.expectedRevision,_this.operationId);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceUpdateRequest(preference: $preference, expectedRevision: $expectedRevision, operationId: $operationId)';
+  final _this = this as ProductAnalyticsPreferenceUpdateRequest;
+  return 'ProductAnalyticsPreferenceUpdateRequest(preference: ${_this.preference}, expectedRevision: ${_this.expectedRevision}, operationId: ${_this.operationId})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductAnalyticsPreferenceUpdateRequest&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.expectedRevision, expectedRevision) || other.expectedRevision == expectedRevision)&&(identical(other.operationId, operationId) || other.operationId == operationId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProductAnalyticsPreferenceUpdateRequest&&(identical(other.preference, preference) || other.preference == preference)&&(identical(other.expectedRevision, expectedRevision) || other.expectedRevision == expectedRevision)&&(identical(other.operationId, operationId) || other.operationId == operationId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,preference,expectedRevision,operationId);
+int get hashCode {
+    return Object.hash(runtimeType,preference,expectedRevision,operationId);
+}
 
 @override
 String toString() {
-  return 'ProductAnalyticsPreferenceUpdateRequest(preference: $preference, expectedRevision: $expectedRevision, operationId: $operationId)';
+    return 'ProductAnalyticsPreferenceUpdateRequest(preference: $preference, expectedRevision: $expectedRevision, operationId: $operationId)';
 }
 
 

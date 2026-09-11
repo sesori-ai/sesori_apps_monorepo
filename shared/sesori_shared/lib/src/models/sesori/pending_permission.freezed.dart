@@ -29,16 +29,21 @@ $PendingPermissionResponseCopyWith<PendingPermissionResponse> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermissionResponse&&const DeepCollectionEquality().equals(other.data, data));
+  final _this = this as PendingPermissionResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermissionResponse&&const DeepCollectionEquality().equals(other.data, _this.data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+int get hashCode {
+  final _this = this as PendingPermissionResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data));
+}
 
 @override
 String toString() {
-  return 'PendingPermissionResponse(data: $data)';
+  final _this = this as PendingPermissionResponse;
+  return 'PendingPermissionResponse(data: ${_this.data})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermissionResponse&&const DeepCollectionEquality().equals(other._data, _data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermissionResponse&&const DeepCollectionEquality().equals(other.data, _data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+}
 
 @override
 String toString() {
-  return 'PendingPermissionResponse(data: $data)';
+    return 'PendingPermissionResponse(data: $data)';
 }
 
 
@@ -172,16 +179,21 @@ $PendingPermissionCopyWith<PendingPermission> get copyWith => _$PendingPermissio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
+  final _this = this as PendingPermission;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingPermission&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sessionID, _this.sessionID) || other.sessionID == _this.sessionID)&&(identical(other.displaySessionId, _this.displaySessionId) || other.displaySessionId == _this.displaySessionId)&&(identical(other.tool, _this.tool) || other.tool == _this.tool)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.allowAlways, _this.allowAlways) || other.allowAlways == _this.allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description,allowAlways);
+int get hashCode {
+  final _this = this as PendingPermission;
+  return Object.hash(runtimeType,_this.id,_this.sessionID,_this.displaySessionId,_this.tool,_this.description,_this.allowAlways);
+}
 
 @override
 String toString() {
-  return 'PendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
+  final _this = this as PendingPermission;
+  return 'PendingPermission(id: ${_this.id}, sessionID: ${_this.sessionID}, displaySessionId: ${_this.displaySessionId}, tool: ${_this.tool}, description: ${_this.description}, allowAlways: ${_this.allowAlways})';
 }
 
 
@@ -255,16 +267,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingPermission&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.description, description) || other.description == description)&&(identical(other.allowAlways, allowAlways) || other.allowAlways == allowAlways));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description,allowAlways);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,displaySessionId,tool,description,allowAlways);
+}
 
 @override
 String toString() {
-  return 'PendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
+    return 'PendingPermission(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, tool: $tool, description: $description, allowAlways: $allowAlways)';
 }
 
 

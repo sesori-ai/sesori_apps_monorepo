@@ -29,16 +29,21 @@ $UpdateSessionArchiveRequestCopyWith<UpdateSessionArchiveRequest> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateSessionArchiveRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.archived, archived) || other.archived == archived)&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
+  final _this = this as UpdateSessionArchiveRequest;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateSessionArchiveRequest&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.archived, _this.archived) || other.archived == _this.archived)&&(identical(other.deleteWorktree, _this.deleteWorktree) || other.deleteWorktree == _this.deleteWorktree)&&(identical(other.deleteBranch, _this.deleteBranch) || other.deleteBranch == _this.deleteBranch)&&(identical(other.force, _this.force) || other.force == _this.force));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,archived,deleteWorktree,deleteBranch,force);
+int get hashCode {
+  final _this = this as UpdateSessionArchiveRequest;
+  return Object.hash(runtimeType,_this.sessionId,_this.archived,_this.deleteWorktree,_this.deleteBranch,_this.force);
+}
 
 @override
 String toString() {
-  return 'UpdateSessionArchiveRequest(sessionId: $sessionId, archived: $archived, deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
+  final _this = this as UpdateSessionArchiveRequest;
+  return 'UpdateSessionArchiveRequest(sessionId: ${_this.sessionId}, archived: ${_this.archived}, deleteWorktree: ${_this.deleteWorktree}, deleteBranch: ${_this.deleteBranch}, force: ${_this.force})';
 }
 
 
@@ -107,16 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateSessionArchiveRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.archived, archived) || other.archived == archived)&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateSessionArchiveRequest&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.archived, archived) || other.archived == archived)&&(identical(other.deleteWorktree, deleteWorktree) || other.deleteWorktree == deleteWorktree)&&(identical(other.deleteBranch, deleteBranch) || other.deleteBranch == deleteBranch)&&(identical(other.force, force) || other.force == force));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,archived,deleteWorktree,deleteBranch,force);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,archived,deleteWorktree,deleteBranch,force);
+}
 
 @override
 String toString() {
-  return 'UpdateSessionArchiveRequest(sessionId: $sessionId, archived: $archived, deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
+    return 'UpdateSessionArchiveRequest(sessionId: $sessionId, archived: $archived, deleteWorktree: $deleteWorktree, deleteBranch: $deleteBranch, force: $force)';
 }
 
 

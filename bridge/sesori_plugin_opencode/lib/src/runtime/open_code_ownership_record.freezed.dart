@@ -29,16 +29,21 @@ $OpenCodeOwnershipRecordCopyWith<OpenCodeOwnershipRecord> get copyWith => _$Open
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is OpenCodeOwnershipRecord&&(identical(other.ownerSessionId, ownerSessionId) || other.ownerSessionId == ownerSessionId)&&(identical(other.openCodePid, openCodePid) || other.openCodePid == openCodePid)&&(identical(other.openCodeStartMarker, openCodeStartMarker) || other.openCodeStartMarker == openCodeStartMarker)&&(identical(other.openCodeExecutablePath, openCodeExecutablePath) || other.openCodeExecutablePath == openCodeExecutablePath)&&(identical(other.openCodeCommand, openCodeCommand) || other.openCodeCommand == openCodeCommand)&&const DeepCollectionEquality().equals(other.openCodeArgs, openCodeArgs)&&(identical(other.port, port) || other.port == port)&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.status, status) || other.status == status));
+  final _this = this as OpenCodeOwnershipRecord;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is OpenCodeOwnershipRecord&&(identical(other.ownerSessionId, _this.ownerSessionId) || other.ownerSessionId == _this.ownerSessionId)&&(identical(other.openCodePid, _this.openCodePid) || other.openCodePid == _this.openCodePid)&&(identical(other.openCodeStartMarker, _this.openCodeStartMarker) || other.openCodeStartMarker == _this.openCodeStartMarker)&&(identical(other.openCodeExecutablePath, _this.openCodeExecutablePath) || other.openCodeExecutablePath == _this.openCodeExecutablePath)&&(identical(other.openCodeCommand, _this.openCodeCommand) || other.openCodeCommand == _this.openCodeCommand)&&const DeepCollectionEquality().equals(other.openCodeArgs, _this.openCodeArgs)&&(identical(other.port, _this.port) || other.port == _this.port)&&(identical(other.bridgePid, _this.bridgePid) || other.bridgePid == _this.bridgePid)&&(identical(other.bridgeStartMarker, _this.bridgeStartMarker) || other.bridgeStartMarker == _this.bridgeStartMarker)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&(identical(other.status, _this.status) || other.status == _this.status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,ownerSessionId,openCodePid,openCodeStartMarker,openCodeExecutablePath,openCodeCommand,const DeepCollectionEquality().hash(openCodeArgs),port,bridgePid,bridgeStartMarker,startedAt,status);
+int get hashCode {
+  final _this = this as OpenCodeOwnershipRecord;
+  return Object.hash(runtimeType,_this.ownerSessionId,_this.openCodePid,_this.openCodeStartMarker,_this.openCodeExecutablePath,_this.openCodeCommand,const DeepCollectionEquality().hash(_this.openCodeArgs),_this.port,_this.bridgePid,_this.bridgeStartMarker,_this.startedAt,_this.status);
+}
 
 @override
 String toString() {
-  return 'OpenCodeOwnershipRecord(ownerSessionId: $ownerSessionId, openCodePid: $openCodePid, openCodeStartMarker: $openCodeStartMarker, openCodeExecutablePath: $openCodeExecutablePath, openCodeCommand: $openCodeCommand, openCodeArgs: $openCodeArgs, port: $port, bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker, startedAt: $startedAt, status: $status)';
+  final _this = this as OpenCodeOwnershipRecord;
+  return 'OpenCodeOwnershipRecord(ownerSessionId: ${_this.ownerSessionId}, openCodePid: ${_this.openCodePid}, openCodeStartMarker: ${_this.openCodeStartMarker}, openCodeExecutablePath: ${_this.openCodeExecutablePath}, openCodeCommand: ${_this.openCodeCommand}, openCodeArgs: ${_this.openCodeArgs}, port: ${_this.port}, bridgePid: ${_this.bridgePid}, bridgeStartMarker: ${_this.bridgeStartMarker}, startedAt: ${_this.startedAt}, status: ${_this.status})';
 }
 
 
@@ -125,16 +130,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _OpenCodeOwnershipRecord&&(identical(other.ownerSessionId, ownerSessionId) || other.ownerSessionId == ownerSessionId)&&(identical(other.openCodePid, openCodePid) || other.openCodePid == openCodePid)&&(identical(other.openCodeStartMarker, openCodeStartMarker) || other.openCodeStartMarker == openCodeStartMarker)&&(identical(other.openCodeExecutablePath, openCodeExecutablePath) || other.openCodeExecutablePath == openCodeExecutablePath)&&(identical(other.openCodeCommand, openCodeCommand) || other.openCodeCommand == openCodeCommand)&&const DeepCollectionEquality().equals(other._openCodeArgs, _openCodeArgs)&&(identical(other.port, port) || other.port == port)&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _OpenCodeOwnershipRecord&&(identical(other.ownerSessionId, ownerSessionId) || other.ownerSessionId == ownerSessionId)&&(identical(other.openCodePid, openCodePid) || other.openCodePid == openCodePid)&&(identical(other.openCodeStartMarker, openCodeStartMarker) || other.openCodeStartMarker == openCodeStartMarker)&&(identical(other.openCodeExecutablePath, openCodeExecutablePath) || other.openCodeExecutablePath == openCodeExecutablePath)&&(identical(other.openCodeCommand, openCodeCommand) || other.openCodeCommand == openCodeCommand)&&const DeepCollectionEquality().equals(other.openCodeArgs, _openCodeArgs)&&(identical(other.port, port) || other.port == port)&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,ownerSessionId,openCodePid,openCodeStartMarker,openCodeExecutablePath,openCodeCommand,const DeepCollectionEquality().hash(_openCodeArgs),port,bridgePid,bridgeStartMarker,startedAt,status);
+int get hashCode {
+    return Object.hash(runtimeType,ownerSessionId,openCodePid,openCodeStartMarker,openCodeExecutablePath,openCodeCommand,const DeepCollectionEquality().hash(_openCodeArgs),port,bridgePid,bridgeStartMarker,startedAt,status);
+}
 
 @override
 String toString() {
-  return 'OpenCodeOwnershipRecord(ownerSessionId: $ownerSessionId, openCodePid: $openCodePid, openCodeStartMarker: $openCodeStartMarker, openCodeExecutablePath: $openCodeExecutablePath, openCodeCommand: $openCodeCommand, openCodeArgs: $openCodeArgs, port: $port, bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker, startedAt: $startedAt, status: $status)';
+    return 'OpenCodeOwnershipRecord(ownerSessionId: $ownerSessionId, openCodePid: $openCodePid, openCodeStartMarker: $openCodeStartMarker, openCodeExecutablePath: $openCodeExecutablePath, openCodeCommand: $openCodeCommand, openCodeArgs: $openCodeArgs, port: $port, bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker, startedAt: $startedAt, status: $status)';
 }
 
 

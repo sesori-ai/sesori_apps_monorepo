@@ -29,16 +29,21 @@ $AgentsCopyWith<Agents> get copyWith => _$AgentsCopyWithImpl<Agents>(this as Age
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is Agents&&const DeepCollectionEquality().equals(other.agents, agents));
+  final _this = this as Agents;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is Agents&&const DeepCollectionEquality().equals(other.agents, _this.agents));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(agents));
+int get hashCode {
+  final _this = this as Agents;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.agents));
+}
 
 @override
 String toString() {
-  return 'Agents(agents: $agents)';
+  final _this = this as Agents;
+  return 'Agents(agents: ${_this.agents})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _Agents&&const DeepCollectionEquality().equals(other._agents, _agents));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _Agents&&const DeepCollectionEquality().equals(other.agents, _agents));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents));
+}
 
 @override
 String toString() {
-  return 'Agents(agents: $agents)';
+    return 'Agents(agents: $agents)';
 }
 
 
@@ -169,16 +176,21 @@ $AgentInfoCopyWith<AgentInfo> get copyWith => _$AgentInfoCopyWithImpl<AgentInfo>
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+  final _this = this as AgentInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentInfo&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.mode, _this.mode) || other.mode == _this.mode)&&(identical(other.hidden, _this.hidden) || other.hidden == _this.hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
+int get hashCode {
+  final _this = this as AgentInfo;
+  return Object.hash(runtimeType,_this.name,_this.description,_this.model,_this.mode,_this.hidden);
+}
 
 @override
 String toString() {
-  return 'AgentInfo(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
+  final _this = this as AgentInfo;
+  return 'AgentInfo(name: ${_this.name}, description: ${_this.description}, model: ${_this.model}, mode: ${_this.mode}, hidden: ${_this.hidden})';
 }
 
 
@@ -259,16 +271,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.model, model) || other.model == model)&&(identical(other.mode, mode) || other.mode == mode)&&(identical(other.hidden, hidden) || other.hidden == hidden));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,description,model,mode,hidden);
+int get hashCode {
+    return Object.hash(runtimeType,name,description,model,mode,hidden);
+}
 
 @override
 String toString() {
-  return 'AgentInfo(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
+    return 'AgentInfo(name: $name, description: $description, model: $model, mode: $mode, hidden: $hidden)';
 }
 
 
@@ -339,16 +353,21 @@ $AgentModelCopyWith<AgentModel> get copyWith => _$AgentModelCopyWithImpl<AgentMo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
+  final _this = this as AgentModel;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AgentModel&&(identical(other.modelID, _this.modelID) || other.modelID == _this.modelID)&&(identical(other.providerID, _this.providerID) || other.providerID == _this.providerID)&&(identical(other.variant, _this.variant) || other.variant == _this.variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
+int get hashCode {
+  final _this = this as AgentModel;
+  return Object.hash(runtimeType,_this.modelID,_this.providerID,_this.variant);
+}
 
 @override
 String toString() {
-  return 'AgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
+  final _this = this as AgentModel;
+  return 'AgentModel(modelID: ${_this.modelID}, providerID: ${_this.providerID}, variant: ${_this.variant})';
 }
 
 
@@ -413,16 +432,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AgentModel&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,modelID,providerID,variant);
+int get hashCode {
+    return Object.hash(runtimeType,modelID,providerID,variant);
+}
 
 @override
 String toString() {
-  return 'AgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
+    return 'AgentModel(modelID: $modelID, providerID: $providerID, variant: $variant)';
 }
 
 

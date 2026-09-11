@@ -21,7 +21,7 @@ mixin _$LoginState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState()';
+    return 'LoginState()';
 }
 
 
@@ -57,7 +57,7 @@ class LoginIdle implements LoginState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginIdle);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState.idle()';
+    return 'LoginState.idle()';
 }
 
 
@@ -89,7 +89,7 @@ class LoginAuthenticating implements LoginState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginAuthenticating);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginAuthenticating);
 }
 
 
@@ -98,7 +98,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState.authenticating()';
+    return 'LoginState.authenticating()';
 }
 
 
@@ -121,7 +121,7 @@ class LoginPolling implements LoginState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginPolling);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginPolling);
 }
 
 
@@ -130,7 +130,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState.polling()';
+    return 'LoginState.polling()';
 }
 
 
@@ -153,7 +153,7 @@ class LoginTimeout implements LoginState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginTimeout);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginTimeout);
 }
 
 
@@ -162,7 +162,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState.timeout()';
+    return 'LoginState.timeout()';
 }
 
 
@@ -185,7 +185,7 @@ class LoginSuccess implements LoginState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginSuccess);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginSuccess);
 }
 
 
@@ -194,7 +194,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'LoginState.success()';
+    return 'LoginState.success()';
 }
 
 
@@ -222,16 +222,18 @@ $LoginFailedCopyWith<LoginFailed> get copyWith => _$LoginFailedCopyWithImpl<Logi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginFailed&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is LoginFailed&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,reason);
+int get hashCode {
+    return Object.hash(runtimeType,reason);
+}
 
 @override
 String toString() {
-  return 'LoginState.failed(reason: $reason)';
+    return 'LoginState.failed(reason: $reason)';
 }
 
 

@@ -29,16 +29,21 @@ $BridgeStartupLockCopyWith<BridgeStartupLock> get copyWith => _$BridgeStartupLoc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeStartupLock&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker));
+  final _this = this as BridgeStartupLock;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeStartupLock&&(identical(other.bridgePid, _this.bridgePid) || other.bridgePid == _this.bridgePid)&&(identical(other.bridgeStartMarker, _this.bridgeStartMarker) || other.bridgeStartMarker == _this.bridgeStartMarker));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bridgePid,bridgeStartMarker);
+int get hashCode {
+  final _this = this as BridgeStartupLock;
+  return Object.hash(runtimeType,_this.bridgePid,_this.bridgeStartMarker);
+}
 
 @override
 String toString() {
-  return 'BridgeStartupLock(bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker)';
+  final _this = this as BridgeStartupLock;
+  return 'BridgeStartupLock(bridgePid: ${_this.bridgePid}, bridgeStartMarker: ${_this.bridgeStartMarker})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeStartupLock&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeStartupLock&&(identical(other.bridgePid, bridgePid) || other.bridgePid == bridgePid)&&(identical(other.bridgeStartMarker, bridgeStartMarker) || other.bridgeStartMarker == bridgeStartMarker));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bridgePid,bridgeStartMarker);
+int get hashCode {
+    return Object.hash(runtimeType,bridgePid,bridgeStartMarker);
+}
 
 @override
 String toString() {
-  return 'BridgeStartupLock(bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker)';
+    return 'BridgeStartupLock(bridgePid: $bridgePid, bridgeStartMarker: $bridgeStartMarker)';
 }
 
 

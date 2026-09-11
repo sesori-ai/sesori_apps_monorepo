@@ -27,16 +27,21 @@ $CodexModelListResponseDtoCopyWith<CodexModelListResponseDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexModelListResponseDto&&const DeepCollectionEquality().equals(other.data, data)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
+  final _this = this as CodexModelListResponseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexModelListResponseDto&&const DeepCollectionEquality().equals(other.data, _this.data)&&(identical(other.nextCursor, _this.nextCursor) || other.nextCursor == _this.nextCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data),nextCursor);
+int get hashCode {
+  final _this = this as CodexModelListResponseDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data),_this.nextCursor);
+}
 
 @override
 String toString() {
-  return 'CodexModelListResponseDto(data: $data, nextCursor: $nextCursor)';
+  final _this = this as CodexModelListResponseDto;
+  return 'CodexModelListResponseDto(data: ${_this.data}, nextCursor: ${_this.nextCursor})';
 }
 
 
@@ -102,16 +107,18 @@ _$CodexModelListResponseDtoCopyWith<_CodexModelListResponseDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexModelListResponseDto&&const DeepCollectionEquality().equals(other._data, _data)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexModelListResponseDto&&const DeepCollectionEquality().equals(other.data, _data)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),nextCursor);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data),nextCursor);
+}
 
 @override
 String toString() {
-  return 'CodexModelListResponseDto(data: $data, nextCursor: $nextCursor)';
+    return 'CodexModelListResponseDto(data: $data, nextCursor: $nextCursor)';
 }
 
 
@@ -165,16 +172,21 @@ $CodexModelDtoCopyWith<CodexModelDto> get copyWith => _$CodexModelDtoCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexModelDto&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&const DeepCollectionEquality().equals(other.supportedReasoningEfforts, supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, defaultReasoningEffort) || other.defaultReasoningEffort == defaultReasoningEffort)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
+  final _this = this as CodexModelDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexModelDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.displayName, _this.displayName) || other.displayName == _this.displayName)&&(identical(other.hidden, _this.hidden) || other.hidden == _this.hidden)&&const DeepCollectionEquality().equals(other.supportedReasoningEfforts, _this.supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, _this.defaultReasoningEffort) || other.defaultReasoningEffort == _this.defaultReasoningEffort)&&(identical(other.isDefault, _this.isDefault) || other.isDefault == _this.isDefault));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,hidden,const DeepCollectionEquality().hash(supportedReasoningEfforts),defaultReasoningEffort,isDefault);
+int get hashCode {
+  final _this = this as CodexModelDto;
+  return Object.hash(runtimeType,_this.id,_this.displayName,_this.hidden,const DeepCollectionEquality().hash(_this.supportedReasoningEfforts),_this.defaultReasoningEffort,_this.isDefault);
+}
 
 @override
 String toString() {
-  return 'CodexModelDto(id: $id, displayName: $displayName, hidden: $hidden, supportedReasoningEfforts: $supportedReasoningEfforts, defaultReasoningEffort: $defaultReasoningEffort, isDefault: $isDefault)';
+  final _this = this as CodexModelDto;
+  return 'CodexModelDto(id: ${_this.id}, displayName: ${_this.displayName}, hidden: ${_this.hidden}, supportedReasoningEfforts: ${_this.supportedReasoningEfforts}, defaultReasoningEffort: ${_this.defaultReasoningEffort}, isDefault: ${_this.isDefault})';
 }
 
 
@@ -250,16 +262,18 @@ _$CodexModelDtoCopyWith<_CodexModelDto> get copyWith => __$CodexModelDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexModelDto&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&const DeepCollectionEquality().equals(other._supportedReasoningEfforts, _supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, defaultReasoningEffort) || other.defaultReasoningEffort == defaultReasoningEffort)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexModelDto&&(identical(other.id, id) || other.id == id)&&(identical(other.displayName, displayName) || other.displayName == displayName)&&(identical(other.hidden, hidden) || other.hidden == hidden)&&const DeepCollectionEquality().equals(other.supportedReasoningEfforts, _supportedReasoningEfforts)&&(identical(other.defaultReasoningEffort, defaultReasoningEffort) || other.defaultReasoningEffort == defaultReasoningEffort)&&(identical(other.isDefault, isDefault) || other.isDefault == isDefault));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,displayName,hidden,const DeepCollectionEquality().hash(_supportedReasoningEfforts),defaultReasoningEffort,isDefault);
+int get hashCode {
+    return Object.hash(runtimeType,id,displayName,hidden,const DeepCollectionEquality().hash(_supportedReasoningEfforts),defaultReasoningEffort,isDefault);
+}
 
 @override
 String toString() {
-  return 'CodexModelDto(id: $id, displayName: $displayName, hidden: $hidden, supportedReasoningEfforts: $supportedReasoningEfforts, defaultReasoningEffort: $defaultReasoningEffort, isDefault: $isDefault)';
+    return 'CodexModelDto(id: $id, displayName: $displayName, hidden: $hidden, supportedReasoningEfforts: $supportedReasoningEfforts, defaultReasoningEffort: $defaultReasoningEffort, isDefault: $isDefault)';
 }
 
 
@@ -317,16 +331,21 @@ $CodexReasoningEffortOptionDtoCopyWith<CodexReasoningEffortOptionDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexReasoningEffortOptionDto&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort)&&(identical(other.description, description) || other.description == description));
+  final _this = this as CodexReasoningEffortOptionDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexReasoningEffortOptionDto&&(identical(other.reasoningEffort, _this.reasoningEffort) || other.reasoningEffort == _this.reasoningEffort)&&(identical(other.description, _this.description) || other.description == _this.description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,reasoningEffort,description);
+int get hashCode {
+  final _this = this as CodexReasoningEffortOptionDto;
+  return Object.hash(runtimeType,_this.reasoningEffort,_this.description);
+}
 
 @override
 String toString() {
-  return 'CodexReasoningEffortOptionDto(reasoningEffort: $reasoningEffort, description: $description)';
+  final _this = this as CodexReasoningEffortOptionDto;
+  return 'CodexReasoningEffortOptionDto(reasoningEffort: ${_this.reasoningEffort}, description: ${_this.description})';
 }
 
 
@@ -386,16 +405,18 @@ _$CodexReasoningEffortOptionDtoCopyWith<_CodexReasoningEffortOptionDto> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexReasoningEffortOptionDto&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort)&&(identical(other.description, description) || other.description == description));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexReasoningEffortOptionDto&&(identical(other.reasoningEffort, reasoningEffort) || other.reasoningEffort == reasoningEffort)&&(identical(other.description, description) || other.description == description));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,reasoningEffort,description);
+int get hashCode {
+    return Object.hash(runtimeType,reasoningEffort,description);
+}
 
 @override
 String toString() {
-  return 'CodexReasoningEffortOptionDto(reasoningEffort: $reasoningEffort, description: $description)';
+    return 'CodexReasoningEffortOptionDto(reasoningEffort: $reasoningEffort, description: $description)';
 }
 
 

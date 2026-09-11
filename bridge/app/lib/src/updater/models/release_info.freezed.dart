@@ -33,16 +33,21 @@ $ReleaseInfoCopyWith<ReleaseInfo> get copyWith => _$ReleaseInfoCopyWithImpl<Rele
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReleaseInfo&&(identical(other.version, version) || other.version == version)&&(identical(other.assetUrl, assetUrl) || other.assetUrl == assetUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt));
+  final _this = this as ReleaseInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ReleaseInfo&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.assetUrl, _this.assetUrl) || other.assetUrl == _this.assetUrl)&&(identical(other.checksumsUrl, _this.checksumsUrl) || other.checksumsUrl == _this.checksumsUrl)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,assetUrl,checksumsUrl,publishedAt);
+int get hashCode {
+  final _this = this as ReleaseInfo;
+  return Object.hash(runtimeType,_this.version,_this.assetUrl,_this.checksumsUrl,_this.publishedAt);
+}
 
 @override
 String toString() {
-  return 'ReleaseInfo(version: $version, assetUrl: $assetUrl, checksumsUrl: $checksumsUrl, publishedAt: $publishedAt)';
+  final _this = this as ReleaseInfo;
+  return 'ReleaseInfo(version: ${_this.version}, assetUrl: ${_this.assetUrl}, checksumsUrl: ${_this.checksumsUrl}, publishedAt: ${_this.publishedAt})';
 }
 
 
@@ -113,16 +118,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReleaseInfo&&(identical(other.version, version) || other.version == version)&&(identical(other.assetUrl, assetUrl) || other.assetUrl == assetUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ReleaseInfo&&(identical(other.version, version) || other.version == version)&&(identical(other.assetUrl, assetUrl) || other.assetUrl == assetUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,assetUrl,checksumsUrl,publishedAt);
+int get hashCode {
+    return Object.hash(runtimeType,version,assetUrl,checksumsUrl,publishedAt);
+}
 
 @override
 String toString() {
-  return 'ReleaseInfo(version: $version, assetUrl: $assetUrl, checksumsUrl: $checksumsUrl, publishedAt: $publishedAt)';
+    return 'ReleaseInfo(version: $version, assetUrl: $assetUrl, checksumsUrl: $checksumsUrl, publishedAt: $publishedAt)';
 }
 
 

@@ -21,7 +21,7 @@ mixin _$VoiceInputState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VoiceInputState()';
+    return 'VoiceInputState()';
 }
 
 
@@ -57,7 +57,7 @@ class VoiceInputIdle implements VoiceInputState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputIdle);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VoiceInputState.idle()';
+    return 'VoiceInputState.idle()';
 }
 
 
@@ -89,7 +89,7 @@ class VoiceInputStarting implements VoiceInputState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputStarting);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputStarting);
 }
 
 
@@ -98,7 +98,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VoiceInputState.starting()';
+    return 'VoiceInputState.starting()';
 }
 
 
@@ -121,7 +121,7 @@ class VoiceInputRecording implements VoiceInputState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRecording);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRecording);
 }
 
 
@@ -130,7 +130,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VoiceInputState.recording()';
+    return 'VoiceInputState.recording()';
 }
 
 
@@ -158,16 +158,18 @@ $VoiceInputTranscribingCopyWith<VoiceInputTranscribing> get copyWith => _$VoiceI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputTranscribing&&(identical(other.limitReached, limitReached) || other.limitReached == limitReached));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputTranscribing&&(identical(other.limitReached, limitReached) || other.limitReached == limitReached));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,limitReached);
+int get hashCode {
+    return Object.hash(runtimeType,limitReached);
+}
 
 @override
 String toString() {
-  return 'VoiceInputState.transcribing(limitReached: $limitReached)';
+    return 'VoiceInputState.transcribing(limitReached: $limitReached)';
 }
 
 
@@ -224,16 +226,18 @@ $VoiceInputRetryPendingCopyWith<VoiceInputRetryPending> get copyWith => _$VoiceI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetryPending&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetryPending&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'VoiceInputState.retryPending(error: $error)';
+    return 'VoiceInputState.retryPending(error: $error)';
 }
 
 
@@ -290,16 +294,18 @@ $VoiceInputRetryingCopyWith<VoiceInputRetrying> get copyWith => _$VoiceInputRetr
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetrying&&(identical(other.previousError, previousError) || other.previousError == previousError));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetrying&&(identical(other.previousError, previousError) || other.previousError == previousError));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,previousError);
+int get hashCode {
+    return Object.hash(runtimeType,previousError);
+}
 
 @override
 String toString() {
-  return 'VoiceInputState.retrying(previousError: $previousError)';
+    return 'VoiceInputState.retrying(previousError: $previousError)';
 }
 
 
@@ -356,16 +362,18 @@ $VoiceInputRetryCancellingCopyWith<VoiceInputRetryCancelling> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetryCancelling&&(identical(other.previousError, previousError) || other.previousError == previousError));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputRetryCancelling&&(identical(other.previousError, previousError) || other.previousError == previousError));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,previousError);
+int get hashCode {
+    return Object.hash(runtimeType,previousError);
+}
 
 @override
 String toString() {
-  return 'VoiceInputState.retryCancelling(previousError: $previousError)';
+    return 'VoiceInputState.retryCancelling(previousError: $previousError)';
 }
 
 
@@ -417,7 +425,7 @@ class VoiceInputDiscarding implements VoiceInputState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputDiscarding);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputDiscarding);
 }
 
 
@@ -426,7 +434,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VoiceInputState.discarding()';
+    return 'VoiceInputState.discarding()';
 }
 
 
@@ -454,16 +462,18 @@ $VoiceInputCompletedCopyWith<VoiceInputCompleted> get copyWith => _$VoiceInputCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputCompleted&&(identical(other.transcript, transcript) || other.transcript == transcript));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputCompleted&&(identical(other.transcript, transcript) || other.transcript == transcript));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,transcript);
+int get hashCode {
+    return Object.hash(runtimeType,transcript);
+}
 
 @override
 String toString() {
-  return 'VoiceInputState.completed(transcript: $transcript)';
+    return 'VoiceInputState.completed(transcript: $transcript)';
 }
 
 
@@ -520,16 +530,18 @@ $VoiceInputStartFailedCopyWith<VoiceInputStartFailed> get copyWith => _$VoiceInp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputStartFailed&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputStartFailed&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'VoiceInputState.startFailed(error: $error)';
+    return 'VoiceInputState.startFailed(error: $error)';
 }
 
 
@@ -586,16 +598,18 @@ $VoiceInputTranscriptionFailedCopyWith<VoiceInputTranscriptionFailed> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputTranscriptionFailed&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputTranscriptionFailed&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'VoiceInputState.transcriptionFailed(error: $error)';
+    return 'VoiceInputState.transcriptionFailed(error: $error)';
 }
 
 
@@ -647,7 +661,7 @@ class VoiceInputCancelling implements VoiceInputState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputCancelling);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputCancelling);
 }
 
 
@@ -656,7 +670,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'VoiceInputState.cancelling()';
+    return 'VoiceInputState.cancelling()';
 }
 
 

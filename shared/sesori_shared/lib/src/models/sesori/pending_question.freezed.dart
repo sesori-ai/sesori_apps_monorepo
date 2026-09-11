@@ -29,16 +29,21 @@ $PendingQuestionResponseCopyWith<PendingQuestionResponse> get copyWith => _$Pend
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingQuestionResponse&&const DeepCollectionEquality().equals(other.data, data));
+  final _this = this as PendingQuestionResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingQuestionResponse&&const DeepCollectionEquality().equals(other.data, _this.data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(data));
+int get hashCode {
+  final _this = this as PendingQuestionResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.data));
+}
 
 @override
 String toString() {
-  return 'PendingQuestionResponse(data: $data)';
+  final _this = this as PendingQuestionResponse;
+  return 'PendingQuestionResponse(data: ${_this.data})';
 }
 
 
@@ -105,16 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingQuestionResponse&&const DeepCollectionEquality().equals(other._data, _data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingQuestionResponse&&const DeepCollectionEquality().equals(other.data, _data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_data));
+}
 
 @override
 String toString() {
-  return 'PendingQuestionResponse(data: $data)';
+    return 'PendingQuestionResponse(data: $data)';
 }
 
 
@@ -172,16 +179,21 @@ $PendingQuestionCopyWith<PendingQuestion> get copyWith => _$PendingQuestionCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, questions));
+  final _this = this as PendingQuestion;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PendingQuestion&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sessionID, _this.sessionID) || other.sessionID == _this.sessionID)&&(identical(other.displaySessionId, _this.displaySessionId) || other.displaySessionId == _this.displaySessionId)&&const DeepCollectionEquality().equals(other.questions, _this.questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(questions));
+int get hashCode {
+  final _this = this as PendingQuestion;
+  return Object.hash(runtimeType,_this.id,_this.sessionID,_this.displaySessionId,const DeepCollectionEquality().hash(_this.questions));
+}
 
 @override
 String toString() {
-  return 'PendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
+  final _this = this as PendingQuestion;
+  return 'PendingQuestion(id: ${_this.id}, sessionID: ${_this.sessionID}, displaySessionId: ${_this.displaySessionId}, questions: ${_this.questions})';
 }
 
 
@@ -257,16 +269,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other._questions, _questions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PendingQuestion&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, _questions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
+}
 
 @override
 String toString() {
-  return 'PendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
+    return 'PendingQuestion(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
 }
 
 

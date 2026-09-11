@@ -29,16 +29,21 @@ $SessionArchivedRejectionCopyWith<SessionArchivedRejection> get copyWith => _$Se
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionArchivedRejection&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reason, reason) || other.reason == reason));
+  final _this = this as SessionArchivedRejection;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionArchivedRejection&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.reason, _this.reason) || other.reason == _this.reason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,reason);
+int get hashCode {
+  final _this = this as SessionArchivedRejection;
+  return Object.hash(runtimeType,_this.sessionId,_this.reason);
+}
 
 @override
 String toString() {
-  return 'SessionArchivedRejection(sessionId: $sessionId, reason: $reason)';
+  final _this = this as SessionArchivedRejection;
+  return 'SessionArchivedRejection(sessionId: ${_this.sessionId}, reason: ${_this.reason})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionArchivedRejection&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionArchivedRejection&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,reason);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,reason);
+}
 
 @override
 String toString() {
-  return 'SessionArchivedRejection(sessionId: $sessionId, reason: $reason)';
+    return 'SessionArchivedRejection(sessionId: $sessionId, reason: $reason)';
 }
 
 

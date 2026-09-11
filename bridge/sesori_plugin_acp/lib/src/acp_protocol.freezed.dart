@@ -77,16 +77,21 @@ $AcpSessionInfoCopyWith<AcpSessionInfo> get copyWith => _$AcpSessionInfoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpSessionInfo&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.metadata, metadata)&&(identical(other.updatedAtMs, updatedAtMs) || other.updatedAtMs == updatedAtMs));
+  final _this = this as AcpSessionInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpSessionInfo&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.title, _this.title) || other.title == _this.title)&&const DeepCollectionEquality().equals(other.metadata, _this.metadata)&&(identical(other.updatedAtMs, _this.updatedAtMs) || other.updatedAtMs == _this.updatedAtMs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,cwd,title,const DeepCollectionEquality().hash(metadata),updatedAtMs);
+int get hashCode {
+  final _this = this as AcpSessionInfo;
+  return Object.hash(runtimeType,_this.sessionId,_this.cwd,_this.title,const DeepCollectionEquality().hash(_this.metadata),_this.updatedAtMs);
+}
 
 @override
 String toString() {
-  return 'AcpSessionInfo(sessionId: $sessionId, cwd: $cwd, title: $title, metadata: $metadata, updatedAtMs: $updatedAtMs)';
+  final _this = this as AcpSessionInfo;
+  return 'AcpSessionInfo(sessionId: ${_this.sessionId}, cwd: ${_this.cwd}, title: ${_this.title}, metadata: ${_this.metadata}, updatedAtMs: ${_this.updatedAtMs})';
 }
 
 
@@ -167,16 +172,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AcpSessionInfo&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other._metadata, _metadata)&&(identical(other.updatedAtMs, updatedAtMs) || other.updatedAtMs == updatedAtMs));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AcpSessionInfo&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.title, title) || other.title == title)&&const DeepCollectionEquality().equals(other.metadata, _metadata)&&(identical(other.updatedAtMs, updatedAtMs) || other.updatedAtMs == updatedAtMs));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,cwd,title,const DeepCollectionEquality().hash(_metadata),updatedAtMs);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,cwd,title,const DeepCollectionEquality().hash(_metadata),updatedAtMs);
+}
 
 @override
 String toString() {
-  return 'AcpSessionInfo(sessionId: $sessionId, cwd: $cwd, title: $title, metadata: $metadata, updatedAtMs: $updatedAtMs)';
+    return 'AcpSessionInfo(sessionId: $sessionId, cwd: $cwd, title: $title, metadata: $metadata, updatedAtMs: $updatedAtMs)';
 }
 
 
@@ -236,16 +243,21 @@ $AcpSessionListResultCopyWith<AcpSessionListResult> get copyWith => _$AcpSession
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpSessionListResult&&const DeepCollectionEquality().equals(other.sessions, sessions)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
+  final _this = this as AcpSessionListResult;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AcpSessionListResult&&const DeepCollectionEquality().equals(other.sessions, _this.sessions)&&(identical(other.nextCursor, _this.nextCursor) || other.nextCursor == _this.nextCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(sessions),nextCursor);
+int get hashCode {
+  final _this = this as AcpSessionListResult;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.sessions),_this.nextCursor);
+}
 
 @override
 String toString() {
-  return 'AcpSessionListResult(sessions: $sessions, nextCursor: $nextCursor)';
+  final _this = this as AcpSessionListResult;
+  return 'AcpSessionListResult(sessions: ${_this.sessions}, nextCursor: ${_this.nextCursor})';
 }
 
 
@@ -315,16 +327,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AcpSessionListResult&&const DeepCollectionEquality().equals(other._sessions, _sessions)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AcpSessionListResult&&const DeepCollectionEquality().equals(other.sessions, _sessions)&&(identical(other.nextCursor, nextCursor) || other.nextCursor == nextCursor));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),nextCursor);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),nextCursor);
+}
 
 @override
 String toString() {
-  return 'AcpSessionListResult(sessions: $sessions, nextCursor: $nextCursor)';
+    return 'AcpSessionListResult(sessions: $sessions, nextCursor: $nextCursor)';
 }
 
 

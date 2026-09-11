@@ -23,7 +23,7 @@ mixin _$PluginSessionStatus {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatus);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatus);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -32,7 +32,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginSessionStatus()';
+    return 'PluginSessionStatus()';
 }
 
 
@@ -66,7 +66,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatusIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatusIdle);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -75,7 +75,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginSessionStatus.idle()';
+    return 'PluginSessionStatus.idle()';
 }
 
 
@@ -105,7 +105,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatusBusy);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatusBusy);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -114,7 +114,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginSessionStatus.busy()';
+    return 'PluginSessionStatus.busy()';
 }
 
 
@@ -151,16 +151,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatusRetry&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.message, message) || other.message == message)&&(identical(other.next, next) || other.next == next));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginSessionStatusRetry&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.message, message) || other.message == message)&&(identical(other.next, next) || other.next == next));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,attempt,message,next);
+int get hashCode {
+    return Object.hash(runtimeType,attempt,message,next);
+}
 
 @override
 String toString() {
-  return 'PluginSessionStatus.retry(attempt: $attempt, message: $message, next: $next)';
+    return 'PluginSessionStatus.retry(attempt: $attempt, message: $message, next: $next)';
 }
 
 

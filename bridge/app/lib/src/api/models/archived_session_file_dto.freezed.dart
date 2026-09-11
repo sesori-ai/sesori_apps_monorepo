@@ -29,16 +29,21 @@ $ArchivedSessionFileDtoCopyWith<ArchivedSessionFileDto> get copyWith => _$Archiv
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArchivedSessionFileDto&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.completeness, completeness) || other.completeness == completeness)&&(identical(other.session, session) || other.session == session)&&const DeepCollectionEquality().equals(other.messages, messages));
+  final _this = this as ArchivedSessionFileDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArchivedSessionFileDto&&(identical(other.schemaVersion, _this.schemaVersion) || other.schemaVersion == _this.schemaVersion)&&(identical(other.archivedAt, _this.archivedAt) || other.archivedAt == _this.archivedAt)&&(identical(other.completeness, _this.completeness) || other.completeness == _this.completeness)&&(identical(other.session, _this.session) || other.session == _this.session)&&const DeepCollectionEquality().equals(other.messages, _this.messages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,schemaVersion,archivedAt,completeness,session,const DeepCollectionEquality().hash(messages));
+int get hashCode {
+  final _this = this as ArchivedSessionFileDto;
+  return Object.hash(runtimeType,_this.schemaVersion,_this.archivedAt,_this.completeness,_this.session,const DeepCollectionEquality().hash(_this.messages));
+}
 
 @override
 String toString() {
-  return 'ArchivedSessionFileDto(schemaVersion: $schemaVersion, archivedAt: $archivedAt, completeness: $completeness, session: $session, messages: $messages)';
+  final _this = this as ArchivedSessionFileDto;
+  return 'ArchivedSessionFileDto(schemaVersion: ${_this.schemaVersion}, archivedAt: ${_this.archivedAt}, completeness: ${_this.completeness}, session: ${_this.session}, messages: ${_this.messages})';
 }
 
 
@@ -122,16 +127,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArchivedSessionFileDto&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.completeness, completeness) || other.completeness == completeness)&&(identical(other.session, session) || other.session == session)&&const DeepCollectionEquality().equals(other._messages, _messages));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArchivedSessionFileDto&&(identical(other.schemaVersion, schemaVersion) || other.schemaVersion == schemaVersion)&&(identical(other.archivedAt, archivedAt) || other.archivedAt == archivedAt)&&(identical(other.completeness, completeness) || other.completeness == completeness)&&(identical(other.session, session) || other.session == session)&&const DeepCollectionEquality().equals(other.messages, _messages));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,schemaVersion,archivedAt,completeness,session,const DeepCollectionEquality().hash(_messages));
+int get hashCode {
+    return Object.hash(runtimeType,schemaVersion,archivedAt,completeness,session,const DeepCollectionEquality().hash(_messages));
+}
 
 @override
 String toString() {
-  return 'ArchivedSessionFileDto(schemaVersion: $schemaVersion, archivedAt: $archivedAt, completeness: $completeness, session: $session, messages: $messages)';
+    return 'ArchivedSessionFileDto(schemaVersion: $schemaVersion, archivedAt: $archivedAt, completeness: $completeness, session: $session, messages: $messages)';
 }
 
 
@@ -199,16 +206,21 @@ $ArchivedSessionSnapshotDtoCopyWith<ArchivedSessionSnapshotDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArchivedSessionSnapshotDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.parentSessionId, parentSessionId) || other.parentSessionId == parentSessionId)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.title, title) || other.title == title)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  final _this = this as ArchivedSessionSnapshotDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArchivedSessionSnapshotDto&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.backendSessionId, _this.backendSessionId) || other.backendSessionId == _this.backendSessionId)&&(identical(other.pluginId, _this.pluginId) || other.pluginId == _this.pluginId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.parentSessionId, _this.parentSessionId) || other.parentSessionId == _this.parentSessionId)&&(identical(other.directory, _this.directory) || other.directory == _this.directory)&&(identical(other.worktreePath, _this.worktreePath) || other.worktreePath == _this.worktreePath)&&(identical(other.branchName, _this.branchName) || other.branchName == _this.branchName)&&(identical(other.baseBranch, _this.baseBranch) || other.baseBranch == _this.baseBranch)&&(identical(other.baseCommit, _this.baseCommit) || other.baseCommit == _this.baseCommit)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,backendSessionId,pluginId,projectId,parentSessionId,directory,worktreePath,branchName,baseBranch,baseCommit,title,createdAt,updatedAt);
+int get hashCode {
+  final _this = this as ArchivedSessionSnapshotDto;
+  return Object.hash(runtimeType,_this.sessionId,_this.backendSessionId,_this.pluginId,_this.projectId,_this.parentSessionId,_this.directory,_this.worktreePath,_this.branchName,_this.baseBranch,_this.baseCommit,_this.title,_this.createdAt,_this.updatedAt);
+}
 
 @override
 String toString() {
-  return 'ArchivedSessionSnapshotDto(sessionId: $sessionId, backendSessionId: $backendSessionId, pluginId: $pluginId, projectId: $projectId, parentSessionId: $parentSessionId, directory: $directory, worktreePath: $worktreePath, branchName: $branchName, baseBranch: $baseBranch, baseCommit: $baseCommit, title: $title, createdAt: $createdAt, updatedAt: $updatedAt)';
+  final _this = this as ArchivedSessionSnapshotDto;
+  return 'ArchivedSessionSnapshotDto(sessionId: ${_this.sessionId}, backendSessionId: ${_this.backendSessionId}, pluginId: ${_this.pluginId}, projectId: ${_this.projectId}, parentSessionId: ${_this.parentSessionId}, directory: ${_this.directory}, worktreePath: ${_this.worktreePath}, branchName: ${_this.branchName}, baseBranch: ${_this.baseBranch}, baseCommit: ${_this.baseCommit}, title: ${_this.title}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -293,16 +305,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArchivedSessionSnapshotDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.parentSessionId, parentSessionId) || other.parentSessionId == parentSessionId)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.title, title) || other.title == title)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArchivedSessionSnapshotDto&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.backendSessionId, backendSessionId) || other.backendSessionId == backendSessionId)&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.parentSessionId, parentSessionId) || other.parentSessionId == parentSessionId)&&(identical(other.directory, directory) || other.directory == directory)&&(identical(other.worktreePath, worktreePath) || other.worktreePath == worktreePath)&&(identical(other.branchName, branchName) || other.branchName == branchName)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.baseCommit, baseCommit) || other.baseCommit == baseCommit)&&(identical(other.title, title) || other.title == title)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,sessionId,backendSessionId,pluginId,projectId,parentSessionId,directory,worktreePath,branchName,baseBranch,baseCommit,title,createdAt,updatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,sessionId,backendSessionId,pluginId,projectId,parentSessionId,directory,worktreePath,branchName,baseBranch,baseCommit,title,createdAt,updatedAt);
+}
 
 @override
 String toString() {
-  return 'ArchivedSessionSnapshotDto(sessionId: $sessionId, backendSessionId: $backendSessionId, pluginId: $pluginId, projectId: $projectId, parentSessionId: $parentSessionId, directory: $directory, worktreePath: $worktreePath, branchName: $branchName, baseBranch: $baseBranch, baseCommit: $baseCommit, title: $title, createdAt: $createdAt, updatedAt: $updatedAt)';
+    return 'ArchivedSessionSnapshotDto(sessionId: $sessionId, backendSessionId: $backendSessionId, pluginId: $pluginId, projectId: $projectId, parentSessionId: $parentSessionId, directory: $directory, worktreePath: $worktreePath, branchName: $branchName, baseBranch: $baseBranch, baseCommit: $baseCommit, title: $title, createdAt: $createdAt, updatedAt: $updatedAt)';
 }
 
 
@@ -377,16 +391,21 @@ $ArchivedMessageDtoCopyWith<ArchivedMessageDto> get copyWith => _$ArchivedMessag
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArchivedMessageDto&&(identical(other.seq, seq) || other.seq == seq)&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other.parts, parts));
+  final _this = this as ArchivedMessageDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ArchivedMessageDto&&(identical(other.seq, _this.seq) || other.seq == _this.seq)&&(identical(other.info, _this.info) || other.info == _this.info)&&const DeepCollectionEquality().equals(other.parts, _this.parts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,seq,info,const DeepCollectionEquality().hash(parts));
+int get hashCode {
+  final _this = this as ArchivedMessageDto;
+  return Object.hash(runtimeType,_this.seq,_this.info,const DeepCollectionEquality().hash(_this.parts));
+}
 
 @override
 String toString() {
-  return 'ArchivedMessageDto(seq: $seq, info: $info, parts: $parts)';
+  final _this = this as ArchivedMessageDto;
+  return 'ArchivedMessageDto(seq: ${_this.seq}, info: ${_this.info}, parts: ${_this.parts})';
 }
 
 
@@ -482,16 +501,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArchivedMessageDto&&(identical(other.seq, seq) || other.seq == seq)&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other._parts, _parts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ArchivedMessageDto&&(identical(other.seq, seq) || other.seq == seq)&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other.parts, _parts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,seq,info,const DeepCollectionEquality().hash(_parts));
+int get hashCode {
+    return Object.hash(runtimeType,seq,info,const DeepCollectionEquality().hash(_parts));
+}
 
 @override
 String toString() {
-  return 'ArchivedMessageDto(seq: $seq, info: $info, parts: $parts)';
+    return 'ArchivedMessageDto(seq: $seq, info: $info, parts: $parts)';
 }
 
 

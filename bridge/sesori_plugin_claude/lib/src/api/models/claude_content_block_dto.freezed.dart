@@ -58,7 +58,7 @@ mixin _$ClaudeContentBlockDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -99,12 +99,14 @@ $ClaudeTextContentBlockDtoCopyWith<ClaudeTextContentBlockDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTextContentBlockDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeTextContentBlockDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 
 
@@ -166,12 +168,14 @@ $ClaudeThinkingContentBlockDtoCopyWith<ClaudeThinkingContentBlockDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeThinkingContentBlockDto&&(identical(other.thinking, thinking) || other.thinking == thinking)&&(identical(other.signature, signature) || other.signature == signature));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeThinkingContentBlockDto&&(identical(other.thinking, thinking) || other.thinking == thinking)&&(identical(other.signature, signature) || other.signature == signature));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,thinking,signature);
+int get hashCode {
+    return Object.hash(runtimeType,thinking,signature);
+}
 
 
 
@@ -228,7 +232,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeRedactedThinkingContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeRedactedThinkingContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -267,12 +271,14 @@ $ClaudeToolUseContentBlockDtoCopyWith<ClaudeToolUseContentBlockDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeToolUseContentBlockDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.input, input));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeToolUseContentBlockDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.input, input));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(input));
+int get hashCode {
+    return Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(input));
+}
 
 
 
@@ -336,12 +342,14 @@ $ClaudeToolResultContentBlockDtoCopyWith<ClaudeToolResultContentBlockDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeToolResultContentBlockDto&&(identical(other.toolUseId, toolUseId) || other.toolUseId == toolUseId)&&const DeepCollectionEquality().equals(other.content, content)&&(identical(other.isError, isError) || other.isError == isError));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeToolResultContentBlockDto&&(identical(other.toolUseId, toolUseId) || other.toolUseId == toolUseId)&&const DeepCollectionEquality().equals(other.content, content)&&(identical(other.isError, isError) || other.isError == isError));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,toolUseId,const DeepCollectionEquality().hash(content),isError);
+int get hashCode {
+    return Object.hash(runtimeType,toolUseId,const DeepCollectionEquality().hash(content),isError);
+}
 
 
 
@@ -403,12 +411,14 @@ $ClaudeImageContentBlockDtoCopyWith<ClaudeImageContentBlockDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeImageContentBlockDto&&(identical(other.source, source) || other.source == source));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeImageContentBlockDto&&(identical(other.source, source) || other.source == source));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,source);
+int get hashCode {
+    return Object.hash(runtimeType,source);
+}
 
 
 
@@ -476,7 +486,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeUnknownContentBlockDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeUnknownContentBlockDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -505,12 +515,16 @@ $ClaudeImageSourceDtoCopyWith<ClaudeImageSourceDto> get copyWith => _$ClaudeImag
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeImageSourceDto&&(identical(other.type, type) || other.type == type)&&(identical(other.mediaType, mediaType) || other.mediaType == mediaType)&&(identical(other.data, data) || other.data == data));
+  final _this = this as ClaudeImageSourceDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeImageSourceDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.mediaType, _this.mediaType) || other.mediaType == _this.mediaType)&&(identical(other.data, _this.data) || other.data == _this.data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,mediaType,data);
+int get hashCode {
+  final _this = this as ClaudeImageSourceDto;
+  return Object.hash(runtimeType,_this.type,_this.mediaType,_this.data);
+}
 
 
 
@@ -572,12 +586,14 @@ _$ClaudeImageSourceDtoCopyWith<_ClaudeImageSourceDto> get copyWith => __$ClaudeI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeImageSourceDto&&(identical(other.type, type) || other.type == type)&&(identical(other.mediaType, mediaType) || other.mediaType == mediaType)&&(identical(other.data, data) || other.data == data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeImageSourceDto&&(identical(other.type, type) || other.type == type)&&(identical(other.mediaType, mediaType) || other.mediaType == mediaType)&&(identical(other.data, data) || other.data == data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,mediaType,data);
+int get hashCode {
+    return Object.hash(runtimeType,type,mediaType,data);
+}
 
 
 

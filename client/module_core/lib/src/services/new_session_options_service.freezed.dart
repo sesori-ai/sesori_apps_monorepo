@@ -26,16 +26,21 @@ $NewSessionOptionsDataCopyWith<NewSessionOptionsData> get copyWith => _$NewSessi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsData&&const DeepCollectionEquality().equals(other.agents, agents)&&const DeepCollectionEquality().equals(other.providers, providers)&&const DeepCollectionEquality().equals(other.commands, commands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other.availableVariants, availableVariants));
+  final _this = this as NewSessionOptionsData;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionOptionsData&&const DeepCollectionEquality().equals(other.agents, _this.agents)&&const DeepCollectionEquality().equals(other.providers, _this.providers)&&const DeepCollectionEquality().equals(other.commands, _this.commands)&&(identical(other.selectedAgent, _this.selectedAgent) || other.selectedAgent == _this.selectedAgent)&&(identical(other.selectedAgentModel, _this.selectedAgentModel) || other.selectedAgentModel == _this.selectedAgentModel)&&(identical(other.stagedCommand, _this.stagedCommand) || other.stagedCommand == _this.stagedCommand)&&const DeepCollectionEquality().equals(other.availableVariants, _this.availableVariants));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(agents),const DeepCollectionEquality().hash(providers),const DeepCollectionEquality().hash(commands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(availableVariants));
+int get hashCode {
+  final _this = this as NewSessionOptionsData;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.agents),const DeepCollectionEquality().hash(_this.providers),const DeepCollectionEquality().hash(_this.commands),_this.selectedAgent,_this.selectedAgentModel,_this.stagedCommand,const DeepCollectionEquality().hash(_this.availableVariants));
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsData(agents: $agents, providers: $providers, commands: $commands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants)';
+  final _this = this as NewSessionOptionsData;
+  return 'NewSessionOptionsData(agents: ${_this.agents}, providers: ${_this.providers}, commands: ${_this.commands}, selectedAgent: ${_this.selectedAgent}, selectedAgentModel: ${_this.selectedAgentModel}, stagedCommand: ${_this.stagedCommand}, availableVariants: ${_this.availableVariants})';
 }
 
 
@@ -153,16 +158,18 @@ _$NewSessionOptionsDataCopyWith<_NewSessionOptionsData> get copyWith => __$NewSe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionOptionsData&&const DeepCollectionEquality().equals(other._agents, _agents)&&const DeepCollectionEquality().equals(other._providers, _providers)&&const DeepCollectionEquality().equals(other._commands, _commands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other._availableVariants, _availableVariants));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _NewSessionOptionsData&&const DeepCollectionEquality().equals(other.agents, _agents)&&const DeepCollectionEquality().equals(other.providers, _providers)&&const DeepCollectionEquality().equals(other.commands, _commands)&&(identical(other.selectedAgent, selectedAgent) || other.selectedAgent == selectedAgent)&&(identical(other.selectedAgentModel, selectedAgentModel) || other.selectedAgentModel == selectedAgentModel)&&(identical(other.stagedCommand, stagedCommand) || other.stagedCommand == stagedCommand)&&const DeepCollectionEquality().equals(other.availableVariants, _availableVariants));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents),const DeepCollectionEquality().hash(_providers),const DeepCollectionEquality().hash(_commands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants));
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_agents),const DeepCollectionEquality().hash(_providers),const DeepCollectionEquality().hash(_commands),selectedAgent,selectedAgentModel,stagedCommand,const DeepCollectionEquality().hash(_availableVariants));
+}
 
 @override
 String toString() {
-  return 'NewSessionOptionsData(agents: $agents, providers: $providers, commands: $commands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants)';
+    return 'NewSessionOptionsData(agents: $agents, providers: $providers, commands: $commands, selectedAgent: $selectedAgent, selectedAgentModel: $selectedAgentModel, stagedCommand: $stagedCommand, availableVariants: $availableVariants)';
 }
 
 

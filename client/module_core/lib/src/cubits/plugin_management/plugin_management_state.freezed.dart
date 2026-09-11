@@ -21,7 +21,7 @@ mixin _$PluginManagementActionError {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionError);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionError);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionError()';
+    return 'PluginManagementActionError()';
 }
 
 
@@ -57,7 +57,7 @@ class PluginManagementInvalidIdleTimeout implements PluginManagementActionError 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementInvalidIdleTimeout);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementInvalidIdleTimeout);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionError.invalidIdleTimeout()';
+    return 'PluginManagementActionError.invalidIdleTimeout()';
 }
 
 
@@ -89,7 +89,7 @@ class PluginManagementActionNotFound implements PluginManagementActionError {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionNotFound);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionNotFound);
 }
 
 
@@ -98,7 +98,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionError.notFound()';
+    return 'PluginManagementActionError.notFound()';
 }
 
 
@@ -126,16 +126,18 @@ $PluginManagementActionConflictCopyWith<PluginManagementActionConflict> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionConflict&&(identical(other.conflict, conflict) || other.conflict == conflict));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionConflict&&(identical(other.conflict, conflict) || other.conflict == conflict));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,conflict);
+int get hashCode {
+    return Object.hash(runtimeType,conflict);
+}
 
 @override
 String toString() {
-  return 'PluginManagementActionError.conflict(conflict: $conflict)';
+    return 'PluginManagementActionError.conflict(conflict: $conflict)';
 }
 
 
@@ -196,7 +198,7 @@ class PluginManagementActionUncertain implements PluginManagementActionError {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionUncertain);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionUncertain);
 }
 
 
@@ -205,7 +207,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionError.uncertain()';
+    return 'PluginManagementActionError.uncertain()';
 }
 
 
@@ -233,16 +235,18 @@ $PluginManagementActionRequestErrorCopyWith<PluginManagementActionRequestError> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionRequestError&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionRequestError&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'PluginManagementActionError.request(error: $error)';
+    return 'PluginManagementActionError.request(error: $error)';
 }
 
 
@@ -298,7 +302,7 @@ mixin _$PluginManagementRefreshState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshState);
 }
 
 
@@ -307,7 +311,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementRefreshState()';
+    return 'PluginManagementRefreshState()';
 }
 
 
@@ -334,7 +338,7 @@ class PluginManagementRefreshIdle implements PluginManagementRefreshState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshIdle);
 }
 
 
@@ -343,7 +347,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementRefreshState.idle()';
+    return 'PluginManagementRefreshState.idle()';
 }
 
 
@@ -371,16 +375,18 @@ $PluginManagementRefreshFailedCopyWith<PluginManagementRefreshFailed> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshFailed&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementRefreshFailed&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'PluginManagementRefreshState.failed(error: $error)';
+    return 'PluginManagementRefreshState.failed(error: $error)';
 }
 
 
@@ -436,7 +442,7 @@ mixin _$PluginManagementActionTarget {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTarget);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTarget);
 }
 
 
@@ -445,7 +451,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionTarget()';
+    return 'PluginManagementActionTarget()';
 }
 
 
@@ -472,7 +478,7 @@ class PluginManagementActionTargetAllHarnesses implements PluginManagementAction
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTargetAllHarnesses);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTargetAllHarnesses);
 }
 
 
@@ -481,7 +487,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionTarget.allHarnesses()';
+    return 'PluginManagementActionTarget.allHarnesses()';
 }
 
 
@@ -509,16 +515,18 @@ $PluginManagementActionTargetHarnessCopyWith<PluginManagementActionTargetHarness
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTargetHarness&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionTargetHarness&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId);
+}
 
 @override
 String toString() {
-  return 'PluginManagementActionTarget.harness(pluginId: $pluginId)';
+    return 'PluginManagementActionTarget.harness(pluginId: $pluginId)';
 }
 
 
@@ -565,7 +573,7 @@ mixin _$PluginManagementActionState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionState);
 }
 
 
@@ -574,7 +582,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionState()';
+    return 'PluginManagementActionState()';
 }
 
 
@@ -601,7 +609,7 @@ class PluginManagementActionIdle implements PluginManagementActionState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionIdle);
 }
 
 
@@ -610,7 +618,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementActionState.idle()';
+    return 'PluginManagementActionState.idle()';
 }
 
 
@@ -638,16 +646,18 @@ $PluginManagementActionInProgressCopyWith<PluginManagementActionInProgress> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionInProgress&&(identical(other.target, target) || other.target == target));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionInProgress&&(identical(other.target, target) || other.target == target));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,target);
+int get hashCode {
+    return Object.hash(runtimeType,target);
+}
 
 @override
 String toString() {
-  return 'PluginManagementActionState.inProgress(target: $target)';
+    return 'PluginManagementActionState.inProgress(target: $target)';
 }
 
 
@@ -714,16 +724,18 @@ $PluginManagementActionFailedCopyWith<PluginManagementActionFailed> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionFailed&&(identical(other.target, target) || other.target == target)&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionFailed&&(identical(other.target, target) || other.target == target)&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,target,error);
+int get hashCode {
+    return Object.hash(runtimeType,target,error);
+}
 
 @override
 String toString() {
-  return 'PluginManagementActionState.failed(target: $target, error: $error)';
+    return 'PluginManagementActionState.failed(target: $target, error: $error)';
 }
 
 
@@ -802,16 +814,18 @@ $PluginManagementActionForceConfirmationRequiredCopyWith<PluginManagementActionF
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionForceConfirmationRequired&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.action, action) || other.action == action)&&(identical(other.conflict, conflict) || other.conflict == conflict)&&(identical(other.request, request) || other.request == request));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementActionForceConfirmationRequired&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.action, action) || other.action == action)&&(identical(other.conflict, conflict) || other.conflict == conflict)&&(identical(other.request, request) || other.request == request));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,action,conflict,request);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,action,conflict,request);
+}
 
 @override
 String toString() {
-  return 'PluginManagementActionState.forceConfirmationRequired(pluginId: $pluginId, action: $action, conflict: $conflict, request: $request)';
+    return 'PluginManagementActionState.forceConfirmationRequired(pluginId: $pluginId, action: $action, conflict: $conflict, request: $request)';
 }
 
 
@@ -870,7 +884,7 @@ mixin _$PluginAuthenticationPresentationError {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationError);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationError);
 }
 
 
@@ -879,7 +893,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError()';
+    return 'PluginAuthenticationPresentationError()';
 }
 
 
@@ -906,7 +920,7 @@ class PluginAuthenticationPresentationNotFound implements PluginAuthenticationPr
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationNotFound);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationNotFound);
 }
 
 
@@ -915,7 +929,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError.notFound()';
+    return 'PluginAuthenticationPresentationError.notFound()';
 }
 
 
@@ -938,7 +952,7 @@ class PluginAuthenticationPresentationUnsupported implements PluginAuthenticatio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationUnsupported);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationUnsupported);
 }
 
 
@@ -947,7 +961,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError.unsupported()';
+    return 'PluginAuthenticationPresentationError.unsupported()';
 }
 
 
@@ -975,16 +989,18 @@ $PluginAuthenticationPresentationConflictCopyWith<PluginAuthenticationPresentati
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationConflict&&(identical(other.conflict, conflict) || other.conflict == conflict));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationConflict&&(identical(other.conflict, conflict) || other.conflict == conflict));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,conflict);
+int get hashCode {
+    return Object.hash(runtimeType,conflict);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError.conflict(conflict: $conflict)';
+    return 'PluginAuthenticationPresentationError.conflict(conflict: $conflict)';
 }
 
 
@@ -1045,7 +1061,7 @@ class PluginAuthenticationPresentationUncertain implements PluginAuthenticationP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationUncertain);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationUncertain);
 }
 
 
@@ -1054,7 +1070,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError.uncertain()';
+    return 'PluginAuthenticationPresentationError.uncertain()';
 }
 
 
@@ -1077,7 +1093,7 @@ class PluginAuthenticationPresentationInvalidChallenge implements PluginAuthenti
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationInvalidChallenge);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationInvalidChallenge);
 }
 
 
@@ -1086,7 +1102,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError.invalidChallenge()';
+    return 'PluginAuthenticationPresentationError.invalidChallenge()';
 }
 
 
@@ -1114,16 +1130,18 @@ $PluginAuthenticationPresentationRemoteErrorCopyWith<PluginAuthenticationPresent
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationRemoteError&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationRemoteError&&(identical(other.message, message) || other.message == message));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError.remote(message: $message)';
+    return 'PluginAuthenticationPresentationError.remote(message: $message)';
 }
 
 
@@ -1180,16 +1198,18 @@ $PluginAuthenticationPresentationRequestErrorCopyWith<PluginAuthenticationPresen
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationRequestError&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationRequestError&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationError.request(error: $error)';
+    return 'PluginAuthenticationPresentationError.request(error: $error)';
 }
 
 
@@ -1245,7 +1265,7 @@ mixin _$PluginAuthenticationPresentationState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationState);
 }
 
 
@@ -1254,7 +1274,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState()';
+    return 'PluginAuthenticationPresentationState()';
 }
 
 
@@ -1281,7 +1301,7 @@ class PluginAuthenticationPresentationIdle implements PluginAuthenticationPresen
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationIdle);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationIdle);
 }
 
 
@@ -1290,7 +1310,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.idle()';
+    return 'PluginAuthenticationPresentationState.idle()';
 }
 
 
@@ -1318,16 +1338,18 @@ $PluginAuthenticationPresentationStartingCopyWith<PluginAuthenticationPresentati
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationStarting&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationStarting&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.starting(pluginId: $pluginId)';
+    return 'PluginAuthenticationPresentationState.starting(pluginId: $pluginId)';
 }
 
 
@@ -1385,16 +1407,18 @@ $PluginAuthenticationPresentationChallengeCopyWith<PluginAuthenticationPresentat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationChallenge&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationChallenge&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,challenge);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.challenge(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.challenge(pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1453,16 +1477,18 @@ $PluginAuthenticationPresentationBrowserOpeningCopyWith<PluginAuthenticationPres
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserOpening&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserOpening&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,challenge);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.browserOpening(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.browserOpening(pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1521,16 +1547,18 @@ $PluginAuthenticationPresentationBrowserWaitingCopyWith<PluginAuthenticationPres
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserWaiting&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserWaiting&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,challenge);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.browserWaiting(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.browserWaiting(pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1589,16 +1617,18 @@ $PluginAuthenticationPresentationBrowserFinalizingCopyWith<PluginAuthenticationP
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserFinalizing&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserFinalizing&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,challenge);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.browserFinalizing(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.browserFinalizing(pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1657,16 +1687,18 @@ $PluginAuthenticationPresentationBrowserLaunchFailedStateCopyWith<PluginAuthenti
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserLaunchFailedState&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationBrowserLaunchFailedState&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,challenge);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.browserLaunchFailed(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.browserLaunchFailed(pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1725,16 +1757,18 @@ $PluginAuthenticationPresentationCancellingCopyWith<PluginAuthenticationPresenta
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancelling&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancelling&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,challenge);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.cancelling(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.cancelling(pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1793,16 +1827,18 @@ $PluginAuthenticationPresentationCancellingUncertainCopyWith<PluginAuthenticatio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancellingUncertain&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancellingUncertain&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.challenge, challenge) || other.challenge == challenge));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,challenge);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,challenge);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.cancellingUncertain(pluginId: $pluginId, challenge: $challenge)';
+    return 'PluginAuthenticationPresentationState.cancellingUncertain(pluginId: $pluginId, challenge: $challenge)';
 }
 
 
@@ -1860,16 +1896,18 @@ $PluginAuthenticationPresentationSucceededCopyWith<PluginAuthenticationPresentat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationSucceeded&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationSucceeded&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.succeeded(pluginId: $pluginId)';
+    return 'PluginAuthenticationPresentationState.succeeded(pluginId: $pluginId)';
 }
 
 
@@ -1926,16 +1964,18 @@ $PluginAuthenticationPresentationCancelledCopyWith<PluginAuthenticationPresentat
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancelled&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationCancelled&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.cancelled(pluginId: $pluginId)';
+    return 'PluginAuthenticationPresentationState.cancelled(pluginId: $pluginId)';
 }
 
 
@@ -1993,16 +2033,18 @@ $PluginAuthenticationPresentationFailedCopyWith<PluginAuthenticationPresentation
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationFailed&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginAuthenticationPresentationFailed&&(identical(other.pluginId, pluginId) || other.pluginId == pluginId)&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,pluginId,error);
+int get hashCode {
+    return Object.hash(runtimeType,pluginId,error);
+}
 
 @override
 String toString() {
-  return 'PluginAuthenticationPresentationState.failed(pluginId: $pluginId, error: $error)';
+    return 'PluginAuthenticationPresentationState.failed(pluginId: $pluginId, error: $error)';
 }
 
 
@@ -2059,7 +2101,7 @@ mixin _$CatalogRescanOutcome {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcome);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcome);
 }
 
 
@@ -2068,7 +2110,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CatalogRescanOutcome()';
+    return 'CatalogRescanOutcome()';
 }
 
 
@@ -2100,16 +2142,18 @@ $CatalogRescanOutcomeSucceededCopyWith<CatalogRescanOutcomeSucceeded> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomeSucceeded&&(identical(other.counts, counts) || other.counts == counts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomeSucceeded&&(identical(other.counts, counts) || other.counts == counts));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,counts);
+int get hashCode {
+    return Object.hash(runtimeType,counts);
+}
 
 @override
 String toString() {
-  return 'CatalogRescanOutcome.succeeded(counts: $counts)';
+    return 'CatalogRescanOutcome.succeeded(counts: $counts)';
 }
 
 
@@ -2167,16 +2211,18 @@ $CatalogRescanOutcomePartlyFailedCopyWith<CatalogRescanOutcomePartlyFailed> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomePartlyFailed&&(identical(other.succeededCount, succeededCount) || other.succeededCount == succeededCount)&&(identical(other.failedCount, failedCount) || other.failedCount == failedCount));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomePartlyFailed&&(identical(other.succeededCount, succeededCount) || other.succeededCount == succeededCount)&&(identical(other.failedCount, failedCount) || other.failedCount == failedCount));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,succeededCount,failedCount);
+int get hashCode {
+    return Object.hash(runtimeType,succeededCount,failedCount);
+}
 
 @override
 String toString() {
-  return 'CatalogRescanOutcome.partlyFailed(succeededCount: $succeededCount, failedCount: $failedCount)';
+    return 'CatalogRescanOutcome.partlyFailed(succeededCount: $succeededCount, failedCount: $failedCount)';
 }
 
 
@@ -2229,7 +2275,7 @@ class CatalogRescanOutcomeFailed implements CatalogRescanOutcome {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomeFailed);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CatalogRescanOutcomeFailed);
 }
 
 
@@ -2238,7 +2284,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CatalogRescanOutcome.failed()';
+    return 'CatalogRescanOutcome.failed()';
 }
 
 
@@ -2256,7 +2302,7 @@ mixin _$PluginManagementState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementState);
 }
 
 
@@ -2265,7 +2311,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementState()';
+    return 'PluginManagementState()';
 }
 
 
@@ -2292,7 +2338,7 @@ class PluginManagementLoading implements PluginManagementState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementLoading);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementLoading);
 }
 
 
@@ -2301,7 +2347,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementState.loading()';
+    return 'PluginManagementState.loading()';
 }
 
 
@@ -2324,7 +2370,7 @@ class PluginManagementUnsupported implements PluginManagementState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementUnsupported);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementUnsupported);
 }
 
 
@@ -2333,7 +2379,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'PluginManagementState.unsupported()';
+    return 'PluginManagementState.unsupported()';
 }
 
 
@@ -2361,16 +2407,18 @@ $PluginManagementFailureCopyWith<PluginManagementFailure> get copyWith => _$Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementFailure&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementFailure&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'PluginManagementState.failure(error: $error)';
+    return 'PluginManagementState.failure(error: $error)';
 }
 
 
@@ -2486,16 +2534,18 @@ $PluginManagementReadyCopyWith<PluginManagementReady> get copyWith => _$PluginMa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.globalAction, globalAction) || other.globalAction == globalAction)&&const DeepCollectionEquality().equals(other._harnessActions, _harnessActions)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other._installs, _installs)&&const DeepCollectionEquality().equals(other._scanningPluginIds, _scanningPluginIds)&&const DeepCollectionEquality().equals(other._scanRejections, _scanRejections)&&(identical(other.scanOutcome, scanOutcome) || other.scanOutcome == scanOutcome));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginManagementReady&&(identical(other.response, response) || other.response == response)&&(identical(other.refresh, refresh) || other.refresh == refresh)&&(identical(other.globalAction, globalAction) || other.globalAction == globalAction)&&const DeepCollectionEquality().equals(other.harnessActions, _harnessActions)&&(identical(other.authentication, authentication) || other.authentication == authentication)&&const DeepCollectionEquality().equals(other.installs, _installs)&&const DeepCollectionEquality().equals(other.scanningPluginIds, _scanningPluginIds)&&const DeepCollectionEquality().equals(other.scanRejections, _scanRejections)&&(identical(other.scanOutcome, scanOutcome) || other.scanOutcome == scanOutcome));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,response,refresh,globalAction,const DeepCollectionEquality().hash(_harnessActions),authentication,const DeepCollectionEquality().hash(_installs),const DeepCollectionEquality().hash(_scanningPluginIds),const DeepCollectionEquality().hash(_scanRejections),scanOutcome);
+int get hashCode {
+    return Object.hash(runtimeType,response,refresh,globalAction,const DeepCollectionEquality().hash(_harnessActions),authentication,const DeepCollectionEquality().hash(_installs),const DeepCollectionEquality().hash(_scanningPluginIds),const DeepCollectionEquality().hash(_scanRejections),scanOutcome);
+}
 
 @override
 String toString() {
-  return 'PluginManagementState.ready(response: $response, refresh: $refresh, globalAction: $globalAction, harnessActions: $harnessActions, authentication: $authentication, installs: $installs, scanningPluginIds: $scanningPluginIds, scanRejections: $scanRejections, scanOutcome: $scanOutcome)';
+    return 'PluginManagementState.ready(response: $response, refresh: $refresh, globalAction: $globalAction, harnessActions: $harnessActions, authentication: $authentication, installs: $installs, scanningPluginIds: $scanningPluginIds, scanRejections: $scanRejections, scanOutcome: $scanOutcome)';
 }
 
 

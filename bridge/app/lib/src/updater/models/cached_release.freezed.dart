@@ -40,16 +40,21 @@ $CachedReleaseCopyWith<CachedRelease> get copyWith => _$CachedReleaseCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CachedRelease&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.assetName, assetName) || other.assetName == assetName)&&(identical(other.track, track) || other.track == track)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.checkedAt, checkedAt) || other.checkedAt == checkedAt));
+  final _this = this as CachedRelease;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CachedRelease&&(identical(other.latestVersion, _this.latestVersion) || other.latestVersion == _this.latestVersion)&&(identical(other.downloadUrl, _this.downloadUrl) || other.downloadUrl == _this.downloadUrl)&&(identical(other.checksumsUrl, _this.checksumsUrl) || other.checksumsUrl == _this.checksumsUrl)&&(identical(other.assetName, _this.assetName) || other.assetName == _this.assetName)&&(identical(other.track, _this.track) || other.track == _this.track)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt)&&(identical(other.checkedAt, _this.checkedAt) || other.checkedAt == _this.checkedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,latestVersion,downloadUrl,checksumsUrl,assetName,track,publishedAt,checkedAt);
+int get hashCode {
+  final _this = this as CachedRelease;
+  return Object.hash(runtimeType,_this.latestVersion,_this.downloadUrl,_this.checksumsUrl,_this.assetName,_this.track,_this.publishedAt,_this.checkedAt);
+}
 
 @override
 String toString() {
-  return 'CachedRelease(latestVersion: $latestVersion, downloadUrl: $downloadUrl, checksumsUrl: $checksumsUrl, assetName: $assetName, track: $track, publishedAt: $publishedAt, checkedAt: $checkedAt)';
+  final _this = this as CachedRelease;
+  return 'CachedRelease(latestVersion: ${_this.latestVersion}, downloadUrl: ${_this.downloadUrl}, checksumsUrl: ${_this.checksumsUrl}, assetName: ${_this.assetName}, track: ${_this.track}, publishedAt: ${_this.publishedAt}, checkedAt: ${_this.checkedAt})';
 }
 
 
@@ -133,16 +138,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CachedRelease&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.assetName, assetName) || other.assetName == assetName)&&(identical(other.track, track) || other.track == track)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.checkedAt, checkedAt) || other.checkedAt == checkedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CachedRelease&&(identical(other.latestVersion, latestVersion) || other.latestVersion == latestVersion)&&(identical(other.downloadUrl, downloadUrl) || other.downloadUrl == downloadUrl)&&(identical(other.checksumsUrl, checksumsUrl) || other.checksumsUrl == checksumsUrl)&&(identical(other.assetName, assetName) || other.assetName == assetName)&&(identical(other.track, track) || other.track == track)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.checkedAt, checkedAt) || other.checkedAt == checkedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,latestVersion,downloadUrl,checksumsUrl,assetName,track,publishedAt,checkedAt);
+int get hashCode {
+    return Object.hash(runtimeType,latestVersion,downloadUrl,checksumsUrl,assetName,track,publishedAt,checkedAt);
+}
 
 @override
 String toString() {
-  return 'CachedRelease(latestVersion: $latestVersion, downloadUrl: $downloadUrl, checksumsUrl: $checksumsUrl, assetName: $assetName, track: $track, publishedAt: $publishedAt, checkedAt: $checkedAt)';
+    return 'CachedRelease(latestVersion: $latestVersion, downloadUrl: $downloadUrl, checksumsUrl: $checksumsUrl, assetName: $assetName, track: $track, publishedAt: $publishedAt, checkedAt: $checkedAt)';
 }
 
 

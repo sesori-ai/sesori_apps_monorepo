@@ -29,16 +29,21 @@ $SendNotificationPayloadCopyWith<SendNotificationPayload> get copyWith => _$Send
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendNotificationPayload&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.collapseKey, collapseKey) || other.collapseKey == collapseKey)&&(identical(other.data, data) || other.data == data));
+  final _this = this as SendNotificationPayload;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SendNotificationPayload&&(identical(other.category, _this.category) || other.category == _this.category)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.body, _this.body) || other.body == _this.body)&&(identical(other.collapseKey, _this.collapseKey) || other.collapseKey == _this.collapseKey)&&(identical(other.data, _this.data) || other.data == _this.data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,title,body,collapseKey,data);
+int get hashCode {
+  final _this = this as SendNotificationPayload;
+  return Object.hash(runtimeType,_this.category,_this.title,_this.body,_this.collapseKey,_this.data);
+}
 
 @override
 String toString() {
-  return 'SendNotificationPayload(category: $category, title: $title, body: $body, collapseKey: $collapseKey, data: $data)';
+  final _this = this as SendNotificationPayload;
+  return 'SendNotificationPayload(category: ${_this.category}, title: ${_this.title}, body: ${_this.body}, collapseKey: ${_this.collapseKey}, data: ${_this.data})';
 }
 
 
@@ -119,16 +124,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendNotificationPayload&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.collapseKey, collapseKey) || other.collapseKey == collapseKey)&&(identical(other.data, data) || other.data == data));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SendNotificationPayload&&(identical(other.category, category) || other.category == category)&&(identical(other.title, title) || other.title == title)&&(identical(other.body, body) || other.body == body)&&(identical(other.collapseKey, collapseKey) || other.collapseKey == collapseKey)&&(identical(other.data, data) || other.data == data));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,category,title,body,collapseKey,data);
+int get hashCode {
+    return Object.hash(runtimeType,category,title,body,collapseKey,data);
+}
 
 @override
 String toString() {
-  return 'SendNotificationPayload(category: $category, title: $title, body: $body, collapseKey: $collapseKey, data: $data)';
+    return 'SendNotificationPayload(category: $category, title: $title, body: $body, collapseKey: $collapseKey, data: $data)';
 }
 
 

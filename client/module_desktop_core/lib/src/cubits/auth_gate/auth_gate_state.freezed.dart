@@ -21,7 +21,7 @@ mixin _$AuthGateState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthGateState()';
+    return 'AuthGateState()';
 }
 
 
@@ -57,7 +57,7 @@ class AuthGateChecking implements AuthGateState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateChecking);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateChecking);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthGateState.checking()';
+    return 'AuthGateState.checking()';
 }
 
 
@@ -89,7 +89,7 @@ class AuthGateSignedOut implements AuthGateState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateSignedOut);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateSignedOut);
 }
 
 
@@ -98,7 +98,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthGateState.signedOut()';
+    return 'AuthGateState.signedOut()';
 }
 
 
@@ -126,16 +126,18 @@ $AuthGateSignedInCopyWith<AuthGateSignedIn> get copyWith => _$AuthGateSignedInCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateSignedIn&&(identical(other.user, user) || other.user == user));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthGateSignedIn&&(identical(other.user, user) || other.user == user));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,user);
+int get hashCode {
+    return Object.hash(runtimeType,user);
+}
 
 @override
 String toString() {
-  return 'AuthGateState.signedIn(user: $user)';
+    return 'AuthGateState.signedIn(user: $user)';
 }
 
 

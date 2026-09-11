@@ -21,7 +21,7 @@ mixin _$AuthState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthState()';
+    return 'AuthState()';
 }
 
 
@@ -57,7 +57,7 @@ class AuthInitial implements AuthState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitial);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthInitial);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthState.initial()';
+    return 'AuthState.initial()';
 }
 
 
@@ -89,7 +89,7 @@ class AuthUnauthenticated implements AuthState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthUnauthenticated);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthUnauthenticated);
 }
 
 
@@ -98,7 +98,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthState.unauthenticated()';
+    return 'AuthState.unauthenticated()';
 }
 
 
@@ -121,7 +121,7 @@ class AuthAuthenticating implements AuthState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthAuthenticating);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthAuthenticating);
 }
 
 
@@ -130,7 +130,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'AuthState.authenticating()';
+    return 'AuthState.authenticating()';
 }
 
 
@@ -158,16 +158,18 @@ $AuthAuthenticatedCopyWith<AuthAuthenticated> get copyWith => _$AuthAuthenticate
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthAuthenticated&&(identical(other.user, user) || other.user == user));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthAuthenticated&&(identical(other.user, user) || other.user == user));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,user);
+int get hashCode {
+    return Object.hash(runtimeType,user);
+}
 
 @override
 String toString() {
-  return 'AuthState.authenticated(user: $user)';
+    return 'AuthState.authenticated(user: $user)';
 }
 
 
@@ -233,16 +235,18 @@ $AuthFailedCopyWith<AuthFailed> get copyWith => _$AuthFailedCopyWithImpl<AuthFai
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthFailed&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthFailed&&(identical(other.error, error) || other.error == error));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,error);
+int get hashCode {
+    return Object.hash(runtimeType,error);
+}
 
 @override
 String toString() {
-  return 'AuthState.failed(error: $error)';
+    return 'AuthState.failed(error: $error)';
 }
 
 

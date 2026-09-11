@@ -29,16 +29,21 @@ $BridgeRegistrationRecordCopyWith<BridgeRegistrationRecord> get copyWith => _$Br
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeRegistrationRecord&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.accountId, accountId) || other.accountId == accountId));
+  final _this = this as BridgeRegistrationRecord;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeRegistrationRecord&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.accountId, _this.accountId) || other.accountId == _this.accountId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bridgeId,accountId);
+int get hashCode {
+  final _this = this as BridgeRegistrationRecord;
+  return Object.hash(runtimeType,_this.bridgeId,_this.accountId);
+}
 
 @override
 String toString() {
-  return 'BridgeRegistrationRecord(bridgeId: $bridgeId, accountId: $accountId)';
+  final _this = this as BridgeRegistrationRecord;
+  return 'BridgeRegistrationRecord(bridgeId: ${_this.bridgeId}, accountId: ${_this.accountId})';
 }
 
 
@@ -101,16 +106,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeRegistrationRecord&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.accountId, accountId) || other.accountId == accountId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _BridgeRegistrationRecord&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.accountId, accountId) || other.accountId == accountId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,bridgeId,accountId);
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId,accountId);
+}
 
 @override
 String toString() {
-  return 'BridgeRegistrationRecord(bridgeId: $bridgeId, accountId: $accountId)';
+    return 'BridgeRegistrationRecord(bridgeId: $bridgeId, accountId: $accountId)';
 }
 
 

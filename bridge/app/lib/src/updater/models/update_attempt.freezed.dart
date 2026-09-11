@@ -36,16 +36,21 @@ $UpdateAttemptCopyWith<UpdateAttempt> get copyWith => _$UpdateAttemptCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateAttempt&&(identical(other.fromVersion, fromVersion) || other.fromVersion == fromVersion)&&(identical(other.toVersion, toVersion) || other.toVersion == toVersion)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.stage, stage) || other.stage == stage)&&(identical(other.status, status) || other.status == status)&&(identical(other.reason, reason) || other.reason == reason));
+  final _this = this as UpdateAttempt;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is UpdateAttempt&&(identical(other.fromVersion, _this.fromVersion) || other.fromVersion == _this.fromVersion)&&(identical(other.toVersion, _this.toVersion) || other.toVersion == _this.toVersion)&&(identical(other.startedAt, _this.startedAt) || other.startedAt == _this.startedAt)&&(identical(other.stage, _this.stage) || other.stage == _this.stage)&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.reason, _this.reason) || other.reason == _this.reason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fromVersion,toVersion,startedAt,stage,status,reason);
+int get hashCode {
+  final _this = this as UpdateAttempt;
+  return Object.hash(runtimeType,_this.fromVersion,_this.toVersion,_this.startedAt,_this.stage,_this.status,_this.reason);
+}
 
 @override
 String toString() {
-  return 'UpdateAttempt(fromVersion: $fromVersion, toVersion: $toVersion, startedAt: $startedAt, stage: $stage, status: $status, reason: $reason)';
+  final _this = this as UpdateAttempt;
+  return 'UpdateAttempt(fromVersion: ${_this.fromVersion}, toVersion: ${_this.toVersion}, startedAt: ${_this.startedAt}, stage: ${_this.stage}, status: ${_this.status}, reason: ${_this.reason})';
 }
 
 
@@ -123,16 +128,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateAttempt&&(identical(other.fromVersion, fromVersion) || other.fromVersion == fromVersion)&&(identical(other.toVersion, toVersion) || other.toVersion == toVersion)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.stage, stage) || other.stage == stage)&&(identical(other.status, status) || other.status == status)&&(identical(other.reason, reason) || other.reason == reason));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _UpdateAttempt&&(identical(other.fromVersion, fromVersion) || other.fromVersion == fromVersion)&&(identical(other.toVersion, toVersion) || other.toVersion == toVersion)&&(identical(other.startedAt, startedAt) || other.startedAt == startedAt)&&(identical(other.stage, stage) || other.stage == stage)&&(identical(other.status, status) || other.status == status)&&(identical(other.reason, reason) || other.reason == reason));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,fromVersion,toVersion,startedAt,stage,status,reason);
+int get hashCode {
+    return Object.hash(runtimeType,fromVersion,toVersion,startedAt,stage,status,reason);
+}
 
 @override
 String toString() {
-  return 'UpdateAttempt(fromVersion: $fromVersion, toVersion: $toVersion, startedAt: $startedAt, stage: $stage, status: $status, reason: $reason)';
+    return 'UpdateAttempt(fromVersion: $fromVersion, toVersion: $toVersion, startedAt: $startedAt, stage: $stage, status: $status, reason: $reason)';
 }
 
 

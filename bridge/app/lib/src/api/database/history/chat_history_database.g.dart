@@ -1363,7 +1363,19 @@ class $$HistoryMessagesTableTableTableManager
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<
+                    $HistoryMessagesTableTable,
+                    HistoryMessagesTableData
+                  >(table),
+                  BaseReferences<
+                    _$ChatHistoryDatabase,
+                    $HistoryMessagesTableTable,
+                    HistoryMessagesTableData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -1591,7 +1603,18 @@ class $$HistoryPartsTableTableTableManager
                 updatedAt: updatedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$HistoryPartsTableTable, HistoryPartsTableData>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$ChatHistoryDatabase,
+                    $HistoryPartsTableTable,
+                    HistoryPartsTableData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -1787,7 +1810,19 @@ class $$HistorySyncStateTableTableTableManager
                 syncedAt: syncedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<
+                    $HistorySyncStateTableTable,
+                    HistorySyncStateTableData
+                  >(table),
+                  BaseReferences<
+                    _$ChatHistoryDatabase,
+                    $HistorySyncStateTableTable,
+                    HistorySyncStateTableData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

@@ -5,19 +5,19 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.2
-  flutter: ">=3.47.2"
+  sdk: ^3.13.3
+  flutter: ">=3.47.3"
 
 dependencies:
   flutter:
     sdk: flutter
-  material_ui: ^1.1.0
-  cupertino_ui: ^1.0.1
+  material_ui: ^1.2.0
+  cupertino_ui: ^1.0.2
   sesori_shared:
     path: ../../shared/sesori_shared
   flutter_svg: ^2.3.0
   universal_platform: ^1.1.0
-  liquid_glass_widgets: ^1.1.0
+  liquid_glass_widgets: ^1.4.3
   cue: ^0.3.1
 
 flutter:
@@ -88,7 +88,7 @@ flutter:
 dev_dependencies:
   no_slop_linter:
     path: "../../shared/no_slop_linter"
-  build_runner: ^2.16.0
+  build_runner: ^2.16.1
   flutter_test:
     sdk: flutter
   test: ^1.31.1

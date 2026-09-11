@@ -29,16 +29,21 @@ $DeviceInfoCopyWith<DeviceInfo> get copyWith => _$DeviceInfoCopyWithImpl<DeviceI
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.osVersion, osVersion) || other.osVersion == osVersion)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion));
+  final _this = this as DeviceInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is DeviceInfo&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.osVersion, _this.osVersion) || other.osVersion == _this.osVersion)&&(identical(other.appVersion, _this.appVersion) || other.appVersion == _this.appVersion));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,osVersion,appVersion);
+int get hashCode {
+  final _this = this as DeviceInfo;
+  return Object.hash(runtimeType,_this.name,_this.osVersion,_this.appVersion);
+}
 
 @override
 String toString() {
-  return 'DeviceInfo(name: $name, osVersion: $osVersion, appVersion: $appVersion)';
+  final _this = this as DeviceInfo;
+  return 'DeviceInfo(name: ${_this.name}, osVersion: ${_this.osVersion}, appVersion: ${_this.appVersion})';
 }
 
 
@@ -103,16 +108,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeviceInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.osVersion, osVersion) || other.osVersion == osVersion)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _DeviceInfo&&(identical(other.name, name) || other.name == name)&&(identical(other.osVersion, osVersion) || other.osVersion == osVersion)&&(identical(other.appVersion, appVersion) || other.appVersion == appVersion));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,osVersion,appVersion);
+int get hashCode {
+    return Object.hash(runtimeType,name,osVersion,appVersion);
+}
 
 @override
 String toString() {
-  return 'DeviceInfo(name: $name, osVersion: $osVersion, appVersion: $appVersion)';
+    return 'DeviceInfo(name: $name, osVersion: $osVersion, appVersion: $appVersion)';
 }
 
 

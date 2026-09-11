@@ -28,16 +28,21 @@ $PluginMessageWithPartsCopyWith<PluginMessageWithParts> get copyWith => _$Plugin
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageWithParts&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other.parts, parts));
+  final _this = this as PluginMessageWithParts;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageWithParts&&(identical(other.info, _this.info) || other.info == _this.info)&&const DeepCollectionEquality().equals(other.parts, _this.parts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info,const DeepCollectionEquality().hash(parts));
+int get hashCode {
+  final _this = this as PluginMessageWithParts;
+  return Object.hash(runtimeType,_this.info,const DeepCollectionEquality().hash(_this.parts));
+}
 
 @override
 String toString() {
-  return 'PluginMessageWithParts(info: $info, parts: $parts)';
+  final _this = this as PluginMessageWithParts;
+  return 'PluginMessageWithParts(info: ${_this.info}, parts: ${_this.parts})';
 }
 
 
@@ -115,16 +120,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessageWithParts&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other._parts, _parts));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessageWithParts&&(identical(other.info, info) || other.info == info)&&const DeepCollectionEquality().equals(other.parts, _parts));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,info,const DeepCollectionEquality().hash(_parts));
+int get hashCode {
+    return Object.hash(runtimeType,info,const DeepCollectionEquality().hash(_parts));
+}
 
 @override
 String toString() {
-  return 'PluginMessageWithParts(info: $info, parts: $parts)';
+    return 'PluginMessageWithParts(info: $info, parts: $parts)';
 }
 
 
@@ -188,16 +195,21 @@ $PluginMessagePartCopyWith<PluginMessagePart> get copyWith => _$PluginMessagePar
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+  final _this = this as PluginMessagePart;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePart&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sessionID, _this.sessionID) || other.sessionID == _this.sessionID)&&(identical(other.messageID, _this.messageID) || other.messageID == _this.messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+  final _this = this as PluginMessagePart;
+  return Object.hash(runtimeType,_this.id,_this.sessionID,_this.messageID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart(id: $id, sessionID: $sessionID, messageID: $messageID)';
+  final _this = this as PluginMessagePart;
+  return 'PluginMessagePart(id: ${_this.id}, sessionID: ${_this.sessionID}, messageID: ${_this.messageID})';
 }
 
 
@@ -267,16 +279,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartText&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,text);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
+    return 'PluginMessagePart.text(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
 }
 
 
@@ -346,16 +360,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartReasoning&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartReasoning&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,text);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,text);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.reasoning(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
+    return 'PluginMessagePart.reasoning(id: $id, sessionID: $sessionID, messageID: $messageID, text: $text)';
 }
 
 
@@ -426,16 +442,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartTool&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.tool, tool) || other.tool == tool)&&(identical(other.state, state) || other.state == state));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,tool,state);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,tool,state);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
+    return 'PluginMessagePart.tool(id: $id, sessionID: $sessionID, messageID: $messageID, tool: $tool, state: $state)';
 }
 
 
@@ -524,16 +542,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.taskState, taskState) || other.taskState == taskState)&&(identical(other.childSessionID, childSessionID) || other.childSessionID == childSessionID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSubtask&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.prompt, prompt) || other.prompt == prompt)&&(identical(other.description, description) || other.description == description)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.taskState, taskState) || other.taskState == taskState)&&(identical(other.childSessionID, childSessionID) || other.childSessionID == childSessionID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent,taskState,childSessionID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,prompt,description,agent,taskState,childSessionID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent, taskState: $taskState, childSessionID: $childSessionID)';
+    return 'PluginMessagePart.subtask(id: $id, sessionID: $sessionID, messageID: $messageID, prompt: $prompt, description: $description, agent: $agent, taskState: $taskState, childSessionID: $childSessionID)';
 }
 
 
@@ -618,16 +638,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartStepStart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartStepStart&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.stepStart(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'PluginMessagePart.stepStart(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -695,16 +717,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartStepFinish&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartStepFinish&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.stepFinish(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'PluginMessagePart.stepFinish(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -773,16 +797,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartFile&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attachment, attachment) || other.attachment == attachment));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartFile&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attachment, attachment) || other.attachment == attachment));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attachment);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,attachment);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.file(id: $id, sessionID: $sessionID, messageID: $messageID, attachment: $attachment)';
+    return 'PluginMessagePart.file(id: $id, sessionID: $sessionID, messageID: $messageID, attachment: $attachment)';
 }
 
 
@@ -860,16 +886,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSnapshot&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartSnapshot&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.snapshot(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'PluginMessagePart.snapshot(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -937,16 +965,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartPatch&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartPatch&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.patch(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'PluginMessagePart.patch(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -1015,16 +1045,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartAgent&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.agentName, agentName) || other.agentName == agentName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartAgent&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.agentName, agentName) || other.agentName == agentName));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,agentName);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,agentName);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.agent(id: $id, sessionID: $sessionID, messageID: $messageID, agentName: $agentName)';
+    return 'PluginMessagePart.agent(id: $id, sessionID: $sessionID, messageID: $messageID, agentName: $agentName)';
 }
 
 
@@ -1095,16 +1127,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartRetry&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartRetry&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID)&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.retryError, retryError) || other.retryError == retryError));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID,attempt,retryError);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID,attempt,retryError);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.retry(id: $id, sessionID: $sessionID, messageID: $messageID, attempt: $attempt, retryError: $retryError)';
+    return 'PluginMessagePart.retry(id: $id, sessionID: $sessionID, messageID: $messageID, attempt: $attempt, retryError: $retryError)';
 }
 
 
@@ -1174,16 +1208,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartCompaction&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'PluginMessagePart.compaction(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -1251,16 +1287,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartUnknown&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessagePartUnknown&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.messageID, messageID) || other.messageID == messageID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,messageID);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,messageID);
+}
 
 @override
 String toString() {
-  return 'PluginMessagePart.unknown(id: $id, sessionID: $sessionID, messageID: $messageID)';
+    return 'PluginMessagePart.unknown(id: $id, sessionID: $sessionID, messageID: $messageID)';
 }
 
 
@@ -1316,12 +1354,16 @@ $PluginMessageAttachmentCopyWith<PluginMessageAttachment> get copyWith => _$Plug
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachment&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
+  final _this = this as PluginMessageAttachment;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachment&&(identical(other.mime, _this.mime) || other.mime == _this.mime)&&(identical(other.filename, _this.filename) || other.filename == _this.filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,filename);
+int get hashCode {
+  final _this = this as PluginMessageAttachment;
+  return Object.hash(runtimeType,_this.mime,_this.filename);
+}
 
 
 
@@ -1389,12 +1431,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentInlineImage&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentInlineImage&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.base64, base64) || other.base64 == base64)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,base64,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,base64,filename);
+}
 
 
 
@@ -1462,12 +1506,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentRemoteUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentRemoteUrl&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.url, url) || other.url == url)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,url,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,url,filename);
+}
 
 
 
@@ -1534,12 +1580,14 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentMetadata&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAttachmentMetadata&&(identical(other.mime, mime) || other.mime == mime)&&(identical(other.filename, filename) || other.filename == filename));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,mime,filename);
+int get hashCode {
+    return Object.hash(runtimeType,mime,filename);
+}
 
 
 
@@ -1594,16 +1642,21 @@ $PluginToolStateCopyWith<PluginToolState> get copyWith => _$PluginToolStateCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, attachments));
+  final _this = this as PluginToolState;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginToolState&&(identical(other.status, _this.status) || other.status == _this.status)&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.shellCommand, _this.shellCommand) || other.shellCommand == _this.shellCommand)&&(identical(other.output, _this.output) || other.output == _this.output)&&(identical(other.error, _this.error) || other.error == _this.error)&&const DeepCollectionEquality().equals(other.attachments, _this.attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(attachments));
+int get hashCode {
+  final _this = this as PluginToolState;
+  return Object.hash(runtimeType,_this.status,_this.title,_this.shellCommand,_this.output,_this.error,const DeepCollectionEquality().hash(_this.attachments));
+}
 
 @override
 String toString() {
-  return 'PluginToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
+  final _this = this as PluginToolState;
+  return 'PluginToolState(status: ${_this.status}, title: ${_this.title}, shellCommand: ${_this.shellCommand}, output: ${_this.output}, error: ${_this.error}, attachments: ${_this.attachments})';
 }
 
 
@@ -1680,16 +1733,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other._attachments, _attachments));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginToolState&&(identical(other.status, status) || other.status == status)&&(identical(other.title, title) || other.title == title)&&(identical(other.shellCommand, shellCommand) || other.shellCommand == shellCommand)&&(identical(other.output, output) || other.output == output)&&(identical(other.error, error) || other.error == error)&&const DeepCollectionEquality().equals(other.attachments, _attachments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(_attachments));
+int get hashCode {
+    return Object.hash(runtimeType,status,title,shellCommand,output,error,const DeepCollectionEquality().hash(_attachments));
+}
 
 @override
 String toString() {
-  return 'PluginToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
+    return 'PluginToolState(status: $status, title: $title, shellCommand: $shellCommand, output: $output, error: $error, attachments: $attachments)';
 }
 
 
@@ -1748,16 +1803,21 @@ $PluginMessageCopyWith<PluginMessage> get copyWith => _$PluginMessageCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessage&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.time, time) || other.time == time));
+  final _this = this as PluginMessage;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessage&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.sessionID, _this.sessionID) || other.sessionID == _this.sessionID)&&(identical(other.agent, _this.agent) || other.agent == _this.agent)&&(identical(other.time, _this.time) || other.time == _this.time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,agent,time);
+int get hashCode {
+  final _this = this as PluginMessage;
+  return Object.hash(runtimeType,_this.id,_this.sessionID,_this.agent,_this.time);
+}
 
 @override
 String toString() {
-  return 'PluginMessage(id: $id, sessionID: $sessionID, agent: $agent, time: $time)';
+  final _this = this as PluginMessage;
+  return 'PluginMessage(id: ${_this.id}, sessionID: ${_this.sessionID}, agent: ${_this.agent}, time: ${_this.time})';
 }
 
 
@@ -1845,16 +1905,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageUser&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.time, time) || other.time == time)&&(identical(other.promptId, promptId) || other.promptId == promptId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageUser&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.time, time) || other.time == time)&&(identical(other.promptId, promptId) || other.promptId == promptId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,agent,time,promptId);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,agent,time,promptId);
+}
 
 @override
 String toString() {
-  return 'PluginMessage.user(id: $id, sessionID: $sessionID, agent: $agent, time: $time, promptId: $promptId)';
+    return 'PluginMessage.user(id: $id, sessionID: $sessionID, agent: $agent, time: $time, promptId: $promptId)';
 }
 
 
@@ -1941,16 +2003,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAssistant&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.time, time) || other.time == time));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageAssistant&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.sender, sender) || other.sender == sender)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,sender,time);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,sender,time);
+}
 
 @override
 String toString() {
-  return 'PluginMessage.assistant(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, sender: $sender, time: $time)';
+    return 'PluginMessage.assistant(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, sender: $sender, time: $time)';
 }
 
 
@@ -2043,16 +2107,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageError&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.errorName, errorName) || other.errorName == errorName)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.time, time) || other.time == time));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageError&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.agent, agent) || other.agent == agent)&&(identical(other.modelID, modelID) || other.modelID == modelID)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.variant, variant) || other.variant == variant)&&(identical(other.errorName, errorName) || other.errorName == errorName)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.time, time) || other.time == time));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,errorName,errorMessage,time);
+int get hashCode {
+    return Object.hash(runtimeType,id,sessionID,agent,modelID,providerID,variant,errorName,errorMessage,time);
+}
 
 @override
 String toString() {
-  return 'PluginMessage.error(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, errorName: $errorName, errorMessage: $errorMessage, time: $time)';
+    return 'PluginMessage.error(id: $id, sessionID: $sessionID, agent: $agent, modelID: $modelID, providerID: $providerID, variant: $variant, errorName: $errorName, errorMessage: $errorMessage, time: $time)';
 }
 
 
@@ -2126,16 +2192,21 @@ $PluginMessageTimeCopyWith<PluginMessageTime> get copyWith => _$PluginMessageTim
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageTime&&(identical(other.created, created) || other.created == created)&&(identical(other.completed, completed) || other.completed == completed));
+  final _this = this as PluginMessageTime;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PluginMessageTime&&(identical(other.created, _this.created) || other.created == _this.created)&&(identical(other.completed, _this.completed) || other.completed == _this.completed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,completed);
+int get hashCode {
+  final _this = this as PluginMessageTime;
+  return Object.hash(runtimeType,_this.created,_this.completed);
+}
 
 @override
 String toString() {
-  return 'PluginMessageTime(created: $created, completed: $completed)';
+  final _this = this as PluginMessageTime;
+  return 'PluginMessageTime(created: ${_this.created}, completed: ${_this.completed})';
 }
 
 
@@ -2198,16 +2269,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessageTime&&(identical(other.created, created) || other.created == created)&&(identical(other.completed, completed) || other.completed == completed));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PluginMessageTime&&(identical(other.created, created) || other.created == created)&&(identical(other.completed, completed) || other.completed == completed));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,created,completed);
+int get hashCode {
+    return Object.hash(runtimeType,created,completed);
+}
 
 @override
 String toString() {
-  return 'PluginMessageTime(created: $created, completed: $completed)';
+    return 'PluginMessageTime(created: $created, completed: $completed)';
 }
 
 

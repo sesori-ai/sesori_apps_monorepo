@@ -29,16 +29,21 @@ $CodexFileChangeParamsDtoCopyWith<CodexFileChangeParamsDto> get copyWith => _$Co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileChangeParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
+  final _this = this as CodexFileChangeParamsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileChangeParamsDto&&(identical(other.threadId, _this.threadId) || other.threadId == _this.threadId)&&(identical(other.turnId, _this.turnId) || other.turnId == _this.turnId)&&(identical(other.item, _this.item) || other.item == _this.item));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,threadId,turnId,item);
+int get hashCode {
+  final _this = this as CodexFileChangeParamsDto;
+  return Object.hash(runtimeType,_this.threadId,_this.turnId,_this.item);
+}
 
 @override
 String toString() {
-  return 'CodexFileChangeParamsDto(threadId: $threadId, turnId: $turnId, item: $item)';
+  final _this = this as CodexFileChangeParamsDto;
+  return 'CodexFileChangeParamsDto(threadId: ${_this.threadId}, turnId: ${_this.turnId}, item: ${_this.item})';
 }
 
 
@@ -112,16 +117,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileChangeParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileChangeParamsDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,threadId,turnId,item);
+int get hashCode {
+    return Object.hash(runtimeType,threadId,turnId,item);
+}
 
 @override
 String toString() {
-  return 'CodexFileChangeParamsDto(threadId: $threadId, turnId: $turnId, item: $item)';
+    return 'CodexFileChangeParamsDto(threadId: $threadId, turnId: $turnId, item: $item)';
 }
 
 
@@ -187,16 +194,21 @@ $CodexFileChangeItemDtoCopyWith<CodexFileChangeItemDto> get copyWith => _$CodexF
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileChangeItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status));
+  final _this = this as CodexFileChangeItemDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexFileChangeItemDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.status, _this.status) || other.status == _this.status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,id,status);
+int get hashCode {
+  final _this = this as CodexFileChangeItemDto;
+  return Object.hash(runtimeType,_this.type,_this.id,_this.status);
+}
 
 @override
 String toString() {
-  return 'CodexFileChangeItemDto(type: $type, id: $id, status: $status)';
+  final _this = this as CodexFileChangeItemDto;
+  return 'CodexFileChangeItemDto(type: ${_this.type}, id: ${_this.id}, status: ${_this.status})';
 }
 
 
@@ -261,16 +273,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileChangeItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexFileChangeItemDto&&(identical(other.type, type) || other.type == type)&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,id,status);
+int get hashCode {
+    return Object.hash(runtimeType,type,id,status);
+}
 
 @override
 String toString() {
-  return 'CodexFileChangeItemDto(type: $type, id: $id, status: $status)';
+    return 'CodexFileChangeItemDto(type: $type, id: $id, status: $status)';
 }
 
 

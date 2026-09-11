@@ -21,7 +21,7 @@ mixin _$SplashState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SplashState);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SplashState);
 }
 
 
@@ -30,7 +30,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SplashState()';
+    return 'SplashState()';
 }
 
 
@@ -57,7 +57,7 @@ class SplashInitializing implements SplashState {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SplashInitializing);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SplashInitializing);
 }
 
 
@@ -66,7 +66,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'SplashState.initializing()';
+    return 'SplashState.initializing()';
 }
 
 
@@ -94,16 +94,18 @@ $SplashReadyCopyWith<SplashReady> get copyWith => _$SplashReadyCopyWithImpl<Spla
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is SplashReady&&(identical(other.route, route) || other.route == route));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SplashReady&&(identical(other.route, route) || other.route == route));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,route);
+int get hashCode {
+    return Object.hash(runtimeType,route);
+}
 
 @override
 String toString() {
-  return 'SplashState.ready(route: $route)';
+    return 'SplashState.ready(route: $route)';
 }
 
 

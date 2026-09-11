@@ -29,16 +29,21 @@ $ProviderInfoCopyWith<ProviderInfo> get copyWith => _$ProviderInfoCopyWithImpl<P
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.models, models)&&(identical(other.defaultModelID, defaultModelID) || other.defaultModelID == defaultModelID));
+  final _this = this as ProviderInfo;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderInfo&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.models, _this.models)&&(identical(other.defaultModelID, _this.defaultModelID) || other.defaultModelID == _this.defaultModelID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(models),defaultModelID);
+int get hashCode {
+  final _this = this as ProviderInfo;
+  return Object.hash(runtimeType,_this.id,_this.name,const DeepCollectionEquality().hash(_this.models),_this.defaultModelID);
+}
 
 @override
 String toString() {
-  return 'ProviderInfo(id: $id, name: $name, models: $models, defaultModelID: $defaultModelID)';
+  final _this = this as ProviderInfo;
+  return 'ProviderInfo(id: ${_this.id}, name: ${_this.name}, models: ${_this.models}, defaultModelID: ${_this.defaultModelID})';
 }
 
 
@@ -111,16 +116,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._models, _models)&&(identical(other.defaultModelID, defaultModelID) || other.defaultModelID == defaultModelID));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderInfo&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.models, _models)&&(identical(other.defaultModelID, defaultModelID) || other.defaultModelID == defaultModelID));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_models),defaultModelID);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(_models),defaultModelID);
+}
 
 @override
 String toString() {
-  return 'ProviderInfo(id: $id, name: $name, models: $models, defaultModelID: $defaultModelID)';
+    return 'ProviderInfo(id: $id, name: $name, models: $models, defaultModelID: $defaultModelID)';
 }
 
 
@@ -181,16 +188,21 @@ $ProviderModelCopyWith<ProviderModel> get copyWith => _$ProviderModelCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+  final _this = this as ProviderModel;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderModel&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.providerID, _this.providerID) || other.providerID == _this.providerID)&&(identical(other.name, _this.name) || other.name == _this.name)&&const DeepCollectionEquality().equals(other.variants, _this.variants)&&(identical(other.defaultVariant, _this.defaultVariant) || other.defaultVariant == _this.defaultVariant)&&(identical(other.family, _this.family) || other.family == _this.family)&&(identical(other.isAvailable, _this.isAvailable) || other.isAvailable == _this.isAvailable)&&(identical(other.releaseDate, _this.releaseDate) || other.releaseDate == _this.releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(variants),defaultVariant,family,isAvailable,releaseDate);
+int get hashCode {
+  final _this = this as ProviderModel;
+  return Object.hash(runtimeType,_this.id,_this.providerID,_this.name,const DeepCollectionEquality().hash(_this.variants),_this.defaultVariant,_this.family,_this.isAvailable,_this.releaseDate);
+}
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+  final _this = this as ProviderModel;
+  return 'ProviderModel(id: ${_this.id}, providerID: ${_this.providerID}, name: ${_this.name}, variants: ${_this.variants}, defaultVariant: ${_this.defaultVariant}, family: ${_this.family}, isAvailable: ${_this.isAvailable}, releaseDate: ${_this.releaseDate})';
 }
 
 
@@ -275,16 +287,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other._variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderModel&&(identical(other.id, id) || other.id == id)&&(identical(other.providerID, providerID) || other.providerID == providerID)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.variants, _variants)&&(identical(other.defaultVariant, defaultVariant) || other.defaultVariant == defaultVariant)&&(identical(other.family, family) || other.family == family)&&(identical(other.isAvailable, isAvailable) || other.isAvailable == isAvailable)&&(identical(other.releaseDate, releaseDate) || other.releaseDate == releaseDate));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,releaseDate);
+int get hashCode {
+    return Object.hash(runtimeType,id,providerID,name,const DeepCollectionEquality().hash(_variants),defaultVariant,family,isAvailable,releaseDate);
+}
 
 @override
 String toString() {
-  return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
+    return 'ProviderModel(id: $id, providerID: $providerID, name: $name, variants: $variants, defaultVariant: $defaultVariant, family: $family, isAvailable: $isAvailable, releaseDate: $releaseDate)';
 }
 
 
@@ -346,16 +360,21 @@ $ProviderListResponseCopyWith<ProviderListResponse> get copyWith => _$ProviderLi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderListResponse&&const DeepCollectionEquality().equals(other.items, items)&&(identical(other.connectedOnly, connectedOnly) || other.connectedOnly == connectedOnly));
+  final _this = this as ProviderListResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ProviderListResponse&&const DeepCollectionEquality().equals(other.items, _this.items)&&(identical(other.connectedOnly, _this.connectedOnly) || other.connectedOnly == _this.connectedOnly));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(items),connectedOnly);
+int get hashCode {
+  final _this = this as ProviderListResponse;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.items),_this.connectedOnly);
+}
 
 @override
 String toString() {
-  return 'ProviderListResponse(items: $items, connectedOnly: $connectedOnly)';
+  final _this = this as ProviderListResponse;
+  return 'ProviderListResponse(items: ${_this.items}, connectedOnly: ${_this.connectedOnly})';
 }
 
 
@@ -424,16 +443,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderListResponse&&const DeepCollectionEquality().equals(other._items, _items)&&(identical(other.connectedOnly, connectedOnly) || other.connectedOnly == connectedOnly));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ProviderListResponse&&const DeepCollectionEquality().equals(other.items, _items)&&(identical(other.connectedOnly, connectedOnly) || other.connectedOnly == connectedOnly));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),connectedOnly);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_items),connectedOnly);
+}
 
 @override
 String toString() {
-  return 'ProviderListResponse(items: $items, connectedOnly: $connectedOnly)';
+    return 'ProviderListResponse(items: $items, connectedOnly: $connectedOnly)';
 }
 
 

@@ -27,12 +27,16 @@ $ClaudeSubagentMetaDtoCopyWith<ClaudeSubagentMetaDto> get copyWith => _$ClaudeSu
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeSubagentMetaDto&&(identical(other.agentType, agentType) || other.agentType == agentType)&&(identical(other.description, description) || other.description == description)&&(identical(other.toolUseId, toolUseId) || other.toolUseId == toolUseId)&&(identical(other.spawnDepth, spawnDepth) || other.spawnDepth == spawnDepth));
+  final _this = this as ClaudeSubagentMetaDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeSubagentMetaDto&&(identical(other.agentType, _this.agentType) || other.agentType == _this.agentType)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.toolUseId, _this.toolUseId) || other.toolUseId == _this.toolUseId)&&(identical(other.spawnDepth, _this.spawnDepth) || other.spawnDepth == _this.spawnDepth));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agentType,description,toolUseId,spawnDepth);
+int get hashCode {
+  final _this = this as ClaudeSubagentMetaDto;
+  return Object.hash(runtimeType,_this.agentType,_this.description,_this.toolUseId,_this.spawnDepth);
+}
 
 
 
@@ -96,12 +100,14 @@ _$ClaudeSubagentMetaDtoCopyWith<_ClaudeSubagentMetaDto> get copyWith => __$Claud
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeSubagentMetaDto&&(identical(other.agentType, agentType) || other.agentType == agentType)&&(identical(other.description, description) || other.description == description)&&(identical(other.toolUseId, toolUseId) || other.toolUseId == toolUseId)&&(identical(other.spawnDepth, spawnDepth) || other.spawnDepth == spawnDepth));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeSubagentMetaDto&&(identical(other.agentType, agentType) || other.agentType == agentType)&&(identical(other.description, description) || other.description == description)&&(identical(other.toolUseId, toolUseId) || other.toolUseId == toolUseId)&&(identical(other.spawnDepth, spawnDepth) || other.spawnDepth == spawnDepth));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,agentType,description,toolUseId,spawnDepth);
+int get hashCode {
+    return Object.hash(runtimeType,agentType,description,toolUseId,spawnDepth);
+}
 
 
 

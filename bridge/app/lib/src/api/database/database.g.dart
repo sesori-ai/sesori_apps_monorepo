@@ -4012,7 +4012,7 @@ class $$ProjectsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$ProjectsTableTable, ProjectDto>(table),
                   $$ProjectsTableTableReferences(db, table, e),
                 ),
               )
@@ -4818,7 +4818,7 @@ class $$SessionTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$SessionTableTable, SessionDto>(table),
                   $$SessionTableTableReferences(db, table, e),
                 ),
               )
@@ -5059,7 +5059,18 @@ class $$DeletedSessionsTableTableTableManager
                 deletedAt: deletedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<$DeletedSessionsTableTable, DeletedSessionDto>(
+                    table,
+                  ),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $DeletedSessionsTableTable,
+                    DeletedSessionDto
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -5519,7 +5530,7 @@ class $$PullRequestsTableTableTableManager
           withReferenceMapper: (p0) => p0
               .map(
                 (e) => (
-                  e.readTable(table),
+                  e.readTable<$PullRequestsTableTable, PullRequestDto>(table),
                   $$PullRequestsTableTableReferences(db, table, e),
                 ),
               )
@@ -5732,7 +5743,19 @@ class $$CatalogHydrationsTableTableTableManager
                 completedAt: completedAt,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<
+                    $CatalogHydrationsTableTable,
+                    CatalogHydrationDto
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $CatalogHydrationsTableTable,
+                    CatalogHydrationDto
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -6056,7 +6079,19 @@ class $$SessionOptionsCacheTableTableTableManager
                 commandsJson: commandsJson,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<
+                    $SessionOptionsCacheTableTable,
+                    SessionOptionsCacheTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $SessionOptionsCacheTableTable,
+                    SessionOptionsCacheTableData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),
@@ -6235,7 +6270,19 @@ class $$NewSessionDefaultsTableTableTableManager
                 agentModel: agentModel,
               ),
           withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .map(
+                (e) => (
+                  e.readTable<
+                    $NewSessionDefaultsTableTable,
+                    NewSessionDefaultsTableData
+                  >(table),
+                  BaseReferences<
+                    _$AppDatabase,
+                    $NewSessionDefaultsTableTable,
+                    NewSessionDefaultsTableData
+                  >(db, table, e),
+                ),
+              )
               .toList(),
           prefetchHooksCallback: null,
         ),

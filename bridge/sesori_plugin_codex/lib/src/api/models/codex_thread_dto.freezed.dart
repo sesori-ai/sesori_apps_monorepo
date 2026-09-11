@@ -27,16 +27,21 @@ $CodexThreadEnvelopeDtoCopyWith<CodexThreadEnvelopeDto> get copyWith => _$CodexT
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadEnvelopeDto&&(identical(other.thread, thread) || other.thread == thread)&&(identical(other.model, model) || other.model == model)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cwd, cwd) || other.cwd == cwd));
+  final _this = this as CodexThreadEnvelopeDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadEnvelopeDto&&(identical(other.thread, _this.thread) || other.thread == _this.thread)&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.modelProvider, _this.modelProvider) || other.modelProvider == _this.modelProvider)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,thread,model,modelProvider,cwd);
+int get hashCode {
+  final _this = this as CodexThreadEnvelopeDto;
+  return Object.hash(runtimeType,_this.thread,_this.model,_this.modelProvider,_this.cwd);
+}
 
 @override
 String toString() {
-  return 'CodexThreadEnvelopeDto(thread: $thread, model: $model, modelProvider: $modelProvider, cwd: $cwd)';
+  final _this = this as CodexThreadEnvelopeDto;
+  return 'CodexThreadEnvelopeDto(thread: ${_this.thread}, model: ${_this.model}, modelProvider: ${_this.modelProvider}, cwd: ${_this.cwd})';
 }
 
 
@@ -112,16 +117,18 @@ _$CodexThreadEnvelopeDtoCopyWith<_CodexThreadEnvelopeDto> get copyWith => __$Cod
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadEnvelopeDto&&(identical(other.thread, thread) || other.thread == thread)&&(identical(other.model, model) || other.model == model)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cwd, cwd) || other.cwd == cwd));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadEnvelopeDto&&(identical(other.thread, thread) || other.thread == thread)&&(identical(other.model, model) || other.model == model)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cwd, cwd) || other.cwd == cwd));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,thread,model,modelProvider,cwd);
+int get hashCode {
+    return Object.hash(runtimeType,thread,model,modelProvider,cwd);
+}
 
 @override
 String toString() {
-  return 'CodexThreadEnvelopeDto(thread: $thread, model: $model, modelProvider: $modelProvider, cwd: $cwd)';
+    return 'CodexThreadEnvelopeDto(thread: $thread, model: $model, modelProvider: $modelProvider, cwd: $cwd)';
 }
 
 
@@ -189,16 +196,21 @@ $CodexThreadDtoCopyWith<CodexThreadDto> get copyWith => _$CodexThreadDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentRole, agentRole) || other.agentRole == agentRole)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource));
+  final _this = this as CodexThreadDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexThreadDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt)&&(identical(other.modelProvider, _this.modelProvider) || other.modelProvider == _this.modelProvider)&&(identical(other.parentThreadId, _this.parentThreadId) || other.parentThreadId == _this.parentThreadId)&&(identical(other.agentNickname, _this.agentNickname) || other.agentNickname == _this.agentNickname)&&(identical(other.agentRole, _this.agentRole) || other.agentRole == _this.agentRole)&&(identical(other.threadSource, _this.threadSource) || other.threadSource == _this.threadSource));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider,parentThreadId,agentNickname,agentRole,threadSource);
+int get hashCode {
+  final _this = this as CodexThreadDto;
+  return Object.hash(runtimeType,_this.id,_this.name,_this.cwd,_this.createdAt,_this.updatedAt,_this.modelProvider,_this.parentThreadId,_this.agentNickname,_this.agentRole,_this.threadSource);
+}
 
 @override
 String toString() {
-  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider, parentThreadId: $parentThreadId, agentNickname: $agentNickname, agentRole: $agentRole, threadSource: $threadSource)';
+  final _this = this as CodexThreadDto;
+  return 'CodexThreadDto(id: ${_this.id}, name: ${_this.name}, cwd: ${_this.cwd}, createdAt: ${_this.createdAt}, updatedAt: ${_this.updatedAt}, modelProvider: ${_this.modelProvider}, parentThreadId: ${_this.parentThreadId}, agentNickname: ${_this.agentNickname}, agentRole: ${_this.agentRole}, threadSource: ${_this.threadSource})';
 }
 
 
@@ -274,16 +286,18 @@ _$CodexThreadDtoCopyWith<_CodexThreadDto> get copyWith => __$CodexThreadDtoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentRole, agentRole) || other.agentRole == agentRole)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexThreadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentRole, agentRole) || other.agentRole == agentRole)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider,parentThreadId,agentNickname,agentRole,threadSource);
+int get hashCode {
+    return Object.hash(runtimeType,id,name,cwd,createdAt,updatedAt,modelProvider,parentThreadId,agentNickname,agentRole,threadSource);
+}
 
 @override
 String toString() {
-  return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider, parentThreadId: $parentThreadId, agentNickname: $agentNickname, agentRole: $agentRole, threadSource: $threadSource)';
+    return 'CodexThreadDto(id: $id, name: $name, cwd: $cwd, createdAt: $createdAt, updatedAt: $updatedAt, modelProvider: $modelProvider, parentThreadId: $parentThreadId, agentNickname: $agentNickname, agentRole: $agentRole, threadSource: $threadSource)';
 }
 
 

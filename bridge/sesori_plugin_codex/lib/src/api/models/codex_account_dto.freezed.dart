@@ -28,16 +28,21 @@ $CodexDeviceLoginStartParamsDtoCopyWith<CodexDeviceLoginStartParamsDto> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDeviceLoginStartParamsDto&&(identical(other.type, type) || other.type == type));
+  final _this = this as CodexDeviceLoginStartParamsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDeviceLoginStartParamsDto&&(identical(other.type, _this.type) || other.type == _this.type));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type);
+int get hashCode {
+  final _this = this as CodexDeviceLoginStartParamsDto;
+  return Object.hash(runtimeType,_this.type);
+}
 
 @override
 String toString() {
-  return 'CodexDeviceLoginStartParamsDto(type: $type)';
+  final _this = this as CodexDeviceLoginStartParamsDto;
+  return 'CodexDeviceLoginStartParamsDto(type: ${_this.type})';
 }
 
 
@@ -98,16 +103,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexDeviceLoginStartParamsDto&&(identical(other.type, type) || other.type == type));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexDeviceLoginStartParamsDto&&(identical(other.type, type) || other.type == type));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type);
+int get hashCode {
+    return Object.hash(runtimeType,type);
+}
 
 @override
 String toString() {
-  return 'CodexDeviceLoginStartParamsDto(type: $type)';
+    return 'CodexDeviceLoginStartParamsDto(type: $type)';
 }
 
 
@@ -160,16 +167,21 @@ $CodexDeviceLoginStartResponseDtoCopyWith<CodexDeviceLoginStartResponseDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDeviceLoginStartResponseDto&&(identical(other.type, type) || other.type == type)&&(identical(other.loginId, loginId) || other.loginId == loginId)&&(identical(other.verificationUrl, verificationUrl) || other.verificationUrl == verificationUrl)&&(identical(other.userCode, userCode) || other.userCode == userCode));
+  final _this = this as CodexDeviceLoginStartResponseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexDeviceLoginStartResponseDto&&(identical(other.type, _this.type) || other.type == _this.type)&&(identical(other.loginId, _this.loginId) || other.loginId == _this.loginId)&&(identical(other.verificationUrl, _this.verificationUrl) || other.verificationUrl == _this.verificationUrl)&&(identical(other.userCode, _this.userCode) || other.userCode == _this.userCode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,loginId,verificationUrl,userCode);
+int get hashCode {
+  final _this = this as CodexDeviceLoginStartResponseDto;
+  return Object.hash(runtimeType,_this.type,_this.loginId,_this.verificationUrl,_this.userCode);
+}
 
 @override
 String toString() {
-  return 'CodexDeviceLoginStartResponseDto(type: $type, loginId: $loginId, verificationUrl: $verificationUrl, userCode: $userCode)';
+  final _this = this as CodexDeviceLoginStartResponseDto;
+  return 'CodexDeviceLoginStartResponseDto(type: ${_this.type}, loginId: ${_this.loginId}, verificationUrl: ${_this.verificationUrl}, userCode: ${_this.userCode})';
 }
 
 
@@ -233,16 +245,18 @@ _$CodexDeviceLoginStartResponseDtoCopyWith<_CodexDeviceLoginStartResponseDto> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexDeviceLoginStartResponseDto&&(identical(other.type, type) || other.type == type)&&(identical(other.loginId, loginId) || other.loginId == loginId)&&(identical(other.verificationUrl, verificationUrl) || other.verificationUrl == verificationUrl)&&(identical(other.userCode, userCode) || other.userCode == userCode));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexDeviceLoginStartResponseDto&&(identical(other.type, type) || other.type == type)&&(identical(other.loginId, loginId) || other.loginId == loginId)&&(identical(other.verificationUrl, verificationUrl) || other.verificationUrl == verificationUrl)&&(identical(other.userCode, userCode) || other.userCode == userCode));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,type,loginId,verificationUrl,userCode);
+int get hashCode {
+    return Object.hash(runtimeType,type,loginId,verificationUrl,userCode);
+}
 
 @override
 String toString() {
-  return 'CodexDeviceLoginStartResponseDto(type: $type, loginId: $loginId, verificationUrl: $verificationUrl, userCode: $userCode)';
+    return 'CodexDeviceLoginStartResponseDto(type: $type, loginId: $loginId, verificationUrl: $verificationUrl, userCode: $userCode)';
 }
 
 
@@ -299,16 +313,21 @@ $CodexAccountLoginCancelParamsDtoCopyWith<CodexAccountLoginCancelParamsDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountLoginCancelParamsDto&&(identical(other.loginId, loginId) || other.loginId == loginId));
+  final _this = this as CodexAccountLoginCancelParamsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountLoginCancelParamsDto&&(identical(other.loginId, _this.loginId) || other.loginId == _this.loginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,loginId);
+int get hashCode {
+  final _this = this as CodexAccountLoginCancelParamsDto;
+  return Object.hash(runtimeType,_this.loginId);
+}
 
 @override
 String toString() {
-  return 'CodexAccountLoginCancelParamsDto(loginId: $loginId)';
+  final _this = this as CodexAccountLoginCancelParamsDto;
+  return 'CodexAccountLoginCancelParamsDto(loginId: ${_this.loginId})';
 }
 
 
@@ -369,16 +388,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountLoginCancelParamsDto&&(identical(other.loginId, loginId) || other.loginId == loginId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountLoginCancelParamsDto&&(identical(other.loginId, loginId) || other.loginId == loginId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,loginId);
+int get hashCode {
+    return Object.hash(runtimeType,loginId);
+}
 
 @override
 String toString() {
-  return 'CodexAccountLoginCancelParamsDto(loginId: $loginId)';
+    return 'CodexAccountLoginCancelParamsDto(loginId: $loginId)';
 }
 
 
@@ -431,16 +452,21 @@ $CodexAccountLoginCancelResponseDtoCopyWith<CodexAccountLoginCancelResponseDto> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountLoginCancelResponseDto&&(identical(other.status, status) || other.status == status));
+  final _this = this as CodexAccountLoginCancelResponseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountLoginCancelResponseDto&&(identical(other.status, _this.status) || other.status == _this.status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status);
+int get hashCode {
+  final _this = this as CodexAccountLoginCancelResponseDto;
+  return Object.hash(runtimeType,_this.status);
+}
 
 @override
 String toString() {
-  return 'CodexAccountLoginCancelResponseDto(status: $status)';
+  final _this = this as CodexAccountLoginCancelResponseDto;
+  return 'CodexAccountLoginCancelResponseDto(status: ${_this.status})';
 }
 
 
@@ -498,16 +524,18 @@ _$CodexAccountLoginCancelResponseDtoCopyWith<_CodexAccountLoginCancelResponseDto
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountLoginCancelResponseDto&&(identical(other.status, status) || other.status == status));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountLoginCancelResponseDto&&(identical(other.status, status) || other.status == status));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,status);
+int get hashCode {
+    return Object.hash(runtimeType,status);
+}
 
 @override
 String toString() {
-  return 'CodexAccountLoginCancelResponseDto(status: $status)';
+    return 'CodexAccountLoginCancelResponseDto(status: $status)';
 }
 
 
@@ -560,16 +588,21 @@ $CodexAccountLoginCompletedNotificationDtoCopyWith<CodexAccountLoginCompletedNot
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountLoginCompletedNotificationDto&&(identical(other.loginId, loginId) || other.loginId == loginId)&&(identical(other.success, success) || other.success == success)&&(identical(other.error, error) || other.error == error));
+  final _this = this as CodexAccountLoginCompletedNotificationDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAccountLoginCompletedNotificationDto&&(identical(other.loginId, _this.loginId) || other.loginId == _this.loginId)&&(identical(other.success, _this.success) || other.success == _this.success)&&(identical(other.error, _this.error) || other.error == _this.error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,loginId,success,error);
+int get hashCode {
+  final _this = this as CodexAccountLoginCompletedNotificationDto;
+  return Object.hash(runtimeType,_this.loginId,_this.success,_this.error);
+}
 
 @override
 String toString() {
-  return 'CodexAccountLoginCompletedNotificationDto(loginId: $loginId, success: $success, error: $error)';
+  final _this = this as CodexAccountLoginCompletedNotificationDto;
+  return 'CodexAccountLoginCompletedNotificationDto(loginId: ${_this.loginId}, success: ${_this.success}, error: ${_this.error})';
 }
 
 
@@ -631,16 +664,18 @@ _$CodexAccountLoginCompletedNotificationDtoCopyWith<_CodexAccountLoginCompletedN
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountLoginCompletedNotificationDto&&(identical(other.loginId, loginId) || other.loginId == loginId)&&(identical(other.success, success) || other.success == success)&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAccountLoginCompletedNotificationDto&&(identical(other.loginId, loginId) || other.loginId == loginId)&&(identical(other.success, success) || other.success == success)&&(identical(other.error, error) || other.error == error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,loginId,success,error);
+int get hashCode {
+    return Object.hash(runtimeType,loginId,success,error);
+}
 
 @override
 String toString() {
-  return 'CodexAccountLoginCompletedNotificationDto(loginId: $loginId, success: $success, error: $error)';
+    return 'CodexAccountLoginCompletedNotificationDto(loginId: $loginId, success: $success, error: $error)';
 }
 
 

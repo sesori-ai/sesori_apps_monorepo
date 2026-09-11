@@ -26,16 +26,21 @@ $NewSessionBackendScopeTransitionCopyWith<NewSessionBackendScopeTransition> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeTransition&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+  final _this = this as NewSessionBackendScopeTransition;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeTransition&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,bridgeId);
+int get hashCode {
+  final _this = this as NewSessionBackendScopeTransition;
+  return Object.hash(runtimeType,_this.bridgeId);
+}
 
 @override
 String toString() {
-  return 'NewSessionBackendScopeTransition(bridgeId: $bridgeId)';
+  final _this = this as NewSessionBackendScopeTransition;
+  return 'NewSessionBackendScopeTransition(bridgeId: ${_this.bridgeId})';
 }
 
 
@@ -93,16 +98,18 @@ $NewSessionBackendScopeRetainedTransitionCopyWith<NewSessionBackendScopeRetained
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeRetainedTransition&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeRetainedTransition&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId);
+}
 
 @override
 String toString() {
-  return 'NewSessionBackendScopeTransition.retained(bridgeId: $bridgeId)';
+    return 'NewSessionBackendScopeTransition.retained(bridgeId: $bridgeId)';
 }
 
 
@@ -159,16 +166,18 @@ $NewSessionBackendScopeInvalidatedTransitionCopyWith<NewSessionBackendScopeInval
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeInvalidatedTransition&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeInvalidatedTransition&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId);
+}
 
 @override
 String toString() {
-  return 'NewSessionBackendScopeTransition.invalidated(bridgeId: $bridgeId)';
+    return 'NewSessionBackendScopeTransition.invalidated(bridgeId: $bridgeId)';
 }
 
 
@@ -215,7 +224,7 @@ mixin _$NewSessionBackendScope {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScope);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScope);
 }
 
 
@@ -224,7 +233,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'NewSessionBackendScope()';
+    return 'NewSessionBackendScope()';
 }
 
 
@@ -256,16 +265,18 @@ $NewSessionBackendScopeUnverifiedCopyWith<NewSessionBackendScopeUnverified> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeUnverified&&(identical(other.lastIdentifiedBridgeId, lastIdentifiedBridgeId) || other.lastIdentifiedBridgeId == lastIdentifiedBridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeUnverified&&(identical(other.lastIdentifiedBridgeId, lastIdentifiedBridgeId) || other.lastIdentifiedBridgeId == lastIdentifiedBridgeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,lastIdentifiedBridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,lastIdentifiedBridgeId);
+}
 
 @override
 String toString() {
-  return 'NewSessionBackendScope.unverified(lastIdentifiedBridgeId: $lastIdentifiedBridgeId)';
+    return 'NewSessionBackendScope.unverified(lastIdentifiedBridgeId: $lastIdentifiedBridgeId)';
 }
 
 
@@ -322,16 +333,18 @@ $NewSessionBackendScopeVerifiedCopyWith<NewSessionBackendScopeVerified> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeVerified&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is NewSessionBackendScopeVerified&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 
 @override
-int get hashCode => Object.hash(runtimeType,bridgeId);
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId);
+}
 
 @override
 String toString() {
-  return 'NewSessionBackendScope.verified(bridgeId: $bridgeId)';
+    return 'NewSessionBackendScope.verified(bridgeId: $bridgeId)';
 }
 
 

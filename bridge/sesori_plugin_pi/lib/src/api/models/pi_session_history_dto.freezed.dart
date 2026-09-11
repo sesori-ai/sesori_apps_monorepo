@@ -27,12 +27,16 @@ $PiSessionEntriesDtoCopyWith<PiSessionEntriesDto> get copyWith => _$PiSessionEnt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionEntriesDto&&const DeepCollectionEquality().equals(other.entries, entries)&&(identical(other.leafId, leafId) || other.leafId == leafId));
+  final _this = this as PiSessionEntriesDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionEntriesDto&&const DeepCollectionEquality().equals(other.entries, _this.entries)&&(identical(other.leafId, _this.leafId) || other.leafId == _this.leafId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(entries),leafId);
+int get hashCode {
+  final _this = this as PiSessionEntriesDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.entries),_this.leafId);
+}
 
 
 
@@ -98,12 +102,14 @@ _$PiSessionEntriesDtoCopyWith<_PiSessionEntriesDto> get copyWith => __$PiSession
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSessionEntriesDto&&const DeepCollectionEquality().equals(other._entries, _entries)&&(identical(other.leafId, leafId) || other.leafId == leafId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSessionEntriesDto&&const DeepCollectionEquality().equals(other.entries, _entries)&&(identical(other.leafId, leafId) || other.leafId == leafId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_entries),leafId);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_entries),leafId);
+}
 
 
 
@@ -157,12 +163,16 @@ $PiSessionFileHistoryDtoCopyWith<PiSessionFileHistoryDto> get copyWith => _$PiSe
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileHistoryDto&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other.entries, entries));
+  final _this = this as PiSessionFileHistoryDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileHistoryDto&&(identical(other.header, _this.header) || other.header == _this.header)&&const DeepCollectionEquality().equals(other.entries, _this.entries));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,header,const DeepCollectionEquality().hash(entries));
+int get hashCode {
+  final _this = this as PiSessionFileHistoryDto;
+  return Object.hash(runtimeType,_this.header,const DeepCollectionEquality().hash(_this.entries));
+}
 
 
 
@@ -237,12 +247,14 @@ _$PiSessionFileHistoryDtoCopyWith<_PiSessionFileHistoryDto> get copyWith => __$P
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSessionFileHistoryDto&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other._entries, _entries));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSessionFileHistoryDto&&(identical(other.header, header) || other.header == header)&&const DeepCollectionEquality().equals(other.entries, _entries));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,header,const DeepCollectionEquality().hash(_entries));
+int get hashCode {
+    return Object.hash(runtimeType,header,const DeepCollectionEquality().hash(_entries));
+}
 
 
 
@@ -305,12 +317,16 @@ $PiSessionFileHeaderDtoCopyWith<PiSessionFileHeaderDto> get copyWith => _$PiSess
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileHeaderDto&&(identical(other.version, version) || other.version == version)&&(identical(other.id, id) || other.id == id));
+  final _this = this as PiSessionFileHeaderDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileHeaderDto&&(identical(other.version, _this.version) || other.version == _this.version)&&(identical(other.id, _this.id) || other.id == _this.id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,id);
+int get hashCode {
+  final _this = this as PiSessionFileHeaderDto;
+  return Object.hash(runtimeType,_this.version,_this.id);
+}
 
 
 
@@ -370,12 +386,14 @@ _$PiSessionFileHeaderDtoCopyWith<_PiSessionFileHeaderDto> get copyWith => __$PiS
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSessionFileHeaderDto&&(identical(other.version, version) || other.version == version)&&(identical(other.id, id) || other.id == id));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _PiSessionFileHeaderDto&&(identical(other.version, version) || other.version == version)&&(identical(other.id, id) || other.id == id));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,version,id);
+int get hashCode {
+    return Object.hash(runtimeType,version,id);
+}
 
 
 
@@ -477,12 +495,16 @@ $PiSessionEntryDtoCopyWith<PiSessionEntryDto> get copyWith => _$PiSessionEntryDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  final _this = this as PiSessionEntryDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionEntryDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.parentId, _this.parentId) || other.parentId == _this.parentId)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+  final _this = this as PiSessionEntryDto;
+  return Object.hash(runtimeType,_this.id,_this.parentId,_this.timestamp);
+}
 
 
 
@@ -549,12 +571,14 @@ $PiMessageEntryDtoCopyWith<PiMessageEntryDto> get copyWith => _$PiMessageEntryDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,message);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp,message);
+}
 
 
 
@@ -630,12 +654,14 @@ $PiThinkingLevelChangeEntryDtoCopyWith<PiThinkingLevelChangeEntryDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.thinkingLevel, thinkingLevel) || other.thinkingLevel == thinkingLevel));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.thinkingLevel, thinkingLevel) || other.thinkingLevel == thinkingLevel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,thinkingLevel);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp,thinkingLevel);
+}
 
 
 
@@ -701,12 +727,14 @@ $PiModelChangeEntryDtoCopyWith<PiModelChangeEntryDto> get copyWith => _$PiModelC
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiModelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiModelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -771,12 +799,14 @@ $PiCompactionEntryDtoCopyWith<PiCompactionEntryDto> get copyWith => _$PiCompacti
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -841,12 +871,14 @@ $PiBranchSummaryEntryDtoCopyWith<PiBranchSummaryEntryDto> get copyWith => _$PiBr
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiBranchSummaryEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiBranchSummaryEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -911,12 +943,14 @@ $PiCustomEntryDtoCopyWith<PiCustomEntryDto> get copyWith => _$PiCustomEntryDtoCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCustomEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCustomEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -989,12 +1023,14 @@ $PiCustomMessageEntryDtoCopyWith<PiCustomMessageEntryDto> get copyWith => _$PiCu
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCustomMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.display, display) || other.display == display));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCustomMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.display, display) || other.display == display));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,const DeepCollectionEquality().hash(_content),display);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp,const DeepCollectionEquality().hash(_content),display);
+}
 
 
 
@@ -1061,12 +1097,14 @@ $PiLabelEntryDtoCopyWith<PiLabelEntryDto> get copyWith => _$PiLabelEntryDtoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiLabelEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiLabelEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1131,12 +1169,14 @@ $PiSessionInfoEntryDtoCopyWith<PiSessionInfoEntryDto> get copyWith => _$PiSessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionInfoEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionInfoEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1201,12 +1241,14 @@ $PiUnknownEntryDtoCopyWith<PiUnknownEntryDto> get copyWith => _$PiUnknownEntryDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUnknownEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUnknownEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1309,12 +1351,16 @@ $PiSessionFileEntryDtoCopyWith<PiSessionFileEntryDto> get copyWith => _$PiSessio
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  final _this = this as PiSessionFileEntryDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileEntryDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.parentId, _this.parentId) || other.parentId == _this.parentId)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+  final _this = this as PiSessionFileEntryDto;
+  return Object.hash(runtimeType,_this.id,_this.parentId,_this.timestamp);
+}
 
 
 
@@ -1381,12 +1427,14 @@ $PiSessionFileMessageEntryDtoCopyWith<PiSessionFileMessageEntryDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,message);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp,message);
+}
 
 
 
@@ -1462,12 +1510,14 @@ $PiSessionFileThinkingLevelChangeEntryDtoCopyWith<PiSessionFileThinkingLevelChan
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.thinkingLevel, thinkingLevel) || other.thinkingLevel == thinkingLevel));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileThinkingLevelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.thinkingLevel, thinkingLevel) || other.thinkingLevel == thinkingLevel));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,thinkingLevel);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp,thinkingLevel);
+}
 
 
 
@@ -1533,12 +1583,14 @@ $PiSessionFileModelChangeEntryDtoCopyWith<PiSessionFileModelChangeEntryDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileModelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileModelChangeEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1603,12 +1655,14 @@ $PiSessionFileCompactionEntryDtoCopyWith<PiSessionFileCompactionEntryDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCompactionEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1673,12 +1727,14 @@ $PiSessionFileBranchSummaryEntryDtoCopyWith<PiSessionFileBranchSummaryEntryDto> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileBranchSummaryEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileBranchSummaryEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1743,12 +1799,14 @@ $PiSessionFileCustomEntryDtoCopyWith<PiSessionFileCustomEntryDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCustomEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCustomEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1821,12 +1879,14 @@ $PiSessionFileCustomMessageEntryDtoCopyWith<PiSessionFileCustomMessageEntryDto> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCustomMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.display, display) || other.display == display));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCustomMessageEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.display, display) || other.display == display));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp,const DeepCollectionEquality().hash(_content),display);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp,const DeepCollectionEquality().hash(_content),display);
+}
 
 
 
@@ -1893,12 +1953,14 @@ $PiSessionFileLabelEntryDtoCopyWith<PiSessionFileLabelEntryDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileLabelEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileLabelEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -1963,12 +2025,14 @@ $PiSessionFileSessionInfoEntryDtoCopyWith<PiSessionFileSessionInfoEntryDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileSessionInfoEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileSessionInfoEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -2033,12 +2097,14 @@ $PiSessionFileUnknownEntryDtoCopyWith<PiSessionFileUnknownEntryDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileUnknownEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileUnknownEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.parentId, parentId) || other.parentId == parentId)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,parentId,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,id,parentId,timestamp);
+}
 
 
 
@@ -2137,12 +2203,16 @@ $PiSessionFileAgentMessageDtoCopyWith<PiSessionFileAgentMessageDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileAgentMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  final _this = this as PiSessionFileAgentMessageDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileAgentMessageDto&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+  final _this = this as PiSessionFileAgentMessageDto;
+  return Object.hash(runtimeType,_this.timestamp);
+}
 
 
 
@@ -2211,12 +2281,14 @@ $PiSessionFileUserMessageDtoCopyWith<PiSessionFileUserMessageDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileUserMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileUserMessageDto&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),timestamp);
+}
 
 
 
@@ -2289,12 +2361,14 @@ $PiSessionFileAssistantMessageDtoCopyWith<PiSessionFileAssistantMessageDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileAssistantMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileAssistantMessageDto&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,errorMessage,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,errorMessage,timestamp);
+}
 
 
 
@@ -2370,12 +2444,14 @@ $PiSessionFileToolResultMessageDtoCopyWith<PiSessionFileToolResultMessageDto> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileToolResultMessageDto&&(identical(other.toolCallId, toolCallId) || other.toolCallId == toolCallId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileToolResultMessageDto&&(identical(other.toolCallId, toolCallId) || other.toolCallId == toolCallId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,toolCallId,toolName,const DeepCollectionEquality().hash(_content),isError,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,toolCallId,toolName,const DeepCollectionEquality().hash(_content),isError,timestamp);
+}
 
 
 
@@ -2445,12 +2521,14 @@ $PiSessionFileBashExecutionMessageDtoCopyWith<PiSessionFileBashExecutionMessageD
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileBashExecutionMessageDto&&(identical(other.command, command) || other.command == command)&&(identical(other.output, output) || other.output == output)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode)&&(identical(other.cancelled, cancelled) || other.cancelled == cancelled)&&(identical(other.truncated, truncated) || other.truncated == truncated)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileBashExecutionMessageDto&&(identical(other.command, command) || other.command == command)&&(identical(other.output, output) || other.output == output)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode)&&(identical(other.cancelled, cancelled) || other.cancelled == cancelled)&&(identical(other.truncated, truncated) || other.truncated == truncated)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,command,output,exitCode,cancelled,truncated,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,command,output,exitCode,cancelled,truncated,timestamp);
+}
 
 
 
@@ -2524,12 +2602,14 @@ $PiSessionFileCustomMessageDtoCopyWith<PiSessionFileCustomMessageDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCustomMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.display, display) || other.display == display)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCustomMessageDto&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.display, display) || other.display == display)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),display,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),display,timestamp);
+}
 
 
 
@@ -2600,12 +2680,14 @@ $PiSessionFileHookMessageDtoCopyWith<PiSessionFileHookMessageDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileHookMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.display, display) || other.display == display)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileHookMessageDto&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.display, display) || other.display == display)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),display,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),display,timestamp);
+}
 
 
 
@@ -2668,12 +2750,14 @@ $PiSessionFileBranchSummaryMessageDtoCopyWith<PiSessionFileBranchSummaryMessageD
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileBranchSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileBranchSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 
 
@@ -2734,12 +2818,14 @@ $PiSessionFileCompactionSummaryMessageDtoCopyWith<PiSessionFileCompactionSummary
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCompactionSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileCompactionSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 
 
@@ -2800,12 +2886,14 @@ $PiSessionFileUnknownMessageDtoCopyWith<PiSessionFileUnknownMessageDto> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileUnknownMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiSessionFileUnknownMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 
 
@@ -2898,12 +2986,16 @@ $PiAgentMessageDtoCopyWith<PiAgentMessageDto> get copyWith => _$PiAgentMessageDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAgentMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  final _this = this as PiAgentMessageDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAgentMessageDto&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+  final _this = this as PiAgentMessageDto;
+  return Object.hash(runtimeType,_this.timestamp);
+}
 
 
 
@@ -2972,12 +3064,14 @@ $PiUserMessageDtoCopyWith<PiUserMessageDto> get copyWith => _$PiUserMessageDtoCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUserMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUserMessageDto&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),timestamp);
+}
 
 
 
@@ -3050,12 +3144,14 @@ $PiAssistantMessageDtoCopyWith<PiAssistantMessageDto> get copyWith => _$PiAssist
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAssistantMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiAssistantMessageDto&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.provider, provider) || other.provider == provider)&&(identical(other.model, model) || other.model == model)&&(identical(other.stopReason, stopReason) || other.stopReason == stopReason)&&(identical(other.errorMessage, errorMessage) || other.errorMessage == errorMessage)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,errorMessage,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),provider,model,stopReason,errorMessage,timestamp);
+}
 
 
 
@@ -3131,12 +3227,14 @@ $PiToolResultMessageDtoCopyWith<PiToolResultMessageDto> get copyWith => _$PiTool
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolResultMessageDto&&(identical(other.toolCallId, toolCallId) || other.toolCallId == toolCallId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolResultMessageDto&&(identical(other.toolCallId, toolCallId) || other.toolCallId == toolCallId)&&(identical(other.toolName, toolName) || other.toolName == toolName)&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.isError, isError) || other.isError == isError)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,toolCallId,toolName,const DeepCollectionEquality().hash(_content),isError,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,toolCallId,toolName,const DeepCollectionEquality().hash(_content),isError,timestamp);
+}
 
 
 
@@ -3206,12 +3304,14 @@ $PiBashExecutionMessageDtoCopyWith<PiBashExecutionMessageDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiBashExecutionMessageDto&&(identical(other.command, command) || other.command == command)&&(identical(other.output, output) || other.output == output)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode)&&(identical(other.cancelled, cancelled) || other.cancelled == cancelled)&&(identical(other.truncated, truncated) || other.truncated == truncated)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiBashExecutionMessageDto&&(identical(other.command, command) || other.command == command)&&(identical(other.output, output) || other.output == output)&&(identical(other.exitCode, exitCode) || other.exitCode == exitCode)&&(identical(other.cancelled, cancelled) || other.cancelled == cancelled)&&(identical(other.truncated, truncated) || other.truncated == truncated)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,command,output,exitCode,cancelled,truncated,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,command,output,exitCode,cancelled,truncated,timestamp);
+}
 
 
 
@@ -3285,12 +3385,14 @@ $PiCustomMessageDtoCopyWith<PiCustomMessageDto> get copyWith => _$PiCustomMessag
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCustomMessageDto&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.display, display) || other.display == display)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCustomMessageDto&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.display, display) || other.display == display)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),display,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_content),display,timestamp);
+}
 
 
 
@@ -3353,12 +3455,14 @@ $PiBranchSummaryMessageDtoCopyWith<PiBranchSummaryMessageDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiBranchSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiBranchSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 
 
@@ -3419,12 +3523,14 @@ $PiCompactionSummaryMessageDtoCopyWith<PiCompactionSummaryMessageDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCompactionSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiCompactionSummaryMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 
 
@@ -3485,12 +3591,14 @@ $PiUnknownMessageDtoCopyWith<PiUnknownMessageDto> get copyWith => _$PiUnknownMes
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUnknownMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUnknownMessageDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 
 
@@ -3566,7 +3674,7 @@ mixin _$PiContentDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3607,12 +3715,14 @@ $PiTextContentDtoCopyWith<PiTextContentDto> get copyWith => _$PiTextContentDtoCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiTextContentDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiTextContentDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 
 
@@ -3674,12 +3784,14 @@ $PiImageContentDtoCopyWith<PiImageContentDto> get copyWith => _$PiImageContentDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiImageContentDto&&(identical(other.data, data) || other.data == data)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiImageContentDto&&(identical(other.data, data) || other.data == data)&&(identical(other.mimeType, mimeType) || other.mimeType == mimeType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,data,mimeType);
+int get hashCode {
+    return Object.hash(runtimeType,data,mimeType);
+}
 
 
 
@@ -3742,12 +3854,14 @@ $PiThinkingContentDtoCopyWith<PiThinkingContentDto> get copyWith => _$PiThinking
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingContentDto&&(identical(other.thinking, thinking) || other.thinking == thinking)&&(identical(other.redacted, redacted) || other.redacted == redacted));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiThinkingContentDto&&(identical(other.thinking, thinking) || other.thinking == thinking)&&(identical(other.redacted, redacted) || other.redacted == redacted));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,thinking,redacted);
+int get hashCode {
+    return Object.hash(runtimeType,thinking,redacted);
+}
 
 
 
@@ -3811,12 +3925,14 @@ $PiToolCallContentDtoCopyWith<PiToolCallContentDto> get copyWith => _$PiToolCall
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolCallContentDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.arguments, arguments));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiToolCallContentDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&const DeepCollectionEquality().equals(other.arguments, arguments));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(arguments));
+int get hashCode {
+    return Object.hash(runtimeType,id,name,const DeepCollectionEquality().hash(arguments));
+}
 
 
 
@@ -3873,7 +3989,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUnknownContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is PiUnknownContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)

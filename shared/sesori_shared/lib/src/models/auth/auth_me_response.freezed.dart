@@ -27,16 +27,21 @@ $AuthMeResponseCopyWith<AuthMeResponse> get copyWith => _$AuthMeResponseCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthMeResponse&&(identical(other.user, user) || other.user == user));
+  final _this = this as AuthMeResponse;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthMeResponse&&(identical(other.user, _this.user) || other.user == _this.user));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,user);
+int get hashCode {
+  final _this = this as AuthMeResponse;
+  return Object.hash(runtimeType,_this.user);
+}
 
 @override
 String toString() {
-  return 'AuthMeResponse(user: $user)';
+  final _this = this as AuthMeResponse;
+  return 'AuthMeResponse(user: ${_this.user})';
 }
 
 
@@ -103,16 +108,18 @@ _$AuthMeResponseCopyWith<_AuthMeResponse> get copyWith => __$AuthMeResponseCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthMeResponse&&(identical(other.user, user) || other.user == user));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AuthMeResponse&&(identical(other.user, user) || other.user == user));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,user);
+int get hashCode {
+    return Object.hash(runtimeType,user);
+}
 
 @override
 String toString() {
-  return 'AuthMeResponse(user: $user)';
+    return 'AuthMeResponse(user: $user)';
 }
 
 

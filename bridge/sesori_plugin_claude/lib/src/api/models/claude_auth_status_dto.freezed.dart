@@ -27,12 +27,16 @@ $ClaudeAuthStatusDtoCopyWith<ClaudeAuthStatusDto> get copyWith => _$ClaudeAuthSt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeAuthStatusDto&&(identical(other.loggedIn, loggedIn) || other.loggedIn == loggedIn));
+  final _this = this as ClaudeAuthStatusDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ClaudeAuthStatusDto&&(identical(other.loggedIn, _this.loggedIn) || other.loggedIn == _this.loggedIn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,loggedIn);
+int get hashCode {
+  final _this = this as ClaudeAuthStatusDto;
+  return Object.hash(runtimeType,_this.loggedIn);
+}
 
 
 
@@ -90,12 +94,14 @@ _$ClaudeAuthStatusDtoCopyWith<_ClaudeAuthStatusDto> get copyWith => __$ClaudeAut
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeAuthStatusDto&&(identical(other.loggedIn, loggedIn) || other.loggedIn == loggedIn));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ClaudeAuthStatusDto&&(identical(other.loggedIn, loggedIn) || other.loggedIn == loggedIn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,loggedIn);
+int get hashCode {
+    return Object.hash(runtimeType,loggedIn);
+}
 
 
 

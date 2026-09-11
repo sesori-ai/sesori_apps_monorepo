@@ -27,16 +27,21 @@ $CodexSessionIndexEntryDtoCopyWith<CodexSessionIndexEntryDto> get copyWith => _$
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSessionIndexEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.threadName, threadName) || other.threadName == threadName)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  final _this = this as CodexSessionIndexEntryDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexSessionIndexEntryDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.threadName, _this.threadName) || other.threadName == _this.threadName)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,threadName,updatedAt);
+int get hashCode {
+  final _this = this as CodexSessionIndexEntryDto;
+  return Object.hash(runtimeType,_this.id,_this.threadName,_this.updatedAt);
+}
 
 @override
 String toString() {
-  return 'CodexSessionIndexEntryDto(id: $id, threadName: $threadName, updatedAt: $updatedAt)';
+  final _this = this as CodexSessionIndexEntryDto;
+  return 'CodexSessionIndexEntryDto(id: ${_this.id}, threadName: ${_this.threadName}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -98,16 +103,18 @@ _$CodexSessionIndexEntryDtoCopyWith<_CodexSessionIndexEntryDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSessionIndexEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.threadName, threadName) || other.threadName == threadName)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexSessionIndexEntryDto&&(identical(other.id, id) || other.id == id)&&(identical(other.threadName, threadName) || other.threadName == threadName)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,threadName,updatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,id,threadName,updatedAt);
+}
 
 @override
 String toString() {
-  return 'CodexSessionIndexEntryDto(id: $id, threadName: $threadName, updatedAt: $updatedAt)';
+    return 'CodexSessionIndexEntryDto(id: $id, threadName: $threadName, updatedAt: $updatedAt)';
 }
 
 
@@ -198,16 +205,21 @@ $CodexRolloutLineDtoCopyWith<CodexRolloutLineDto> get copyWith => _$CodexRollout
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+  final _this = this as CodexRolloutLineDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutLineDto&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+  final _this = this as CodexRolloutLineDto;
+  return Object.hash(runtimeType,_this.timestamp);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto(timestamp: $timestamp)';
+  final _this = this as CodexRolloutLineDto;
+  return 'CodexRolloutLineDto(timestamp: ${_this.timestamp})';
 }
 
 
@@ -270,16 +282,18 @@ $CodexRolloutSessionMetadataLineDtoCopyWith<CodexRolloutSessionMetadataLineDto> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSessionMetadataLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSessionMetadataLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp,payload);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp,payload);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto.sessionMetadata(timestamp: $timestamp, payload: $payload)';
+    return 'CodexRolloutLineDto.sessionMetadata(timestamp: $timestamp, payload: $payload)';
 }
 
 
@@ -351,16 +365,18 @@ $CodexRolloutTurnContextLineDtoCopyWith<CodexRolloutTurnContextLineDto> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnContextLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnContextLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp,payload);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp,payload);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto.turnContext(timestamp: $timestamp, payload: $payload)';
+    return 'CodexRolloutLineDto.turnContext(timestamp: $timestamp, payload: $payload)';
 }
 
 
@@ -432,16 +448,18 @@ $CodexRolloutResponseItemLineDtoCopyWith<CodexRolloutResponseItemLineDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutResponseItemLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutResponseItemLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp,payload);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp,payload);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto.responseItem(timestamp: $timestamp, payload: $payload)';
+    return 'CodexRolloutLineDto.responseItem(timestamp: $timestamp, payload: $payload)';
 }
 
 
@@ -513,16 +531,18 @@ $CodexRolloutEventMessageLineDtoCopyWith<CodexRolloutEventMessageLineDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventMessageLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventMessageLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp,payload);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp,payload);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto.eventMessage(timestamp: $timestamp, payload: $payload)';
+    return 'CodexRolloutLineDto.eventMessage(timestamp: $timestamp, payload: $payload)';
 }
 
 
@@ -594,16 +614,18 @@ $CodexRolloutInterAgentCommunicationMetadataLineDtoCopyWith<CodexRolloutInterAge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInterAgentCommunicationMetadataLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInterAgentCommunicationMetadataLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.payload, payload) || other.payload == payload));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp,payload);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp,payload);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto.interAgentCommunicationMetadata(timestamp: $timestamp, payload: $payload)';
+    return 'CodexRolloutLineDto.interAgentCommunicationMetadata(timestamp: $timestamp, payload: $payload)';
 }
 
 
@@ -674,16 +696,18 @@ $CodexRolloutCompactedLineDtoCopyWith<CodexRolloutCompactedLineDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompactedLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompactedLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto.compacted(timestamp: $timestamp)';
+    return 'CodexRolloutLineDto.compacted(timestamp: $timestamp)';
 }
 
 
@@ -744,16 +768,18 @@ $CodexRolloutUnknownLineDtoCopyWith<CodexRolloutUnknownLineDto> get copyWith => 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownLineDto&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,timestamp);
+int get hashCode {
+    return Object.hash(runtimeType,timestamp);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutLineDto.unknown(timestamp: $timestamp)';
+    return 'CodexRolloutLineDto.unknown(timestamp: $timestamp)';
 }
 
 
@@ -841,7 +867,7 @@ mixin _$CodexRolloutEventDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutEventDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -850,7 +876,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto()';
+    return 'CodexRolloutEventDto()';
 }
 
 
@@ -886,16 +912,18 @@ $CodexRolloutUserMessageEventDtoCopyWith<CodexRolloutUserMessageEventDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUserMessageEventDto&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUserMessageEventDto&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.userMessage(message: $message)';
+    return 'CodexRolloutEventDto.userMessage(message: $message)';
 }
 
 
@@ -958,16 +986,18 @@ $CodexRolloutItemCompletedEventDtoCopyWith<CodexRolloutItemCompletedEventDto> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutItemCompletedEventDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutItemCompletedEventDto&&(identical(other.threadId, threadId) || other.threadId == threadId)&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.item, item) || other.item == item));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,threadId,turnId,item);
+int get hashCode {
+    return Object.hash(runtimeType,threadId,turnId,item);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.itemCompleted(threadId: $threadId, turnId: $turnId, item: $item)';
+    return 'CodexRolloutEventDto.itemCompleted(threadId: $threadId, turnId: $turnId, item: $item)';
 }
 
 
@@ -1043,16 +1073,18 @@ $CodexRolloutImageGenerationEndEventDtoCopyWith<CodexRolloutImageGenerationEndEv
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationEndEventDto&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.status, status) || other.status == status)&&(identical(other.revisedPrompt, revisedPrompt) || other.revisedPrompt == revisedPrompt)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationEndEventDto&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.status, status) || other.status == status)&&(identical(other.revisedPrompt, revisedPrompt) || other.revisedPrompt == revisedPrompt)&&(identical(other.result, result) || other.result == result)&&(identical(other.savedPath, savedPath) || other.savedPath == savedPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,callId,status,revisedPrompt,result,savedPath);
+int get hashCode {
+    return Object.hash(runtimeType,callId,status,revisedPrompt,result,savedPath);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.imageGenerationEnd(callId: $callId, status: $status, revisedPrompt: $revisedPrompt, result: $result, savedPath: $savedPath)';
+    return 'CodexRolloutEventDto.imageGenerationEnd(callId: $callId, status: $status, revisedPrompt: $revisedPrompt, result: $result, savedPath: $savedPath)';
 }
 
 
@@ -1117,16 +1149,18 @@ $CodexRolloutTaskStartedEventDtoCopyWith<CodexRolloutTaskStartedEventDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskStartedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskStartedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turnId);
+int get hashCode {
+    return Object.hash(runtimeType,turnId);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.taskStarted(turnId: $turnId)';
+    return 'CodexRolloutEventDto.taskStarted(turnId: $turnId)';
 }
 
 
@@ -1188,16 +1222,18 @@ $CodexRolloutTaskCompleteEventDtoCopyWith<CodexRolloutTaskCompleteEventDto> get 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskCompleteEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.error, error) || other.error == error));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTaskCompleteEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId)&&(identical(other.error, error) || other.error == error));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turnId,error);
+int get hashCode {
+    return Object.hash(runtimeType,turnId,error);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.taskComplete(turnId: $turnId, error: $error)';
+    return 'CodexRolloutEventDto.taskComplete(turnId: $turnId, error: $error)';
 }
 
 
@@ -1271,16 +1307,18 @@ $CodexRolloutTurnAbortedEventDtoCopyWith<CodexRolloutTurnAbortedEventDto> get co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnAbortedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnAbortedEventDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turnId);
+int get hashCode {
+    return Object.hash(runtimeType,turnId);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.turnAborted(turnId: $turnId)';
+    return 'CodexRolloutEventDto.turnAborted(turnId: $turnId)';
 }
 
 
@@ -1341,16 +1379,18 @@ $CodexRolloutThreadRolledBackEventDtoCopyWith<CodexRolloutThreadRolledBackEventD
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutThreadRolledBackEventDto&&(identical(other.numTurns, numTurns) || other.numTurns == numTurns));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutThreadRolledBackEventDto&&(identical(other.numTurns, numTurns) || other.numTurns == numTurns));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,numTurns);
+int get hashCode {
+    return Object.hash(runtimeType,numTurns);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.threadRolledBack(numTurns: $numTurns)';
+    return 'CodexRolloutEventDto.threadRolledBack(numTurns: $numTurns)';
 }
 
 
@@ -1406,7 +1446,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownEventDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownEventDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1415,7 +1455,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutEventDto.unknown()';
+    return 'CodexRolloutEventDto.unknown()';
 }
 
 
@@ -1439,16 +1479,21 @@ $CodexRolloutInterAgentCommunicationMetadataDtoCopyWith<CodexRolloutInterAgentCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInterAgentCommunicationMetadataDto&&(identical(other.triggerTurn, triggerTurn) || other.triggerTurn == triggerTurn));
+  final _this = this as CodexRolloutInterAgentCommunicationMetadataDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInterAgentCommunicationMetadataDto&&(identical(other.triggerTurn, _this.triggerTurn) || other.triggerTurn == _this.triggerTurn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,triggerTurn);
+int get hashCode {
+  final _this = this as CodexRolloutInterAgentCommunicationMetadataDto;
+  return Object.hash(runtimeType,_this.triggerTurn);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutInterAgentCommunicationMetadataDto(triggerTurn: $triggerTurn)';
+  final _this = this as CodexRolloutInterAgentCommunicationMetadataDto;
+  return 'CodexRolloutInterAgentCommunicationMetadataDto(triggerTurn: ${_this.triggerTurn})';
 }
 
 
@@ -1506,16 +1551,18 @@ _$CodexRolloutInterAgentCommunicationMetadataDtoCopyWith<_CodexRolloutInterAgent
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutInterAgentCommunicationMetadataDto&&(identical(other.triggerTurn, triggerTurn) || other.triggerTurn == triggerTurn));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutInterAgentCommunicationMetadataDto&&(identical(other.triggerTurn, triggerTurn) || other.triggerTurn == triggerTurn));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,triggerTurn);
+int get hashCode {
+    return Object.hash(runtimeType,triggerTurn);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutInterAgentCommunicationMetadataDto(triggerTurn: $triggerTurn)';
+    return 'CodexRolloutInterAgentCommunicationMetadataDto(triggerTurn: $triggerTurn)';
 }
 
 
@@ -1579,7 +1626,7 @@ mixin _$CodexRolloutCompletedItemDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1588,7 +1635,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutCompletedItemDto()';
+    return 'CodexRolloutCompletedItemDto()';
 }
 
 
@@ -1627,16 +1674,18 @@ $CodexRolloutCompletedSubAgentActivityDtoCopyWith<CodexRolloutCompletedSubAgentA
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedSubAgentActivityDto&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.agentThreadId, agentThreadId) || other.agentThreadId == agentThreadId)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCompletedSubAgentActivityDto&&(identical(other.id, id) || other.id == id)&&(identical(other.kind, kind) || other.kind == kind)&&(identical(other.agentThreadId, agentThreadId) || other.agentThreadId == agentThreadId)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,kind,agentThreadId,agentPath);
+int get hashCode {
+    return Object.hash(runtimeType,id,kind,agentThreadId,agentPath);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutCompletedItemDto.subAgentActivity(id: $id, kind: $kind, agentThreadId: $agentThreadId, agentPath: $agentPath)';
+    return 'CodexRolloutCompletedItemDto.subAgentActivity(id: $id, kind: $kind, agentThreadId: $agentThreadId, agentPath: $agentPath)';
 }
 
 
@@ -1695,7 +1744,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownCompletedItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownCompletedItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -1704,7 +1753,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutCompletedItemDto.unknown()';
+    return 'CodexRolloutCompletedItemDto.unknown()';
 }
 
 
@@ -1728,16 +1777,21 @@ $CodexRolloutErrorDtoCopyWith<CodexRolloutErrorDto> get copyWith => _$CodexRollo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutErrorDto&&(identical(other.message, message) || other.message == message));
+  final _this = this as CodexRolloutErrorDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutErrorDto&&(identical(other.message, _this.message) || other.message == _this.message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+  final _this = this as CodexRolloutErrorDto;
+  return Object.hash(runtimeType,_this.message);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutErrorDto(message: $message)';
+  final _this = this as CodexRolloutErrorDto;
+  return 'CodexRolloutErrorDto(message: ${_this.message})';
 }
 
 
@@ -1795,16 +1849,18 @@ _$CodexRolloutErrorDtoCopyWith<_CodexRolloutErrorDto> get copyWith => __$CodexRo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutErrorDto&&(identical(other.message, message) || other.message == message));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutErrorDto&&(identical(other.message, message) || other.message == message));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,message);
+int get hashCode {
+    return Object.hash(runtimeType,message);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutErrorDto(message: $message)';
+    return 'CodexRolloutErrorDto(message: $message)';
 }
 
 
@@ -1857,16 +1913,21 @@ $CodexRolloutSessionMetadataPayloadDtoCopyWith<CodexRolloutSessionMetadataPayloa
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cliVersion, cliVersion) || other.cliVersion == cliVersion)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath));
+  final _this = this as CodexRolloutSessionMetadataPayloadDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.cwd, _this.cwd) || other.cwd == _this.cwd)&&(identical(other.timestamp, _this.timestamp) || other.timestamp == _this.timestamp)&&(identical(other.modelProvider, _this.modelProvider) || other.modelProvider == _this.modelProvider)&&(identical(other.cliVersion, _this.cliVersion) || other.cliVersion == _this.cliVersion)&&(identical(other.parentThreadId, _this.parentThreadId) || other.parentThreadId == _this.parentThreadId)&&(identical(other.threadSource, _this.threadSource) || other.threadSource == _this.threadSource)&&(identical(other.agentNickname, _this.agentNickname) || other.agentNickname == _this.agentNickname)&&(identical(other.agentPath, _this.agentPath) || other.agentPath == _this.agentPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cwd,timestamp,modelProvider,cliVersion,parentThreadId,threadSource,agentNickname,agentPath);
+int get hashCode {
+  final _this = this as CodexRolloutSessionMetadataPayloadDto;
+  return Object.hash(runtimeType,_this.id,_this.cwd,_this.timestamp,_this.modelProvider,_this.cliVersion,_this.parentThreadId,_this.threadSource,_this.agentNickname,_this.agentPath);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutSessionMetadataPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, cliVersion: $cliVersion, parentThreadId: $parentThreadId, threadSource: $threadSource, agentNickname: $agentNickname, agentPath: $agentPath)';
+  final _this = this as CodexRolloutSessionMetadataPayloadDto;
+  return 'CodexRolloutSessionMetadataPayloadDto(id: ${_this.id}, cwd: ${_this.cwd}, timestamp: ${_this.timestamp}, modelProvider: ${_this.modelProvider}, cliVersion: ${_this.cliVersion}, parentThreadId: ${_this.parentThreadId}, threadSource: ${_this.threadSource}, agentNickname: ${_this.agentNickname}, agentPath: ${_this.agentPath})';
 }
 
 
@@ -1940,16 +2001,18 @@ _$CodexRolloutSessionMetadataPayloadDtoCopyWith<_CodexRolloutSessionMetadataPayl
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cliVersion, cliVersion) || other.cliVersion == cliVersion)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutSessionMetadataPayloadDto&&(identical(other.id, id) || other.id == id)&&(identical(other.cwd, cwd) || other.cwd == cwd)&&(identical(other.timestamp, timestamp) || other.timestamp == timestamp)&&(identical(other.modelProvider, modelProvider) || other.modelProvider == modelProvider)&&(identical(other.cliVersion, cliVersion) || other.cliVersion == cliVersion)&&(identical(other.parentThreadId, parentThreadId) || other.parentThreadId == parentThreadId)&&(identical(other.threadSource, threadSource) || other.threadSource == threadSource)&&(identical(other.agentNickname, agentNickname) || other.agentNickname == agentNickname)&&(identical(other.agentPath, agentPath) || other.agentPath == agentPath));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,cwd,timestamp,modelProvider,cliVersion,parentThreadId,threadSource,agentNickname,agentPath);
+int get hashCode {
+    return Object.hash(runtimeType,id,cwd,timestamp,modelProvider,cliVersion,parentThreadId,threadSource,agentNickname,agentPath);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutSessionMetadataPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, cliVersion: $cliVersion, parentThreadId: $parentThreadId, threadSource: $threadSource, agentNickname: $agentNickname, agentPath: $agentPath)';
+    return 'CodexRolloutSessionMetadataPayloadDto(id: $id, cwd: $cwd, timestamp: $timestamp, modelProvider: $modelProvider, cliVersion: $cliVersion, parentThreadId: $parentThreadId, threadSource: $threadSource, agentNickname: $agentNickname, agentPath: $agentPath)';
 }
 
 
@@ -2010,16 +2073,21 @@ $CodexRolloutTurnContextPayloadDtoCopyWith<CodexRolloutTurnContextPayloadDto> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnContextPayloadDto&&(identical(other.model, model) || other.model == model)&&(identical(other.effort, effort) || other.effort == effort));
+  final _this = this as CodexRolloutTurnContextPayloadDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutTurnContextPayloadDto&&(identical(other.model, _this.model) || other.model == _this.model)&&(identical(other.effort, _this.effort) || other.effort == _this.effort));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model,effort);
+int get hashCode {
+  final _this = this as CodexRolloutTurnContextPayloadDto;
+  return Object.hash(runtimeType,_this.model,_this.effort);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutTurnContextPayloadDto(model: $model, effort: $effort)';
+  final _this = this as CodexRolloutTurnContextPayloadDto;
+  return 'CodexRolloutTurnContextPayloadDto(model: ${_this.model}, effort: ${_this.effort})';
 }
 
 
@@ -2079,16 +2147,18 @@ _$CodexRolloutTurnContextPayloadDtoCopyWith<_CodexRolloutTurnContextPayloadDto> 
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutTurnContextPayloadDto&&(identical(other.model, model) || other.model == model)&&(identical(other.effort, effort) || other.effort == effort));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutTurnContextPayloadDto&&(identical(other.model, model) || other.model == model)&&(identical(other.effort, effort) || other.effort == effort));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,model,effort);
+int get hashCode {
+    return Object.hash(runtimeType,model,effort);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutTurnContextPayloadDto(model: $model, effort: $effort)';
+    return 'CodexRolloutTurnContextPayloadDto(model: $model, effort: $effort)';
 }
 
 
@@ -2142,16 +2212,21 @@ $CodexRolloutItemMetadataDtoCopyWith<CodexRolloutItemMetadataDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutItemMetadataDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+  final _this = this as CodexRolloutItemMetadataDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutItemMetadataDto&&(identical(other.turnId, _this.turnId) || other.turnId == _this.turnId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turnId);
+int get hashCode {
+  final _this = this as CodexRolloutItemMetadataDto;
+  return Object.hash(runtimeType,_this.turnId);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutItemMetadataDto(turnId: $turnId)';
+  final _this = this as CodexRolloutItemMetadataDto;
+  return 'CodexRolloutItemMetadataDto(turnId: ${_this.turnId})';
 }
 
 
@@ -2209,16 +2284,18 @@ _$CodexRolloutItemMetadataDtoCopyWith<_CodexRolloutItemMetadataDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutItemMetadataDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutItemMetadataDto&&(identical(other.turnId, turnId) || other.turnId == turnId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,turnId);
+int get hashCode {
+    return Object.hash(runtimeType,turnId);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutItemMetadataDto(turnId: $turnId)';
+    return 'CodexRolloutItemMetadataDto(turnId: $turnId)';
 }
 
 
@@ -2314,7 +2391,7 @@ mixin _$CodexRolloutResponseItemDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutResponseItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutResponseItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -2323,7 +2400,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto()';
+    return 'CodexRolloutResponseItemDto()';
 }
 
 
@@ -2367,16 +2444,18 @@ $CodexRolloutMessageDtoCopyWith<CodexRolloutMessageDto> get copyWith => _$CodexR
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutMessageDto&&(identical(other.id, id) || other.id == id)&&(identical(other.role, role) || other.role == role)&&const DeepCollectionEquality().equals(other._content, _content));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutMessageDto&&(identical(other.id, id) || other.id == id)&&(identical(other.role, role) || other.role == role)&&const DeepCollectionEquality().equals(other.content, _content));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,role,const DeepCollectionEquality().hash(_content));
+int get hashCode {
+    return Object.hash(runtimeType,id,role,const DeepCollectionEquality().hash(_content));
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.message(id: $id, role: $role, content: $content)';
+    return 'CodexRolloutResponseItemDto.message(id: $id, role: $role, content: $content)';
 }
 
 
@@ -2446,16 +2525,18 @@ $CodexRolloutReasoningDtoCopyWith<CodexRolloutReasoningDto> get copyWith => _$Co
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutReasoningDto&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other._summary, _summary));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutReasoningDto&&(identical(other.id, id) || other.id == id)&&const DeepCollectionEquality().equals(other.summary, _summary));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_summary));
+int get hashCode {
+    return Object.hash(runtimeType,id,const DeepCollectionEquality().hash(_summary));
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.reasoning(id: $id, summary: $summary)';
+    return 'CodexRolloutResponseItemDto.reasoning(id: $id, summary: $summary)';
 }
 
 
@@ -2527,16 +2608,18 @@ $CodexRolloutAgentMessageDtoCopyWith<CodexRolloutAgentMessageDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageDto&&(identical(other.id, id) || other.id == id)&&(identical(other.author, author) || other.author == author)&&(identical(other.recipient, recipient) || other.recipient == recipient)&&const DeepCollectionEquality().equals(other._content, _content)&&(identical(other.metadata, metadata) || other.metadata == metadata));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageDto&&(identical(other.id, id) || other.id == id)&&(identical(other.author, author) || other.author == author)&&(identical(other.recipient, recipient) || other.recipient == recipient)&&const DeepCollectionEquality().equals(other.content, _content)&&(identical(other.metadata, metadata) || other.metadata == metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,author,recipient,const DeepCollectionEquality().hash(_content),metadata);
+int get hashCode {
+    return Object.hash(runtimeType,id,author,recipient,const DeepCollectionEquality().hash(_content),metadata);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.agentMessage(id: $id, author: $author, recipient: $recipient, content: $content, metadata: $metadata)';
+    return 'CodexRolloutResponseItemDto.agentMessage(id: $id, author: $author, recipient: $recipient, content: $content, metadata: $metadata)';
 }
 
 
@@ -2617,16 +2700,18 @@ $CodexRolloutFunctionCallDtoCopyWith<CodexRolloutFunctionCallDto> get copyWith =
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutFunctionCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.metadata, metadata) || other.metadata == metadata));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutFunctionCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.arguments, arguments) || other.arguments == arguments)&&(identical(other.metadata, metadata) || other.metadata == metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,callId,name,arguments,metadata);
+int get hashCode {
+    return Object.hash(runtimeType,id,callId,name,arguments,metadata);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.functionCall(id: $id, callId: $callId, name: $name, arguments: $arguments, metadata: $metadata)';
+    return 'CodexRolloutResponseItemDto.functionCall(id: $id, callId: $callId, name: $name, arguments: $arguments, metadata: $metadata)';
 }
 
 
@@ -2710,16 +2795,18 @@ $CodexRolloutFunctionCallOutputDtoCopyWith<CodexRolloutFunctionCallOutputDto> ge
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutFunctionCallOutputDto&&(identical(other.callId, callId) || other.callId == callId)&&const DeepCollectionEquality().equals(other._output, _output));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutFunctionCallOutputDto&&(identical(other.callId, callId) || other.callId == callId)&&const DeepCollectionEquality().equals(other.output, _output));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,callId,const DeepCollectionEquality().hash(_output));
+int get hashCode {
+    return Object.hash(runtimeType,callId,const DeepCollectionEquality().hash(_output));
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.functionCallOutput(callId: $callId, output: $output)';
+    return 'CodexRolloutResponseItemDto.functionCallOutput(callId: $callId, output: $output)';
 }
 
 
@@ -2785,16 +2872,18 @@ $CodexRolloutCustomToolCallDtoCopyWith<CodexRolloutCustomToolCallDto> get copyWi
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCustomToolCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.input, input) || other.input == input)&&(identical(other.metadata, metadata) || other.metadata == metadata));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCustomToolCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.callId, callId) || other.callId == callId)&&(identical(other.name, name) || other.name == name)&&(identical(other.input, input) || other.input == input)&&(identical(other.metadata, metadata) || other.metadata == metadata));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,callId,name,input,metadata);
+int get hashCode {
+    return Object.hash(runtimeType,id,callId,name,input,metadata);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.customToolCall(id: $id, callId: $callId, name: $name, input: $input, metadata: $metadata)';
+    return 'CodexRolloutResponseItemDto.customToolCall(id: $id, callId: $callId, name: $name, input: $input, metadata: $metadata)';
 }
 
 
@@ -2878,16 +2967,18 @@ $CodexRolloutCustomToolCallOutputDtoCopyWith<CodexRolloutCustomToolCallOutputDto
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCustomToolCallOutputDto&&(identical(other.callId, callId) || other.callId == callId)&&const DeepCollectionEquality().equals(other._output, _output));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutCustomToolCallOutputDto&&(identical(other.callId, callId) || other.callId == callId)&&const DeepCollectionEquality().equals(other.output, _output));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,callId,const DeepCollectionEquality().hash(_output));
+int get hashCode {
+    return Object.hash(runtimeType,callId,const DeepCollectionEquality().hash(_output));
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.customToolCallOutput(callId: $callId, output: $output)';
+    return 'CodexRolloutResponseItemDto.customToolCallOutput(callId: $callId, output: $output)';
 }
 
 
@@ -2950,16 +3041,18 @@ $CodexRolloutWebSearchCallDtoCopyWith<CodexRolloutWebSearchCallDto> get copyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutWebSearchCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.action, action) || other.action == action));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutWebSearchCallDto&&(identical(other.id, id) || other.id == id)&&(identical(other.action, action) || other.action == action));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,action);
+int get hashCode {
+    return Object.hash(runtimeType,id,action);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.webSearchCall(id: $id, action: $action)';
+    return 'CodexRolloutResponseItemDto.webSearchCall(id: $id, action: $action)';
 }
 
 
@@ -3035,16 +3128,18 @@ $CodexRolloutImageGenerationDtoCopyWith<CodexRolloutImageGenerationDto> get copy
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.result, result) || other.result == result));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutImageGenerationDto&&(identical(other.id, id) || other.id == id)&&(identical(other.status, status) || other.status == status)&&(identical(other.result, result) || other.result == result));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,status,result);
+int get hashCode {
+    return Object.hash(runtimeType,id,status,result);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.imageGeneration(id: $id, status: $status, result: $result)';
+    return 'CodexRolloutResponseItemDto.imageGeneration(id: $id, status: $status, result: $result)';
 }
 
 
@@ -3102,7 +3197,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownResponseItemDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownResponseItemDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3111,7 +3206,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutResponseItemDto.unknown()';
+    return 'CodexRolloutResponseItemDto.unknown()';
 }
 
 
@@ -3150,7 +3245,7 @@ mixin _$CodexRolloutAgentMessageContentDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3159,7 +3254,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutAgentMessageContentDto()';
+    return 'CodexRolloutAgentMessageContentDto()';
 }
 
 
@@ -3195,16 +3290,18 @@ $CodexRolloutAgentMessageInputTextDtoCopyWith<CodexRolloutAgentMessageInputTextD
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageInputTextDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageInputTextDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutAgentMessageContentDto.inputText(text: $text)';
+    return 'CodexRolloutAgentMessageContentDto.inputText(text: $text)';
 }
 
 
@@ -3265,16 +3362,18 @@ $CodexRolloutAgentMessageEncryptedContentDtoCopyWith<CodexRolloutAgentMessageEnc
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageEncryptedContentDto&&(identical(other.encryptedContent, encryptedContent) || other.encryptedContent == encryptedContent));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutAgentMessageEncryptedContentDto&&(identical(other.encryptedContent, encryptedContent) || other.encryptedContent == encryptedContent));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,encryptedContent);
+int get hashCode {
+    return Object.hash(runtimeType,encryptedContent);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutAgentMessageContentDto.encrypted(encryptedContent: $encryptedContent)';
+    return 'CodexRolloutAgentMessageContentDto.encrypted(encryptedContent: $encryptedContent)';
 }
 
 
@@ -3330,7 +3429,7 @@ final String $type;
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownAgentMessageContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownAgentMessageContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3339,7 +3438,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutAgentMessageContentDto.unknown()';
+    return 'CodexRolloutAgentMessageContentDto.unknown()';
 }
 
 
@@ -3388,7 +3487,7 @@ mixin _$CodexRolloutContentDto {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3397,7 +3496,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutContentDto()';
+    return 'CodexRolloutContentDto()';
 }
 
 
@@ -3436,16 +3535,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInputTextDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInputTextDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutContentDto.inputText(text: $text)';
+    return 'CodexRolloutContentDto.inputText(text: $text)';
 }
 
 
@@ -3509,16 +3610,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutOutputTextDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutOutputTextDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutContentDto.outputText(text: $text)';
+    return 'CodexRolloutContentDto.outputText(text: $text)';
 }
 
 
@@ -3582,16 +3685,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSummaryTextDto&&(identical(other.text, text) || other.text == text));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutSummaryTextDto&&(identical(other.text, text) || other.text == text));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,text);
+int get hashCode {
+    return Object.hash(runtimeType,text);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutContentDto.summaryText(text: $text)';
+    return 'CodexRolloutContentDto.summaryText(text: $text)';
 }
 
 
@@ -3655,16 +3760,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInputImageDto&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutInputImageDto&&(identical(other.imageUrl, imageUrl) || other.imageUrl == imageUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,imageUrl);
+int get hashCode {
+    return Object.hash(runtimeType,imageUrl);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutContentDto.inputImage(imageUrl: $imageUrl)';
+    return 'CodexRolloutContentDto.inputImage(imageUrl: $imageUrl)';
 }
 
 
@@ -3723,7 +3830,7 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownContentDto);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutUnknownContentDto);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -3732,7 +3839,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  return 'CodexRolloutContentDto.unknown()';
+    return 'CodexRolloutContentDto.unknown()';
 }
 
 
@@ -3756,16 +3863,21 @@ $CodexRolloutActionDtoCopyWith<CodexRolloutActionDto> get copyWith => _$CodexRol
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutActionDto&&(identical(other.query, query) || other.query == query));
+  final _this = this as CodexRolloutActionDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexRolloutActionDto&&(identical(other.query, _this.query) || other.query == _this.query));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,query);
+int get hashCode {
+  final _this = this as CodexRolloutActionDto;
+  return Object.hash(runtimeType,_this.query);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutActionDto(query: $query)';
+  final _this = this as CodexRolloutActionDto;
+  return 'CodexRolloutActionDto(query: ${_this.query})';
 }
 
 
@@ -3823,16 +3935,18 @@ _$CodexRolloutActionDtoCopyWith<_CodexRolloutActionDto> get copyWith => __$Codex
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutActionDto&&(identical(other.query, query) || other.query == query));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexRolloutActionDto&&(identical(other.query, query) || other.query == query));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,query);
+int get hashCode {
+    return Object.hash(runtimeType,query);
+}
 
 @override
 String toString() {
-  return 'CodexRolloutActionDto(query: $query)';
+    return 'CodexRolloutActionDto(query: $query)';
 }
 
 
@@ -3885,16 +3999,21 @@ $CodexToolArgumentsDtoCopyWith<CodexToolArgumentsDto> get copyWith => _$CodexToo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId)&&(identical(other.taskName, taskName) || other.taskName == taskName)&&(identical(other.message, message) || other.message == message)&&(identical(other.agentType, agentType) || other.agentType == agentType));
+  final _this = this as CodexToolArgumentsDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, _this.cmd)&&const DeepCollectionEquality().equals(other.command, _this.command)&&const DeepCollectionEquality().equals(other.path, _this.path)&&const DeepCollectionEquality().equals(other.filePath, _this.filePath)&&const DeepCollectionEquality().equals(other.query, _this.query)&&const DeepCollectionEquality().equals(other.cellId, _this.cellId)&&(identical(other.taskName, _this.taskName) || other.taskName == _this.taskName)&&(identical(other.message, _this.message) || other.message == _this.message)&&(identical(other.agentType, _this.agentType) || other.agentType == _this.agentType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId),taskName,message,agentType);
+int get hashCode {
+  final _this = this as CodexToolArgumentsDto;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.cmd),const DeepCollectionEquality().hash(_this.command),const DeepCollectionEquality().hash(_this.path),const DeepCollectionEquality().hash(_this.filePath),const DeepCollectionEquality().hash(_this.query),const DeepCollectionEquality().hash(_this.cellId),_this.taskName,_this.message,_this.agentType);
+}
 
 @override
 String toString() {
-  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId, taskName: $taskName, message: $message, agentType: $agentType)';
+  final _this = this as CodexToolArgumentsDto;
+  return 'CodexToolArgumentsDto(cmd: ${_this.cmd}, command: ${_this.command}, path: ${_this.path}, filePath: ${_this.filePath}, query: ${_this.query}, cellId: ${_this.cellId}, taskName: ${_this.taskName}, message: ${_this.message}, agentType: ${_this.agentType})';
 }
 
 
@@ -3962,16 +4081,18 @@ _$CodexToolArgumentsDtoCopyWith<_CodexToolArgumentsDto> get copyWith => __$Codex
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId)&&(identical(other.taskName, taskName) || other.taskName == taskName)&&(identical(other.message, message) || other.message == message)&&(identical(other.agentType, agentType) || other.agentType == agentType));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexToolArgumentsDto&&const DeepCollectionEquality().equals(other.cmd, cmd)&&const DeepCollectionEquality().equals(other.command, command)&&const DeepCollectionEquality().equals(other.path, path)&&const DeepCollectionEquality().equals(other.filePath, filePath)&&const DeepCollectionEquality().equals(other.query, query)&&const DeepCollectionEquality().equals(other.cellId, cellId)&&(identical(other.taskName, taskName) || other.taskName == taskName)&&(identical(other.message, message) || other.message == message)&&(identical(other.agentType, agentType) || other.agentType == agentType));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId),taskName,message,agentType);
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(cmd),const DeepCollectionEquality().hash(command),const DeepCollectionEquality().hash(path),const DeepCollectionEquality().hash(filePath),const DeepCollectionEquality().hash(query),const DeepCollectionEquality().hash(cellId),taskName,message,agentType);
+}
 
 @override
 String toString() {
-  return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId, taskName: $taskName, message: $message, agentType: $agentType)';
+    return 'CodexToolArgumentsDto(cmd: $cmd, command: $command, path: $path, filePath: $filePath, query: $query, cellId: $cellId, taskName: $taskName, message: $message, agentType: $agentType)';
 }
 
 

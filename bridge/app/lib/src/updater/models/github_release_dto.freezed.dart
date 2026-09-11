@@ -27,16 +27,21 @@ $GitHubReleaseDtoCopyWith<GitHubReleaseDto> get copyWith => _$GitHubReleaseDtoCo
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GitHubReleaseDto&&(identical(other.tagName, tagName) || other.tagName == tagName)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.prerelease, prerelease) || other.prerelease == prerelease)&&const DeepCollectionEquality().equals(other.assets, assets));
+  final _this = this as GitHubReleaseDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GitHubReleaseDto&&(identical(other.tagName, _this.tagName) || other.tagName == _this.tagName)&&(identical(other.publishedAt, _this.publishedAt) || other.publishedAt == _this.publishedAt)&&(identical(other.draft, _this.draft) || other.draft == _this.draft)&&(identical(other.prerelease, _this.prerelease) || other.prerelease == _this.prerelease)&&const DeepCollectionEquality().equals(other.assets, _this.assets));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tagName,publishedAt,draft,prerelease,const DeepCollectionEquality().hash(assets));
+int get hashCode {
+  final _this = this as GitHubReleaseDto;
+  return Object.hash(runtimeType,_this.tagName,_this.publishedAt,_this.draft,_this.prerelease,const DeepCollectionEquality().hash(_this.assets));
+}
 
 @override
 String toString() {
-  return 'GitHubReleaseDto(tagName: $tagName, publishedAt: $publishedAt, draft: $draft, prerelease: $prerelease, assets: $assets)';
+  final _this = this as GitHubReleaseDto;
+  return 'GitHubReleaseDto(tagName: ${_this.tagName}, publishedAt: ${_this.publishedAt}, draft: ${_this.draft}, prerelease: ${_this.prerelease}, assets: ${_this.assets})';
 }
 
 
@@ -108,16 +113,18 @@ _$GitHubReleaseDtoCopyWith<_GitHubReleaseDto> get copyWith => __$GitHubReleaseDt
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GitHubReleaseDto&&(identical(other.tagName, tagName) || other.tagName == tagName)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.prerelease, prerelease) || other.prerelease == prerelease)&&const DeepCollectionEquality().equals(other._assets, _assets));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GitHubReleaseDto&&(identical(other.tagName, tagName) || other.tagName == tagName)&&(identical(other.publishedAt, publishedAt) || other.publishedAt == publishedAt)&&(identical(other.draft, draft) || other.draft == draft)&&(identical(other.prerelease, prerelease) || other.prerelease == prerelease)&&const DeepCollectionEquality().equals(other.assets, _assets));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,tagName,publishedAt,draft,prerelease,const DeepCollectionEquality().hash(_assets));
+int get hashCode {
+    return Object.hash(runtimeType,tagName,publishedAt,draft,prerelease,const DeepCollectionEquality().hash(_assets));
+}
 
 @override
 String toString() {
-  return 'GitHubReleaseDto(tagName: $tagName, publishedAt: $publishedAt, draft: $draft, prerelease: $prerelease, assets: $assets)';
+    return 'GitHubReleaseDto(tagName: $tagName, publishedAt: $publishedAt, draft: $draft, prerelease: $prerelease, assets: $assets)';
 }
 
 
@@ -174,16 +181,21 @@ $GitHubAssetDtoCopyWith<GitHubAssetDto> get copyWith => _$GitHubAssetDtoCopyWith
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GitHubAssetDto&&(identical(other.name, name) || other.name == name)&&(identical(other.browserDownloadUrl, browserDownloadUrl) || other.browserDownloadUrl == browserDownloadUrl));
+  final _this = this as GitHubAssetDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GitHubAssetDto&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.browserDownloadUrl, _this.browserDownloadUrl) || other.browserDownloadUrl == _this.browserDownloadUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,browserDownloadUrl);
+int get hashCode {
+  final _this = this as GitHubAssetDto;
+  return Object.hash(runtimeType,_this.name,_this.browserDownloadUrl);
+}
 
 @override
 String toString() {
-  return 'GitHubAssetDto(name: $name, browserDownloadUrl: $browserDownloadUrl)';
+  final _this = this as GitHubAssetDto;
+  return 'GitHubAssetDto(name: ${_this.name}, browserDownloadUrl: ${_this.browserDownloadUrl})';
 }
 
 
@@ -243,16 +255,18 @@ _$GitHubAssetDtoCopyWith<_GitHubAssetDto> get copyWith => __$GitHubAssetDtoCopyW
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _GitHubAssetDto&&(identical(other.name, name) || other.name == name)&&(identical(other.browserDownloadUrl, browserDownloadUrl) || other.browserDownloadUrl == browserDownloadUrl));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GitHubAssetDto&&(identical(other.name, name) || other.name == name)&&(identical(other.browserDownloadUrl, browserDownloadUrl) || other.browserDownloadUrl == browserDownloadUrl));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,name,browserDownloadUrl);
+int get hashCode {
+    return Object.hash(runtimeType,name,browserDownloadUrl);
+}
 
 @override
 String toString() {
-  return 'GitHubAssetDto(name: $name, browserDownloadUrl: $browserDownloadUrl)';
+    return 'GitHubAssetDto(name: $name, browserDownloadUrl: $browserDownloadUrl)';
 }
 
 

@@ -29,16 +29,21 @@ $ActiveSessionCopyWith<ActiveSession> get copyWith => _$ActiveSessionCopyWithImp
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is ActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&const DeepCollectionEquality().equals(other.childSessionIds, childSessionIds)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+  final _this = this as ActiveSession;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is ActiveSession&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.mainAgentRunning, _this.mainAgentRunning) || other.mainAgentRunning == _this.mainAgentRunning)&&(identical(other.awaitingInput, _this.awaitingInput) || other.awaitingInput == _this.awaitingInput)&&const DeepCollectionEquality().equals(other.childSessionIds, _this.childSessionIds)&&(identical(other.isRetrying, _this.isRetrying) || other.isRetrying == _this.isRetrying)&&(identical(other.lastUserActivityAt, _this.lastUserActivityAt) || other.lastUserActivityAt == _this.lastUserActivityAt)&&(identical(other.updatedAt, _this.updatedAt) || other.updatedAt == _this.updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,const DeepCollectionEquality().hash(childSessionIds),isRetrying,lastUserActivityAt,updatedAt);
+int get hashCode {
+  final _this = this as ActiveSession;
+  return Object.hash(runtimeType,_this.id,_this.mainAgentRunning,_this.awaitingInput,const DeepCollectionEquality().hash(_this.childSessionIds),_this.isRetrying,_this.lastUserActivityAt,_this.updatedAt);
+}
 
 @override
 String toString() {
-  return 'ActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, childSessionIds: $childSessionIds, isRetrying: $isRetrying, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt)';
+  final _this = this as ActiveSession;
+  return 'ActiveSession(id: ${_this.id}, mainAgentRunning: ${_this.mainAgentRunning}, awaitingInput: ${_this.awaitingInput}, childSessionIds: ${_this.childSessionIds}, isRetrying: ${_this.isRetrying}, lastUserActivityAt: ${_this.lastUserActivityAt}, updatedAt: ${_this.updatedAt})';
 }
 
 
@@ -117,16 +122,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is _ActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&const DeepCollectionEquality().equals(other._childSessionIds, _childSessionIds)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _ActiveSession&&(identical(other.id, id) || other.id == id)&&(identical(other.mainAgentRunning, mainAgentRunning) || other.mainAgentRunning == mainAgentRunning)&&(identical(other.awaitingInput, awaitingInput) || other.awaitingInput == awaitingInput)&&const DeepCollectionEquality().equals(other.childSessionIds, _childSessionIds)&&(identical(other.isRetrying, isRetrying) || other.isRetrying == isRetrying)&&(identical(other.lastUserActivityAt, lastUserActivityAt) || other.lastUserActivityAt == lastUserActivityAt)&&(identical(other.updatedAt, updatedAt) || other.updatedAt == updatedAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,const DeepCollectionEquality().hash(_childSessionIds),isRetrying,lastUserActivityAt,updatedAt);
+int get hashCode {
+    return Object.hash(runtimeType,id,mainAgentRunning,awaitingInput,const DeepCollectionEquality().hash(_childSessionIds),isRetrying,lastUserActivityAt,updatedAt);
+}
 
 @override
 String toString() {
-  return 'ActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, childSessionIds: $childSessionIds, isRetrying: $isRetrying, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt)';
+    return 'ActiveSession(id: $id, mainAgentRunning: $mainAgentRunning, awaitingInput: $awaitingInput, childSessionIds: $childSessionIds, isRetrying: $isRetrying, lastUserActivityAt: $lastUserActivityAt, updatedAt: $updatedAt)';
 }
 
 
