@@ -2,7 +2,9 @@ import "package:acp_plugin/acp_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/models/cursor_task_dto.dart";
 import "repositories/cursor_generated_image_reader.dart";
+import "repositories/mappers/cursor_task_mapper.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
 /// [AcpEventMapper] plus Cursor's `cursor/*` notification extensions.
@@ -19,6 +21,7 @@ class CursorEventMapper({
   required super.configurationTracker,
   required super.childSessions,
   required final CursorGeneratedImageReader _generatedImageReader,
+  required final CursorTaskMapper _taskMapper,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
   /// last-resort attribution for Cursor extension payloads that omit
@@ -29,6 +32,39 @@ class CursorEventMapper({
   /// session is deleted.
   required final String? Function() _activeSessionResolver,
 }) extends AcpEventMapper {
+  @override
+  List<BridgeSseEvent> map(AcpNotification notification) {
+    final events = super.map(notification);
+    _observeStandardTask(notification: notification, events: events);
+    return events;
+  }
+
+  @override
+  List<BridgeSseEvent> mapPromptResult({
+    required String sessionId,
+    required AcpStopReason stopReason,
+  }) {
+    if (stopReason != AcpStopReason.cancelled) return const [];
+    return [
+      for (final part in childSessions.takeActiveTaskInvocations(rootSessionId: sessionId))
+        BridgeSseMessagePartUpdated(part: _taskMapper.mapCancelled(genericPart: part)),
+    ];
+  }
+
+  @override
+  List<BridgeSseEvent> mapPromptLifecycleFailure({
+    required String sessionId,
+    required String failureMessage,
+  }) => [
+    for (final part in childSessions.takeActiveTaskInvocations(rootSessionId: sessionId))
+      BridgeSseMessagePartUpdated(
+        part: _taskMapper.mapFailed(
+          genericPart: part,
+          failureMessage: failureMessage,
+        ),
+      ),
+  ];
+
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
     switch (notification.method) {
@@ -42,6 +78,59 @@ class CursorEventMapper({
     // cursor/task and other extension notifications have no sesori analog.
     return super.mapExtension(notification);
   }
+
+  void _observeStandardTask({
+    required AcpNotification notification,
+    required List<BridgeSseEvent> events,
+  }) {
+    if (notification.method != AcpMethods.sessionUpdate) return;
+    final sessionId = notification.params["sessionId"];
+    final update = _map(notification.params["update"]);
+    if (sessionId is! String || sessionId.isEmpty || update == null) return;
+    final updateType = update["sessionUpdate"];
+    if (updateType != "tool_call" && updateType != "tool_call_update") return;
+    final toolCallId = update["toolCallId"];
+    if (toolCallId is! String || toolCallId.isEmpty) return;
+    final genericParts = events
+        .whereType<BridgeSseMessagePartUpdated>()
+        .map((event) => event.part)
+        .whereType<PluginMessagePartTool>()
+        .toList(growable: false);
+    if (genericParts.isEmpty) return;
+    final genericPart = genericParts.last;
+
+    final knownTask = childSessions.hasTaskInvocation(
+      rootSessionId: sessionId,
+      toolCallId: toolCallId,
+    );
+    if (!knownTask) {
+      final input = _parseTaskInput(raw: update["rawInput"]);
+      if (input?.toolName != CursorTaskTool.task) return;
+    }
+
+    if (genericPart.state.status.isTerminal) {
+      childSessions.forgetTaskInvocation(rootSessionId: sessionId, toolCallId: toolCallId);
+      return;
+    }
+    childSessions.recordTaskInvocation(
+      rootSessionId: sessionId,
+      toolCallId: toolCallId,
+      genericPart: genericPart,
+    );
+  }
+
+  CursorTaskInputDto? _parseTaskInput({required Object? raw}) {
+    final json = _map(raw);
+    if (json == null) return null;
+    try {
+      return CursorTaskInputDto.fromJson(json);
+    } on Object catch (error, stack) {
+      Log.w("[cursor] malformed standard Task input ignored", error, stack);
+      return null;
+    }
+  }
+
+  static Map<String, dynamic>? _map(Object? raw) => raw is Map ? raw.cast<String, dynamic>() : null;
 
   List<BridgeSseEvent> _mapGenerateImage({required AcpNotification notification}) {
     final params = notification.params;

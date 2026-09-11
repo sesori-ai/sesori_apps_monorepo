@@ -4,6 +4,7 @@ import "dart:typed_data";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
+import "package:cursor_plugin/src/repositories/mappers/cursor_task_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -16,6 +17,7 @@ void main() {
         configurationTracker: AcpSessionConfigurationTracker(),
         childSessions: AcpChildSessionTracker(),
         generatedImageReader: const CursorGeneratedImageReader(),
+        taskMapper: const CursorTaskMapper(),
         activeSessionResolver: activeSessionResolver ?? () => null,
       );
     }
@@ -70,6 +72,62 @@ void main() {
         ),
       );
       expect(events.whereType<BridgeSseMessagePartDelta>().single.delta, "hi");
+    });
+
+    test("active standard Tasks settle from prompt lifecycle and terminal cards retire", () {
+      final taskMapper = buildMapper();
+      taskMapper.beginTurn(sessionId: "s-task", messageId: "turn-1");
+
+      void observeTask({required String id, required String status}) {
+        taskMapper.map(
+          AcpNotification(
+            method: AcpMethods.sessionUpdate,
+            params: {
+              "sessionId": "s-task",
+              "update": {
+                "sessionUpdate": id == "active" ? "tool_call" : "tool_call_update",
+                "toolCallId": id,
+                "title": "Task",
+                "status": status,
+                "rawInput": {"_toolName": "task"},
+              },
+            },
+          ),
+        );
+      }
+
+      observeTask(id: "active", status: "pending");
+      final cancelled = taskMapper.mapPromptResult(
+        sessionId: "s-task",
+        stopReason: AcpStopReason.cancelled,
+      );
+      final cancelledPart = (cancelled.single as BridgeSseMessagePartUpdated).part as PluginMessagePartTool;
+      expect(cancelledPart.state.status, PluginToolStatus.cancelled);
+      expect(
+        taskMapper.mapPromptLifecycleFailure(sessionId: "s-task", failureMessage: "duplicate"),
+        isEmpty,
+      );
+
+      taskMapper.map(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "s-task",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "terminal",
+              "title": "Task",
+              "status": "pending",
+              "rawInput": {"_toolName": "task"},
+            },
+          },
+        ),
+      );
+      observeTask(id: "terminal", status: "completed");
+      expect(
+        taskMapper.mapPromptResult(sessionId: "s-task", stopReason: AcpStopReason.cancelled),
+        isEmpty,
+      );
     });
 
     test("cursor/generate_image maps to a standard inline file part", () async {

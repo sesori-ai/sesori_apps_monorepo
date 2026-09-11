@@ -11,6 +11,7 @@ import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "repositories/cursor_generated_image_reader.dart";
+import "repositories/mappers/cursor_task_mapper.dart";
 import "services/cursor_catalog_service.dart";
 import "services/cursor_session_cleanup_service.dart";
 import "services/cursor_session_options_service.dart";
@@ -97,12 +98,14 @@ class CursorPlugin._({
     // constructed with the mapper; `plugin` is assigned immediately below,
     // before any notification can invoke the closure.
     late final CursorPlugin plugin;
+    const taskMapper = CursorTaskMapper();
     final mapper = CursorEventMapper(
       launchDirectory: cwd,
       pluginId: pluginId,
       configurationTracker: configurationTracker,
       childSessions: childSessionTracker,
       generatedImageReader: const CursorGeneratedImageReader(),
+      taskMapper: taskMapper,
       activeSessionResolver: () => plugin.activeTurnSessionId,
     );
     return plugin = CursorPlugin._(

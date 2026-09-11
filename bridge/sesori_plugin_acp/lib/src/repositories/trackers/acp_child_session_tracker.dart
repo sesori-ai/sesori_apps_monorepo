@@ -49,6 +49,11 @@ final class AcpChildSessionTracker() {
   final Map<String, List<_Child>> _byRoot = {};
   final Map<String, _Child> _byChild = {};
 
+  /// Active generic Task parts keyed independently from session-backed
+  /// children. These records carry no child id and never contribute to child
+  /// activity, root busy state, counts, or stop fanout.
+  final Map<String, Map<String, PluginMessagePartTool>> _activeTasksByRoot = {};
+
   /// Deleted roots and child subtrees for the current agent process. Late
   /// lifecycle frames cannot recreate them; a process reset drains that old
   /// event source and [clear] releases the tombstones.
@@ -73,6 +78,31 @@ final class AcpChildSessionTracker() {
       _changes.add(AcpChildSessionTrackerChange(rootSessionId: rootSessionId));
     }
   }
+
+  /// Records or updates one active generic Task invocation without creating a
+  /// child. Terminal standard cards are forgotten through [forgetTaskInvocation].
+  void recordTaskInvocation({
+    required String rootSessionId,
+    required String toolCallId,
+    required PluginMessagePartTool genericPart,
+  }) {
+    (_activeTasksByRoot[rootSessionId] ??= {})[toolCallId] = genericPart;
+  }
+
+  bool hasTaskInvocation({required String rootSessionId, required String toolCallId}) =>
+      _activeTasksByRoot[rootSessionId]?.containsKey(toolCallId) ?? false;
+
+  void forgetTaskInvocation({required String rootSessionId, required String toolCallId}) {
+    final tasks = _activeTasksByRoot[rootSessionId];
+    if (tasks == null) return;
+    tasks.remove(toolCallId);
+    if (tasks.isEmpty) _activeTasksByRoot.remove(rootSessionId);
+  }
+
+  /// Takes and retires every active generic Task invocation for prompt
+  /// cancellation or failure settlement.
+  List<PluginMessagePartTool> takeActiveTaskInvocations({required String rootSessionId}) =>
+      _activeTasksByRoot.remove(rootSessionId)?.values.toList(growable: false) ?? const [];
 
   /// Whether [sessionId] was deleted from the current agent process.
   bool isDeleted({required String sessionId}) => _deletedSessionIds.contains(sessionId);
@@ -344,6 +374,7 @@ final class AcpChildSessionTracker() {
   /// the sessions are gone.
   void forgetSession({required String sessionId}) {
     _deletedSessionIds.add(sessionId);
+    _activeTasksByRoot.remove(sessionId);
     final removedRootHolds = _rootHolds.remove(sessionId);
     final children = _byRoot.remove(sessionId);
     if (children != null) {
@@ -403,7 +434,13 @@ final class AcpChildSessionTracker() {
 
   /// Drops every record: the agent process that hosted the children is gone.
   void clear() {
-    if (_byChild.isEmpty && _byRoot.isEmpty && _rootHolds.isEmpty && _deletedSessionIds.isEmpty) return;
+    if (_byChild.isEmpty &&
+        _byRoot.isEmpty &&
+        _rootHolds.isEmpty &&
+        _deletedSessionIds.isEmpty &&
+        _activeTasksByRoot.isEmpty) {
+      return;
+    }
     final affectedRoots = <String>{
       for (final entry in _byRoot.entries)
         if (entry.value.any((child) => !child.status.isTerminal)) entry.key,
@@ -414,6 +451,7 @@ final class AcpChildSessionTracker() {
     _byChild.clear();
     _rootHolds.clear();
     _deletedSessionIds.clear();
+    _activeTasksByRoot.clear();
     for (final rootSessionId in affectedRoots) {
       _signalRootHoldChange(rootSessionId: rootSessionId);
       _notify(rootSessionId: rootSessionId);

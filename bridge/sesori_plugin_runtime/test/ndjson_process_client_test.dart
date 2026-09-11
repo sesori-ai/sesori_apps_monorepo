@@ -152,9 +152,19 @@ void main() {
     await stdout.dispose();
 
     final exited = _Fixture();
+    final order = <String>[];
     final pending = exited.client.request(id: 1, frame: {"id": 1}, timeout: const Duration(seconds: 1));
+    final pendingChecked = pending.then<void>(
+      (_) => fail("exit must fail pending response"),
+      onError: (Object error) {
+        expect("$error", "Bad state: exited 7");
+        order.add("pending");
+      },
+    );
+    final exitChecked = exited.client.exit.then((_) => order.add("exit"));
     exited.process.completeExit(7);
-    await expectLater(pending, throwsA(predicate((error) => "$error" == "Bad state: exited 7")));
+    await Future.wait([pendingChecked, exitChecked]);
+    expect(order, ["pending", "exit"]);
     await exited.dispose();
   });
 

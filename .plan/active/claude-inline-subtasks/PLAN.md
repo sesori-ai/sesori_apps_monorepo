@@ -6,17 +6,17 @@
 - **Status:** **ACTIVE.** Series completed 2026-09-02 (Step 8/8; L4 matrix
   recorded in `TRACKER.md`) and reactivated for harness follow-ups. DeepSeek
   coverage merged as PR #1431 at `7dd323d1d7`. Current Cursor
-  `2026.08.11-e8db854` native evidence and the five-step delivery plan are
-  recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Feature
-  implementation has not landed. Cursor delivery remains five steps: docs/probe
-  Step 1 merged as PR #1435 at `b83b64901c`; completed foreground tiles plus
-  tools/session-turn docs and the late typed-refusal plan correction are in
-  progress in Step 2; safe Task stop policy plus lifecycle/capability docs in Step 3;
-  completed-tile replay plus history docs in Step 4; actual-plugin evidence and
-  final reconciliation only in Step 5. Preserved code refs `c5c0def` and
-  `ab03528` are stale, unpublishable historical evidence; successors must be
-  regenerated from
-  the revised plan without mutating or deleting those refs. Retirement remains
+  `2026.08.11-e8db854` native evidence and the six-step delivery plan are
+  recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Cursor
+  Step 1 merged as PR #1435 at `b83b64901c`. Step 2 settles generic Task
+  lifecycle and acknowledges `cursor/task`; completed foreground tiles move to
+  Step 3, safe stop to Step 4, replay to Step 5, and final coverage to Step 6.
+  Step 2 includes the late typed-refusal plan correction only; production
+  refusal remains future Step 4 work. Full reviewed checkpoint `5cc54ad013` is
+  preserved by branches `claude-inline-subtasks-cursor-tiles-step2-of5` and
+  `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
+  Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
+  evidence. None of these refs may be mutated or deleted. Retirement remains
   blocked by Cursor delivery/coverage and the Grok phone
   gate, whose WebDriverAgent 0.0.23 infrastructure failure occurred before any
   visible case
