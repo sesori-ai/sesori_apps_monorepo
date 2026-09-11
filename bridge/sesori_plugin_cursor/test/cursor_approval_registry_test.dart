@@ -334,6 +334,32 @@ void main() {
       expect(forwarded.single.params["toolCallId"], "todo-1");
     });
 
+    test("cursor/task request is acked and re-injected unchanged", () async {
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 44,
+        "method": "cursor/task",
+        "params": {
+          "toolCallId": "task-1",
+          "agentId": "agent-1",
+          "description": "Inspect",
+          "prompt": "Inspect code",
+          "subagentType": {"custom": "unspecified"},
+          "model": "cursor-model",
+          "durationMs": 42,
+        },
+      });
+      await pump();
+
+      final reply = fake.written.last;
+      expect(reply["id"], 44);
+      expect(reply["result"], isA<Map<String, Object?>>());
+      expect(reply.containsKey("error"), isFalse);
+      expect(forwarded.single.method, "cursor/task");
+      expect(forwarded.single.params["toolCallId"], "task-1");
+      expect(forwarded.single.params.containsKey("sessionId"), isFalse);
+    });
+
     test("a throwing notification forward never breaks the approval channel", () async {
       // The forward runs on the serverRequests subscription that also answers
       // permissions; a throw in the mapping path must be contained to the one
@@ -341,20 +367,20 @@ void main() {
       throwOnForward = true;
       fake.emit({
         "jsonrpc": "2.0",
-        "id": 44,
+        "id": 45,
         "method": "cursor/generate_image",
         "params": {"filePath": "/tmp/out.png"},
       });
       await pump();
 
       final ack = fake.written.last;
-      expect(ack["id"], 44);
+      expect(ack["id"], 45);
       expect(ack.containsKey("error"), isFalse);
 
       throwOnForward = false;
       fake.emit({
         "jsonrpc": "2.0",
-        "id": 45,
+        "id": 46,
         "method": "session/request_permission",
         "params": {
           "sessionId": "s1",

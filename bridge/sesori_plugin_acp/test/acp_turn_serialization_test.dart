@@ -66,6 +66,27 @@ class _TimestampingEventMapper({
       PluginMessageTime(created: createdAtMs, completed: null);
 }
 
+class _PromptLifecycleTrackingMapper({
+  required super.launchDirectory,
+  required super.pluginId,
+  required super.configurationTracker,
+  required super.childSessions,
+}) extends AcpEventMapper {
+  final calls = <String>[];
+
+  @override
+  List<BridgeSseEvent> mapPromptResult({required String sessionId, required AcpStopReason stopReason}) {
+    calls.add("result:$sessionId");
+    return const [];
+  }
+
+  @override
+  List<BridgeSseEvent> mapPromptLifecycleFailure({required String sessionId, required String failureMessage}) {
+    calls.add("failure:$sessionId");
+    return const [];
+  }
+}
+
 class _PromptOrderedChildMapper({
   required super.launchDirectory,
   required super.pluginId,
@@ -1199,7 +1220,34 @@ void main() {
       expect(gated.getActiveSessionsSummary(), isEmpty);
     });
 
-    test("deleting a session mid-turn does not resurrect it as idle", () async {
+    test("deleted turns do not invoke stale prompt lifecycle hooks", () async {
+      await plugin.dispose();
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final commandTracker = AcpCommandTracker();
+      final childSessionTracker = AcpChildSessionTracker();
+      final lifecycleMapper = _PromptLifecycleTrackingMapper(
+        launchDirectory: cwd,
+        pluginId: "acp",
+        configurationTracker: configurationTracker,
+        childSessions: childSessionTracker,
+      );
+      plugin = TestAcpPlugin(
+        id: "acp",
+        agentDisplayName: "ACP",
+        launchSpec: const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
+        launchDirectory: cwd,
+        eventMapper: lifecycleMapper,
+        childSessionTracker: childSessionTracker,
+        commandTracker: commandTracker,
+        sessionOptionsService: AcpSessionOptionsService(
+          configurationTracker: configurationTracker,
+          commandTracker: commandTracker,
+          pluginId: "acp",
+          agentDisplayName: "ACP",
+        ),
+        processFactory: (_) async => fake,
+      );
+      plugin.events.listen(emitted.add, onError: streamErrors.add);
       await connect();
       final sessionId = await createSession(cwd, "s1");
 
@@ -1241,6 +1289,22 @@ void main() {
         acceptedMessageCount,
       );
       expect(emitted.whereType<BridgeSseQueuedPromptsUpdated>(), hasLength(queueUpdateCount));
+
+      final failingSessionId = await createSession(cwd, "s-failure");
+      await sendPrompt(failingSessionId, "fail");
+      final failingPrompt = await waitForFrameCount("session/prompt", 2);
+      await plugin.deleteSession(failingSessionId);
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": failingPrompt["id"],
+        "error": {"code": -32000, "message": "late failure"},
+      });
+      for (var i = 0; i < 10; i++) {
+        await pump();
+      }
+      expect(lifecycleMapper.calls, isEmpty);
+      expect(emitted.whereType<BridgeSseSessionIdle>(), isEmpty);
+      expect(emitted.whereType<BridgeSseSessionError>(), isEmpty);
     });
 
     test("a queued turn retries a transiently failed resume-load at dispatch", () async {

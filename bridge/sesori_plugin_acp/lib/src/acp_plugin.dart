@@ -1571,6 +1571,9 @@ abstract class AcpPlugin({
       final result = AcpPromptResult.fromJson(
         (raw as Map?)?.cast<String, dynamic>() ?? const {},
       );
+      if (identical(_turnStates[sessionId], state)) {
+        eventMapper.mapPromptResult(sessionId: sessionId, stopReason: result.stopReason).forEach(_eventBuffer.add);
+      }
       _finishTurn(
         sessionId: sessionId,
         state: state,
@@ -1584,12 +1587,21 @@ abstract class AcpPlugin({
       // backend failure must remain observable rather than silently dropping
       // the accepted prompt.
       Log.w("[$id] accepted session/prompt for $sessionId failed", error, stack);
+      final failureMessage = _promptFailureMessage(error: error);
       _eventBuffer.add(
         eventMapper.mapPromptError(
           sessionId: sessionId,
-          message: _promptFailureMessage(error: error),
+          message: failureMessage,
         ),
       );
+      if (identical(_turnStates[sessionId], state)) {
+        eventMapper
+            .mapPromptLifecycleFailure(
+              sessionId: sessionId,
+              failureMessage: failureMessage,
+            )
+            .forEach(_eventBuffer.add);
+      }
       _finishTurn(sessionId: sessionId, state: state, turn: turn, failed: true, refused: false);
       mapPromptFailure(sessionId: sessionId, error: error).forEach(_eventBuffer.add);
     }

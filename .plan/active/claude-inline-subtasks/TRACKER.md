@@ -14,11 +14,15 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
   infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** merge Cursor docs-only step 1/5,
-  `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]`,
-  then regenerate completed-tile Step 2/5 from this revision. No Cursor feature
-  implementation has landed. Preserved code refs `c5c0def` and `ab03528` are
-  stale, unpublishable historical evidence and must not be mutated or deleted.
+- **Next action:** review and merge Cursor generic Task lifecycle Step 2/6,
+  then regenerate completed foreground tiles as Step 3/6 from the merged result.
+  Step 1 is complete; Step 2 stays unchecked until merge. Full reviewed
+  checkpoint `5cc54ad013` is preserved by branches
+  `claude-inline-subtasks-cursor-tiles-step2-of5` and
+  `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
+  was split to stay near the owner's 1,500-line publication limit. Refs
+  `c5c0def` and `ab03528` remain stale, unpublishable historical evidence. None
+  of these refs may be mutated or deleted.
   The 2026-09-11 native probe used current managed target
   `2026.08.11-e8db854`, not the old plan's installed PATH build. Foreground
   Task correlation, mode-unknown pre-terminal state, cancellation authority,
@@ -203,11 +207,12 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
-| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/5]` | Current documentation PR; privacy-safe evidence and exact ownership/policy plan, with no feature implementation |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 2/5]` | Regenerate after step 1 merge; approximately 1,550–1,750 lines for DTO/codegen, generic mode-unknown pending/in-progress plus cancelled/error cards, completed terminal replacement, focused tests, and tools/session-turn docs |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: safe Task stop policy [step 3/5]` | Regenerate after Step 2; approximately 750–1,050 lines for exact active mode-unknown Task count, unresolved-background process residency/all-policy first guard, named-root stop with post-settlement re-check, typed client-local not-accepted handling and queue-drain gate, tests, and stop/lifecycle/capability docs |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 4/5]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared mapper, stable completed projection, fallbacks, tests, and history doc |
-| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 5/5]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
+| [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | Implemented locally, pending merge; approximately 1,300–1,400 lines: Cursor-local active generic-part tracking, pending/running observation, terminal forget, generic cancellation/error settlement, `cursor/task` request ack, transport exit ordering regression, typed-refusal plan correction, and behavior docs; no tile |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Planned; approximately 650–950 lines: completed-phase correlation, minimal added presentation DTO fields, completed foreground mapper replacement, focused tests, and tile capability/docs update |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerate after Step 3; approximately 1,300–1,700 lines for exact active mode-unknown Task count, unresolved-background process residency, typed plugin/bridge/shared refusal and exact client handling, all-policy first guard, named-root stop with post-settlement re-check, queue-drain gate, explicit shared UI limitation, tests, and stop/lifecycle/capability docs |
+| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
+| [ ] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Planned; approximately 60–140 lines; actual-plugin evidence/final reconciliation only; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
 
@@ -247,7 +252,7 @@ post-merge E2E gates are unchanged.
   `activeModeUnknown` and `activeTaskCount`; foreground is asserted only after
   terminal `isBackground: false`. New replay role is
   `CursorTaskReplayTracker` under the Cursor repository tracker layer; it
-  receives a configured ACP collector and the shared injected pure mapper.
+  receives a configured ACP collector and the shared injected pure projection.
 - [x] Routed standard Task updates, re-injected `cursor/task`, parsed prompt
   results, and prompt lifecycle failures through existing `CursorEventMapper`
   plus `AcpChildSessionTracker`; abort policy has no presentation mutation. The
@@ -270,12 +275,16 @@ post-merge E2E gates are unchanged.
   `workKept`, `AbortSessionHandler` omits it, and `SessionDetailCubit.abort`
   treats every 2xx as aborted. While unresolved background exists, all
   `confirm`/`keep`/`stop` requests now fail through one side-effect-free
-  `PluginOperationException`/HTTP path before root/input preparation or cancel
-  because `workKept` cannot qualify a success omitted from the client wire. No
-  count, shared wire, or successful ACK is invented. Client-local API/repository
-  not-accepted exceptions and a request-lifetime cubit drain gate preserve the
-  local prompt queue for this pre-mutation 409; accepted responses and
-  ambiguous failures retain existing queue cleanup. Active mode-unknown
+  typed backend-neutral `PluginAbortNotPerformed` path before root/input
+  preparation or cancel because `workKept` cannot qualify a success omitted
+  from the client wire. Bridge/shared layers serialize a required
+  `SessionAbortRefusal(kind: notPerformed, reason:
+  residentWorkCompletionUnknown)` HTTP 409; no count or successful ACK is
+  invented. Client-local API/repository not-accepted exceptions trust only that
+  decoded discriminator, and a request-lifetime cubit drain gate preserves the
+  local prompt queue; the cubit exposes a typed not-accepted outcome and shared
+  UI explains the limitation/restart recovery. Malformed/unknown 409s, accepted
+  responses, and ambiguous failures retain existing queue cleanup. Active mode-unknown
   confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
   map exact `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
@@ -294,23 +303,24 @@ post-merge E2E gates are unchanged.
   non-null enum strings, with no default or converter. Native root `end_turn`
   remains honest root idle, not
   background completion; no background completion notification/tile is claimed.
-- [x] Assigned behavior docs to their implementation slices: Step 2 tools/live
-  turns, Step 3 stop/lifecycle/capability, Step 4 replay/history. Step 5 owns
-  actual-plugin evidence and final reconciliation only.
+- [x] Assigned behavior docs to implementation slices: Step 2 generic lifecycle
+  and request ack, Step 3 completed live tiles, Step 4 stop/lifecycle/capability,
+  Step 5 replay/history, and Step 6 actual-plugin evidence/final reconciliation.
 - [x] Kept Cursor vocabulary/DTO parsing in Cursor and unobservable background
   lifecycle/full stop/history/child sessions unsupported with the generic card.
   Task terminal frames preceding a prompt result are assumed mapped before
   active settlement completes; no quiet timer, poller, speculative `end_turn`
-  missing-terminal machinery, lock, controller, recovery path, or shared wire
-  was added. The bounded client changes remain in the existing API → repository
-  → cubit flow.
+  missing-terminal machinery, lock, controller, or recovery path was added. The
+  additive typed refusal follows plugin interface → bridge repository/route →
+  shared transport → client API/repository/cubit.
 - The earlier architecture correction is superseded on process residency,
   successful retained-work ACKs, tile lifecycle claims, and documentation
   timing by the verified bridge transport/client path and native presentation
   facts above. Its other ownership/layering decisions remain current. Preserved
   code refs `c5c0def` and `ab03528` are preserved stale, unpublishable
-  historical evidence; regenerate successors from the revised plan without
-  mutating or deleting those refs.
+  historical evidence. Full reviewed checkpoint `5cc54ad013` remains preserved
+  by its two named branches as publication-split source evidence. Regenerate
+  successors from each merged slice without mutating or deleting those refs.
 - Architecture review verdict was rejected with six findings. All six valid
   findings were applied directly to this plan; the corrected version was not
   re-reviewed and does not claim approval.
@@ -324,10 +334,13 @@ post-merge E2E gates are unchanged.
   `workKept` wording comment is also applied: no sentence suggests relying on a
   field omitted from the client wire. The next review found that generic 409
   handling clears queued prompts and that current capability docs prematurely
-  listed the planned enum value. The revised Step 3 now uses typed client-local
-  not-accepted handling plus a queue-drain gate for pre-mutation 409s, reserves
-  HTTP 502 for the post-cancel partial failure, and keeps `rootSessionCancel`
-  out of the implemented-capability list until Step 3 lands. Per user direction
+  listed the planned enum value. The first revision's broad unparseable-409
+  inference was then rejected in a late post-merge Codex finding. The final
+  Step 4 contract uses a discriminated backend-neutral typed not-performed
+  result across plugin, bridge, shared transport, and client; only the exact
+  discriminator preserves the queue, malformed/unknown 409s remain ambiguous,
+  HTTP 502 remains the post-cancel partial failure, and `rootSessionCancel`
+  stays out of implemented capabilities until Step 4 lands. Per user direction
   after two architecture passes, there is no further architecture-review loop.
 
 ## Step 1 Checklist
@@ -510,6 +523,13 @@ post-merge E2E gates are unchanged.
   #1257 fix, OpenCode representative proof partial (widget-test covered),
   notifications end to end not run. Plan retired with those two limitations
   recorded here and in the regression documents.
+- **Cursor Step 2/6 (2026-09-11, local, pending merge):** source codegen
+  completed in `bridge/sesori_plugin_cursor`. Focused ACP turn, Cursor DTO/event/
+  tracker/approval/plugin, and runtime NDJSON transport suites passed. `dart
+  analyze --fatal-infos` passed in ACP, Cursor, and runtime packages; `git diff
+  --check` passed. Final diff remains below 1,600 changed lines. No completed
+  tile, replay, stop/refusal production contract, residency, child session,
+  client, runtime/config pin, or capability checkmark landed.
 
 ## Plan Review
 

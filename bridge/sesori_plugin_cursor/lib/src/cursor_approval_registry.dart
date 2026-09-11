@@ -7,8 +7,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 /// questions.
 ///
 /// Cursor's non-blocking extension *requests* (`cursor/generate_image`,
-/// `cursor/update_todos`) are acknowledged and re-injected into its notification
-/// pipeline, where the event mapper handles both wire shapes.
+/// `cursor/update_todos`, `cursor/task`) are acknowledged and re-injected into
+/// its notification pipeline. Task notifications are intentionally ignored
+/// until completed-tile mapping lands in the next delivery slice.
 ///
 /// NOTE: Cursor's exact reply payload shapes are not formally documented; the
 /// builders below are best-effort and should be confirmed against a real
@@ -30,7 +31,7 @@ class CursorApprovalRegistry({
   @override
   bool handleExtensionRequest(AcpServerRequest request) {
     switch (request.method) {
-      case "cursor/generate_image" || "cursor/update_todos":
+      case "cursor/generate_image" || "cursor/update_todos" || "cursor/task":
         respond(request.id, const <String, Object?>{});
         try {
           _onFireAndForgetNotification(AcpNotification(method: request.method, params: request.params));
