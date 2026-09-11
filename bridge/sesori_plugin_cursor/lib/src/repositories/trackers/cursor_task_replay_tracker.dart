@@ -32,8 +32,8 @@ final class CursorTaskReplayTracker({
       return;
     }
 
-    final toolCallId = _nonblank(envelope.toolCallId);
-    if (toolCallId == null) return;
+    final toolCallId = envelope.toolCallId;
+    if (toolCallId == null || toolCallId.isEmpty) return;
     switch (envelope.sessionUpdate) {
       case CursorTaskReplayUpdateKind.toolCall:
         final inputJson = _asMap(updateJson["rawInput"]);
@@ -129,11 +129,6 @@ final class CursorTaskReplayTracker({
   }
 
   static Map<String, dynamic>? _asMap(Object? value) => value is Map ? value.cast<String, dynamic>() : null;
-
-  static String? _nonblank(String? value) {
-    final normalized = value?.trim();
-    return normalized == null || normalized.isEmpty ? null : normalized;
-  }
 }
 
 final class _CursorReplayTask({required final CursorTaskReplayInputDto input}) {

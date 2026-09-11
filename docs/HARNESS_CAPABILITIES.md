@@ -301,8 +301,8 @@ generic cancelled cards because no `cursor/task` follows cancellation. Sesori
 now replaces only an exact live standard completion with explicit
 `isBackground: false` plus a complete correlated request, producing one
 completed childless tile with stable part identity. Missing/unknown/malformed,
-unmatched, background, failed, and cancelled cases stay generic; cancelled Task
-replay remains absent when Cursor emits no frames. Standard `session/cancel`
+unmatched, background, and failed cases with standard facts stay generic. A cancelled
+Task is absent from replay when Cursor emits no standard frame; no completed tile is synthesized. Standard `session/cancel`
 authoritatively cancels an active root prompt. Safe Task confirmation is
 side-effect-free with exact active count; named-root stop waits up to 20 seconds,
 then rechecks background and active work. Timeout or survivors yield HTTP 502

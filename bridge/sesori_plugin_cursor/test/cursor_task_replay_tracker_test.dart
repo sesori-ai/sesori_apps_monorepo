@@ -89,13 +89,13 @@ void main() {
       expect(message.parts.whereType<PluginMessagePartTool>(), isEmpty);
     });
 
-    test("merges separately replayed completion and foreground facts", () {
+    test("merges separately replayed facts using an opaque tool-call ID", () {
       final updates = [
-        _toolCall(),
-        {"sessionUpdate": "tool_call_update", "toolCallId": "task-1", "status": "completed"},
+        _toolCall()..["toolCallId"] = " task-1 ",
+        {"sessionUpdate": "tool_call_update", "toolCallId": " task-1 ", "status": "completed"},
         {
           "sessionUpdate": "tool_call_update",
-          "toolCallId": "task-1",
+          "toolCallId": " task-1 ",
           "rawOutput": {"isBackground": false},
         },
       ];
