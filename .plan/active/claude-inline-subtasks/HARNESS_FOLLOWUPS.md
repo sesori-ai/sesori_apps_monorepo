@@ -769,7 +769,7 @@ against the required behavior rather than requiring byte-for-byte source parity.
   later background permission, residency, and identical non-mutating refusal
   for all three post-background policies. The bounded native race attempt
   cancelled before background resolution, so that HTTP 502 path remains
-  automated-only. Private evidence and owned resources were deleted.
+  fake-test-only. Private evidence and owned resources were deleted.
 
 ### Design
 
@@ -844,11 +844,11 @@ The architecture corrections are summarized here:
   remains non-mutating with an unknown reason; missing/malformed bodies, unknown
   kinds, and version-skewed discriminators never gain lifecycle meaning. The new
   body is an additive error contract.
-- The only renamed new replay class is `CursorTaskReplayTracker` in
+- Replay-local `CursorTaskReplayTracker` lives in
   `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/`. Cursor plugin
   composition injects one already-configured `AcpReplayCollector` and the same
-  shared pure projection extracted only when replay becomes a second consumer;
-  the tracker accepts no factory and constructs no peer. One required build-time tool-part replacement method on
+  shared pure `CursorTaskMapper` used by live mapping; the tracker accepts no
+  factory and constructs no peer. One required build-time tool-part replacement method on
   concrete `AcpReplayCollector` lets the tracker apply its local index without
   changing existing DeepSeek/Grok constructors or behavior. Replay state is
   local and has no I/O/live tracker access.
@@ -881,8 +881,8 @@ those refs. Regenerate each successor from its merged predecessor.
 | 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | PR #1438 merged at `116392cb71`: active generic-part tracking, terminal settlement, request ack, transport ordering regressions, typed-refusal plan correction, and behavior docs; no tile |
 | 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | PR #1441 merged at `bb85f48148`: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
 | 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | PR #1442 merged at `a7d3014e1a`: exact count, process residency, typed refusal, bounded root cancel/re-check, concurrent descendant fallback, bridge/client/UI flow, tests, and docs; no replay/native QA |
-| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
-| 6/6 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Current branch: actual-plugin executed scope passed; exact distinct live/replay presentation tags repaired with typed generated DTOs; unsupported/unexecuted matrix remains explicit |
+| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
+| 6/6 | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | Current branch: actual-plugin executed scope passed; exact distinct live/replay presentation tags repaired with typed generated DTOs; unsupported/unexecuted matrix remains explicit |
 
 ### Probe questions
 

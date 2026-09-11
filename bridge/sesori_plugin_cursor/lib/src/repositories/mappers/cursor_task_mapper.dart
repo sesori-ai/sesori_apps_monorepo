@@ -15,7 +15,7 @@ final class const CursorTaskMapper() {
     final usefulPrompt = _nonblank(prompt);
     final usefulDescription = _nonblank(description);
     final agent = switch (subagentPresentation) {
-      CursorSubagentPresentation.unspecified => "unspecified",
+      CursorSubagentPresentation.unspecified => CursorSubagentPresentation.unspecified.name,
       CursorSubagentPresentation.unknown => null,
     };
     if (usefulPrompt == null || usefulDescription == null || agent == null) return null;

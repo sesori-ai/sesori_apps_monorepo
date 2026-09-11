@@ -14,7 +14,7 @@
   #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6
   actual-plugin coverage passed its executed scope and repaired the exact native
   live/replay tagged presentation shapes; the native cancellation race settled
-  before background resolution and remains automated coverage. Step 4 includes
+  before background resolution and remains focused fake-test coverage. Step 4 includes
   the typed refusal, Cursor-only residency,
   bounded named-root cancellation with post-settlement re-check/HTTP 502 partial
   failure, repository-owned concurrent descendant fallback, client queue gate,

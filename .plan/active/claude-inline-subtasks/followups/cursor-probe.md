@@ -552,7 +552,7 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
    merged at `f5e4e7f67a`; one configured standard ACP collector and shared
    injected `CursorTaskMapper`; tests passed; no native QA.
-6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
+6. `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]`
    implemented on the current coverage branch: bounded actual-plugin evidence,
    exact live/replay tagged-shape repair, generated serializers, focused tests,
    and final reconciliation. Unsupported/unexecuted boundaries remain explicit.

@@ -13,7 +13,7 @@
   infrastructure-blocked. Harness follow-ups remain active.
 - **Next action:** Publish Cursor Step 6, then keep the plan active for the
   Grok phone WebDriverAgent gate. Cursor actual-plugin coverage passed its
-  executed scope; one native cancellation race remains automated-only.
+  executed scope; one native cancellation race remains fake-test-only.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54`; the 2,038-line checkpoint
@@ -211,8 +211,8 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | [PR #1438](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1438) merged at `116392cb71`; Cursor-local active generic cards, terminal settlement, request acknowledgement, and process-exit ordering; no tile |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
-| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
-| [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Implemented on current branch: actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
+| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
+| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | Implemented on current branch: actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
 
@@ -528,7 +528,7 @@ post-merge E2E gates are unchanged.
 - **Cursor Step 4/6:** PR #1442 merged at `a7d3014e1a`; exact Task count,
   residency, typed refusal, bounded root stop, concurrent descendant fallback,
   queue gate, and restart UI shipped without replay or native QA.
-- **Cursor Step 5/6:** PR #1443 merged at `f5e4e7f67a` with a standard ACP collector/shared typed projection; no analytics or native QA.
+- **Cursor Step 5/6:** PR #1443 merged at `f5e4e7f67a` with a standard ACP collector/shared typed mapper; no analytics or native QA.
 - **Cursor Step 6/6:** managed-target production-composition QA passed live
   foreground terminal replacement, two cold loads, generic mode-unknown and
   background cards, exact side-effect-free active confirmation/keep rejection,
@@ -538,7 +538,7 @@ post-merge E2E gates are unchanged.
   `custom → unspecified`, replay direct `unspecified`; separate typed DTOs now
   converge through one closed presentation value. A bounded race attempt
   cancelled before background resolution, leaving HTTP 502 race coverage
-  automated-only. All private evidence and owned resources were deleted. No
+  fake-test-only. All private evidence and owned resources were deleted. No
   analytics event was added because no product-decision consumer appeared.
 
 ## Plan Review
