@@ -35,6 +35,12 @@ variant, and worktree mode, and creating the session with its first input.
   otherwise the variant the backend listed first, so reordering never changes
   what runs. Hermes exposes none, and Claude and Pi drop names outside their
   own closed level sets before ordering.
+- Chat and New Session composer effort pickers display that catalog in reverse:
+  lowest efforts at the top, strongest efforts (`max`, `xhigh`) at the bottom,
+  nearest the trigger. A constrained-height popup opens at the bottom regardless
+  of the selected effort; scrolling toward the top reveals the lowest options
+  and heading. Selection/checkmarks, declared defaults, and agent/model picker
+  ordering are unchanged on mobile and desktop.
 - Every plugin ranks Anthropic and OpenAI models strongest first from the model
   id through one shared rule: newest generation first, then Fable, Opus,
   Sonnet, Haiku, or Astra, Sol, Terra, Luna, the bare GPT model, then other
@@ -283,6 +289,10 @@ selection rejection, and authentication failure during discovery. For Grok,
 vary default and explicit model/effort tuples, model-only and effort-only
 changes, changing catalogs, malformed optional entries, stale rejection,
 refresh failure with a last-good catalog, and headless-auth discovery failure.
+For composer effort pickers, vary full-height and small/keyboard-constrained
+viewports, a selected low effort, and reopening after scrolling: the strongest
+options start visible at the bottom, the lowest remain reachable above, and
+selection still dispatches the exact variant that was tapped.
 
 ## Failure Signals
 
@@ -291,6 +301,9 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   cache, Create remains enabled, Refresh becomes unavailable, the plugin runtime
   becomes globally blocked, or Pi reports no models without local `/login` guidance.
 - Options are stale where a discovery failure should be an explicit error.
+- An effort popup puts the strongest levels at the top, opens with them hidden
+  below the fold, makes the lowest levels unreachable by scrolling toward the
+  top, or selects a different level from the tapped row.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a
@@ -395,7 +408,8 @@ refresh failure with a last-good catalog, and headless-auth discovery failure.
   `client/module_app_ui/lib/src/features/new_session/`,
   `client/app/lib/features/new_session/new_session_screen.dart`, and
   `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
-- Client tests: `client/app/test/features/new_session/new_session_screen_test.dart`,
+- Client tests: `client/app/test/core/widgets/agent_model_buttons_test.dart`,
+  `client/app/test/features/new_session/new_session_screen_test.dart`,
   `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`,
   and `client/desktop/test/core/routing/desktop_router_test.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,

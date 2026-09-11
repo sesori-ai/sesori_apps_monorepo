@@ -40,6 +40,9 @@ class const AnchoredFlatPanel({
   /// Minimum gap kept between the bubble and the screen edges.
   required final EdgeInsets screenPadding,
 
+  /// Starts overflow at the bottom without changing the body's visual order.
+  final bool reverseScroll = false,
+
   /// Builds the bubble body. The `close` callback dismisses the popup. The panel
   /// scrolls this content when it exceeds the available height, so it need not
   /// provide its own scroll view.
@@ -87,7 +90,7 @@ class const AnchoredFlatPanel({
         // (the delegate's maxHeight cap) scrolls instead of overflowing, so
         // callers can hand in arbitrary content without each wrapping its own
         // scroll view. Shorter content shrink-wraps as before.
-        child: SingleChildScrollView(child: childBuilder(context, close)),
+        child: SingleChildScrollView(reverse: reverseScroll, child: childBuilder(context, close)),
       ),
     );
 
