@@ -149,22 +149,15 @@ or child transcript was exposed by any case.
 
 ACP changes stay backend-neutral:
 
-- `bridge/sesori_plugin_acp/lib/src/repositories/trackers/acp_child_session_tracker.dart`
-  extends existing composition-owned `AcpChildSessionTracker`; no second live
-  tracker is added. Step 2 adds only active generic Task parts keyed by
-  `(rootSessionId, toolCallId)`. Methods record/update the part, test exact
-  presence, forget every standard terminal card, take-and-retire all active
-  parts for prompt cancellation/failure, and clear them on session/process
-  cleanup. No phase enum, completed-tile take/replace, active count, or
-  unresolved-background state lands in Step 2. Existing session-backed `_Child`
-  records remain the only state carrying child ids/status, fanout, root busy,
-  counts, or activity.
-- Step 3 extends that correlation with the completed foreground phase and
-  one-shot replacement methods only when live completed tiles consume them.
+- `AcpChildSessionTracker` remains limited to real ACP child sessions and root
+  holds. Cursor Task correlation never enters its activity, root-busy, count,
+  fanout, stop, deletion, or reset paths.
+- Step 3 extends Cursor-owned correlation with the completed foreground phase
+  and one-shot replacement methods only when live completed tiles consume them.
   Step 4 then adds exact active count plus one root-level unresolved-background
-  observation and backend-neutral `requiresProcessResidency` for safe-stop
-  policy. Pending/in-progress remains mode-unknown because `isBackground`
-  appears only on terminal output. No Task-only method calls `AcpChildSpawn`.
+  observation and Cursor-owned process-residency policy. Pending/in-progress
+  remains mode-unknown because `isBackground` appears only on terminal output.
+  No Task-only method calls `AcpChildSpawn`.
 - `bridge/sesori_plugin_acp/lib/src/acp_event_mapper.dart` adds two neutral
   mapper lifecycle hooks:
   `mapPromptResult({required String sessionId, required AcpStopReason
@@ -173,17 +166,20 @@ ACP changes stay backend-neutral:
   The latter name is deliberately distinct from existing
   `AcpPlugin.mapPromptFailure`. `CursorEventMapper` overrides both; ACP never
   imports Cursor types, and every other harness remains unchanged. On parsed
-  results, `AcpPlugin._runTurn` emits
-  `mapPromptResult` events before `_finishTurn` completes the existing
-  `activeSettlement` future. In the current catch path it keeps
-  `eventMapper.mapPromptError`, then emits `mapPromptLifecycleFailure` with the
-  same privacy-safe rendered failure message, then calls `_finishTurn`, then
-  invokes plugin-level `mapPromptFailure` exactly as today.
+  results, `AcpPlugin._runTurn` emits `mapPromptResult` events only while the
+  completing turn still owns the session's current turn state, before
+  `_finishTurn` completes the existing `activeSettlement` future. In the catch
+  path it keeps `eventMapper.mapPromptError`, emits
+  `mapPromptLifecycleFailure` with the same privacy-safe rendered failure
+  message only for the still-owned turn, then calls `_finishTurn`, then invokes
+  plugin-level `mapPromptFailure` exactly as today. Detached turns still settle
+  pending/accounting in `_finishTurn` without touching Cursor Task state.
 - `bridge/sesori_plugin_acp/lib/src/acp_plugin.dart` adds neutral
   `AcpScopedStopCapability.rootSessionCancel` and one explicit branch in
   `abortSession`. Its unresolved-background guard is the first branch action,
-  before root/input preparation and before descendant collection; it throws the
-  one unsupported plugin operation described below. The remaining safe-Task
+  before root/input preparation and before descendant collection; it returns
+  `PluginAbortNotPerformed(reason:
+  PluginAbortRefusalReason.residentWorkCompletionUnknown)`. The remaining safe-Task
   branch cannot enter snapshot fanout, `cancelChild`, `stopScopedTree`, or
   child-id sets. After an explicit root stop awaits authoritative prompt
   settlement, it re-checks unresolved background before returning accepted.
@@ -212,19 +208,21 @@ Cursor boundary and repository changes:
   unrecognized non-null string, while no `@Default` or converter is used. Step
   3 adds output/request/subagent presentation DTO fields only when completed
   tile correlation consumes them. Generated files come only from codegen.
-- `bridge/sesori_plugin_cursor/lib/src/repositories/mappers/cursor_task_mapper.dart`
-  adds pure `const CursorTaskMapper()` with no dependencies or mutable fields.
-  Step 2 includes only `mapCancelled` and `mapFailed`; both preserve the generic
-  Task card identity, and failure text is bounded. Step 3 adds
-  `mapLiveCompleted`, and Step 5 adds `mapReplay`, only with their consumers.
-  Complete correlated foreground facts then produce one completed childless
+- `bridge/sesori_plugin_cursor/lib/src/trackers/cursor_task_tracker.dart`
+  owns process-local generic Task correlation and deletion tombstones without
+  any ACP child/root activity API. `CursorEventMapper` keeps the two Step 2
+  terminal projections private: both preserve exact generic-card identity and
+  presentation fields, and failure text is bounded. Step 3 adds its completed
+  foreground projection privately. Step 5 may extract shared pure projection
+  only when live and replay become current consumers. Complete correlated
+  foreground facts then produce one completed childless
   `PluginMessagePart.subtask`; pending, background, malformed, incomplete,
   cancelled, and failed cases remain generic. `agentId` is correlation data,
   never child identity.
 - `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/cursor_task_replay_tracker.dart`
   adds the only renamed replay class,
   `CursorTaskReplayTracker({required String sessionId, required
-  AcpReplayCollector standardCollector, required CursorTaskMapper taskMapper})`.
+  AcpReplayCollector standardCollector, required CursorTaskProjection taskProjection})`.
   It implements `AcpSessionReplayCollector`, forwards each notification to the
   already-configured standard collector, and indexes typed Task input/output by
   replay-local `toolCallId`. At build it calls the collector's required
@@ -234,26 +232,27 @@ Cursor boundary and repository changes:
   buffer write, or peer construction.
 - `bridge/sesori_plugin_cursor/lib/src/cursor_event_mapper.dart` keeps the
   existing `CursorEventMapper` and adds required constructor field
-  `CursorTaskMapper taskMapper`. Its existing required
-  `AcpChildSessionTracker childSessions` remains the one live state owner.
-  In Step 2, override `map` identifies standard Task calls after generic
+  `CursorTaskTracker taskTracker` beside its existing ACP child tracker. In
+  Step 2, override `map` identifies standard Task calls after generic
   projection, records/updates pending/running parts, and forgets every standard
   terminal card. The re-injected `cursor/task` is intentionally ignored.
   `mapPromptResult` takes every active mode-unknown record on a parsed cancelled
   result, maps its generic card to cancelled, and retires it;
   `mapPromptLifecycleFailure` takes every active mode-unknown record, maps its
   generic card to error with the supplied privacy-safe message, and retires it.
-  Both use the same tracker plus injected `CursorTaskMapper`. Step 3 extends the
-  private observation path and `mapExtension` for completed foreground
+  Both use the Cursor-local tracker plus private terminal projections. Step 3
+  extends the private observation path and `mapExtension` for completed foreground
   correlation. `abortSession` never creates or mutates presentation parts.
 - `bridge/sesori_plugin_cursor/lib/src/cursor_approval_registry.dart`
   acknowledges `cursor/task` with the existing empty fire-and-forget response
   and re-injects one `AcpNotification`, like generated-image/todo handling.
   Parsing remains in the event mapper's typed Cursor boundary.
 - `bridge/sesori_plugin_cursor/lib/src/cursor_plugin_impl.dart` remains the
-  composition owner. Step 2 constructs one `const CursorTaskMapper()` and
-  injects it into `CursorEventMapper`. Step 5 also retains that same instance in
-  `CursorPlugin._` to compose replay. Step 4 makes
+  composition owner. Step 2 constructs one `CursorTaskTracker`, injects it into
+  `CursorEventMapper`, and clears it from `onConnectionReset` after pending RPC
+  failures have resumed their turn catch paths. Reset fabricates no terminal
+  Task event. Step 5 may compose a shared pure projection if replay creates the
+  second current consumer. Step 4 makes
   `CursorPlugin.scopedStopCapability` return
   `AcpScopedStopCapability.rootSessionCancel`, reaching the dedicated neutral
   ACP branch. Its `createSessionReplayCollector({required
@@ -332,7 +331,7 @@ conservatively.
 
 1. `CursorEventMapper.map` lets `AcpEventMapper` create the standard generic
    Task card, then parses `CursorTaskInputDto`/`CursorTaskOutputDto` and records
-   that exact generic part in `AcpChildSessionTracker`.
+   that exact generic part in Cursor-owned `CursorTaskTracker`.
 2. Pending/in-progress is an active mode-unknown Task and remains a generic card
    because those frames lack prompt, description, and `isBackground`.
    A terminal standard update with `isBackground: false` changes the correlation
@@ -342,7 +341,7 @@ conservatively.
    unresolved-background observation and never reaches tile projection.
 3. Re-injected `cursor/task` parses to `CursorTaskRequestDto`. Only an exact
    `toolCallId` match in `foregroundCompleted` with complete terminal facts
-   reaches `CursorTaskMapper.mapLiveCompleted`; one completed childless tile
+   reaches the event mapper's completed foreground projection; one completed childless tile
    replaces the same part.
 4. `AcpPlugin._runTurn` routes every parsed prompt result through
    `eventMapper.mapPromptResult` before `_finishTurn`. On `cancelled`, the
@@ -378,27 +377,21 @@ adds one, `forgetSession(sessionId:)` on explicit session deletion, or `clear()`
 on ACP process teardown/reset/disposal. Current Cursor supplies no terminal
 fact, so normal cleanup is session/process teardown.
 
-`AcpChildSessionTracker.requiresProcessResidency` is true while any such
-observation exists. `AcpPlugin._syncWorkState` includes that property in its
-`PluginWorkState.busy` computation, beside pending turns, pending input, and
-real child work. A false-to-true record emits the existing
-`AcpChildSessionTrackerChange` for its root. `forgetSession` includes removal of
-an unresolved observation in its active-work notification even when that root
-has no children or holds. `clear()` includes every unresolved root in its
-`affectedRoots`, clears the set, and notifies each root; a future authoritative
-terminal clear does the same. The existing `AcpPlugin._onChildSessionsChanged`
-listener reruns `_syncWorkState` after each transition, so work state cannot
-remain falsely idle after recording or falsely busy after cleanup. No timer,
-poller, or lifecycle synthesis is added. This prevents configured safe idle
-suspension from silently killing work known to have escaped its root turn.
+Step 4 adds `CursorTaskTracker.requiresProcessResidency` while any such
+observation exists and a narrow Cursor-owned work-state hook into `AcpPlugin`;
+it must not store this fact or emit changes through `AcpChildSessionTracker`.
+The hook contributes only to `PluginWorkState.busy`, beside pending turns,
+pending input, and real child work. Cursor-owned observation changes trigger
+work-state resynchronization; deletion/reset clears them. No timer, poller, or
+lifecycle synthesis is added. This prevents configured safe idle suspension
+from silently killing work known to have escaped its root turn.
 
-The property is deliberately excluded from `hasBusyChildren`,
-`hasActiveWorkForRoot`, `activeRootSessionIds`, `hasActiveWork`, session status,
-deferred root idle, active-session summaries, and sub-agent counts. Concretely,
-`AcpPlugin._finishTurn`, `_onChildSessionsChanged`, `getSessionStatuses`,
-`getActiveSessionsSummary`, and `interruptActiveWork` keep their existing root/
-child predicates and do not query `requiresProcessResidency`; only
-`_syncWorkState` does. Native `end_turn` therefore still emits honest root idle
+The property is deliberately excluded from child activity, root/session status,
+deferred root idle, active-session summaries, sub-agent counts, fanout, and
+stop targeting. Concretely, `AcpPlugin._finishTurn`, child-change handling,
+`getSessionStatuses`, `getActiveSessionsSummary`, and `interruptActiveWork` keep
+their existing root/child predicates and do not query Cursor Task residency.
+Native `end_turn` therefore still emits honest root idle
 and does not pin root/session UI busy, fabricate completion, or create a
 background completion notification or tile. A later pending interaction remains
 busy through the existing approval registry only for that interaction's
@@ -576,7 +569,7 @@ Step 5 automated scope:
   live-id equality; background/missing/malformed facts retain generic; cancelled
   absence stays absent.
 - Composition test proves `CursorTaskReplayTracker` receives one configured
-  `AcpReplayCollector` and the factory-built shared `CursorTaskMapper`; tracker
+  `AcpReplayCollector` and the shared pure projection extracted when replay lands; tracker
   has no live state, transport, or I/O. Run Cursor/ACP replay-focused tests and
   analyzers plus `git diff --check`.
 

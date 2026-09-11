@@ -11,11 +11,11 @@ import "cursor_event_mapper.dart";
 import "models/cursor_catalog_models.dart";
 import "repositories/cursor_catalog_repository.dart";
 import "repositories/cursor_generated_image_reader.dart";
-import "repositories/mappers/cursor_task_mapper.dart";
 import "services/cursor_catalog_service.dart";
 import "services/cursor_session_cleanup_service.dart";
 import "services/cursor_session_options_service.dart";
 import "trackers/cursor_catalog_tracker.dart";
+import "trackers/cursor_task_tracker.dart";
 
 /// Cursor backend over ACP plus Cursor's config-option model picker.
 ///
@@ -33,6 +33,7 @@ class CursorPlugin._({
   required final CursorCatalogTracker _catalogTracker,
   required CursorSessionOptionsService cursorSessionOptionsService,
   required final AcpSessionConfigurationTracker _configurationTracker,
+  required final CursorTaskTracker _taskTracker,
   required super.commandTracker,
   required super.sessionOptionsService,
   required final CursorSessionCleanupService _sessionCleanupService,
@@ -70,6 +71,7 @@ class CursorPlugin._({
     final childSessionTracker = AcpChildSessionTracker();
     final stagedCommandTracker = AcpCommandTracker();
     final configurationTracker = AcpSessionConfigurationTracker();
+    final taskTracker = CursorTaskTracker();
     final acpSessionOptionsService = AcpSessionOptionsService(
       configurationTracker: configurationTracker,
       commandTracker: commandTracker,
@@ -98,14 +100,13 @@ class CursorPlugin._({
     // constructed with the mapper; `plugin` is assigned immediately below,
     // before any notification can invoke the closure.
     late final CursorPlugin plugin;
-    const taskMapper = CursorTaskMapper();
     final mapper = CursorEventMapper(
       launchDirectory: cwd,
       pluginId: pluginId,
       configurationTracker: configurationTracker,
       childSessions: childSessionTracker,
       generatedImageReader: const CursorGeneratedImageReader(),
-      taskMapper: taskMapper,
+      taskTracker: taskTracker,
       activeSessionResolver: () => plugin.activeTurnSessionId,
     );
     return plugin = CursorPlugin._(
@@ -119,6 +120,7 @@ class CursorPlugin._({
       catalogTracker: catalogTracker,
       cursorSessionOptionsService: cursorSessionOptionsService,
       configurationTracker: configurationTracker,
+      taskTracker: taskTracker,
       commandTracker: commandTracker,
       sessionOptionsService: acpSessionOptionsService,
       sessionCleanupService: sessionCleanupService,
@@ -297,6 +299,10 @@ class CursorPlugin._({
 
   @override
   void onConnectionReset() {
+    // Pending prompt RPCs fail first, allowing their turn catch paths to emit
+    // Task errors. Reset then drops any remaining correlation without
+    // fabricating terminal lifecycle solely from process teardown.
+    _taskTracker.clear();
     _appliedModelId = null;
     _appliedModeId = null;
     _appliedThoughtLevelId = null;

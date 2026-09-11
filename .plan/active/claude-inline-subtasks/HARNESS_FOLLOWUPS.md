@@ -767,16 +767,19 @@ Exact ownership, constructor signatures, policy table, and tests live in
 [the Cursor probe plan](followups/cursor-probe.md#exact-files-classes-and-composition).
 The architecture corrections are summarized here:
 
-- Step 2 extends existing `AcpChildSessionTracker` with ACP-neutral active
-  generic Task-part records keyed by root/tool call. They remain fully separate
-  from session-backed children, child ids/status, root busy state, counts,
-  fanout, and stop policy. `CursorEventMapper` identifies `_toolName: task`,
+- Step 2 adds a minimal Cursor-owned `CursorTaskTracker` beside
+  `CursorEventMapper`, keyed by session/tool call. Shared
+  `AcpChildSessionTracker` remains limited to real ACP child sessions and root
+  holds. Cursor records have no child ids/status, root busy state, counts,
+  activity, fanout, process residency, or stop effect. `CursorEventMapper` identifies `_toolName: task`,
   records/updates pending or running generic cards, and forgets every standard
   terminal card. Parsed cancellation settles all remaining active cards to
   generic cancelled; prompt lifecycle failure settles them to generic error
   with bounded privacy-safe text. Both retire records before root settlement.
-  Session deletion and process reset clear records. No completed phase or tile
-  take/replace method exists in this slice.
+  Its `forgetSession` override calls the base mapper cleanup and fences late
+  current-process frames; `CursorPlugin.onConnectionReset` clears records after
+  pending RPC failures resume. Reset fabricates no terminal event. No completed
+  phase or tile take/replace method exists in this slice.
 - Neutral `mapPromptResult` and `mapPromptLifecycleFailure` hooks run before
   `_finishTurn`; base ACP returns no events. Failure order remains
   `mapPromptError` → lifecycle failure mapping → `_finishTurn` → plugin-level
@@ -784,8 +787,8 @@ The architecture corrections are summarized here:
   futures before public exit settles, so Cursor can map active Task errors before
   process reset clears tracker state; generation fencing remains unchanged.
 - Step 2's Cursor Freezed boundary DTO parses only `_toolName`, with unknown
-  non-null values mapping to `unknown` and no default. One injected pure
-  `CursorTaskMapper` handles only generic cancelled/error projection.
+  non-null values mapping to `unknown` and no default. CursorEventMapper keeps
+  its two single-consumer generic cancelled/error projections private.
   `cursor/task` uses the existing empty-response/reinjection path but is ignored
   after acknowledgement. Step 3 adds foreground-completion correlation and only
   presentation fields then consumed. Completed foreground tiles, background
@@ -828,8 +831,8 @@ The architecture corrections are summarized here:
 - The only renamed new replay class is `CursorTaskReplayTracker` in
   `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/`. Cursor plugin
   composition injects one already-configured `AcpReplayCollector` and the same
-  factory-built pure `CursorTaskMapper`; the tracker accepts no factory and
-  constructs no peer. One required build-time tool-part replacement method on
+  shared pure projection extracted only when replay becomes a second consumer;
+  the tracker accepts no factory and constructs no peer. One required build-time tool-part replacement method on
   concrete `AcpReplayCollector` lets the tracker apply its local index without
   changing existing DeepSeek/Grok constructors or behavior. Replay state is
   local and has no I/O/live tracker access.

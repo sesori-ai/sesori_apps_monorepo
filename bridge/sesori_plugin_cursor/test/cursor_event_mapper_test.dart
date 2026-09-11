@@ -4,7 +4,7 @@ import "dart:typed_data";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:cursor_plugin/cursor_plugin.dart";
 import "package:cursor_plugin/src/repositories/cursor_generated_image_reader.dart";
-import "package:cursor_plugin/src/repositories/mappers/cursor_task_mapper.dart";
+import "package:cursor_plugin/src/trackers/cursor_task_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -12,15 +12,15 @@ void main() {
   group("CursorEventMapper", () {
     CursorEventMapper buildMapper({
       String? Function()? activeSessionResolver,
-      AcpChildSessionTracker? childSessions,
+      CursorTaskTracker? taskTracker,
     }) {
       return CursorEventMapper(
         launchDirectory: "/repo",
         pluginId: CursorPlugin.pluginId,
         configurationTracker: AcpSessionConfigurationTracker(),
-        childSessions: childSessions ?? AcpChildSessionTracker(),
+        childSessions: AcpChildSessionTracker(),
         generatedImageReader: const CursorGeneratedImageReader(),
-        taskMapper: const CursorTaskMapper(),
+        taskTracker: taskTracker ?? CursorTaskTracker(),
         activeSessionResolver: activeSessionResolver ?? () => null,
       );
     }
@@ -134,32 +134,34 @@ void main() {
     });
 
     test("late standard Task updates cannot recreate lifecycle state after session deletion", () {
-      final childSessions = AcpChildSessionTracker();
-      final deletedMapper = buildMapper(childSessions: childSessions);
+      final taskTracker = CursorTaskTracker();
+      final deletedMapper = buildMapper(taskTracker: taskTracker);
       deletedMapper.beginTurn(sessionId: "s-deleted", messageId: "turn-deleted");
-      childSessions.forgetSession(sessionId: "s-deleted");
+      deletedMapper.forgetSession("s-deleted");
 
-      deletedMapper.map(
-        const AcpNotification(
-          method: AcpMethods.sessionUpdate,
-          params: {
-            "sessionId": "s-deleted",
-            "update": {
-              "sessionUpdate": "tool_call",
-              "toolCallId": "late-task",
-              "title": "Task",
-              "status": "pending",
-              "rawInput": {"_toolName": "task"},
-            },
+      const lateTask = AcpNotification(
+        method: AcpMethods.sessionUpdate,
+        params: {
+          "sessionId": "s-deleted",
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "late-task",
+            "title": "Task",
+            "status": "pending",
+            "rawInput": {"_toolName": "task"},
           },
-        ),
+        },
       );
+      deletedMapper.map(lateTask);
 
-      expect(childSessions.hasTaskInvocation(rootSessionId: "s-deleted", toolCallId: "late-task"), isFalse);
-      expect(
-        deletedMapper.mapPromptLifecycleFailure(sessionId: "s-deleted", failureMessage: "failed"),
-        isEmpty,
-      );
+      expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-task"), isFalse);
+      expect(deletedMapper.mapPromptLifecycleFailure(sessionId: "s-deleted", failureMessage: "failed"), isEmpty);
+
+      taskTracker.clear();
+      deletedMapper.map(lateTask);
+      expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-task"), isTrue);
+      taskTracker.clear();
+      expect(deletedMapper.mapPromptLifecycleFailure(sessionId: "s-deleted", failureMessage: "failed"), isEmpty);
     });
 
     test("cursor/generate_image maps to a standard inline file part", () async {

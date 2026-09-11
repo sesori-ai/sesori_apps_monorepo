@@ -28,59 +28,6 @@ void main() {
     setUp(() => tracker = AcpChildSessionTracker());
     tearDown(() => tracker.dispose());
 
-    test("generic Task records stay separate and clean up by root or process", () {
-      const pendingPart = PluginMessagePart.tool(
-        id: "part",
-        sessionID: "root",
-        messageID: "message",
-        tool: "Task",
-        state: PluginToolState(
-          status: PluginToolStatus.pending,
-          title: "Task",
-          shellCommand: null,
-          output: null,
-          error: null,
-          attachments: [],
-        ),
-      ) as PluginMessagePartTool;
-      tracker.recordTaskInvocation(rootSessionId: "root", toolCallId: "task", genericPart: pendingPart);
-
-      expect(tracker.hasTaskInvocation(rootSessionId: "root", toolCallId: "task"), isTrue);
-      expect(tracker.hasActiveWork, isFalse);
-      expect(tracker.activeRootSessionIds, isEmpty);
-      expect(tracker.childStatuses, isEmpty);
-      expect(tracker.runningChildren(sessionId: "root"), isEmpty);
-      expect(tracker.takeActiveTaskInvocations(rootSessionId: "root"), [pendingPart]);
-      expect(tracker.takeActiveTaskInvocations(rootSessionId: "root"), isEmpty);
-
-      tracker.recordTaskInvocation(rootSessionId: "root", toolCallId: "task", genericPart: pendingPart);
-      tracker.spawn(
-        sessionId: "root",
-        spawn: _spawn(childId: "child"),
-        directory: "/repo",
-      );
-      tracker.recordTaskInvocation(rootSessionId: "child", toolCallId: "child-task", genericPart: pendingPart);
-      tracker.forgetSession(sessionId: "root");
-      expect(tracker.takeActiveTaskInvocations(rootSessionId: "root"), isEmpty);
-      expect(tracker.takeActiveTaskInvocations(rootSessionId: "child"), isEmpty);
-      tracker.recordTaskInvocation(rootSessionId: "root", toolCallId: "late-task", genericPart: pendingPart);
-      tracker.recordTaskInvocation(rootSessionId: "child", toolCallId: "late-child-task", genericPart: pendingPart);
-      expect(
-        tracker.hasTaskInvocation(rootSessionId: "root", toolCallId: "late-task"),
-        isFalse,
-        reason: "late lifecycle frames cannot resurrect records for a deleted root",
-      );
-      expect(
-        tracker.hasTaskInvocation(rootSessionId: "child", toolCallId: "late-child-task"),
-        isFalse,
-        reason: "root deletion tombstones descendants too",
-      );
-
-      tracker.recordTaskInvocation(rootSessionId: "other", toolCallId: "task", genericPart: pendingPart);
-      tracker.clear();
-      expect(tracker.takeActiveTaskInvocations(rootSessionId: "other"), isEmpty);
-    });
-
     test("spawn creates the child under the root and renders the tile once the prompt streams", () {
       final result = tracker.spawn(
         sessionId: "root",

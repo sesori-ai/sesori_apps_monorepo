@@ -95,7 +95,9 @@ sub-agent parts, plus the signal that a tool changed files.
   session is in flight. Its standard `_toolName: task` pending/running updates
   remain generic and are tracked only for prompt settlement. Prompt cancellation
   settles every active Task as a generic cancelled card; prompt failure settles
-  it as a generic error card with bounded privacy-safe ACP failure text. Every
+  it as a generic error card with bounded privacy-safe ACP failure text. Process
+  exit first fails pending prompt RPCs so active cards reach error before reset;
+  reset then clears remaining correlation without synthesizing lifecycle. Every
   standard terminal card remains generic and retires tracking. Native
   `cursor/task` requests receive required empty acknowledgement and are
   deliberately ignored after reinjection until completed foreground tiles land.

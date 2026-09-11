@@ -4,7 +4,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/cursor_task_dto.dart";
 import "repositories/cursor_generated_image_reader.dart";
-import "repositories/mappers/cursor_task_mapper.dart";
+import "trackers/cursor_task_tracker.dart";
 
 /// Cursor's event mapper: the standard ACP `session/update` handling from
 /// [AcpEventMapper] plus Cursor's `cursor/*` notification extensions.
@@ -21,7 +21,7 @@ class CursorEventMapper({
   required super.configurationTracker,
   required super.childSessions,
   required final CursorGeneratedImageReader _generatedImageReader,
-  required final CursorTaskMapper _taskMapper,
+  required final CursorTaskTracker _taskTracker,
 
   /// The plugin's active-turn resolver ([AcpPlugin.activeTurnSessionId]) — the
   /// last-resort attribution for Cursor extension payloads that omit
@@ -46,8 +46,14 @@ class CursorEventMapper({
   }) {
     if (stopReason != AcpStopReason.cancelled) return const [];
     return [
-      for (final part in childSessions.takeActiveTaskInvocations(rootSessionId: sessionId))
-        BridgeSseMessagePartUpdated(part: _taskMapper.mapCancelled(genericPart: part)),
+      for (final part in _taskTracker.takeActiveInvocations(sessionId: sessionId))
+        BridgeSseMessagePartUpdated(
+          part: _mapTerminalGeneric(
+            genericPart: part,
+            status: PluginToolStatus.cancelled,
+            error: null,
+          ),
+        ),
     ];
   }
 
@@ -56,14 +62,21 @@ class CursorEventMapper({
     required String sessionId,
     required String failureMessage,
   }) => [
-    for (final part in childSessions.takeActiveTaskInvocations(rootSessionId: sessionId))
+    for (final part in _taskTracker.takeActiveInvocations(sessionId: sessionId))
       BridgeSseMessagePartUpdated(
-        part: _taskMapper.mapFailed(
+        part: _mapTerminalGeneric(
           genericPart: part,
-          failureMessage: failureMessage,
+          status: PluginToolStatus.error,
+          error: String.fromCharCodes(failureMessage.runes.take(maxToolOutputLength)),
         ),
       ),
   ];
+
+  @override
+  void forgetSession(String sessionId) {
+    _taskTracker.forgetSession(sessionId: sessionId);
+    super.forgetSession(sessionId);
+  }
 
   @override
   List<BridgeSseEvent> mapExtension(AcpNotification notification) {
@@ -99,8 +112,8 @@ class CursorEventMapper({
     if (genericParts.isEmpty) return;
     final genericPart = genericParts.last;
 
-    final knownTask = childSessions.hasTaskInvocation(
-      rootSessionId: sessionId,
+    final knownTask = _taskTracker.hasInvocation(
+      sessionId: sessionId,
       toolCallId: toolCallId,
     );
     if (!knownTask) {
@@ -109,15 +122,34 @@ class CursorEventMapper({
     }
 
     if (genericPart.state.status.isTerminal) {
-      childSessions.forgetTaskInvocation(rootSessionId: sessionId, toolCallId: toolCallId);
+      _taskTracker.forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
       return;
     }
-    childSessions.recordTaskInvocation(
-      rootSessionId: sessionId,
+    _taskTracker.recordInvocation(
+      sessionId: sessionId,
       toolCallId: toolCallId,
       genericPart: genericPart,
     );
   }
+
+  PluginMessagePart _mapTerminalGeneric({
+    required PluginMessagePartTool genericPart,
+    required PluginToolStatus status,
+    required String? error,
+  }) => PluginMessagePart.tool(
+    id: genericPart.id,
+    sessionID: genericPart.sessionID,
+    messageID: genericPart.messageID,
+    tool: genericPart.tool,
+    state: PluginToolState(
+      status: status,
+      title: genericPart.state.title,
+      shellCommand: genericPart.state.shellCommand,
+      output: null,
+      error: error,
+      attachments: genericPart.state.attachments,
+    ),
+  );
 
   CursorTaskInputDto? _parseTaskInput({required Object? raw}) {
     final json = _map(raw);

@@ -207,8 +207,8 @@ post-merge E2E gates are unchanged.
 | [x] | DeepSeek native stop | `⚙️ [claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | [#1363](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1363) merged at `b13d197d51`; replaces the contract/pin portion of closed #1356 |
 | [x] | DeepSeek native stop | `🚧 [claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | [#1370](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1370) merged; transport crash fixed by #1379; phone handoff in `followups/deepseek-phone-qa.md`, desktop deferred |
 | [x] | DeepSeek | `🌱 [claude-inline-subtasks] docs: record DeepSeek sub-agent coverage` | [PR #1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431) merged at `7dd323d1d7`; requested phone stop/input scope passed, desktop explicitly deferred, other unexecuted matrices recorded; no overall retirement |
-| [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c`; GitHub title update is supervisor-owned; privacy-safe evidence and original plan, with no feature implementation |
-| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | Implemented locally, pending merge; approximately 1,300–1,400 lines: ACP-neutral active generic-part tracking, pending/running observation, terminal forget, generic cancellation/error settlement, `cursor/task` request ack, transport exit ordering regression, typed-refusal plan correction, and behavior docs; no tile |
+| [x] | Cursor | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | [#1435](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1435) merged at `b83b64901c` originally titled `[step 1/5]`; its GitHub title was deliberately renumbered to `[step 1/6]` after the split, matching this current table; privacy-safe evidence and original plan, with no feature implementation |
+| [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | Implemented locally, pending merge; approximately 1,300–1,400 lines: Cursor-local active generic-part tracking, pending/running observation, terminal forget, generic cancellation/error settlement, `cursor/task` request ack, transport exit ordering regression, typed-refusal plan correction, and behavior docs; no tile |
 | [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | Planned; approximately 650–950 lines: completed-phase correlation, minimal added presentation DTO fields, completed foreground mapper replacement, focused tests, and tile capability/docs update |
 | [ ] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerate after Step 3; approximately 1,300–1,700 lines for exact active mode-unknown Task count, unresolved-background process residency, typed plugin/bridge/shared refusal and exact client handling, all-policy first guard, named-root stop with post-settlement re-check, queue-drain gate, explicit shared UI limitation, tests, and stop/lifecycle/capability docs |
 | [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Planned; approximately 650–1,000 lines; configured ACP collector/shared mapper, stable completed projection, fallbacks, tests, and history doc |
@@ -390,13 +390,6 @@ post-merge E2E gates are unchanged.
 
 ## Verification Log
 
-- **Cursor Step 2/6 (local, pending merge):** source codegen completed in
-  `bridge/sesori_plugin_cursor`. Focused ACP tracker/turn, Cursor DTO/event/
-  approval/plugin, and runtime NDJSON transport suites passed. `dart analyze
-  --fatal-infos` passed in ACP, Cursor, and runtime packages; `git diff --check`
-  passed. Final diff remains below 1,500 changed lines. No completed tile,
-  replay, stop/refusal production contract, residency, child session, client,
-  runtime/config pin, or capability checkmark landed.
 - **Step 1:** `git diff --check` passed; plan/tracker slug, eight exact
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
@@ -530,6 +523,13 @@ post-merge E2E gates are unchanged.
   #1257 fix, OpenCode representative proof partial (widget-test covered),
   notifications end to end not run. Plan retired with those two limitations
   recorded here and in the regression documents.
+- **Cursor Step 2/6 (2026-09-11, local, pending merge):** source codegen
+  completed in `bridge/sesori_plugin_cursor`. Focused ACP turn, Cursor DTO/event/
+  tracker/approval/plugin, and runtime NDJSON transport suites passed. `dart
+  analyze --fatal-infos` passed in ACP, Cursor, and runtime packages; `git diff
+  --check` passed. Final diff remains below 1,600 changed lines. No completed
+  tile, replay, stop/refusal production contract, residency, child session,
+  client, runtime/config pin, or capability checkmark landed.
 
 ## Plan Review
 
