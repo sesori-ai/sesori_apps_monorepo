@@ -112,6 +112,12 @@ reconnect or restart.
   link, one root tile linked to that child, and a nonblank child-owned prompt in
   child replay. Phone automation did not reach visible history or the read-only
   child view, so neither client path is claimed.
+- Cursor `session/load` replaces only a fully typed completed foreground Task's
+  generic card, preserving its replay-local part identity, title, output,
+  attachments, and transcript order. Background, incomplete, malformed,
+  unknown, nonterminal, unmatched, and update-only facts remain generic; an
+  omitted cancelled Task remains absent. Independent loads produce equivalent
+  fields without requiring equality with the earlier live id.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their
@@ -271,6 +277,9 @@ rules where supported.
   belong to a different transcript than its messages, or misreports freshness in
   either direction — a current store flagged as awaiting sync, or a stale one
   served as complete.
+- Cursor replay duplicates a generic Task card and tile, changes replay-local
+  identity or order across loads, or turns incomplete/background facts into a
+  completed subtask.
 - DeepSeek replay duplicates a generic delegation card and child tile, attributes
   a nested tile to the root instead of its direct parent, changes live child
   activity, loses latest terminal metadata across pages, or collapses/reorders
@@ -368,5 +377,5 @@ SSE replay window, and routed request dispatch; database and audit compatibility
 tests under `bridge/app/test/bridge/services/`; client session-detail load/cubit
 code and focused metadata, blocking, reload-race and event-buffer tests; Pi
 session process repository, storage API, and history mapper; shared ACP event mapper, turn serialization,
-and session loader plus Antigravity, Copilot and Grok plugins and package tests; shared
+and session loader plus Antigravity, Copilot, Cursor, and Grok plugins and package tests; shared
 pagination cursor; client detail load service and cubit.

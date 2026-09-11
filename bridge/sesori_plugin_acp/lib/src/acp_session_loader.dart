@@ -107,7 +107,7 @@ class AcpReplayCollector({
       case "user_message_chunk":
         _consumeUserContent(update: update, time: time);
       case "tool_call":
-        final id = update["toolCallId"] as String?;
+        final id = _toolCallId(value: update["toolCallId"]);
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
@@ -145,7 +145,7 @@ class AcpReplayCollector({
           draft.hasExplicitStatus = draft.hasExplicitStatus || mappedStatus != null;
         }
       case "tool_call_update":
-        final id = update["toolCallId"] as String?;
+        final id = _toolCallId(value: update["toolCallId"]);
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
@@ -283,6 +283,7 @@ class AcpReplayCollector({
   /// Materializes replay without model-selection metadata.
   List<PluginMessageWithParts> build() => _build(
     selection: (modelId: null, providerId: null, variant: null),
+    materializationToolPartReplacement: toolPartReplacement,
   );
 
   /// Materializes replay with one authoritative assistant selection tuple.
@@ -294,14 +295,37 @@ class AcpReplayCollector({
     required String? modelId,
     required String? providerId,
     required String? variant,
-  }) => _build(selection: (modelId: modelId, providerId: providerId, variant: variant));
+  }) => _build(
+    selection: (modelId: modelId, providerId: providerId, variant: variant),
+    materializationToolPartReplacement: toolPartReplacement,
+  );
 
-  List<PluginMessageWithParts> _build({required _AcpReplayAssistantSelection selection}) {
+  /// Materializes replay through the same ordered path with a caller-owned
+  /// replay-local tool replacement. Constructor configuration remains intact
+  /// for every other materialization method.
+  List<PluginMessageWithParts> buildWithToolPartReplacement({
+    required String? modelId,
+    required String? providerId,
+    required String? variant,
+    required AcpReplayToolPartReplacement toolPartReplacement,
+  }) => _build(
+    selection: (modelId: modelId, providerId: providerId, variant: variant),
+    materializationToolPartReplacement: toolPartReplacement,
+  );
+
+  List<PluginMessageWithParts> _build({
+    required _AcpReplayAssistantSelection selection,
+    required AcpReplayToolPartReplacement? materializationToolPartReplacement,
+  }) {
     final messages = <PluginMessageWithParts>[];
     for (final entry in _entries) {
       switch (entry) {
         case _Draft():
-          final message = _buildMessage(draft: entry, selection: selection);
+          final message = _buildMessage(
+            draft: entry,
+            selection: selection,
+            materializationToolPartReplacement: materializationToolPartReplacement,
+          );
           if (message != null) messages.add(message);
         case _InsertedAssistantMessage():
           messages.add(
@@ -327,6 +351,7 @@ class AcpReplayCollector({
   PluginMessageWithParts? _buildMessage({
     required _Draft draft,
     required _AcpReplayAssistantSelection selection,
+    required AcpReplayToolPartReplacement? materializationToolPartReplacement,
   }) {
     // A recognized halt notice (e.g. Cursor's account/plan gate, streamed as a
     // lone assistant message) is surfaced as an error message so a reloaded
@@ -365,7 +390,12 @@ class AcpReplayCollector({
     if (draft.text.isNotEmpty) {
       parts.add(_textPart(draft, "text", PluginMessagePartType.text, draft.text.toString()));
     }
-    parts.addAll(_chronologicalAssistantParts(draft: draft));
+    parts.addAll(
+      _chronologicalAssistantParts(
+        draft: draft,
+        materializationToolPartReplacement: materializationToolPartReplacement,
+      ),
+    );
     if (parts.isEmpty && draft.tools.values.any((tool) => tool.suppressed)) return null;
     return PluginMessageWithParts(
       info: _message(draft: draft, selection: selection),
@@ -393,7 +423,10 @@ class AcpReplayCollector({
 
   bool _hasAssistantImageCandidate({required _Draft draft}) => draft.contentTracker.snapshot.imageCandidateCount > 0;
 
-  List<PluginMessagePart> _chronologicalAssistantParts({required _Draft draft}) {
+  List<PluginMessagePart> _chronologicalAssistantParts({
+    required _Draft draft,
+    required AcpReplayToolPartReplacement? materializationToolPartReplacement,
+  }) {
     final parts = <PluginMessagePart>[];
     String? textPartIdSuffix;
     StringBuffer? textBuffer;
@@ -438,7 +471,12 @@ class AcpReplayCollector({
           }
         case _AssistantToolEntry(:final toolId, :final tool):
           flushText();
-          final part = _toolPart(draft: draft, toolId: toolId, tool: tool);
+          final part = _toolPart(
+            draft: draft,
+            toolId: toolId,
+            tool: tool,
+            materializationToolPartReplacement: materializationToolPartReplacement,
+          );
           if (part != null) parts.add(part);
       }
     }
@@ -508,6 +546,7 @@ class AcpReplayCollector({
     required _Draft draft,
     required String toolId,
     required _ToolDraft tool,
+    required AcpReplayToolPartReplacement? materializationToolPartReplacement,
   }) {
     if (tool.suppressed) return null;
     final content = tool.contentTracker.snapshot;
@@ -525,7 +564,7 @@ class AcpReplayCollector({
         attachments: content.attachments,
       ),
     );
-    return toolPartReplacement?.call(toolCallId: toolId, toolPart: toolPart) ?? toolPart;
+    return materializationToolPartReplacement?.call(toolCallId: toolId, toolPart: toolPart) ?? toolPart;
   }
 
   void _retainTime({required _Draft draft, required PluginMessageTime? time}) {
@@ -635,6 +674,12 @@ class AcpReplayCollector({
 
   Map<String, dynamic>? _asMap(Object? value) {
     if (value is Map) return value.cast<String, dynamic>();
+    return null;
+  }
+
+  String? _toolCallId({required Object? value}) {
+    if (value is String) return value;
+    if (value != null) Log.w("[acp] malformed replay tool-call ID ignored");
     return null;
   }
 

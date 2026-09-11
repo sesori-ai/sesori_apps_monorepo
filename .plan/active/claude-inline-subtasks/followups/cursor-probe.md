@@ -213,21 +213,21 @@ Cursor boundary and repository changes:
   any ACP child/root activity API. `CursorEventMapper` keeps the two Step 2
   terminal projections private: both preserve exact generic-card identity and
   presentation fields, and failure text is bounded. Step 3 adds its completed
-  foreground projection privately. Step 5 may extract shared pure projection
-  only when live and replay become current consumers. Complete correlated
+  foreground projection privately. Step 5 extracts one shared pure `CursorTaskMapper`
+  for the current live/replay consumers. Complete correlated
   foreground facts then produce one completed childless
   `PluginMessagePart.subtask`; pending, background, malformed, incomplete,
   cancelled, and failed cases remain generic. `agentId` is correlation data,
   never child identity.
 - `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/cursor_task_replay_tracker.dart`
-  adds the only renamed replay class,
+  adds the replay-local class,
   `CursorTaskReplayTracker({required String sessionId, required
-  AcpReplayCollector standardCollector, required CursorTaskProjection taskProjection})`.
+  AcpReplayCollector standardCollector, required CursorTaskMapper taskMapper})`.
   It implements `AcpSessionReplayCollector`, forwards each notification to the
   already-configured standard collector, and indexes typed Task input/output by
   replay-local `toolCallId`. At build it calls the collector's required
   `buildWithToolPartReplacement` seam with its own state-backed replacement,
-  which delegates presentation to the injected pure projection. It owns replay-
+  which delegates presentation to the shared injected pure mapper. It owns replay-
   local maps only: no ACP client, factory, file I/O, live tracker read, event-
   buffer write, or peer construction.
 - `bridge/sesori_plugin_cursor/lib/src/cursor_event_mapper.dart` keeps the
@@ -251,15 +251,15 @@ Cursor boundary and repository changes:
   composition owner. Step 2 constructs one `CursorTaskTracker`, injects it into
   `CursorEventMapper`, and clears it from `onConnectionReset` after pending RPC
   failures have resumed their turn catch paths. Reset fabricates no terminal
-  Task event. Step 5 may compose a shared pure projection if replay creates the
-  second current consumer. Step 4 makes
+  Task event. Step 5 composes one shared pure `CursorTaskMapper` for the live and
+  replay consumers. Step 4 makes
   `CursorPlugin.scopedStopCapability` return
   `AcpScopedStopCapability.rootSessionCancel`, reaching the dedicated neutral
   ACP branch. Its `createSessionReplayCollector({required
   String sessionId, required
   AcpReplayCollectorFactory collectorFactory})` override first calls
   `collectorFactory(toolPartSuppression: null)` for one fully configured
-  standard collector, then injects that collector and the stored projection into
+  standard collector, then injects that collector and the shared mapper into
   `CursorTaskReplayTracker`. The tracker receives no factory, and neither
   mapper nor tracker constructs its peer.
 - `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart`
@@ -469,7 +469,7 @@ remains at the post-settlement re-check. Background full stop remains unsupporte
 ### Replay and unsupported behavior
 
 Replay uses only typed standard Task facts. Complete foreground input plus
-`isBackground: false` may replace the generic part. `isBackground: true`,
+`isBackground: false` replaces the exact materialized generic part. `isBackground: true`,
 missing/malformed input/output, or incomplete presentation facts preserve the
 generic card. Native cancelled replay absence remains absence. Repeated loads
 reuse native replay-local identity without asserting equality to the original
@@ -506,14 +506,11 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    childless replacement, tests, and live-tile capability/docs. Step 4 is based
    on that merged commit; pre-squash `d3297ad4b9` has the same tree.
 4. `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]`
-   is implemented and checked locally: exact active count, unresolved-background
-   residency, typed refusal, safe `rootSessionCancel` with mandatory post-
-   settlement re-check, bridge/client/UI flow, tests, and stop/lifecycle/
-   capability docs. It remains unpublished on a branch regenerated from merged
-   main; its pre-reconciliation tree matched reviewed checkpoint `eae039ca27`.
+   merged as PR #1442 at `a7d3014e1a`: exact active count, unresolved-background
+   residency, typed refusal, safe `rootSessionCancel`, and concurrent descendant
+   fallback with mandatory settlement re-check; no replay/native QA.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
-   (expected 650–1,000 changed lines): configured collector/shared pure projection,
-   stable completed projection, fallbacks, tests, and history doc.
+   PR #1443 uses one configured standard ACP collector and shared injected `CursorTaskMapper`; tests pass; no native QA.
 6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
    (expected 60–140 changed lines): bounded actual-plugin evidence and final
    reconciliation only; unsupported/unexecuted boundaries remain explicit.
@@ -570,8 +567,8 @@ Step 5 automated scope:
   keep replay-local identity; live/replay fields converge without requiring
   live-id equality; background/missing/malformed facts retain generic; cancelled
   absence stays absent.
-- Composition test proves `CursorTaskReplayTracker` receives one configured
-  `AcpReplayCollector` and the shared pure projection extracted when replay lands; tracker
+- Composition tests prove `CursorTaskReplayTracker` receives one configured
+  `AcpReplayCollector` and the shared injected `CursorTaskMapper`; the tracker
   has no live state, transport, or I/O. Run Cursor/ACP replay-focused tests and
   analyzers plus `git diff --check`.
 

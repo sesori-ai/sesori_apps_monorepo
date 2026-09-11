@@ -294,25 +294,26 @@ foreground invocation's completion is also sub-agent completion; a background
 invocation completes at launch and exposes `isBackground: true`, while the
 background work continues without a later terminal lifecycle or child
 transcript. `session/load` replays stable full standard Task input/result facts,
-not `cursor/task`, so completed foreground tiles are planned without a child
-session. Pending/in-progress calls lack presentation facts and `isBackground`, so their
+not `cursor/task`; Sesori now replaces an exact completed foreground replay card
+with the same childless tile while preserving replay-local identity and order. Pending/in-progress calls lack presentation facts and `isBackground`, so their
 mode is unknown and they remain generic; cancelled foreground calls also remain
 generic cancelled cards because no `cursor/task` follows cancellation. Sesori
 now replaces only an exact live standard completion with explicit
 `isBackground: false` plus a complete correlated request, producing one
 completed childless tile with stable part identity. Missing/unknown/malformed,
-unmatched, background, failed, and cancelled cases stay generic. Replay remains
-unimplemented. Standard `session/cancel` authoritatively cancels an active root
-prompt. Safe Task confirmation is side-effect-free with exact active count;
-named-root stop waits up to 20 seconds, then rechecks background and active work.
-Timeout or survivors yield HTTP 502 after cancellation, never false success. A
-background Task survives root cancel, so “`stop` cancels them all” remains **not
-supported**. While that observation is unresolved, every policy returns concrete
-HTTP 409 `notPerformed` before input or cancellation. Client drain pauses; that
-variant retains queued prompts and shows restart recovery even for unknown reasons.
-Malformed bodies, unknown variants, and post-cancel failures remain ambiguous.
-The observation keeps only ACP process work state busy until session cleanup or
-process reset; root `end_turn` and UI idle never claim background completion.
+unmatched, background, and failed cases with standard facts stay generic. A cancelled
+Task is absent from replay when Cursor emits no standard frame; no completed tile is synthesized. Standard `session/cancel`
+authoritatively cancels an active root prompt. Safe Task confirmation is
+side-effect-free with exact active count; named-root stop waits up to 20 seconds,
+then rechecks background and active work. Timeout or survivors yield HTTP 502
+after cancellation, never false success. A background Task survives root cancel,
+so “`stop` cancels them all” remains **not supported**. While that observation is
+unresolved, every policy returns concrete HTTP 409 `notPerformed` before input or
+cancellation. Client drain pauses; that variant retains queued prompts and shows
+restart recovery even for unknown reasons. Malformed bodies, unknown variants,
+and post-cancel failures remain ambiguous. The observation keeps only ACP process
+work state busy until session cleanup or process reset; root `end_turn` and UI
+idle never claim background completion.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a

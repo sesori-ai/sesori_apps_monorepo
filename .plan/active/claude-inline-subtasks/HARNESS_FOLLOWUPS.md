@@ -869,8 +869,8 @@ those refs. Regenerate each successor from its merged predecessor.
 | 1/6 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | PR #1435 merged at `b83b64901c`; supervisor will update its GitHub title; docs only |
 | 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | PR #1438 merged at `116392cb71`: active generic-part tracking, terminal settlement, request ack, transport ordering regressions, typed-refusal plan correction, and behavior docs; no tile |
 | 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | PR #1441 merged at `bb85f48148`: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
-| 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | Regenerated from merged main and checked locally, unpublished: exact count, process residency, typed refusal, safe root cancel/re-check, bridge/client/UI flow, tests, and docs; no replay/native QA |
-| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | Approximately 650–1,000 lines: configured collector/shared pure projection, stable completed projection, fallbacks, tests, and history doc |
+| 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | PR #1442 merged at `a7d3014e1a`: exact count, process residency, typed refusal, bounded root cancel/re-check, concurrent descendant fallback, bridge/client/UI flow, tests, and docs; no replay/native QA |
+| 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 open: configured collector/shared pure projection, typed stable completed projection, fallbacks, tests, and history docs; no native QA |
 | 6/6 | `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]` | Approximately 60–140 lines: actual-plugin evidence and final reconciliation only; unsupported/unexecuted matrix remains explicit |
 
 ### Probe questions

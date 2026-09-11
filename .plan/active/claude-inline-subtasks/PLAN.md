@@ -10,10 +10,14 @@
   recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Cursor
   Step 1 merged as PR #1435 at `b83b64901c`; Step 2 merged as PR #1438 at
   `116392cb71`, settling generic Task lifecycle and acknowledging `cursor/task`.
-  Step 3 merged as PR #1441 at `bb85f48148`; Step 4 is reviewed on its
-  regenerated unpublished branch. Replay remains Step 5; final coverage remains Step 6.
-  Step 4 adds typed refusal, Cursor residency, named-root cancellation, repository fallback,
-  queue gate, and limitation UI; no replay/native QA. Reviewed checkpoint `5cc54ad013` is preserved by branches
+  Step 3 merged as PR #1441 at `bb85f48148`; Step 4 safe stop merged as PR
+  #1442 at `a7d3014e1a`; Step 5 replay is open as PR #1443. Step 5 includes
+  configured standard replay plus Cursor-local typed replacement; final coverage
+  remains Step 6. Step 4 includes the typed refusal, Cursor-only residency,
+  bounded named-root cancellation with post-settlement re-check/HTTP 502 partial
+  failure, repository-owned concurrent descendant fallback, client queue gate,
+  and limitation UI, with no replay/native QA. Full reviewed checkpoint
+  `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
   Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
