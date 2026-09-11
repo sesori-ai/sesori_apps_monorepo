@@ -171,6 +171,8 @@ defaults and queued client sends coherent.
   active-root `keep` rejection, exact named-child isolation, idle-child
   retention through autonomous wake-up, `already_finished`, root-first full
   stop with authoritative settlement, fresh-session checks, and runtime reuse.
+  Root/child history replay also passed, including exact parent/child links and
+  tile prompt equality with the child-owned transcript prompt.
   Root `confirm` reuses its earlier side-effect-free passing run. Zero standard
   permission requests surfaced, so live pending-input coverage remains
   unexecuted. Phone setup reached a healthy source build and relay connection,
