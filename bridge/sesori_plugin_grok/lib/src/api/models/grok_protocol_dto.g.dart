@@ -42,6 +42,14 @@ const _$GrokSubagentStatusEnumMap = {
   GrokSubagentStatus.unknown: 'unknown',
 };
 
+_GrokSubagentCancelResponseEnvelopeDto
+_$GrokSubagentCancelResponseEnvelopeDtoFromJson(Map json) =>
+    _GrokSubagentCancelResponseEnvelopeDto(
+      result: GrokSubagentCancelResponseDto.fromJson(
+        Map<String, dynamic>.from(json['result'] as Map),
+      ),
+    );
+
 _GrokSubagentCancelResponseDto _$GrokSubagentCancelResponseDtoFromJson(
   Map json,
 ) => _GrokSubagentCancelResponseDto(

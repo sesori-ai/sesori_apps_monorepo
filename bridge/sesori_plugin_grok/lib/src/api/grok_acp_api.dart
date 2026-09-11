@@ -93,7 +93,8 @@ class GrokAcpApi({
       throw const FormatException("Grok sub-agent cancellation returned a non-object response");
     }
     // ignore: no_slop_linter/prefer_specific_type, generated DTO accepts JSON maps
-    final response = GrokSubagentCancelResponseDto.fromJson(raw.cast<String, dynamic>());
+    final envelope = GrokSubagentCancelResponseEnvelopeDto.fromJson(raw.cast<String, dynamic>());
+    final response = envelope.result;
     if (response.subagentId != subagentId) {
       throw FormatException(
         "Grok sub-agent cancellation returned id ${response.subagentId} for requested child $subagentId",

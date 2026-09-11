@@ -52,10 +52,12 @@ ordering, and enum values are recorded; no prompt or transcript text.
    running" claim does not hold on this seam, so main-agent-only stop is not
    supportable on 1.0.5 (`mainAgentOnlySupported = false`).
    `session/close` on the root also cancels its children the same way.
-   `_x.ai/subagent/cancel {subagentId}` (leading underscore) is a request;
-   response `{result: {subagentId, cancelled: bool, outcome: {kind}}}` with
-   `outcome.kind: cancelled` for a running child and
-   `outcome.kind: already_finished, status: <finished status>` otherwise.
+   `_x.ai/subagent/cancel {subagentId}` (leading underscore) is a request. The
+   JSON-RPC response is `result -> result -> {subagentId, cancelled, outcome}`:
+   after ACP transport unwraps the outer JSON-RPC result, the application
+   envelope still contains required `result`. `outcome.kind: cancelled` applies
+   to a running child; `outcome.kind: already_finished` includes
+   `status: <finished status>` otherwise.
    Cancelling one child does not affect its sibling or the root turn; the
    parent then receives `subagent_finished {status: cancelled}`.
 5. **`spawn_subagent` tool call and wake-up.** The spawn is also a standard
@@ -100,6 +102,19 @@ must not fabricate a tile. Intended denied/cancelled-permission attempts exposed
 zero `session/request_permission` frames because the unchanged runtime/config
 resolved interaction automatically. Denial persistence is therefore unverified:
 no permission-outcome model or generic-card replay guarantee is justified.
+
+## 2026-09-10 actual-plugin scoped-stop QA
+
+Bounded production-composition QA passed side-effect-free root `confirm` with
+two live children. Active-root `keep` returned the same typed rejection and
+emitted no outbound cancel, but remains partial because the scratch harness
+compared bidirectional frames and counted legitimate inbound progress. Root full
+stop sent root cancellation first and both exact child requests; native
+`subagent_finished {status: cancelled}` settled both children, but the plugin
+then failed parsing each application envelope as the inner DTO. Step 6/7 repairs
+that boundary. Full stop, plugin settlement, fresh-session usability,
+named-child/idle-child isolation, `already_finished`, history, pending input,
+phone, and relay remain unproven until corrected actual-plugin QA reruns.
 
 ## Consequences for the design
 

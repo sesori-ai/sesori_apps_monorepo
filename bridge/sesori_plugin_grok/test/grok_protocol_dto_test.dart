@@ -2,6 +2,7 @@ import "dart:convert";
 import "dart:io";
 
 import "package:grok_plugin/src/api/models/grok_protocol_dto.dart";
+import "package:grok_plugin/src/models/grok_subagent_status.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -60,6 +61,46 @@ void main() {
 
     expect(option.toJson()["default"], isTrue);
     expect(option.toJson(), isNot(contains("isDefault")));
+  });
+
+  test("parses captured child-cancel application envelope structure", () {
+    final envelope = GrokSubagentCancelResponseEnvelopeDto.fromJson(
+      _fixture(name: "subagent_cancel_response.json"),
+    );
+
+    expect(envelope.result.subagentId, "synthetic-child");
+    expect(envelope.result.cancelled, isFalse);
+    expect(envelope.result.outcome.kind, GrokSubagentCancelOutcomeKind.alreadyFinished);
+    expect(envelope.result.outcome.status, GrokSubagentStatus.completed);
+  });
+
+  test("requires one object result containing the child-cancel DTO", () {
+    expect(
+      () => GrokSubagentCancelResponseEnvelopeDto.fromJson(<String, dynamic>{}),
+      throwsA(isA<TypeError>()),
+    );
+    expect(
+      () => GrokSubagentCancelResponseEnvelopeDto.fromJson({"result": <Object?>[]}),
+      throwsA(isA<TypeError>()),
+    );
+    expect(
+      () => GrokSubagentCancelResponseEnvelopeDto.fromJson({
+        "subagentId": "synthetic-child",
+        "cancelled": true,
+        "outcome": {"kind": "cancelled"},
+      }),
+      throwsA(isA<TypeError>()),
+    );
+    expect(
+      () => GrokSubagentCancelResponseEnvelopeDto.fromJson({
+        "result": {
+          "subagentId": "synthetic-child",
+          "cancelled": "yes",
+          "outcome": {"kind": "cancelled"},
+        },
+      }),
+      throwsA(isA<TypeError>()),
+    );
   });
 }
 

@@ -1,0 +1,10 @@
+{
+  "result": {
+    "subagentId": "synthetic-child",
+    "cancelled": false,
+    "outcome": {
+      "kind": "already_finished",
+      "status": "completed"
+    }
+  }
+}

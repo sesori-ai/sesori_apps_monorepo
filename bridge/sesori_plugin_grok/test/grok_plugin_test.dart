@@ -934,9 +934,11 @@ void main() {
         "jsonrpc": "2.0",
         "id": cancel["id"],
         "result": {
-          "subagentId": "child",
-          "cancelled": true,
-          "outcome": {"kind": "cancelled"},
+          "result": {
+            "subagentId": "child",
+            "cancelled": true,
+            "outcome": {"kind": "cancelled"},
+          },
         },
       });
       expect(
@@ -985,11 +987,13 @@ void main() {
           "jsonrpc": "2.0",
           "id": frame["id"],
           "result": {
-            "subagentId": childId,
-            "cancelled": childId == "first",
-            "outcome": {
-              "kind": childId == "first" ? "cancelled" : "already_finished",
-              if (childId == "second") "status": "completed",
+            "result": {
+              "subagentId": childId,
+              "cancelled": childId == "first",
+              "outcome": {
+                "kind": childId == "first" ? "cancelled" : "already_finished",
+                if (childId == "second") "status": "completed",
+              },
             },
           },
         });
@@ -1041,9 +1045,11 @@ void main() {
         "jsonrpc": "2.0",
         "id": secondCancel["id"],
         "result": {
-          "subagentId": secondId,
-          "cancelled": true,
-          "outcome": {"kind": "cancelled"},
+          "result": {
+            "subagentId": secondId,
+            "cancelled": true,
+            "outcome": {"kind": "cancelled"},
+          },
         },
       });
       await failure;
@@ -1128,9 +1134,11 @@ void main() {
         "jsonrpc": "2.0",
         "id": cancel["id"],
         "result": {
-          "subagentId": "child",
-          "cancelled": true,
-          "outcome": {"kind": "cancelled"},
+          "result": {
+            "subagentId": "child",
+            "cancelled": true,
+            "outcome": {"kind": "cancelled"},
+          },
         },
       });
       await stopping;
