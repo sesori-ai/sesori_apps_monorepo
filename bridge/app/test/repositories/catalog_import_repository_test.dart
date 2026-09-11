@@ -325,6 +325,35 @@ void main() {
       expect((await database.projectsDao.getProject(projectId: "existing-project"))?.hidden, isFalse);
     });
 
+    test("an explicit import joining an automatic project write keeps the new project visible", () async {
+      final projectPath = p.join(_userHomeDirectory(), ".sesori-test-joined-explicit", "project");
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "joined-explicit-project", directory: projectPath)],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+      final projectsDao = _BlockingProjectWriteDao(database: database);
+      final repository = CatalogImportRepository(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        projectsDao: projectsDao,
+        sessionDao: database.sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      );
+      final control = CatalogImportControl(
+        explicitImportRequested: false,
+        hydrationMarkerRequested: true,
+      );
+      final publication = repository.importCatalog(pluginId: plugin.id, control: control).drain<void>();
+      await projectsDao.firstWriteStarted.future;
+
+      control.explicitImportRequested = true;
+      projectsDao.releaseFirstWrite();
+      await publication;
+
+      expect((await database.projectsDao.getProject(projectId: "joined-explicit-project"))?.hidden, isFalse);
+    });
+
     test("native import gives an exact project id precedence during a move", () async {
       final oldPath = "${directory.path}/old";
       final movedPath = "${directory.path}/moved";
@@ -1198,6 +1227,26 @@ class _BlockingProjectsDao({required AppDatabase database}) extends ProjectsDao 
     readStarted.complete();
     await _readGate.future;
     return await super.getAllProjects();
+  }
+}
+
+class _BlockingProjectWriteDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
+
+  final Completer<void> firstWriteStarted = Completer<void>();
+  final Completer<void> _firstWriteGate = Completer<void>();
+  var _firstWriteReleased = false;
+
+  void releaseFirstWrite() => _firstWriteGate.complete();
+
+  @override
+  Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
+    if (!_firstWriteReleased) {
+      _firstWriteReleased = true;
+      firstWriteStarted.complete();
+      await _firstWriteGate.future;
+    }
+    await super.upsertProjectRows(rows: rows);
   }
 }
 

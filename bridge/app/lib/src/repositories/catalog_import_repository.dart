@@ -465,6 +465,7 @@ class CatalogImportRepository({
         // extra enumeration or query is needed.
         var projectsAdded = 0;
         var sessionsAdded = 0;
+        final automaticallyHiddenProjectIds = <String>{};
         final hideNewHiddenHomeProjects = !control.explicitImportRequested;
         for (final observation in publicationProjects.values) {
           final existing = _projectCatalogIdentityCalculator.calculate(
@@ -474,13 +475,15 @@ class CatalogImportRepository({
             observedPath: observation.path,
           );
           if (existing == null) projectsAdded++;
+          final hiddenWhenNew =
+              hideNewHiddenHomeProjects && _isUnderTopLevelHiddenHomeDirectory(projectPath: observation.path);
           final row = _mergeProjectRow(
             observation: observation,
             existing: existing,
-            hiddenWhenNew:
-                hideNewHiddenHomeProjects && _isUnderTopLevelHiddenHomeDirectory(projectPath: observation.path),
+            hiddenWhenNew: hiddenWhenNew,
             importStartedAt: importStartedAt,
           );
+          if (existing == null && hiddenWhenNew) automaticallyHiddenProjectIds.add(row.projectId);
           projectRows.add(row);
           final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
           final nextPath = _normalizeRequiredPath(row.path);
@@ -563,6 +566,17 @@ class CatalogImportRepository({
               projectionVersion: projectionVersion,
               completedAt: completedAt,
             ),
+          );
+        }
+        // An explicit scan can join while the first project write is pending.
+        // Correct only new rows this automatic import hid; existing visibility stays authoritative.
+        if (control.explicitImportRequested && automaticallyHiddenProjectIds.isNotEmpty) {
+          requireCurrentGeneration();
+          await _projectsDao.upsertProjectRows(
+            rows: [
+              for (final row in projectRows)
+                if (automaticallyHiddenProjectIds.contains(row.projectId)) row.copyWith(hidden: false),
+            ],
           );
         }
         requireCurrentGeneration();
