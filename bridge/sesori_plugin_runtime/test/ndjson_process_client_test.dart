@@ -168,6 +168,40 @@ void main() {
     await exited.dispose();
   });
 
+  test("exceptional process exit fails pending response before public exit with original error", () async {
+    final fixture = _Fixture();
+    final error = StateError("exceptional exit");
+    final stackTrace = StackTrace.fromString("synthetic exceptional exit");
+    final order = <String>[];
+    final dispatched = await fixture.client.dispatch(
+      id: 1,
+      frame: {"id": 1},
+      timeout: const Duration(seconds: 1),
+    );
+    final pendingChecked = dispatched.response.then<void>(
+      (_) => fail("exceptional exit must fail pending response"),
+      onError: (Object actualError, StackTrace actualStackTrace) {
+        expect(actualError, same(error));
+        expect(actualStackTrace.toString(), stackTrace.toString());
+        order.add("pending");
+      },
+    );
+    final exitChecked = fixture.client.exit.then<void>(
+      (_) => fail("exceptional exit must fail public exit"),
+      onError: (Object actualError, StackTrace actualStackTrace) {
+        expect(actualError, same(error));
+        expect(actualStackTrace.toString(), stackTrace.toString());
+        order.add("exit");
+      },
+    );
+
+    fixture.process.failExit(error: error, stackTrace: stackTrace);
+
+    await Future.wait([pendingChecked, exitChecked]);
+    expect(order, ["pending", "exit"]);
+    await fixture.dispose();
+  });
+
   test("superseded attach reaps late process", () async {
     final client = _client(reapTimeout: const Duration(seconds: 1));
     final token = client.beginAttach();
@@ -194,6 +228,31 @@ void main() {
     first.emit('{"id":2,"result":"stale"}');
     first.completeExit(9);
     second.emit('{"id":2,"result":"current"}');
+    expect((await pending)["result"], "current");
+    await fixture.dispose();
+  });
+
+  test("old generation exceptional exit cannot affect replacement", () async {
+    final first = _FakeProcess(autoExitOnClose: false, autoExitOnForce: false);
+    final fixture = _Fixture(candidate: first);
+    final staleError = StateError("stale exceptional exit");
+    final staleStackTrace = StackTrace.fromString("synthetic stale exceptional exit");
+    final staleExitChecked = fixture.client.exit.then<void>(
+      (_) => fail("old process exit must preserve its exceptional result"),
+      onError: (Object actualError, StackTrace actualStackTrace) {
+        expect(actualError, same(staleError));
+        expect(actualStackTrace.toString(), staleStackTrace.toString());
+      },
+    );
+    await fixture.client.reset(reason: StateError("reset"), stackTrace: null, gracefulTimeout: Duration.zero);
+
+    final second = _FakeProcess();
+    await fixture.client.attach(token: fixture.client.beginAttach(), process: second);
+    final pending = fixture.client.request(id: 2, frame: {"id": 2}, timeout: const Duration(seconds: 1));
+    first.failExit(error: staleError, stackTrace: staleStackTrace);
+    await staleExitChecked;
+    second.emit('{"id":2,"result":"current"}');
+
     expect((await pending)["result"], "current");
     await fixture.dispose();
   });
@@ -334,6 +393,10 @@ final class _FakeProcess({
   void failStdout(Object error) => _stdout.addError(error); // ignore: no_slop_linter/prefer_specific_type
   void completeExit(int code) {
     if (!_exited.isCompleted) _exited.complete(code);
+  }
+
+  void failExit({required Object error, required StackTrace stackTrace}) {
+    if (!_exited.isCompleted) _exited.completeError(error, stackTrace);
   }
 
   @override

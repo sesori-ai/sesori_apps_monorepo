@@ -10,12 +10,15 @@ import "package:test/test.dart";
 
 void main() {
   group("CursorEventMapper", () {
-    CursorEventMapper buildMapper({String? Function()? activeSessionResolver}) {
+    CursorEventMapper buildMapper({
+      String? Function()? activeSessionResolver,
+      AcpChildSessionTracker? childSessions,
+    }) {
       return CursorEventMapper(
         launchDirectory: "/repo",
         pluginId: CursorPlugin.pluginId,
         configurationTracker: AcpSessionConfigurationTracker(),
-        childSessions: AcpChildSessionTracker(),
+        childSessions: childSessions ?? AcpChildSessionTracker(),
         generatedImageReader: const CursorGeneratedImageReader(),
         taskMapper: const CursorTaskMapper(),
         activeSessionResolver: activeSessionResolver ?? () => null,
@@ -126,6 +129,35 @@ void main() {
       observeTask(id: "terminal", status: "completed");
       expect(
         taskMapper.mapPromptResult(sessionId: "s-task", stopReason: AcpStopReason.cancelled),
+        isEmpty,
+      );
+    });
+
+    test("late standard Task updates cannot recreate lifecycle state after session deletion", () {
+      final childSessions = AcpChildSessionTracker();
+      final deletedMapper = buildMapper(childSessions: childSessions);
+      deletedMapper.beginTurn(sessionId: "s-deleted", messageId: "turn-deleted");
+      childSessions.forgetSession(sessionId: "s-deleted");
+
+      deletedMapper.map(
+        const AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {
+            "sessionId": "s-deleted",
+            "update": {
+              "sessionUpdate": "tool_call",
+              "toolCallId": "late-task",
+              "title": "Task",
+              "status": "pending",
+              "rawInput": {"_toolName": "task"},
+            },
+          },
+        ),
+      );
+
+      expect(childSessions.hasTaskInvocation(rootSessionId: "s-deleted", toolCallId: "late-task"), isFalse);
+      expect(
+        deletedMapper.mapPromptLifecycleFailure(sessionId: "s-deleted", failureMessage: "failed"),
         isEmpty,
       );
     });

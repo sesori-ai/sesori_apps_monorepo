@@ -221,7 +221,7 @@ prompt, and skill commands remain available.
 
 ACP plugins currently declare one closed scoped-stop capability: `unsupported`, `perChildSnapshot` (Grok), or
 `completeNativeAtomic` (DeepSeek). Cursor's planned safe Task subset will extend this enum with
-`rootSessionCancel` when Step 3 implements and tests the branch. Plugins that report a scoped-stop rejection declare
+`rootSessionCancel` when Step 4 implements and tests the branch. Plugins that report a scoped-stop rejection declare
 whether "main agent only" is honored through `mainAgentOnlySupported`; the app offers that action only when it is
 true.
 
@@ -292,9 +292,10 @@ success. A launched background Task survives root cancel, so the
 overall “`stop` cancels them all” capability is **not supported**. While such an
 observation remains unresolved, `confirm`, `keep`, and `stop` must all fail
 before root/input cancellation because bridge-internal `workKept` cannot qualify
-a success omitted from the client wire. Step 3 plans to map that pre-mutation
-HTTP 409 to a typed client-local not-accepted exception, pause local queue drain
-for the request, and retain queued prompts; a background transition discovered
+a success omitted from the client wire. Step 4 plans a discriminated
+backend-neutral typed not-performed result across plugin, bridge, shared
+transport, and client; only that exact HTTP 409 discriminator pauses local
+queue drain and retains queued prompts. A background transition discovered
 only after root cancellation instead uses an ambiguous HTTP 502 failure and
 existing queue cleanup. The observation may keep only
 ACP process work state busy until session deletion/process reset; root

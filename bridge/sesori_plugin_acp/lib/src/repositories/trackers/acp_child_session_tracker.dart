@@ -86,6 +86,7 @@ final class AcpChildSessionTracker() {
     required String toolCallId,
     required PluginMessagePartTool genericPart,
   }) {
+    if (_deletedSessionIds.contains(rootSessionId)) return;
     (_activeTasksByRoot[rootSessionId] ??= {})[toolCallId] = genericPart;
   }
 
@@ -378,7 +379,9 @@ final class AcpChildSessionTracker() {
     final removedRootHolds = _rootHolds.remove(sessionId);
     final children = _byRoot.remove(sessionId);
     if (children != null) {
-      _deletedSessionIds.addAll(children.map((child) => child.childSessionId));
+      final removedChildIds = children.map((child) => child.childSessionId).toSet();
+      _deletedSessionIds.addAll(removedChildIds);
+      removedChildIds.forEach(_activeTasksByRoot.remove);
       final hadActiveWork =
           children.any((child) => !child.status.isTerminal) || (removedRootHolds?.isNotEmpty ?? false);
       if (removedRootHolds?.isNotEmpty ?? false) _signalRootHoldChange(rootSessionId: sessionId);
@@ -399,6 +402,7 @@ final class AcpChildSessionTracker() {
     final removedChildren = [child, ..._descendantsOf(sessionId: sessionId)];
     final removedChildIds = {for (final removedChild in removedChildren) removedChild.childSessionId};
     _deletedSessionIds.addAll(removedChildIds);
+    removedChildIds.forEach(_activeTasksByRoot.remove);
     final siblings = _byRoot[child.rootSessionId];
     siblings?.removeWhere((candidate) => removedChildIds.contains(candidate.childSessionId));
     if (siblings?.isEmpty ?? false) _byRoot.remove(child.rootSessionId);

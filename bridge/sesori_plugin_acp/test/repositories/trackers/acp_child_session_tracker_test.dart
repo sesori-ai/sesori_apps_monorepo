@@ -54,8 +54,27 @@ void main() {
       expect(tracker.takeActiveTaskInvocations(rootSessionId: "root"), isEmpty);
 
       tracker.recordTaskInvocation(rootSessionId: "root", toolCallId: "task", genericPart: pendingPart);
+      tracker.spawn(
+        sessionId: "root",
+        spawn: _spawn(childId: "child"),
+        directory: "/repo",
+      );
+      tracker.recordTaskInvocation(rootSessionId: "child", toolCallId: "child-task", genericPart: pendingPart);
       tracker.forgetSession(sessionId: "root");
       expect(tracker.takeActiveTaskInvocations(rootSessionId: "root"), isEmpty);
+      expect(tracker.takeActiveTaskInvocations(rootSessionId: "child"), isEmpty);
+      tracker.recordTaskInvocation(rootSessionId: "root", toolCallId: "late-task", genericPart: pendingPart);
+      tracker.recordTaskInvocation(rootSessionId: "child", toolCallId: "late-child-task", genericPart: pendingPart);
+      expect(
+        tracker.hasTaskInvocation(rootSessionId: "root", toolCallId: "late-task"),
+        isFalse,
+        reason: "late lifecycle frames cannot resurrect records for a deleted root",
+      );
+      expect(
+        tracker.hasTaskInvocation(rootSessionId: "child", toolCallId: "late-child-task"),
+        isFalse,
+        reason: "root deletion tombstones descendants too",
+      );
 
       tracker.recordTaskInvocation(rootSessionId: "other", toolCallId: "task", genericPart: pendingPart);
       tracker.clear();
