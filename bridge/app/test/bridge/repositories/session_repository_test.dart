@@ -1565,19 +1565,16 @@ void main() {
       plugin.abortResult = const PluginAbortNotPerformed(
         reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
       );
+      final refusalResult = await repository.abortSession(
+        sessionId: "root",
+        subAgents: SessionAbortSubAgentPolicy.confirm,
+        useAtomicStop: true,
+      );
       expect(
-        await repository.abortSession(
-          sessionId: "root",
-          subAgents: SessionAbortSubAgentPolicy.confirm,
-          useAtomicStop: true,
-        ),
-        isA<SessionAbortNotPerformed>().having(
-          (result) => result.refusal,
-          "refusal",
-          const SessionAbortRefusal(
-            kind: SessionAbortRefusalKind.notPerformed,
-            reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
-          ),
+        (refusalResult as SessionAbortNotPerformed).refusal,
+        const SessionAbortRefusal(
+          kind: SessionAbortRefusalKind.notPerformed,
+          reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
         ),
       );
     });

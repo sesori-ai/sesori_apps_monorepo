@@ -1565,7 +1565,7 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, hasLength(1));
     });
 
-    test("typed abort refusal gates dispatch, preserves queue, then resumes drain", () async {
+    test("not-performed refusal with unknown reason gates dispatch, preserves queue, then resumes drain", () async {
       final abortCompleter = Completer<ApiResponse<bool>>();
       when(
         () => mockSessionRepository.abortSession(
@@ -1594,22 +1594,11 @@ void main() {
         inputMode: ComposerInputMode.typed,
         attachments: const [],
       );
-      verifyNever(
-        () => mockSessionRepository.sendMessage(
-          sessionId: any(named: "sessionId"),
-          promptId: any(named: "promptId"),
-          text: any(named: "text"),
-          attachments: any(named: "attachments"),
-          agent: any(named: "agent"),
-          model: any(named: "model"),
-          variant: any(named: "variant"),
-          command: any(named: "command"),
-        ),
-      );
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, hasLength(1));
 
       const refusal = SessionAbortRefusal(
         kind: SessionAbortRefusalKind.notPerformed,
-        reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+        reason: SessionAbortRefusalReason.unknownEnumValue,
       );
       abortCompleter.completeError(
         SessionAbortNotAcceptedException(refusal: refusal, innerError: StateError("409")),
@@ -1618,18 +1607,7 @@ void main() {
       await _awaitCondition(
         () => (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.isNotEmpty,
       );
-      verify(
-        () => mockSessionRepository.sendMessage(
-          sessionId: _sessionId,
-          promptId: any(named: "promptId"),
-          text: "queued during abort",
-          attachments: any(named: "attachments"),
-          agent: any(named: "agent"),
-          model: any(named: "model"),
-          variant: any(named: "variant"),
-          command: any(named: "command"),
-        ),
-      ).called(1);
+      expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
     test("ambiguous abort failure clears work queued during request", () async {

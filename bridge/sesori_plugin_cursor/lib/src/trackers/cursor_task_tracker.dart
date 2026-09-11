@@ -92,6 +92,7 @@ final class CursorTaskTracker() {
   /// Retires one known Task into a root-level observation. Cursor exposes no
   /// terminal identity or running count for work launched in background.
   void recordUnresolvedBackgroundWork({required String sessionId, required String toolCallId}) {
+    if (_deletedSessionIds.contains(sessionId)) return;
     forgetInvocation(sessionId: sessionId, toolCallId: toolCallId);
     if (_rootsWithUnresolvedBackgroundWork.add(sessionId)) _notifyResidencyChanged();
   }

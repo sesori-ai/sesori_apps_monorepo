@@ -181,14 +181,15 @@ defaults and queued client sends coherent.
 - Cursor supports a narrower named-root safe stop for mode-unknown Task calls.
   With no unresolved background launch, `confirm` and `keep` reject without side
   effects while active Tasks exist and report their exact count; `stop` cancels
-  only the named root, waits for its active prompt settlement, and accepts only
-  after a second unresolved-background check. A background transition during
-  settlement returns HTTP 502 because cancellation already occurred. Any prior
+  only the named root, waits at most 20 seconds for its active prompt settlement,
+  and accepts only after rechecking unresolved background and active Task work.
+  Timeout or surviving work returns HTTP 502 because cancellation already occurred. Any prior
   unresolved background observation makes every policy return the exact typed
   HTTP 409 not-performed refusal before queued input, pending interaction, or
   native cancellation. That refusal preserves locally queued prompts, resumes
-  normal drain after the request, and shows restart guidance; malformed or
-  unknown 409s remain ambiguous and clear queued work. Background launches are
+  normal drain after the request, and shows restart guidance. Recognized
+  `notPerformed` stays non-mutating when its reason is unknown; missing/malformed
+  bodies and unknown refusal kinds remain ambiguous and clear queued work. Background launches are
   not counted as running sub-agents and never affect root/session status or
   summaries. Cursor still cannot stop, count, or observe completion of escaped
   background Tasks, so full scoped stop and child-session behavior remain
@@ -205,8 +206,10 @@ defaults and queued client sends coherent.
   whose start arrives after Stop. Native notifications remain authoritative for
   settlement. This is per-thread fanout, not atomic subtree authority, so every
   accepted result reports `subAgentsHandled: false` even under atomic opt-in.
-  Existing client fallback then aborts observed busy child sessions, retaining
-  the request snapshot if a concurrent reload replaces current status.
+  Existing client fallback then prefers post-response loaded statuses, retains
+  the request snapshot only if detail is no longer loaded, and walks nested
+  descendants. Any descendant-stage failure stays an ambiguous partial failure
+  because root cancellation already succeeded.
   Managed-0.153.4 actual-plugin QA verifies
   root and named-child confirmation, root-only `keep`, named-child subtree
   isolation, full-root snapshot fanout, and native terminal plus plugin-status

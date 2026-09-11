@@ -55,7 +55,7 @@ enum AcpScopedStopCapability() {
 /// differs: protocol policies ([authMethodId], [authMethodAllowlist], [initializeCapabilityMeta],
 /// [supportsFormElicitation], [serializesPromptsProcessWide],
 /// [cancelsActiveTurnForQueuedInput], [failsTurnOnSelectionError],
-/// [sessionCloseSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
+/// [sessionCloseSettlementTimeout], [rootSessionCancelSettlementTimeout]) and behavior hooks ([buildApprovalRegistry],
 /// [onConnectionReset], [commandForDispatch]), plus the option/catalog surface
 /// ([getSessionOptions], [getAgents], [getProviders], [getCommands]) when the
 /// agent exposes a richer model catalog than the neutral process default.
@@ -264,6 +264,8 @@ abstract class AcpPlugin({
 
   /// Maximum time deletion waits for a cancelled target turn before close.
   Duration get sessionCloseSettlementTimeout => const Duration(seconds: 5);
+
+  Duration get rootSessionCancelSettlementTimeout => const Duration(seconds: 20);
 
   /// Chooses only among advertised capabilities. Never retries arbitrary errors
   /// using a second method. History replay remains session/load.
@@ -1987,14 +1989,36 @@ abstract class AcpPlugin({
     final activeSettlement = state?.activeSettlement?.future;
     _prepareSessionAbort(sessionId: sessionId, cancelBufferedInputs: true);
     _approvalRegistry?.cancelForSession(sessionId: sessionId);
-    _client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
-    await activeSettlement;
+    final client = _client;
+    client?.notify(method: AcpMethods.sessionCancel, params: {"sessionId": sessionId});
+    if (activeSettlement != null && client != null) {
+      try {
+        await activeSettlement.timeout(rootSessionCancelSettlementTimeout);
+      } on TimeoutException catch (cause) {
+        throw PluginOperationException(
+          "abortSession",
+          statusCode: 502,
+          message: "Root cancellation was issued, but its active turn did not settle before the stop deadline",
+          cause: cause,
+        );
+      }
+    }
 
     if (hasUnresolvedResidentWork(sessionId: sessionId)) {
       throw const PluginOperationException(
         "abortSession",
         statusCode: 502,
         message: "Root cancellation completed, but resident work completion became unknown",
+      );
+    }
+    final survivingWorkCount = activeScopedStopWorkCount(sessionId: sessionId);
+    if (survivingWorkCount > 0) {
+      final cause = StateError("$survivingWorkCount active scoped-stop work item(s) survived root cancellation");
+      throw PluginOperationException(
+        "abortSession",
+        statusCode: 502,
+        message: "Root cancellation settled without retiring all active scoped-stop work",
+        cause: cause,
       );
     }
     return const PluginAbortAccepted(workKept: false, subAgentsHandled: false);

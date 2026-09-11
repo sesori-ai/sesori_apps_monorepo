@@ -426,8 +426,9 @@ the refusal and original transport error. `SessionDetailCubit.abort` returns
 the typed not-accepted outcome rather than aborted while retaining its queued
 prompts. The shared UI renders the explicit limitation. A request-lifetime drain
 gate prevents those prompts from dispatching until the refusal is known, then
-normal drain resumes. Arbitrary, malformed, and unknown-kind 409s
-remain ambiguous and keep existing queue cleanup.
+normal drain resumes. A recognized `notPerformed` kind remains non-mutating
+when its reason is unknown; missing/malformed bodies and unknown kinds remain
+ambiguous and keep existing queue cleanup.
 
 Without an unresolved-background observation, `confirm` and `keep` with
 `activeTaskCount > 0` return the existing
@@ -439,15 +440,16 @@ or wire field is introduced. Explicit `stop` captures the existing
 `activeSettlement` future when a prompt is in
 flight, prepares only that root's queued/writing work and pending interaction,
 sends exactly one standard `session/cancel` for that root when the live client
-exists (and zero only when no process exists to notify), and waits for that
-captured settlement. It then **must re-check** unresolved background before any
-accepted response. If a mode-unknown Task terminal changed to background while
-cancellation settled, the branch throws a separate backend-neutral
+exists (and zero only when no process exists to notify), and waits at most 20
+seconds for that captured settlement. It then **must re-check** unresolved
+background and `activeTaskCount` before any accepted response. Timeout, surviving
+mode-unknown work, or a Task terminal that changed to background while cancellation
+settled makes the branch throw a separate backend-neutral
 `PluginOperationException` with HTTP 502: root cancellation has already happened,
 so this partial failure deliberately follows the existing ambiguous-failure
 queue cleanup rather than the non-mutating 409 path. The client never receives
-false aborted success. Only when settlement leaves no unresolved background may
-the branch return
+false aborted success. Only when settlement leaves no unresolved background or
+active mode-unknown work may the branch return
 `PluginAbortAccepted(workKept: false, subAgentsHandled: false)`. No child id,
 Task id, known client child id, ancestor, sibling, or descendant enters
 preparation or native dispatch.
@@ -457,13 +459,13 @@ preparation or native dispatch.
 | Any prior unresolved-background observation | `confirm` / `keep` / `stop` | None | Typed not-performed HTTP 409 refusal |
 | Active mode-unknown Tasks `N > 0`, no prior unresolved background | `confirm` | None | Exact typed rejection `N`; main running; main-only false |
 | Active mode-unknown Tasks `N > 0`, no prior unresolved background | `keep` | None | Same exact typed rejection |
-| Active mode-unknown Tasks `N > 0`, no prior unresolved background | `stop` | Named-root prepare/cancel; await authoritative prompt settlement; re-check background | ACK kept=false/handled=false only if no unresolved background; otherwise HTTP 502 partial failure after cancellation |
-| No active Task/background fact | `confirm` / `stop` / `keep` | Existing named-root cancellation; re-check after any captured settlement | ACK kept=false, handled=false only while no unresolved background |
+| Active mode-unknown Tasks `N > 0`, no prior unresolved background | `stop` | Named-root prepare/cancel; bounded settlement wait; re-check background and active count | ACK kept=false/handled=false only if both clear; otherwise HTTP 502 partial failure after cancellation |
+| No active Task/background fact | `confirm` / `stop` / `keep` | Existing named-root cancellation; bounded re-check after any captured settlement | ACK kept=false, handled=false only while no unresolved background or active Task |
 
 `subAgentsHandled` is always false because Cursor exposes no child targets or
 complete background authority. Every accepted Cursor path reports
-`workKept: false` only after proving no unresolved background remains at the
-post-settlement re-check. Background full stop remains unsupported.
+`workKept: false` only after proving no unresolved background or active Task
+remains at the post-settlement re-check. Background full stop remains unsupported.
 
 ### Replay and unsupported behavior
 

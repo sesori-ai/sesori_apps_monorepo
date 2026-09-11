@@ -2635,6 +2635,10 @@ class SessionDetailCubit(
         sessionId: _sessionId,
         subAgents: subAgents,
         childStatuses: childStatuses,
+        readCurrentChildStatuses: () => switch (state) {
+          SessionDetailLoaded(:final childStatuses) => Map<String, SessionStatus>.of(childStatuses),
+          SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
+        },
       );
       _clearLocalPromptQueue();
       _reportProductEvent(event: const ProductAnalyticsEvent.sessionAbortSucceeded());

@@ -514,9 +514,11 @@ void main() {
       await done.future;
     });
 
-    test("session and descendant deletion tombstones last until process reset", () {
+    test("session and descendant deletion tombstones last until process reset", () async {
       final taskTracker = CursorTaskTracker();
       final deletedMapper = buildMapper(taskTracker: taskTracker);
+      final residencyChanges = <void>[];
+      final subscription = taskTracker.residencyChanges.listen(residencyChanges.add);
       AcpNotification lateTask({required String sessionId}) => AcpNotification(
         method: AcpMethods.sessionUpdate,
         params: {
@@ -530,18 +532,38 @@ void main() {
           },
         },
       );
+      AcpNotification lateBackgroundTask({required String sessionId}) => AcpNotification(
+        method: AcpMethods.sessionUpdate,
+        params: {
+          "sessionId": sessionId,
+          "update": {
+            "sessionUpdate": "tool_call",
+            "toolCallId": "late-background-$sessionId",
+            "title": "Task",
+            "status": "completed",
+            "rawInput": {"_toolName": "task"},
+            "rawOutput": {"isBackground": true},
+          },
+        },
+      );
 
       for (final sessionId in const ["s-deleted", "s-descendant"]) {
         deletedMapper.beginTurn(sessionId: sessionId, messageId: "turn-$sessionId");
         deletedMapper.forgetSession(sessionId);
-        deletedMapper.map(lateTask(sessionId: sessionId));
+        deletedMapper
+          ..map(lateTask(sessionId: sessionId))
+          ..map(lateBackgroundTask(sessionId: sessionId));
         expect(taskTracker.hasInvocation(sessionId: sessionId, toolCallId: "late-$sessionId"), isFalse);
+        expect(taskTracker.hasUnresolvedBackgroundWork(sessionId: sessionId), isFalse);
       }
+      expect(residencyChanges, isEmpty);
 
       taskTracker.clear();
       deletedMapper.map(lateTask(sessionId: "s-deleted"));
       expect(taskTracker.hasInvocation(sessionId: "s-deleted", toolCallId: "late-s-deleted"), isTrue);
       taskTracker.clear();
+      await subscription.cancel();
+      await taskTracker.dispose();
     });
 
     test("cursor/generate_image maps to a standard inline file part", () async {

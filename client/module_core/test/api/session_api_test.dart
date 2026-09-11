@@ -24,6 +24,16 @@ void main() {
   });
 
   group("SessionApi", () {
+    void stubAbortError(NonSuccessCodeError error) {
+      when(
+        () => client.post<SessionAbortResponse>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(error));
+    }
+
     const options = SessionOptionsResponse(
       agents: Agents(agents: <AgentInfo>[]),
       providers: ProviderListResponse(items: <ProviderInfo>[], connectedOnly: false),
@@ -513,59 +523,34 @@ void main() {
       expect(request.toJson()["attachmentDelivery"], "storedReference");
     });
 
-    test("abort trusts only exact typed not-performed 409 and retains transport cause", () async {
+    test("abort trusts recognized not-performed kind with a future reason", () async {
       final transportError = NonSuccessCodeError(
         errorCode: 409,
-        rawErrorString: jsonEncode(
-          const SessionAbortRefusal(
-            kind: SessionAbortRefusalKind.notPerformed,
-            reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
-          ).toJson(),
-        ),
+        rawErrorString: jsonEncode(const <String, Object?>{"kind": "notPerformed", "reason": "future"}),
       );
-      when(
-        () => client.post<SessionAbortResponse>(
-          any(),
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.error(transportError));
+      stubAbortError(transportError);
 
       await expectLater(
         api.abortSession(sessionId: "session-1", subAgents: SessionAbortSubAgentPolicy.confirm),
         throwsA(
           isA<SessionAbortApiNotAcceptedException>()
               .having((error) => error.innerError, "cause", same(transportError))
-              .having(
-                (error) => error.refusal.reason,
-                "reason",
-                SessionAbortRefusalReason.residentWorkCompletionUnknown,
-              ),
+              .having((error) => error.refusal.reason, "reason", SessionAbortRefusalReason.unknownEnumValue),
         ),
       );
     });
 
-    test("abort leaves malformed, missing, and unknown typed 409s ambiguous", () async {
+    test("abort leaves malformed, missing, and unknown-kind 409s ambiguous", () async {
       for (final body in [
         "not-json",
         jsonEncode(const <String, Object?>{"kind": "notPerformed"}),
-        jsonEncode(const <String, Object?>{
-          "kind": "notPerformed",
-          "reason": "future",
-        }),
         jsonEncode(const <String, Object?>{
           "kind": "future",
           "reason": "residentWorkCompletionUnknown",
         }),
       ]) {
         final transportError = NonSuccessCodeError(errorCode: 409, rawErrorString: body);
-        when(
-          () => client.post<SessionAbortResponse>(
-            any(),
-            fromJson: any(named: "fromJson"),
-            body: any(named: "body"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.error(transportError));
+        stubAbortError(transportError);
 
         final result = await api.abortSession(
           sessionId: "session-1",

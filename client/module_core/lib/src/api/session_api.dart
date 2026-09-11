@@ -372,8 +372,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       if (error.errorCode == 409 && rawBody != null) {
         try {
           final refusal = SessionAbortRefusal.fromJson(jsonDecodeMap(rawBody));
-          if (refusal.kind == SessionAbortRefusalKind.notPerformed &&
-              refusal.reason == SessionAbortRefusalReason.residentWorkCompletionUnknown) {
+          if (refusal.kind == SessionAbortRefusalKind.notPerformed) {
             throw SessionAbortApiNotAcceptedException(refusal: refusal, innerError: error);
           }
         } on SessionAbortApiNotAcceptedException {

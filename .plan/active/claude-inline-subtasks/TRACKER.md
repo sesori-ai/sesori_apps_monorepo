@@ -281,16 +281,18 @@ post-merge E2E gates are unchanged.
   invented. Client-local API/repository not-accepted exceptions trust only that
   decoded discriminator, and a request-lifetime cubit drain gate preserves the
   local prompt queue; the cubit exposes a typed not-accepted outcome and shared
-  UI explains the limitation/restart recovery. Malformed/unknown 409s, accepted
-  responses, and ambiguous failures retain existing queue cleanup. Active mode-unknown
+  UI explains the limitation/restart recovery. Recognized `notPerformed` with an
+  unknown reason stays non-mutating; missing/malformed bodies, unknown kinds,
+  accepted responses, and ambiguous failures retain existing queue cleanup. Active mode-unknown
   confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
   map exact `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
   main-only false and no wire change;
-  explicit `stop` awaits authoritative prompt settlement and must re-check
-  unresolved background before acceptance. A Task that transitions to
+  explicit `stop` waits at most 20 seconds for authoritative prompt settlement
+  and must re-check unresolved background plus active Task count before
+  acceptance. Timeout, surviving active work, or a Task that transitions to
   background returns an HTTP 502 partial failure—root cancellation has already
-  happened—while accepted responses require no unresolved background and
+  happened—while accepted responses require no unresolved background or active Task and
   `workKept: false`.
 - [x] Corrected rendering scope to completed foreground tiles only.
   Pending/in-progress are mode-unknown and remain generic; cancelled and failed
@@ -336,8 +338,9 @@ post-merge E2E gates are unchanged.
   inference was then rejected in a late post-merge Codex finding. The final
   Step 4 contract uses a discriminated backend-neutral typed not-performed
   result across plugin, bridge, shared transport, and client; only the exact
-  discriminator preserves the queue, malformed/unknown 409s remain ambiguous,
-  HTTP 502 remains the post-cancel partial failure, and `rootSessionCancel`
+  discriminator preserves the queue even with an unknown reason; missing/malformed
+  bodies and unknown kinds remain ambiguous, HTTP 502 remains the post-cancel
+  partial failure, and `rootSessionCancel`
   stays out of implemented capabilities until Step 4 lands. Per user direction
   after two architecture passes, there is no further architecture-review loop.
 

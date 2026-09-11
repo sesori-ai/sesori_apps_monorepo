@@ -49,24 +49,22 @@ void main() {
         reason: PluginAbortRefusalReason.residentWorkCompletionUnknown,
       );
 
-      await expectLater(
-        () => handler.handle(
+      try {
+        await handler.handle(
           makeRequest("POST", "/session/abort"),
           body: const AbortSessionRequest(sessionId: "s1", useAtomicStop: true),
-        ),
-        throwsA(
-          isA<RelayResponse>()
-              .having((response) => response.status, "status", 409)
-              .having(
-                (response) => SessionAbortRefusal.fromJson(jsonDecodeMap(response.body!)),
-                "body",
-                const SessionAbortRefusal(
-                  kind: SessionAbortRefusalKind.notPerformed,
-                  reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
-                ),
-              ),
-        ),
-      );
+        );
+        fail("expected typed refusal");
+      } on RelayResponse catch (response) {
+        expect(response.status, 409);
+        expect(
+          SessionAbortRefusal.fromJson(jsonDecodeMap(response.body!)),
+          const SessionAbortRefusal(
+            kind: SessionAbortRefusalKind.notPerformed,
+            reason: SessionAbortRefusalReason.residentWorkCompletionUnknown,
+          ),
+        );
+      }
     });
 
     test("returns the plugin descendant-handling acknowledgment", () async {

@@ -809,9 +809,10 @@ The architecture corrections are summarized here:
   `PluginAbortRejectedSubAgentsRunning` → `SessionAbortRejection` path with
   `mainAgentOnlySupported: false` and no wire change. Explicit `stop` prepares
   only the named root,
-  sends one root `session/cancel`, waits existing authoritative prompt
-  settlement, then must re-check unresolved background before acceptance. A
-  Task that transitions to background during that window produces an HTTP 502
+  sends one root `session/cancel`, waits at most 20 seconds for authoritative
+  prompt settlement, then must re-check unresolved background and active Task
+  count before acceptance. Timeout, surviving active work, or a Task that
+  transitions to background during that window produces an HTTP 502
   partial failure—root cancellation has already happened—never aborted success;
   only when no unresolved background remains does it return
   `workKept: false` and `subAgentsHandled: false`. Standard Task terminal frames
@@ -828,8 +829,9 @@ The architecture corrections are summarized here:
   retain queued prompts, accepted responses and ambiguous failures clear them,
   and drain resumes when the request settles. The cubit returns a distinct
   typed not-accepted outcome and shared UI explains that completion cannot be
-  verified and the harness must be restarted. Malformed, unknown-kind, and
-  version-skewed 409s never gain lifecycle meaning from parse failure. The new
+  verified and the harness must be restarted. A recognized `notPerformed` kind
+  remains non-mutating with an unknown reason; missing/malformed bodies, unknown
+  kinds, and version-skewed discriminators never gain lifecycle meaning. The new
   body is an additive error contract.
 - The only renamed new replay class is `CursorTaskReplayTracker` in
   `bridge/sesori_plugin_cursor/lib/src/repositories/trackers/`. Cursor plugin

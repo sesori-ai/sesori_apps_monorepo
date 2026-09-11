@@ -25,6 +25,7 @@ class _PolicyPlugin({
       );
 
   int selectionFailures = 0;
+  int activeWorkCount = 0;
 
   @override
   bool get serializesPromptsProcessWide => processWide;
@@ -37,6 +38,15 @@ class _PolicyPlugin({
 
   @override
   Duration get sessionCloseSettlementTimeout => closeTimeout;
+
+  @override
+  AcpScopedStopCapability get scopedStopCapability => AcpScopedStopCapability.rootSessionCancel;
+
+  @override
+  Duration get rootSessionCancelSettlementTimeout => closeTimeout;
+
+  @override
+  int activeScopedStopWorkCount({required String sessionId}) => activeWorkCount;
 
   @override
   Future<void> applyTurnSelection({
@@ -161,6 +171,19 @@ void main() {
       model: null,
     );
 
+    Future<(PluginSession, Map<String, dynamic>)> startRootCancel({required Duration timeout}) async {
+      await plugin.dispose();
+      plugin = buildPlugin(
+        processWide: false,
+        failClosed: false,
+        closeTimeout: timeout,
+      );
+      await connect();
+      final session = await create("session-1");
+      await send(session.id, "active turn");
+      return (session, await waitForFrameCount(AcpMethods.sessionPrompt, 1));
+    }
+
     test("opt-in process lane serializes prompts across sessions", () async {
       await plugin.dispose();
       plugin = buildPlugin(processWide: true, failClosed: false);
@@ -272,6 +295,45 @@ void main() {
       respond(runningPrompt, {"stopReason": "end_turn"});
       await pump();
       expect(frames(AcpMethods.sessionPrompt), hasLength(1));
+    });
+
+    test("root cancel timeout returns cause-preserving 502 after native cancellation", () async {
+      final (session, _) = await startRootCancel(timeout: const Duration(milliseconds: 20));
+      await expectLater(
+        plugin.abortSession(
+          sessionId: session.id,
+          subAgents: PluginAbortSubAgentPolicy.stop,
+          useAtomicStop: true,
+          knownSubAgentSessionIds: const {},
+        ),
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "status", 502)
+              .having((error) => error.cause, "cause", isA<TimeoutException>()),
+        ),
+      );
+      expect(frames(AcpMethods.sessionCancel), hasLength(1));
+    });
+
+    test("root cancel rejects active work that survives prompt settlement", () async {
+      final (session, prompt) = await startRootCancel(timeout: const Duration(seconds: 1));
+      plugin.activeWorkCount = 1;
+      final stopping = plugin.abortSession(
+        sessionId: session.id,
+        subAgents: PluginAbortSubAgentPolicy.stop,
+        useAtomicStop: true,
+        knownSubAgentSessionIds: const {},
+      );
+      await waitForFrameCount(AcpMethods.sessionCancel, 1);
+      respond(prompt, {"stopReason": "cancelled"});
+      await expectLater(
+        stopping,
+        throwsA(
+          isA<PluginOperationException>()
+              .having((error) => error.statusCode, "status", 502)
+              .having((error) => error.cause, "cause", isA<StateError>()),
+        ),
+      );
     });
 
     test("close timeout fails deletion and preserves local session state", () async {
