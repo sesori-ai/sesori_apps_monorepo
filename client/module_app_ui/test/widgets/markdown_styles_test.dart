@@ -38,15 +38,33 @@ void main() {
     expect(styleSheet.p, paragraphStyle);
   });
 
-  test("buildUserMessageMarkdownStyleSheet keeps Markdown legible on the brand surface", () {
-    final styleSheet = buildUserMessageMarkdownStyleSheet(prego: prego);
+  for (final brightness in Brightness.values) {
+    final theme = brightness == Brightness.light ? PregoDesignSystem.light : PregoDesignSystem.dark;
+    test("chat Markdown uses Figma typography and neutral foreground in ${brightness.name}", () {
+      final styleSheet = buildChatMessageMarkdownStyleSheet(prego: theme);
 
-    expect(styleSheet.p?.color, prego.colors.textBrandPrimary);
-    expect(styleSheet.a?.color, prego.colors.textBrandPrimary);
-    expect(styleSheet.strong?.color, prego.colors.textBrandPrimary);
-    expect(styleSheet.listBullet?.color, prego.colors.textBrandPrimary);
-    expect(styleSheet.code?.color, prego.colors.textBrandPrimary);
-  });
+      for (final style in [
+        styleSheet.p,
+        styleSheet.a,
+        styleSheet.strong,
+        styleSheet.listBullet,
+        styleSheet.tableBody,
+      ]) {
+        expect(style?.fontFamily, PregoTextTheme.fontFamily);
+        expect(style?.fontSize, 14);
+        expect(style?.height, 20 / 14);
+        expect(style?.letterSpacing, 0.14);
+        expect(style?.color, theme.colors.textPrimary);
+      }
+      expect(styleSheet.p?.fontWeight, FontWeight.w400);
+      expect(styleSheet.strong?.fontWeight, FontWeight.bold);
+      expect(styleSheet.a?.decoration, TextDecoration.underline);
+      expect(styleSheet.a?.decorationColor, theme.colors.textPrimary);
+      expect(styleSheet.code?.color, theme.colors.textPrimary);
+      expect(styleSheet.code?.fontFamily, "monospace");
+      expect(styleSheet.code?.fontSize, 13);
+    });
+  }
 
   test("sessionMarkdownBlockSyntaxes keeps raw HTML visible as a code block", () {
     const message =

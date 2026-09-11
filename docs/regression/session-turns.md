@@ -446,10 +446,17 @@ defaults and queued client sends coherent.
   by the next snapshot instead.
 - Queued and sending text render as the newest rows inside the scrollable
   transcript, never as controls pinned above the composer. They use the same
-  brand bubble and Markdown rendering as settled user text; a compact status
+  neutral bubble and Markdown rendering as settled user text; a compact status
   rail and subtle queued outline carry the transient state, with the outline
   change animated when reduced motion is not requested. A turn started on one
   client is visible to every other client of that bridge.
+- Outgoing message bubbles use the neutral raised surface, 12px corners and
+  10px padding, aligned right and sized against the available transcript width
+  (including desktop split panes). Both user and assistant Markdown use Prego
+  14px/20px regular primary text with 1% letter spacing, matching list markers
+  and underlined primary-color links in light and dark themes. Streaming and
+  settled responses share the same typography; code remains monospace and
+  Markdown emphasis, selection, attachments and queued-state cues stay usable.
 - User and assistant message text containing a raw HTML block renders that
   markup as a literal code block, so a pasted page or error body stays visible
   and copyable instead of being swallowed by the Markdown renderer.

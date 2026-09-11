@@ -49,10 +49,13 @@ MarkdownStyleSheet buildSessionMarkdownStyleSheet({
   );
 }
 
-/// Session Markdown styled for the brand surface of an outgoing user bubble.
-MarkdownStyleSheet buildUserMessageMarkdownStyleSheet({required PregoDesignSystem prego}) {
-  final foreground = prego.colors.textBrandPrimary;
-  final body = prego.textTheme.textSm.regular.copyWith(color: foreground);
+/// Figma chat typography shared by outgoing bubbles and assistant responses.
+MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSystem prego}) {
+  final foreground = prego.colors.textPrimary;
+  final body = prego.textTheme.textSm.regular.copyWith(
+    color: foreground,
+    letterSpacing: 0.14,
+  );
   final base = buildSessionMarkdownStyleSheet(
     prego: prego,
     paragraphStyle: body,
@@ -71,12 +74,12 @@ MarkdownStyleSheet buildUserMessageMarkdownStyleSheet({required PregoDesignSyste
     h5: prego.textTheme.textSm.bold.copyWith(color: foreground),
     h6: prego.textTheme.textSm.bold.copyWith(color: foreground),
     em: body.copyWith(fontStyle: FontStyle.italic),
-    strong: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    strong: body.copyWith(fontWeight: FontWeight.bold),
     del: body.copyWith(decoration: TextDecoration.lineThrough),
     blockquote: body,
     checkbox: body,
     listBullet: body,
-    tableHead: prego.textTheme.textSm.bold.copyWith(color: foreground),
+    tableHead: body.copyWith(fontWeight: FontWeight.bold),
     tableBody: body,
   );
 }
