@@ -15,7 +15,10 @@ final class SessionAbortDescendantFailureException({
 final class SessionAbortDescendantStatusUnavailableException({
   required final String sessionId,
   required final String pluginId,
-}) implements Exception;
+}) implements Exception {
+  @override
+  String toString() => "Could not read status for descendant $sessionId from plugin $pluginId";
+}
 
 @lazySingleton
 class SessionAbortService({required final SessionRepository _repository}) {
