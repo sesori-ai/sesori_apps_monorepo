@@ -251,15 +251,15 @@ Cursor boundary and repository changes:
   composition owner. Step 2 constructs one `CursorTaskTracker`, injects it into
   `CursorEventMapper`, and clears it from `onConnectionReset` after pending RPC
   failures have resumed their turn catch paths. Reset fabricates no terminal
-  Task event. Step 5 may compose a shared pure projection if replay creates the
-  second current consumer. Step 4 makes
+  Task event. Step 5 composes one shared pure `CursorTaskMapper` for the live and
+  replay consumers. Step 4 makes
   `CursorPlugin.scopedStopCapability` return
   `AcpScopedStopCapability.rootSessionCancel`, reaching the dedicated neutral
   ACP branch. Its `createSessionReplayCollector({required
   String sessionId, required
   AcpReplayCollectorFactory collectorFactory})` override first calls
   `collectorFactory(toolPartSuppression: null)` for one fully configured
-  standard collector, then injects that collector and the stored projection into
+  standard collector, then injects that collector and the shared mapper into
   `CursorTaskReplayTracker`. The tracker receives no factory, and neither
   mapper nor tracker constructs its peer.
 - `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_plugin_descriptor.dart`

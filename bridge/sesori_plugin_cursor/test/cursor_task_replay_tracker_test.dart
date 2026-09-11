@@ -47,7 +47,6 @@ void main() {
         standard.buildWithAssistantSelection(modelId: "model", providerId: "cursor", variant: "high"),
       );
     });
-
     test("replaces one complete foreground generic part in order with stable replay identity", () {
       final updates = [
         _text(text: "before"),
@@ -92,7 +91,6 @@ void main() {
       );
       expect(message.parts.whereType<PluginMessagePartTool>(), isEmpty);
     });
-
     test("merges separately replayed facts using an opaque tool-call ID", () {
       final updates = [
         _toolCall()..["toolCallId"] = " task-1 ",

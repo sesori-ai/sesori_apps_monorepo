@@ -11,7 +11,6 @@ final class CursorTaskReplayTracker({
   required final CursorTaskMapper taskMapper,
 }) implements AcpSessionReplayCollector {
   final Map<String, _CursorReplayTask> _tasksByToolCallId = {};
-
   @override
   void consumeNotification({required AcpNotification notification}) {
     standardCollector.consumeNotification(notification: notification);
@@ -76,7 +75,7 @@ final class CursorTaskReplayTracker({
     variant: variant,
     toolPartReplacement: ({required toolCallId, required toolPart}) {
       final task = _tasksByToolCallId[toolCallId];
-      if (task == null || task.lifecycle != _Lifecycle.completed || task.mode != _Mode.foreground) return null;
+      if (task == null || task.status != CursorTaskReplayStatus.completed || task.mode != _Mode.foreground) return null;
       final input = task.input;
       final prompt = input.prompt;
       final description = input.description;
@@ -90,13 +89,12 @@ final class CursorTaskReplayTracker({
       );
     },
   );
-
   void _mergeTerminalOutput({
     required _CursorReplayTask task,
     required CursorTaskReplayUpdateDto update,
     required Map<String, dynamic> updateJson,
   }) {
-    if (update.status == CursorTaskReplayStatus.completed) task.lifecycle = _Lifecycle.completed;
+    task.status = update.status ?? task.status;
     final rawOutput = updateJson["rawOutput"];
     if (rawOutput == null) return;
     final outputJson = _asMap(rawOutput);
@@ -127,11 +125,6 @@ final class CursorTaskReplayTracker({
   static Map<String, dynamic>? _asMap(Object? value) => value is Map ? value.cast<String, dynamic>() : null;
 }
 
-enum _Lifecycle() {
-  active,
-  completed,
-}
-
 enum _Mode() {
   unknown,
   foreground,
@@ -139,6 +132,6 @@ enum _Mode() {
 }
 
 final class _CursorReplayTask({required final CursorTaskReplayInputDto input}) {
-  _Lifecycle lifecycle = _Lifecycle.active;
+  CursorTaskReplayStatus status = CursorTaskReplayStatus.pending;
   _Mode mode = _Mode.unknown;
 }
