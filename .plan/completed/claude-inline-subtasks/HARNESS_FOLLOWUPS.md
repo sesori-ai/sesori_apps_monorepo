@@ -19,11 +19,11 @@
   ([#1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431)).
 - **Delivery:** one open PR at a time, following current repository rules.
   Grok Step 6/7 merged under its exact title. Corrected actual-plugin coverage
-  passed its executed stop, lifecycle, replay, and runtime-reuse scope; live
-  permission coverage remains unexecuted because no request surfaced. Phone
-  setup reached a healthy source build and relay connection, but UI automation
-  was blocked before any visible case. Step 7/7 merged as PR #1430 and records
-  that partial matrix while keeping the phone gate open. DeepSeek final coverage
+  passed its executed stop, lifecycle, replay, and runtime-reuse scope. Step 7/7
+  merged as PR #1430 with the then-partial phone state; subsequent owned-phone
+  QA passed the bounded matrix, including genuine permission Once and fixed
+  cold child history. Notification remained unavailable and questions remain
+  unsupported. DeepSeek final coverage
   documentation now records its passed phone stop/input scope and explicitly
   deferred desktop scope. Codex has nine steps: merged metadata,
   child-session, historical prompt preparation, and cleanup remain steps
@@ -487,7 +487,7 @@ has no child session or full scoped stop.
 | 🌿 | `grok: cover child session history [step 4/6]` | Historical title unchanged (now step 4/7); PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
 | ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged (now step 5/7); ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
 | 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | PR #1429 merged at `2ebcc7d01a` under exact title; required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
-| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Current reconciliation: actual-plugin executed scope passed; permissions unexecuted; phone gate infrastructure-blocked before visible UI |
+| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Final reconciliation: actual-plugin scope and bounded owned-phone matrix passed, including permission Once and fixed cold child history; notification unavailable and questions unsupported |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 

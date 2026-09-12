@@ -127,10 +127,10 @@ Step 6/7 merged as PR #1429. Executed scope passed:
   dispatched and settled on the same runtime.
 
 Root `confirm` was not rerun: its earlier side-effect-free production-composition
-pass remains valid because Step 6 changed only response-envelope decoding.
-Unchanged configuration emitted zero `session/request_permission` requests, so
-permission preservation, isolation, and cleanup remain unexecuted. No Grok
-question capability is claimed.
+pass remains valid because Step 6 changed only response-envelope decoding. That
+headless configuration emitted zero `session/request_permission` requests. Later
+owned-phone QA executed one genuine native permission request with Once; denial,
+repeated-request isolation, and question capability remain unclaimed.
 
 ## Phone-through-relay gate
 
@@ -179,8 +179,9 @@ Local production changes now centralize deterministic standalone tool message
 and part identity across ACP live and replay. Repository reconciliation adds one
 atomic exception around that exact shared anchor: preceding assistant content
 must match exactly, following replay text must be the sole differing field and a
-strict extension of nonempty live text, known times must agree, and all three
-rows must form one uniquely consumed contiguous window. Distinct or duplicated anchors, reverse prefixes, unrelated text, second
+strict extension of live text (empty retained text is accepted only when replay
+text is nonempty), known times must agree, and all three rows must form one
+uniquely consumed contiguous window. Distinct or duplicated anchors, reverse prefixes, unrelated text, second
 differences, part-shape changes, reordered rows, timestamp conflicts, and
 unmatched newer suffixes remain distinct. Focused ACP and repository coverage
 passes locally. No Grok
@@ -211,9 +212,9 @@ is nonempty; exact anchor, field, shape, timestamp, ordering, and two-sided
 consumption guards remain unchanged.
 
 Final owned-phone confirmation at `493bab1483` passed. Cold termination and
-relaunch showed one idle root, one completed child tile, and exactly one
-child-owned initial row followed by one assistant/tool/assistant sequence in the
-read-only child. A second open remained identical and non-growing. Two private
+relaunch showed one idle root and one completed root tile linked to its exact
+direct child. That child's read-only replay retained its nonblank child-owned
+initial prompt, followed by exactly one assistant/tool/assistant sequence. A second open remained identical and non-growing. Two private
 backfills each stored four imported rows with one tool part and no retained live
 assistant identities. Genuine permission used Once; notification remains only
 attempted/unavailable from the earlier full run, and no question or broader push

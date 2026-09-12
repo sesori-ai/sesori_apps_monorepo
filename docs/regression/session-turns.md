@@ -195,9 +195,10 @@ defaults and queued client sends coherent.
   identity and repository reconciliation now fix only that exact anchored
   partial-completion shape, with negative coverage for ambiguity, multiplicity,
   order, timestamps, parts, unrelated text, and newer live suffixes. Fixed-build
-  phone QA at `0187bb2b10` deduplicated the exact tool anchor but left two
-  assistant rows on each side across two opens. The retained live final text
-  part was empty rather than the nonempty prefix covered by tests. The exact
+  phone QA at `0187bb2b10` deduplicated the exact tool anchor, but each of two
+  opens showed two pre-tool assistant rows, one tool row, and two post-tool
+  assistant rows. The structure was stable and non-growing. The retained live
+  final text part was empty rather than the nonempty prefix covered by tests. The exact
   anchored empty-prefix case is covered and implemented. Final owned-phone QA
   on build `493bab1483` passed exactly one initial plus assistant/tool/assistant
   sequence across two cold opens, completing the bounded Grok phone gate.

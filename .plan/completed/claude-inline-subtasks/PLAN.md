@@ -25,8 +25,8 @@
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
   Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
-  evidence. None of these refs may be mutated or deleted. Retirement remains
-  blocked by one material Grok phone finding. The 2026-09-12 owned-phone run
+  evidence. None of these refs may be mutated or deleted. Retirement was
+  previously blocked by one material Grok phone finding. The 2026-09-12 owned-phone run
   passed visible Grok-only creation, two-child lifecycle, exact scope-dialog
   count/copy and dismissal, full stop, same-session/runtime reuse, cold root
   reload, read-only child controls, and normal one-time permission handling.
@@ -59,32 +59,13 @@
   (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 merged as #1420,
   and scoped stop 8/9 merged as #1421 at `77165f784f`. Final coverage 9/9
   records a passed bounded actual-plugin policy scope and a partial live matrix.
-  Grok scoped stop merged as PR #1428 at `3934f32ec9`; its child-cancel
-  envelope repair merged as PR #1429 at `2ebcc7d01a`, so Grok has seven steps.
-  Corrected production-composition QA passed named-child isolation, root full
-  stop, idle-child keep and wake-up, already-finished handling, exact replay,
-  lifecycle settlement, and runtime reuse; root confirmation reuses its earlier
-  passing run. The unchanged runtime emitted no live permission request, so
-  permission handling remains unexecuted and no question support is claimed.
-  The earlier WebDriverAgent and stale-authentication setup blockers are
-  superseded. The 2026-09-12 owned-phone run executed the bounded matrix on
-  isolated production Grok 1.0.5. Creation, child tiles/status, exact Stop
-  confirmation and no-effect dismissal, full cancellation, reuse, cold root
-  reload, read-only child navigation, and normal permission UI passed. Cold
-  child history reproducibly duplicated assistant/tool/final rows. A later
-  fixed-build rerun reduced that to one tool row but retained two assistant
-  rows on each side because live final text was an empty snapshot. The narrow
-  anchored empty-prefix correction is implemented. Final QA at `493bab1483`
-  showed one initial row plus one assistant/tool/assistant sequence on two cold
-  opens, with two private backfills retaining four imported rows and no live
-  assistant identities. Grok phone coverage passes its bounded matrix.
-  Background notification delivery was attempted but not observed. Historical merged PR titles remain unchanged. Grok
-  coverage
-  documentation merged as PR #1430 at `a28e860557` while its then-blocked phone
-  gate correctly remained open; later fixed-build evidence above closes it. DeepSeek's final
-  documentation reconciles the passed phone stop/input scope and the
-  user-deferred desktop matrix without changing adapter 0.1.4 evidence. The
-  Grok and Cursor follow-ups are complete; the plan is retired.
+  Grok delivery completed in seven steps: scoped stop PR #1428, child-cancel
+  envelope PR #1429, and coverage PR #1430 close the series. Canonical Grok QA,
+  fixed-history, permission, notification, and final phone evidence lives in the
+  Status section above and `followups/grok-probe.md`; no duplicate matrix is
+  maintained here. DeepSeek's final documentation reconciles the passed phone
+  stop/input scope and user-deferred desktop matrix without changing adapter
+  0.1.4 evidence. Grok and Cursor follow-ups are complete; the plan is retired.
 
 ## Goal
 

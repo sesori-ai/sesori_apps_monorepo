@@ -537,8 +537,9 @@ decoupling as in step 15. The desktop shell registers the image-action seams
 this slice resolves (`ImageSaver`/`ImageClipboard`/`ImageSharer` — the mobile
 shell already has desktop-aware `ImageSaver` selection to reuse), or the
 affected actions hide behind explicit capabilities — no dead controls, no
-missing-registration crashes. Preserve the merged `claude-inline-subtasks` and
-`instant-session-launch` behavior when moving `session_detail` widgets.
+missing-registration crashes. Preserve the merged `claude-inline-subtasks`
+behavior and the in-flight `instant-session-launch` behavior when moving
+`session_detail` widgets.
 *Overage: mechanical move churn.*
 
 **Step 18 — 🚧 Composer slice + voice/media seams (approved refactor R2's

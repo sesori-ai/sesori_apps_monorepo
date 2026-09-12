@@ -64,8 +64,8 @@ reload, read-only child navigation, push delivery, bridge restart/reconnect,
 multiple clients, alternate mobile platforms, or macOS desktop. Desktop remains
 unexecuted by explicit user choice.
 
-Codex coverage later merged through Step 9/9. Grok coverage documentation merged
-as PR #1430 at `a28e860557`, but its phone gate remains blocked before visible
-UI and is not converted into a pass. Cursor implementation and coverage remain.
-Do not retire the overall plan on the strength of this DeepSeek phone-only
-handoff.
+Codex coverage later merged through Step 9/9. When Grok coverage documentation
+merged as PR #1430 at `a28e860557`, its phone gate was still blocked before
+visible UI and was not converted into a pass. Subsequent Grok and Cursor evidence
+completed their gates; the overall plan was retired on that combined evidence,
+not on this DeepSeek phone-only handoff.

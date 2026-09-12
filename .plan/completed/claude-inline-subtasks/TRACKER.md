@@ -10,9 +10,9 @@
   `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9, Grok steps 1–7, and
   Cursor steps 1–6 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
-  2026-09-10. Grok phone coverage is now partial: bounded visible lifecycle,
-  stop, reuse, permission, cold-root, and read-only-child cases passed, but cold
-  child history initially remained duplicated. Fixed build `0187bb2b10`
+  2026-09-10. Grok bounded phone coverage now passes: visible lifecycle, stop,
+  reuse, permission, cold-root, and read-only-child cases passed after cold child
+  history initially remained duplicated. Fixed build `0187bb2b10`
   isolated an empty live final snapshot; final build `493bab1483` then passed
   exact cold convergence on two opens and two private backfills. All harness
   follow-ups are reconciled.
@@ -203,7 +203,7 @@ post-merge E2E gates are unchanged.
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; historical title unchanged (now step 4/7); approved collector/repository/service coverage and docs |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428) merged at `3934f32ec9`; historical title unchanged (now step 5/7) |
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | [PR #1429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1429) merged at `2ebcc7d01a`; exact title unchanged |
-| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin executed scope passed; live permission unexecuted; phone gate remains blocked before visible UI |
+| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin scope passed; subsequent owned-phone matrix passed, including genuine permission Once and fixed cold child history; notification unavailable and questions unsupported |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
@@ -1003,18 +1003,14 @@ cleanup, already-finished, and full stop all settled on the same runtime. Root
 `confirm` was not rerun; its earlier side-effect-free actual-plugin pass remains
 valid because the envelope repair did not affect preflight policy.
 
-Live matrix remains partial. Unchanged configuration produced zero standard
-permission requests, so permission preservation, isolation, and cleanup are
-unexecuted; no question support is claimed. Source phone build plus bridge/relay
-connection were healthy, but `mobile-mcp` could not start WebDriverAgent
-0.0.23 before any visible UI interaction, even after reinstalling the agent on
-the owned simulator. Phone coverage is infrastructure-blocked and entirely
-unexecuted, not a product failure: no stop dialog/action, history, read-only
-child view, notification, or push behavior is claimed. Owned bridge, app,
-simulator, scratch project, and isolated runtime resources were cleaned;
-protected resources were untouched. Step 7/7 recorded this partial coverage in
-PR #1430 at `a28e860557`; delivery of documentation did not clear the blocked
-phone gate.
+At the Step 7/7 checkpoint, unchanged headless configuration produced no
+standard permission request, and the first phone attempt was infrastructure-
+blocked before visible UI. PR #1430 at `a28e860557` accurately recorded that
+then-partial state. Later owned-phone runs superseded both gaps: bounded phone
+creation, lifecycle, scoped stop, reuse, cold history, and read-only child
+navigation passed, and one genuine native permission used Once. Notification
+delivery remained attempted but unavailable, and no question support is
+claimed. Final fixed-history evidence is recorded below.
 
 DeepSeek final coverage reconciliation used existing private summary reports and
 structural artifact summaries only; raw logs, screenshots, transcripts, prompts,
