@@ -1463,7 +1463,7 @@ void main() {
 
     await tester.pumpWidget(_app(child: const ToolPartWidget(part: part)));
 
-    expect(find.text("git status --short"), findsOneWidget);
+    expect(find.text("shell git status --short"), findsOneWidget);
     expect(find.text(" M file.dart"), findsOneWidget);
   });
 
