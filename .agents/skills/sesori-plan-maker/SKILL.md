@@ -44,20 +44,29 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   `<emoji> [<slug>] <description> [step <x>/<y>]`. For durable planned
   work, `<slug>` is exactly the plan directory name under `.plan`; do not invent
   a separate series slug. Without a durable plan, choose one stable, lowercase
-  kebab-case slug. Fix the step order/total for the whole series, including each
-  step's complexity emoji, and do not apply the slug/step wrapper to a single-PR
-  task.
-- Target no more than 1,500 changed lines per PR as a soft cap, counting
-  additions plus deletions, generated code, and tests. Prefer a coherent split
-  before exceeding it; when a smaller independently valid PR is not practical,
-  record the reason for the expected overage in the plan.
+  kebab-case slug. Keep one current step order/total for the whole series,
+  including each PR's complexity emoji, and do not apply the slug/step wrapper
+  to a single-PR task. When scope or estimates change, split steps into substeps
+  such as `3.a` / `3.b`, map them to PR ordinals, and synchronize dependencies,
+  tracker and series titles/totals. Clean splits of approved work never need
+  permission; substantive scope expansion still does.
+- Target ~1,500 changed lines per PR as a soft cap, counting additions plus
+  deletions, generated code, tests, and docs. Prefer considerably smaller PRs for
+  complex changes; allow larger coherent diffs when most churn is generated
+  boilerplate, such as Drift output exceeding 1,000 lines for one new table.
+  Record generated versus authored churn and explain substantial overages when
+  no clean split is practical. Keep generated output with its source.
+  Every push restarts AI review of the entire PR; small coherent PRs avoid costly
+  fix/re-review loops and merge sooner. Follow the plan worker's PR Sizing and
+  Step Splitting rules during execution.
 - For durable planned work, the first PR step always raises the plan under
   `.plan/active/<slug>/` before implementation begins. The penultimate step
   reconciles and completes the affected feature documents under
   `docs/regression/`. The final step runs the level and matrix already recorded
   in `PLAN.md`, records the result, and retires the plan by moving it to
   `.plan/completed/<slug>/` only after that coverage passes.
-  Include all three lifecycle steps in the fixed step total.
+  Include all three lifecycle steps in the current series total, including after
+  a split.
 
 For a new durable plan, `PLAN.md` should normally capture the goal, scope,
 relevant current behavior, concrete implementation steps, verification, and
@@ -155,7 +164,7 @@ rate every PR in a series identically by default.
 For a single-PR task, prefix the normal title with `<emoji>`. For a multi-PR
 task, place the emoji first:
 `<emoji> [<slug>] <description> [step <x>/<y>]`. Treat the emoji as part of
-the fixed exact title. If implementation evidence changes the estimate before
+the planned exact title. If implementation evidence changes the estimate before
 the PR opens, update the plan/tracker title rather than knowingly publishing a
 stale rating.
 
