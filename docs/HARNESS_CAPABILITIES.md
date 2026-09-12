@@ -7,8 +7,8 @@ capability lands for some harnesses but not others, or a harness limitation is
 verified or lifted.
 
 Capability tables include registered plugins where the relevant integration behavior has been verified. Antigravity is
-included below for local runtime, options, setup, login, and permission behavior; its upstream sub-agent behavior has
-not been verified, so the sub-agent table makes no claim about it.
+included below, including the bounded authenticated sub-agent assessment completed on 2026-09-12. Its sub-agent cells
+describe what Sesori can expose through the official ACP seam, not whether the native runtime delegates internally.
 
 ## Legend
 
@@ -228,13 +228,13 @@ reconciliation when connected to an older bridge.
 
 ## Sub-agents
 
-| Capability | Claude | OpenCode | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
-|---|---|---|---|---|---|---|---|---|---|---|
-| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
-| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
-| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
+| Capability | Claude | OpenCode | Antigravity | Codex | Copilot | Cursor | Hermes | Pi | OMP | DeepSeek | Grok |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| Sub-agents rendered as inline subtask tiles | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | ✅⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Sub-agent transcripts exposed as child sessions | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Scoped stop: confirmation while sub-agents run, `stop` cancels them all | ✅ | ✅ | 🚫¹⁹ | ✅ (snapshot)³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅ (snapshot)¹⁰ |
+| Stop the sub-agents only while the main agent is idle (`stop`) | ✅ | ✅ | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | ✅¹⁰ |
+| Stop the main agent only while it runs, keeping its sub-agents | 🚫¹ | 🚫² | 🚫¹⁹ | ✅³ | 🚫⁴ | 🚫⁵ | 🚫⁶ | 🚫⁷ | 🚫⁸ | ✅⁹ | 🚫¹⁰ |
 
 ACP plugins declare one closed scoped-stop capability: `unsupported`, `rootSessionCancel` (Cursor),
 `perChildSnapshot` (Grok), or `completeNativeAtomic` (DeepSeek). Plugins that report a scoped-stop rejection declare
@@ -391,6 +391,26 @@ history, and exact read-only child navigation. Final fixed-build QA showed one
 stable child-owned initial row plus one assistant/tool/assistant sequence on two
 opens. Background completion delivery was attempted, but no OS notification was
 observed; notification and push delivery remain unclaimed.
+
+¹⁹ Antigravity's official managed ACP pair (package 1.0.0, runtime
+`agy_acp_server_20260818_01_RC01`, probed 2026-09-12) can invoke native internal
+sub-agents. Two authenticated default-mode turns returned the expected bounded
+reasoning result after `invoke_subagent` activity and one warning-free
+`allow_once` decision each. The official ACP projection does not expose a
+trustworthy Sesori subtask seam, however: every update carried only the parent
+session id; no child session, child id, child lifecycle extension, background
+fact, or child-cancel method appeared. Live `invoke_subagent` calls moved from
+`pending` to `failed` even though the root reported the delegated result, while
+`session/load` replayed those same calls as `completed`, string-encoded their
+structured input, and supplied blank raw output. Nested work appeared only as
+additional generic parent-local tool calls without correlation to the invocation.
+Sesori therefore keeps these calls generic and does not infer tiles, child
+history, descendant busy state, or scoped stop from call order, prompt text, or
+replay's contradictory status. Standard turn-wide `session/cancel` remains
+available, but it cannot implement any sub-agent-specific stop row above. This
+is a limitation of the ACP projection Sesori drives, not a claim that native
+Antigravity lacks delegation. Details:
+[completed probe record](../.plan/completed/claude-inline-subtasks/followups/antigravity-probe.md).
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the

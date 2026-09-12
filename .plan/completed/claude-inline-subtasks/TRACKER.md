@@ -3,7 +3,10 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** Cursor Step 5 merged at `f5e4e7f67a`.
+- **Implementation base:** completed rollout merged to `main` as
+  [PR #1445](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1445) at `e4dfd480ab`.
+- **Post-completion Antigravity assessment:**
+  [PR #1447](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1447).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -39,7 +42,10 @@
   #1431. Overall plan is **COMPLETED** after build `493bab1483` passed the
   bounded Grok cold-history phone gate. Earlier WebDriverAgent,
   stale-authentication, and history-convergence blocks are superseded. Grok and
-  Cursor follow-ups are complete.
+  Cursor follow-ups are complete. A 2026-09-12 post-completion audit added the
+  newly registered Antigravity harness and recorded its official ACP seam as
+  insufficient for Sesori inline subtasks despite native internal delegation;
+  standard root replay and turn-wide cancellation remain available.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -203,7 +209,7 @@ post-merge E2E gates are unchanged.
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; historical title unchanged (now step 4/7); approved collector/repository/service coverage and docs |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428) merged at `3934f32ec9`; historical title unchanged (now step 5/7) |
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | [PR #1429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1429) merged at `2ebcc7d01a`; exact title unchanged |
-| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin scope passed; subsequent owned-phone matrix passed, including genuine permission Once and fixed cold child history; notification unavailable and questions unsupported |
+| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin scope passed; subsequent owned-phone matrix passed, including genuine permission Once and fixed cold child history; notification delivery unobserved/unclaimed and questions unsupported |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
@@ -221,6 +227,29 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
 | [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
 | [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 merged at `67e173be1a`; actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
+| [x] | Antigravity | `🌱 [claude-inline-subtasks] docs: record Antigravity sub-agent seam disposition` | [PR #1447](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1447); 2026-09-12 bounded authenticated probe completed; native internal delegation observed, but official ACP exposed no trustworthy child identity/lifecycle, child-session replay, or sub-agent-scoped stop seam; standard root replay/cancel remain available; no production implementation |
+
+### Antigravity native ACP probe (2026-09-12)
+
+- [x] Used only official managed package 1.0.0/runtime
+  `agy_acp_server_20260818_01_RC01`, existing isolated authenticated profile,
+  default mode, and owned temporary work. Token contents were never read or
+  copied; runtime pin, model, global configuration, and existing bridge process
+  remained unchanged.
+- [x] Two deterministic single-sub-agent turns completed at root level after one
+  warning-free `allow_once` each. All ACP updates carried only the parent session
+  ID; no child session/ID, lifecycle extension, background fact, or child-cancel
+  method appeared. Session listing gained only the created root.
+- [x] Live `invoke_subagent` reported `pending` then `failed` while the root still
+  returned the expected result. Replay reported the invocation `completed`,
+  string-encoded its structured input, returned blank raw output, and exposed no
+  child transcript. Nested activity remained uncorrelated generic parent tools.
+- [x] Recorded unsupported Sesori tile, child-session, descendant-lifecycle, and
+  scoped-stop cells in `docs/HARNESS_CAPABILITIES.md`; generic turn cancellation
+  remains distinct. No speculative mapper/tracker was added.
+- [x] Removed owned local session/database files, scratch workspace, scripts, and
+  processes. Existing profile/runtime and protected bridge stayed untouched;
+  accepted Google-side conversation residue may remain.
 
 ### Cursor native probe (2026-09-11)
 
@@ -290,7 +319,7 @@ post-merge E2E gates are unchanged.
   HTTP 409 variant. Client-local exceptions, cubit outcome, queue gate, and UI
   trust only that variant; unknown reasons retain the queue, while unknown kinds
   and malformed bodies remain ambiguous. Active mode-unknown
-  confirmation/count and safe named-root stop remain planned: `confirm`/`keep`
+  confirmation/count and safe named-root stop are implemented: `confirm`/`keep`
   map exact `activeTaskCount` through the existing
   `PluginAbortRejectedSubAgentsRunning`/`SessionAbortRejection` path with
   main-only false and no wire change;

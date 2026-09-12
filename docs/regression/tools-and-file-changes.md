@@ -118,6 +118,9 @@ sub-agent parts, plus the signal that a tool changed files.
   shared ACP live or replay mapper retains tool state. Raw provider payloads and canonical output are independently
   bounded; local image paths remain metadata and are never read. Exact duplicate text is removed, differing standard
   and provider text is retained within the shared display cap, and a nonzero exit note never changes ACP tool status.
+  Native `invoke_subagent` activity remains generic: the official ACP seam supplies no child identity or authoritative
+  lifecycle, and its live terminal status conflicts with replay. Sesori does not manufacture a tile, child transcript,
+  descendant busy state, or scoped-stop target from prompt-bearing input, call order, or assistant output.
 - GitHub Copilot uses the same standard ACP tool lifecycle. Permission linkage
   must be exact while the request is live. Call identity, terminal state, and
   diff content then converge after `session/load`; permission
@@ -186,8 +189,9 @@ guarantee.
   generic Task running; live/replay tagged sub-agent shapes are conflated; or
   either exact known shape fails replacement.
 - Antigravity changes ACP status from an exit code, loses an exit note to truncation, leaks an image path as a fetched
-  attachment, retains unbounded/redundant raw fields, drops differing text, or
-  produces different live/replay tool state.
+  attachment, retains unbounded/redundant raw fields, drops differing text, or produces different normalized state from
+  equivalent live/replay source envelopes. Its upstream `invoke_subagent` status mismatch is retained as generic data;
+  promoting that call into a child or subtask without a new authoritative seam is also a regression.
 - A Copilot tool loses permission correlation while live, or its call identity,
   terminal status, or diff changes when reopened through ACP history.
 - A Grok tool loses live permission correlation, changes call identity or status
@@ -227,8 +231,10 @@ guarantee.
 - ACP permission decisions and pending requests are process-local interaction
   state. Cold replay restores the resulting tool lifecycle and diff, not the
   earlier decision or its linkage event.
-- Real Antigravity tool execution and generated-image output remain unverified; synthetic normalization
-  establishes the boundary contract only.
+- Real Antigravity file/shell execution and generated-image output remain unverified; synthetic normalization
+  establishes those boundary contracts only. A bounded authenticated 2026-09-12 probe verified native internal
+  delegation but found only contradictory generic parent-local ACP tool records, so Antigravity inline subtasks and
+  child sessions remain unsupported in Sesori.
 - Attachment presentation is being reworked toward referenced images; only the
   shipped build counts.
 - An older client does not tolerate an unknown message-part `type` from a newer

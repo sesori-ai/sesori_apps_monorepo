@@ -104,7 +104,12 @@ needs no browser of its own, but does need a current connected client for initia
   over recovered fallback metadata. Sesori never parses private Google SQLite/brain content.
 - **Images and tools:** prompt and returned image content use the shared bounded attachment path. Provider-local image
   filenames are metadata only: Sesori does not open or fetch them. Model/account rejection remains visible. Tool
-  output is bounded and normalized consistently for live/replay; a nonzero exit note is not an ACP protocol failure.
+  output is bounded and normalized consistently for equivalent live/replay source envelopes; a nonzero exit note is not
+  an ACP protocol failure.
+- **Sub-agents:** Antigravity can delegate internally, but its official ACP projection exposes that work only as generic
+  parent-local tool calls. It supplies no trustworthy child identity or lifecycle, and live versus replayed invocation
+  status disagrees. Sesori therefore does not show Antigravity inline subtask tiles or child transcripts and cannot
+  offer sub-agent-scoped stop. Normal turn-wide cancellation still applies.
 - **Deletion:** the pinned runtime has no standard close/delete capability. Deleting in Sesori removes its own catalog
   and transcript data and retains a tombstone against re-import; it does not erase Google's conversation/profile files.
 - **Presentation:** shared harness settings and chooser surfaces show **Antigravity** with Google's official full-colour
@@ -114,9 +119,10 @@ needs no browser of its own, but does need a current connected client for initia
 
 Implementation is not a claim of completed cross-platform end-to-end verification. Official archive integrity was
 checked for all five targets. Native initialize-only and managed-pipeline correctness has been exercised on macOS arm64
-in disposable state. Native Linux/Windows installation, real personal OAuth, authenticated discovery-session
-creation/resume, full session/image/history flows and the final cumulative L1–L5 matrix remain unverified.
-Missing test infrastructure is a blocked result, not a pass.
+in disposable state. One bounded authenticated ACP probe verified only the generic sub-agent projection described
+above. Native Linux/Windows installation, real personal OAuth, authenticated discovery-session creation/resume, full
+ordinary session/image/history flows and the final cumulative L1–L5 matrix remain unverified. Missing test
+infrastructure is a blocked result, not a pass.
 
 The implementation plan was retired under the owner's
 [explicitly accepted verification reduction](../.plan/completed/antigravity-harness/PLAN.md).
