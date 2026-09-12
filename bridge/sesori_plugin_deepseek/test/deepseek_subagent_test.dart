@@ -283,7 +283,8 @@ void main() {
       expect(tools, hasLength(1));
       expect(tools.single.state.status, PluginToolStatus.error);
       expect(tools.last.state.output, "terminal failure");
-      expect(tools.last.state.title, "Delegation startup");
+      expect(tools.last.tool, "Delegation startup");
+      expect(tools.last.state.title, isNull, reason: "the deferred title already names the tool");
       expect(tools.last.state.error, "terminal failure");
     });
 
