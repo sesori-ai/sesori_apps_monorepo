@@ -3,7 +3,10 @@
 ## Current State
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Implementation base:** completed rollout merged to `main` at `e4dfd480ab` through PR #1445.
+- **Implementation base:** completed rollout merged to `main` as
+  [PR #1445](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1445) at `e4dfd480ab`.
+- **Post-completion Antigravity assessment:**
+  [PR #1447](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1447).
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
@@ -224,7 +227,7 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
 | [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
 | [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 merged at `67e173be1a`; actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
-| [x] | Antigravity | `🌱 [claude-inline-subtasks] docs: record Antigravity sub-agent seam disposition` | 2026-09-12 bounded authenticated probe completed; native internal delegation observed, but official ACP exposed no trustworthy child identity/lifecycle, child-session replay, or sub-agent-scoped stop seam; standard root replay/cancel remain available; no production implementation |
+| [x] | Antigravity | `🌱 [claude-inline-subtasks] docs: record Antigravity sub-agent seam disposition` | [PR #1447](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1447); 2026-09-12 bounded authenticated probe completed; native internal delegation observed, but official ACP exposed no trustworthy child identity/lifecycle, child-session replay, or sub-agent-scoped stop seam; standard root replay/cancel remain available; no production implementation |
 
 ### Antigravity native ACP probe (2026-09-12)
 
