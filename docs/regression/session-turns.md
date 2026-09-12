@@ -767,8 +767,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   shape. Cold replay therefore shows only the slash-command token to avoid
   exposing bridge-owned arguments; live API-command presentation retains only
   the exact user-authored arguments.
-- Antigravity native turn behavior, personal OAuth and cross-target reconnect remain unverified; synthetic ACP
-  composition does not substitute for them.
+- Beyond the bounded 2026-09-12 authenticated ACP sub-agent projection probe, Antigravity native turn behavior,
+  personal OAuth and cross-target reconnect remain unverified; synthetic ACP composition does not substitute for them.
+  The probe establishes no inline-subtask, child-session, descendant-lifecycle, or scoped-stop support.
 - Grok does not advertise ACP image prompt capability in the supported release;
   image attachments are not Grok turn coverage.
 - Copilot reasoning is model/account dependent; absence is not a failure unless

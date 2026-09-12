@@ -13,8 +13,13 @@
   rows on each side because live final text was an empty snapshot. The anchored
   empty-prefix correction is implemented. Final build `493bab1483` passed one
   exact four-row child sequence on two cold opens and two private backfills; the
-  Grok gate and overall follow-up plan are complete.
-- **Plan date:** 2026-09-02; Cursor probe/design refreshed 2026-09-11.
+  Grok gate and overall follow-up plan are complete. A post-completion
+  Antigravity assessment on 2026-09-12 found native delegation but no
+  authoritative child identity or lifecycle over the official ACP seam, so its
+  Sesori inline-subtask capabilities are explicitly unsupported rather than
+  omitted or unfinished.
+- **Plan date:** 2026-09-02; Cursor probe/design refreshed 2026-09-11;
+  Antigravity disposition added 2026-09-12.
 - **Base:** `main` at merged DeepSeek coverage documentation `7dd323d1d7`
   ([#1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431)).
 - **Delivery:** one open PR at a time, following current repository rules.
@@ -26,7 +31,7 @@
   unclaimed; questions remain unsupported. DeepSeek final coverage
   documentation now records its passed phone stop/input scope and explicitly
   deferred desktop scope. Codex has nine steps: merged metadata,
-  child-session, historical prompt preparation, and cleanup remain steps
+  child-session, historical prompt preparation, and cleanup occupy steps
   1/9–4/9. Native rollout facts are
   step 5/9, live/replay tile integration 6/9, lifecycle coverage 7/9, scoped
   stop 8/9, and coverage 9/9. Step 8 merged as PR #1421 at `77165f784f`;
@@ -50,12 +55,16 @@ seam can carry it, per `docs/HARNESS_CAPABILITIES.md`:
   contract, and `mainAgentOnlySupported` is declared honestly per harness.
 
 The contract, bridge translation, sweep, client tile, and dialog already exist
-and are not changed here. Every follow-up is plugin-internal work plus, for
-DeepSeek, work in Sesori's own adapter repository.
+and are not changed here. Every implementation follow-up is plugin-internal
+work plus, for DeepSeek, work in Sesori's own adapter repository. Antigravity's
+post-completion item is an assessment and documentation update only.
 
-Harnesses verified as not supportable over the seam Sesori drives (Copilot,
-Hermes, Pi, Oh My Pi) are out of scope; their verdicts and versions are
-recorded in the capability matrix. Cursor's planned subset is completed
+Harnesses verified as not supportable over the seam Sesori drives (Antigravity,
+Copilot, Hermes, Pi, Oh My Pi) are out of implementation scope; their verdicts
+and versions are recorded in the capability matrix. Antigravity's native runtime
+can delegate, but its ACP projection does not expose trustworthy child identity,
+lifecycle, child-session replay, or sub-agent-scoped cancellation semantics.
+Standard root replay and turn-wide cancellation remain available. Cursor's planned subset is completed
 foreground tiles plus safe Task confirmation/root stop when no background
 observation is unresolved. Active pending/in-progress Task mode is unknown; it
 has no child session or full scoped stop.
@@ -111,8 +120,8 @@ has no child session or full scoped stop.
      tracker or permission-outcome model exists; a denied Grok generic card may
      be absent after replay. Replay has a separate typed suppression callback,
      while DeepSeek's existing nullable replacement callback keeps null meaning
-     “retain generic.” Cursor's future tile-only mapping must land with its own
-     production need rather than prebuilding unused classification machinery.
+     “retain generic.” Cursor's tile-only mapping landed with its own production
+     need rather than prebuilding unused classification machinery.
   3. The scoped-stop policy, once, in `AcpPlugin.abortSession`: `confirm` with
      running children is side-effect free and rejects with their count,
      `mainAgentRunning` from pending prompts or an active named child, and `mainAgentOnlySupported` true only
@@ -540,7 +549,7 @@ has no child session or full scoped stop.
   non-growing shape. The otherwise exact anchored window now accepts its empty
   live final text as a strict prefix only when replay text is nonempty; phone
   confirmation then passed on `493bab1483`. Background completion notification
-  was attempted in the earlier full run but not delivered or claimed. Owned
+  was attempted in the earlier full run but not observed and remains unclaimed. Owned
   resources were cleaned
   and protected resources were untouched.
 
@@ -627,17 +636,17 @@ has no child session or full scoped stop.
 | monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek scoped sub-agent stops [step 1/2]` | #1346 merged at `2cc1485d7c`; historical title retained |
 | adapter | 🚧 | `[claude-inline-subtasks] DeepSeek atomic subtree cancellation [step 2/3]` | #17 merged at `5eecdf68a3`; historical title retained |
 | adapter | 🌱 | `release: prepare v0.1.4 for atomic-stop consumer` | #18 merged at `e2ea207f21`; v0.1.4 and six archives verified |
-| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | Frozen native corpus, ordered input cancel, initialize floor, target and digests; no stop-policy change |
-| monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | Replace direct-child fanout with complete native authority at the existing ACP owner |
+| monorepo | ⚙️ | `[claude-inline-subtasks] DeepSeek native stop contract and input ordering [step 4/5]` | #1363 merged at `b13d197d51`; frozen native corpus, ordered input cancel, initialize floor, target and digests; no stop-policy change |
+| monorepo | 🚧 | `[claude-inline-subtasks] DeepSeek completes ACP-owned scoped stop [step 5/5]` | #1370 merged at `c88d4ade82`; replaced direct-child fanout with complete native authority at the existing ACP owner |
 | monorepo | 🌱 | `docs: record DeepSeek sub-agent coverage` | Current reconciliation: requested phone stop/input scope passed; desktop explicitly deferred; other unexecuted client matrices remain explicit |
 
 ### Scoped-stop replacement
 
 The [replacement design](followups/deepseek-stop-replacement.md) fixes both slices' ownership and compatibility flow.
 PR #1356 closed without merge; its former step 4/4 is superseded. Step 4/5
-lands only the verified native contract/input consumer and keeps current scoped
-stop behavior. Step 5/5 will use one ACP-owned operation, native atomic authority,
-and no residual-ID handshake or new long-lived state. Requested phone stop/input
+landed only the verified native contract/input consumer and kept then-current
+scoped-stop behavior. Step 5/5 then used one ACP-owned operation, native atomic
+authority, and no residual-ID handshake or new long-lived state. Requested phone stop/input
 E2E passed after #1379; desktop remains explicitly deferred. Final documentation
 records that partial matrix without reopening native probes. Automatic managed-runtime
 upgrade machinery remains outside this series.
@@ -902,12 +911,12 @@ those refs. Regenerate each successor from its merged predecessor.
 
 | Step | Exact title | Target and scope |
 |---|---|---|
-| 1/6 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | PR #1435 merged at `b83b64901c`; supervisor will update its GitHub title; docs only |
+| 1/6 | `🌱 [claude-inline-subtasks] docs: record Cursor native probe and corrected plan [step 1/6]` | PR #1435 merged at `b83b64901c`; GitHub title was renumbered from step 1/5 to step 1/6 after the split; docs only |
 | 2/6 | `🚧 [claude-inline-subtasks] cursor: settle generic Task lifecycle [step 2/6]` | PR #1438 merged at `116392cb71`: active generic-part tracking, terminal settlement, request ack, transport ordering regressions, typed-refusal plan correction, and behavior docs; no tile |
 | 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | PR #1441 merged at `bb85f48148`: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
 | 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | PR #1442 merged at `a7d3014e1a`: exact count, process residency, typed refusal, bounded root cancel/re-check, concurrent descendant fallback, bridge/client/UI flow, tests, and docs; no replay/native QA |
 | 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
-| 6/6 | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 open: actual-plugin executed scope passed; exact distinct live/replay presentation tags repaired with typed generated DTOs; unsupported/unexecuted matrix remains explicit |
+| 6/6 | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 merged at `67e173be1a`: actual-plugin executed scope passed; exact distinct live/replay presentation tags repaired with typed generated DTOs; unsupported/unexecuted matrix remains explicit |
 
 ### Probe questions
 
@@ -920,6 +929,46 @@ those refs. Regenerate each successor from its merged predecessor.
    output, not `cursor/task`; completed foreground replay can project a typed
    tile, while background/cancelled cases use honest generic/absent fallbacks.
 
+## Antigravity (official ACP package 1.0.0)
+
+### Post-completion verified facts
+
+- The 2026-09-12 bounded probe used pinned runtime identity
+  `agy_acp_server_20260818_01_RC01`, existing authenticated isolated profile,
+  mode `default`, and an owned temporary workspace. It read or copied no token,
+  changed no runtime pin/model/global configuration, and touched no existing
+  bridge process. Every local probe session/database, workspace, script, and
+  process was removed; Google-side conversation residue may remain under the
+  user's accepted provider terms.
+- Two root turns requested exactly one native internal sub-agent and returned
+  the expected deterministic result. Each invocation requested permission; the
+  probe selected exactly one warning-free `allow_once` and never selected
+  persistent approval.
+- ACP emitted only standard `session/update` frames under the root session ID.
+  `invoke_subagent` input carried one `Subagents` item with model, prompt, role,
+  and type fields, but no child ID. Nested activity appeared as separate generic
+  parent-local tool calls. No child session, lifecycle extension, background
+  discriminator, or child-cancel method appeared, and `session/list` grew only
+  by the created root.
+- Live `invoke_subagent` moved from `pending` to `failed` after the permission
+  decision even though the root returned the requested result. Cold
+  `session/load` instead replayed that invocation as `completed`, encoded its
+  structured input as a JSON string, and supplied blank raw output. Replay also
+  exposed no child identity or transcript.
+
+### Disposition
+
+Antigravity native delegation exists, but official ACP projection is not an
+authoritative inline-subtask seam. Sesori keeps these records as generic tools
+and does not infer lifecycle, child history, descendant busy state, or scoped
+cancellation from order, prompts, assistant claims, or replay's contradictory
+status. Standard turn-wide `session/cancel` remains available, but it cannot
+implement any sub-agent-specific stop policy. No production follow-up is
+planned. Reassess only if a later official runtime exposes stable typed child
+identity plus lifecycle/replay semantics; cancellation support additionally
+requires an exact child or native subtree stop authority. Full privacy-safe
+facts live in [the probe record](followups/antigravity-probe.md).
+
 ## Non-Goals
 
 - Per-child stop from the tile, progress rendering, per-subtask usage.
@@ -927,3 +976,5 @@ those refs. Regenerate each successor from its merged predecessor.
 - Migrating Codex children already imported as roots.
 - Cursor child sessions or partial stops, and any work for Copilot, Hermes,
   Pi, Oh My Pi.
+- Inferring Antigravity child identity or lifecycle from generic parent-local
+  tool order, prompt text, assistant output, or contradictory replay status.
