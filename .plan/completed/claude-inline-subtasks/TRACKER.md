@@ -1006,11 +1006,7 @@ valid because the envelope repair did not affect preflight policy.
 At the Step 7/7 checkpoint, unchanged headless configuration produced no
 standard permission request, and the first phone attempt was infrastructure-
 blocked before visible UI. PR #1430 at `a28e860557` accurately recorded that
-then-partial state. Later owned-phone runs superseded both gaps: bounded phone
-creation, lifecycle, scoped stop, reuse, cold history, and read-only child
-navigation passed, and one genuine native permission used Once. Notification
-delivery remained attempted but unavailable, and no question support is
-claimed. Final fixed-history evidence is recorded below.
+then-partial state.
 
 DeepSeek final coverage reconciliation used existing private summary reports and
 structural artifact summaries only; raw logs, screenshots, transcripts, prompts,
@@ -1067,3 +1063,8 @@ consumption guard remains unchanged. Final owned-phone QA at `493bab1483`
 showed exactly one initial row plus one assistant/tool/assistant sequence on two
 opens; two private reads remained at four imported rows with no retained live
 assistant identities. The Grok phone gate passed and the plan is retired.
+Together, the later owned-phone runs superseded both Step 7/7 gaps: bounded
+creation, lifecycle, scoped stop, reuse, cold history, and read-only child
+navigation passed, and one genuine native permission used `Once`. Notification
+delivery was attempted but not observed and remains unclaimed; no question
+support is claimed.

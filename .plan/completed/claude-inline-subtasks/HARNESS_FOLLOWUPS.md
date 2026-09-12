@@ -22,8 +22,8 @@
   passed its executed stop, lifecycle, replay, and runtime-reuse scope. Step 7/7
   merged as PR #1430 with the then-partial phone state; subsequent owned-phone
   QA passed the bounded matrix, including genuine permission Once and fixed
-  cold child history. Notification remained unavailable and questions remain
-  unsupported. DeepSeek final coverage
+  cold child history. Notification delivery was not observed and remains
+  unclaimed; questions remain unsupported. DeepSeek final coverage
   documentation now records its passed phone stop/input scope and explicitly
   deferred desktop scope. Codex has nine steps: merged metadata,
   child-session, historical prompt preparation, and cleanup remain steps
@@ -400,11 +400,11 @@ has no child session or full scoped stop.
   active-root keep rejection, named-child isolation, idle-child retention and
   autonomous wake-up, already-finished handling, root full-stop fanout and
   settlement, exact root/child replay, fresh-session checks, and runtime reuse.
-  Root confirmation reuses its earlier passing run. Zero standard permission
-  requests surfaced under unchanged configuration, so live permission behavior
-  remains unexecuted and no question channel is claimed. Earlier phone setup
-  blockers are superseded. The 2026-09-12 owned-phone run passed visible
-  creation, tile lifecycle, scope-dialog dismissal/full stop, reuse, cold root
+  Root confirmation reuses its earlier passing run. That unchanged headless run
+  surfaced no standard permission request; subsequent owned-phone QA exercised
+  one genuine request with `Once`. No question channel is claimed. Earlier
+  phone setup blockers are superseded. The 2026-09-12 owned-phone run passed
+  visible creation, tile lifecycle, scope-dialog dismissal/full stop, reuse, cold root
   history, read-only child navigation, and normal one-time permissions. A
   fixed-build rerun retained one exact tool row but duplicated both adjacent
   assistant rows because live final text was an empty snapshot. Final build
@@ -522,9 +522,10 @@ has no child session or full scoped stop.
   idle-child retention through autonomous wake-up, both child-cancel outcomes,
   root-first full-stop fanout, authoritative lifecycle/plugin settlement, exact
   root/child replay, fresh-session checks, and runtime reuse. Root `confirm`
-  reuses its earlier passing actual-plugin result. Zero standard permission
-  requests surfaced, leaving permission preservation/isolation/cleanup
-  unexecuted; no question support is claimed.
+  reuses its earlier passing actual-plugin result. That headless run surfaced no
+  standard permission request, so it did not exercise permission
+  preservation/isolation/cleanup; later owned-phone QA exercised one genuine
+  request with `Once`. No question support is claimed.
 - Earlier WebDriverAgent and stale-authentication setup blockers are superseded.
   The 2026-09-12 owned-phone run used the current source phone/bridge, production
   relay, and an authenticated checksum-verified isolated official Grok 1.0.5.
