@@ -73,7 +73,8 @@ void main() {
             ),
           );
           expect(state.shellCommand, fixture.command);
-          expect(state.title, fixture.command);
+          // Non-command inputs keep Codex's argument-derived display title.
+          expect(state.title, fixture.command ?? isNotNull);
           if (line == lines.last) {
             expect(state.status, failed ? ToolStatus.error : ToolStatus.completed);
             if (fixture.command != null) {

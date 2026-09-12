@@ -86,6 +86,19 @@ final class PiHistoryMapper({
     return command is String && command.isNotEmpty ? _clip(command) : null;
   }
 
+  /// The primary argument shown as the card title: the search pattern of
+  /// grep/find-style tools, otherwise the path of read/write/edit/ls. Skills
+  /// load through `read` on their SKILL.md, so the path names the skill too.
+  String? titleForToolCall({required PiToolCallContentDto toolCall}) {
+    final arguments = toolCall.arguments;
+    if (arguments is! Map) return null;
+    for (final key in const ["pattern", "path"]) {
+      final value = arguments[key];
+      if (value is String && value.isNotEmpty) return _clip(value);
+    }
+    return null;
+  }
+
   PluginMessageWithParts mapAssistantMessage({
     required String sessionId,
     required String messageId,
@@ -178,7 +191,7 @@ final class PiHistoryMapper({
               tool: toolCall.name,
               state: PluginToolState(
                 status: PluginToolStatus.pending,
-                title: null,
+                title: titleForToolCall(toolCall: toolCall),
                 shellCommand: shellCommandForToolCall(toolCall: toolCall),
                 output: null,
                 error: null,

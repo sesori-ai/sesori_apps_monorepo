@@ -20,10 +20,11 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 
 ## Explicit shell-command presentation
 
-Ordinary tools retain name, status and attachments; only adapter-verified shell
-commands retain command/output/error. Subtask outcome/error summaries are separate
-and remain available. All retained tool text is rune-bounded at live/history wire
-projection; the released title alias remains available to older clients.
+Ordinary tools retain name, bounded title, status and attachments; only
+adapter-verified shell commands retain command/output/error. Subtask outcome/error
+summaries are separate and remain available. All retained tool text is
+rune-bounded at live/history wire projection; the released title alias remains
+available to older clients.
 
 | Harness | Status and established command source |
 |---|---|
@@ -43,6 +44,21 @@ property in one real `tools.exec_command` invocation (single/double quotes and
 whitespace accepted). Expressions, multiple commands and other JavaScript forms
 need trustworthy correlated command-execution evidence; raw scripts never become
 commands. No general JavaScript parser or runtime execution is involved.
+
+## Ordinary tool titles
+
+Non-shell tool cards show a bounded title naming what the tool touched (file
+path, search pattern, skill, URL) instead of only the tool name; output and
+errors stay stripped. Skills load through a file read of their `SKILL.md` on
+harnesses without a dedicated skill tool, so the read path is the skill signal.
+
+| Harness | Status and title source |
+|---|---|
+| Claude | ✅ Tool input `skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, or `query`, first present; live tracker and transcript replay. |
+| Pi | ✅ Tool-call arguments `pattern`, then `path`; live from `toolcall_end`/`message_end` and replay. `toolcall_start` carries no arguments, so the title first appears with the running or terminal update. |
+| OpenCode | ✅ Native tool part `title`. |
+| Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |
+| Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | ✅ Agent-supplied ACP `tool_call` title, when the agent sends one; Sesori does not derive titles from ACP inputs. |
 
 ## Managed runtime
 
