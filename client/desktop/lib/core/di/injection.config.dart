@@ -62,8 +62,6 @@ import 'package:sesori_desktop/core/platform/io_bridge_process_environment.dart'
 import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.dart'
     as _i665;
 import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
-import 'package:sesori_desktop/core/platform/macos_legacy_keychain_client.dart'
-    as _i435;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
 import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dart'
@@ -104,9 +102,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i692.DesktopShareClient>(
       () => _i692.DesktopShareClient(),
-    );
-    gh.lazySingleton<_i435.MacOsLegacyKeychainClient>(
-      () => _i435.MacOsLegacyKeychainClient(),
     );
     gh.lazySingleton<_i948.ComposerImagePicker>(
       () => _i925.DesktopComposerImagePicker(),
@@ -165,6 +160,11 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.singleton<_i948.RouteSource>(() => _i911.DesktopRouteSource());
+    gh.lazySingleton<_i948.SecureStorage>(
+      () => _i757.DesktopSecureStorageAdapter(
+        storage: gh<_i558.FlutterSecureStorage>(),
+      ),
+    );
     gh.lazySingleton<_i948.AttributionClaimStorage>(
       () => _i804.NoOpAttributionClaimStorage(),
     );
@@ -174,12 +174,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i948.AnalyticsClient>(() => _i262.NoOpAnalyticsClient());
-    gh.lazySingleton<_i948.SecureStorage>(
-      () => _i757.DesktopSecureStorageAdapter(
-        storage: gh<_i558.FlutterSecureStorage>(),
-        macOsKeychainClient: gh<_i435.MacOsLegacyKeychainClient>(),
-      ),
-    );
     gh.lazySingleton<_i948.ImageSharer>(
       () =>
           _i501.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
