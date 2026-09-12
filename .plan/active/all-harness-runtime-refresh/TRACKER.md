@@ -2,27 +2,29 @@
 
 ## Current state
 
-- **Series:** nine top-level steps; Step 1 merged, Step 2 verified locally.
-- **Branch/base:** `all-harness-runtime-refresh-step-2` /
-  `a644652e0c1a03232dc33184b522124703636988`.
-- **Publication scope:** four target updates, 18 managed digests, and focused
-  target fixtures. No new capabilities, generated files, wire/database changes,
-  or product release. Branch targets below are not yet a merged release claim.
+- **Series:** nine top-level steps; Steps 1–2 merged, Step 3 verification active.
+- **Branch/base:** `all-harness-runtime-refresh-step-3` /
+  `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`.
+- **Delivered scope:** PR #1455 merged four target updates, 18 managed digests,
+  and focused target fixtures. Its additional Pi/Claude lifecycle evidence was
+  accepted after merge; no required gate was waived. No new capabilities,
+  generated files, wire/database changes, or product release were introduced.
 - **Approved scope:** mechanical target refreshes, OMP Windows ARM64 mapping,
   and OMP-backed shared ACP multi-select questions. Floors remain unchanged;
-  DeepSeek remains excluded.
-- **Next:** publish and monitor Step 2, then begin the Antigravity/Cursor
-  successor. Codex teardown proof and configured/authenticated fixtures remain
-  blocking only for their respective pins; none is waived. See
-  [Step 2 verification](STEP-2-VERIFICATION.md) for completed and blocked gates.
+  DeepSeek and unrelated upstream changes remain outside this series.
+- **Next:** accept independent Antigravity/Cursor release/install/protocol
+  evidence and apply only passing targets. Codex teardown proof and required
+  configured/authenticated fixtures remain blocking only for their respective
+  pins. See [Step 2 verification](STEP-2-VERIFICATION.md) and its
+  [lifecycle follow-up](STEP-2-LIFECYCLE-VERIFICATION.md).
 
 ## Delivery ledger
 
 | Done | Step | Exact PR title | Status |
 |---|---|---|---|
 | [x] | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | PR #1453 merged as a644652e0c; no production changes |
-| [ ] | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode/Copilot/Claude/Pi verified and applied locally; Codex/OMP remain blocked and unchanged |
-| [ ] | 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Exact ACP pair and Cursor build/content gates pending |
+| [x] | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | PR #1455 merged as ba3264eab9; four targets verified including post-merge Pi/Claude follow-up; Codex/OMP remain blocked and unchanged |
+| [ ] | 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Independent exact-pair/build/hash/install probes running; no target applied yet |
 | [ ] | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Blocked on empty-session cleanup seam |
 | [ ] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Channel/ACP probe pending; namespace/provenance policy corrected |
 | [ ] | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth asset; hash/mapping/native Windows ARM64 install-version-ACP smoke/documentation gates pending |
@@ -39,12 +41,12 @@
 | Codex | `0.153.4` | `0.139.0` unchanged | `0.154.0` | Partial / blocked: assets/install/both transports pass; scratch sandbox group teardown fails after one focused retry |
 | GitHub Copilot | `1.0.83` | `1.0.78` unchanged | `1.0.83` | Pass: six hashes, install, ACP initialize, focused tests/analyzer |
 | Cursor | `2026.08.11-e8db854` | date floor `2026.07.16` unchanged | `2026.09.10-fd3934a` | Probe-first; four content hashes and configured load/replay fixture pending; missing fixture blocks pin |
-| Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: direct CLI/SDK launch and isolated stream initialization; descriptor tests/analyzer |
+| Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: CLI/SDK launch, native controlled-provider approval/replay/interrupt/reuse/cleanup plus production parsing/history mapping; tests/analyzer |
 | Hermes Agent | `0.20.4` | `0.20.0` unchanged | `0.21.2` | Blocked; cleanup and configured new/load fixture prerequisites |
-| Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six package hashes, install, correlated RPC get_state, focused tests/analyzer; compaction not reverified |
+| Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six hashes/install/RPC, native production-plugin settlement/manual-compaction abort/ordering/reuse/cleanup; tests/analyzer |
 | Oh My Pi | `17.3.8` | `17.2.13` unchanged | `18.1.18` | Blocked: seven hashes/install/initialize pass; authorized authenticate/list/new/load/cleanup fixture absent |
 | Grok Build | `1.0.5` | `1.0.5` unchanged | stable channel `1.0.30` | Blocked; reference-required authenticated new/prompt/replay/model-selection/close probes pending |
-| DeepSeek | `0.1.5` | `0.1.5` unchanged | None | Explicitly excluded/unchanged |
+| DeepSeek | Upstream main | Outside this series | None | Explicitly excluded; unrelated upstream changes are neither audited nor modified here |
 
 ## Approved and deferred decisions
 
@@ -108,6 +110,12 @@ These gates are tracked independently from the target-only L2 matrix.
   passed. All four owning analyzers and formatting for nine Dart files passed
   with pinned Dart 3.13.3. Older compatible PATH fixtures and historical protocol
   observations remain unchanged.
+- Review caught missing named Pi/Claude lifecycle evidence. The owner chose to
+  complete it, not relax the plan. PR #1455 merged with those threads still
+  open; the subsequent accepted checks verify Pi settlement/compaction abort
+  through the production plugin, and Claude native approval/replay/interrupt
+  with production parsing/history mapping. Controlled loopback providers only;
+  real-provider behavior and deadline-expiry fault injection are not claimed.
 - No real credentials or live profiles were used. Required configured fixtures,
   multi-select, and Windows ARM64 native gates remain blocked; other non-macOS
   native paths remain untested. Full evidence and limits are in

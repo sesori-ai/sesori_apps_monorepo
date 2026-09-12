@@ -5,11 +5,17 @@ Date: 2026-09-12. Base: plan merge `a644652e0c1a03232dc33184b522124703636988`
 
 ## Disposition
 
-Four independently gated candidates are applied in this branch. Two remain
-unchanged and blocked; this is not completion of every target or the series.
-All independent floors, platform mappings, layouts, and launch policies remain
-unchanged. DeepSeek is excluded. No new production classes, generated files,
-wire contracts, or Sesori database changes are introduced.
+Four targets merged in [PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455)
+as `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`. Review identified missing
+Pi/Claude lifecycle evidence; the owner chose to complete those gates, not
+relax them. Their [supplemental verification](STEP-2-LIFECYCLE-VERIFICATION.md)
+was accepted after merge. The results below include that follow-up.
+
+Two targets remain unchanged and blocked; this is not completion of every
+target or the series. All independent floors, platform mappings, layouts, and
+launch policies remain unchanged. DeepSeek is excluded from this series.
+No new production classes, generated files, wire contracts, or Sesori database
+changes are introduced.
 
 | Harness | Previous target → branch target | Floor | Result |
 |---|---|---|---|
@@ -93,13 +99,18 @@ were not exposed. Network was denied except loopback where required.
   initialization passed, including ACP v1 and `copilot-login`. No login/provider
   turn ran; teardown left no candidate process.
 - **Pi:** exact version and reference RPC launch returned correlated successful
-  `get_state` with object data. Shutdown completed within two seconds. Provider
-  turns, settlement, retry, and compaction behavior were not reverified.
+  `get_state` with object data. Startup shutdown completed within two seconds.
+  The supplemental native/production-plugin run verified settlement, manual
+  compaction abort/ordering, cleared state, resumed reuse, and automatic cleanup
+  with a controlled loopback provider. Successful compaction, retry, and real
+  provider behavior remain untested.
 - **Claude:** official current-host archive integrity, exact version, production
   launch flags, and correlated stream-json initialization passed. The matching
-  SDK vector and isolated synthetic-session resume also initialized. No live
-  provider/replay-order/partial-delta/permission-exchange claim is made. This
-  direct CLI has no managed-asset pin or automatic installation change.
+  SDK vector and initial synthetic-session resume also initialized. Supplemental
+  native permission allow/deny, persisted resume/history and replay correlation,
+  active interrupt/terminal distinction, reuse, and cleanup passed with production
+  parsing/mapping checks. No live external-provider claim is made. This direct
+  CLI has no managed-asset pin or automatic installation change.
 
 Other platforms are integrity-checked but **not natively tested**. No UI,
 authenticated-provider, Windows ARM64 feature, or multi-select gate is claimed.
