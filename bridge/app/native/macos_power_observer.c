@@ -89,7 +89,15 @@ void sesori_power_observer_stop(void *handle) {
   if (observer == NULL) return;
   pthread_mutex_lock(&observer->mutex);
   observer->stopping = true;
-  if (observer->run_loop != NULL) CFRunLoopStop(observer->run_loop);
+  if (observer->run_loop != NULL) {
+    CFRunLoopRef run_loop = observer->run_loop;
+    // CFRunLoopStop before CFRunLoopRun is a no-op. Queue the stop so disposal
+    // also works between the startup check above and entering the run loop.
+    CFRunLoopPerformBlock(run_loop, kCFRunLoopDefaultMode, ^{
+      CFRunLoopStop(run_loop);
+    });
+    CFRunLoopWakeUp(run_loop);
+  }
   pthread_mutex_unlock(&observer->mutex);
   pthread_join(observer->thread, NULL);
   pthread_mutex_destroy(&observer->mutex);

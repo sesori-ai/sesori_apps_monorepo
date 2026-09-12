@@ -10,6 +10,7 @@ void main(List<String> args) async {
     final library = input.outputDirectory.resolve("macos_power_observer.dylib");
     final result = await Process.run("clang", [
       "-dynamiclib",
+      "-fblocks",
       "-O2",
       "-mmacos-version-min=${input.config.code.macOS.targetVersion}",
       "-framework",

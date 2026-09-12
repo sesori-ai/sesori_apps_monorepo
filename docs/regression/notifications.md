@@ -82,6 +82,10 @@ external.
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
 
+Native macOS L2 coverage starts the bundled observer without sleeping the machine and forces disposal before its run
+loop begins. The deterministic child-process fixture must terminate successfully; a native join must never hang the
+bridge isolate during startup or shutdown.
+
 ## Exploration Guidance
 
 Vary which event arrives first and how tightly events cluster, since debounce, blocking, and rate limits interact: a
@@ -92,6 +96,8 @@ provider because current payload content leaves the encrypted channel.
 
 ## Failure Signals
 
+- Native power-observer disposal hangs when shutdown races run-loop startup, or the bundled observer cannot register
+  for public system-power callbacks.
 - A completion arrives while a question or permission is pending, or after a
   full abort; a Claude session with a running background sub-agent fires a
   completion before the sub-agent's wake-up turn settles, or fires twice; a
