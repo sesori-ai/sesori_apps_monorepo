@@ -288,7 +288,7 @@ as bool,
 /// @nodoc
 mixin _$CursorSubagentTypeDto {
 
-@JsonKey(unknownEnumValue: CursorSubagentType.unknown) CursorSubagentType? get custom;
+ CursorSubagentCustomTypeDto? get custom;
 /// Create a copy of CursorSubagentTypeDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -324,11 +324,11 @@ abstract mixin class $CursorSubagentTypeDtoCopyWith<$Res>  {
   factory $CursorSubagentTypeDtoCopyWith(CursorSubagentTypeDto value, $Res Function(CursorSubagentTypeDto) _then) = _$CursorSubagentTypeDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CursorSubagentType.unknown) CursorSubagentType? custom
+ CursorSubagentCustomTypeDto? custom
 });
 
 
-
+$CursorSubagentCustomTypeDtoCopyWith<$Res>? get custom;
 
 }
 /// @nodoc
@@ -344,10 +344,22 @@ class _$CursorSubagentTypeDtoCopyWithImpl<$Res>
 @pragma('vm:prefer-inline') @override $Res call({Object? custom = freezed,}) {
   return _then(CursorSubagentTypeDto(
 custom: freezed == custom ? _self.custom : custom // ignore: cast_nullable_to_non_nullable
-as CursorSubagentType?,
+as CursorSubagentCustomTypeDto?,
   ));
 }
+/// Create a copy of CursorSubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentCustomTypeDtoCopyWith<$Res>? get custom {
+    if (_self.custom == null) {
+    return null;
+  }
 
+  return $CursorSubagentCustomTypeDtoCopyWith<$Res>(_self.custom!, (value) {
+    return _then(_self.copyWith(custom: value));
+  });
+}
 }
 
 
@@ -356,10 +368,10 @@ as CursorSubagentType?,
 @JsonSerializable(createToJson: false)
 
 class _CursorSubagentTypeDto implements CursorSubagentTypeDto {
-  const _CursorSubagentTypeDto({@JsonKey(unknownEnumValue: CursorSubagentType.unknown) required this.custom});
+  const _CursorSubagentTypeDto({required this.custom});
   factory _CursorSubagentTypeDto.fromJson(Map<String, dynamic> json) => _$CursorSubagentTypeDtoFromJson(json);
 
-@override@JsonKey(unknownEnumValue: CursorSubagentType.unknown) final  CursorSubagentType? custom;
+@override final  CursorSubagentCustomTypeDto? custom;
 
 /// Create a copy of CursorSubagentTypeDto
 /// with the given fields replaced by the non-null parameter values.
@@ -393,11 +405,11 @@ abstract mixin class _$CursorSubagentTypeDtoCopyWith<$Res> implements $CursorSub
   factory _$CursorSubagentTypeDtoCopyWith(_CursorSubagentTypeDto value, $Res Function(_CursorSubagentTypeDto) _then) = __$CursorSubagentTypeDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(unknownEnumValue: CursorSubagentType.unknown) CursorSubagentType? custom
+ CursorSubagentCustomTypeDto? custom
 });
 
 
-
+@override $CursorSubagentCustomTypeDtoCopyWith<$Res>? get custom;
 
 }
 /// @nodoc
@@ -413,18 +425,414 @@ class __$CursorSubagentTypeDtoCopyWithImpl<$Res>
 @override @pragma('vm:prefer-inline') $Res call({Object? custom = freezed,}) {
   return _then(_CursorSubagentTypeDto(
 custom: freezed == custom ? _self.custom : custom // ignore: cast_nullable_to_non_nullable
-as CursorSubagentType?,
+as CursorSubagentCustomTypeDto?,
   ));
 }
 
+/// Create a copy of CursorSubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentCustomTypeDtoCopyWith<$Res>? get custom {
+    if (_self.custom == null) {
+    return null;
+  }
 
+  return $CursorSubagentCustomTypeDtoCopyWith<$Res>(_self.custom!, (value) {
+    return _then(_self.copyWith(custom: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$CursorSubagentCustomTypeDto {
+
+ CursorSubagentUnspecifiedDto? get unspecified;
+/// Create a copy of CursorSubagentCustomTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CursorSubagentCustomTypeDtoCopyWith<CursorSubagentCustomTypeDto> get copyWith => _$CursorSubagentCustomTypeDtoCopyWithImpl<CursorSubagentCustomTypeDto>(this as CursorSubagentCustomTypeDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CursorSubagentCustomTypeDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorSubagentCustomTypeDto&&(identical(other.unspecified, _this.unspecified) || other.unspecified == _this.unspecified));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CursorSubagentCustomTypeDto;
+  return Object.hash(runtimeType,_this.unspecified);
+}
+
+@override
+String toString() {
+  final _this = this as CursorSubagentCustomTypeDto;
+  return 'CursorSubagentCustomTypeDto(unspecified: ${_this.unspecified})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CursorSubagentCustomTypeDtoCopyWith<$Res>  {
+  factory $CursorSubagentCustomTypeDtoCopyWith(CursorSubagentCustomTypeDto value, $Res Function(CursorSubagentCustomTypeDto) _then) = _$CursorSubagentCustomTypeDtoCopyWithImpl;
+@useResult
+$Res call({
+ CursorSubagentUnspecifiedDto? unspecified
+});
+
+
+$CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified;
+
+}
+/// @nodoc
+class _$CursorSubagentCustomTypeDtoCopyWithImpl<$Res>
+    implements $CursorSubagentCustomTypeDtoCopyWith<$Res> {
+  _$CursorSubagentCustomTypeDtoCopyWithImpl(this._self, this._then);
+
+  final CursorSubagentCustomTypeDto _self;
+  final $Res Function(CursorSubagentCustomTypeDto) _then;
+
+/// Create a copy of CursorSubagentCustomTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? unspecified = freezed,}) {
+  return _then(CursorSubagentCustomTypeDto(
+unspecified: freezed == unspecified ? _self.unspecified : unspecified // ignore: cast_nullable_to_non_nullable
+as CursorSubagentUnspecifiedDto?,
+  ));
+}
+/// Create a copy of CursorSubagentCustomTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified {
+    if (_self.unspecified == null) {
+    return null;
+  }
+
+  return $CursorSubagentUnspecifiedDtoCopyWith<$Res>(_self.unspecified!, (value) {
+    return _then(_self.copyWith(unspecified: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CursorSubagentCustomTypeDto implements CursorSubagentCustomTypeDto {
+  const _CursorSubagentCustomTypeDto({required this.unspecified});
+  factory _CursorSubagentCustomTypeDto.fromJson(Map<String, dynamic> json) => _$CursorSubagentCustomTypeDtoFromJson(json);
+
+@override final  CursorSubagentUnspecifiedDto? unspecified;
+
+/// Create a copy of CursorSubagentCustomTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CursorSubagentCustomTypeDtoCopyWith<_CursorSubagentCustomTypeDto> get copyWith => __$CursorSubagentCustomTypeDtoCopyWithImpl<_CursorSubagentCustomTypeDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorSubagentCustomTypeDto&&(identical(other.unspecified, unspecified) || other.unspecified == unspecified));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,unspecified);
+}
+
+@override
+String toString() {
+    return 'CursorSubagentCustomTypeDto(unspecified: $unspecified)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CursorSubagentCustomTypeDtoCopyWith<$Res> implements $CursorSubagentCustomTypeDtoCopyWith<$Res> {
+  factory _$CursorSubagentCustomTypeDtoCopyWith(_CursorSubagentCustomTypeDto value, $Res Function(_CursorSubagentCustomTypeDto) _then) = __$CursorSubagentCustomTypeDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ CursorSubagentUnspecifiedDto? unspecified
+});
+
+
+@override $CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified;
+
+}
+/// @nodoc
+class __$CursorSubagentCustomTypeDtoCopyWithImpl<$Res>
+    implements _$CursorSubagentCustomTypeDtoCopyWith<$Res> {
+  __$CursorSubagentCustomTypeDtoCopyWithImpl(this._self, this._then);
+
+  final _CursorSubagentCustomTypeDto _self;
+  final $Res Function(_CursorSubagentCustomTypeDto) _then;
+
+/// Create a copy of CursorSubagentCustomTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? unspecified = freezed,}) {
+  return _then(_CursorSubagentCustomTypeDto(
+unspecified: freezed == unspecified ? _self.unspecified : unspecified // ignore: cast_nullable_to_non_nullable
+as CursorSubagentUnspecifiedDto?,
+  ));
+}
+
+/// Create a copy of CursorSubagentCustomTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified {
+    if (_self.unspecified == null) {
+    return null;
+  }
+
+  return $CursorSubagentUnspecifiedDtoCopyWith<$Res>(_self.unspecified!, (value) {
+    return _then(_self.copyWith(unspecified: value));
+  });
+}
+}
+
+
+/// @nodoc
+mixin _$CursorSubagentUnspecifiedDto {
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorSubagentUnspecifiedDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'CursorSubagentUnspecifiedDto()';
+}
+
+
+}
+
+/// @nodoc
+class $CursorSubagentUnspecifiedDtoCopyWith<$Res>  {
+$CursorSubagentUnspecifiedDtoCopyWith(CursorSubagentUnspecifiedDto _, $Res Function(CursorSubagentUnspecifiedDto) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CursorSubagentUnspecifiedDto implements CursorSubagentUnspecifiedDto {
+  const _CursorSubagentUnspecifiedDto();
+  factory _CursorSubagentUnspecifiedDto.fromJson(Map<String, dynamic> json) => _$CursorSubagentUnspecifiedDtoFromJson(json);
+
+
+
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorSubagentUnspecifiedDto);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'CursorSubagentUnspecifiedDto()';
+}
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$CursorTaskReplaySubagentTypeDto {
+
+ CursorSubagentUnspecifiedDto? get unspecified;
+/// Create a copy of CursorTaskReplaySubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$CursorTaskReplaySubagentTypeDtoCopyWith<CursorTaskReplaySubagentTypeDto> get copyWith => _$CursorTaskReplaySubagentTypeDtoCopyWithImpl<CursorTaskReplaySubagentTypeDto>(this as CursorTaskReplaySubagentTypeDto, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+  final _this = this as CursorTaskReplaySubagentTypeDto;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CursorTaskReplaySubagentTypeDto&&(identical(other.unspecified, _this.unspecified) || other.unspecified == _this.unspecified));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+  final _this = this as CursorTaskReplaySubagentTypeDto;
+  return Object.hash(runtimeType,_this.unspecified);
+}
+
+@override
+String toString() {
+  final _this = this as CursorTaskReplaySubagentTypeDto;
+  return 'CursorTaskReplaySubagentTypeDto(unspecified: ${_this.unspecified})';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $CursorTaskReplaySubagentTypeDtoCopyWith<$Res>  {
+  factory $CursorTaskReplaySubagentTypeDtoCopyWith(CursorTaskReplaySubagentTypeDto value, $Res Function(CursorTaskReplaySubagentTypeDto) _then) = _$CursorTaskReplaySubagentTypeDtoCopyWithImpl;
+@useResult
+$Res call({
+ CursorSubagentUnspecifiedDto? unspecified
+});
+
+
+$CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified;
+
+}
+/// @nodoc
+class _$CursorTaskReplaySubagentTypeDtoCopyWithImpl<$Res>
+    implements $CursorTaskReplaySubagentTypeDtoCopyWith<$Res> {
+  _$CursorTaskReplaySubagentTypeDtoCopyWithImpl(this._self, this._then);
+
+  final CursorTaskReplaySubagentTypeDto _self;
+  final $Res Function(CursorTaskReplaySubagentTypeDto) _then;
+
+/// Create a copy of CursorTaskReplaySubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? unspecified = freezed,}) {
+  return _then(CursorTaskReplaySubagentTypeDto(
+unspecified: freezed == unspecified ? _self.unspecified : unspecified // ignore: cast_nullable_to_non_nullable
+as CursorSubagentUnspecifiedDto?,
+  ));
+}
+/// Create a copy of CursorTaskReplaySubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified {
+    if (_self.unspecified == null) {
+    return null;
+  }
+
+  return $CursorSubagentUnspecifiedDtoCopyWith<$Res>(_self.unspecified!, (value) {
+    return _then(_self.copyWith(unspecified: value));
+  });
+}
+}
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _CursorTaskReplaySubagentTypeDto implements CursorTaskReplaySubagentTypeDto {
+  const _CursorTaskReplaySubagentTypeDto({required this.unspecified});
+  factory _CursorTaskReplaySubagentTypeDto.fromJson(Map<String, dynamic> json) => _$CursorTaskReplaySubagentTypeDtoFromJson(json);
+
+@override final  CursorSubagentUnspecifiedDto? unspecified;
+
+/// Create a copy of CursorTaskReplaySubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+_$CursorTaskReplaySubagentTypeDtoCopyWith<_CursorTaskReplaySubagentTypeDto> get copyWith => __$CursorTaskReplaySubagentTypeDtoCopyWithImpl<_CursorTaskReplaySubagentTypeDto>(this, _$identity);
+
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CursorTaskReplaySubagentTypeDto&&(identical(other.unspecified, unspecified) || other.unspecified == unspecified));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,unspecified);
+}
+
+@override
+String toString() {
+    return 'CursorTaskReplaySubagentTypeDto(unspecified: $unspecified)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class _$CursorTaskReplaySubagentTypeDtoCopyWith<$Res> implements $CursorTaskReplaySubagentTypeDtoCopyWith<$Res> {
+  factory _$CursorTaskReplaySubagentTypeDtoCopyWith(_CursorTaskReplaySubagentTypeDto value, $Res Function(_CursorTaskReplaySubagentTypeDto) _then) = __$CursorTaskReplaySubagentTypeDtoCopyWithImpl;
+@override @useResult
+$Res call({
+ CursorSubagentUnspecifiedDto? unspecified
+});
+
+
+@override $CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified;
+
+}
+/// @nodoc
+class __$CursorTaskReplaySubagentTypeDtoCopyWithImpl<$Res>
+    implements _$CursorTaskReplaySubagentTypeDtoCopyWith<$Res> {
+  __$CursorTaskReplaySubagentTypeDtoCopyWithImpl(this._self, this._then);
+
+  final _CursorTaskReplaySubagentTypeDto _self;
+  final $Res Function(_CursorTaskReplaySubagentTypeDto) _then;
+
+/// Create a copy of CursorTaskReplaySubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override @pragma('vm:prefer-inline') $Res call({Object? unspecified = freezed,}) {
+  return _then(_CursorTaskReplaySubagentTypeDto(
+unspecified: freezed == unspecified ? _self.unspecified : unspecified // ignore: cast_nullable_to_non_nullable
+as CursorSubagentUnspecifiedDto?,
+  ));
+}
+
+/// Create a copy of CursorTaskReplaySubagentTypeDto
+/// with the given fields replaced by the non-null parameter values.
+@override
+@pragma('vm:prefer-inline')
+$CursorSubagentUnspecifiedDtoCopyWith<$Res>? get unspecified {
+    if (_self.unspecified == null) {
+    return null;
+  }
+
+  return $CursorSubagentUnspecifiedDtoCopyWith<$Res>(_self.unspecified!, (value) {
+    return _then(_self.copyWith(unspecified: value));
+  });
+}
 }
 
 
 /// @nodoc
 mixin _$CursorTaskReplayInputDto {
 
-@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool get toolName; String? get prompt; String? get description; CursorSubagentTypeDto? get subagentType;
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool get toolName; String? get prompt; String? get description; CursorTaskReplaySubagentTypeDto? get subagentType;
 /// Create a copy of CursorTaskReplayInputDto
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -460,11 +868,11 @@ abstract mixin class $CursorTaskReplayInputDtoCopyWith<$Res>  {
   factory $CursorTaskReplayInputDtoCopyWith(CursorTaskReplayInputDto value, $Res Function(CursorTaskReplayInputDto) _then) = _$CursorTaskReplayInputDtoCopyWithImpl;
 @useResult
 $Res call({
-@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description, CursorSubagentTypeDto? subagentType
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description, CursorTaskReplaySubagentTypeDto? subagentType
 });
 
 
-$CursorSubagentTypeDtoCopyWith<$Res>? get subagentType;
+$CursorTaskReplaySubagentTypeDtoCopyWith<$Res>? get subagentType;
 
 }
 /// @nodoc
@@ -483,19 +891,19 @@ toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_
 as CursorTaskTool,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,subagentType: freezed == subagentType ? _self.subagentType : subagentType // ignore: cast_nullable_to_non_nullable
-as CursorSubagentTypeDto?,
+as CursorTaskReplaySubagentTypeDto?,
   ));
 }
 /// Create a copy of CursorTaskReplayInputDto
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$CursorSubagentTypeDtoCopyWith<$Res>? get subagentType {
+$CursorTaskReplaySubagentTypeDtoCopyWith<$Res>? get subagentType {
     if (_self.subagentType == null) {
     return null;
   }
 
-  return $CursorSubagentTypeDtoCopyWith<$Res>(_self.subagentType!, (value) {
+  return $CursorTaskReplaySubagentTypeDtoCopyWith<$Res>(_self.subagentType!, (value) {
     return _then(_self.copyWith(subagentType: value));
   });
 }
@@ -513,7 +921,7 @@ class _CursorTaskReplayInputDto implements CursorTaskReplayInputDto {
 @override@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) final  CursorTaskTool toolName;
 @override final  String? prompt;
 @override final  String? description;
-@override final  CursorSubagentTypeDto? subagentType;
+@override final  CursorTaskReplaySubagentTypeDto? subagentType;
 
 /// Create a copy of CursorTaskReplayInputDto
 /// with the given fields replaced by the non-null parameter values.
@@ -547,11 +955,11 @@ abstract mixin class _$CursorTaskReplayInputDtoCopyWith<$Res> implements $Cursor
   factory _$CursorTaskReplayInputDtoCopyWith(_CursorTaskReplayInputDto value, $Res Function(_CursorTaskReplayInputDto) _then) = __$CursorTaskReplayInputDtoCopyWithImpl;
 @override @useResult
 $Res call({
-@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description, CursorSubagentTypeDto? subagentType
+@JsonKey(name: "_toolName", unknownEnumValue: CursorTaskTool.unknown) CursorTaskTool toolName, String? prompt, String? description, CursorTaskReplaySubagentTypeDto? subagentType
 });
 
 
-@override $CursorSubagentTypeDtoCopyWith<$Res>? get subagentType;
+@override $CursorTaskReplaySubagentTypeDtoCopyWith<$Res>? get subagentType;
 
 }
 /// @nodoc
@@ -570,7 +978,7 @@ toolName: null == toolName ? _self.toolName : toolName // ignore: cast_nullable_
 as CursorTaskTool,prompt: freezed == prompt ? _self.prompt : prompt // ignore: cast_nullable_to_non_nullable
 as String?,description: freezed == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String?,subagentType: freezed == subagentType ? _self.subagentType : subagentType // ignore: cast_nullable_to_non_nullable
-as CursorSubagentTypeDto?,
+as CursorTaskReplaySubagentTypeDto?,
   ));
 }
 
@@ -578,12 +986,12 @@ as CursorSubagentTypeDto?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$CursorSubagentTypeDtoCopyWith<$Res>? get subagentType {
+$CursorTaskReplaySubagentTypeDtoCopyWith<$Res>? get subagentType {
     if (_self.subagentType == null) {
     return null;
   }
 
-  return $CursorSubagentTypeDtoCopyWith<$Res>(_self.subagentType!, (value) {
+  return $CursorTaskReplaySubagentTypeDtoCopyWith<$Res>(_self.subagentType!, (value) {
     return _then(_self.copyWith(subagentType: value));
   });
 }

@@ -111,7 +111,14 @@ void main() {
         ("missing output", _input(), _terminal()),
         ("malformed output", _input(), _terminal(rawOutput: {"isBackground": "false"})),
         ("missing enum", _input(subagentType: const <String, Object?>{}), _terminal(rawOutput: foreground)),
-        ("unknown enum", _input(subagentType: const {"custom": "future"}), _terminal(rawOutput: foreground)),
+        (
+          "unknown tagged variant",
+          _input(
+            subagentType: const {"future": <String, Object?>{}},
+          ),
+          _terminal(rawOutput: foreground),
+        ),
+        ("malformed presentation", _input(subagentType: "unspecified"), _terminal(rawOutput: foreground)),
         ("blank prompt", _input(prompt: " "), _terminal(rawOutput: foreground)),
         ("blank description", _input(description: ""), _terminal(rawOutput: foreground)),
         ("malformed input", _input(prompt: 7), _terminal(rawOutput: foreground)),
@@ -164,7 +171,7 @@ Map<String, dynamic> _input({
   String toolName = "task",
   Object? prompt = "Inspect code",
   Object? description = "Inspect",
-  Object? subagentType = const {"custom": "unspecified"},
+  Object? subagentType = const {"unspecified": <String, Object?>{}},
 }) => {
   "_toolName": toolName,
   "prompt": prompt,

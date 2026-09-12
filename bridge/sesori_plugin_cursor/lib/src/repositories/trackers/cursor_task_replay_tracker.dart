@@ -85,7 +85,7 @@ final class CursorTaskReplayTracker({
         genericPart: toolPart,
         prompt: prompt,
         description: description,
-        subagentType: subagentType,
+        subagentPresentation: taskMapper.replayPresentation(subagentType: subagentType),
       );
     },
   );

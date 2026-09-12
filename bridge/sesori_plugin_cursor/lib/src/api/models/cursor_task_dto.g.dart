@@ -25,17 +25,35 @@ _CursorTaskOutputDto _$CursorTaskOutputDtoFromJson(Map json) =>
 
 _CursorSubagentTypeDto _$CursorSubagentTypeDtoFromJson(Map json) =>
     _CursorSubagentTypeDto(
-      custom: $enumDecodeNullable(
-        _$CursorSubagentTypeEnumMap,
-        json['custom'],
-        unknownValue: CursorSubagentType.unknown,
-      ),
+      custom: json['custom'] == null
+          ? null
+          : CursorSubagentCustomTypeDto.fromJson(
+              Map<String, dynamic>.from(json['custom'] as Map),
+            ),
     );
 
-const _$CursorSubagentTypeEnumMap = {
-  CursorSubagentType.unspecified: 'unspecified',
-  CursorSubagentType.unknown: 'unknown',
-};
+_CursorSubagentCustomTypeDto _$CursorSubagentCustomTypeDtoFromJson(Map json) =>
+    _CursorSubagentCustomTypeDto(
+      unspecified: json['unspecified'] == null
+          ? null
+          : CursorSubagentUnspecifiedDto.fromJson(
+              Map<String, dynamic>.from(json['unspecified'] as Map),
+            ),
+    );
+
+_CursorSubagentUnspecifiedDto _$CursorSubagentUnspecifiedDtoFromJson(
+  Map json,
+) => _CursorSubagentUnspecifiedDto();
+
+_CursorTaskReplaySubagentTypeDto _$CursorTaskReplaySubagentTypeDtoFromJson(
+  Map json,
+) => _CursorTaskReplaySubagentTypeDto(
+  unspecified: json['unspecified'] == null
+      ? null
+      : CursorSubagentUnspecifiedDto.fromJson(
+          Map<String, dynamic>.from(json['unspecified'] as Map),
+        ),
+);
 
 _CursorTaskReplayInputDto _$CursorTaskReplayInputDtoFromJson(Map json) =>
     _CursorTaskReplayInputDto(
@@ -48,7 +66,7 @@ _CursorTaskReplayInputDto _$CursorTaskReplayInputDtoFromJson(Map json) =>
       description: json['description'] as String?,
       subagentType: json['subagentType'] == null
           ? null
-          : CursorSubagentTypeDto.fromJson(
+          : CursorTaskReplaySubagentTypeDto.fromJson(
               Map<String, dynamic>.from(json['subagentType'] as Map),
             ),
     );

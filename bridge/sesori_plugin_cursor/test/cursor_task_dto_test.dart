@@ -33,14 +33,15 @@ void main() {
         "_toolName": "task",
         "prompt": "Inspect code",
         "description": "Inspect",
-        "subagentType": {"custom": "unspecified"},
+        "subagentType": {"unspecified": <String, Object?>{}},
       });
       final output = CursorTaskOutputDto.fromJson(const {"isBackground": false});
 
       expect(
-        (update.sessionUpdate, update.status, input.subagentType?.custom),
-        (CursorTaskReplayUpdateKind.toolCall, CursorTaskReplayStatus.pending, CursorSubagentType.unspecified),
+        (update.sessionUpdate, update.status),
+        (CursorTaskReplayUpdateKind.toolCall, CursorTaskReplayStatus.pending),
       );
+      expect(input.subagentType?.unspecified, isA<CursorSubagentUnspecifiedDto>());
       expect(output.isBackground, isFalse);
     });
 
@@ -53,7 +54,13 @@ void main() {
         (unknown.sessionUpdate, unknown.status),
         (CursorTaskReplayUpdateKind.unknown, CursorTaskReplayStatus.unknown),
       );
-      expect(CursorSubagentTypeDto.fromJson(const {}).custom, isNull);
+      expect(CursorTaskReplaySubagentTypeDto.fromJson(const {}).unspecified, isNull);
+      expect(
+        CursorTaskReplaySubagentTypeDto.fromJson(const {
+          "futureAgent": <String, Object?>{},
+        }).unspecified,
+        isNull,
+      );
       expect(
         () => CursorTaskReplayInputDto.fromJson(const {"_toolName": "task", "prompt": 7}),
         throwsA(anything),
@@ -71,21 +78,25 @@ void main() {
         "agentId": "not-a-child-session",
         "description": "Inspect",
         "prompt": "Inspect code",
-        "subagentType": {"custom": "unspecified"},
+        "subagentType": {
+          "custom": {"unspecified": <String, Object?>{}},
+        },
         "model": "ignored-model",
         "durationMs": 42,
       });
       expect(request.toolCallId, "task-1");
       expect(request.description, "Inspect");
       expect(request.prompt, "Inspect code");
-      expect(request.subagentType.custom, CursorSubagentType.unspecified);
+      expect(request.subagentType.custom?.unspecified, isA<CursorSubagentUnspecifiedDto>());
     });
 
-    test("missing custom stays null and unfamiliar non-null custom becomes unknown", () {
+    test("missing custom and unfamiliar tagged custom payload stay incomplete", () {
       expect(CursorSubagentTypeDto.fromJson(const {}).custom, isNull);
       expect(
-        CursorSubagentTypeDto.fromJson(const {"custom": "future-agent"}).custom,
-        CursorSubagentType.unknown,
+        CursorSubagentTypeDto.fromJson(const {
+          "custom": {"futureAgent": <String, Object?>{}},
+        }).custom?.unspecified,
+        isNull,
       );
     });
 

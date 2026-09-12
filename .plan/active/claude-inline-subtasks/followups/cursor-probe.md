@@ -117,9 +117,10 @@ no `cursor/task` request. It emitted only:
 - matching standard `tool_call_update {status: completed, rawOutput:
   {durationMs, isBackground: false}}`.
 
-`prompt` and `description` were strings. Observed `subagentType` was the typed
-object shape `custom -> unspecified`, not the string assumed by the old plan.
-Two consecutive loads returned the same replay-local tool-call id and facts, so
+`prompt` and `description` were strings. Step 6 inspection clarified that
+replay `subagentType` is the tagged object `unspecified`, while the live
+`cursor/task` request wraps it under `custom`; neither is the string assumed by
+the old plan. Two consecutive loads returned the same replay-local tool-call id and facts, so
 foreground replay has stable material for a typed tile. That replay id differed
 from the original live id; projection must use normal replay identity rather
 than assert live/replay id equality.
@@ -142,6 +143,41 @@ or child transcript was exposed by any case.
 | Cancelled Task replay | Passed as absence | Native load omitted the cancelled Task entirely |
 | Child session / child history | Not supported | No child session id or transcript crossed ACP |
 | Phone / desktop product UI | Unexecuted | Probe was native harness-only; no client, desktop, simulator, relay, or account-state QA |
+
+## Actual-plugin coverage (Step 6, 2026-09-11)
+
+Bounded QA used `CursorPlugin` production composition, the checksum-verified
+managed `2026.08.11-e8db854` runtime, existing auth/model/config unchanged, and
+owned scratch sessions only. It found and fixed one exact typed-boundary defect:
+live `cursor/task.subagentType` is the nested tag `custom → unspecified`, while
+standard replay `rawInput.subagentType` uses `unspecified` directly. Separate
+Freezed DTOs now map those exact shapes into one closed presentation value;
+unknown or malformed variants remain generic.
+
+Passed actual-plugin scope:
+
+- pending/in-progress stayed generic and mode-unknown; foreground terminal
+  generic presentation preceded one correlated completed childless tile;
+- two fresh cold loads each produced the equivalent completed tile with stable
+  replay-local identity;
+- active-Task `confirm` and `keep` returned the same exact side-effect-free
+  rejection; named-root `stop` settled authoritatively with a generic cancelled
+  card; the process and session accepted follow-ups;
+- a background Task stayed generic, native `end_turn` emitted honest root idle,
+  later permission activity arrived, process work state remained busy, and the
+  resident process accepted another session;
+- post-background `confirm`, `keep`, and `stop` returned the identical
+  not-performed result without events or pending-permission mutation.
+
+One bounded native race attempt issued Stop from the running generic Task event,
+but cancellation settled before the Task resolved background. The
+background-resolution-before-prompt-settlement HTTP 502 case remains focused
+production-composition fake coverage, not native evidence. Background terminal
+lifecycle, child sessions/transcripts, full background stop, phone/desktop UI,
+push delivery, and multi-client behavior remain unsupported or unexecuted.
+Automatic approval stayed off. Private captures and all owned process/session/
+scratch resources were deleted; no raw prompt, transcript, id, permission
+payload, log, or timing evidence is committed.
 
 ## Implementation plan against current code
 
@@ -207,7 +243,11 @@ Cursor boundary and repository changes:
   `CursorTaskTool` is closed with `unknown`; `unknownEnumValue` handles an
   unrecognized non-null string, while no `@Default` or converter is used. Step
   3 adds output/request/subagent presentation DTO fields only when completed
-  tile correlation consumes them. Generated files come only from codegen.
+  tile correlation consumes them. Step 6 models the native live
+  `custom → unspecified` and replay-direct `unspecified` tags with distinct
+  Freezed DTOs, mapping both exact shapes to one closed presentation enum.
+  Unknown or malformed variants remain generic; no dual-shape compatibility
+  parser exists. Generated files come only from codegen.
 - `bridge/sesori_plugin_cursor/lib/src/trackers/cursor_task_tracker.dart`
   owns process-local generic Task correlation and deletion tombstones without
   any ACP child/root activity API. `CursorEventMapper` keeps the two Step 2
@@ -510,10 +550,12 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    residency, typed refusal, safe `rootSessionCancel`, and concurrent descendant
    fallback with mandatory settlement re-check; no replay/native QA.
 5. `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]`
-   PR #1443 uses one configured standard ACP collector and shared injected `CursorTaskMapper`; tests pass; no native QA.
-6. `🌱 [claude-inline-subtasks] docs: record Cursor sub-agent coverage [step 6/6]`
-   (expected 60–140 changed lines): bounded actual-plugin evidence and final
-   reconciliation only; unsupported/unexecuted boundaries remain explicit.
+   merged at `f5e4e7f67a`; one configured standard ACP collector and shared
+   injected `CursorTaskMapper`; tests passed; no native QA.
+6. `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]`
+   is open as PR #1444: bounded actual-plugin evidence,
+   exact live/replay tagged-shape repair, generated serializers, focused tests,
+   and final reconciliation. Unsupported/unexecuted boundaries remain explicit.
 
 ### Bounded verification plan
 

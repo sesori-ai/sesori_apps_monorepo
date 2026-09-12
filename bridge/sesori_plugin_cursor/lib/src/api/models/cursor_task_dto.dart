@@ -10,13 +10,6 @@ enum CursorTaskTool() {
   unknown,
 }
 
-enum CursorSubagentType() {
-  @JsonValue("unspecified")
-  unspecified,
-  @JsonValue("unknown")
-  unknown,
-}
-
 enum CursorTaskReplayUpdateKind() {
   @JsonValue("tool_call")
   toolCall,
@@ -61,14 +54,36 @@ sealed class CursorTaskOutputDto with _$CursorTaskOutputDto {
   factory fromJson(Map<String, dynamic> json) => _$CursorTaskOutputDtoFromJson(json);
 }
 
-/// Cursor's observed closed sub-agent presentation variant.
+/// Cursor's observed tagged sub-agent presentation variant.
 @Freezed(fromJson: true, toJson: false)
 sealed class CursorSubagentTypeDto with _$CursorSubagentTypeDto {
-  const factory({
-    @JsonKey(unknownEnumValue: CursorSubagentType.unknown) required CursorSubagentType? custom,
-  }) = _CursorSubagentTypeDto;
+  const factory({required CursorSubagentCustomTypeDto? custom}) = _CursorSubagentTypeDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorSubagentTypeDtoFromJson(json);
+}
+
+/// Payload of Cursor's observed live `custom` sub-agent type variant.
+@Freezed(fromJson: true, toJson: false)
+sealed class CursorSubagentCustomTypeDto with _$CursorSubagentCustomTypeDto {
+  const factory({required CursorSubagentUnspecifiedDto? unspecified}) = _CursorSubagentCustomTypeDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CursorSubagentCustomTypeDtoFromJson(json);
+}
+
+/// Empty payload marking Cursor's observed `unspecified` custom sub-agent.
+@Freezed(fromJson: true, toJson: false)
+sealed class CursorSubagentUnspecifiedDto with _$CursorSubagentUnspecifiedDto {
+  const factory() = _CursorSubagentUnspecifiedDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CursorSubagentUnspecifiedDtoFromJson(json);
+}
+
+/// Cursor's replay-only sub-agent presentation shape.
+@Freezed(fromJson: true, toJson: false)
+sealed class CursorTaskReplaySubagentTypeDto with _$CursorTaskReplaySubagentTypeDto {
+  const factory({required CursorSubagentUnspecifiedDto? unspecified}) = _CursorTaskReplaySubagentTypeDto;
+
+  factory fromJson(Map<String, dynamic> json) => _$CursorTaskReplaySubagentTypeDtoFromJson(json);
 }
 
 /// Full standard Task input persisted by Cursor for history replay.
@@ -82,7 +97,7 @@ sealed class CursorTaskReplayInputDto with _$CursorTaskReplayInputDto {
     required CursorTaskTool toolName,
     required String? prompt,
     required String? description,
-    required CursorSubagentTypeDto? subagentType,
+    required CursorTaskReplaySubagentTypeDto? subagentType,
   }) = _CursorTaskReplayInputDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorTaskReplayInputDtoFromJson(json);

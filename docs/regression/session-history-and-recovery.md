@@ -114,10 +114,14 @@ reconnect or restart.
   child view, so neither client path is claimed.
 - Cursor `session/load` replaces only a fully typed completed foreground Task's
   generic card, preserving its replay-local part identity, title, output,
-  attachments, and transcript order. Background, incomplete, malformed,
+  attachments, and transcript order. Its native replay input uses
+  `subagentType.unspecified`, distinct from the live request's
+  `subagentType.custom.unspecified`; separate typed DTOs map both exact shapes
+  to one closed presentation value. Background, incomplete, malformed,
   unknown, nonterminal, unmatched, and update-only facts remain generic; an
-  omitted cancelled Task remains absent. Independent loads produce equivalent
-  fields without requiring equality with the earlier live id.
+  omitted cancelled Task remains absent. Bounded production-composition QA
+  passed two fresh cold loads with one equivalent completed childless tile and
+  stable replay-local identity, without requiring equality with the live id.
 - Messages visible live but absent from the backend's replay remain visible
   after a stale re-read. Exact identities satisfy their replay occurrences
   first and anchor neighboring order by identity even when replay revises their

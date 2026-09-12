@@ -215,7 +215,9 @@ idle suspension, the management snapshot, and lifecycle commands.
   busy, preventing safe suspension without changing UI status, summaries, child
   counts, or idle events. It survives later turns and clears only on exact session
   cleanup, process reset/forced teardown, or disposal because Cursor exposes no
-  terminal fact.
+  terminal fact. Bounded production-composition QA observed root idle first, a
+  later background permission, busy process work state, and a new session on
+  the same resident process.
 - A busy harness conflicts explicitly, forcing needs confirmation and is sent once, the
   snapshot changes only on real content change with a new token, and a terminal failure
   removes only that harness's routing and new-session choice.

@@ -295,7 +295,11 @@ invocation completes at launch and exposes `isBackground: true`, while the
 background work continues without a later terminal lifecycle or child
 transcript. `session/load` replays stable full standard Task input/result facts,
 not `cursor/task`; Sesori now replaces an exact completed foreground replay card
-with the same childless tile while preserving replay-local identity and order. Pending/in-progress calls lack presentation facts and `isBackground`, so their
+with the same childless tile while preserving replay-local identity and order.
+The live request's nested tagged presentation is `custom → unspecified`; replay
+uses the distinct `unspecified` tag directly. Separate typed boundary DTOs map
+both exact shapes to one closed presentation value, while unknown or malformed
+variants stay generic. Pending/in-progress calls lack presentation facts and `isBackground`, so their
 mode is unknown and they remain generic; cancelled foreground calls also remain
 generic cancelled cards because no `cursor/task` follows cancellation. Sesori
 now replaces only an exact live standard completion with explicit
@@ -313,7 +317,15 @@ cancellation. Client drain pauses; that variant retains queued prompts and shows
 restart recovery even for unknown reasons. Malformed bodies, unknown variants,
 and post-cancel failures remain ambiguous. The observation keeps only ACP process
 work state busy until session cleanup or process reset; root `end_turn` and UI
-idle never claim background completion.
+idle never claim background completion. Bounded managed-target production-
+composition QA passed live terminal replacement, two equivalent cold loads,
+mode-unknown generic presentation, exact active-Task confirmation/keep
+rejection, named-root cancellation with a generic cancelled card, process/session
+reuse, root idle before later background permission, residency, and identical
+non-mutating post-background refusal for all three policies. One bounded race
+attempt cancelled before background resolution, so post-cancel background
+transition remains automated rather than native evidence. No phone, desktop,
+child, background completion, or full-background-stop coverage is inferred.
 
 ⁶ Hermes (hermes-agent 0.19.0) has `delegate_task`, but its ACP adapter
 flattens delegation into an ordinary tool call and maps `session/cancel` to a
