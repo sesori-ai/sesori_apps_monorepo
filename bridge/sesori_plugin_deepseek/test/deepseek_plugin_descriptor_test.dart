@@ -35,8 +35,8 @@ void main() {
       );
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
-      installedVersion("0.1.4");
+    test("asks for an upgrade when the preceding managed version is installed", () {
+      installedVersion("0.1.5");
 
       expect(
         const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
@@ -48,7 +48,7 @@ void main() {
     });
 
     test("declines with an explicit binary override", () {
-      installedVersion("0.1.4");
+      installedVersion("0.1.5");
 
       expect(
         const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
@@ -83,7 +83,7 @@ void main() {
         _ProbeProcess(
           pid: 1,
           stdoutBytes: utf8.encode(
-            "sesori-deepseek-acp/${DeepSeekPluginDescriptor.targetVersion} deepseek-harness/0.1.1-rc.2 acp/1\n",
+            "sesori-deepseek-acp/${DeepSeekPluginDescriptor.minVersion} deepseek-harness/0.1.1-rc.2 acp/1\n",
           ),
           stderrBytes: const [],
           exitCodeValue: 0,
@@ -101,6 +101,35 @@ void main() {
         .toList();
 
     expect(events.last, isA<ProvisionReady>().having((event) => event.binaryPath, "binaryPath", "/custom/deepseek"));
+    expect(processes.spawnedArguments, [
+      const ["--version"],
+    ]);
+  });
+
+  test("ensureRuntime keeps a compatible preceding PATH adapter", () async {
+    final processes = _ProcessService(
+      probes: [
+        _ProbeProcess(
+          pid: 1,
+          stdoutBytes: utf8.encode(
+            "sesori-deepseek-acp/${DeepSeekPluginDescriptor.minVersion} deepseek-harness/0.1.5-rc.2 acp/1\n",
+          ),
+          stderrBytes: const [],
+          exitCodeValue: 0,
+        ),
+      ],
+    );
+
+    final events = await const DeepSeekPluginDescriptor()
+        .ensureRuntime(
+          host: _PluginHost(processes: processes, config: config, provisionedRuntimePath: null),
+        )
+        .toList();
+
+    expect(
+      events.last,
+      isA<ProvisionReady>().having((event) => event.binaryPath, "binaryPath", DeepSeekBinary.defaultBinary),
+    );
     expect(processes.spawnedArguments, [
       const ["--version"],
     ]);
