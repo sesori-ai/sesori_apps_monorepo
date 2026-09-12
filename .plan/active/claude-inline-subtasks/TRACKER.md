@@ -1055,9 +1055,10 @@ strict extension. Correctness follow-up cites ACP v1's session-unique
 `ToolCallId` contract, aligns empty-ID rejection between live and replay,
 exercises real ACP mapper/collector output through stored history, and proves a
 non-ACP unanchored transcript plus duplicated imported anchor remain unchanged.
-The direct scan is safe without overlap bookkeeping because any shared boundary
-assistant would need to be both exact and a strict extension. Focused positive,
-idempotence, multiplicity, ordering, timestamp, part-shape, reverse-prefix,
-unrelated-text, distinct/duplicate-anchor, and new-live-suffix coverage passes
-locally. The plan stays active: exact cold child history still requires
+Two-sided candidate usage remains required: distinct valid tool anchors can
+cross-align through one shared assistant index on only the imported or stored
+side. Focused overlap negatives now preserve both ambiguous windows, alongside
+positive, idempotence, multiplicity, ordering, timestamp, part-shape,
+reverse-prefix, unrelated-text, distinct/duplicate-anchor, and new-live-suffix
+coverage. The plan stays active: exact cold child history still requires
 owned-phone confirmation after review.

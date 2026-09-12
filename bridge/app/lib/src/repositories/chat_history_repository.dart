@@ -870,7 +870,7 @@ class ChatHistoryRepository({
       storedIndexById[id] = index;
     }
 
-    final matchedStoredIds = <String>{};
+    final candidates = <({int importedStart, int storedStart})>[];
     for (var importedAnchorIndex = 1; importedAnchorIndex + 1 < importedMessages.length; importedAnchorIndex++) {
       final anchorId = importedMessages[importedAnchorIndex].info.id;
       if (importedIdCounts[anchorId] != 1 || storedIdCounts[anchorId] != 1) continue;
@@ -920,15 +920,36 @@ class ChatHistoryRepository({
           !_isStrictImportedTextExtension(imported: importedAfter, stored: storedAfter)) {
         continue;
       }
-      // Qualifying windows cannot overlap. Exact anchor identities occur once,
-      // while a shared assistant between adjacent anchors would have to be
-      // both exactly equal as the next window's prefix and a strict extension
-      // as the previous window's suffix.
-      matchedStoredIds.addAll([
-        storedRows[storedStart].messageId,
-        storedRows[storedAnchorIndex].messageId,
-        storedRows[storedAnchorIndex + 1].messageId,
-      ]);
+      candidates.add((importedStart: importedStart, storedStart: storedStart));
+    }
+
+    // Distinct exact tool anchors can cross-align through one assistant index
+    // on only the imported or stored side. Count both sides so no replay or
+    // retained occurrence can authorize two otherwise-valid windows.
+    final importedUsage = <int, int>{};
+    final storedUsage = <int, int>{};
+    for (final candidate in candidates) {
+      for (var offset = 0; offset < 3; offset++) {
+        final importedIndex = candidate.importedStart + offset;
+        final storedIndex = candidate.storedStart + offset;
+        importedUsage[importedIndex] = (importedUsage[importedIndex] ?? 0) + 1;
+        storedUsage[storedIndex] = (storedUsage[storedIndex] ?? 0) + 1;
+      }
+    }
+
+    final matchedStoredIds = <String>{};
+    for (final candidate in candidates) {
+      var uniquelyConsumed = true;
+      for (var offset = 0; offset < 3; offset++) {
+        if (importedUsage[candidate.importedStart + offset] != 1 || storedUsage[candidate.storedStart + offset] != 1) {
+          uniquelyConsumed = false;
+          break;
+        }
+      }
+      if (!uniquelyConsumed) continue;
+      for (var offset = 0; offset < 3; offset++) {
+        matchedStoredIds.add(storedRows[candidate.storedStart + offset].messageId);
+      }
     }
     return matchedStoredIds;
   }

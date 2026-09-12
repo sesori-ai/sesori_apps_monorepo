@@ -191,8 +191,9 @@ Correctness follow-up also records the ACP v1 contract that `ToolCallId` is
 unique within its session, rejects empty replay IDs exactly like live mapping,
 and exercises the complete real ACP mapper/collector-to-history path. A
 representative unanchored non-ACP transcript and duplicated imported anchor stay
-unchanged. Candidate-overlap bookkeeping was removed: with unique exact anchors,
-an overlapping assistant would have to be both exact and a strict extension.
+unchanged. Two-sided candidate usage is retained because distinct exact tool
+anchors can cross-align through one shared assistant index on only the imported
+or stored side; both ambiguous windows then remain.
 
 The plan remains active for exact owned-phone cold child-history confirmation
 after review. Owned diagnostic bridge/runtime/scratch/home/log/database/private

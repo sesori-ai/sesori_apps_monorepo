@@ -761,6 +761,162 @@ void main() {
       );
     });
 
+    test("shared imported assistant occurrence rejects both anchored windows", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user", text: "request", createdAt: null, promptId: null),
+          _assistantMessageWithText(
+            id: "replay-a",
+            text: "first",
+            reasoning: "reasoning-a",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-1", partId: "tool-1-call", tool: "wait-1", createdAt: null),
+          _assistantMessageWithText(
+            id: "replay-shared",
+            text: "middle complete",
+            reasoning: "reasoning-middle",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-2", partId: "tool-2-call", tool: "wait-2", createdAt: null),
+          _assistantMessageWithText(
+            id: "replay-b",
+            text: "last complete",
+            reasoning: "reasoning-b",
+            createdAt: null,
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessages(
+        history: history,
+        messages: [
+          _assistantMessageWithText(
+            id: "live-a",
+            text: "first",
+            reasoning: "reasoning-a",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-1", partId: "tool-1-call", tool: "wait-1", createdAt: null),
+          _assistantMessageWithText(
+            id: "live-middle-partial",
+            text: "middle",
+            reasoning: "reasoning-middle",
+            createdAt: null,
+          ),
+          _assistantMessageWithText(
+            id: "live-middle-exact",
+            text: "middle complete",
+            reasoning: "reasoning-middle",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-2", partId: "tool-2-call", tool: "wait-2", createdAt: null),
+          _assistantMessageWithText(
+            id: "live-b",
+            text: "last",
+            reasoning: "reasoning-b",
+            createdAt: null,
+          ),
+        ],
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        [
+          "replay-user",
+          "replay-a",
+          "tool-1",
+          "replay-shared",
+          "tool-2",
+          "replay-b",
+          "live-a",
+          "live-middle-partial",
+          "live-middle-exact",
+          "live-b",
+        ],
+      );
+    });
+
+    test("shared stored assistant occurrence rejects both anchored windows", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user", text: "request", createdAt: null, promptId: null),
+          _assistantMessageWithText(
+            id: "replay-a",
+            text: "first",
+            reasoning: "reasoning-a",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-1", partId: "tool-1-call", tool: "wait-1", createdAt: null),
+          _assistantMessageWithText(
+            id: "replay-middle-complete",
+            text: "middle complete",
+            reasoning: "reasoning-middle",
+            createdAt: null,
+          ),
+          _assistantMessageWithText(
+            id: "replay-middle-exact",
+            text: "middle",
+            reasoning: "reasoning-middle",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-2", partId: "tool-2-call", tool: "wait-2", createdAt: null),
+          _assistantMessageWithText(
+            id: "replay-b",
+            text: "last complete",
+            reasoning: "reasoning-b",
+            createdAt: null,
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessages(
+        history: history,
+        messages: [
+          _assistantMessageWithText(
+            id: "live-a",
+            text: "first",
+            reasoning: "reasoning-a",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-1", partId: "tool-1-call", tool: "wait-1", createdAt: null),
+          _assistantMessageWithText(
+            id: "live-shared",
+            text: "middle",
+            reasoning: "reasoning-middle",
+            createdAt: null,
+          ),
+          _assistantToolMessage(id: "tool-2", partId: "tool-2-call", tool: "wait-2", createdAt: null),
+          _assistantMessageWithText(
+            id: "live-b",
+            text: "last",
+            reasoning: "reasoning-b",
+            createdAt: null,
+          ),
+        ],
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        [
+          "replay-user",
+          "replay-a",
+          "tool-1",
+          "replay-middle-complete",
+          "replay-middle-exact",
+          "tool-2",
+          "replay-b",
+          "live-a",
+          "live-shared",
+          "live-b",
+        ],
+      );
+    });
+
     test("a duplicated imported anchor does not trigger window reconciliation", () async {
       final repository = _FakeSessionRepository(
         transcript: [
