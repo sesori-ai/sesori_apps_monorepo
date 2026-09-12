@@ -110,8 +110,11 @@ reconnect or restart.
   and never read or mutate live child state or the event stream. Corrected
   production-composition QA after PR #1429 verified one exact root/child catalog
   link, one root tile linked to that child, and a nonblank child-owned prompt in
-  child replay. Phone automation did not reach visible history or the read-only
-  child view, so neither client path is claimed.
+  child replay. Owned-phone QA reached cold read-only child history. Fixed build
+  `0187bb2b10` retained one tool row but two adjacent assistant rows on each side
+  across two opens and another backfill. Structural inspection found replay's
+  final text nonempty while live retained an empty text part; the current
+  nonempty strict-prefix reconciliation therefore did not apply.
 - Cursor `session/load` replaces only a fully typed completed foreground Task's
   generic card, preserving its replay-local part identity, title, output,
   attachments, and transcript order. Its native replay input uses

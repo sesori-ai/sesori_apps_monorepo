@@ -6,9 +6,11 @@
   and Cursor coverage are reconciled; Cursor Step 6 merged as PR #1444 at
   `67e173be1a`. The 2026-09-12 Grok owned-phone run passed its visible
   creation, lifecycle, scoped-stop, reuse, permission, cold-root, and read-only
-  child cases, but cold child history reproducibly duplicates the same
-  assistant/tool/final sequence under distinct rows. The plan remains active
-  for that material regression.
+  child cases, but cold child history reproducibly duplicated the same
+  assistant/tool/final sequence under distinct rows. A fixed-build rerun at
+  `0187bb2b10` deduplicated the exact tool anchor while retaining two assistant
+  rows on each side after two cold opens. The plan remains active for that
+  material regression.
 - **Plan date:** 2026-09-02; Cursor probe/design refreshed 2026-09-11.
 - **Base:** `main` at merged DeepSeek coverage documentation `7dd323d1d7`
   ([#1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431)).
@@ -400,8 +402,9 @@ has no child session or full scoped stop.
   remains unexecuted and no question channel is claimed. Earlier phone setup
   blockers are superseded. The 2026-09-12 owned-phone run passed visible
   creation, tile lifecycle, scope-dialog dismissal/full stop, reuse, cold root
-  history, read-only child navigation, and normal one-time permissions. Stable,
-  non-growing duplicate child-history rows keep the phone matrix partial.
+  history, read-only child navigation, and normal one-time permissions. A
+  fixed-build rerun retained one exact tool row but duplicated both adjacent
+  assistant rows stably across two opens, keeping the phone matrix partial.
 
 ### Design
 
@@ -525,8 +528,12 @@ has no child session or full scoped stop.
   read-only exact-child navigation, and normal one-time permissions passed.
   Reopening the same completed child stably showed one initial user row followed
   by a duplicated assistant/tool/final sequence; it did not grow on another
-  reopen. Background completion notification was attempted but not delivered or
-  claimed. Owned resources were cleaned and protected resources were untouched.
+  reopen. On fixed build `0187bb2b10`, cold reopen instead showed one initial
+  row, two pre-tool assistant rows, one tool row, and two post-tool assistant
+  rows; a second reopen and private second backfill preserved that exact
+  non-growing shape. Background completion notification was attempted in the
+  earlier full run but not delivered or claimed. Owned resources were cleaned
+  and protected resources were untouched.
 
 ### Open questions (resolved by the probe)
 

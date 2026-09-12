@@ -195,9 +195,22 @@ unchanged. Two-sided candidate usage is retained because distinct exact tool
 anchors can cross-align through one shared assistant index on only the imported
 or stored side; both ambiguous windows then remain.
 
-The plan remains active for exact owned-phone cold child-history confirmation
-after review. Owned diagnostic bridge/runtime/scratch/home/log/database/private
-evidence resources were removed; protected resources stayed untouched.
+Fixed-build phone confirmation at `0187bb2b10` failed narrowly. Cold reopen and
+one repeated open showed one child-owned initial row, two pre-tool assistant
+rows, one tool row, and two post-tool assistant rows without growth. A second
+private backfill retained the same six-message identity order. Structural
+comparison found the anchor unique, both windows contiguous and eligible, the
+preceding assistant exact, roles/info/part shapes aligned, timestamps absent,
+and no usage ambiguity. Replay final text was nonempty while the live final text
+part was empty, so only the strict extension predicate's nonempty-live guard
+rejected the window. Existing integration coverage uses a nonempty live prefix
+and misses this real shape. Smallest next step: add that exact fixture and decide
+narrowly whether an otherwise exact, unique anchored window may accept the empty
+prefix before repeating the phone gate.
+
+The plan remains active. Owned diagnostic bridge/runtime/scratch/home/log/
+database/private evidence resources were removed; protected resources stayed
+untouched.
 
 ## Consequences for the design
 

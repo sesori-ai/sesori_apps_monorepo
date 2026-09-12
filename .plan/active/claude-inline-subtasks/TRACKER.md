@@ -12,10 +12,12 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok phone coverage is now partial: bounded visible lifecycle,
   stop, reuse, permission, cold-root, and read-only-child cases passed, but cold
-  child history reproducibly duplicates assistant/tool/final rows. Harness
-  follow-ups remain active for that material regression.
-- **Next action:** Keep the plan active until Grok cold child history no longer
-  duplicates its assistant/tool/final sequence. PR #1444 merged at
+  child history remains duplicated. Fixed build `0187bb2b10` reduced the cold
+  transcript to one tool anchor with two assistant rows on each side, stable
+  across another reopen. Harness follow-ups remain active for that material
+  regression.
+- **Next action:** Cover and reconcile the real empty-live-final anchored shape,
+  then repeat the bounded cold child-history gate. PR #1444 merged at
   `67e173be1a`. The 2026-09-12 owned-phone run used an authenticated isolated
   official 1.0.5 runtime and executed the bounded matrix. Cursor actual-plugin
   coverage passed its
@@ -36,9 +38,9 @@
   corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
   #1431. Overall plan remains **ACTIVE** for the Grok cold child-history
-  duplication found by the 2026-09-12 phone run. Earlier WebDriverAgent and
-  stale-authentication setup blocks are superseded. No full Grok phone pass is
-  claimed. Cursor follow-ups are complete.
+  duplication still present on fixed build `0187bb2b10`. Earlier
+  WebDriverAgent and stale-authentication setup blocks are superseded. No full
+  Grok phone pass is claimed. Cursor follow-ups are complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -1060,5 +1062,8 @@ cross-align through one shared assistant index on only the imported or stored
 side. Focused overlap negatives now preserve both ambiguous windows, alongside
 positive, idempotence, multiplicity, ordering, timestamp, part-shape,
 reverse-prefix, unrelated-text, distinct/duplicate-anchor, and new-live-suffix
-coverage. The plan stays active: exact cold child history still requires
-owned-phone confirmation after review.
+coverage. Fixed-build phone confirmation at `0187bb2b10` retained one exact
+anchor but two assistant rows on each side. Private structural inspection found
+the live final text part empty while replay supplied nonempty text, so the
+nonempty strict-prefix predicate rejected the otherwise matching unique window.
+The plan stays active for correction and another owned-phone cold-history gate.
