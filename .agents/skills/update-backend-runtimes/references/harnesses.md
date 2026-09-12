@@ -235,8 +235,9 @@ an old pin or claim another harness's ACP behavior as evidence.
 - **Pin:** `bridge/sesori_plugin_omp/lib/src/runtime/omp_runtime_manifest.dart`;
   preserve `minPathVersion`.
 - **Assets:** **bare executables** plus `SHA256SUMS.txt`. Enumerate the selected
-  official release and reconcile it with `OmpRuntimeManifest._assets`, rather
-  than assuming a fixed asset count. Names use `omp-darwin-{arm64,x64}`,
+  official release and reconcile it with the manifest's complete asset mapping:
+  `OmpRuntimeManifest._assets` and `_linuxAssets` (both libc variants). Do not
+  assume a fixed asset count. Names use `omp-darwin-{arm64,x64}`,
   `omp-linux-{arm64,x64}` (glibc), `omp-linux-musl-{arm64,x64}`, and
   `omp-windows-<arch>.exe`. Record newly published architectures separately from
   currently supported mappings; adopting one is a platform feature, not a

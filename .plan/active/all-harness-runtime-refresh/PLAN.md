@@ -191,9 +191,11 @@ Implement the approved generic mapping in
   generic mapper must not interpret OMP key-naming conventions;
 - do not merge option and custom answers into one flat list: identical text
   would lose its originating property. Existing question indexes keep them
-  distinct, even when custom text equals an option label. The existing UI can
-  decline an optional custom question to return an empty answer for omission.
-  Reuse immutable per-property encoders and add the array variant only; scalar
+  distinct, even when custom text equals an option label. In the multi-question
+  OMP forms described above, the existing per-question decline returns an empty
+  answer for optional-custom omission. Single-question decline retains its
+  existing whole-request rejection. Reuse immutable per-property encoders and
+  add the array variant only; scalar
   behavior stays unchanged, with no new public or shared wire fields;
 - decline malformed/unsupported arrays without leaking defaults or labels in
   diagnostics; preserve scalar enum/boolean/custom behavior and single-choice
