@@ -81,6 +81,7 @@ void main() {
       expect((tile.sessionID, tile.messageID), (_sessionId, message.info.id));
       expect((tile.prompt, tile.description, tile.agent), ("Inspect code", "Inspect", "unspecified"));
       expect(tile.childSessionID, isNull);
+      // The title-only call names its tool by that title, so the title is not repeated.
       expect(
         (
           tile.taskState?.status,
@@ -88,7 +89,7 @@ void main() {
           tile.taskState?.output,
           tile.taskState?.attachments.length,
         ),
-        (PluginToolStatus.completed, "Task: Inspect", "final report", 1),
+        (PluginToolStatus.completed, null, "final report", 1),
       );
       expect(message.parts.whereType<PluginMessagePartTool>(), isEmpty);
     });
