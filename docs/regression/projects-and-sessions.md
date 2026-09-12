@@ -300,11 +300,12 @@ state.
   malformed update line is logged and skipped. Import remains
   non-destructive, never reads credentials or configuration, and never resumes a
   listed session merely to catalog it. Corrected production-composition QA after
-  PR #1429 verified an exact persisted root/child catalog link. Phone automation
-  has not reached visible project, session, or child lists. The
-  earlier attempt failed at WebDriverAgent startup; the 2026-09-12 retry stopped
-  at invalid copied authentication before booting the owned simulator. No phone
-  catalog presentation is claimed.
+  PR #1429 verified an exact persisted root/child catalog link. Phone QA on
+  2026-09-12 opened the owned project and root from cold history,
+  preserved cancelled/completed child tiles, and navigated the exact completed
+  child read-only. The child-owned initial row stayed single, but its
+  assistant/tool/final sequence appeared twice under stable distinct rows, so
+  child-history presentation remains partial rather than passed.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the

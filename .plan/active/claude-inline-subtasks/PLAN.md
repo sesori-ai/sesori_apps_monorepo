@@ -25,11 +25,14 @@
   `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
   Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
   evidence. None of these refs may be mutated or deleted. Retirement remains
-  blocked by the Grok phone gate. The 2026-09-12 rerun
-  reached a healthy isolated source bridge and detected production Grok 1.0.5,
-  but the fresh private credential copy was unauthenticated. Reauthentication
-  was forbidden, so setup stopped before booting the owned phone target and
-  every visible case remains unexecuted.
+  blocked by one material Grok phone finding. The 2026-09-12 owned-phone run
+  passed visible Grok-only creation, two-child lifecycle, exact scope-dialog
+  count/copy and dismissal, full stop, same-session/runtime reuse, cold root
+  reload, read-only child controls, and normal one-time permission handling.
+  Cold child history stably duplicated its assistant/tool/final sequence under
+  distinct rows. Push was attempted while backgrounded but not delivered.
+  Retirement waits on the child-history duplication; no full phone pass is
+  claimed.
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Historical original implementation base:** `main` at `ba725ec84`
@@ -58,12 +61,14 @@
   lifecycle settlement, and runtime reuse; root confirmation reuses its earlier
   passing run. The unchanged runtime emitted no live permission request, so
   permission handling remains unexecuted and no question support is claimed.
-  The earlier source phone build and relay setup were healthy, but WebDriverAgent
-  startup timed out before any visible case. A 2026-09-12 retry built the current
-  phone source and reached a healthy isolated bridge with Grok 1.0.5, but the
-  copied existing credential was unauthenticated. Reauthentication was out of
-  scope, so the owned simulator was not booted and all phone coverage remains
-  blocked and unexecuted. Historical merged PR titles remain unchanged. Grok
+  The earlier WebDriverAgent and stale-authentication setup blockers are
+  superseded. The 2026-09-12 owned-phone run executed the bounded matrix on
+  isolated production Grok 1.0.5. Creation, child tiles/status, exact Stop
+  confirmation and no-effect dismissal, full cancellation, reuse, cold root
+  reload, read-only child navigation, and normal permission UI passed. Cold
+  child history reproducibly duplicated assistant/tool/final rows, so phone
+  coverage remains partial and the plan stays active. Background notification
+  delivery was attempted but not observed. Historical merged PR titles remain unchanged. Grok
   coverage
   documentation merged as PR #1430 at `a28e860557`; its blocked phone gate
   remains open rather than becoming a fabricated pass. DeepSeek's final

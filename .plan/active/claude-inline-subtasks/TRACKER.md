@@ -10,14 +10,15 @@
   `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9, Grok steps 1–7, and
   Cursor steps 1–6 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
-  2026-09-10. Grok documentation is delivered, while its phone gate remains
-  blocked before visible execution. Harness follow-ups remain active.
-- **Next action:** Keep the plan active until the Grok phone gate can run with
-  valid pre-existing authentication. PR #1444 merged at `67e173be1a`. The
-  2026-09-12 retry built current phone source and reached healthy isolated
-  bridge/Grok 1.0.5 setup, but the private copy of the existing Grok credential
-  was unauthenticated. Reauthentication was forbidden, so no owned simulator UI
-  action ran. Cursor actual-plugin coverage passed its
+  2026-09-10. Grok phone coverage is now partial: bounded visible lifecycle,
+  stop, reuse, permission, cold-root, and read-only-child cases passed, but cold
+  child history reproducibly duplicates assistant/tool/final rows. Harness
+  follow-ups remain active for that material regression.
+- **Next action:** Keep the plan active until Grok cold child history no longer
+  duplicates its assistant/tool/final sequence. PR #1444 merged at
+  `67e173be1a`. The 2026-09-12 owned-phone run used an authenticated isolated
+  official 1.0.5 runtime and executed the bounded matrix. Cursor actual-plugin
+  coverage passed its
   executed scope; one native cancellation race remains fake-test-only.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
@@ -34,9 +35,9 @@
   post-turn background survival, repeated `session/load` facts, and the
   corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
-  #1431. Overall plan remains **ACTIVE** for the Grok phone gate. Its earlier
-  WebDriverAgent block remains historical; the 2026-09-12 attempt stopped sooner
-  because isolated copied authentication was invalid. No Grok phone pass is
+  #1431. Overall plan remains **ACTIVE** for the Grok cold child-history
+  duplication found by the 2026-09-12 phone run. Earlier WebDriverAgent and
+  stale-authentication setup blocks are superseded. No full Grok phone pass is
   claimed. Cursor follow-ups are complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed

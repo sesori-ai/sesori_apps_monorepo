@@ -108,10 +108,11 @@ provider because current payload content leaves the encrypted channel.
 
 - Provider delivery is external and best effort; a missing notification may be throttling or OS policy. Never record
   unobserved delivery as pass or claim a delivery rate.
-- Grok phone automation remains blocked before any visible UI interaction. The
-  earlier attempt failed at WebDriverAgent startup; the 2026-09-12 retry stopped
-  at invalid copied authentication without renewing credentials. No Grok
-  notification or push behavior was exercised or passed.
+- Grok owned-phone QA on 2026-09-12 backgrounded the app while a natural child
+  completed. No OS banner or Notification Center item appeared, while relaunch
+  showed new activity in product UI. Delivery was attempted but not observed;
+  no provider, foreground, background, terminated-app, or open-routing pass is
+  claimed.
 - DeepSeek final phone QA exercised scoped stop and pending-input sheets only;
   it did not exercise foreground, background, or terminated-app notifications,
   completion delivery, suppression, collapse, or open routing. No DeepSeek push

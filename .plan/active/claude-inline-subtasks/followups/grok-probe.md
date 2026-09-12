@@ -140,18 +140,51 @@ starting WebDriverAgent 0.0.23 before the first screenshot or visible
 interaction. An agent reinstall scoped to the owned simulator succeeded, but
 next startup timed out identically.
 
-On 2026-09-12, a retry from merged PR #1444 at `67e173be1a` built current phone
-source and verified an isolated healthy source bridge, production Grok 1.0.5
-detection, yolo off, and all unrelated harnesses disabled. A fresh private copy
-of the existing Grok credential was unauthenticated. Reauthentication was
-forbidden, so the owned simulator was not booted and relay/client UI execution
-did not begin.
+On 2026-09-12, the user refreshed Grok login and authorized its private use.
+The owned run used current phone/bridge source plus a checksum-verified isolated
+official Grok 1.0.5; the installed 1.0.30 runtime and global auth/config remained
+untouched. Grok alone was enabled, yolo stayed off, production relay and exact
+phone connection passed, and normal native permission sheets used one-time
+approval only.
 
-These are setup blockers, not product failures. Every phone case remains
-unexecuted: no stop, history, read-only child, permission, notification, or push
-result is claimed. Owned bridge, scratch, isolated homes, logs, captures, and
-private evidence were removed; the exact owned simulator remained shut down and
-protected resources were untouched.
+Visible phone results passed Grok-only session creation, exactly two running
+child tiles, exact two-child Stop copy/count, dismissal with no stop, confirmed
+full cancellation, same-session/runtime reuse, natural completion, cold root
+reload, persisted cancelled/completed tile states, and exact read-only child
+navigation without mutating controls. Background completion notification was
+attempted but no OS delivery was observed, so push is not claimed.
+
+Cold child history failed materially: the initial child-owned user row remained
+single, but the same assistant/tool/final sequence rendered twice under distinct
+rows. Reopening the same child reproduced the same duplicate without growth.
+Stored-only bridge history already had one user row followed by two three-row
+assistant/tool/final-shaped sequences under distinct identities. The native
+child store held one nine-frame turn, and a fresh direct official-1.0.5
+`session/load` emitted one standard sequence. Stored identity shapes separated
+into replay-imported rows and retained live rows.
+
+Smallest ownership seam is the backend-neutral reconciliation in
+`ChatHistoryRepository.replaceSessionMessages`: Grok's id-less ACP live and
+replay projections use different identities, while the live child fragment had
+no initial user neighbor and replay imported one. Nearest-context semantic
+matching therefore retained the live assistant fragment beside the replay
+snapshot. Fix shared reconciliation rather than adding Grok-specific behavior:
+allow a uniquely matching contiguous retained fragment to align within an
+imported transcript when its missing boundary neighbor explains the context
+mismatch, while preserving multiplicity and refusing ambiguous repeated
+content, conflicting known timestamps, reordered fragments, or more than one
+candidate alignment. Focused repository coverage should seed a live-only
+three-message assistant/tool/final fragment with id-less live identities, import
+one user plus the equivalent replay fragment under different identities, and
+assert only imported rows remain; repeat the import and assert no growth. Add
+negative cases for two legitimate identical turns, duplicate candidate windows,
+conflicting timestamps, and a genuinely newer live-only suffix, all of which
+must remain distinct. No production fix was attempted in this QA run.
+
+The plan remains active for this regression. Owned bridge/runtime/app/scratch,
+isolated homes, downloaded artifact, logs, captures, and private evidence were
+removed; the exact owned simulator was shut down and protected resources were
+untouched.
 
 ## Consequences for the design
 
