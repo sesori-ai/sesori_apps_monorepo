@@ -187,7 +187,8 @@ void main() {
         );
         expect(state.shellCommand, isNull);
         // The agent's title stays a display label; it never becomes a command.
-        expect(state.title, evidence["title"]);
+        // A title-only call drops it because it already names the tool.
+        expect(state.title, evidence.containsKey("kind") ? evidence["title"] : null);
         expect(state.output, isNull);
         expect(state.error, isNull);
         expect(state.status, ToolStatus.error);

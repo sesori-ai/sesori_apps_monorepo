@@ -19,6 +19,8 @@ sub-agent parts, plus the signal that a tool changed files.
   (`skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, `query`), Pi from the
   tool-call arguments (`pattern`, then `path`), Codex from its argument-derived
   title, and OpenCode and ACP harnesses pass the harness-supplied title through.
+  An ACP call without `kind` uses its title as the tool name and drops the
+  title, so the card never repeats it.
   Skills that load through a file read of `SKILL.md` are visible by that path.
   Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
   shows it from the running or terminal update onward, live and after replay.
