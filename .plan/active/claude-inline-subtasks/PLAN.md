@@ -11,9 +11,9 @@
   Step 1 merged as PR #1435 at `b83b64901c`; Step 2 merged as PR #1438 at
   `116392cb71`, settling generic Task lifecycle and acknowledging `cursor/task`.
   Step 3 merged as PR #1441 at `bb85f48148`; Step 4 safe stop merged as PR
-  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6
-  actual-plugin coverage passed its executed scope and repaired the exact native
-  live/replay tagged presentation shapes; the native cancellation race settled
+  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6 PR #1444
+  is open after actual-plugin coverage passed its executed scope and repaired
+  exact native live/replay tagged presentation shapes; the cancellation race settled
   before background resolution and remains focused fake-test coverage. Step 4 includes
   the typed refusal, Cursor-only residency,
   bounded named-root cancellation with post-settlement re-check/HTTP 502 partial

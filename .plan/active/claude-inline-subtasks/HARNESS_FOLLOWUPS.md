@@ -882,7 +882,7 @@ those refs. Regenerate each successor from its merged predecessor.
 | 3/6 | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | PR #1441 merged at `bb85f48148`: exact completed correlation, minimal presentation DTO fields, childless one-shot live replacement, tests, and capability/docs update |
 | 4/6 | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | PR #1442 merged at `a7d3014e1a`: exact count, process residency, typed refusal, bounded root cancel/re-check, concurrent descendant fallback, bridge/client/UI flow, tests, and docs; no replay/native QA |
 | 5/6 | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
-| 6/6 | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | Current branch: actual-plugin executed scope passed; exact distinct live/replay presentation tags repaired with typed generated DTOs; unsupported/unexecuted matrix remains explicit |
+| 6/6 | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 open: actual-plugin executed scope passed; exact distinct live/replay presentation tags repaired with typed generated DTOs; unsupported/unexecuted matrix remains explicit |
 
 ### Probe questions
 

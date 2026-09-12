@@ -553,7 +553,7 @@ source, generated serializers, tests, behavior docs, and tracker bookkeeping.
    merged at `f5e4e7f67a`; one configured standard ACP collector and shared
    injected `CursorTaskMapper`; tests passed; no native QA.
 6. `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]`
-   implemented on the current coverage branch: bounded actual-plugin evidence,
+   is open as PR #1444: bounded actual-plugin evidence,
    exact live/replay tagged-shape repair, generated serializers, focused tests,
    and final reconciliation. Unsupported/unexecuted boundaries remain explicit.
 
