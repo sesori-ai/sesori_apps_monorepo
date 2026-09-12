@@ -132,17 +132,26 @@ Unchanged configuration emitted zero `session/request_permission` requests, so
 permission preservation, isolation, and cleanup remain unexecuted. No Grok
 question capability is claimed.
 
-## 2026-09-10 phone-through-relay gate
+## Phone-through-relay gate
 
-Source phone build, source bridge health, production relay connection, and phone
-connection all succeeded. `mobile-mcp` then timed out starting WebDriverAgent
-0.0.23 before the first screenshot or visible interaction. An
-agent reinstall scoped to the owned simulator succeeded, but the next startup
-timed out identically. This is an infrastructure blocker, not a product failure.
-Every phone case remains unexecuted: no stop, history, read-only child,
-permission, notification, or push result is claimed. Owned bridge, app,
-simulator, scratch, and isolated runtime resources were cleaned; protected
-resources were not touched.
+On 2026-09-10, source phone build, source bridge health, production relay
+connection, and phone connection all succeeded. `mobile-mcp` then timed out
+starting WebDriverAgent 0.0.23 before the first screenshot or visible
+interaction. An agent reinstall scoped to the owned simulator succeeded, but
+next startup timed out identically.
+
+On 2026-09-12, a retry from merged PR #1444 at `67e173be1a` built current phone
+source and verified an isolated healthy source bridge, production Grok 1.0.5
+detection, yolo off, and all unrelated harnesses disabled. A fresh private copy
+of the existing Grok credential was unauthenticated. Reauthentication was
+forbidden, so the owned simulator was not booted and relay/client UI execution
+did not begin.
+
+These are setup blockers, not product failures. Every phone case remains
+unexecuted: no stop, history, read-only child, permission, notification, or push
+result is claimed. Owned bridge, scratch, isolated homes, logs, captures, and
+private evidence were removed; the exact owned simulator remained shut down and
+protected resources were untouched.
 
 ## Consequences for the design
 

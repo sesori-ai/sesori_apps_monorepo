@@ -184,9 +184,11 @@ defaults and queued client sends coherent.
   tile prompt equality with the child-owned transcript prompt.
   Root `confirm` reuses its earlier side-effect-free passing run. Zero standard
   permission requests surfaced, so live pending-input coverage remains
-  unexecuted. Phone setup reached a healthy source build and relay connection,
-  but UI automation failed before any visible interaction; no phone stop or
-  related client behavior is claimed.
+  unexecuted. Earlier phone setup reached a healthy source build and relay connection, but
+  UI automation failed before any visible interaction. A 2026-09-12 retry built
+  current phone source and detected Grok 1.0.5 on a healthy isolated bridge, but
+  copied existing authentication was invalid and could not be renewed within
+  scope. No phone stop or related client behavior is claimed.
 - Cursor supports narrower named-root stop for mode-unknown Task calls. Without
   unresolved background work, `confirm` and `keep` reject side-effect-free with
   exact active count; `stop` cancels only the root, waits up to 20 seconds, then

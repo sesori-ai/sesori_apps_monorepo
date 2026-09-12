@@ -7,12 +7,17 @@
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
-  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–7 are merged;
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9, Grok steps 1–7, and
+  Cursor steps 1–6 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok documentation is delivered, while its phone gate remains
-  infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** Drive Cursor Step 6 PR #1444 to merge, then keep the plan
-  active for the Grok phone WebDriverAgent gate. Cursor actual-plugin coverage passed its
+  blocked before visible execution. Harness follow-ups remain active.
+- **Next action:** Keep the plan active until the Grok phone gate can run with
+  valid pre-existing authentication. PR #1444 merged at `67e173be1a`. The
+  2026-09-12 retry built current phone source and reached healthy isolated
+  bridge/Grok 1.0.5 setup, but the private copy of the existing Grok credential
+  was unauthenticated. Reauthentication was forbidden, so no owned simulator UI
+  action ran. Cursor actual-plugin coverage passed its
   executed scope; one native cancellation race remains fake-test-only.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
@@ -29,9 +34,10 @@
   post-turn background survival, repeated `session/load` facts, and the
   corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
-  #1431. Overall plan remains **ACTIVE** for the Grok phone gate blocked by
-  WebDriverAgent 0.0.23 before any visible case; no Grok phone pass is claimed.
-  Cursor follow-ups are complete.
+  #1431. Overall plan remains **ACTIVE** for the Grok phone gate. Its earlier
+  WebDriverAgent block remains historical; the 2026-09-12 attempt stopped sooner
+  because isolated copied authentication was invalid. No Grok phone pass is
+  claimed. Cursor follow-ups are complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -212,7 +218,7 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
 | [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 open: actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
+| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 merged at `67e173be1a`; actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
 

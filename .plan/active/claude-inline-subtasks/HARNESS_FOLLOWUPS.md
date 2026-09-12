@@ -3,9 +3,11 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`; status **ACTIVE**. Codex, DeepSeek,
-  and Cursor coverage are reconciled. The Grok phone gate remains blocked on
-  WebDriverAgent 0.0.23 before any visible case; Cursor completion does not
-  close that live gate.
+  and Cursor coverage are reconciled; Cursor Step 6 merged as PR #1444 at
+  `67e173be1a`. The Grok phone gate remains blocked before any visible case.
+  Its 2026-09-12 retry reached healthy isolated bridge/Grok 1.0.5 setup but
+  could not use the unauthenticated private credential copy, and reauthentication
+  was forbidden.
 - **Plan date:** 2026-09-02; Cursor probe/design refreshed 2026-09-11.
 - **Base:** `main` at merged DeepSeek coverage documentation `7dd323d1d7`
   ([#1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431)).
@@ -394,9 +396,12 @@ has no child session or full scoped stop.
   settlement, exact root/child replay, fresh-session checks, and runtime reuse.
   Root confirmation reuses its earlier passing run. Zero standard permission
   requests surfaced under unchanged configuration, so live permission behavior
-  remains unexecuted and no question channel is claimed. Source phone and relay
-  setup was healthy, but `mobile-mcp` could not start WebDriverAgent before any
-  visible case; no phone behavior is claimed.
+  remains unexecuted and no question channel is claimed. Earlier source phone
+  and relay setup was healthy, but `mobile-mcp` could not
+  start WebDriverAgent before any visible case. On 2026-09-12 the current phone
+  source built and the isolated bridge detected Grok 1.0.5, but copied existing
+  authentication was invalid; no simulator UI action ran. No phone behavior is
+  claimed.
 
 ### Design
 
@@ -512,12 +517,16 @@ has no child session or full scoped stop.
   reuses its earlier passing actual-plugin result. Zero standard permission
   requests surfaced, leaving permission preservation/isolation/cleanup
   unexecuted; no question support is claimed.
-- Phone setup verified the source build, bridge, and relay path, but
+- Earlier phone setup verified the source build, bridge, and relay path, but
   `mobile-mcp` timed out starting WebDriverAgent 0.0.23 before any visible UI
   interaction, including after reinstalling the agent only on the owned
-  simulator. Every phone case is blocked and unexecuted, not a product failure.
-  Owned resources were cleaned; protected resources were untouched. No phone
-  stop, history, read-only child, notification, or push QA is claimed.
+  simulator. A 2026-09-12 retry built current phone source and verified a healthy
+  isolated bridge, Grok 1.0.5 detection, yolo off, and every unrelated harness
+  disabled. The copied existing Grok credential was unauthenticated;
+  reauthentication was forbidden, so the owned simulator was not booted. Every
+  phone case remains blocked and unexecuted, not a product failure. Owned
+  resources were cleaned; protected resources were untouched. No phone stop,
+  history, read-only child, notification, or push QA is claimed.
 
 ### Open questions (resolved by the probe)
 

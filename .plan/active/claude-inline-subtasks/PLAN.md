@@ -11,9 +11,10 @@
   Step 1 merged as PR #1435 at `b83b64901c`; Step 2 merged as PR #1438 at
   `116392cb71`, settling generic Task lifecycle and acknowledging `cursor/task`.
   Step 3 merged as PR #1441 at `bb85f48148`; Step 4 safe stop merged as PR
-  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6 PR #1444
-  is open after actual-plugin coverage passed its executed scope and repaired
-  exact native live/replay tagged presentation shapes; the cancellation race settled
+  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6
+  merged as PR #1444 at `67e173be1a` after actual-plugin coverage passed its
+  executed scope and repaired exact native live/replay tagged presentation
+  shapes; the cancellation race settled
   before background resolution and remains focused fake-test coverage. Step 4 includes
   the typed refusal, Cursor-only residency,
   bounded named-root cancellation with post-settlement re-check/HTTP 502 partial
@@ -24,8 +25,11 @@
   `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
   Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
   evidence. None of these refs may be mutated or deleted. Retirement remains
-  blocked by the Grok phone gate, whose WebDriverAgent 0.0.23 infrastructure
-  failure occurred before any visible case.
+  blocked by the Grok phone gate. The 2026-09-12 rerun
+  reached a healthy isolated source bridge and detected production Grok 1.0.5,
+  but the fresh private credential copy was unauthenticated. Reauthentication
+  was forbidden, so setup stopped before booting the owned phone target and
+  every visible case remains unexecuted.
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Historical original implementation base:** `main` at `ba725ec84`
@@ -54,9 +58,13 @@
   lifecycle settlement, and runtime reuse; root confirmation reuses its earlier
   passing run. The unchanged runtime emitted no live permission request, so
   permission handling remains unexecuted and no question support is claimed.
-  Source phone build and relay setup were healthy, but WebDriverAgent startup
-  timed out before any visible case; all phone coverage remains blocked and
-  unexecuted. Historical merged PR titles remain unchanged. Grok coverage
+  The earlier source phone build and relay setup were healthy, but WebDriverAgent
+  startup timed out before any visible case. A 2026-09-12 retry built the current
+  phone source and reached a healthy isolated bridge with Grok 1.0.5, but the
+  copied existing credential was unauthenticated. Reauthentication was out of
+  scope, so the owned simulator was not booted and all phone coverage remains
+  blocked and unexecuted. Historical merged PR titles remain unchanged. Grok
+  coverage
   documentation merged as PR #1430 at `a28e860557`; its blocked phone gate
   remains open rather than becoming a fabricated pass. DeepSeek's final
   documentation reconciles the passed phone stop/input scope and the
