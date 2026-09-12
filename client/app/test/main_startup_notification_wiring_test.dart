@@ -16,6 +16,9 @@ class MockForegroundNotificationDispatcher() extends Mock implements ForegroundN
 
 class MockNotificationOpenDispatcher() extends Mock implements NotificationOpenDispatcher;
 
+class MockConnectionNotificationObservationService() extends Mock
+    implements ConnectionNotificationObservationService;
+
 void main() {
   test("notification and UI startup do not await the analytics crawl gate", () async {
     final events = <String>[];
@@ -171,6 +174,7 @@ void main() {
     final registrationService = MockNotificationRegistrationService();
     final foregroundDispatcher = MockForegroundNotificationDispatcher();
     final openDispatcher = MockNotificationOpenDispatcher();
+    final observationService = MockConnectionNotificationObservationService();
 
     Future<void> recordLocalInitialize(_) async => events.add("local.initialize");
 
@@ -187,6 +191,7 @@ void main() {
     when(registrationService.start).thenAnswer(recordRegistrationStart);
     when(foregroundDispatcher.start).thenAnswer(recordForegroundStart);
     when(openDispatcher.start).thenAnswer(recordOpenStart);
+    when(observationService.start).thenAnswer((_) async => events.add("observation.start"));
 
     await startNotificationStartup(
       localNotificationClient: localNotificationClient,
@@ -194,6 +199,7 @@ void main() {
       notificationRegistrationService: registrationService,
       foregroundNotificationDispatcher: foregroundDispatcher,
       notificationOpenDispatcher: openDispatcher,
+      connectionNotificationObservationService: observationService,
     );
 
     expect(events, [
@@ -202,6 +208,7 @@ void main() {
       "registration.start",
       "foreground.start",
       "open.start",
+      "observation.start",
     ]);
   });
 
@@ -212,6 +219,7 @@ void main() {
     final registrationService = MockNotificationRegistrationService();
     final foregroundDispatcher = MockForegroundNotificationDispatcher();
     final openDispatcher = MockNotificationOpenDispatcher();
+    final observationService = MockConnectionNotificationObservationService();
 
     when(localNotificationClient.initialize).thenAnswer((_) async => events.add("local.initialize"));
     when(pushMessagingSource.initialize).thenAnswer((_) async => events.add("push.initialize"));
@@ -221,6 +229,7 @@ void main() {
     });
     when(foregroundDispatcher.start).thenAnswer((_) async => events.add("foreground.start"));
     when(openDispatcher.start).thenAnswer((_) async => events.add("open.start"));
+    when(observationService.start).thenAnswer((_) async => events.add("observation.start"));
 
     await startNotificationStartup(
       localNotificationClient: localNotificationClient,
@@ -228,6 +237,7 @@ void main() {
       notificationRegistrationService: registrationService,
       foregroundNotificationDispatcher: foregroundDispatcher,
       notificationOpenDispatcher: openDispatcher,
+      connectionNotificationObservationService: observationService,
     );
 
     expect(events, [
@@ -236,6 +246,7 @@ void main() {
       "registration.start",
       "foreground.start",
       "open.start",
+      "observation.start",
     ]);
   });
 }

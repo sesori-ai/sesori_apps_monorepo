@@ -29,6 +29,15 @@ external.
   identity derived identically by bridge, server, and client.
 - A send failure is logged well enough to separate auth from transport failure and never fails the session flow that
   produced it.
+- On macOS, public system-power callbacks suppress only connection-status pushes while a system-sleep episode has not
+  produced a completed-wake callback (`kIOMessageSystemHasPoweredOn`, not `kIOMessageSystemWillPowerOn`). DarkWake never
+  gates relay transport, requests, pings, reconnects, or plugin/session
+  work. A full wake updates notification eligibility on the existing socket. A socket established while normally awake
+  keeps its offline-notification eligibility when sleep suppression begins, while a socket established and disconnected
+  wholly during DarkWake stays quiet; same-socket full wake promotes that DarkWake socket. Unsupported or failed
+  detection keeps the conservative legacy debounce. A mobile device that restores E2E connectivity reports an observation
+  for the relay's current bridge and suppresses only its own pending online push; another phone or desktop surface cannot
+  suppress it. Repeated observations of the same ready connection are deduplicated.
 - The client registers when authenticated, re-registers on token refresh, unregisters before logout, restores
   registration if logout fails, and never re-registers while logout is in flight.
 - Registration sends the same device ID the preferences are stored under, so the server can associate this push token
@@ -75,6 +84,13 @@ external.
 | L4 Extended | Packaged or external on the release-target client platform: real background or terminated-app delivery, disabling a category on one device suppressing its remote delivery there while another device still receives it, completion from another production plugin, account switch and logout isolation, a child prompt opening its root. |
 | L5 Full | Both mobile platforms end to end: OS permission denied then granted, collapse and replace across repeated notifications for one session, system-update notifications, and long-run maintenance pruning under many sessions. |
 
+Native macOS L2 coverage starts and disposes the bundled observer without sleeping the machine. A separate deterministic
+native-source child-process fixture checks early versus completed wake messages and forces disposal before the run loop
+begins. The fixture must terminate successfully; a native join must never hang the bridge isolate during startup or shutdown.
+The macOS release workflow signs every bundled dylib before the executable, then verifies each code signature again
+from the extracted release archive before uploading it. Local ad-hoc signing checks archive integrity, not Developer ID
+identity, timestamping, notarization, or managed-device library-validation policy.
+
 ## Exploration Guidance
 
 Vary which event arrives first and how tightly events cluster, since debounce, blocking, and rate limits interact: a
@@ -85,6 +101,8 @@ provider because current payload content leaves the encrypted channel.
 
 ## Failure Signals
 
+- Native power-observer disposal hangs when shutdown races run-loop startup, or the bundled observer cannot register
+  for public system-power callbacks.
 - A completion arrives while a question or permission is pending, or after a
   full abort; a Claude session with a running background sub-agent fires a
   completion before the sub-agent's wake-up turn settles, or fires twice; a
@@ -123,6 +141,9 @@ provider because current payload content leaves the encrypted channel.
   that may be a local path. The ten-word completion limit has no character bound
   for one long token. This is a known privacy limitation, not the desired target.
 - Fakes cannot prove background or terminated-app handling, OS permission behavior, or collapse rendering.
+- macOS DarkWake classification is best effort. Startup during an existing DarkWake and missed native callbacks remain
+  unclassifiable. Real sleep, canceled sleep, maintenance wake, clamshell, and display-only sleep tests were not run on
+  the development machine; transport remains independent even when notification classification is stale.
 
 ## Sources
 
@@ -130,4 +151,13 @@ provider because current payload content leaves the encrypted channel.
 `client/module_core/test/routing/`, `client/app/test/core/platform/`, `client/module_desktop_core/test/services/`, and
 `client/desktop/test/core/platform/`; production code under `bridge/app/lib/src/push/`,
 `client/module_core/lib/src/services/`, `client/module_desktop_core/lib/src/services/`, and
-`client/desktop/lib/core/platform/`; docs/SECURITY.md carries the push disclosure.
+`client/desktop/lib/core/platform/`. macOS notification policy: `bridge/app/native/macos_power_observer.c`,
+`bridge/app/lib/src/repositories/system_power_event_repository.dart`,
+`bridge/app/lib/src/api/macos_system_power_observer_api.dart`,
+`bridge/app/lib/src/services/connection_notification_policy_service.dart`, `bridge/app/test/repositories/`,
+`bridge/app/test/api/macos_system_power_observer_native_test.dart`,
+`bridge/app/test/native/`, and `bridge/app/test/services/connection_notification_policy_service_test.dart`.
+Device observation: `client/module_core/lib/src/api/connection_notification_observation_api.dart`,
+`client/module_core/lib/src/repositories/connection_notification_observation_repository.dart`, and
+`client/module_core/test/capabilities/server_connection/connection_service_sse_test.dart`.
+`docs/SECURITY.md` carries the push disclosure.

@@ -5,6 +5,8 @@ import "../models/sesori/message_part.dart";
 part "messages.freezed.dart";
 part "messages.g.dart";
 
+enum BridgeConnectionNotificationPolicy() { normal, suppress, conservative }
+
 @Freezed(unionKey: "type", unionValueCase: FreezedUnionCase.snake)
 sealed class RelayMessage with _$RelayMessage {
   @FreezedUnionValue("request")
@@ -69,11 +71,21 @@ sealed class RelayMessage with _$RelayMessage {
   @FreezedUnionValue("rekey_required")
   const factory rekeyRequired() = RelayRekeyRequired;
 
+  @FreezedUnionValue("bridge_connection_notification_policy")
+  const factory bridgeConnectionNotificationPolicy({
+    required BridgeConnectionNotificationPolicy policy,
+  }) = RelayBridgeConnectionNotificationPolicy;
+
+  @FreezedUnionValue("bridge_connection_observed")
+  const factory bridgeConnectionObserved({required String deviceId}) = RelayBridgeConnectionObserved;
+
   @FreezedUnionValue("auth")
   const factory auth({
     required String token,
     required String role,
-    @JsonKey(includeIfNull: false) required String? bridgeId,
+    required String? bridgeId,
+    // COMPATIBILITY 2026-09-12 (v1.8.4): Released peers omit this advisory field; omission keeps conservative notification debounce. Remove nullability after every supported peer sends it.
+    required BridgeConnectionNotificationPolicy? connectionNotificationPolicy,
   }) = AuthRelayMessage;
 
   factory fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);

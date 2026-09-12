@@ -24,6 +24,21 @@ class const ClockProvider() {
   DateTime call() => DateTime.now();
 }
 
+@immutable
+final class const ConnectionNotificationObservationHandle._({
+  required final RelayClient _connection,
+  required final ConnectionConnected _status,
+}) {
+  @override
+  bool operator ==(Object other) =>
+      other is ConnectionNotificationObservationHandle &&
+      identical(_connection, other._connection) &&
+      identical(_status, other._status);
+
+  @override
+  int get hashCode => Object.hash(_connection, _status);
+}
+
 class const RelayClientFactory() {
   RelayClient call({
     required String relayHost,
@@ -204,6 +219,22 @@ class ConnectionService(
 
   RelayClient? get relayClient => _relayClient;
 
+  ConnectionNotificationObservationHandle? captureConnectionNotificationObservation() {
+    final connection = _relayClient;
+    final status = _status.value;
+    if (connection == null || status is! ConnectionConnected) return null;
+    return ConnectionNotificationObservationHandle._(connection: connection, status: status);
+  }
+
+  bool sendBridgeConnectionObserved({
+    required ConnectionNotificationObservationHandle handle,
+    required String deviceId,
+  }) {
+    if (!identical(_relayClient, handle._connection) || !identical(_status.value, handle._status)) return false;
+    handle._connection.sendBridgeConnectionObserved(deviceId: deviceId);
+    return true;
+  }
+
   /// Stateless transport primitive: declares to the bridge which session this
   /// phone is currently viewing ([sessionId] == null when viewing nothing).
   /// Fire-and-forget; silently no-ops when not connected. The viewing-state
@@ -334,9 +365,9 @@ class ConnectionService(
           await relayClient.disconnect();
           return (
             response: ApiResponse<HealthResponse>.error(
-                ApiError.nonSuccessCode(
-                  errorCode: response.status,
-                  rawErrorString: responseBody,
+              ApiError.nonSuccessCode(
+                errorCode: response.status,
+                rawErrorString: responseBody,
               ),
             ),
             closeCode: relayClient.lastCloseCode,

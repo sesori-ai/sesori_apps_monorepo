@@ -12,6 +12,9 @@ class BuildChangelogHistoryTest < Minitest::Test
     # Keep disposable Git fixtures inside the caller's checkout, not a worktree.
     @repo = Dir.mktmpdir(".release-notes-test-", ROOT)
     git(args: ["init", "--initial-branch=main"])
+    # Detached Git maintenance must not mutate objects during fixture teardown.
+    git(args: ["config", "maintenance.auto", "false"])
+    git(args: ["config", "gc.auto", "0"])
     git(args: ["config", "user.name", "Release Notes Test"])
     git(args: ["config", "user.email", "release-notes@example.invalid"])
     git(args: ["config", "commit.gpgsign", "false"])

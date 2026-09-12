@@ -206,7 +206,12 @@ class RelayClient._({
       if (token != null && token.isNotEmpty) {
         // Phones never register as bridges, so the bridgeId is always null
         // for role "phone".
-        final authMessage = RelayMessage.auth(token: token, role: RelayProtocol.rolePhone, bridgeId: null);
+        final authMessage = RelayMessage.auth(
+          token: token,
+          role: RelayProtocol.rolePhone,
+          bridgeId: null,
+          connectionNotificationPolicy: null,
+        );
         channel.sink.add(jsonEncode(authMessage.toJson()));
         logd("Relay auth message sent");
       }
@@ -477,6 +482,20 @@ class RelayClient._({
       await _sendEncryptedMessage(message);
     } on Object catch (error, stackTrace) {
       logw("$operation failed: disconnect race", error, stackTrace);
+    }
+  }
+
+  /// Reports that this exact app surface restored an E2E bridge connection.
+  /// Plaintext metadata is bounded to the notification device ID; failures do
+  /// not alter transport state.
+  void sendBridgeConnectionObserved({required String deviceId}) {
+    if (!isConnected) return;
+    final channel = _channel;
+    if (channel == null) return;
+    try {
+      channel.sink.add(jsonEncode(RelayMessage.bridgeConnectionObserved(deviceId: deviceId).toJson()));
+    } on Object catch (error, stackTrace) {
+      logw("Failed to report observed bridge connection", error, stackTrace);
     }
   }
 

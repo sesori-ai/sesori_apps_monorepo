@@ -134,10 +134,48 @@ RelayRekeyRequired _$RelayRekeyRequiredFromJson(Map json) =>
 Map<String, dynamic> _$RelayRekeyRequiredToJson(RelayRekeyRequired instance) =>
     <String, dynamic>{'type': instance.$type};
 
+RelayBridgeConnectionNotificationPolicy
+_$RelayBridgeConnectionNotificationPolicyFromJson(Map json) =>
+    RelayBridgeConnectionNotificationPolicy(
+      policy: $enumDecode(
+        _$BridgeConnectionNotificationPolicyEnumMap,
+        json['policy'],
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$RelayBridgeConnectionNotificationPolicyToJson(
+  RelayBridgeConnectionNotificationPolicy instance,
+) => <String, dynamic>{
+  'policy': _$BridgeConnectionNotificationPolicyEnumMap[instance.policy]!,
+  'type': instance.$type,
+};
+
+const _$BridgeConnectionNotificationPolicyEnumMap = {
+  BridgeConnectionNotificationPolicy.normal: 'normal',
+  BridgeConnectionNotificationPolicy.suppress: 'suppress',
+  BridgeConnectionNotificationPolicy.conservative: 'conservative',
+};
+
+RelayBridgeConnectionObserved _$RelayBridgeConnectionObservedFromJson(
+  Map json,
+) => RelayBridgeConnectionObserved(
+  deviceId: json['deviceId'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$RelayBridgeConnectionObservedToJson(
+  RelayBridgeConnectionObserved instance,
+) => <String, dynamic>{'deviceId': instance.deviceId, 'type': instance.$type};
+
 AuthRelayMessage _$AuthRelayMessageFromJson(Map json) => AuthRelayMessage(
   token: json['token'] as String,
   role: json['role'] as String,
   bridgeId: json['bridgeId'] as String?,
+  connectionNotificationPolicy: $enumDecodeNullable(
+    _$BridgeConnectionNotificationPolicyEnumMap,
+    json['connectionNotificationPolicy'],
+  ),
   $type: json['type'] as String?,
 );
 
@@ -146,5 +184,8 @@ Map<String, dynamic> _$AuthRelayMessageToJson(AuthRelayMessage instance) =>
       'token': instance.token,
       'role': instance.role,
       'bridgeId': ?instance.bridgeId,
+      'connectionNotificationPolicy':
+          ?_$BridgeConnectionNotificationPolicyEnumMap[instance
+              .connectionNotificationPolicy],
       'type': instance.$type,
     };

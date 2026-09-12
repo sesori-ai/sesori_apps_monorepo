@@ -61,6 +61,8 @@ class RelayClient({
   final StreamController<RelayConnectionState> _connectionState = StreamController<RelayConnectionState>.broadcast();
   _RelayConnectionAttempt? _pendingConnection;
   RelayConnection? _connection;
+  BridgeConnectionNotificationPolicy _connectionNotificationPolicy =
+      BridgeConnectionNotificationPolicy.conservative;
 
   /// The WebSocket close code of [connection], available once it has closed.
   int? closeCode({required RelayConnection connection}) => connection._channel.closeCode;
@@ -142,6 +144,7 @@ class RelayClient({
           token: token,
           role: _bridgeRole,
           bridgeId: _bridgeIdProvider.bridgeId,
+          connectionNotificationPolicy: _connectionNotificationPolicy,
         );
         channel.sink.add(jsonEncode(authMessage.toJson()));
         connection._lastAuthedToken = token;
@@ -216,6 +219,20 @@ class RelayClient({
         "Unsupported WebSocket frame type: ${message.runtimeType}",
       );
     });
+  }
+
+  void updateConnectionNotificationPolicy({required BridgeConnectionNotificationPolicy policy}) {
+    if (_connectionNotificationPolicy == policy) return;
+    _connectionNotificationPolicy = policy;
+    final connection = _connection;
+    if (connection == null) return;
+    try {
+      connection._channel.sink.add(
+        jsonEncode(RelayMessage.bridgeConnectionNotificationPolicy(policy: policy).toJson()),
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to report connection notification policy; relay transport remains active", error, stackTrace);
+    }
   }
 
   RelaySendOutcome sendIfCurrent({

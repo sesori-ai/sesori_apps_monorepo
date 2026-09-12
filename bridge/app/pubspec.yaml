@@ -53,6 +53,8 @@ dependencies:
   drift: 2.35.0
   collection: ^1.19.1
   win32: ^6.4.0
+  code_assets: ^2.0.0
+  hooks: ^2.0.0
 
 dev_dependencies:
   acp_plugin:

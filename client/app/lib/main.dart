@@ -96,6 +96,7 @@ void main() async {
       notificationRegistrationService: getIt<NotificationRegistrationService>(),
       foregroundNotificationDispatcher: getIt<ForegroundNotificationDispatcher>(),
       notificationOpenDispatcher: getIt<NotificationOpenDispatcher>(),
+      connectionNotificationObservationService: getIt<ConnectionNotificationObservationService>(),
     ),
     readAppearanceFn: () => getIt<AppearanceStore>().read(),
     readChatInputModeFn: () => getIt<ChatInputModeStore>().read(),
@@ -260,12 +261,14 @@ Future<void> startNotificationStartup({
   required NotificationRegistrationService notificationRegistrationService,
   required ForegroundNotificationDispatcher foregroundNotificationDispatcher,
   required NotificationOpenDispatcher notificationOpenDispatcher,
+  required ConnectionNotificationObservationService connectionNotificationObservationService,
 }) async {
   await _runNotificationStartupStep(() => localNotificationClient.initialize());
   await _runNotificationStartupStep(() => pushMessagingSource.initialize());
   await _runNotificationStartupStep(() => notificationRegistrationService.start());
   await _runNotificationStartupStep(() => foregroundNotificationDispatcher.start());
   await _runNotificationStartupStep(() => notificationOpenDispatcher.start());
+  await _runNotificationStartupStep(() => connectionNotificationObservationService.start());
 }
 
 Future<void> _runNotificationStartupStep(Future<void> Function() step) async {

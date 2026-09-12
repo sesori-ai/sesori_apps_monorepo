@@ -51,6 +51,7 @@ Future<_DebugServerHarness> _createDebugServerHarness({
   final effectiveRestartService = restartService ?? buildTestRestartService();
   final testChatHistory = createTestChatHistory();
   final composition = Orchestrator(
+    connectionNotificationPolicies: const Stream.empty(),
     config: BridgeConfig(
       relayURL: relayUrl,
       authBackendURL: "https://api.sesori.test",

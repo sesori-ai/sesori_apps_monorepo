@@ -36,6 +36,7 @@ import "../api/bridge_settings_api.dart";
 import "../api/control_secret_api.dart";
 import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
+import "../api/macos_system_power_observer_api.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
@@ -71,6 +72,7 @@ import "../repositories/app_onboarding_state_repository.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
+import "../repositories/system_power_event_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
@@ -89,6 +91,7 @@ import "../server/services/bridge_instance_service.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/app_client_onboarding_service.dart";
 import "../services/bridge_startup_retry_service.dart";
+import "../services/connection_notification_policy_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
@@ -738,6 +741,16 @@ class const BridgeRuntimeRunner._() {
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");
       }
 
+      // Power classification is advisory notification metadata only. Starting
+      // it is synchronous side work and is never awaited by relay startup.
+      final connectionNotificationPolicyService = ConnectionNotificationPolicyService(
+        powerEventRepository: SystemPowerEventRepository.forPlatform(
+          operatingSystem: io.Platform.operatingSystem,
+          macosApi: MacosSystemPowerObserverApi(),
+        ),
+      );
+      shutdownCoordinator.add(disposable: connectionNotificationPolicyService.dispose);
+
       // Constructed here (not inside BridgeRuntime.create) so supervised mode
       // can observe its connectionState stream below.
       final relayClient = RelayClient(
@@ -745,6 +758,7 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider: accessTokenProvider,
         bridgeIdProvider: bridgeRegistrationService,
       );
+      connectionNotificationPolicyService.start();
 
       // Supervised status pushes: the notifier owns every outbound
       // status-class send (status + registered) over the control channel,
@@ -807,6 +821,7 @@ class const BridgeRuntimeRunner._() {
       )..ensureDirectory();
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
+        connectionNotificationPolicies: connectionNotificationPolicyService.policies,
         config: BridgeConfig(
           relayURL: options.relayUrl,
           authBackendURL: options.authBackendUrl,
