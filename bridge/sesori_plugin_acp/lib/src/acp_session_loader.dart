@@ -1,6 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "acp_event_mapper.dart" show AcpHaltNotice, AcpSessionUpdateNormalizer, AcpShellCommandResolver;
+import "acp_event_mapper.dart" show AcpEventMapper, AcpHaltNotice, AcpSessionUpdateNormalizer, AcpShellCommandResolver;
 import "acp_protocol.dart" show AcpMethods;
 import "acp_stdio_client.dart" show AcpNotification;
 import "repositories/mappers/acp_content_mapper.dart";
@@ -111,7 +111,10 @@ class AcpReplayCollector({
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
-        _retainTime(draft: draft == null ? _assistantForTool() : _draftForTool(id)!, time: time);
+        _retainTime(
+          draft: draft == null ? _assistantForTool(toolCallId: id) : _draftForTool(id)!,
+          time: time,
+        );
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
         final suppressed = toolPartSuppression?.call(update: update) ?? false;
@@ -149,7 +152,10 @@ class AcpReplayCollector({
         if (id == null) return;
         final contentMutation = _contentMapper.toolContent(update: update);
         final draft = _findTool(id);
-        _retainTime(draft: draft == null ? _assistantForTool() : _draftForTool(id)!, time: time);
+        _retainTime(
+          draft: draft == null ? _assistantForTool(toolCallId: id) : _draftForTool(id)!,
+          time: time,
+        );
         final hasKind = update["kind"] is String && (update["kind"] as String).isNotEmpty;
         final mappedStatus = _contentMapper.toolStatus(status: update["status"]);
         final suppressed = toolPartSuppression?.call(update: update) ?? false;
@@ -550,8 +556,11 @@ class AcpReplayCollector({
   }) {
     if (tool.suppressed) return null;
     final content = tool.contentTracker.snapshot;
+    final standaloneToolMessageId = AcpEventMapper.toolMessageId(sessionId: sessionId, toolCallId: toolId);
     final toolPart = PluginMessagePartTool(
-      id: "${draft.id}-tool-$toolId",
+      id: draft.id == standaloneToolMessageId
+          ? AcpEventMapper.toolPartId(messageId: draft.id)
+          : "${draft.id}-tool-$toolId",
       sessionID: sessionId,
       messageID: draft.id,
       tool: tool.tool,
@@ -582,7 +591,7 @@ class AcpReplayCollector({
 
   // Tool calls carry no messageId (they are not ContentChunks) and attach to
   // the current assistant message even when its content chunks are stamped.
-  _Draft _assistantForTool() {
+  _Draft _assistantForTool({required String toolCallId}) {
     if (_entries.isNotEmpty) {
       final entry = _entries.last;
       if (entry is _Draft && entry.role == "assistant") {
@@ -594,13 +603,13 @@ class AcpReplayCollector({
     return _newDraft(
       role: "assistant",
       messageId: null,
-      overrideId: null,
+      overrideId: AcpEventMapper.toolMessageId(sessionId: sessionId, toolCallId: toolCallId),
       contentTracker: null,
     );
   }
 
   void _addTool({required String id, required _ToolDraft tool}) {
-    final draft = _assistantForTool();
+    final draft = _assistantForTool(toolCallId: id);
     draft.tools[id] = tool;
     draft.entries.add(_AssistantToolEntry(toolId: id, tool: tool));
     draft.contentTracker.closeTextPart();

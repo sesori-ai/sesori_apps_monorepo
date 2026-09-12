@@ -184,13 +184,19 @@ defaults and queued client sends coherent.
   tile prompt equality with the child-owned transcript prompt.
   Root `confirm` reuses its earlier side-effect-free passing run. Zero standard
   permission requests surfaced, so live pending-input coverage remains
-  unexecuted. The 2026-09-12 owned-phone run superseded its earlier setup blockers and passed
-  visible creation, two-child running state, exact Stop copy/count, dismissal
-  without effect, full cancellation, same-session/runtime reuse, natural
-  completion, and normal one-time permission handling. Cold child history
-  remains a material failure: one initial user row was followed by a stable,
-  non-growing duplicate assistant/tool/final sequence. No full phone pass is
-  claimed until that history duplication is fixed.
+  unexecuted. The 2026-09-12 owned-phone run superseded its earlier setup
+  blockers and passed visible creation, two-child running state, exact Stop
+  copy/count, dismissal without effect, full cancellation,
+  same-session/runtime reuse, natural completion, and normal one-time
+  permission handling. Its cold child history exposed one stable, non-growing
+  duplicate assistant/tool/final sequence after the initial user row. A later
+  private structural reproduction proved the final live text was a strict
+  prefix of replay around one identical typed tool-call anchor. Local ACP
+  identity and repository reconciliation now fix only that exact anchored
+  partial-completion shape, with negative coverage for ambiguity, multiplicity,
+  order, timestamps, parts, unrelated text, and newer live suffixes. No full
+  phone pass is claimed until cold child history is confirmed on the owned
+  phone after review.
 - Cursor supports narrower named-root stop for mode-unknown Task calls. Without
   unresolved background work, `confirm` and `keep` reject side-effect-free with
   exact active count; `stop` cancels only the root, waits up to 20 seconds, then

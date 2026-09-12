@@ -163,28 +163,33 @@ child store held one nine-frame turn, and a fresh direct official-1.0.5
 `session/load` emitted one standard sequence. Stored identity shapes separated
 into replay-imported rows and retained live rows.
 
-Smallest ownership seam is the backend-neutral reconciliation in
-`ChatHistoryRepository.replaceSessionMessages`: Grok's id-less ACP live and
-replay projections use different identities, while the live child fragment had
-no initial user neighbor and replay imported one. Nearest-context semantic
-matching therefore retained the live assistant fragment beside the replay
-snapshot. Fix shared reconciliation rather than adding Grok-specific behavior:
-allow a uniquely matching contiguous retained fragment to align within an
-imported transcript when its missing boundary neighbor explains the context
-mismatch, while preserving multiplicity and refusing ambiguous repeated
-content, conflicting known timestamps, reordered fragments, or more than one
-candidate alignment. Focused repository coverage should seed a live-only
-three-message assistant/tool/final fragment with id-less live identities, import
-one user plus the equivalent replay fragment under different identities, and
-assert only imported rows remain; repeat the import and assert no growth. Add
-negative cases for two legitimate identical turns, duplicate candidate windows,
-conflicting timestamps, and a genuinely newer live-only suffix, all of which
-must remain distinct. No production fix was attempted in this QA run.
+A later fresh headless Grok 1.0.5 reproduction classified the mismatch without
+retaining private content. Live held an assistant/tool/assistant fragment with
+no leading user; direct replay added the user. The first assistant and tool rows
+were exactly equal after current normalization. The final live
+`MessagePartText.text` was a strict prefix of replay by a small extension;
+reasoning, part order/shape, normalized info, and every other typed field were
+exact, with no timestamps on either side. One opaque typed `toolCallId` was
+identical across live and replay and uniquely adjacent to those assistant rows,
+but shared ACP mapping placed it in different generated message/part identities.
+A second genuine backend backfill retained the same three old rows without new
+growth.
 
-The plan remains active for this regression. Owned bridge/runtime/app/scratch,
-isolated homes, downloaded artifact, logs, captures, and private evidence were
-removed; the exact owned simulator was shut down and protected resources were
-untouched.
+Local production changes now centralize deterministic standalone tool message
+and part identity across ACP live and replay. Repository reconciliation adds one
+atomic exception around that exact shared anchor: preceding assistant content
+must match exactly, following replay text must be the sole differing field and a
+strict extension of nonempty live text, known times must agree, and all three
+rows must form one uniquely consumed contiguous window. Distinct/reused anchors,
+ambiguous windows, reverse prefixes, unrelated text, second differences,
+part-shape/order changes, timestamp conflicts, and unmatched newer suffixes
+remain distinct. Focused ACP and repository coverage passes locally. No Grok
+strings, generated-ID parsing, schema field, or general semantic relaxation was
+added.
+
+The plan remains active for exact owned-phone cold child-history confirmation
+after review. Owned diagnostic bridge/runtime/scratch/home/log/database/private
+evidence resources were removed; protected resources stayed untouched.
 
 ## Consequences for the design
 

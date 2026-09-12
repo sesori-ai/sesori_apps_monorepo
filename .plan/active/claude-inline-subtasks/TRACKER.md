@@ -1040,3 +1040,18 @@ its own bounded cases but is not relabeled client E2E. This documentation-only
 gate changes no adapter/runtime, production/configuration/authentication code,
 persisted data, or capability implementation. The plan remains active for the
 Grok phone gate and both Cursor gates.
+
+A fresh headless Grok 1.0.5 reproduction then isolated the child-history
+regression without retaining private content. Live history held an id-less
+assistant/tool/assistant fragment; direct replay added its leading user row.
+The first two assistant rows were exactly equal after existing normalization,
+while the final live text was a strict prefix of replay and every other typed
+field matched. One typed opaque tool-call identity was stable across live and
+replay, but ACP projected it into different message/part identities. Local
+production changes now centralize the standalone tool identity across ACP live
+and replay and let repository reconciliation atomically replace only a unique
+exactly anchored assistant/tool/assistant window whose final replay text is a
+strict extension. Focused positive, idempotence, multiplicity, ordering,
+timestamp, part-shape, reverse-prefix, unrelated-text, distinct-anchor, and
+new-live-suffix coverage passes locally. The plan stays active: exact cold child
+history still requires owned-phone confirmation after review.

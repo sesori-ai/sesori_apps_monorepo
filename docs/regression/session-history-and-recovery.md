@@ -136,8 +136,15 @@ reconnect or restart.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
-  metadata authoritative. Other retained rows
-  rejoin at their recorded creation time while preserving relative order, so a
+  metadata authoritative. One narrower boundary case also reconciles
+  atomically: a standalone tool row with one exact deterministic identity may
+  anchor immediately adjacent assistant rows when the preceding row is exactly
+  equal and replay's following `MessagePartText.text` strictly extends nonempty
+  live text as its only difference. Both three-row windows must be uniquely
+  consumed, ordered identically, and free of conflicting known timestamps;
+  ambiguity, a reverse prefix, changed reasoning/parts, or unrelated text keeps
+  retained rows. Other retained rows rejoin at their recorded creation time
+  while preserving relative order, so a
   catalog re-import cannot move old rows to the newest edge. A message a backend
   replay once contained is the opposite case: its later absence is a removal,
   so a re-read drops it. That is how a session rolled back outside Sesori — an

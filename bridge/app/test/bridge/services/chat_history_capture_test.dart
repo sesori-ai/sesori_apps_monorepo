@@ -428,6 +428,318 @@ void main() {
       );
     });
 
+    test("an exact tool anchor replaces one boundary-truncated live completion window", () async {
+      final replayWindow = _assistantToolAssistantWindow(
+        beforeId: "replay-before",
+        anchorId: "tool-anchor",
+        anchorPartId: "tool-anchor-call",
+        afterId: "replay-after",
+        finalText: "partial and complete",
+        finalReasoning: "finishing",
+        beforeCreatedAt: null,
+        anchorCreatedAt: null,
+        afterCreatedAt: null,
+      );
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user", text: "request", createdAt: null, promptId: null),
+          ...replayWindow,
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessages(
+        history: history,
+        messages: _assistantToolAssistantWindow(
+          beforeId: "live-before",
+          anchorId: "tool-anchor",
+          anchorPartId: "tool-anchor-call",
+          afterId: "live-after",
+          finalText: "partial",
+          finalReasoning: "finishing",
+          beforeCreatedAt: null,
+          anchorCreatedAt: null,
+          afterCreatedAt: null,
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+      final expectedIds = ["replay-user", "replay-before", "tool-anchor", "replay-after"];
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        expectedIds,
+      );
+
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+      await _captureMessageWithParts(
+        history: history,
+        message: _assistantMessageWithText(
+          id: "live-suffix",
+          text: "newer",
+          reasoning: null,
+          createdAt: null,
+        ),
+      );
+      await history.service.backfillSession(sessionId: "ses_a");
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        [...expectedIds, "live-suffix"],
+        reason: "a repeated replay stays stable without dropping a genuinely newer live suffix",
+      );
+    });
+
+    for (final testCase
+        in <
+          ({
+            String name,
+            String liveText,
+            String replayText,
+            String? liveReasoning,
+            String? replayReasoning,
+            int? liveCreatedAt,
+            int? replayCreatedAt,
+          })
+        >[
+          (
+            name: "unrelated final text",
+            liveText: "partial",
+            replayText: "different",
+            liveReasoning: "finishing",
+            replayReasoning: "finishing",
+            liveCreatedAt: null,
+            replayCreatedAt: null,
+          ),
+          (
+            name: "reverse final prefix",
+            liveText: "partial and complete",
+            replayText: "partial",
+            liveReasoning: "finishing",
+            replayReasoning: "finishing",
+            liveCreatedAt: null,
+            replayCreatedAt: null,
+          ),
+          (
+            name: "second differing field",
+            liveText: "partial",
+            replayText: "partial and complete",
+            liveReasoning: "live reasoning",
+            replayReasoning: "replay reasoning",
+            liveCreatedAt: null,
+            replayCreatedAt: null,
+          ),
+          (
+            name: "different visible part structure",
+            liveText: "partial",
+            replayText: "partial and complete",
+            liveReasoning: "finishing",
+            replayReasoning: null,
+            liveCreatedAt: null,
+            replayCreatedAt: null,
+          ),
+          (
+            name: "conflicting final timestamp",
+            liveText: "partial",
+            replayText: "partial and complete",
+            liveReasoning: "finishing",
+            replayReasoning: "finishing",
+            liveCreatedAt: 300,
+            replayCreatedAt: 400,
+          ),
+        ]) {
+      test("an exact tool anchor preserves a window with ${testCase.name}", () async {
+        final repository = _FakeSessionRepository(
+          transcript: [
+            _messageWithText(id: "replay-user", text: "request", createdAt: null, promptId: null),
+            ..._assistantToolAssistantWindow(
+              beforeId: "replay-before",
+              anchorId: "tool-anchor",
+              anchorPartId: "tool-anchor-call",
+              afterId: "replay-after",
+              finalText: testCase.replayText,
+              finalReasoning: testCase.replayReasoning,
+              beforeCreatedAt: null,
+              anchorCreatedAt: null,
+              afterCreatedAt: testCase.replayCreatedAt,
+            ),
+          ],
+        );
+        final history = createTestChatHistory(sessionRepository: repository);
+        await _captureMessages(
+          history: history,
+          messages: _assistantToolAssistantWindow(
+            beforeId: "live-before",
+            anchorId: "tool-anchor",
+            anchorPartId: "tool-anchor-call",
+            afterId: "live-after",
+            finalText: testCase.liveText,
+            finalReasoning: testCase.liveReasoning,
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: testCase.liveCreatedAt,
+          ),
+        );
+
+        await history.service.backfillSession(sessionId: "ses_a");
+
+        final ids = (await _storedMessages(
+          history: history,
+          sessionId: "ses_a",
+        )).map((message) => message.info.id).toList();
+        expect(ids, containsAll(["live-before", "live-after"]));
+      });
+    }
+
+    test("different tool identities do not anchor a replacement window", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user", text: "request", createdAt: null, promptId: null),
+          ..._assistantToolAssistantWindow(
+            beforeId: "replay-before",
+            anchorId: "replay-tool",
+            anchorPartId: "replay-tool-call",
+            afterId: "replay-after",
+            finalText: "partial and complete",
+            finalReasoning: "finishing",
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: null,
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessages(
+        history: history,
+        messages: _assistantToolAssistantWindow(
+          beforeId: "live-before",
+          anchorId: "live-tool",
+          anchorPartId: "live-tool-call",
+          afterId: "live-after",
+          finalText: "partial",
+          finalReasoning: "finishing",
+          beforeCreatedAt: null,
+          anchorCreatedAt: null,
+          afterCreatedAt: null,
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        containsAll(["live-before", "live-tool", "live-after"]),
+      );
+    });
+
+    test("a reordered anchored fragment remains distinct", () async {
+      final importedWindow = _assistantToolAssistantWindow(
+        beforeId: "replay-before",
+        anchorId: "tool-anchor",
+        anchorPartId: "tool-anchor-call",
+        afterId: "replay-after",
+        finalText: "partial and complete",
+        finalReasoning: "finishing",
+        beforeCreatedAt: null,
+        anchorCreatedAt: null,
+        afterCreatedAt: null,
+      );
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user", text: "request", createdAt: null, promptId: null),
+          importedWindow[1],
+          importedWindow[0],
+          importedWindow[2],
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessages(
+        history: history,
+        messages: _assistantToolAssistantWindow(
+          beforeId: "live-before",
+          anchorId: "tool-anchor",
+          anchorPartId: "tool-anchor-call",
+          afterId: "live-after",
+          finalText: "partial",
+          finalReasoning: "finishing",
+          beforeCreatedAt: null,
+          anchorCreatedAt: null,
+          afterCreatedAt: null,
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        containsAll(["live-before", "live-after"]),
+      );
+    });
+
+    test("identical replay turns with distinct tool anchors retain multiplicity", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user-1", text: "request", createdAt: null, promptId: null),
+          ..._assistantToolAssistantWindow(
+            beforeId: "replay-before-1",
+            anchorId: "tool-anchor-1",
+            anchorPartId: "tool-anchor-1-call",
+            afterId: "replay-after-1",
+            finalText: "partial and complete",
+            finalReasoning: "finishing",
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: null,
+          ),
+          _messageWithText(id: "replay-user-2", text: "request", createdAt: null, promptId: null),
+          ..._assistantToolAssistantWindow(
+            beforeId: "replay-before-2",
+            anchorId: "tool-anchor-2",
+            anchorPartId: "tool-anchor-2-call",
+            afterId: "replay-after-2",
+            finalText: "partial and complete",
+            finalReasoning: "finishing",
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: null,
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessages(
+        history: history,
+        messages: [
+          ..._assistantToolAssistantWindow(
+            beforeId: "live-before-1",
+            anchorId: "tool-anchor-1",
+            anchorPartId: "tool-anchor-1-call",
+            afterId: "live-after-1",
+            finalText: "partial",
+            finalReasoning: "finishing",
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: null,
+          ),
+          ..._assistantToolAssistantWindow(
+            beforeId: "live-before-2",
+            anchorId: "tool-anchor-2",
+            anchorPartId: "tool-anchor-2-call",
+            afterId: "live-after-2",
+            finalText: "partial",
+            finalReasoning: "finishing",
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: null,
+          ),
+        ],
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(await _storedMessages(history: history, sessionId: "ses_a"), hasLength(8));
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        containsAll(["tool-anchor-1", "tool-anchor-2", "replay-after-1", "replay-after-2"]),
+      );
+    });
+
     test("semantic replay matching preserves equal content in a different ordered context", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -1092,7 +1404,7 @@ MessageWithParts _assistantMessageWithText({
   required String id,
   required String text,
   required String? reasoning,
-  required int createdAt,
+  required int? createdAt,
 }) => MessageWithParts(
   info: Message.assistant(
     id: id,
@@ -1101,7 +1413,7 @@ MessageWithParts _assistantMessageWithText({
     modelID: null,
     providerID: null,
     sender: MessageSender.agent,
-    time: MessageTime(created: createdAt, completed: createdAt),
+    time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
   ),
   parts: [
     if (reasoning != null)
@@ -1109,6 +1421,78 @@ MessageWithParts _assistantMessageWithText({
     _part(id: "$id-part", messageId: id, text: text),
   ],
 );
+
+MessageWithParts _assistantToolMessage({
+  required String id,
+  required String partId,
+  required String tool,
+  required int? createdAt,
+}) => MessageWithParts(
+  info: Message.assistant(
+    id: id,
+    sessionID: "ses_a",
+    agent: "copilot",
+    modelID: null,
+    providerID: null,
+    sender: MessageSender.agent,
+    time: createdAt == null ? null : MessageTime(created: createdAt, completed: createdAt),
+  ),
+  parts: [
+    MessagePart.tool(
+      id: partId,
+      sessionID: "ses_a",
+      messageID: id,
+      tool: tool,
+      state: const ToolState(
+        status: ToolStatus.completed,
+        title: "Wait",
+        shellCommand: "wait",
+        output: "completed",
+        error: null,
+      ),
+    ),
+  ],
+);
+
+List<MessageWithParts> _assistantToolAssistantWindow({
+  required String beforeId,
+  required String anchorId,
+  required String anchorPartId,
+  required String afterId,
+  required String finalText,
+  required String? finalReasoning,
+  required int? beforeCreatedAt,
+  required int? anchorCreatedAt,
+  required int? afterCreatedAt,
+}) => [
+  _assistantMessageWithText(
+    id: beforeId,
+    text: "starting",
+    reasoning: "planning",
+    createdAt: beforeCreatedAt,
+  ),
+  _assistantToolMessage(
+    id: anchorId,
+    partId: anchorPartId,
+    tool: "wait",
+    createdAt: anchorCreatedAt,
+  ),
+  _assistantMessageWithText(
+    id: afterId,
+    text: finalText,
+    reasoning: finalReasoning,
+    createdAt: afterCreatedAt,
+  ),
+];
+
+Future<void> _captureMessages({
+  required TestChatHistory history,
+  required List<MessageWithParts> messages,
+}) async {
+  for (final message in messages) {
+    await _captureMessageWithParts(history: history, message: message);
+  }
+}
 
 Future<void> _captureMessageWithParts({
   required TestChatHistory history,

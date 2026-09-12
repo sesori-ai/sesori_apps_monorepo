@@ -355,6 +355,15 @@ class AcpEventMapper({
 
   static String initialUserMessageId(String sessionId) => "$sessionId-initial-user";
 
+  /// Deterministic identity for a standalone tool envelope.
+  ///
+  /// Both live mapping and replay own the typed opaque [toolCallId] here, so
+  /// they can agree without parsing identities after persistence.
+  static String toolMessageId({required String sessionId, required String toolCallId}) => "$sessionId-tool-$toolCallId";
+
+  /// Deterministic identity for the sole tool part in [messageId].
+  static String toolPartId({required String messageId}) => "$messageId-call";
+
   /// Maps the user-authored portion of a creation prompt with an identity that
   /// the same-process history replay can reuse. Matching message and part ids
   /// let the client upsert either arrival order instead of rendering both.
@@ -1042,7 +1051,7 @@ class AcpEventMapper({
       (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
       return boundaryEvents;
     }
-    final messageId = "$sessionId-tool-$toolCallId";
+    final messageId = toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
     final contentMutation = _contentMapper.toolContent(update: update);
     final contentTracker = prior?.contentTracker ?? AcpToolContentTracker();
     contentTracker.applyInitial(mutation: contentMutation);
@@ -1102,7 +1111,7 @@ class AcpEventMapper({
       (_spawnToolCalls[sessionId] ??= {}).add(toolCallId);
       return boundaryEvents;
     }
-    final messageId = "$sessionId-tool-$toolCallId";
+    final messageId = toolMessageId(sessionId: sessionId, toolCallId: toolCallId);
     // A `tool_call_update` is a PARTIAL update: an agent may send only the
     // changed fields (e.g. `{status: completed}`). Merge onto the tool's prior
     // state so omitted name/title/content/status fields aren't reset to defaults,
@@ -1217,7 +1226,7 @@ class AcpEventMapper({
     final content = state.contentTracker.snapshot;
     return BridgeSseMessagePartUpdated(
       part: _toolPart(
-        partId: "$messageId-call",
+        partId: toolPartId(messageId: messageId),
         messageId: messageId,
         sessionId: sessionId,
         tool: state.tool,

@@ -35,7 +35,20 @@ typedef ChatHistoryPage = ({List<MessageWithParts> messages, int? nextCursor});
 
 /// Identity of one stored part inside its session.
 typedef StoredPartRef = ({String messageId, String partId});
-typedef _SemanticMessageFingerprints = ({String content, String context, int? createdAt});
+typedef _SemanticPartFingerprints = ({
+  String content,
+  String contentWithoutText,
+  String? text,
+});
+typedef _SemanticMessageFingerprints = ({
+  String content,
+  String context,
+  String info,
+  List<_SemanticPartFingerprints> parts,
+  int? createdAt,
+  bool isAssistant,
+  bool isStandaloneTool,
+});
 
 /// How fresh a session's stored transcript is.
 ///
@@ -436,10 +449,13 @@ class ChatHistoryRepository({
   /// additional identical messages. Exact identities consume replay capacity
   /// first and anchor neighboring context by ID even when their payload changes;
   /// stale rows due for removal do not shape semantic context, and a
-  /// repeated run matches only occurrences with equal creation times. Conflicting
-  /// known times also keep singleton rows distinct, while internal parts hidden
-  /// from clients do not affect visible equivalence. The imported row remains
-  /// authoritative for replay metadata.
+  /// repeated run matches only occurrences with equal creation times. A unique
+  /// exact standalone-tool identity can additionally anchor one adjacent
+  /// assistant/tool/assistant replay window when replay strictly completes the
+  /// retained final text; every other field, part, order, and known time must
+  /// agree. Conflicting known times also keep singleton rows distinct, while
+  /// internal parts hidden from clients do not affect visible equivalence. The
+  /// imported row remains authoritative for replay metadata.
   ///
   /// Retained rows rejoin the imported transcript at their recorded message
   /// time while their relative order stays stable. Thus an older backend-only
@@ -527,6 +543,15 @@ class ChatHistoryRepository({
       );
     }
 
+    final anchoredReplayExtensionStoredIds = _anchoredReplayExtensionStoredIds(
+      importedMessages: messages,
+      importedFingerprints: importedSemanticFingerprints,
+      storedRows: storedContextRows,
+      storedFingerprints: storedSemanticFingerprints,
+      importedIds: importedIds,
+      storedIds: storedIds,
+    );
+
     final importedSemanticContexts = _semanticContextFingerprints(
       fingerprints: importedSemanticFingerprints,
       anchorOverrides: [
@@ -556,7 +581,7 @@ class ChatHistoryRepository({
       if (fingerprint != null) storedIndexesByContext.putIfAbsent(fingerprint, () => []).add(index);
     }
 
-    final semanticallyImportedStoredIds = <String>{};
+    final semanticallyImportedStoredIds = <String>{...anchoredReplayExtensionStoredIds};
     for (final entry in storedIndexesByContext.entries) {
       final importedIndexes = importedIndexesByContext[entry.key] ?? const [];
       final storedIndexes = entry.value;
@@ -824,6 +849,139 @@ class ChatHistoryRepository({
     if (firstError != null) Error.throwWithStackTrace(firstError, firstStackTrace!);
   }
 
+  Set<String> _anchoredReplayExtensionStoredIds({
+    required List<MessageWithParts> importedMessages,
+    required List<_SemanticMessageFingerprints?> importedFingerprints,
+    required List<HistoryMessagesTableData> storedRows,
+    required List<_SemanticMessageFingerprints?> storedFingerprints,
+    required Set<String> importedIds,
+    required Set<String> storedIds,
+  }) {
+    final importedIdCounts = <String, int>{};
+    for (final message in importedMessages) {
+      final id = message.info.id;
+      importedIdCounts[id] = (importedIdCounts[id] ?? 0) + 1;
+    }
+    final storedIdCounts = <String, int>{};
+    final storedIndexById = <String, int>{};
+    for (var index = 0; index < storedRows.length; index++) {
+      final id = storedRows[index].messageId;
+      storedIdCounts[id] = (storedIdCounts[id] ?? 0) + 1;
+      storedIndexById[id] = index;
+    }
+
+    final candidates = <({int importedStart, int storedStart})>[];
+    for (var importedAnchorIndex = 1; importedAnchorIndex + 1 < importedMessages.length; importedAnchorIndex++) {
+      final anchorId = importedMessages[importedAnchorIndex].info.id;
+      if (importedIdCounts[anchorId] != 1 || storedIdCounts[anchorId] != 1) continue;
+      final storedAnchorIndex = storedIndexById[anchorId]!;
+      if (storedAnchorIndex <= 0 || storedAnchorIndex + 1 >= storedRows.length) continue;
+      if (storedRows[storedAnchorIndex - 1].seq + 1 != storedRows[storedAnchorIndex].seq ||
+          storedRows[storedAnchorIndex].seq + 1 != storedRows[storedAnchorIndex + 1].seq) {
+        continue;
+      }
+
+      final importedStart = importedAnchorIndex - 1;
+      final storedStart = storedAnchorIndex - 1;
+      if (storedIds.contains(importedMessages[importedStart].info.id) ||
+          storedIds.contains(importedMessages[importedAnchorIndex + 1].info.id) ||
+          importedIds.contains(storedRows[storedStart].messageId) ||
+          importedIds.contains(storedRows[storedAnchorIndex + 1].messageId)) {
+        continue;
+      }
+
+      final importedBefore = importedFingerprints[importedStart];
+      final importedAnchor = importedFingerprints[importedAnchorIndex];
+      final importedAfter = importedFingerprints[importedAnchorIndex + 1];
+      final storedBefore = storedFingerprints[storedStart];
+      final storedAnchor = storedFingerprints[storedAnchorIndex];
+      final storedAfter = storedFingerprints[storedAnchorIndex + 1];
+      if (importedBefore == null ||
+          importedAnchor == null ||
+          importedAfter == null ||
+          storedBefore == null ||
+          storedAnchor == null ||
+          storedAfter == null) {
+        continue;
+      }
+      if (!importedAnchor.isAssistant ||
+          !storedAnchor.isAssistant ||
+          !importedAnchor.isStandaloneTool ||
+          !storedAnchor.isStandaloneTool ||
+          importedAnchor.content != storedAnchor.content ||
+          !importedBefore.isAssistant ||
+          !storedBefore.isAssistant ||
+          importedBefore.content != storedBefore.content ||
+          !importedAfter.isAssistant ||
+          !storedAfter.isAssistant ||
+          !_knownTimesAgree(imported: importedBefore, stored: storedBefore) ||
+          !_knownTimesAgree(imported: importedAnchor, stored: storedAnchor) ||
+          !_knownTimesAgree(imported: importedAfter, stored: storedAfter) ||
+          !_isStrictImportedTextExtension(imported: importedAfter, stored: storedAfter)) {
+        continue;
+      }
+      candidates.add((importedStart: importedStart, storedStart: storedStart));
+    }
+
+    final importedUsage = <int, int>{};
+    final storedUsage = <int, int>{};
+    for (final candidate in candidates) {
+      for (var offset = 0; offset < 3; offset++) {
+        final importedIndex = candidate.importedStart + offset;
+        final storedIndex = candidate.storedStart + offset;
+        importedUsage[importedIndex] = (importedUsage[importedIndex] ?? 0) + 1;
+        storedUsage[storedIndex] = (storedUsage[storedIndex] ?? 0) + 1;
+      }
+    }
+
+    final matchedStoredIds = <String>{};
+    for (final candidate in candidates) {
+      var uniquelyConsumed = true;
+      for (var offset = 0; offset < 3; offset++) {
+        if (importedUsage[candidate.importedStart + offset] != 1 || storedUsage[candidate.storedStart + offset] != 1) {
+          uniquelyConsumed = false;
+          break;
+        }
+      }
+      if (!uniquelyConsumed) continue;
+      for (var offset = 0; offset < 3; offset++) {
+        matchedStoredIds.add(storedRows[candidate.storedStart + offset].messageId);
+      }
+    }
+    return matchedStoredIds;
+  }
+
+  bool _knownTimesAgree({
+    required _SemanticMessageFingerprints imported,
+    required _SemanticMessageFingerprints stored,
+  }) => imported.createdAt == null || stored.createdAt == null || imported.createdAt == stored.createdAt;
+
+  bool _isStrictImportedTextExtension({
+    required _SemanticMessageFingerprints imported,
+    required _SemanticMessageFingerprints stored,
+  }) {
+    if (imported.info != stored.info || imported.parts.length != stored.parts.length) return false;
+    var foundExtension = false;
+    for (var index = 0; index < imported.parts.length; index++) {
+      final importedPart = imported.parts[index];
+      final storedPart = stored.parts[index];
+      if (importedPart.content == storedPart.content) continue;
+      if (foundExtension ||
+          importedPart.text == null ||
+          storedPart.text == null ||
+          importedPart.contentWithoutText != storedPart.contentWithoutText) {
+        return false;
+      }
+      final importedText = importedPart.text!;
+      final storedText = storedPart.text!;
+      if (storedText.isEmpty || importedText.length <= storedText.length || !importedText.startsWith(storedText)) {
+        return false;
+      }
+      foundExtension = true;
+    }
+    return foundExtension;
+  }
+
   Future<_SemanticMessageFingerprints?> _semanticMessageFingerprints({
     required String sessionId,
     required String messageId,
@@ -844,13 +1002,28 @@ class ChatHistoryRepository({
       );
       final canonicalParts = <Map<String, dynamic>>[];
       final contextParts = <Map<String, dynamic>>[];
+      final partFingerprints = <_SemanticPartFingerprints>[];
+      final visibleParts = <MessagePart>[];
       for (final part in parts) {
         if (!_isTranscriptVisiblePart(part: part)) continue;
+        visibleParts.add(part);
         final canonicalPart = _withoutFields(
           source: part.toJson(),
           fields: const {"id", "sessionID", "messageID"},
         );
         canonicalParts.add(canonicalPart);
+        final partContent = await _jsonFingerprint(value: canonicalPart);
+        if (part case MessagePartText(:final text)) {
+          partFingerprints.add((
+            content: partContent,
+            contentWithoutText: await _jsonFingerprint(
+              value: _withoutFields(source: canonicalPart, fields: const {"text"}),
+            ),
+            text: text,
+          ));
+        } else {
+          partFingerprints.add((content: partContent, contentWithoutText: partContent, text: null));
+        }
         // Some backends omit live reasoning from replay. It remains part of the
         // message's own identity, but not the visible neighbor anchor used to
         // correlate an otherwise equivalent adjacent prompt or response.
@@ -860,7 +1033,15 @@ class ChatHistoryRepository({
       final context = contextParts.length == canonicalParts.length
           ? content
           : await _jsonFingerprint(value: {"info": info, "parts": contextParts});
-      return (content: content, context: context, createdAt: message.time?.created);
+      return (
+        content: content,
+        context: context,
+        info: await _jsonFingerprint(value: info),
+        parts: List<_SemanticPartFingerprints>.unmodifiable(partFingerprints),
+        createdAt: message.time?.created,
+        isAssistant: message is MessageAssistant,
+        isStandaloneTool: visibleParts.length == 1 && visibleParts.single is MessagePartTool,
+      );
     } on Object catch (error, stackTrace) {
       Log.w(
         "[history] could not compare message $messageId in session $sessionId during replay reconciliation",
