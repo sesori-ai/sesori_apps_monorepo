@@ -13,11 +13,11 @@
   2026-09-10. Grok phone coverage is now partial: bounded visible lifecycle,
   stop, reuse, permission, cold-root, and read-only-child cases passed, but cold
   child history remains duplicated. Fixed build `0187bb2b10` reduced the cold
-  transcript to one tool anchor with two assistant rows on each side, stable
-  across another reopen. Harness follow-ups remain active for that material
-  regression.
-- **Next action:** Cover and reconcile the real empty-live-final anchored shape,
-  then repeat the bounded cold child-history gate. PR #1444 merged at
+  transcript to one tool anchor with two assistant rows on each side because
+  live final text was an empty snapshot. The narrow empty-prefix correction is
+  implemented; harness follow-ups remain active pending phone confirmation.
+- **Next action:** Repeat the bounded cold child-history gate on the corrected
+  build. PR #1444 merged at
   `67e173be1a`. The 2026-09-12 owned-phone run used an authenticated isolated
   official 1.0.5 runtime and executed the bounded matrix. Cursor actual-plugin
   coverage passed its
@@ -37,10 +37,11 @@
   post-turn background survival, repeated `session/load` facts, and the
   corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
-  #1431. Overall plan remains **ACTIVE** for the Grok cold child-history
-  duplication still present on fixed build `0187bb2b10`. Earlier
-  WebDriverAgent and stale-authentication setup blocks are superseded. No full
-  Grok phone pass is claimed. Cursor follow-ups are complete.
+  #1431. Overall plan remains **ACTIVE** pending phone confirmation of the
+  anchored empty-prefix correction after fixed build `0187bb2b10` exposed the
+  remaining shape. Earlier WebDriverAgent and stale-authentication setup blocks
+  are superseded. No full Grok phone pass is claimed. Cursor follow-ups are
+  complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -1066,4 +1067,7 @@ coverage. Fixed-build phone confirmation at `0187bb2b10` retained one exact
 anchor but two assistant rows on each side. Private structural inspection found
 the live final text part empty while replay supplied nonempty text, so the
 nonempty strict-prefix predicate rejected the otherwise matching unique window.
-The plan stays active for correction and another owned-phone cold-history gate.
+The strict extension now accepts empty retained text only when replay text is
+nonempty; every anchor, adjacency, field, timestamp, ordering, and two-sided
+consumption guard remains unchanged. The plan stays active for another
+owned-phone cold-history gate.

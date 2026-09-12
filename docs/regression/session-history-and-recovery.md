@@ -113,8 +113,10 @@ reconnect or restart.
   child replay. Owned-phone QA reached cold read-only child history. Fixed build
   `0187bb2b10` retained one tool row but two adjacent assistant rows on each side
   across two opens and another backfill. Structural inspection found replay's
-  final text nonempty while live retained an empty text part; the current
-  nonempty strict-prefix reconciliation therefore did not apply.
+  final text nonempty while live retained an empty text part. Anchored
+  reconciliation now treats that empty retained snapshot as a strict prefix
+  only when replay text is nonempty and every existing window guard passes;
+  fixed-build phone confirmation remains pending.
 - Cursor `session/load` replaces only a fully typed completed foreground Task's
   generic card, preserving its replay-local part identity, title, output,
   attachments, and transcript order. Its native replay input uses

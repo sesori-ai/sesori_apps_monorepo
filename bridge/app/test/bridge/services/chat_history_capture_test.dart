@@ -493,11 +493,9 @@ void main() {
           ),
         );
       }
-      await _captureAcpEvents(
-        history: history,
-        sessionId: sessionId,
-        events: mapper.finalizeTurn(sessionId: sessionId),
-      );
+      final liveStored = await _storedMessages(history: history, sessionId: sessionId);
+      expect(liveStored, hasLength(3));
+      expect(liveStored.last.parts.whereType<MessagePartText>().single.text, isEmpty);
 
       collector.consume({
         "update": {
@@ -519,7 +517,9 @@ void main() {
       await history.service.backfillSession(sessionId: sessionId);
       final expectedIds = replayTranscript.map((message) => message.info.id).toList();
       final stored = await _storedMessages(history: history, sessionId: sessionId);
+      expect(stored, hasLength(4));
       expect(stored.map((message) => message.info.id), expectedIds);
+      expect(stored.map((message) => message.parts.whereType<MessagePartTool>().length), [0, 0, 1, 0]);
       expect(stored.last.parts.whereType<MessagePartText>().single.text, "partial and complete");
 
       await history.service.backfillSession(sessionId: sessionId);

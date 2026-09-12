@@ -977,7 +977,9 @@ class ChatHistoryRepository({
       }
       final importedText = importedPart.text!;
       final storedText = storedPart.text!;
-      if (storedText.isEmpty || importedText.length <= storedText.length || !importedText.startsWith(storedText)) {
+      // An empty retained snapshot is still a strict prefix when replay has
+      // nonempty text; the anchored window already supplies exact identity.
+      if (importedText.length <= storedText.length || !importedText.startsWith(storedText)) {
         return false;
       }
       foundExtension = true;

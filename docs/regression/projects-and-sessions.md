@@ -306,8 +306,9 @@ state.
   child read-only. The child-owned initial row stayed single, but its
   assistant/tool/final sequence appeared twice under stable distinct rows.
   Fixed build `0187bb2b10` reduced this to one tool row while both adjacent
-  assistant rows remained duplicated across two opens, so child-history
-  presentation remains partial rather than passed.
+  assistant rows remained duplicated because live final text was an empty
+  snapshot. The exact anchored empty-prefix case is now implemented;
+  child-history presentation remains partial pending phone confirmation.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the

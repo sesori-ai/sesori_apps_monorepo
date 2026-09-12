@@ -32,8 +32,10 @@
   Cold child history stably duplicated its assistant/tool/final sequence under
   distinct rows. Push was attempted while backgrounded but not delivered. A
   fixed-build rerun at `0187bb2b10` deduplicated the exact tool anchor, but two
-  assistant rows remained on each side of it after cold reopen and another
-  reopen. Retirement remains blocked; no full phone pass is claimed.
+  assistant rows remained on each side because live retained an empty final text
+  snapshot. The anchored predicate now accepts that exact empty-prefix case.
+  Retirement remains blocked pending another phone confirmation; no full pass is
+  claimed.
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Historical original implementation base:** `main` at `ba725ec84`
@@ -69,8 +71,10 @@
   reload, read-only child navigation, and normal permission UI passed. Cold
   child history reproducibly duplicated assistant/tool/final rows. A later
   fixed-build rerun reduced that to one tool row but retained two assistant
-  rows on each side, so phone coverage remains partial and the plan stays
-  active. Background notification
+  rows on each side because live final text was an empty snapshot. The narrow
+  anchored empty-prefix correction is implemented; phone coverage remains
+  partial and the plan stays active pending confirmation. Background
+  notification
   delivery was attempted but not observed. Historical merged PR titles remain unchanged. Grok
   coverage
   documentation merged as PR #1430 at `a28e860557`; its blocked phone gate

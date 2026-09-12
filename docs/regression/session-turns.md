@@ -197,8 +197,9 @@ defaults and queued client sends coherent.
   order, timestamps, parts, unrelated text, and newer live suffixes. Fixed-build
   phone QA at `0187bb2b10` deduplicated the exact tool anchor but left two
   assistant rows on each side across two opens. The retained live final text
-  part was empty rather than the nonempty prefix covered by tests, so no full
-  phone pass is claimed.
+  part was empty rather than the nonempty prefix covered by tests. The exact
+  anchored empty-prefix case is now covered and implemented, but no full phone
+  pass is claimed before another fixed-build confirmation.
 - Cursor supports narrower named-root stop for mode-unknown Task calls. Without
   unresolved background work, `confirm` and `keep` reject side-effect-free with
   exact active count; `stop` cancels only the root, waits up to 20 seconds, then
