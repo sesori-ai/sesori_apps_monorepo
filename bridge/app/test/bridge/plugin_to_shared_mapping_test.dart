@@ -273,10 +273,10 @@ void main() {
       expect(ToolState.fromJson(legacy).title, state.state.shellCommand);
       expect(ToolState.fromJson(legacy).shellCommand, isNull);
     });
-    test("strips non-shell title and output while preserving status and attachments", () {
+    test("strips non-shell output while preserving title, status and attachments", () {
       const state = PluginToolState(
         status: PluginToolStatus.completed,
-        title: "Read file",
+        title: "lib/main.dart",
         shellCommand: null,
         output: "contents",
         error: null,
@@ -288,7 +288,7 @@ void main() {
       final shared = state.toShared(retainSummary: false);
 
       expect(shared.status, equals(ToolStatus.completed));
-      expect(shared.title, isNull);
+      expect(shared.title, equals("lib/main.dart"));
       expect(shared.shellCommand, isNull);
       expect(shared.output, isNull);
       expect(shared.error, isNull);

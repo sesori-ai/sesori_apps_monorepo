@@ -549,6 +549,44 @@ void main() {
     expect(state.output, " M file.dart");
   });
 
+  test("streamed read carries its path as the title once arguments arrive", () {
+    const path = ".agents/skills/sesori-plan-worker/SKILL.md";
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_start", {"message": _assistant(content: const [], timestamp: 101)}),
+    );
+    final started = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {"type": "toolcall_start", "contentIndex": 0, "id": "call-1", "toolName": "read"},
+      }),
+    );
+    expect(started.whereType<BridgeSseMessagePartUpdated>().single.part.state.title, isNull);
+
+    dispatcher.map(
+      sessionId: sessionId,
+      event: _event("message_update", {
+        "assistantMessageEvent": {
+          "type": "toolcall_end",
+          "contentIndex": 0,
+          "toolCall": {
+            "id": "call-1",
+            "name": "read",
+            "arguments": {"path": path},
+          },
+        },
+      }),
+    );
+    final running = dispatcher.map(
+      sessionId: sessionId,
+      event: _event("tool_execution_start", {"toolCallId": "call-1", "toolName": "read"}),
+    );
+    final runningState = running.whereType<BridgeSseMessagePartUpdated>().single.part.state;
+    expect(runningState.status, PluginToolStatus.running);
+    expect(runningState.title, path);
+    expect(runningState.shellCommand, isNull);
+  });
+
   test("malformed tool results are omitted without ending the turn", () {
     final message = _assistant(
       content: [

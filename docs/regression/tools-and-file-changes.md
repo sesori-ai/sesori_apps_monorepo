@@ -10,10 +10,18 @@ sub-agent parts, plus the signal that a tool changed files.
 
 - Every plugin normalizes backend tool activity into the shared tool part
   contract: stable identity, tool name, lifecycle status (pending, running,
-  completed, error, plus a forward-compatible unknown), and attachments. Shell
-  tools additionally carry the explicit command and its bounded output or error.
-  Ordinary non-shell tool titles, output snippets, and errors stop at the bridge remapping
-  boundary and never enter chat history or live client events.
+  completed, error, plus a forward-compatible unknown), a bounded title naming
+  what the tool touched, and attachments. Shell tools additionally carry the
+  explicit command and its bounded output or error. Ordinary non-shell tool
+  output snippets and errors stop at the bridge remapping boundary and never
+  enter chat history or live client events.
+- The title is the tool's primary argument: Claude reads it from the tool input
+  (`skill`, `file_path`, `pattern`, `path`, `url`, `query`), Pi from the
+  tool-call arguments (`pattern`, then `path`), Codex from its argument-derived
+  title, and OpenCode and ACP harnesses pass the harness-supplied title through.
+  Skills that load through a file read of `SKILL.md` are visible by that path.
+  Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
+  shows it from the running or terminal update onward, live and after replay.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
   shared variants retain the released `type` values and normalize known payloads
@@ -172,7 +180,9 @@ guarantee.
 ## Failure Signals
 
 - Shell output exceeds the bound, truncates mid-character, or differs between
-  live streaming and replay; or non-shell snippets reach the client.
+  live streaming and replay; non-shell snippets reach the client; or a
+  completed read/edit/skill card shows only the tool name without its path,
+  pattern, or skill.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
 - Backend naming or payload shape reaches the client unnormalized, or a local

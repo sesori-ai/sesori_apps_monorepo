@@ -12,6 +12,7 @@ import "package:sesori_shared/sesori_shared.dart"
 import "../../api/models/claude_content_block_dto.dart";
 import "../../models/claude_task_notification.dart";
 import "claude_shell_command_mapper.dart";
+import "claude_tool_title_mapper.dart";
 
 sealed class const ClaudeMappedContentBlock();
 
@@ -304,7 +305,7 @@ final class const ClaudeContentMapper() {
         tool: name,
         state: PluginToolState(
           status: PluginToolStatus.pending,
-          title: null,
+          title: ClaudeToolTitleMapper.map(input: input),
           shellCommand: ClaudeShellCommandMapper.map(name: name, input: input),
           output: null,
           error: null,

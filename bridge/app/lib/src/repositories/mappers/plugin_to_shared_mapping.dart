@@ -78,7 +78,10 @@ extension PluginToolStateMapping on PluginToolState {
     final isShellCommand = boundedShellCommand != null;
     return ToolState(
       status: status.toShared(),
-      title: retainSummary ? _boundedToolText(text: title) : boundedShellCommand,
+      // The command is the released title alias for older clients; ordinary
+      // tools keep their bounded title (file path, pattern, skill) so the card
+      // says what the tool touched even though its output is stripped.
+      title: boundedShellCommand ?? _boundedToolText(text: title),
       shellCommand: boundedShellCommand,
       output: isShellCommand || retainSummary ? _boundedToolText(text: output) : null,
       error: isShellCommand || retainSummary ? _boundedToolText(text: error) : null,

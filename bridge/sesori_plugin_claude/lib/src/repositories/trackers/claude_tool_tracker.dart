@@ -6,6 +6,7 @@ import "../../models/claude_task_status.dart";
 import "../../models/claude_tool_use_result.dart";
 import "../mappers/claude_shell_command_mapper.dart";
 import "../mappers/claude_task_status_mapping.dart";
+import "../mappers/claude_tool_title_mapper.dart";
 
 /// An immutable presentation snapshot of one Claude tool call.
 sealed class const ClaudeTrackedTool({
@@ -413,7 +414,7 @@ final class _TrackedTool({
   ClaudeTrackedTool snapshot({required bool sessionDiffRequired, bool todoRefreshRequired = false}) {
     final state = PluginToolState(
       status: status,
-      title: null,
+      title: ClaudeToolTitleMapper.map(input: input),
       shellCommand: ClaudeShellCommandMapper.map(name: name, input: input),
       output: output,
       error: error,
