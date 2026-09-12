@@ -54,7 +54,7 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 
 | Harness | Status and title source |
 |---|---|
-| Claude | ✅ Tool input `skill`, `file_path`, `pattern`, `path`, `url`, or `query`, first present; live tracker and transcript replay. |
+| Claude | ✅ Tool input `skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, or `query`, first present; live tracker and transcript replay. |
 | Pi | ✅ Tool-call arguments `pattern`, then `path`; live from `toolcall_end`/`message_end` and replay. `toolcall_start` carries no arguments, so the title first appears with the running or terminal update. |
 | OpenCode | ✅ Native tool part `title`. |
 | Codex | ✅ Argument-derived title (`cmd`, `command`, `path`, `filePath`, `query`, else bounded raw arguments). |

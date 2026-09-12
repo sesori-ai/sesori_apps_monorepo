@@ -16,7 +16,7 @@ sub-agent parts, plus the signal that a tool changed files.
   output snippets and errors stop at the bridge remapping boundary and never
   enter chat history or live client events.
 - The title is the tool's primary argument: Claude reads it from the tool input
-  (`skill`, `file_path`, `pattern`, `path`, `url`, `query`), Pi from the
+  (`skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, `query`), Pi from the
   tool-call arguments (`pattern`, then `path`), Codex from its argument-derived
   title, and OpenCode and ACP harnesses pass the harness-supplied title through.
   Skills that load through a file read of `SKILL.md` are visible by that path.
