@@ -487,7 +487,7 @@ has no child session or full scoped stop.
 | 🌿 | `grok: cover child session history [step 4/6]` | Historical title unchanged (now step 4/7); PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
 | ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged (now step 5/7); ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
 | 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | PR #1429 merged at `2ebcc7d01a` under exact title; required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
-| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Final reconciliation: actual-plugin scope and bounded owned-phone matrix passed, including permission Once and fixed cold child history; notification unavailable and questions unsupported |
+| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Final reconciliation: actual-plugin scope and bounded owned-phone matrix passed, including permission Once and fixed cold child history; notification delivery unobserved/unclaimed and questions unsupported |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 
