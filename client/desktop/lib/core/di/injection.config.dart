@@ -115,9 +115,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.singleton<_i948.LifecycleSource>(() => _i670.DesktopLifecycleObserver());
-    gh.lazySingleton<_i948.SecureStorage>(
-      () => _i757.DesktopSecureStorageAdapter(gh<_i558.FlutterSecureStorage>()),
-    );
     gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
       () => _i964.DesktopBridgeExecutablePathResolver(),
     );
@@ -163,6 +160,11 @@ extension GetItInjectableX on _i174.GetIt {
       dispose: (i) => i.dispose(),
     );
     gh.singleton<_i948.RouteSource>(() => _i911.DesktopRouteSource());
+    gh.lazySingleton<_i948.SecureStorage>(
+      () => _i757.DesktopSecureStorageAdapter(
+        storage: gh<_i558.FlutterSecureStorage>(),
+      ),
+    );
     gh.lazySingleton<_i948.AttributionClaimStorage>(
       () => _i804.NoOpAttributionClaimStorage(),
     );

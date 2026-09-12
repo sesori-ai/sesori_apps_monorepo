@@ -5,7 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 /// Desktop [SecureStorage] backed by the OS credential store
 /// (macOS Keychain, Windows Credential Manager/DPAPI, Linux libsecret).
 @LazySingleton(as: SecureStorage)
-class DesktopSecureStorageAdapter(final FlutterSecureStorage _storage) implements SecureStorage {
+class DesktopSecureStorageAdapter({required final FlutterSecureStorage _storage}) implements SecureStorage {
   @override
   Future<String?> read({required String key}) => _storage.read(key: key);
 
