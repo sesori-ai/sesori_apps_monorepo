@@ -332,7 +332,13 @@ void main() {
       );
       await tester.pumpWidget(harness(const CatalogRescanState.idle()));
       await tester.pumpWidget(
-        harness(const CatalogRescanState.starting(pluginIds: {"codex"}), motion: tuned),
+        harness(
+          const CatalogRescanState.starting(
+            activePluginName: "Codex",
+            pluginIds: {"codex"},
+          ),
+          motion: tuned,
+        ),
       );
       await tester.pump(const Duration(milliseconds: 500));
 
@@ -363,7 +369,14 @@ void main() {
       );
       await tester.pumpWidget(harness(const CatalogRescanState.idle(), motion: tuned, reducedMotion: true));
       await tester.pumpWidget(
-        harness(const CatalogRescanState.starting(pluginIds: {"codex"}), motion: tuned, reducedMotion: true),
+        harness(
+          const CatalogRescanState.starting(
+            activePluginName: "Codex",
+            pluginIds: {"codex"},
+          ),
+          motion: tuned,
+          reducedMotion: true,
+        ),
       );
       await tester.pump();
       expect(entranceScale(tester), 1);
@@ -923,7 +936,10 @@ void main() {
                 data: MediaQuery.of(context).copyWith(disableAnimations: true),
                 child: CatalogScanRow(
                   motion: CatalogScanRowMotion.standard,
-                  scan: const CatalogRescanState.starting(pluginIds: {"codex"}),
+                  scan: const CatalogRescanState.starting(
+                    activePluginName: "Codex",
+                    pluginIds: {"codex"},
+                  ),
                   onCancel: () => cancelCount++,
                   onDismiss: () => dismissCount++,
                 ),
