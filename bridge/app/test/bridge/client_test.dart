@@ -97,6 +97,7 @@ void main() {
           "token": "jwt-token",
           "role": "bridge",
           "bridgeId": "br_abc12345",
+          "connectionNotificationPolicy": "conservative",
         }),
       );
     });
@@ -118,7 +119,12 @@ void main() {
 
       expect(
         authJson,
-        equals({"type": "auth", "token": "jwt-token", "role": "bridge"}),
+        equals({
+          "type": "auth",
+          "token": "jwt-token",
+          "role": "bridge",
+          "connectionNotificationPolicy": "conservative",
+        }),
       );
     });
   });

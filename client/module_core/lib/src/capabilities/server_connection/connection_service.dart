@@ -204,6 +204,12 @@ class ConnectionService(
 
   RelayClient? get relayClient => _relayClient;
 
+  bool sendBridgeConnectionObserved({required RelayClient connection, required String deviceId}) {
+    if (!identical(_relayClient, connection) || _status.value is! ConnectionConnected) return false;
+    connection.sendBridgeConnectionObserved(deviceId: deviceId);
+    return true;
+  }
+
   /// Stateless transport primitive: declares to the bridge which session this
   /// phone is currently viewing ([sessionId] == null when viewing nothing).
   /// Fire-and-forget; silently no-ops when not connected. The viewing-state

@@ -59,9 +59,11 @@ import "../foundation/control_channel_client.dart";
 import "../foundation/data_directory_hardening.dart";
 import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
+import "../foundation/macos_system_power_observer_api.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../foundation/relay_client.dart";
+import "../foundation/system_power_event_source.dart";
 import "../listeners/catalog_import_console_listener.dart";
 import "../models/bridge_config.dart";
 import "../orchestrator.dart";
@@ -738,6 +740,14 @@ class const BridgeRuntimeRunner._() {
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");
       }
 
+      // Power classification is advisory notification metadata only. Starting
+      // it is synchronous side work and is never awaited by relay startup.
+      final powerEventSource = SystemPowerEventSource.forPlatform(
+        operatingSystem: io.Platform.operatingSystem,
+        macosApi: MacosSystemPowerObserverApi(),
+      );
+      shutdownCoordinator.add(disposable: powerEventSource.dispose);
+
       // Constructed here (not inside BridgeRuntime.create) so supervised mode
       // can observe its connectionState stream below.
       final relayClient = RelayClient(
@@ -745,6 +755,10 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider: accessTokenProvider,
         bridgeIdProvider: bridgeRegistrationService,
       );
+      powerEventSource.policies
+          .listen((policy) => relayClient.updateConnectionNotificationPolicy(policy: policy))
+          .addTo(subscriptions);
+      powerEventSource.start();
 
       // Supervised status pushes: the notifier owns every outbound
       // status-class send (status + registered) over the control channel,

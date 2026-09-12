@@ -64,6 +64,14 @@ RelayMessage _$RelayMessageFromJson(
           return RelayRekeyRequired.fromJson(
             json
           );
+                case 'bridge_connection_notification_policy':
+          return RelayBridgeConnectionNotificationPolicy.fromJson(
+            json
+          );
+                case 'bridge_connection_observed':
+          return RelayBridgeConnectionObserved.fromJson(
+            json
+          );
                 case 'auth':
           return AuthRelayMessage.fromJson(
             json
@@ -902,13 +910,164 @@ String toString() {
 /// @nodoc
 @JsonSerializable()
 
+class RelayBridgeConnectionNotificationPolicy implements RelayMessage {
+  const RelayBridgeConnectionNotificationPolicy({required this.policy,  String? $type}): $type = $type ?? 'bridge_connection_notification_policy';
+  factory RelayBridgeConnectionNotificationPolicy.fromJson(Map<String, dynamic> json) => _$RelayBridgeConnectionNotificationPolicyFromJson(json);
+
+ final  BridgeConnectionNotificationPolicy policy;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$RelayBridgeConnectionNotificationPolicyCopyWith<RelayBridgeConnectionNotificationPolicy> get copyWith => _$RelayBridgeConnectionNotificationPolicyCopyWithImpl<RelayBridgeConnectionNotificationPolicy>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$RelayBridgeConnectionNotificationPolicyToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayBridgeConnectionNotificationPolicy&&(identical(other.policy, policy) || other.policy == policy));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,policy);
+}
+
+@override
+String toString() {
+    return 'RelayMessage.bridgeConnectionNotificationPolicy(policy: $policy)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $RelayBridgeConnectionNotificationPolicyCopyWith<$Res> implements $RelayMessageCopyWith<$Res> {
+  factory $RelayBridgeConnectionNotificationPolicyCopyWith(RelayBridgeConnectionNotificationPolicy value, $Res Function(RelayBridgeConnectionNotificationPolicy) _then) = _$RelayBridgeConnectionNotificationPolicyCopyWithImpl;
+@useResult
+$Res call({
+ BridgeConnectionNotificationPolicy policy
+});
+
+
+
+
+}
+/// @nodoc
+class _$RelayBridgeConnectionNotificationPolicyCopyWithImpl<$Res>
+    implements $RelayBridgeConnectionNotificationPolicyCopyWith<$Res> {
+  _$RelayBridgeConnectionNotificationPolicyCopyWithImpl(this._self, this._then);
+
+  final RelayBridgeConnectionNotificationPolicy _self;
+  final $Res Function(RelayBridgeConnectionNotificationPolicy) _then;
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? policy = null,}) {
+  return _then(RelayBridgeConnectionNotificationPolicy(
+policy: null == policy ? _self.policy : policy // ignore: cast_nullable_to_non_nullable
+as BridgeConnectionNotificationPolicy,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class RelayBridgeConnectionObserved implements RelayMessage {
+  const RelayBridgeConnectionObserved({required this.deviceId,  String? $type}): $type = $type ?? 'bridge_connection_observed';
+  factory RelayBridgeConnectionObserved.fromJson(Map<String, dynamic> json) => _$RelayBridgeConnectionObservedFromJson(json);
+
+ final  String deviceId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$RelayBridgeConnectionObservedCopyWith<RelayBridgeConnectionObserved> get copyWith => _$RelayBridgeConnectionObservedCopyWithImpl<RelayBridgeConnectionObserved>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$RelayBridgeConnectionObservedToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayBridgeConnectionObserved&&(identical(other.deviceId, deviceId) || other.deviceId == deviceId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,deviceId);
+}
+
+@override
+String toString() {
+    return 'RelayMessage.bridgeConnectionObserved(deviceId: $deviceId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $RelayBridgeConnectionObservedCopyWith<$Res> implements $RelayMessageCopyWith<$Res> {
+  factory $RelayBridgeConnectionObservedCopyWith(RelayBridgeConnectionObserved value, $Res Function(RelayBridgeConnectionObserved) _then) = _$RelayBridgeConnectionObservedCopyWithImpl;
+@useResult
+$Res call({
+ String deviceId
+});
+
+
+
+
+}
+/// @nodoc
+class _$RelayBridgeConnectionObservedCopyWithImpl<$Res>
+    implements $RelayBridgeConnectionObservedCopyWith<$Res> {
+  _$RelayBridgeConnectionObservedCopyWithImpl(this._self, this._then);
+
+  final RelayBridgeConnectionObserved _self;
+  final $Res Function(RelayBridgeConnectionObserved) _then;
+
+/// Create a copy of RelayMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? deviceId = null,}) {
+  return _then(RelayBridgeConnectionObserved(
+deviceId: null == deviceId ? _self.deviceId : deviceId // ignore: cast_nullable_to_non_nullable
+as String,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
 class AuthRelayMessage implements RelayMessage {
-  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) required this.bridgeId,  String? $type}): $type = $type ?? 'auth';
+  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) required this.bridgeId, @JsonKey(includeIfNull: false) required this.connectionNotificationPolicy,  String? $type}): $type = $type ?? 'auth';
   factory AuthRelayMessage.fromJson(Map<String, dynamic> json) => _$AuthRelayMessageFromJson(json);
 
  final  String token;
  final  String role;
 @JsonKey(includeIfNull: false) final  String? bridgeId;
+@JsonKey(includeIfNull: false) final  BridgeConnectionNotificationPolicy? connectionNotificationPolicy;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -927,18 +1086,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthRelayMessage&&(identical(other.token, token) || other.token == token)&&(identical(other.role, role) || other.role == role)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is AuthRelayMessage&&(identical(other.token, token) || other.token == token)&&(identical(other.role, role) || other.role == role)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.connectionNotificationPolicy, connectionNotificationPolicy) || other.connectionNotificationPolicy == connectionNotificationPolicy));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,token,role,bridgeId);
+    return Object.hash(runtimeType,token,role,bridgeId,connectionNotificationPolicy);
 }
 
 @override
 String toString() {
-    return 'RelayMessage.auth(token: $token, role: $role, bridgeId: $bridgeId)';
+    return 'RelayMessage.auth(token: $token, role: $role, bridgeId: $bridgeId, connectionNotificationPolicy: $connectionNotificationPolicy)';
 }
 
 
@@ -949,7 +1108,7 @@ abstract mixin class $AuthRelayMessageCopyWith<$Res> implements $RelayMessageCop
   factory $AuthRelayMessageCopyWith(AuthRelayMessage value, $Res Function(AuthRelayMessage) _then) = _$AuthRelayMessageCopyWithImpl;
 @useResult
 $Res call({
- String token, String role,@JsonKey(includeIfNull: false) String? bridgeId
+ String token, String role,@JsonKey(includeIfNull: false) String? bridgeId,@JsonKey(includeIfNull: false) BridgeConnectionNotificationPolicy? connectionNotificationPolicy
 });
 
 
@@ -966,12 +1125,13 @@ class _$AuthRelayMessageCopyWithImpl<$Res>
 
 /// Create a copy of RelayMessage
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? token = null,Object? role = null,Object? bridgeId = freezed,}) {
+@pragma('vm:prefer-inline') $Res call({Object? token = null,Object? role = null,Object? bridgeId = freezed,Object? connectionNotificationPolicy = freezed,}) {
   return _then(AuthRelayMessage(
 token: null == token ? _self.token : token // ignore: cast_nullable_to_non_nullable
 as String,role: null == role ? _self.role : role // ignore: cast_nullable_to_non_nullable
 as String,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,connectionNotificationPolicy: freezed == connectionNotificationPolicy ? _self.connectionNotificationPolicy : connectionNotificationPolicy // ignore: cast_nullable_to_non_nullable
+as BridgeConnectionNotificationPolicy?,
   ));
 }
 

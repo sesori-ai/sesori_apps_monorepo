@@ -181,6 +181,7 @@ export "src/services/attribution_service.dart";
 export "src/services/catalog_rescan_service.dart";
 export "src/services/composer_attachment_dispatcher.dart";
 export "src/services/composer_draft_calculator.dart";
+export "src/services/connection_notification_observation_service.dart";
 export "src/services/foreground_notification_dispatcher.dart";
 export "src/services/installation_analytics_service.dart";
 export "src/services/loaded_state_analytics_reporter.dart";

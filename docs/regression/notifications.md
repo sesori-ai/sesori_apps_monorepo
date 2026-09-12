@@ -29,6 +29,11 @@ external.
   identity derived identically by bridge, server, and client.
 - A send failure is logged well enough to separate auth from transport failure and never fails the session flow that
   produced it.
+- On macOS, public system-power callbacks suppress only connection-status pushes while a system-sleep episode has not
+  produced a full-wake callback. DarkWake never gates relay transport, requests, pings, reconnects, or plugin/session
+  work. A full wake updates notification eligibility on the existing socket. Unsupported or failed detection keeps the
+  conservative legacy debounce. A mobile device that restores and observes the exact E2E connection suppresses only
+  its own pending online push; another phone or desktop surface cannot suppress it.
 - The client registers when authenticated, re-registers on token refresh, unregisters before logout, restores
   registration if logout fails, and never re-registers while logout is in flight.
 - Registration sends the same device ID the preferences are stored under, so the server can associate this push token
@@ -123,6 +128,9 @@ provider because current payload content leaves the encrypted channel.
   that may be a local path. The ten-word completion limit has no character bound
   for one long token. This is a known privacy limitation, not the desired target.
 - Fakes cannot prove background or terminated-app handling, OS permission behavior, or collapse rendering.
+- macOS DarkWake classification is best effort. Startup during an existing DarkWake and missed native callbacks remain
+  unclassifiable. Real sleep, canceled sleep, maintenance wake, clamshell, and display-only sleep tests were not run on
+  the development machine; transport remains independent even when notification classification is stale.
 
 ## Sources
 

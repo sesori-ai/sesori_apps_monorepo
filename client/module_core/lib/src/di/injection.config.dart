@@ -141,6 +141,8 @@ import 'package:sesori_dart_core/src/services/catalog_rescan_service.dart'
     as _i572;
 import 'package:sesori_dart_core/src/services/composer_attachment_dispatcher.dart'
     as _i705;
+import 'package:sesori_dart_core/src/services/connection_notification_observation_service.dart'
+    as _i959;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -366,6 +368,12 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i993.AttributionRepository(
         api: gh<_i556.AttributionApi>(),
         claimStorage: gh<_i275.AttributionClaimStorage>(),
+      ),
+    );
+    gh.lazySingleton<_i959.ConnectionNotificationObservationService>(
+      () => _i959.ConnectionNotificationObservationService(
+        connectionService: gh<_i369.ConnectionService>(),
+        notificationRepository: gh<_i471.NotificationRepository>(),
       ),
     );
     gh.lazySingleton<_i37.ViewDeclarationApi>(
