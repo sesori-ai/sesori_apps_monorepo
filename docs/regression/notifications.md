@@ -87,6 +87,9 @@ external.
 Native macOS L2 coverage starts and disposes the bundled observer without sleeping the machine. A separate deterministic
 native-source child-process fixture checks early versus completed wake messages and forces disposal before the run loop
 begins. The fixture must terminate successfully; a native join must never hang the bridge isolate during startup or shutdown.
+The macOS release workflow signs every bundled dylib before the executable, then verifies each code signature again
+from the extracted release archive before uploading it. Local ad-hoc signing checks archive integrity, not Developer ID
+identity, timestamping, notarization, or managed-device library-validation policy.
 
 ## Exploration Guidance
 
