@@ -150,8 +150,9 @@ an old pin or claim another harness's ACP behavior as evidence.
   must fail the old pin rather than bypass checksum verification.
 - **Probe:** production current-host package placement, exact build identity and
   the descriptor's ACP launch. Verify initialization, advertised model/mode and
-  load/replay behavior used by the adapter; configured session probes require an
-  authorized fixture. Confirm download URLs resolve before consumer publication.
+  configured load/replay behavior used by the adapter; an unavailable required
+  fixture blocks the Cursor pin. Confirm download URLs resolve before consumer
+  publication.
 - **Audit:** model switching, history/load, native Task/subagent coverage and
   settings. Report inaccessible upstream source rather than guessing from CLI UX.
 
@@ -185,13 +186,16 @@ an old pin or claim another harness's ACP behavior as evidence.
   initialize, advertised list/load capabilities and `session/list`. Do not run
   remote installers for discovery or create a forbidden checkout. Isolate HOME;
   a fresh profile can lack model/provider setup. Use an authorized configured
-  fixture for new/load coverage, and report unavailable evidence explicitly.
+  fixture for new/load coverage; an unavailable required fixture blocks the
+  Hermes pin. Report unavailable evidence explicitly.
 - **Audit:** the actual Hermes ACP implementation, not only its CLI release
   notes: settings, model/provider discovery, history, tools and subagents.
 
 ## Pi
 
-- **Source:** stable `earendil-works/pi` `vX.Y.Z`, not OMP or a local Pi fork.
+- **Source:** stable `earendil-works/pi` `vX.Y.Z`, not OMP or a local Pi fork. Compare
+  the published `@earendil-works/pi-coding-agent` package when available; the
+  repository name and npm package name differ.
 - **Pin:** `bridge/sesori_plugin_pi/lib/src/runtime/pi_runtime_manifest.dart`;
   preserve `minPathVersion`.
 - **Assets:** six: `pi-darwin-{arm64,x64}.tar.gz`,
@@ -230,16 +234,26 @@ an old pin or claim another harness's ACP behavior as evidence.
   `omp-fork` Git remote is not authority to switch release distributions.
 - **Pin:** `bridge/sesori_plugin_omp/lib/src/runtime/omp_runtime_manifest.dart`;
   preserve `minPathVersion`.
-- **Assets:** seven **bare executables**, plus `SHA256SUMS.txt`:
-  `omp-darwin-{arm64,x64}`, `omp-linux-{arm64,x64}` (glibc),
-  `omp-linux-musl-{arm64,x64}`, `omp-windows-x64.exe`. No Windows arm64.
-  Verify GitHub digests, checksum-list agreement and downloaded bytes. Preserve
-  direct-binary layout and the plugin's libc selection, never model them as ZIPs.
-- **Probe:** exact `omp/<version>` and the owning ACP launch/initialization,
-  `authenticate(agent)`, list/new/load and persisted cleanup using a disposable
-  configured fixture. Isolate `PI_CODING_AGENT_DIR` and all other profile roots;
-  use an allowlisted environment, not inherited credentials. Report required
-  fixture/protocol blockers. Preserve normal production approval policy.
+- **Assets:** the current Sesori manifest has seven **bare executables**, plus
+  `SHA256SUMS.txt`: `omp-darwin-{arm64,x64}`, `omp-linux-{arm64,x64}` (glibc),
+  `omp-linux-musl-{arm64,x64}`, and `omp-windows-x64.exe`. The official
+  [`v18.1.18` release](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.18)
+  (published 2026-09-11) has eight, adding `omp-windows-arm64.exe`; when that
+  approved mapping is adopted, verify all eight executables plus the checksum
+  list. Verify GitHub digests, checksum-list agreement and downloaded bytes.
+  Preserve direct-binary layout and the plugin's libc selection, never model
+  them as ZIPs.
+- **Probe:** exact `omp/<version>` and the owning ACP launch/initialization.
+  A disposable configured fixture must cover `authenticate(agent)`, list/new/load,
+  and persisted cleanup before the pin; an unavailable required fixture blocks
+  the OMP pin. Isolate `PI_CODING_AGENT_DIR` and all other profile roots; use an
+  allowlisted environment, not inherited credentials. Report required
+  fixture/protocol blockers. Preserve normal production approval policy. Current
+  macOS arm64 remains sufficient for ordinary old-platform target bumps. The
+  approved Windows ARM64 mapping separately requires native Windows ARM64
+  install/version/ACP smoke before its platform claim or retirement; current
+  macOS arm64 evidence is insufficient and a missing Windows runner blocks that
+  feature claim.
 - **Audit:** OMP's ACP projection, not Pi RPC. Trace auth, configuration, history,
   models, tools, subagent and cancellation behavior at that seam.
 
@@ -284,16 +298,25 @@ an old pin or claim another harness's ACP behavior as evidence.
 ## Grok Build
 
 - **Source:** xAI's official `https://x.ai/cli/stable` channel; reconcile its build
-  identity with `xai-org/grok-build` source. Do not execute the remote installer
-  just to discover a release.
+  identity with `xai-org/grok-build` source when source evidence is available.
+  Do not execute the remote installer just to discover a release. A source-to-
+  binary association is useful evidence but is not a routine pin gate for this
+  direct CLI.
 - **Pin:** `bridge/sesori_plugin_grok/lib/src/runtime/grok_plugin_descriptor.dart`,
   `targetVersion` versus `minVersion`. Direct CLI only; no managed assets/digests.
 - **Probe:** isolated official current-host candidate, branded
   `grok <version> (<build>)`, then the exact production launch:
   `grok --no-auto-update agent --no-leader stdio`. Never add `--always-approve` or
   `--yolo`. Verify ACP v1 identity and advertised list/load/resume/close support.
-  Required new/prompt/replay/model-selection/close evidence uses explicitly
-  authorized test credentials; unavailable required evidence blocks pinning.
+  ACP source/SDK names may spell the vendor namespace `x.ai/...`, while SDK
+  normalization emits the `_x.ai/...` wire namespace; compare normalized wire
+  methods before treating this as drift. Versioned normalization evidence is
+  [ACP 0.10.4 source](https://docs.rs/agent-client-protocol/0.10.4/src/agent_client_protocol/lib.rs.html#221-234).
+  Required authenticated new/prompt/replay/model-selection/close probes use
+  explicitly authorized test credentials and are pin gates; an unavailable
+  required fixture blocks the Grok pin. Optional broad provider/model/child
+  exploration remains non-gating. Source-to-binary association is useful
+  evidence but is not a routine signed or source-attestation gate.
 - **Audit:** Grok-owned model metadata and `session/set_model`, replay, tool/
   subagent extensions and scoped cancellation. Neither a generic ACP ACK nor
   an idle notification proves those behaviors. Preserve no-auto-update/no-leader
