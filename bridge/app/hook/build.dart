@@ -11,6 +11,7 @@ void main(List<String> args) async {
     final result = await Process.run("clang", [
       "-dynamiclib",
       "-O2",
+      "-mmacos-version-min=${input.config.code.macOS.targetVersion}",
       "-framework",
       "IOKit",
       "-framework",

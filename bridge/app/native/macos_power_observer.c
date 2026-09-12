@@ -41,6 +41,9 @@ static void *observer_main(void *context) {
   io_object_t notifier = IO_OBJECT_NULL;
   io_connect_t root_port = IORegisterForSystemPower(observer, &notify_port, power_changed, &notifier);
   if (root_port == IO_OBJECT_NULL || notify_port == NULL) {
+    if (notifier != IO_OBJECT_NULL) IODeregisterForSystemPower(&notifier);
+    if (root_port != IO_OBJECT_NULL) IOServiceClose(root_port);
+    if (notify_port != NULL) IONotificationPortDestroy(notify_port);
     observer->callback(SESORI_FAILED, -1);
     return NULL;
   }

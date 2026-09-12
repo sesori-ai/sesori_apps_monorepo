@@ -1,29 +1,38 @@
 import "dart:async";
-import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart";
 
 import "macos_system_power_observer_api.dart";
+
+enum SystemPowerEvent() {
+  willSleep,
+  fullWake,
+  observationFailed,
+}
 
 sealed class SystemPowerEventSource() {
   factory forPlatform({
     required String operatingSystem,
     required MacosSystemPowerObserverApi macosApi,
-  }) => operatingSystem == "macos" ? _MacosSystemPowerEventSource(api: macosApi) : _UnsupportedSystemPowerEventSource();
+  }) => operatingSystem == "macos"
+      ? _MacosSystemPowerEventSource(api: macosApi)
+      : _UnsupportedSystemPowerEventSource(operatingSystem: operatingSystem);
 
-  Stream<BridgeConnectionNotificationPolicy> get policies;
+  Stream<SystemPowerEvent> get events;
   void start();
   Future<void> dispose();
 }
 
-final class _UnsupportedSystemPowerEventSource() implements SystemPowerEventSource {
+final class _UnsupportedSystemPowerEventSource({required final String operatingSystem})
+    implements SystemPowerEventSource {
+  final String _operatingSystem = operatingSystem;
+
   @override
-  Stream<BridgeConnectionNotificationPolicy> get policies => const Stream.empty();
+  Stream<SystemPowerEvent> get events => const Stream.empty();
 
   @override
   void start() {
-    Log.d("System power detection unsupported on ${Platform.operatingSystem}; using conservative notifications");
+    Log.d("System power detection unsupported on $_operatingSystem");
   }
 
   @override
@@ -33,13 +42,12 @@ final class _UnsupportedSystemPowerEventSource() implements SystemPowerEventSour
 final class _MacosSystemPowerEventSource({required final MacosSystemPowerObserverApi api})
     implements SystemPowerEventSource {
   final MacosSystemPowerObserverApi _api = api;
-  final StreamController<BridgeConnectionNotificationPolicy> _controller = StreamController.broadcast();
+  final StreamController<SystemPowerEvent> _controller = StreamController.broadcast();
   bool _started = false;
-  BridgeConnectionNotificationPolicy _policy = BridgeConnectionNotificationPolicy.conservative;
   bool _disposed = false;
 
   @override
-  Stream<BridgeConnectionNotificationPolicy> get policies => _controller.stream;
+  Stream<SystemPowerEvent> get events => _controller.stream;
 
   @override
   void start() {
@@ -48,7 +56,8 @@ final class _MacosSystemPowerEventSource({required final MacosSystemPowerObserve
       _api.start(callback: _handleNativeEvent);
       _started = true;
     } on Object catch (error, stackTrace) {
-      Log.w("macOS system power detection failed to start; using conservative notifications", error, stackTrace);
+      Log.w("macOS system power detection failed to start", error, stackTrace);
+      _controller.add(SystemPowerEvent.observationFailed);
     }
   }
 
@@ -58,19 +67,13 @@ final class _MacosSystemPowerEventSource({required final MacosSystemPowerObserve
       case 0:
         Log.d("macOS system power detection active");
       case 1:
-        _publish(BridgeConnectionNotificationPolicy.suppress);
+        _controller.add(SystemPowerEvent.willSleep);
       case 2:
-        _publish(BridgeConnectionNotificationPolicy.normal);
+        _controller.add(SystemPowerEvent.fullWake);
       case 3:
-        Log.w("macOS system power detection failed; using conservative notifications (code=$errorCode)");
-        _publish(BridgeConnectionNotificationPolicy.conservative);
+        Log.w("macOS system power detection failed (code=$errorCode)");
+        _controller.add(SystemPowerEvent.observationFailed);
     }
-  }
-
-  void _publish(BridgeConnectionNotificationPolicy policy) {
-    if (_policy == policy) return;
-    _policy = policy;
-    _controller.add(policy);
   }
 
   @override

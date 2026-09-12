@@ -31,9 +31,11 @@ external.
   produced it.
 - On macOS, public system-power callbacks suppress only connection-status pushes while a system-sleep episode has not
   produced a full-wake callback. DarkWake never gates relay transport, requests, pings, reconnects, or plugin/session
-  work. A full wake updates notification eligibility on the existing socket. Unsupported or failed detection keeps the
-  conservative legacy debounce. A mobile device that restores and observes the exact E2E connection suppresses only
-  its own pending online push; another phone or desktop surface cannot suppress it.
+  work. A full wake updates notification eligibility on the existing socket. A socket established while normally awake
+  keeps its offline-notification eligibility when sleep suppression begins, while a socket established and disconnected
+  wholly during DarkWake stays quiet; same-socket full wake promotes that DarkWake socket. Unsupported or failed
+  detection keeps the conservative legacy debounce. A mobile device that restores and observes the exact E2E connection
+  suppresses only its own pending online push; another phone or desktop surface cannot suppress it.
 - The client registers when authenticated, re-registers on token refresh, unregisters before logout, restores
   registration if logout fails, and never re-registers while logout is in flight.
 - Registration sends the same device ID the preferences are stored under, so the server can associate this push token

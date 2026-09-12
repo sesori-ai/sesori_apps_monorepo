@@ -91,6 +91,7 @@ import "../server/services/bridge_instance_service.dart";
 import "../server/services/bridge_restart_service.dart";
 import "../services/app_client_onboarding_service.dart";
 import "../services/bridge_startup_retry_service.dart";
+import "../services/connection_notification_policy_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
@@ -742,11 +743,13 @@ class const BridgeRuntimeRunner._() {
 
       // Power classification is advisory notification metadata only. Starting
       // it is synchronous side work and is never awaited by relay startup.
-      final powerEventSource = SystemPowerEventSource.forPlatform(
-        operatingSystem: io.Platform.operatingSystem,
-        macosApi: MacosSystemPowerObserverApi(),
+      final connectionNotificationPolicyService = ConnectionNotificationPolicyService(
+        powerEventSource: SystemPowerEventSource.forPlatform(
+          operatingSystem: io.Platform.operatingSystem,
+          macosApi: MacosSystemPowerObserverApi(),
+        ),
       );
-      shutdownCoordinator.add(disposable: powerEventSource.dispose);
+      shutdownCoordinator.add(disposable: connectionNotificationPolicyService.dispose);
 
       // Constructed here (not inside BridgeRuntime.create) so supervised mode
       // can observe its connectionState stream below.
@@ -755,10 +758,10 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider: accessTokenProvider,
         bridgeIdProvider: bridgeRegistrationService,
       );
-      powerEventSource.policies
+      connectionNotificationPolicyService.policies
           .listen((policy) => relayClient.updateConnectionNotificationPolicy(policy: policy))
           .addTo(subscriptions);
-      powerEventSource.start();
+      connectionNotificationPolicyService.start();
 
       // Supervised status pushes: the notifier owns every outbound
       // status-class send (status + registered) over the control channel,

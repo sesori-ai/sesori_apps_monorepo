@@ -24,6 +24,8 @@ class const ClockProvider() {
   DateTime call() => DateTime.now();
 }
 
+final class const ConnectionNotificationObservationHandle._({required final RelayClient _connection});
+
 class const RelayClientFactory() {
   RelayClient call({
     required String relayHost,
@@ -204,9 +206,18 @@ class ConnectionService(
 
   RelayClient? get relayClient => _relayClient;
 
-  bool sendBridgeConnectionObserved({required RelayClient connection, required String deviceId}) {
-    if (!identical(_relayClient, connection) || _status.value is! ConnectionConnected) return false;
-    connection.sendBridgeConnectionObserved(deviceId: deviceId);
+  ConnectionNotificationObservationHandle? captureConnectionNotificationObservation() {
+    final connection = _relayClient;
+    if (connection == null || _status.value is! ConnectionConnected) return null;
+    return ConnectionNotificationObservationHandle._(connection: connection);
+  }
+
+  bool sendBridgeConnectionObserved({
+    required ConnectionNotificationObservationHandle handle,
+    required String deviceId,
+  }) {
+    if (!identical(_relayClient, handle._connection) || _status.value is! ConnectionConnected) return false;
+    handle._connection.sendBridgeConnectionObserved(deviceId: deviceId);
     return true;
   }
 
@@ -343,8 +354,8 @@ class ConnectionService(
                 ApiError.nonSuccessCode(
                   errorCode: response.status,
                   rawErrorString: responseBody,
+                ),
               ),
-            ),
             closeCode: relayClient.lastCloseCode,
           );
         }
