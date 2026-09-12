@@ -1,22 +1,25 @@
 import "dart:async";
 
+import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../foundation/system_power_event_source.dart";
+import "../repositories/system_power_event_repository.dart";
 
-class ConnectionNotificationPolicyService({required final SystemPowerEventSource powerEventSource}) {
-  final SystemPowerEventSource _powerEventSource = powerEventSource;
-  final StreamController<BridgeConnectionNotificationPolicy> _controller = StreamController.broadcast();
+class ConnectionNotificationPolicyService({required final SystemPowerEventRepository powerEventRepository}) {
+  final SystemPowerEventRepository _powerEventRepository = powerEventRepository;
+  // Composition can subscribe after native observation has already started.
+  final BehaviorSubject<BridgeConnectionNotificationPolicy> _controller = BehaviorSubject.seeded(
+    BridgeConnectionNotificationPolicy.conservative,
+  );
   StreamSubscription<SystemPowerEvent>? _subscription;
-  BridgeConnectionNotificationPolicy _policy = BridgeConnectionNotificationPolicy.conservative;
   bool _disposed = false;
 
   Stream<BridgeConnectionNotificationPolicy> get policies => _controller.stream;
 
   void start() {
     if (_disposed || _subscription != null) return;
-    _subscription = _powerEventSource.events.listen(_handlePowerEvent);
-    _powerEventSource.start();
+    _subscription = _powerEventRepository.events.listen(_handlePowerEvent);
+    _powerEventRepository.start();
   }
 
   void _handlePowerEvent(SystemPowerEvent event) {
@@ -25,8 +28,7 @@ class ConnectionNotificationPolicyService({required final SystemPowerEventSource
       SystemPowerEvent.fullWake => BridgeConnectionNotificationPolicy.normal,
       SystemPowerEvent.observationFailed => BridgeConnectionNotificationPolicy.conservative,
     };
-    if (_policy == policy) return;
-    _policy = policy;
+    if (_controller.value == policy) return;
     _controller.add(policy);
   }
 
@@ -35,7 +37,7 @@ class ConnectionNotificationPolicyService({required final SystemPowerEventSource
     _disposed = true;
     await _subscription?.cancel();
     _subscription = null;
-    await _powerEventSource.dispose();
+    await _powerEventRepository.dispose();
     await _controller.close();
   }
 }

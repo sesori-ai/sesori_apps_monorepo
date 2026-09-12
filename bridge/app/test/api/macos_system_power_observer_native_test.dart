@@ -1,7 +1,7 @@
 import "dart:async";
 import "dart:io";
 
-import "package:sesori_bridge/src/foundation/macos_system_power_observer_api.dart";
+import "package:sesori_bridge/src/api/macos_system_power_observer_api.dart";
 import "package:test/test.dart";
 
 void main() {

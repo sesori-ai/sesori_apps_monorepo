@@ -284,6 +284,7 @@ class _ConcurrencyHarness._({
     final failureReporter = FakeFailureReporter();
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
+      connectionNotificationPolicies: const Stream.empty(),
       config: BridgeConfig(
         relayURL: "ws://127.0.0.1:${relayServer.port}",
         authBackendURL: "http://127.0.0.1:8080",

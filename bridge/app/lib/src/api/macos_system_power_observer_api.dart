@@ -21,13 +21,17 @@ class MacosSystemPowerObserverApi() {
   void start({required MacosPowerObserverCallback callback}) {
     if (_handle != null) throw StateError("macOS power observer already started");
     final nativeCallback = NativeCallable<_NativePowerCallback>.listener(callback);
-    final handle = _start(nativeCallback.nativeFunction);
-    if (handle == nullptr) {
+    try {
+      final handle = _start(nativeCallback.nativeFunction);
+      if (handle == nullptr) {
+        throw StateError("Failed to start macOS system power observer thread");
+      }
+      _handle = handle;
+      _callback = nativeCallback;
+    } on Object {
       nativeCallback.close();
-      throw StateError("Failed to start macOS system power observer thread");
+      rethrow;
     }
-    _handle = handle;
-    _callback = nativeCallback;
   }
 
   void stop() {

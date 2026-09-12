@@ -30,7 +30,8 @@ static void power_changed(void *refcon, io_service_t service, natural_t message_
     observer->callback(SESORI_WILL_SLEEP, 0);
     return;
   }
-  if (message_type == kIOMessageSystemWillPowerOn || message_type == kIOMessageSystemHasPoweredOn) {
+  // An early will-power-on notification is not a completed full wake.
+  if (message_type == kIOMessageSystemHasPoweredOn) {
     observer->callback(SESORI_FULL_WAKE, 0);
   }
 }
@@ -75,7 +76,10 @@ void *sesori_power_observer_start(sesori_power_callback callback) {
   sesori_power_observer *observer = calloc(1, sizeof(*observer));
   if (observer == NULL) return NULL;
   observer->callback = callback;
-  pthread_mutex_init(&observer->mutex, NULL);
+  if (pthread_mutex_init(&observer->mutex, NULL) != 0) {
+    free(observer);
+    return NULL;
+  }
   if (pthread_create(&observer->thread, NULL, observer_main, observer) != 0) {
     pthread_mutex_destroy(&observer->mutex);
     free(observer);

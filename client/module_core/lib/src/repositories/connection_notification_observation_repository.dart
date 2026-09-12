@@ -12,7 +12,7 @@ class ConnectionNotificationObservationRepository({
 
   Future<void> reportCurrentConnectionObserved() async {
     final connection = _api.captureCurrentConnection();
-    if (connection == null || identical(connection, _lastObservedConnection)) return;
+    if (connection == null || connection == _lastObservedConnection) return;
     _lastObservedConnection = connection;
 
     final deviceId = await _deviceIdStorage.getOrCreate();

@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/foundation/macos_system_power_observer_api.dart";
-import "package:sesori_bridge/src/foundation/system_power_event_source.dart";
+import "package:sesori_bridge/src/api/macos_system_power_observer_api.dart";
+import "package:sesori_bridge/src/repositories/system_power_event_repository.dart";
 import "package:test/test.dart";
 
 class FakeMacosSystemPowerObserverApi() implements MacosSystemPowerObserverApi {
@@ -22,7 +22,7 @@ class FakeMacosSystemPowerObserverApi() implements MacosSystemPowerObserverApi {
 void main() {
   test("publishes raw sleep and wake observations without transport involvement", () async {
     final api = FakeMacosSystemPowerObserverApi();
-    final source = SystemPowerEventSource.forPlatform(operatingSystem: "macos", macosApi: api);
+    final source = SystemPowerEventRepository.forPlatform(operatingSystem: "macos", macosApi: api);
     final events = <SystemPowerEvent>[];
     final subscription = source.events.listen(events.add);
     source.start();
@@ -37,7 +37,7 @@ void main() {
 
   test("startup failure publishes a failed observation and disposal succeeds", () async {
     final api = FakeMacosSystemPowerObserverApi()..failStart = true;
-    final source = SystemPowerEventSource.forPlatform(operatingSystem: "macos", macosApi: api);
+    final source = SystemPowerEventRepository.forPlatform(operatingSystem: "macos", macosApi: api);
     final events = <SystemPowerEvent>[];
     final subscription = source.events.listen(events.add);
     source.start();

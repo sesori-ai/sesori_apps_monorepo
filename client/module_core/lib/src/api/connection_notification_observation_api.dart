@@ -1,8 +1,16 @@
 import "package:injectable/injectable.dart";
+import "package:meta/meta.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 
-class const ConnectionNotificationObservationToken._({required final ConnectionNotificationObservationHandle _handle});
+@immutable
+class const ConnectionNotificationObservationToken._({required final ConnectionNotificationObservationHandle _handle}) {
+  @override
+  bool operator ==(Object other) => other is ConnectionNotificationObservationToken && _handle == other._handle;
+
+  @override
+  int get hashCode => _handle.hashCode;
+}
 
 @lazySingleton
 class ConnectionNotificationObservationApi({required final ConnectionService _connectionService}) {

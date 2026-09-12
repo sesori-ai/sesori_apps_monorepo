@@ -55,6 +55,7 @@ void main() {
     final restartService = buildTestRestartService();
     final testChatHistory = createTestChatHistory();
     final composition = Orchestrator(
+      connectionNotificationPolicies: const Stream.empty(),
       config: const BridgeConfig(
         relayURL: "ws://127.0.0.1:9999",
         authBackendURL: "https://api.sesori.test",

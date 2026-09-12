@@ -24,7 +24,20 @@ class const ClockProvider() {
   DateTime call() => DateTime.now();
 }
 
-final class const ConnectionNotificationObservationHandle._({required final RelayClient _connection});
+@immutable
+final class const ConnectionNotificationObservationHandle._({
+  required final RelayClient _connection,
+  required final ConnectionConnected _status,
+}) {
+  @override
+  bool operator ==(Object other) =>
+      other is ConnectionNotificationObservationHandle &&
+      identical(_connection, other._connection) &&
+      identical(_status, other._status);
+
+  @override
+  int get hashCode => Object.hash(_connection, _status);
+}
 
 class const RelayClientFactory() {
   RelayClient call({
@@ -208,15 +221,16 @@ class ConnectionService(
 
   ConnectionNotificationObservationHandle? captureConnectionNotificationObservation() {
     final connection = _relayClient;
-    if (connection == null || _status.value is! ConnectionConnected) return null;
-    return ConnectionNotificationObservationHandle._(connection: connection);
+    final status = _status.value;
+    if (connection == null || status is! ConnectionConnected) return null;
+    return ConnectionNotificationObservationHandle._(connection: connection, status: status);
   }
 
   bool sendBridgeConnectionObserved({
     required ConnectionNotificationObservationHandle handle,
     required String deviceId,
   }) {
-    if (!identical(_relayClient, handle._connection) || _status.value is! ConnectionConnected) return false;
+    if (!identical(_relayClient, handle._connection) || !identical(_status.value, handle._status)) return false;
     handle._connection.sendBridgeConnectionObserved(deviceId: deviceId);
     return true;
   }
@@ -351,11 +365,11 @@ class ConnectionService(
           await relayClient.disconnect();
           return (
             response: ApiResponse<HealthResponse>.error(
-                ApiError.nonSuccessCode(
-                  errorCode: response.status,
-                  rawErrorString: responseBody,
-                ),
+              ApiError.nonSuccessCode(
+                errorCode: response.status,
+                rawErrorString: responseBody,
               ),
+            ),
             closeCode: relayClient.lastCloseCode,
           );
         }

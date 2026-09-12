@@ -4,12 +4,16 @@ import "dart:convert";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/connection_notification_observation_api.dart";
+import "package:sesori_dart_core/src/api/storage/notification_preferences_device_id_storage.dart";
 import "package:sesori_dart_core/src/capabilities/relay/relay_client.dart";
 import "package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
+import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/logging/logging.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
+import "package:sesori_dart_core/src/repositories/connection_notification_observation_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -26,6 +30,8 @@ class _MockLifecycleSource() extends Mock implements LifecycleSource;
 class _MockFailureReporter() extends Mock implements FailureReporter;
 
 class _MockRelayClient() extends Mock implements RelayClient;
+
+class _MockObservationDeviceIdStorage() extends Mock implements NotificationPreferencesDeviceIdStorage;
 
 class _TestRelayClientFactory({required final RelayClient _client}) extends RelayClientFactory {
   @override
@@ -57,6 +63,7 @@ void main() {
     late BehaviorSubject<AuthState> authStateController;
     late StreamController<RelaySseEvent> sseController;
     late _MockFailureReporter failureReporter;
+    late _MockRelayClient relayClient;
     late ConnectionService service;
 
     const config = ServerConnectionConfig(
@@ -73,7 +80,7 @@ void main() {
       final lifecycleSource = _MockLifecycleSource();
       final authSession = _MockAuthSession();
       failureReporter = _MockFailureReporter();
-      final relayClient = _MockRelayClient();
+      relayClient = _MockRelayClient();
 
       when(() => lifecycleSource.lifecycleStateStream).thenAnswer((_) => lifecycleController.stream);
       when(() => authSession.authStateStream).thenAnswer((_) => authStateController.stream);
@@ -115,6 +122,35 @@ void main() {
       await sseController.close();
       await lifecycleController.close();
       await authStateController.close();
+    });
+
+    test("observation tokens deduplicate the ready connection, not a later reconnect", () async {
+      await service.connect(config);
+      final api = ConnectionNotificationObservationApi(connectionService: service);
+      final storage = _MockObservationDeviceIdStorage();
+      final deviceId = Completer<String>();
+      when(storage.getOrCreate).thenAnswer((_) => deviceId.future);
+      final repository = ConnectionNotificationObservationRepository(api: api, deviceIdStorage: storage);
+      final firstToken = api.captureCurrentConnection()!;
+      expect(api.captureCurrentConnection(), firstToken);
+
+      final firstReport = repository.reportCurrentConnectionObserved();
+      await repository.reportCurrentConnectionObserved();
+      deviceId.complete("123e4567-e89b-42d3-a456-426614174000");
+      await firstReport;
+      verify(storage.getOrCreate).called(1);
+      verify(() => relayClient.sendBridgeConnectionObserved(deviceId: "123e4567-e89b-42d3-a456-426614174000"))
+          .called(1);
+
+      service.emitStatusForTesting(const ConnectionStatus.bridgeOffline(config: config, health: health));
+      expect(api.captureCurrentConnection(), isNull);
+      service.emitStatusForTesting(const ConnectionStatus.connected(config: config, health: health));
+      expect(api.captureCurrentConnection(), isNot(firstToken));
+      expect(api.reportObserved(connection: firstToken, deviceId: "123e4567-e89b-42d3-a456-426614174000"), isFalse);
+      await repository.reportCurrentConnectionObserved();
+      verify(storage.getOrCreate).called(1);
+      verify(() => relayClient.sendBridgeConnectionObserved(deviceId: "123e4567-e89b-42d3-a456-426614174000"))
+          .called(1);
     });
 
     test("ignores an unknown event type without reporting and continues", () async {

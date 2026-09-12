@@ -1,5 +1,5 @@
-import "package:sesori_bridge/src/foundation/macos_system_power_observer_api.dart";
-import "package:sesori_bridge/src/foundation/system_power_event_source.dart";
+import "package:sesori_bridge/src/api/macos_system_power_observer_api.dart";
+import "package:sesori_bridge/src/repositories/system_power_event_repository.dart";
 import "package:sesori_bridge/src/services/connection_notification_policy_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -20,10 +20,23 @@ class FakeMacosSystemPowerObserverApi() implements MacosSystemPowerObserverApi {
 }
 
 void main() {
+  test("replays the current policy to composition after native observation started", () async {
+    final api = FakeMacosSystemPowerObserverApi();
+    final service = ConnectionNotificationPolicyService(
+      powerEventRepository: SystemPowerEventRepository.forPlatform(operatingSystem: "macos", macosApi: api),
+    );
+    service.start();
+    api.callback!(1, 0);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(await service.policies.first, BridgeConnectionNotificationPolicy.suppress);
+    await service.dispose();
+  });
+
   test("maps raw power observations to deduplicated connection-notification policy", () async {
     final api = FakeMacosSystemPowerObserverApi();
     final service = ConnectionNotificationPolicyService(
-      powerEventSource: SystemPowerEventSource.forPlatform(operatingSystem: "macos", macosApi: api),
+      powerEventRepository: SystemPowerEventRepository.forPlatform(operatingSystem: "macos", macosApi: api),
     );
     final policies = <BridgeConnectionNotificationPolicy>[];
     final subscription = service.policies.listen(policies.add);
@@ -36,6 +49,7 @@ void main() {
     await Future<void>.delayed(Duration.zero);
 
     expect(policies, [
+      BridgeConnectionNotificationPolicy.conservative,
       BridgeConnectionNotificationPolicy.suppress,
       BridgeConnectionNotificationPolicy.normal,
       BridgeConnectionNotificationPolicy.conservative,

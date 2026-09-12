@@ -36,6 +36,7 @@ import "../api/bridge_settings_api.dart";
 import "../api/control_secret_api.dart";
 import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
+import "../api/macos_system_power_observer_api.dart";
 import "../api/sesori_server_api.dart";
 import "../auth/access_token_provider.dart";
 import "../auth/auth_api.dart";
@@ -59,11 +60,9 @@ import "../foundation/control_channel_client.dart";
 import "../foundation/data_directory_hardening.dart";
 import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
-import "../foundation/macos_system_power_observer_api.dart";
 import "../foundation/process_runner.dart";
 import "../foundation/process_runner_command_executor.dart";
 import "../foundation/relay_client.dart";
-import "../foundation/system_power_event_source.dart";
 import "../listeners/catalog_import_console_listener.dart";
 import "../models/bridge_config.dart";
 import "../orchestrator.dart";
@@ -73,6 +72,7 @@ import "../repositories/app_onboarding_state_repository.dart";
 import "../repositories/bridge_settings.dart";
 import "../repositories/bridge_settings_repository.dart";
 import "../repositories/plugin_lifecycle_repository.dart";
+import "../repositories/system_power_event_repository.dart";
 import "../server/api/process_id_lookup_api.dart";
 import "../server/api/runtime_file_api.dart";
 import "../server/api/system_process_api.dart";
@@ -744,7 +744,7 @@ class const BridgeRuntimeRunner._() {
       // Power classification is advisory notification metadata only. Starting
       // it is synchronous side work and is never awaited by relay startup.
       final connectionNotificationPolicyService = ConnectionNotificationPolicyService(
-        powerEventSource: SystemPowerEventSource.forPlatform(
+        powerEventRepository: SystemPowerEventRepository.forPlatform(
           operatingSystem: io.Platform.operatingSystem,
           macosApi: MacosSystemPowerObserverApi(),
         ),
@@ -758,9 +758,6 @@ class const BridgeRuntimeRunner._() {
         accessTokenProvider: accessTokenProvider,
         bridgeIdProvider: bridgeRegistrationService,
       );
-      connectionNotificationPolicyService.policies
-          .listen((policy) => relayClient.updateConnectionNotificationPolicy(policy: policy))
-          .addTo(subscriptions);
       connectionNotificationPolicyService.start();
 
       // Supervised status pushes: the notifier owns every outbound
@@ -824,6 +821,7 @@ class const BridgeRuntimeRunner._() {
       )..ensureDirectory();
       final failureReporter = LogFailureReporter();
       final composition = Orchestrator(
+        connectionNotificationPolicies: connectionNotificationPolicyService.policies,
         config: BridgeConfig(
           relayURL: options.relayUrl,
           authBackendURL: options.authBackendUrl,

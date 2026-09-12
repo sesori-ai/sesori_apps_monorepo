@@ -38,7 +38,10 @@ static int join_after_releasing_run(pthread_t thread, void **result) {
   return pthread_join(thread, result);
 }
 
+static int full_wakes = 0;
+
 static void observe_power(int event, int error_code) {
+  if (event == SESORI_FULL_WAKE) full_wakes += 1;
   if (event == SESORI_FAILED) {
     fprintf(stderr, "Observer registration failed: %d\n", error_code);
     _Exit(2);
@@ -46,6 +49,13 @@ static void observe_power(int event, int error_code) {
 }
 
 int main(void) {
+  // Inject callback messages without sleeping or changing machine power state.
+  sesori_power_observer stub = {.callback = observe_power};
+  power_changed(&stub, IO_OBJECT_NULL, kIOMessageSystemWillPowerOn, NULL);
+  if (full_wakes != 0) return 3;
+  power_changed(&stub, IO_OBJECT_NULL, kIOMessageSystemHasPoweredOn, NULL);
+  if (full_wakes != 1) return 4;
+
   void *observer = sesori_power_observer_start(observe_power);
   if (observer == NULL) return 1;
   pthread_mutex_lock(&startup_mutex);

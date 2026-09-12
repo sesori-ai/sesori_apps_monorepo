@@ -2,7 +2,7 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
-import "macos_system_power_observer_api.dart";
+import "../api/macos_system_power_observer_api.dart";
 
 enum SystemPowerEvent() {
   willSleep,
@@ -10,21 +10,21 @@ enum SystemPowerEvent() {
   observationFailed,
 }
 
-sealed class SystemPowerEventSource() {
+sealed class SystemPowerEventRepository() {
   factory forPlatform({
     required String operatingSystem,
     required MacosSystemPowerObserverApi macosApi,
   }) => operatingSystem == "macos"
-      ? _MacosSystemPowerEventSource(api: macosApi)
-      : _UnsupportedSystemPowerEventSource(operatingSystem: operatingSystem);
+      ? _MacosSystemPowerEventRepository(api: macosApi)
+      : _UnsupportedSystemPowerEventRepository(operatingSystem: operatingSystem);
 
   Stream<SystemPowerEvent> get events;
   void start();
   Future<void> dispose();
 }
 
-final class _UnsupportedSystemPowerEventSource({required final String operatingSystem})
-    implements SystemPowerEventSource {
+final class _UnsupportedSystemPowerEventRepository({required final String operatingSystem})
+    implements SystemPowerEventRepository {
   final String _operatingSystem = operatingSystem;
 
   @override
@@ -39,8 +39,8 @@ final class _UnsupportedSystemPowerEventSource({required final String operatingS
   Future<void> dispose() async {}
 }
 
-final class _MacosSystemPowerEventSource({required final MacosSystemPowerObserverApi api})
-    implements SystemPowerEventSource {
+final class _MacosSystemPowerEventRepository({required final MacosSystemPowerObserverApi api})
+    implements SystemPowerEventRepository {
   final MacosSystemPowerObserverApi _api = api;
   final StreamController<SystemPowerEvent> _controller = StreamController.broadcast();
   bool _started = false;
