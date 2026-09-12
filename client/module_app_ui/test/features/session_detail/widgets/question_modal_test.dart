@@ -905,4 +905,34 @@ void main() {
     expect(capture.rejectedRequestId, "question-1");
     expect(find.byType(PregoBottomSheet), findsNothing);
   });
+
+  testWidgets("custom answer keeps its indicator level with the typed answer", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Split the work across worktrees?",
+            header: "Worktrees",
+            custom: true,
+            options: [],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    await tester.enterText(find.byType(TextField), "For the server");
+    await tester.pump();
+
+    // The field centres its text in the decoration box, so the indicator must
+    // stay centred on that box rather than on a fixed top offset.
+    final indicatorCenter = tester.getCenter(find.byKey(const Key("custom-answer-toggle")));
+    final fieldCenter = tester.getCenter(find.byType(TextField));
+    expect(indicatorCenter.dy, moreOrLessEquals(fieldCenter.dy, epsilon: 1));
+  });
 }

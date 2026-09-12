@@ -904,17 +904,17 @@ class const _CustomAnswerTile({
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onTap: onTap,
       child: Row(
-        crossAxisAlignment: .start,
+        // The field centres its text inside the decoration box, so the
+        // indicator must centre with the field too: a fixed top offset drifts
+        // away from the answer text as that box changes height (it is 28pt in
+        // the dense desktop layout and 40pt on Android).
         children: [
-          Padding(
+          Icon(
             key: const Key("custom-answer-toggle"),
-            padding: const EdgeInsetsDirectional.only(top: 10),
-            child: Icon(
-              isMultiple
-                  ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
-                  : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
-              color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
-            ),
+            isMultiple
+                ? (isSelected ? Icons.check_box : Icons.check_box_outline_blank)
+                : (isSelected ? Icons.radio_button_checked : Icons.radio_button_unchecked),
+            color: isSelected ? prego.colors.bgBrandSolid : prego.colors.borderPrimary,
           ),
           const SizedBox(width: 12),
           Expanded(
