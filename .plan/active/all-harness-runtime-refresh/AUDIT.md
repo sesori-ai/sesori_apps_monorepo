@@ -168,16 +168,21 @@ opaque-byte verification passes.
   evidence blocks the Grok pin. Optional broad provider/model/child exploration
   remains non-gating, and source-to-binary association stays optional evidence.
 - **ACP multi-select:** OMP's approved form path needs generic mapper support
-  for array `items.anyOf`, `qN` plus `qN__other` grouping, and existing
-  multiple/custom answer/UI reuse. Its independent feature matrix is minimum
+  for array `items.anyOf`. Preserve one question per schema property: OMP's
+  `qN` checkbox selections and `qN__other` custom text remain separate questions
+  in the same form, using existing answers/UI. This retains provenance even
+  when custom text equals an option label, without wire additions or OMP naming
+  assumptions in the generic mapper. Its independent feature matrix is minimum
   sufficient **L2 Routine** scoped to this OMP ACP path, not unrelated L3
   catalog coverage. Require existing-widget automation plus an authoritative
   live OMP `askDialog`/ACP array roundtrip on at least one supported client,
   using the existing native fixture or an explicitly authorized isolated
   configured fixture, never ambient credentials. Exercise two choices plus
-  custom, selected values, required omission/cancel, and unchanged
-  single-choice behavior; missing live fixture/roundtrip blocks this feature
-  gate. Other ACP plugins stay form-disabled.
+  a separate custom answer, selected values (including an identical option
+  label/custom value), optional-custom omission, required omission/cancel,
+  and unchanged single-choice behavior; missing live fixture/roundtrip blocks
+  this feature gate. Other ACP plugins stay form-disabled. Its question
+  regression/capability docs land in Step 7, not a later documentation PR.
 - **Analytics and implementation shape:** reuse existing authoritative
   question-answer instrumentation; add no new event. Approved work adds zero new persistent or in-memory coordination parts, and no generated churn is expected. Estimates are approximately 200-450 authored lines for multi-select
   and 40-100 for OMP Windows ARM64 mapping; refine against local implementation

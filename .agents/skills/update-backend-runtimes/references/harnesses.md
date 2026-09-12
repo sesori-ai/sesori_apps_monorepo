@@ -234,25 +234,25 @@ an old pin or claim another harness's ACP behavior as evidence.
   `omp-fork` Git remote is not authority to switch release distributions.
 - **Pin:** `bridge/sesori_plugin_omp/lib/src/runtime/omp_runtime_manifest.dart`;
   preserve `minPathVersion`.
-- **Assets:** the current Sesori manifest has seven **bare executables**, plus
-  `SHA256SUMS.txt`: `omp-darwin-{arm64,x64}`, `omp-linux-{arm64,x64}` (glibc),
-  `omp-linux-musl-{arm64,x64}`, and `omp-windows-x64.exe`. The official
-  [`v18.1.18` release](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.18)
-  (published 2026-09-11) has eight, adding `omp-windows-arm64.exe`; when that
-  approved mapping is adopted, verify all eight executables plus the checksum
-  list. Verify GitHub digests, checksum-list agreement and downloaded bytes.
-  Preserve direct-binary layout and the plugin's libc selection, never model
-  them as ZIPs.
+- **Assets:** **bare executables** plus `SHA256SUMS.txt`. Enumerate the selected
+  official release and reconcile it with `OmpRuntimeManifest._assets`, rather
+  than assuming a fixed asset count. Names use `omp-darwin-{arm64,x64}`,
+  `omp-linux-{arm64,x64}` (glibc), `omp-linux-musl-{arm64,x64}`, and
+  `omp-windows-<arch>.exe`. Record newly published architectures separately from
+  currently supported mappings; adopting one is a platform feature, not a
+  mechanical pin change. Verify GitHub digests, checksum-list agreement, and
+  independently downloaded bytes for every selected asset. Preserve direct-binary
+  layout and the plugin's libc selection, never model these assets as ZIPs.
 - **Probe:** exact `omp/<version>` and the owning ACP launch/initialization.
   A disposable configured fixture must cover `authenticate(agent)`, list/new/load,
   and persisted cleanup before the pin; an unavailable required fixture blocks
   the OMP pin. Isolate `PI_CODING_AGENT_DIR` and all other profile roots; use an
   allowlisted environment, not inherited credentials. Report required
-  fixture/protocol blockers. Preserve normal production approval policy. Current
-  macOS arm64 remains sufficient for ordinary old-platform target bumps. The
-  approved Windows ARM64 mapping separately requires native Windows ARM64
-  install/version/ACP smoke before its platform claim or retirement; current
-  macOS arm64 evidence is insufficient and a missing Windows runner blocks that
+  fixture/protocol blockers. Preserve normal production approval policy.
+  Current-host execution is sufficient for ordinary existing-platform target
+  bumps. A new Windows ARM64 mapping separately requires native Windows ARM64
+  install/version/ACP smoke before its platform claim or retirement; another
+  host's evidence is insufficient and a missing Windows runner blocks that
   feature claim.
 - **Audit:** OMP's ACP projection, not Pi RPC. Trace auth, configuration, history,
   models, tools, subagent and cancellation behavior at that seam.

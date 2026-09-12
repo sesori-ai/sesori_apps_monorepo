@@ -10,22 +10,22 @@
 - **Approved scope:** mechanical target refreshes, OMP Windows ARM64 mapping,
   and OMP-backed shared ACP multi-select questions. Floors remain unchanged;
   DeepSeek remains excluded.
-- **Next:** publish and monitor the plan PR, then begin the local successor's
-  release/hash/install/protocol gates. Pin-blocking configured/authenticated
-  probes and OMP feature gates remain required. Recovered metadata digests are
-  not manifest-ready evidence.
+- **Next:** resolve feedback on [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
+  and begin the local successor's release/hash/install/protocol gates.
+  Pin-blocking configured/authenticated probes and OMP feature gates remain
+  required. Recovered metadata digests are not manifest-ready evidence.
 
 ## Delivery ledger
 
 | Done | Step | Exact PR title | Status |
 |---|---|---|---|
-| [ ] | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | Current plan, tracker, audit, and reference-correction slice |
+| [ ] | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | PR #1453 in review; no production changes |
 | [ ] | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode/Codex/Copilot/Claude/Pi/OMP; each candidate independently gated; pending |
 | [ ] | 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Exact ACP pair and Cursor build/content gates pending |
 | [ ] | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Blocked on empty-session cleanup seam |
 | [ ] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Channel/ACP probe pending; namespace/provenance policy corrected |
 | [ ] | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth asset; hash/mapping/native Windows ARM64 install-version-ACP smoke/documentation gates pending |
-| [ ] | 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Approved mapper/UI path; existing-widget automation and live OMP `askDialog`/ACP array-roundtrip matrix pending |
+| [ ] | 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Separate option/custom questions; widget/live OMP roundtrip gates plus same-PR question regression/capability docs pending |
 | [ ] | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Penultimate; verified behavior only |
 | [ ] | 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final L2 target-only matrix; cannot retire with required gaps |
 
@@ -88,9 +88,12 @@ These gates are tracked independently from the target-only L2 matrix.
 
 - Registry reconciled: 11 total, ten included, DeepSeek excluded.
 - Architecture plan review on 2026-09-12 rejected four ownership gaps. Applied
-  all four: plugin/shared reply flow, private immutable grouped descriptors,
-  OMP live-versus-scratch form policy, and plugin-local Windows asset ownership.
-  No scope expansion or new wire/state was needed; no re-review is claimed.
+  the ownership clarifications for plugin/shared reply flow, immutable field
+  encoding, OMP live-versus-scratch form policy, and plugin-local Windows assets.
+  PR review simplified grouping to one property/question so option/custom
+  provenance stays unambiguous without wire changes; feature docs now land in
+  their feature PRs, and the OMP asset reference uses durable discovery guidance.
+  No scope expansion or new coordination state was needed; no re-review is claimed.
 - Recovered audit reports were consumed without repeating discovery.
 - 33 candidate digest rows remain explicitly metadata/checksum evidence only;
   candidate bytes were not independently downloaded or installed here.
@@ -109,8 +112,9 @@ These gates are tracked independently from the target-only L2 matrix.
 
 Mark each harness only after official release/source, every managed-asset hash,
 current-host macOS arm64 install, exact identity/protocol, pin-blocking
-configured/authenticated probes, and owning focused tests/analyzer pass. Step 8
-changes regression/capability documents only for verified behavior. Step 9
+configured/authenticated probes, and owning focused tests/analyzer pass. Steps
+6–7 include their feature-owned regression/capability docs; Step 8 reconciles
+broader runtime documents for verified behavior. Step 9
 records `Pass`, `Partial`, `Fail`, `Blocked`, or `Not run` with explicit
 platform/account boundaries. The independent multi-select matrix and OMP
 Windows ARM64 native gate must pass before their claims are published, or an

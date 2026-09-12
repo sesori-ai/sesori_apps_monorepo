@@ -3,8 +3,8 @@
 ## Status and constraints
 
 - **Plan slug:** `all-harness-runtime-refresh`.
-- **Status:** Step 1/9, plan publication prepared; architecture review findings
-  applied as recorded below.
+- **Status:** Step 1/9, [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
+  in review; architecture findings and PR follow-ups incorporated below.
 - **Baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
@@ -183,15 +183,18 @@ Implement the approved generic mapping in
 - accept supported ACP form object properties whose array items use the approved
   `anyOf` string-choice shape; map labels and underlying values without exposing
   raw schema details;
-- group paired `qN` array and `qN__other` string properties into one visible
-  `PluginQuestionInfo`, using its existing `multiple` and `custom` fields. Keep
-  one private immutable mapper descriptor per visible question: a grouped
-  descriptor retains both original keys, choice mappings, and each property's
-  independent required flag. Preserve visible-question/answer index alignment;
-  its encoder projects the selected values and optional custom text into the
-  original properties, validating each required property independently. Scalar
-  descriptors retain their existing single-property behavior. Add no public or
-  shared wire fields;
+- preserve one schema property per visible `PluginQuestionInfo` and immutable
+  field encoder. An array becomes a checkbox question (`multiple: true`,
+  `custom: false`); a separate string property remains its own custom-text
+  question. For OMP's `qN` and `qN__other`, retain two questions in the same form,
+  preserving their original keys, order, and independent required flags. The
+  generic mapper must not interpret OMP key-naming conventions;
+- do not merge option and custom answers into one flat list: identical text
+  would lose its originating property. Existing question indexes keep them
+  distinct, even when custom text equals an option label. The existing UI can
+  decline an optional custom question to return an empty answer for omission.
+  Reuse immutable per-property encoders and add the array variant only; scalar
+  behavior stays unchanged, with no new public or shared wire fields;
 - decline malformed/unsupported arrays without leaking defaults or labels in
   diagnostics; preserve scalar enum/boolean/custom behavior and single-choice
   semantics exactly;
@@ -221,8 +224,11 @@ Add focused mapper tests in
 `bridge/sesori_plugin_acp/test/acp_elicitation_test.dart`, OMP policy/fixture
 coverage, and widget cases in
 `client/module_app_ui/test/features/session_detail/widgets/question_modal_test.dart`.
-No generated files or new mutable state are planned. Reconcile
-`docs/regression/questions-and-permissions.md` only after behavior passes.
+No generated files or new mutable state are planned. In the same Step 7 PR,
+update `docs/regression/questions-and-permissions.md` and the relevant
+`docs/HARNESS_CAPABILITIES.md` entry after behavior passes. Record the separate
+checkbox/custom questions, supported behavior, failure signals, and coverage;
+do not defer these feature-owned docs to Step 8.
 
 #### Multi-select feature matrix (independent of target-only L2)
 
@@ -232,8 +238,9 @@ provider coverage. Completion requires both existing-widget automation and an
 authoritative live OMP `askDialog`/ACP array roundtrip observed on at least one
 supported client. Use the existing native fixture or an explicitly authorized
 isolated configured fixture; never use ambient credentials. Exercise two
-choices plus custom text, selected values under original keys, required-field
-omission/cancel, and unchanged single-choice behavior. A missing required
+choices plus a separate custom-text question, selected values under original
+keys (including custom text identical to an option label), optional-custom
+omission, required-field omission/cancel, and unchanged single-choice behavior. A missing required
 fixture or live roundtrip blocks this feature gate with no implied waiver.
 
 ### Architecture plan review
@@ -241,8 +248,10 @@ fixture or live roundtrip blocks this feature gate with no implied waiver.
 The 2026-09-12 sub-agent review rejected the draft with four concrete ownership
 clarifications: plugin/shared reply-layer separation, grouped-field descriptor
 ownership, OMP live-versus-scratch capability scope, and plugin-local Windows
-asset selection. All four are applied above. No scope expansion, public
-contract, or new coordination state was needed. The corrected plan was not
+asset selection. The ownership boundaries are explicit above. PR review then
+simplified grouping to the existing one-property/one-question alignment, so no
+grouped descriptor or answer-provenance wire extension is needed. There is no
+scope expansion or new coordination state. The corrected plan was not
 re-reviewed; this records applied findings, not approval of the revised text.
 
 ### Cross-cutting implementation decisions
@@ -324,7 +333,12 @@ title, and diff checks only; no Dart/Flutter suite runs for this planning slice.
 
 ## Regression, matrix, and retirement
 
-Step 8 reconciles only verified behavior in:
+Feature-owned documentation lands with its implementation: Step 6 updates the
+Windows platform coverage in `docs/regression/plugin-runtime-installation.md`
+and `docs/HARNESS_CAPABILITIES.md`; Step 7 updates
+`docs/regression/questions-and-permissions.md` and its capability entry.
+Step 8 performs the broader cross-harness reconciliation of verified behavior,
+not the first documentation of features already merged:
 
 - `docs/regression/plugin-runtime-installation.md` for target assets/layouts,
   exact Antigravity pair, OMP seven/eight-platform policy, and install failures;
@@ -380,8 +394,8 @@ matrix/retirement decision.
 | 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity exact package/server pair and Cursor exact installer build, content, hashes, layout, and ACP gates |
 | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Narrow empty-session cleanup prerequisite; pin `0.21.2` only after cleanup and target gates |
 | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Stable-channel `1.0.30`, normalized ACP namespace, exact launch/protocol gates; no source-binary gate |
-| 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth direct executable, manifest/platform tests, hash/layout evidence, and honest Windows native status |
-| 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared mapper, OMP-only capability gate, existing shared/client answer UI, bridge/client tests; no generated/new state |
+| 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth executable, manifest/platform tests, native Windows gate, and platform regression/capability docs |
+| 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared array mapper, OMP-only live capability, separate option/custom questions, bridge/client tests, and question regression/capability docs; no generated/new state |
 | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Penultimate verified regression/capability documentation and historical-status reconciliation |
 | 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final L2 target-only matrix, blocked/untested statuses, acceptance exceptions, and conditional retirement |
 
