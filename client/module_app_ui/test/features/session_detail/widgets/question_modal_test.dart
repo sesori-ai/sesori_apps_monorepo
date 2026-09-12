@@ -905,4 +905,42 @@ void main() {
     expect(capture.rejectedRequestId, "question-1");
     expect(find.byType(PregoBottomSheet), findsNothing);
   });
+
+  testWidgets("custom answer keeps its indicator level with the first answer line", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: _questionAsked(
+        questions: const [
+          QuestionInfo(
+            question: "Split the work across worktrees?",
+            header: "Worktrees",
+            custom: true,
+            options: [],
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+
+    double indicatorTop() => tester.getTopLeft(find.byKey(const Key("custom-answer-toggle"))).dy;
+    double answerTop() => tester.getTopLeft(find.byType(TextField)).dy;
+
+    await tester.enterText(find.byType(TextField), "For the server");
+    await tester.pump();
+    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
+
+    // A wrapped answer must keep the indicator on its first line instead of
+    // centring it against the whole field.
+    await tester.enterText(
+      find.byType(TextField),
+      "Create the relay worktree first, then the auth-server one, and keep the bridge worktree untouched.",
+    );
+    await tester.pump();
+    expect(tester.getSize(find.byType(TextField)).height, greaterThan(20));
+    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
+  });
 }
