@@ -23,8 +23,19 @@ abstract class RegisterModule() {
   @lazySingleton
   RelayCryptoService get relayCryptoService => RelayCryptoService();
 
-  // Used by Windows and Linux. The desktop storage adapter routes macOS to the
-  // dedicated classic-Keychain channel required by non-provisioned builds.
+  // usesDataProtectionKeychain is OFF: the data-protection keychain requires a
+  // provisioned keychain-access-group entitlement that this non-sandboxed
+  // Developer-ID-style app (and every unsigned dev build) does not carry, so
+  // every operation would fail with errSecMissingEntitlement (-34018). The
+  // classic login keychain needs no entitlement. Classic mode is only usable
+  // with flutter_secure_storage_darwin 0.4.2 or newer, which stops issuing
+  // kSecAttrSynchronizable queries that also demand that entitlement
+  // (juliansteenbakker/flutter_secure_storage#1104).
+  //
+  // accountName keeps the "com.sesori.desktop" keychain service so credentials
+  // written by the retired native classic-Keychain client remain readable.
   @lazySingleton
-  FlutterSecureStorage get secureStorage => const FlutterSecureStorage();
+  FlutterSecureStorage get secureStorage => const FlutterSecureStorage(
+    mOptions: MacOsOptions(accountName: "com.sesori.desktop", usesDataProtectionKeychain: false),
+  );
 }
