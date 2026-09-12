@@ -904,10 +904,9 @@ class const _CustomAnswerTile({
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       onTap: onTap,
       child: Row(
-        // The field centres its text inside the decoration box, so the
-        // indicator must centre with the field too: a fixed top offset drifts
-        // away from the answer text as that box changes height (it is 28pt in
-        // the dense desktop layout and 40pt on Android).
+        // The indicator stays level with the first answer line rather than the
+        // whole field, so a wrapped answer never drags it down the tile.
+        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Icon(
             key: const Key("custom-answer-toggle"),
@@ -926,8 +925,10 @@ class const _CustomAnswerTile({
               decoration: InputDecoration(
                 hintText: loc.questionModalCustomHint,
                 border: InputBorder.none,
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(vertical: 8),
+                // Collapsed rather than dense: a dense field centres its text
+                // inside a decoration box sized by the platform's visual
+                // density, which left the indicator below the typed answer.
+                isCollapsed: true,
               ),
             ),
           ),

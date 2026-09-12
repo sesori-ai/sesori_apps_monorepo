@@ -906,7 +906,7 @@ void main() {
     expect(find.byType(PregoBottomSheet), findsNothing);
   });
 
-  testWidgets("custom answer keeps its indicator level with the typed answer", (tester) async {
+  testWidgets("custom answer keeps its indicator level with the first answer line", (tester) async {
     final capture = _ReplyCapture();
     final router = _createRouter(
       question: _questionAsked(
@@ -926,13 +926,21 @@ void main() {
     await tester.pumpWidget(_buildApp(router: router));
     await _openQuestionModal(tester);
 
+    double indicatorTop() => tester.getTopLeft(find.byKey(const Key("custom-answer-toggle"))).dy;
+    double answerTop() => tester.getTopLeft(find.byType(TextField)).dy;
+
     await tester.enterText(find.byType(TextField), "For the server");
     await tester.pump();
+    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
 
-    // The field centres its text in the decoration box, so the indicator must
-    // stay centred on that box rather than on a fixed top offset.
-    final indicatorCenter = tester.getCenter(find.byKey(const Key("custom-answer-toggle")));
-    final fieldCenter = tester.getCenter(find.byType(TextField));
-    expect(indicatorCenter.dy, moreOrLessEquals(fieldCenter.dy, epsilon: 1));
+    // A wrapped answer must keep the indicator on its first line instead of
+    // centring it against the whole field.
+    await tester.enterText(
+      find.byType(TextField),
+      "Create the relay worktree first, then the auth-server one, and keep the bridge worktree untouched.",
+    );
+    await tester.pump();
+    expect(tester.getSize(find.byType(TextField)).height, greaterThan(20));
+    expect(indicatorTop(), moreOrLessEquals(answerTop(), epsilon: 1));
   });
 }
