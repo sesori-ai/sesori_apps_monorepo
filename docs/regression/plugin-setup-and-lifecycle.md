@@ -64,7 +64,7 @@ idle suspension, the management snapshot, and lifecycle commands.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
   release (`>=0.1.5`) and then a managed release at or above that minimum,
-  preferring the pinned `0.1.5` target. An outdated explicit
+  preferring the pinned `0.1.6` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -78,14 +78,23 @@ idle suspension, the management snapshot, and lifecycle commands.
   0.1.4 verified that the bridge and native runtime survived atomic cancellation
   of an independently resumed child and its grandchild after #1379, and accepted
   a successful follow-up turn. That evidence does not requalify current managed
-  target 0.1.5 or cover setup selection, crash reconnect, idle suspension/reap,
+  target 0.1.6 or cover setup selection, crash reconnect, idle suspension/reap,
   bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,
   and correlated sub-agent lifecycle on that same connection. Normal `DSH_HOME` remains the source
   of settings, credentials, providers, and skills but its session root is never
-  scanned. Session, attachment, query, and spill mutations stay below plugin
-  state, and session-local model/reasoning writes never modify user settings.
+  scanned. Adapter 0.1.6 initializes and loads only the application-owned
+  `$DSH_HOME/profiles/sesori` profile at startup, so explicitly installed bundle and
+  patch plugins run after restart. The adapter resolves one immutable entry snapshot,
+  then reapplies its pinned storage, telemetry, hot-reload, sandbox, approval,
+  agent/sub-agent, and transport constraints. An unavailable, invalid, or failing
+  profile falls back once to the pinned in-memory graph without changing active ACP
+  sessions. Profile plugins are trusted local in-process code with access to prompts,
+  files, credentials, Node APIs, and the network; this local trust grant does not
+  extend to a future cloud or otherwise managed-trust runtime. Session, attachment,
+  query, and spill mutations stay below plugin state, and session-local
+  model/reasoning writes never modify user settings.
 - Antigravity is an ACP v1 harness over Google's official proprietary runtime pair. An explicit
   `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH then the
   installed managed pair are checked. Setup inspection is static and inert, reports personal-auth readiness from
@@ -451,7 +460,11 @@ owned-process exit; and restart.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
   PATH release, offers install with an explicit path or on an unsupported
-  platform, or keeps using a dead stdio child after an unexpected exit.
+  platform, or keeps using a dead stdio child after an unexpected exit. A DeepSeek
+  adapter loads an unrelated profile, hot-applies profile changes to active sessions,
+  lets profile rows replace mandatory runtime constraints, lets plugin stdout corrupt
+  ACP framing, or fails startup instead of using its pinned fallback after a profile
+  composition or plugin-boot error.
 - Copilot setup accepts unbranded version output, falls back from a provisioned
   runtime during start, mutates the user's configuration, offers in-app login,
   or leaves another harness unavailable after Copilot exits.

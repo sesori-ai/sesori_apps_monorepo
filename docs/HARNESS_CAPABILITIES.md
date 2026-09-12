@@ -357,8 +357,8 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.1.5 over dsh 0.1.5-rc.2 is the managed target
-and minimum accepted runtime. ACP uses native subtree stop for the named scope
+⁹ DeepSeek's published adapter 0.1.6 over dsh 0.1.5-rc.2 is the managed target;
+adapter 0.1.5 remains the minimum accepted runtime. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
 Released clients retain their own child fanout. Phone QA on unchanged published
@@ -371,7 +371,12 @@ and surviving root-owned shell jobs do not imply failed descendant cancellation 
 broader process-stop support. Cold tile/history reload, read-only child navigation,
 push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
 and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
-user choice. This 0.1.4 evidence does not requalify the current 0.1.5 managed target.
+user choice. This 0.1.4 evidence does not requalify the current 0.1.6 managed target.
+Adapter 0.1.6 loads explicitly installed local plugins from only the application-owned
+`$DSH_HOME/profiles/sesori` profile on startup, then reapplies Sesori's mandatory
+runtime constraints; profile changes require restart and profile failure falls back
+to the pinned in-memory graph. These plugins are trusted local in-process code, not a
+trust grant for future cloud or otherwise managed-trust runtimes.
 The native model catalog includes `deepseek-flash` (DeepSeek V4.1 Flash) with
 image input and reasoning controls. Refresh rereads the installed harness's
 configured catalog; it does not upgrade that harness or fetch a live provider catalog.
