@@ -59,7 +59,7 @@ final class const ClaudePluginDescriptor({
   static const String minVersion = "2.1.221";
 
   /// Latest stable Claude Code release validated against this plugin.
-  static const String targetVersion = "2.1.237";
+  static const String targetVersion = "2.1.269";
 
   static final Random _secureRandom = Random.secure();
 

@@ -20,7 +20,7 @@ void main() {
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
-      expect(ClaudePluginDescriptor.targetVersion, "2.1.237");
+      expect(ClaudePluginDescriptor.targetVersion, "2.1.269");
     });
 
     test("reports ready after ordered version and typed auth probes", () async {

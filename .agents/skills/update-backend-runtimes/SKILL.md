@@ -180,7 +180,9 @@ package tests/analyzer. Use the harness reference for exceptions and extra gates
   digests and checksum lists where provided; distinguish metadata agreement from
   independently verified downloads. Cursor/Antigravity self-computed hashes are
   not upstream attestations. Never mix a new release URL with old digests or
-  invent placeholders. Derive totals per harness, not a stale global count.
+  invent placeholders. Transfer digests from machine-readable hash records,
+  not narrative reports; reconcile the final manifest against those records.
+  Derive totals per harness, not a stale global count.
 - Preserve formats, package-directory siblings, helpers, resources, raw-binary
   layouts, libc variants, and unsupported platforms. A packaging change is a
   compatibility finding, not permission to guess a new mapping.
@@ -202,7 +204,9 @@ package tests/analyzer. Use the harness reference for exceptions and extra gates
 - Bound process startup, reads and shutdown; correlate protocol responses by ID,
   distinguish server requests, and check exact identity plus required surfaces.
   Use `try/finally` and terminate the entire process group/Windows Job Object
-  before deleting evidence or disposable files, on success or failure.
+  before deleting evidence or disposable files, on success or failure. A denied
+  process-presence check is unknown, not proof of absence; preserve evidence
+  and distinguish probe-cleanup failures from candidate protocol regressions.
 - Authenticated feature checks need an explicitly authorized procedure, test
   credentials and network scope. Do not borrow the user's live session. Record
   required-but-unavailable checks as blocked; mocks or version output do not

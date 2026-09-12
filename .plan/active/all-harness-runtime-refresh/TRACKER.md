@@ -2,25 +2,26 @@
 
 ## Current state
 
-- **Series:** nine top-level steps; plan-only at Step 1/9.
-- **Branch/base:** `update-target-runtime-all-harnesses` /
-  `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
-- **Publication scope:** documentation/reference revisions only. No production
-  pin, installation, credential, or product-release change; no runtime testing.
+- **Series:** nine top-level steps; Step 1 merged, Step 2 verified locally.
+- **Branch/base:** `all-harness-runtime-refresh-step-2` /
+  `a644652e0c1a03232dc33184b522124703636988`.
+- **Publication scope:** four target updates, 18 managed digests, and focused
+  target fixtures. No new capabilities, generated files, wire/database changes,
+  or product release. Branch targets below are not yet a merged release claim.
 - **Approved scope:** mechanical target refreshes, OMP Windows ARM64 mapping,
   and OMP-backed shared ACP multi-select questions. Floors remain unchanged;
   DeepSeek remains excluded.
-- **Next:** resolve feedback on [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
-  and begin the local successor's release/hash/install/protocol gates.
-  Pin-blocking configured/authenticated probes and OMP feature gates remain
-  required. Recovered metadata digests are not manifest-ready evidence.
+- **Next:** publish and monitor Step 2, then begin the Antigravity/Cursor
+  successor. Codex teardown proof and configured/authenticated fixtures remain
+  blocking only for their respective pins; none is waived. See
+  [Step 2 verification](STEP-2-VERIFICATION.md) for completed and blocked gates.
 
 ## Delivery ledger
 
 | Done | Step | Exact PR title | Status |
 |---|---|---|---|
-| [ ] | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | PR #1453 in review; no production changes |
-| [ ] | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode/Codex/Copilot/Claude/Pi/OMP; each candidate independently gated; pending |
+| [x] | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | PR #1453 merged as a644652e0c; no production changes |
+| [ ] | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode/Copilot/Claude/Pi verified and applied locally; Codex/OMP remain blocked and unchanged |
 | [ ] | 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Exact ACP pair and Cursor build/content gates pending |
 | [ ] | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Blocked on empty-session cleanup seam |
 | [ ] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Channel/ACP probe pending; namespace/provenance policy corrected |
@@ -31,17 +32,17 @@
 
 ## Harness status matrix
 
-| Harness | Current | Floor/exact policy | Candidate | Status |
+| Harness | Branch target | Floor/exact policy | Candidate | Status |
 |---|---:|---|---:|---|
-| OpenCode | `1.18.19` | `1.14.0` unchanged | `1.18.30` | Recommended after six-asset/install/REST-SSE gates |
+| OpenCode | `1.18.30` | `1.14.0` unchanged | `1.18.30` | Pass: six hashes, install, REST/SSE, read-only catalog, focused tests/analyzer |
 | Antigravity | package `1.0.0`; server `agy_acp_server_20260818_01_RC01` | Exact package/server/ACP 1; no semantic floor | package `1.1.1`; server pending | Probe-first |
-| Codex | `0.153.4` | `0.139.0` unchanged | `0.154.0` | Recommended after independent WebSocket/stdio gates |
-| GitHub Copilot | `1.0.80` | `1.0.78` unchanged | `1.0.83` | Recommended after six-asset/ACP gates |
+| Codex | `0.153.4` | `0.139.0` unchanged | `0.154.0` | Partial / blocked: assets/install/both transports pass; scratch sandbox group teardown fails after one focused retry |
+| GitHub Copilot | `1.0.83` | `1.0.78` unchanged | `1.0.83` | Pass: six hashes, install, ACP initialize, focused tests/analyzer |
 | Cursor | `2026.08.11-e8db854` | date floor `2026.07.16` unchanged | `2026.09.10-fd3934a` | Probe-first; four content hashes and configured load/replay fixture pending; missing fixture blocks pin |
-| Claude Code | `2.1.237` | `2.1.221` unchanged | `2.1.269` | Recommended after direct stream gate |
+| Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: direct CLI/SDK launch and isolated stream initialization; descriptor tests/analyzer |
 | Hermes Agent | `0.20.4` | `0.20.0` unchanged | `0.21.2` | Blocked; cleanup and configured new/load fixture prerequisites |
-| Pi | `0.84.4` | `0.84.1` unchanged | `0.85.1` | Recommended after package/RPC/compaction gates |
-| Oh My Pi | `17.3.8` | `17.2.13` unchanged | `18.1.18` | Pin-blocking configured authenticate/list/new/load/cleanup gate pending; approved Windows ARM64 follow-up |
+| Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six package hashes, install, correlated RPC get_state, focused tests/analyzer; compaction not reverified |
+| Oh My Pi | `17.3.8` | `17.2.13` unchanged | `18.1.18` | Blocked: seven hashes/install/initialize pass; authorized authenticate/list/new/load/cleanup fixture absent |
 | Grok Build | `1.0.5` | `1.0.5` unchanged | stable channel `1.0.30` | Blocked; reference-required authenticated new/prompt/replay/model-selection/close probes pending |
 | DeepSeek | `0.1.5` | `0.1.5` unchanged | None | Explicitly excluded/unchanged |
 
@@ -94,19 +95,23 @@ These gates are tracked independently from the target-only L2 matrix.
   provenance stays unambiguous without wire changes; feature docs now land in
   their feature PRs, and the OMP asset reference uses durable discovery guidance.
   No scope expansion or new coordination state was needed; no re-review is claimed.
-- Recovered audit reports were consumed without repeating discovery.
-- 33 candidate digest rows remain explicitly metadata/checksum evidence only;
-  candidate bytes were not independently downloaded or installed here.
-- No candidate was launched or protocol-probed; no credentials or live profiles
-  were used. Required configured/authenticated fixtures remain unavailable and
-  block their respective pins; multi-select and Windows ARM64 feature gates
-  remain Blocked. Other non-macOS native paths remain Untested.
-- No Dart/Flutter tests or analyzer ran because this is a documentation-only
-  continuation. Future approved pin PRs run owning focused tests and
-  `dart analyze --fatal-infos`; ACP multi-select also runs mapper and widget
-  tests without generated churn.
-- Validation for this slice is Markdown/link/inventory/title/diff hygiene and
-  must not be reported as runtime validation.
+- Step 1 recovered the source audit and validated documentation only. Its
+  metadata snapshot remains in `AUDIT.md`; it is not runtime execution evidence.
+- Step 2 independently verified 18 adopted managed archives and current-host
+  installer/identity/protocol gates for OpenCode/Copilot/Pi, plus Claude's
+  direct-CLI/SDK gate. Codex and OMP also passed their asset/install gates but
+  remain unpinned because required teardown/configured-lifecycle evidence is
+  incomplete. The Codex cleanup-only retry did not waive its failure.
+- A Copilot macOS ARM64 report transcription error was reconciled against raw
+  metadata and a targeted byte rehash before applying its verified digest.
+- Post-pin focused tests: OpenCode 160, Copilot 17, Pi 162, Claude 10; total 349
+  passed. All four owning analyzers and formatting for nine Dart files passed
+  with pinned Dart 3.13.3. Older compatible PATH fixtures and historical protocol
+  observations remain unchanged.
+- No real credentials or live profiles were used. Required configured fixtures,
+  multi-select, and Windows ARM64 native gates remain blocked; other non-macOS
+  native paths remain untested. Full evidence and limits are in
+  [STEP-2-VERIFICATION.md](STEP-2-VERIFICATION.md).
 
 ## Completion rule
 
