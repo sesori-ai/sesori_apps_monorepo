@@ -3,8 +3,11 @@ import "dart:convert";
 import "dart:io";
 import "dart:typed_data";
 
+import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge/src/api/database/history/chat_history_database.dart";
 import "package:sesori_bridge/src/listeners/chat_history_listener.dart";
+import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
+import "package:sesori_bridge/src/repositories/mappers/plugin_to_shared_mapping.dart";
 import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -428,6 +431,104 @@ void main() {
       );
     });
 
+    test("real ACP live and replay projections reconcile through stored history", () async {
+      const sessionId = "ses_a";
+      const toolCallId = "opaque tool:/?[]{}";
+      final replayTranscript = <MessageWithParts>[];
+      final repository = _FakeSessionRepository(transcript: replayTranscript);
+      final history = createTestChatHistory(sessionRepository: repository);
+      final mapper = AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "acp",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+      )..beginTurn(sessionId: sessionId, messageId: null);
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
+        shellCommandResolver: null,
+        sessionId: sessionId,
+        agentId: "acp",
+        initialUserMessageId: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: null,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      final liveUpdates = [
+        {
+          "sessionUpdate": "agent_thought_chunk",
+          "content": {"type": "text", "text": "planning"},
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "starting"},
+        },
+        {
+          "sessionUpdate": "tool_call",
+          "toolCallId": toolCallId,
+          "kind": "execute",
+          "title": "Wait",
+          "status": "completed",
+          "rawOutput": {"stdout": "completed"},
+        },
+        {
+          "sessionUpdate": "agent_thought_chunk",
+          "content": {"type": "text", "text": "finishing"},
+        },
+        {
+          "sessionUpdate": "agent_message_chunk",
+          "content": {"type": "text", "text": "partial"},
+        },
+      ];
+      for (final update in liveUpdates) {
+        await _captureAcpEvents(
+          history: history,
+          sessionId: sessionId,
+          events: mapper.map(
+            AcpNotification(
+              method: AcpMethods.sessionUpdate,
+              params: {"sessionId": sessionId, "update": update},
+            ),
+          ),
+        );
+      }
+      await _captureAcpEvents(
+        history: history,
+        sessionId: sessionId,
+        events: mapper.finalizeTurn(sessionId: sessionId),
+      );
+
+      collector.consume({
+        "update": {
+          "sessionUpdate": "user_message_chunk",
+          "content": {"type": "text", "text": "request"},
+        },
+      });
+      for (final update in [...liveUpdates.take(4), liveUpdates.last]) {
+        final replayUpdate = update == liveUpdates.last
+            ? {
+                "sessionUpdate": "agent_message_chunk",
+                "content": {"type": "text", "text": "partial and complete"},
+              }
+            : update;
+        collector.consume({"update": replayUpdate});
+      }
+      replayTranscript.addAll(collector.build().toSharedMessageWithParts(sessionId: sessionId));
+
+      await history.service.backfillSession(sessionId: sessionId);
+      final expectedIds = replayTranscript.map((message) => message.info.id).toList();
+      final stored = await _storedMessages(history: history, sessionId: sessionId);
+      expect(stored.map((message) => message.info.id), expectedIds);
+      expect(stored.last.parts.whereType<MessagePartText>().single.text, "partial and complete");
+
+      await history.service.backfillSession(sessionId: sessionId);
+      expect(
+        (await _storedMessages(history: history, sessionId: sessionId)).map((message) => message.info.id),
+        expectedIds,
+      );
+    });
+
     test("an exact tool anchor replaces one boundary-truncated live completion window", () async {
       final replayWindow = _assistantToolAssistantWindow(
         beforeId: "replay-before",
@@ -588,6 +689,37 @@ void main() {
       });
     }
 
+    test("a non-ACP transcript without a standalone tool anchor is unchanged", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user", text: "request", createdAt: null, promptId: null),
+          _assistantMessageWithText(
+            id: "replay-after",
+            text: "partial and complete",
+            reasoning: "finishing",
+            createdAt: null,
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessageWithParts(
+        history: history,
+        message: _assistantMessageWithText(
+          id: "live-after",
+          text: "partial",
+          reasoning: "finishing",
+          createdAt: null,
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        containsAll(["replay-user", "replay-after", "live-after"]),
+      );
+    });
+
     test("different tool identities do not anchor a replacement window", () async {
       final repository = _FakeSessionRepository(
         transcript: [
@@ -626,6 +758,59 @@ void main() {
       expect(
         (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
         containsAll(["live-before", "live-tool", "live-after"]),
+      );
+    });
+
+    test("a duplicated imported anchor does not trigger window reconciliation", () async {
+      final repository = _FakeSessionRepository(
+        transcript: [
+          _messageWithText(id: "replay-user-1", text: "request", createdAt: null, promptId: null),
+          ..._assistantToolAssistantWindow(
+            beforeId: "replay-before-1",
+            anchorId: "tool-anchor",
+            anchorPartId: "tool-anchor-call",
+            afterId: "replay-after-1",
+            finalText: "partial and complete",
+            finalReasoning: "finishing",
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: null,
+          ),
+          _messageWithText(id: "replay-user-2", text: "request", createdAt: null, promptId: null),
+          ..._assistantToolAssistantWindow(
+            beforeId: "replay-before-2",
+            anchorId: "tool-anchor",
+            anchorPartId: "tool-anchor-call",
+            afterId: "replay-after-2",
+            finalText: "partial and complete",
+            finalReasoning: "finishing",
+            beforeCreatedAt: null,
+            anchorCreatedAt: null,
+            afterCreatedAt: null,
+          ),
+        ],
+      );
+      final history = createTestChatHistory(sessionRepository: repository);
+      await _captureMessages(
+        history: history,
+        messages: _assistantToolAssistantWindow(
+          beforeId: "live-before",
+          anchorId: "tool-anchor",
+          anchorPartId: "tool-anchor-call",
+          afterId: "live-after",
+          finalText: "partial",
+          finalReasoning: "finishing",
+          beforeCreatedAt: null,
+          anchorCreatedAt: null,
+          afterCreatedAt: null,
+        ),
+      );
+
+      await history.service.backfillSession(sessionId: "ses_a");
+
+      expect(
+        (await _storedMessages(history: history, sessionId: "ses_a")).map((message) => message.info.id),
+        containsAll(["live-before", "live-after"]),
       );
     });
 
@@ -1341,6 +1526,29 @@ void main() {
       expect(await history.repository.getSyncState(sessionId: "ses_orphan"), isNull);
     });
   });
+}
+
+Future<void> _captureAcpEvents({
+  required TestChatHistory history,
+  required String sessionId,
+  required List<BridgeSseEvent> events,
+}) async {
+  for (final event in events) {
+    switch (event) {
+      case BridgeSseMessageUpdated(:final info):
+        await history.service.captureMessage(
+          sessionId: sessionId,
+          message: info.toSharedMessage(sessionId: sessionId),
+        );
+      case BridgeSseMessagePartUpdated(:final part):
+        await history.service.capturePart(
+          sessionId: sessionId,
+          part: part.toShared(sessionId: sessionId),
+        );
+      case _:
+        break;
+    }
+  }
 }
 
 Future<String> _captureWarningLog(Future<void> Function() action) async {

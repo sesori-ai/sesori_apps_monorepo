@@ -1051,7 +1051,13 @@ replay, but ACP projected it into different message/part identities. Local
 production changes now centralize the standalone tool identity across ACP live
 and replay and let repository reconciliation atomically replace only a unique
 exactly anchored assistant/tool/assistant window whose final replay text is a
-strict extension. Focused positive, idempotence, multiplicity, ordering,
-timestamp, part-shape, reverse-prefix, unrelated-text, distinct-anchor, and
-new-live-suffix coverage passes locally. The plan stays active: exact cold child
-history still requires owned-phone confirmation after review.
+strict extension. Correctness follow-up cites ACP v1's session-unique
+`ToolCallId` contract, aligns empty-ID rejection between live and replay,
+exercises real ACP mapper/collector output through stored history, and proves a
+non-ACP unanchored transcript plus duplicated imported anchor remain unchanged.
+The direct scan is safe without overlap bookkeeping because any shared boundary
+assistant would need to be both exact and a strict extension. Focused positive,
+idempotence, multiplicity, ordering, timestamp, part-shape, reverse-prefix,
+unrelated-text, distinct/duplicate-anchor, and new-live-suffix coverage passes
+locally. The plan stays active: exact cold child history still requires
+owned-phone confirmation after review.

@@ -180,12 +180,19 @@ and part identity across ACP live and replay. Repository reconciliation adds one
 atomic exception around that exact shared anchor: preceding assistant content
 must match exactly, following replay text must be the sole differing field and a
 strict extension of nonempty live text, known times must agree, and all three
-rows must form one uniquely consumed contiguous window. Distinct/reused anchors,
-ambiguous windows, reverse prefixes, unrelated text, second differences,
-part-shape/order changes, timestamp conflicts, and unmatched newer suffixes
-remain distinct. Focused ACP and repository coverage passes locally. No Grok
+rows must form one uniquely consumed contiguous window. Distinct or duplicated anchors, reverse prefixes, unrelated text, second
+differences, part-shape changes, reordered rows, timestamp conflicts, and
+unmatched newer suffixes remain distinct. Focused ACP and repository coverage
+passes locally. No Grok
 strings, generated-ID parsing, schema field, or general semantic relaxation was
 added.
+
+Correctness follow-up also records the ACP v1 contract that `ToolCallId` is
+unique within its session, rejects empty replay IDs exactly like live mapping,
+and exercises the complete real ACP mapper/collector-to-history path. A
+representative unanchored non-ACP transcript and duplicated imported anchor stay
+unchanged. Candidate-overlap bookkeeping was removed: with unique exact anchors,
+an overlapping assistant would have to be both exact and a strict extension.
 
 The plan remains active for exact owned-phone cold child-history confirmation
 after review. Owned diagnostic bridge/runtime/scratch/home/log/database/private

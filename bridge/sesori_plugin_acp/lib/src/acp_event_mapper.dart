@@ -357,7 +357,10 @@ class AcpEventMapper({
 
   /// Deterministic identity for a standalone tool envelope.
   ///
-  /// Both live mapping and replay own the typed opaque [toolCallId] here, so
+  /// ACP v1 defines `ToolCallId` as unique within its session:
+  /// https://agentclientprotocol.com/protocol/v1/tool-calls. Per-turn live
+  /// state cleanup bounds memory; it does not narrow that protocol identity.
+  /// Live mapping and replay both own the typed opaque [toolCallId] here, so
   /// they can agree without parsing identities after persistence.
   static String toolMessageId({required String sessionId, required String toolCallId}) => "$sessionId-tool-$toolCallId";
 

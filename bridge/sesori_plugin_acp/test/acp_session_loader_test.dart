@@ -369,6 +369,50 @@ void main() {
       expect(replayMessage.parts.single.messageID, replayMessage.info.id);
     });
 
+    test("empty tool identity is ignored equally by live mapping and replay", () {
+      const sessionId = "s1";
+      final mapper = AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "acp",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+      )..beginTurn(sessionId: sessionId, messageId: null);
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
+        shellCommandResolver: null,
+        sessionId: sessionId,
+        agentId: "ACP",
+        initialUserMessageId: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: null,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      final update = {
+        "sessionUpdate": "tool_call",
+        "toolCallId": "",
+        "kind": "execute",
+        "status": "completed",
+      };
+
+      final warnings = _captureWarnings(() {
+        collector.consume(upd(update));
+        expect(
+          mapper.map(
+            AcpNotification(
+              method: AcpMethods.sessionUpdate,
+              params: {"sessionId": sessionId, "update": update},
+            ),
+          ),
+          isEmpty,
+        );
+      });
+
+      expect(collector.build(), isEmpty);
+      expect(warnings, isEmpty);
+    });
+
     test("a tool attached to an explicit assistant draft keeps that grouping", () {
       const sessionId = "s1";
       const toolCallId = "opaque tool:/?[]{}";

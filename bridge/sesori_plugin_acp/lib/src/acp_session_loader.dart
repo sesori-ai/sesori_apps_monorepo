@@ -687,7 +687,7 @@ class AcpReplayCollector({
   }
 
   String? _toolCallId({required Object? value}) {
-    if (value is String) return value;
+    if (value is String) return value.isEmpty ? null : value;
     if (value != null) Log.w("[acp] malformed replay tool-call ID ignored");
     return null;
   }
