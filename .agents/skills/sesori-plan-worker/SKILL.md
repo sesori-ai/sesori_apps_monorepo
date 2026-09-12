@@ -20,6 +20,8 @@ guide, not a boundary on what you may do.
   matters. Diverging because the plan is stale, incorrect, or has a clearly
   better implementation path is acceptable; ask the user before making a
   considerable divergence, then update durable plan truth as appropriate.
+  Cleanly splitting approved work into more PRs is not such a divergence and
+  never needs permission; follow PR Sizing and Step Splitting below.
 - Ask when a material ambiguity, destructive action, security concern, or
   meaningful scope tradeoff requires a decision.
 
@@ -70,9 +72,48 @@ When a task is split across multiple PRs, title every PR
 `<emoji> [<slug>] <description> [step <x>/<y>]`. For durable planned work,
 `<slug>` is exactly the plan directory name under `.plan`; do not derive it from
 the branch, title, or stage. Without a durable plan, choose one stable,
-lowercase kebab-case slug. Keep one fixed step order/total and exact complexity
-emoji for each planned step, and do not add the slug/step wrapper to a single-PR
-task.
+lowercase kebab-case slug. Keep one current series order/total and an exact
+complexity emoji for each planned PR; synchronize them when steps split. Do not
+add the slug/step wrapper to a single-PR task. In the workflow above, “successor”
+means the next executable step or substep, including `3.a` → `3.b`, not literal
+arithmetic on the original step number.
+
+## PR Sizing and Step Splitting
+
+Target **~1,500 changed lines per PR as a soft cap**, counting additions plus
+deletions across production code, tests, docs, and generated files. Count the
+whole diff against its merge base, but assess authored complexity separately:
+
+- Aim considerably lower for complex lifecycle, concurrency, security, or
+  cross-layer changes. Line count is not a quota to fill.
+- Larger coherent PRs are acceptable when most churn is generated boilerplate,
+  such as Drift output that can exceed 1,000 lines for one new table. Report
+  generated versus authored churn and explain substantial overages; never hide
+  generated files from the total or split generated outputs from their source.
+- Prefer smaller independently valid PRs whenever a clean split exists. Each
+  should compile, have focused verification, and be reviewable on its own without
+  artificial compatibility code solely to bridge the split.
+
+**Clean PR splits are always approved and encouraged. Never ask permission just
+to split**, including when new work is discovered, review feedback grows the
+change, or the original estimate was wrong. This approval covers delivery shape,
+not unrelated features, considerable refactors, or other substantive scope
+changes that still require the user's decision.
+
+Split a growing Step `3` into `3.a`, `3.b`, and further substeps as needed. Update
+`PLAN.md`, `TRACKER.md`, step files, dependencies, estimates, complexity and PR
+boundaries together. Keep the series slug, recompute the shared PR total, and
+synchronize planned and published series titles. Map durable substep IDs to PR
+ordinals explicitly; preserve completed-step/PR links rather than losing history.
+Apply the same one-open-PR/one-local-successor workflow to the revised sequence.
+If a PR is already open, preserve reviewed work and explain the replacement or
+extraction; do not rewrite published history or force-push to manufacture a split.
+
+Every new pushed commit starts another AI review wave over the **entire PR**.
+Large diffs encourage fresh findings on each pass, creating fix/push/re-review
+loops, more latency, and repeated review cost. Smaller coherent PRs converge,
+get approved, and merge sooner. Reassess boundaries before pushing a growing
+fix batch instead of feeding that loop indefinitely.
 
 ## PR Complexity and Communication
 
@@ -118,9 +159,9 @@ UI state, tests, and docs. Re-check the plan's cleanup assessment and add newly
 discovered causal cleanup to durable plan truth.
 
 Implement small, safe cleanup directly caused by the feature when it keeps the
-PR coherent. Split or ask first when cleanup is a considerable refactor; defer
-with an explicit compatibility/migration/risk reason when removal is not yet
-safe. Do not retain dead artifacts solely as an audit trail when Git history is
+PR coherent. Ask before expanding scope into a considerable refactor, not before
+splitting approved work into coherent PRs. Defer with an explicit compatibility/
+migration/risk reason when removal is not yet safe. Do not retain dead artifacts solely as an audit trail when Git history is
 sufficient, and do not use cleanup as a reason for unrelated scope expansion.
 
 ## Plan Review
