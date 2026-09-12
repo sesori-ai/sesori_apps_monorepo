@@ -1061,13 +1061,13 @@ as String,
 @JsonSerializable()
 
 class AuthRelayMessage implements RelayMessage {
-  const AuthRelayMessage({required this.token, required this.role, @JsonKey(includeIfNull: false) required this.bridgeId, @JsonKey(includeIfNull: false) required this.connectionNotificationPolicy,  String? $type}): $type = $type ?? 'auth';
+  const AuthRelayMessage({required this.token, required this.role, required this.bridgeId, required this.connectionNotificationPolicy,  String? $type}): $type = $type ?? 'auth';
   factory AuthRelayMessage.fromJson(Map<String, dynamic> json) => _$AuthRelayMessageFromJson(json);
 
  final  String token;
  final  String role;
-@JsonKey(includeIfNull: false) final  String? bridgeId;
-@JsonKey(includeIfNull: false) final  BridgeConnectionNotificationPolicy? connectionNotificationPolicy;
+ final  String? bridgeId;
+ final  BridgeConnectionNotificationPolicy? connectionNotificationPolicy;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1108,7 +1108,7 @@ abstract mixin class $AuthRelayMessageCopyWith<$Res> implements $RelayMessageCop
   factory $AuthRelayMessageCopyWith(AuthRelayMessage value, $Res Function(AuthRelayMessage) _then) = _$AuthRelayMessageCopyWithImpl;
 @useResult
 $Res call({
- String token, String role,@JsonKey(includeIfNull: false) String? bridgeId,@JsonKey(includeIfNull: false) BridgeConnectionNotificationPolicy? connectionNotificationPolicy
+ String token, String role, String? bridgeId, BridgeConnectionNotificationPolicy? connectionNotificationPolicy
 });
 
 

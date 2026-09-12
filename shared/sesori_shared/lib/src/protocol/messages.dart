@@ -83,9 +83,9 @@ sealed class RelayMessage with _$RelayMessage {
   const factory auth({
     required String token,
     required String role,
-    @JsonKey(includeIfNull: false) required String? bridgeId,
+    required String? bridgeId,
     // COMPATIBILITY 2026-09-12 (v1.8.4): Released peers omit this advisory field; omission keeps conservative notification debounce. Remove nullability after every supported peer sends it.
-    @JsonKey(includeIfNull: false) required BridgeConnectionNotificationPolicy? connectionNotificationPolicy,
+    required BridgeConnectionNotificationPolicy? connectionNotificationPolicy,
   }) = AuthRelayMessage;
 
   factory fromJson(Map<String, dynamic> json) => _$RelayMessageFromJson(json);
