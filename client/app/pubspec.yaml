@@ -33,7 +33,7 @@ dependencies:
   material_ui: ^1.2.0
   cupertino_ui: ^1.0.2
 
-  liquid_glass_widgets: ^1.4.3
+  liquid_glass_widgets: ^1.4.4
   http: ^1.6.0
   freezed_annotation: ^3.1.0
   rxdart: ^0.28.0
@@ -52,7 +52,7 @@ dependencies:
     path: ../module_app_ui
   theme_prego:
     path: ../module_prego
-  flutter_secure_storage: ^11.1.0
+  flutter_secure_storage: ^11.1.1
   app_links: ^7.2.1
   url_launcher: ^6.3.2
   share_plus: ^13.3.0

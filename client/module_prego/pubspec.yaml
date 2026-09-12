@@ -6,7 +6,7 @@ resolution: workspace
 
 environment:
   sdk: ^3.13.3
-  flutter: ">=3.47.3"
+  flutter: ">=3.47.4"
 
 dependencies:
   clock: ^1.1.3
@@ -18,7 +18,7 @@ dependencies:
     path: ../../shared/sesori_shared
   flutter_svg: ^2.3.0
   universal_platform: ^1.1.0
-  liquid_glass_widgets: ^1.4.3
+  liquid_glass_widgets: ^1.4.4
   cue: ^0.3.1
 
 flutter:
