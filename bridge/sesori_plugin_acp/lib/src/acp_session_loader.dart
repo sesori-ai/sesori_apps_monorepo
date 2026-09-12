@@ -566,7 +566,7 @@ class AcpReplayCollector({
       tool: tool.tool,
       state: PluginToolState(
         status: tool.status,
-        title: tool.title,
+        title: _contentMapper.toolTitle(tool: tool.tool, title: tool.title),
         shellCommand: tool.shellCommand,
         output: content.output,
         error: tool.status == PluginToolStatus.error ? content.output : null,

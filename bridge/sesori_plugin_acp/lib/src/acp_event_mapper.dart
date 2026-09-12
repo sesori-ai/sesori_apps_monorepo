@@ -1235,7 +1235,7 @@ class AcpEventMapper({
         tool: state.tool,
         state: PluginToolState(
           status: state.status,
-          title: state.title,
+          title: _contentMapper.toolTitle(tool: state.tool, title: state.title),
           shellCommand: state.shellCommand,
           output: content.output,
           error: state.status == PluginToolStatus.error ? content.output : null,

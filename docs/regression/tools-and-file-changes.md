@@ -19,9 +19,13 @@ sub-agent parts, plus the signal that a tool changed files.
   (`skill`, `file_path`, `notebook_path`, `pattern`, `path`, `url`, `query`), Pi from the
   tool-call arguments (`pattern`, then `path`), Codex from its argument-derived
   title, and OpenCode and ACP harnesses pass the harness-supplied title through.
+  An ACP call without `kind` uses its title as the tool name and drops the
+  title, so the card never repeats it.
   Skills that load through a file read of `SKILL.md` are visible by that path.
   Pi learns the title at `toolcall_end`, so a card announced by `toolcall_start`
   shows it from the running or terminal update onward, live and after replay.
+  The client card header shows the tool name followed by the title, or by the
+  shell command for shell tools, so the action and its target are both visible.
 - Plugin and shared message parts are sealed variants, so text, tool, subtask,
   file, agent, and retry data cannot be combined with unrelated part types. The
   shared variants retain the released `type` values and normalize known payloads
@@ -182,7 +186,7 @@ guarantee.
 - Shell output exceeds the bound, truncates mid-character, or differs between
   live streaming and replay; non-shell snippets reach the client; or a
   completed read/edit/skill card shows only the tool name without its path,
-  pattern, or skill.
+  pattern, or skill, or only the path without the tool name.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
 - Backend naming or payload shape reaches the client unnormalized, or a local
