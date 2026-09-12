@@ -110,8 +110,15 @@ reconnect or restart.
   and never read or mutate live child state or the event stream. Corrected
   production-composition QA after PR #1429 verified one exact root/child catalog
   link, one root tile linked to that child, and a nonblank child-owned prompt in
-  child replay. Phone automation did not reach visible history or the read-only
-  child view, so neither client path is claimed.
+  child replay. Owned-phone QA reached cold read-only child history. Fixed build
+  `0187bb2b10` retained one tool row but two adjacent assistant rows on each side
+  across two opens and another backfill. Structural inspection found replay's
+  final text nonempty while live retained an empty text part. Anchored
+  reconciliation now treats that empty retained snapshot as a strict prefix
+  only when replay text is nonempty and every existing window guard passes.
+  Final owned-phone QA on build `493bab1483` and two private backend reads each
+  converged to one imported four-message sequence with no retained live
+  assistant identities.
 - Cursor `session/load` replaces only a fully typed completed foreground Task's
   generic card, preserving its replay-local part identity, title, output,
   attachments, and transcript order. Its native replay input uses
@@ -136,8 +143,17 @@ reconnect or restart.
   The content fingerprint ignores identity, time, agent/model attribution, and
   internal parts hidden from transcripts; alignment still uses available
   creation times as above, normalizes spilled attachments, and keeps replay
-  metadata authoritative. Other retained rows
-  rejoin at their recorded creation time while preserving relative order, so a
+  metadata authoritative. One narrower boundary case also reconciles
+  atomically: a standalone tool row with one exact deterministic identity may
+  anchor immediately adjacent assistant rows when the preceding row is exactly
+  equal and replay's following `MessagePartText.text` strictly extends live text
+  as its only difference. An empty retained snapshot is a valid strict prefix
+  only when replay text is nonempty and every window guard passes. Both
+  three-row windows must be uniquely consumed, ordered identically, and free of
+  conflicting known timestamps;
+  ambiguity, a reverse prefix, changed reasoning/parts, or unrelated text keeps
+  retained rows. Other retained rows rejoin at their recorded creation time
+  while preserving relative order, so a
   catalog re-import cannot move old rows to the newest edge. A message a backend
   replay once contained is the opposite case: its later absence is a removal,
   so a re-read drops it. That is how a session rolled back outside Sesori — an

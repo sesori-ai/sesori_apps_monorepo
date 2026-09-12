@@ -7,12 +7,19 @@
 - **Series state:** all eight original Claude steps merged, including the
   L4-found fix [#1257](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1257),
   which made scoped stop harness-neutral and added
-  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9 and Grok steps 1–7 are merged;
+  `docs/HARNESS_CAPABILITIES.md`. Codex steps 1–9, Grok steps 1–7, and
+  Cursor steps 1–6 are merged;
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
-  2026-09-10. Grok documentation is delivered, while its phone gate remains
-  infrastructure-blocked. Harness follow-ups remain active.
-- **Next action:** Drive Cursor Step 6 PR #1444 to merge, then keep the plan
-  active for the Grok phone WebDriverAgent gate. Cursor actual-plugin coverage passed its
+  2026-09-10. Grok bounded phone coverage now passes: visible lifecycle, stop,
+  reuse, permission, cold-root, and read-only-child cases passed after cold child
+  history initially remained duplicated. Fixed build `0187bb2b10`
+  isolated an empty live final snapshot; final build `493bab1483` then passed
+  exact cold convergence on two opens and two private backfills. All harness
+  follow-ups are reconciled.
+- **Next action:** None; plan retired after the final Grok phone gate passed. PR #1444 merged at
+  `67e173be1a`. The 2026-09-12 owned-phone run used an authenticated isolated
+  official 1.0.5 runtime and executed the bounded matrix. Cursor actual-plugin
+  coverage passed its
   executed scope; one native cancellation race remains fake-test-only.
   Full reviewed checkpoint `5cc54ad013` is preserved by branches
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
@@ -29,8 +36,9 @@
   post-turn background survival, repeated `session/load` facts, and the
   corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
-  #1431. Overall plan remains **ACTIVE** for the Grok phone gate blocked by
-  WebDriverAgent 0.0.23 before any visible case; no Grok phone pass is claimed.
+  #1431. Overall plan is **COMPLETED** after build `493bab1483` passed the
+  bounded Grok cold-history phone gate. Earlier WebDriverAgent,
+  stale-authentication, and history-convergence blocks are superseded. Grok and
   Cursor follow-ups are complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
@@ -195,7 +203,7 @@ post-merge E2E gates are unchanged.
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: cover child session history [step 4/6]` | [PR #1427](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1427) merged at `4d0d8de7e3`; historical title unchanged (now step 4/7); approved collector/repository/service coverage and docs |
 | [x] | Grok | `⚙️ [claude-inline-subtasks] grok: scoped stop for sub-agents [step 5/6]` | [PR #1428](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1428) merged at `3934f32ec9`; historical title unchanged (now step 5/7) |
 | [x] | Grok | `🌿 [claude-inline-subtasks] grok: decode child-cancel response envelope [step 6/7]` | [PR #1429](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1429) merged at `2ebcc7d01a`; exact title unchanged |
-| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin executed scope passed; live permission unexecuted; phone gate remains blocked before visible UI |
+| [x] | Grok | `🌱 [claude-inline-subtasks] docs: record Grok sub-agent coverage [step 7/7]` | [PR #1430](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1430) merged at `a28e860557`; actual-plugin scope passed; subsequent owned-phone matrix passed, including genuine permission Once and fixed cold child history; notification unavailable and questions unsupported |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: sub-agent lifecycle notifications and child transcripts` | [sesori-deepseek-acp #13](https://github.com/sesori-ai/sesori-deepseek-acp/pull/13) merged at `0a85fb2` |
 | [x] | DeepSeek (adapter) | `⚙️ sessions: per-child interrupt; release v0.1.3` | [sesori-deepseek-acp #14](https://github.com/sesori-ai/sesori-deepseek-acp/pull/14) merged at `1f839c3`; release completed through #16 |
 | [x] | DeepSeek (adapter) | `🌿 protocol: carry sub-agent prompts for tile replay` | [sesori-deepseek-acp #15](https://github.com/sesori-ai/sesori-deepseek-acp/pull/15) merged at `d7a4847` |
@@ -212,7 +220,7 @@ post-merge E2E gates are unchanged.
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: completed foreground Task tiles [step 3/6]` | [PR #1441](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1441) merged at `bb85f48148`; exact completed-phase correlation, childless live replacement, tests, and docs |
 | [x] | Cursor | `🚧 [claude-inline-subtasks] cursor: safe Task stop policy [step 4/6]` | [PR #1442](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1442) merged at `a7d3014e1a`; exact active Task count, unresolved-background residency, typed refusal, bounded named-root stop, concurrent descendant fallback, queue gate, and limitation UI; no replay/native QA |
 | [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: replay completed foreground Task tiles [step 5/6]` | PR #1443 merged at `f5e4e7f67a`: configured ACP collector/shared `CursorTaskMapper`, typed stable completed replacement, fallbacks, tests, and history docs; no native QA |
-| [ ] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 open: actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
+| [x] | Cursor | `⚙️ [claude-inline-subtasks] cursor: reconcile native Task coverage [step 6/6]` | PR #1444 merged at `67e173be1a`; actual-plugin executed scope passed; distinct exact native live/replay presentation shapes repaired and generated; background stop/lifecycle and child-session gaps remain explicit |
 
 ### Cursor native probe (2026-09-11)
 
@@ -390,7 +398,7 @@ post-merge E2E gates are unchanged.
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 907
+  <merge-base>..HEAD -- .plan/completed/claude-inline-subtasks/PLAN.md` = 907
   additions / 0 deletions at the last plan edit — 257 lines over the 450-650
   target after the user-review lifecycle amendment, the scoped-stop step the
   user added, two architecture reviews, and the bot rounds; accepted
@@ -545,7 +553,7 @@ post-merge E2E gates are unchanged.
 
 - **Reviewer:** `architecture-plan-review` (sub-agent)
 - **Date:** 2026-08-22
-- **Reviewed scope:** complete `.plan/active/claude-inline-subtasks/`
+- **Reviewed scope:** complete `.plan/completed/claude-inline-subtasks/`
 - **Verdict:** rejected on first pass with six blocking ownership/layering
   findings; no client or shared findings. All six were applied directly to
   `PLAN.md` per repository policy (no re-review of applied fixes):
@@ -945,8 +953,8 @@ passed root/named-child confirmation and scoped interruption, including
 persisted native terminals, plugin settlement, runtime survival, and the
 non-atomic `subAgentsHandled: false` acknowledgment that retains client fanout.
 The live matrix remains partial because no pending question or permission
-surfaced. Final coverage 9/9 merged as PR #1424 at `b945755bfe`; the overall
-plan remains active for the other harness gates.
+surfaced. Final coverage 9/9 merged as PR #1424 at `b945755bfe`; at that point,
+the overall plan remained active for the other harness gates.
 Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-step4-integrated` (`c6aa29a8ce`), while
 `claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and
@@ -995,18 +1003,10 @@ cleanup, already-finished, and full stop all settled on the same runtime. Root
 `confirm` was not rerun; its earlier side-effect-free actual-plugin pass remains
 valid because the envelope repair did not affect preflight policy.
 
-Live matrix remains partial. Unchanged configuration produced zero standard
-permission requests, so permission preservation, isolation, and cleanup are
-unexecuted; no question support is claimed. Source phone build plus bridge/relay
-connection were healthy, but `mobile-mcp` could not start WebDriverAgent
-0.0.23 before any visible UI interaction, even after reinstalling the agent on
-the owned simulator. Phone coverage is infrastructure-blocked and entirely
-unexecuted, not a product failure: no stop dialog/action, history, read-only
-child view, notification, or push behavior is claimed. Owned bridge, app,
-simulator, scratch project, and isolated runtime resources were cleaned;
-protected resources were untouched. Step 7/7 recorded this partial coverage in
-PR #1430 at `a28e860557`; delivery of documentation did not clear the blocked
-phone gate.
+At the Step 7/7 checkpoint, unchanged headless configuration produced no
+standard permission request, and the first phone attempt was infrastructure-
+blocked before visible UI. PR #1430 at `a28e860557` accurately recorded that
+then-partial state.
 
 DeepSeek final coverage reconciliation used existing private summary reports and
 structural artifact summaries only; raw logs, screenshots, transcripts, prompts,
@@ -1031,5 +1031,40 @@ push/notification delivery; bridge restart/reconnect; multiple clients; and
 alternate mobile platforms. Existing automated package coverage still applies to
 its own bounded cases but is not relabeled client E2E. This documentation-only
 gate changes no adapter/runtime, production/configuration/authentication code,
-persisted data, or capability implementation. The plan remains active for the
-Grok phone gate and both Cursor gates.
+persisted data, or capability implementation. At that point, the plan remained
+active for the Grok phone gate and both Cursor gates.
+
+A fresh headless Grok 1.0.5 reproduction then isolated the child-history
+regression without retaining private content. Live history held an id-less
+assistant/tool/assistant fragment; direct replay added its leading user row.
+The first two assistant rows were exactly equal after existing normalization,
+while the final live text was a strict prefix of replay and every other typed
+field matched. One typed opaque tool-call identity was stable across live and
+replay, but ACP projected it into different message/part identities. Local
+production changes now centralize the standalone tool identity across ACP live
+and replay and let repository reconciliation atomically replace only a unique
+exactly anchored assistant/tool/assistant window whose final replay text is a
+strict extension. Correctness follow-up cites ACP v1's session-unique
+`ToolCallId` contract, aligns empty-ID rejection between live and replay,
+exercises real ACP mapper/collector output through stored history, and proves a
+non-ACP unanchored transcript plus duplicated imported anchor remain unchanged.
+Two-sided candidate usage remains required: distinct valid tool anchors can
+cross-align through one shared assistant index on only the imported or stored
+side. Focused overlap negatives now preserve both ambiguous windows, alongside
+positive, idempotence, multiplicity, ordering, timestamp, part-shape,
+reverse-prefix, unrelated-text, distinct/duplicate-anchor, and new-live-suffix
+coverage. Fixed-build phone confirmation at `0187bb2b10` retained one exact
+anchor but two assistant rows on each side. Private structural inspection found
+the live final text part empty while replay supplied nonempty text, so the
+nonempty strict-prefix predicate rejected the otherwise matching unique window.
+The strict extension now accepts empty retained text only when replay text is
+nonempty; every anchor, adjacency, field, timestamp, ordering, and two-sided
+consumption guard remains unchanged. Final owned-phone QA at `493bab1483`
+showed exactly one initial row plus one assistant/tool/assistant sequence on two
+opens; two private reads remained at four imported rows with no retained live
+assistant identities. The Grok phone gate passed and the plan is retired.
+Together, the later owned-phone runs superseded both Step 7/7 gaps: bounded
+creation, lifecycle, scoped stop, reuse, cold history, and read-only child
+navigation passed, and one genuine native permission used `Once`. Notification
+delivery was attempted but not observed and remains unclaimed; no question
+support is claimed.

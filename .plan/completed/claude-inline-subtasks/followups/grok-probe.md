@@ -127,22 +127,101 @@ Step 6/7 merged as PR #1429. Executed scope passed:
   dispatched and settled on the same runtime.
 
 Root `confirm` was not rerun: its earlier side-effect-free production-composition
-pass remains valid because Step 6 changed only response-envelope decoding.
-Unchanged configuration emitted zero `session/request_permission` requests, so
-permission preservation, isolation, and cleanup remain unexecuted. No Grok
-question capability is claimed.
+pass remains valid because Step 6 changed only response-envelope decoding. That
+headless configuration emitted zero `session/request_permission` requests. Later
+owned-phone QA executed one genuine native permission request with Once; denial,
+repeated-request isolation, and question capability remain unclaimed.
 
-## 2026-09-10 phone-through-relay gate
+## Phone-through-relay gate
 
-Source phone build, source bridge health, production relay connection, and phone
-connection all succeeded. `mobile-mcp` then timed out starting WebDriverAgent
-0.0.23 before the first screenshot or visible interaction. An
-agent reinstall scoped to the owned simulator succeeded, but the next startup
-timed out identically. This is an infrastructure blocker, not a product failure.
-Every phone case remains unexecuted: no stop, history, read-only child,
-permission, notification, or push result is claimed. Owned bridge, app,
-simulator, scratch, and isolated runtime resources were cleaned; protected
-resources were not touched.
+On 2026-09-10, source phone build, source bridge health, production relay
+connection, and phone connection all succeeded. `mobile-mcp` then timed out
+starting WebDriverAgent 0.0.23 before the first screenshot or visible
+interaction. An agent reinstall scoped to the owned simulator succeeded, but
+next startup timed out identically.
+
+On 2026-09-12, the user refreshed Grok login and authorized its private use.
+The owned run used current phone/bridge source plus a checksum-verified isolated
+official Grok 1.0.5; the installed 1.0.30 runtime and global auth/config remained
+untouched. Grok alone was enabled, yolo stayed off, production relay and exact
+phone connection passed, and normal native permission sheets used one-time
+approval only.
+
+Visible phone results passed Grok-only session creation, exactly two running
+child tiles, exact two-child Stop copy/count, dismissal with no stop, confirmed
+full cancellation, same-session/runtime reuse, natural completion, cold root
+reload, persisted cancelled/completed tile states, and exact read-only child
+navigation without mutating controls. Background completion notification was
+attempted but no OS delivery was observed, so push is not claimed.
+
+Cold child history failed materially: the initial child-owned user row remained
+single, but the same assistant/tool/final sequence rendered twice under distinct
+rows. Reopening the same child reproduced the same duplicate without growth.
+Stored-only bridge history already had one user row followed by two three-row
+assistant/tool/final-shaped sequences under distinct identities. The native
+child store held one nine-frame turn, and a fresh direct official-1.0.5
+`session/load` emitted one standard sequence. Stored identity shapes separated
+into replay-imported rows and retained live rows.
+
+A later fresh headless Grok 1.0.5 reproduction classified the mismatch without
+retaining private content. Live held an assistant/tool/assistant fragment with
+no leading user; direct replay added the user. The first assistant and tool rows
+were exactly equal after current normalization. The final live
+`MessagePartText.text` was a strict prefix of replay by a small extension;
+reasoning, part order/shape, normalized info, and every other typed field were
+exact, with no timestamps on either side. One opaque typed `toolCallId` was
+identical across live and replay and uniquely adjacent to those assistant rows,
+but shared ACP mapping placed it in different generated message/part identities.
+A second genuine backend backfill retained the same three old rows without new
+growth.
+
+Local production changes now centralize deterministic standalone tool message
+and part identity across ACP live and replay. Repository reconciliation adds one
+atomic exception around that exact shared anchor: preceding assistant content
+must match exactly, following replay text must be the sole differing field and a
+strict extension of live text (empty retained text is accepted only when replay
+text is nonempty), known times must agree, and all three rows must form one
+uniquely consumed contiguous window. Distinct or duplicated anchors, reverse prefixes, unrelated text, second
+differences, part-shape changes, reordered rows, timestamp conflicts, and
+unmatched newer suffixes remain distinct. Focused ACP and repository coverage
+passes locally. No Grok
+strings, generated-ID parsing, schema field, or general semantic relaxation was
+added.
+
+Correctness follow-up also records the ACP v1 contract that `ToolCallId` is
+unique within its session, rejects empty replay IDs exactly like live mapping,
+and exercises the complete real ACP mapper/collector-to-history path. A
+representative unanchored non-ACP transcript and duplicated imported anchor stay
+unchanged. Two-sided candidate usage is retained because distinct exact tool
+anchors can cross-align through one shared assistant index on only the imported
+or stored side; both ambiguous windows then remain.
+
+Fixed-build phone confirmation at `0187bb2b10` failed narrowly. Cold reopen and
+one repeated open showed one child-owned initial row, two pre-tool assistant
+rows, one tool row, and two post-tool assistant rows without growth. A second
+private backfill retained the same six-message identity order. Structural
+comparison found the anchor unique, both windows contiguous and eligible, the
+preceding assistant exact, roles/info/part shapes aligned, timestamps absent,
+and no usage ambiguity. Replay final text was nonempty while the live final text
+part was empty, so only the strict extension predicate's nonempty-live guard
+rejected the window. Existing integration coverage used a nonempty live prefix
+and missed this real shape. The real mapper/capture/replay integration now leaves the live final text
+snapshot empty, proves that state before backfill, and converges to one replay
+sequence. The strict extension accepts empty retained text only when replay text
+is nonempty; exact anchor, field, shape, timestamp, ordering, and two-sided
+consumption guards remain unchanged.
+
+Final owned-phone confirmation at `493bab1483` passed. Cold termination and
+relaunch showed one idle root and one completed root tile linked to its exact
+direct child. That child's read-only replay retained its nonblank child-owned
+initial prompt, followed by exactly one assistant/tool/assistant sequence. A second open remained identical and non-growing. Two private
+backfills each stored four imported rows with one tool part and no retained live
+assistant identities. Genuine permission used Once; notification remains only
+attempted/unavailable from the earlier full run, and no question or broader push
+matrix is claimed.
+
+The plan is complete. Owned diagnostic bridge/runtime/scratch/home/log/database/
+private evidence resources were removed; protected resources stayed untouched.
 
 ## Consequences for the design
 

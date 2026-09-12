@@ -324,6 +324,133 @@ void main() {
       expect(tool.state.attachments, isEmpty);
     });
 
+    test("standalone tool identity matches live mapping for an opaque typed key", () {
+      const sessionId = "s1";
+      const toolCallId = "opaque tool:/?[]{}";
+      final configurationTracker = AcpSessionConfigurationTracker();
+      final mapper = AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "acp",
+        configurationTracker: configurationTracker,
+        childSessions: AcpChildSessionTracker(),
+      )..beginTurn(sessionId: sessionId, messageId: null);
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
+        shellCommandResolver: null,
+        sessionId: sessionId,
+        agentId: "ACP",
+        initialUserMessageId: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: null,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      final update = {
+        "sessionUpdate": "tool_call",
+        "toolCallId": toolCallId,
+        "kind": "execute",
+        "status": "completed",
+      };
+
+      collector.consume(upd(update));
+      final liveEvents = mapper.map(
+        AcpNotification(
+          method: AcpMethods.sessionUpdate,
+          params: {"sessionId": sessionId, "update": update},
+        ),
+      );
+
+      final liveMessage = liveEvents.whereType<BridgeSseMessageUpdated>().single.info;
+      final livePart = liveEvents.whereType<BridgeSseMessagePartUpdated>().single.part;
+      final replayMessage = collector.build().single;
+      expect(replayMessage.info.id, liveMessage.id);
+      expect(replayMessage.parts.single.id, livePart.id);
+      expect(replayMessage.parts.single.messageID, replayMessage.info.id);
+    });
+
+    test("empty tool identity is ignored equally by live mapping and replay", () {
+      const sessionId = "s1";
+      final mapper = AcpEventMapper(
+        launchDirectory: "/repo",
+        pluginId: "acp",
+        configurationTracker: AcpSessionConfigurationTracker(),
+        childSessions: AcpChildSessionTracker(),
+      )..beginTurn(sessionId: sessionId, messageId: null);
+      final collector = AcpReplayCollector(
+        sessionUpdateNormalizer: null,
+        shellCommandResolver: null,
+        sessionId: sessionId,
+        agentId: "ACP",
+        initialUserMessageId: null,
+        messageIdOverride: null,
+        messageTimeResolver: null,
+        haltClassifier: null,
+        toolPartReplacement: null,
+        toolPartSuppression: null,
+      );
+      final update = {
+        "sessionUpdate": "tool_call",
+        "toolCallId": "",
+        "kind": "execute",
+        "status": "completed",
+      };
+
+      final warnings = _captureWarnings(() {
+        collector.consume(upd(update));
+        expect(
+          mapper.map(
+            AcpNotification(
+              method: AcpMethods.sessionUpdate,
+              params: {"sessionId": sessionId, "update": update},
+            ),
+          ),
+          isEmpty,
+        );
+      });
+
+      expect(collector.build(), isEmpty);
+      expect(warnings, isEmpty);
+    });
+
+    test("a tool attached to an explicit assistant draft keeps that grouping", () {
+      const sessionId = "s1";
+      const toolCallId = "opaque tool:/?[]{}";
+      final collector =
+          AcpReplayCollector(
+              sessionUpdateNormalizer: null,
+              shellCommandResolver: null,
+              sessionId: sessionId,
+              agentId: "ACP",
+              initialUserMessageId: null,
+              messageIdOverride: null,
+              messageTimeResolver: null,
+              haltClassifier: null,
+              toolPartReplacement: null,
+              toolPartSuppression: null,
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "agent_message_chunk",
+                "messageId": "explicit",
+                "content": {"type": "text", "text": "before"},
+              }),
+            )
+            ..consume(
+              upd({
+                "sessionUpdate": "tool_call",
+                "toolCallId": toolCallId,
+                "kind": "execute",
+                "status": "completed",
+              }),
+            );
+
+      final replayMessage = collector.build().single;
+      expect(replayMessage.info.id, "$sessionId-mexplicit-assistant");
+      expect(replayMessage.parts, hasLength(2));
+      expect(replayMessage.parts.last.id, "$sessionId-mexplicit-assistant-tool-$toolCallId");
+    });
+
     test("id-less text after a tool stays chronologically after the tool", () {
       final collector =
           AcpReplayCollector(
@@ -1188,7 +1315,12 @@ void main() {
           );
 
       final part = collector.build().single.parts.single as PluginMessagePartSubtask;
-      expect(part.id, "s1-h0-assistant-tool-call-1");
+      expect(
+        part.id,
+        AcpEventMapper.toolPartId(
+          messageId: AcpEventMapper.toolMessageId(sessionId: "s1", toolCallId: "call-1"),
+        ),
+      );
       expect(part.childSessionID, "child-1");
     });
 

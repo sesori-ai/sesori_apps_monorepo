@@ -537,10 +537,10 @@ decoupling as in step 15. The desktop shell registers the image-action seams
 this slice resolves (`ImageSaver`/`ImageClipboard`/`ImageSharer` — the mobile
 shell already has desktop-aware `ImageSaver` selection to reuse), or the
 affected actions hide behind explicit capabilities — no dead controls, no
-missing-registration crashes. Coordinate with the in-flight
-`claude-inline-subtasks` **and `instant-session-launch`** series (both touch
-`session_detail` widgets; rebase order agreed at implementation time). *Overage:
-mechanical move churn.*
+missing-registration crashes. Preserve the merged `claude-inline-subtasks`
+behavior and the in-flight `instant-session-launch` behavior when moving
+`session_detail` widgets.
+*Overage: mechanical move churn.*
 
 **Step 18 — 🚧 Composer slice + voice/media seams (approved refactor R2's
 heavy part).** Reuse the voice lifecycle already layered in `module_core` as
@@ -737,13 +737,11 @@ relay key exchange; the desktop inherits it through `ConnectionService`).
 - **Extraction regression risk (steps 14–19)** is the plan's main risk:
   mitigated by slice-per-PR with mobile analyze/tests green per step, device
   regression at MT gate C, and the `session_split` adaptive precedent.
-- **In-flight UI series overlap** (`claude-inline-subtasks` — step 2/8 open,
-  touches `subtask_part_widget` and the force dialog; `instant-session-launch`
-  — step 1/7 in flight; steps 4–5/7 relocate the queued-submission model and
-  edit `new_session_screen`, `session_detail_body`, `session_detail_loaded_view`,
-  `prompt_send_queue`; drafts touching composer/attachments): sequence
-  extraction slices after checking each series' tracker at implementation
-  time; never move a screen mid-flight under an active series without rebasing
+- **UI series overlap:** `claude-inline-subtasks` is completed and its merged
+  subtask/force-dialog behavior must be preserved. Check any still-active UI
+  series before extracting `new_session_screen`, `session_detail_body`,
+  `session_detail_loaded_view`, `prompt_send_queue`, composer, or attachments;
+  never move a screen mid-flight under an active series without rebasing
   agreement.
 - **Windows/Linux verification depth** is limited pre-distribution (recorded
   reduction above).

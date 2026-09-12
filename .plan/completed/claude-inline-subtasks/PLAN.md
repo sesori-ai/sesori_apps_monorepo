@@ -3,17 +3,19 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Status:** **ACTIVE.** Series completed 2026-09-02 (Step 8/8; L4 matrix
-  recorded in `TRACKER.md`) and reactivated for harness follow-ups. DeepSeek
+- **Status:** **COMPLETED 2026-09-12.** Series completed 2026-09-02
+  (Step 8/8; L4 matrix recorded in `TRACKER.md`), was reactivated for harness
+  follow-ups, and now has every recorded harness gate disposition reconciled. DeepSeek
   coverage merged as PR #1431 at `7dd323d1d7`. Current Cursor
   `2026.08.11-e8db854` native evidence and the six-step delivery plan are
   recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Cursor
   Step 1 merged as PR #1435 at `b83b64901c`; Step 2 merged as PR #1438 at
   `116392cb71`, settling generic Task lifecycle and acknowledging `cursor/task`.
   Step 3 merged as PR #1441 at `bb85f48148`; Step 4 safe stop merged as PR
-  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6 PR #1444
-  is open after actual-plugin coverage passed its executed scope and repaired
-  exact native live/replay tagged presentation shapes; the cancellation race settled
+  #1442 at `a7d3014e1a`; Step 5 replay merged at `f5e4e7f67a`. Step 6
+  merged as PR #1444 at `67e173be1a` after actual-plugin coverage passed its
+  executed scope and repaired exact native live/replay tagged presentation
+  shapes; the cancellation race settled
   before background resolution and remains focused fake-test coverage. Step 4 includes
   the typed refusal, Cursor-only residency,
   bounded named-root cancellation with post-settlement re-check/HTTP 502 partial
@@ -23,9 +25,19 @@
   `claude-inline-subtasks-cursor-tiles-step2-of5` and
   `checkpoint/cursor-step2-combined-reviewed-5cc54` as split source evidence.
   Earlier refs `c5c0def` and `ab03528` remain stale, unpublishable historical
-  evidence. None of these refs may be mutated or deleted. Retirement remains
-  blocked by the Grok phone gate, whose WebDriverAgent 0.0.23 infrastructure
-  failure occurred before any visible case.
+  evidence. None of these refs may be mutated or deleted. Retirement was
+  previously blocked by one material Grok phone finding. The 2026-09-12 owned-phone run
+  passed visible Grok-only creation, two-child lifecycle, exact scope-dialog
+  count/copy and dismissal, full stop, same-session/runtime reuse, cold root
+  reload, read-only child controls, and normal one-time permission handling.
+  Cold child history stably duplicated its assistant/tool/final sequence under
+  distinct rows. Push was attempted while backgrounded but not delivered. A
+  fixed-build rerun at `0187bb2b10` deduplicated the exact tool anchor, but two
+  assistant rows remained on each side because live retained an empty final text
+  snapshot. The anchored predicate now accepts that exact empty-prefix case.
+  Final QA at `493bab1483` passed exact cold convergence twice and two private
+  backfills. Grok phone coverage now passes its bounded matrix and the plan is
+  retired.
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Historical original implementation base:** `main` at `ba725ec84`
@@ -47,21 +59,13 @@
   (#1399, merged at `db2b71134d`), lifecycle coverage 7/9 merged as #1420,
   and scoped stop 8/9 merged as #1421 at `77165f784f`. Final coverage 9/9
   records a passed bounded actual-plugin policy scope and a partial live matrix.
-  Grok scoped stop merged as PR #1428 at `3934f32ec9`; its child-cancel
-  envelope repair merged as PR #1429 at `2ebcc7d01a`, so Grok has seven steps.
-  Corrected production-composition QA passed named-child isolation, root full
-  stop, idle-child keep and wake-up, already-finished handling, exact replay,
-  lifecycle settlement, and runtime reuse; root confirmation reuses its earlier
-  passing run. The unchanged runtime emitted no live permission request, so
-  permission handling remains unexecuted and no question support is claimed.
-  Source phone build and relay setup were healthy, but WebDriverAgent startup
-  timed out before any visible case; all phone coverage remains blocked and
-  unexecuted. Historical merged PR titles remain unchanged. Grok coverage
-  documentation merged as PR #1430 at `a28e860557`; its blocked phone gate
-  remains open rather than becoming a fabricated pass. DeepSeek's final
-  documentation reconciles the passed phone stop/input scope and the
-  user-deferred desktop matrix without changing adapter 0.1.4 evidence. The
-  plan remains active for the Grok phone gate; Cursor follow-ups are complete.
+  Grok delivery completed in seven steps: scoped stop PR #1428, child-cancel
+  envelope PR #1429, and coverage PR #1430 close the series. Canonical Grok QA,
+  fixed-history, permission, notification, and final phone evidence lives in the
+  Status section above and `followups/grok-probe.md`; no duplicate matrix is
+  maintained here. DeepSeek's final documentation reconciles the passed phone
+  stop/input scope and user-deferred desktop matrix without changing adapter
+  0.1.4 evidence. Grok and Cursor follow-ups are complete; the plan is retired.
 
 ## Goal
 

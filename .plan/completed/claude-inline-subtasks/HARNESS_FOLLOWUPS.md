@@ -2,20 +2,28 @@
 
 ## Status
 
-- **Plan slug:** `claude-inline-subtasks`; status **ACTIVE**. Codex, DeepSeek,
-  and Cursor coverage are reconciled. The Grok phone gate remains blocked on
-  WebDriverAgent 0.0.23 before any visible case; Cursor completion does not
-  close that live gate.
+- **Plan slug:** `claude-inline-subtasks`; status **COMPLETED 2026-09-12**.
+  Codex, DeepSeek, and Cursor coverage are reconciled; Cursor Step 6 merged as
+  PR #1444 at
+  `67e173be1a`. The 2026-09-12 Grok owned-phone run passed its visible
+  creation, lifecycle, scoped-stop, reuse, permission, cold-root, and read-only
+  child cases, but cold child history reproducibly duplicated the same
+  assistant/tool/final sequence under distinct rows. A fixed-build rerun at
+  `0187bb2b10` deduplicated the exact tool anchor while retaining two assistant
+  rows on each side because live final text was an empty snapshot. The anchored
+  empty-prefix correction is implemented. Final build `493bab1483` passed one
+  exact four-row child sequence on two cold opens and two private backfills; the
+  Grok gate and overall follow-up plan are complete.
 - **Plan date:** 2026-09-02; Cursor probe/design refreshed 2026-09-11.
 - **Base:** `main` at merged DeepSeek coverage documentation `7dd323d1d7`
   ([#1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431)).
 - **Delivery:** one open PR at a time, following current repository rules.
   Grok Step 6/7 merged under its exact title. Corrected actual-plugin coverage
-  passed its executed stop, lifecycle, replay, and runtime-reuse scope; live
-  permission coverage remains unexecuted because no request surfaced. Phone
-  setup reached a healthy source build and relay connection, but UI automation
-  was blocked before any visible case. Step 7/7 merged as PR #1430 and records
-  that partial matrix while keeping the phone gate open. DeepSeek final coverage
+  passed its executed stop, lifecycle, replay, and runtime-reuse scope. Step 7/7
+  merged as PR #1430 with the then-partial phone state; subsequent owned-phone
+  QA passed the bounded matrix, including genuine permission Once and fixed
+  cold child history. Notification delivery was not observed and remains
+  unclaimed; questions remain unsupported. DeepSeek final coverage
   documentation now records its passed phone stop/input scope and explicitly
   deferred desktop scope. Codex has nine steps: merged metadata,
   child-session, historical prompt preparation, and cleanup remain steps
@@ -392,11 +400,16 @@ has no child session or full scoped stop.
   active-root keep rejection, named-child isolation, idle-child retention and
   autonomous wake-up, already-finished handling, root full-stop fanout and
   settlement, exact root/child replay, fresh-session checks, and runtime reuse.
-  Root confirmation reuses its earlier passing run. Zero standard permission
-  requests surfaced under unchanged configuration, so live permission behavior
-  remains unexecuted and no question channel is claimed. Source phone and relay
-  setup was healthy, but `mobile-mcp` could not start WebDriverAgent before any
-  visible case; no phone behavior is claimed.
+  Root confirmation reuses its earlier passing run. That unchanged headless run
+  surfaced no standard permission request; subsequent owned-phone QA exercised
+  one genuine request with `Once`. No question channel is claimed. Earlier
+  phone setup blockers are superseded. The 2026-09-12 owned-phone run passed
+  visible creation, tile lifecycle, scope-dialog dismissal/full stop, reuse, cold root
+  history, read-only child navigation, and normal one-time permissions. A
+  fixed-build rerun retained one exact tool row but duplicated both adjacent
+  assistant rows because live final text was an empty snapshot. Final build
+  `493bab1483` converged to one assistant/tool/assistant sequence across two
+  opens and private reads, completing the bounded phone matrix.
 
 ### Design
 
@@ -474,7 +487,7 @@ has no child session or full scoped stop.
 | 🌿 | `grok: cover child session history [step 4/6]` | Historical title unchanged (now step 4/7); PR #1427 merged at `4d0d8de7e3`; collector/repository/service regressions and documentation |
 | ⚙️ | `grok: scoped stop for sub-agents [step 5/6]` | PR #1428 merged at `3934f32ec9`; historical title unchanged (now step 5/7); ACP policy/atomic-authority split, root-first non-atomic snapshot fanout, and typed layered child cancellation |
 | 🌿 | `grok: decode child-cancel response envelope [step 6/7]` | PR #1429 merged at `2ebcc7d01a` under exact title; required typed native application envelope, inner DTO unchanged, malformed/identity/outcome regressions, and no flat-format fallback |
-| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Current reconciliation: actual-plugin executed scope passed; permissions unexecuted; phone gate infrastructure-blocked before visible UI |
+| 🌱 | `docs: record Grok sub-agent coverage [step 7/7]` | Final reconciliation: actual-plugin scope and bounded owned-phone matrix passed, including permission Once and fixed cold child history; notification delivery unobserved/unclaimed and questions unsupported |
 
 ### Probe results (Grok Build 1.0.5, 2026-09-03, details in `followups/grok-probe.md`)
 
@@ -509,15 +522,27 @@ has no child session or full scoped stop.
   idle-child retention through autonomous wake-up, both child-cancel outcomes,
   root-first full-stop fanout, authoritative lifecycle/plugin settlement, exact
   root/child replay, fresh-session checks, and runtime reuse. Root `confirm`
-  reuses its earlier passing actual-plugin result. Zero standard permission
-  requests surfaced, leaving permission preservation/isolation/cleanup
-  unexecuted; no question support is claimed.
-- Phone setup verified the source build, bridge, and relay path, but
-  `mobile-mcp` timed out starting WebDriverAgent 0.0.23 before any visible UI
-  interaction, including after reinstalling the agent only on the owned
-  simulator. Every phone case is blocked and unexecuted, not a product failure.
-  Owned resources were cleaned; protected resources were untouched. No phone
-  stop, history, read-only child, notification, or push QA is claimed.
+  reuses its earlier passing actual-plugin result. That headless run surfaced no
+  standard permission request, so it did not exercise permission
+  preservation/isolation/cleanup; later owned-phone QA exercised one genuine
+  request with `Once`. No question support is claimed.
+- Earlier WebDriverAgent and stale-authentication setup blockers are superseded.
+  The 2026-09-12 owned-phone run used the current source phone/bridge, production
+  relay, and an authenticated checksum-verified isolated official Grok 1.0.5.
+  Visible creation, two-child running tiles, exact Stop count/copy, no-effect
+  dismissal, full cancellation, same-session/runtime reuse, cold root reload,
+  read-only exact-child navigation, and normal one-time permissions passed.
+  Reopening the same completed child stably showed one initial user row followed
+  by a duplicated assistant/tool/final sequence; it did not grow on another
+  reopen. On fixed build `0187bb2b10`, cold reopen instead showed one initial
+  row, two pre-tool assistant rows, one tool row, and two post-tool assistant
+  rows; a second reopen and private second backfill preserved that exact
+  non-growing shape. The otherwise exact anchored window now accepts its empty
+  live final text as a strict prefix only when replay text is nonempty; phone
+  confirmation then passed on `493bab1483`. Background completion notification
+  was attempted in the earlier full run but not delivered or claimed. Owned
+  resources were cleaned
+  and protected resources were untouched.
 
 ### Open questions (resolved by the probe)
 

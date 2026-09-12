@@ -15,7 +15,7 @@ The JSON fixtures preserve only that schema. Model IDs, names, descriptions, eff
 synthetic; no account data, credentials, prompts, transcripts, source paths, or raw released response are retained.
 
 The `subagent_*.json` fixtures preserve structures captured from the same artifact during authenticated live probes
-recorded in `.plan/active/claude-inline-subtasks/followups/grok-probe.md`. The 2026-09-02 lifecycle probe recorded the
+recorded in `.plan/completed/claude-inline-subtasks/followups/grok-probe.md`. The 2026-09-02 lifecycle probe recorded the
 standard `spawn_subagent` `tool_call` with its `_meta`, the
 `_x.ai/session_notification` frames `subagent_spawned`, `subagent_progress`, and `subagent_finished` (completed and
 cancelled), plus the autonomous parent `turn_completed` under `_x.ai/session/update`. The 2026-09-10 scoped-stop QA

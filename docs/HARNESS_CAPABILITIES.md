@@ -362,7 +362,7 @@ configured catalog; it does not upgrade that harness or fetch a live provider ca
 Native `web_search` and `web_fetch` tools are enabled: outbound requests occur
 when invoked, without a Web BFF, HTTP listener, extra process, or telemetry exporter.
 
-¹⁰ Grok Build (1.0.5, probed 2026-09-03 and 2026-09-10) sends
+¹⁰ Grok Build (1.0.5, probed 2026-09-03, 2026-09-10, and 2026-09-12) sends
 `subagent_spawned`/`subagent_progress`/`subagent_finished` with parent and child
 session ids as `_x.ai/session_notification` extension notifications and streams
 child updates under the child id. Root `session/load` replays lifecycle as
@@ -383,11 +383,14 @@ rejection, fanout, outcome mapping, lifecycle-only settlement, and exact pending
 permission/queue isolation. Production-composition QA after PR #1429 passed its
 executed named-isolation, full-stop, idle-keep/wake, already-finished, replay,
 settlement, fresh-session, and runtime-reuse scope; root confirmation reuses an
-earlier passing run. Unchanged configuration emitted no live permission request,
-so live permission behavior remains unexecuted and no question support is
-claimed. Source phone build and relay connection were healthy, but UI automation
-failed to start before any visible case; all phone behavior remains blocked and
-unexecuted, including stop, history, read-only child, notification, and push QA.
+earlier passing run. That unchanged headless run emitted no permission request.
+Subsequent owned-phone QA exercised one genuine request with `Once`; no question
+support is claimed. The bounded phone matrix passed creation, tile lifecycle,
+exact Stop dismissal and full cancellation, same-session/runtime reuse, cold root
+history, and exact read-only child navigation. Final fixed-build QA showed one
+stable child-owned initial row plus one assistant/tool/assistant sequence on two
+opens. Background completion delivery was attempted, but no OS notification was
+observed; notification and push delivery remain unclaimed.
 
 ¹¹ Pi (0.84.4, probed 2026-09-05) reports it from `pi --list-models`, which
 prints one row per usable model and otherwise prints the
