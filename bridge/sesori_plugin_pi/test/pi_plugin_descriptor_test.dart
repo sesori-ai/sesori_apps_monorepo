@@ -92,13 +92,13 @@ void main() {
       final processes = _Processes(
         outputs: const [
           _Output(stdout: "0.84.0\n", exitCode: 0),
-          _Output(stdout: "0.84.4\n", exitCode: 0),
+          _Output(stdout: "0.85.1\n", exitCode: 0),
         ],
       );
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
-      expect((events.last as ProvisionReady).binaryPath, contains("/state/pi/0.84.4/pi"));
-      expect(processes.executables, ["pi", contains("/state/pi/0.84.4/pi")]);
+      expect((events.last as ProvisionReady).binaryPath, contains("/state/pi/0.85.1/pi"));
+      expect(processes.executables, ["pi", contains("/state/pi/0.85.1/pi")]);
     });
 
     test("inspectSetup reports a usable model listing as ready and preserves the environment", () async {

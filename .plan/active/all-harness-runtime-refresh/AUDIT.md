@@ -1,5 +1,11 @@
 # Runtime Refresh Audit Record
 
+This is the pre-implementation source-audit snapshot published in Step 1.
+Its pending-gate statements describe that snapshot, not later execution.
+[Step 2 verification](STEP-2-VERIFICATION.md) records subsequent downloaded-byte,
+installer, runtime, and package-check evidence; [TRACKER.md](TRACKER.md) owns
+current branch targets and outstanding blockers.
+
 ## Scope and evidence status
 
 - Baseline: branch `update-target-runtime-all-harnesses` at

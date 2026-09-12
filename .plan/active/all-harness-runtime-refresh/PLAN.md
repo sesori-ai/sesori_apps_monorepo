@@ -3,19 +3,19 @@
 ## Status and constraints
 
 - **Plan slug:** `all-harness-runtime-refresh`.
-- **Status:** Step 1/9, [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
-  in review; architecture findings and PR follow-ups incorporated below.
-- **Baseline:** branch `update-target-runtime-all-harnesses`, commit
+- **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
+  merged. Step 2/9 applies four independently verified targets; Codex and OMP
+  remain unchanged and blocked. See [Step 2 verification](STEP-2-VERIFICATION.md).
+- **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
   reconciliation only and is explicitly excluded/unchanged.
-- **This PR:** this plan directory and evidence-backed runtime reference only.
-  No production, generated, target, floor, managed digest, install, credential,
-  or product-release change. Documentation validation is not runtime testing.
-- **Evidence:** recovered `rpc-rest`, `open-acp`, `closed-acp`, and `owned-xai`
-  reports plus the recovered release-facts and multi-select design notes. Their
-  release values and digests remain provisional until implementation gates run;
-  audit/network discovery is not repeated in this planning continuation.
+- **Implementation branch:** `all-harness-runtime-refresh-step-2`, based on
+  plan merge `a644652e0c1a03232dc33184b522124703636988`. Floors, layout/platform
+  policy, launch behavior, and Sesori database/wire contracts are unchanged.
+- **Evidence:** [AUDIT.md](AUDIT.md) preserves the pre-implementation source
+  snapshot. Step reports distinguish completed runtime gates from outstanding
+  verification; unexecuted candidates remain provisional.
 
 The parent publishes, commits, and pushes the plan. The first plan PR precedes
 production work, but one local successor may begin while that plan PR is open.
@@ -51,8 +51,9 @@ mechanical target pins.
 ## Registered inventory reconciliation
 
 Registry authority is `bridge/app/lib/src/runtime/plugin_registry.dart`; it
-contains 11 entries. The table reconciles all 11, including the excluded row.
-Release links are evidence references, not completed implementation gates.
+contains 11 entries. This pre-series baseline reconciles all 11, including the
+excluded row; [TRACKER.md](TRACKER.md) records current branch targets and gate
+status. Release links alone are not completed implementation gates.
 
 | Harness | Current target / floor or exact policy | Candidate and evidence | Distribution / status |
 |---|---|---|---|
@@ -63,7 +64,7 @@ Release links are evidence references, not completed implementation gates.
 | Cursor | `2026.08.11-e8db854` / date floor `2026.07.16` | [official installer](https://cursor.com/install), exact `2026.09.10-fd3934a` | Four package tarballs; probe-first content/hash/install gate |
 | Claude Code | `2.1.237` / `2.1.221` | [`v2.1.269`](https://github.com/anthropics/claude-code/releases/tag/v2.1.269); npm `latest` agrees | Direct configured/PATH CLI, zero managed assets; recommended after stream gate |
 | Hermes Agent | `0.20.4` / `0.20.0` | [`v2026.9.11`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11), CLI `0.21.2` | Direct `hermes acp`; blocked by cleanup seam |
-| Pi | `0.84.4` / `0.84.1` | [`v0.85.1`](https://github.com/earendil-works/pi/releases/tag/v0.85.1); npm package `@earendil-works/pi-coding-agent` | Six package archives; recommended after RPC/compaction gate |
+| Pi | `0.84.4` / `0.84.1` | [`v0.85.1`](https://github.com/earendil-works/pi/releases/tag/v0.85.1); npm package `@earendil-works/pi-coding-agent` | Six package archives; recommended after RPC gate; compaction not reverified |
 | Oh My Pi (OMP) | `17.3.8` / `17.2.13` | [`v18.1.18`](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.18), published 2026-09-11 | Seven assets in current Sesori manifest; official candidate has eight including Windows ARM64; approved separate platform step |
 | Grok Build | `1.0.5` / `1.0.5` | [xAI stable channel](https://x.ai/cli/stable), channel `1.0.30` | Direct official CLI; recommended after channel/ACP gate |
 | DeepSeek (excluded) | `0.1.5` / `0.1.5` | None assessed | Existing six managed assets remain untouched; excluded/unchanged |
