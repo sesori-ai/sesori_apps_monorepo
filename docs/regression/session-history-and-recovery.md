@@ -115,8 +115,10 @@ reconnect or restart.
   across two opens and another backfill. Structural inspection found replay's
   final text nonempty while live retained an empty text part. Anchored
   reconciliation now treats that empty retained snapshot as a strict prefix
-  only when replay text is nonempty and every existing window guard passes;
-  fixed-build phone confirmation remains pending.
+  only when replay text is nonempty and every existing window guard passes.
+  Final owned-phone QA on build `493bab1483` and two private backend reads each
+  converged to one imported four-message sequence with no retained live
+  assistant identities.
 - Cursor `session/load` replaces only a fully typed completed foreground Task's
   generic card, preserving its replay-local part identity, title, output,
   attachments, and transcript order. Its native replay input uses

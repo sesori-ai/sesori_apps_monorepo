@@ -3,8 +3,9 @@
 ## Status
 
 - **Plan slug:** `claude-inline-subtasks`
-- **Status:** **ACTIVE.** Series completed 2026-09-02 (Step 8/8; L4 matrix
-  recorded in `TRACKER.md`) and reactivated for harness follow-ups. DeepSeek
+- **Status:** **COMPLETED 2026-09-12.** Series completed 2026-09-02
+  (Step 8/8; L4 matrix recorded in `TRACKER.md`), was reactivated for harness
+  follow-ups, and now has every recorded harness gate disposition reconciled. DeepSeek
   coverage merged as PR #1431 at `7dd323d1d7`. Current Cursor
   `2026.08.11-e8db854` native evidence and the six-step delivery plan are
   recorded in `HARNESS_FOLLOWUPS.md` and `followups/cursor-probe.md`. Cursor
@@ -34,8 +35,9 @@
   fixed-build rerun at `0187bb2b10` deduplicated the exact tool anchor, but two
   assistant rows remained on each side because live retained an empty final text
   snapshot. The anchored predicate now accepts that exact empty-prefix case.
-  Retirement remains blocked pending another phone confirmation; no full pass is
-  claimed.
+  Final QA at `493bab1483` passed exact cold convergence twice and two private
+  backfills. Grok phone coverage now passes its bounded matrix and the plan is
+  retired.
 - **Plan date:** 2026-08-22
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Historical original implementation base:** `main` at `ba725ec84`
@@ -72,16 +74,17 @@
   child history reproducibly duplicated assistant/tool/final rows. A later
   fixed-build rerun reduced that to one tool row but retained two assistant
   rows on each side because live final text was an empty snapshot. The narrow
-  anchored empty-prefix correction is implemented; phone coverage remains
-  partial and the plan stays active pending confirmation. Background
-  notification
-  delivery was attempted but not observed. Historical merged PR titles remain unchanged. Grok
+  anchored empty-prefix correction is implemented. Final QA at `493bab1483`
+  showed one initial row plus one assistant/tool/assistant sequence on two cold
+  opens, with two private backfills retaining four imported rows and no live
+  assistant identities. Grok phone coverage passes its bounded matrix.
+  Background notification delivery was attempted but not observed. Historical merged PR titles remain unchanged. Grok
   coverage
-  documentation merged as PR #1430 at `a28e860557`; its blocked phone gate
-  remains open rather than becoming a fabricated pass. DeepSeek's final
+  documentation merged as PR #1430 at `a28e860557` while its then-blocked phone
+  gate correctly remained open; later fixed-build evidence above closes it. DeepSeek's final
   documentation reconciles the passed phone stop/input scope and the
   user-deferred desktop matrix without changing adapter 0.1.4 evidence. The
-  plan remains active for the Grok phone gate; Cursor follow-ups are complete.
+  Grok and Cursor follow-ups are complete; the plan is retired.
 
 ## Goal
 

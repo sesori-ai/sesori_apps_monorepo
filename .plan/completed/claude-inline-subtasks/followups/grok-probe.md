@@ -210,9 +210,17 @@ sequence. The strict extension accepts empty retained text only when replay text
 is nonempty; exact anchor, field, shape, timestamp, ordering, and two-sided
 consumption guards remain unchanged.
 
-The plan remains active pending another fixed-build phone confirmation. Owned
-diagnostic bridge/runtime/scratch/home/log/database/private evidence resources
-were removed; protected resources stayed untouched.
+Final owned-phone confirmation at `493bab1483` passed. Cold termination and
+relaunch showed one idle root, one completed child tile, and exactly one
+child-owned initial row followed by one assistant/tool/assistant sequence in the
+read-only child. A second open remained identical and non-growing. Two private
+backfills each stored four imported rows with one tool part and no retained live
+assistant identities. Genuine permission used Once; notification remains only
+attempted/unavailable from the earlier full run, and no question or broader push
+matrix is claimed.
+
+The plan is complete. Owned diagnostic bridge/runtime/scratch/home/log/database/
+private evidence resources were removed; protected resources stayed untouched.
 
 ## Consequences for the design
 

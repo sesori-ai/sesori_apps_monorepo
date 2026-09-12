@@ -2,16 +2,18 @@
 
 ## Status
 
-- **Plan slug:** `claude-inline-subtasks`; status **ACTIVE**. Codex, DeepSeek,
-  and Cursor coverage are reconciled; Cursor Step 6 merged as PR #1444 at
+- **Plan slug:** `claude-inline-subtasks`; status **COMPLETED 2026-09-12**.
+  Codex, DeepSeek, and Cursor coverage are reconciled; Cursor Step 6 merged as
+  PR #1444 at
   `67e173be1a`. The 2026-09-12 Grok owned-phone run passed its visible
   creation, lifecycle, scoped-stop, reuse, permission, cold-root, and read-only
   child cases, but cold child history reproducibly duplicated the same
   assistant/tool/final sequence under distinct rows. A fixed-build rerun at
   `0187bb2b10` deduplicated the exact tool anchor while retaining two assistant
   rows on each side because live final text was an empty snapshot. The anchored
-  empty-prefix correction is implemented; the plan remains active pending phone
-  confirmation.
+  empty-prefix correction is implemented. Final build `493bab1483` passed one
+  exact four-row child sequence on two cold opens and two private backfills; the
+  Grok gate and overall follow-up plan are complete.
 - **Plan date:** 2026-09-02; Cursor probe/design refreshed 2026-09-11.
 - **Base:** `main` at merged DeepSeek coverage documentation `7dd323d1d7`
   ([#1431](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1431)).
@@ -405,8 +407,9 @@ has no child session or full scoped stop.
   creation, tile lifecycle, scope-dialog dismissal/full stop, reuse, cold root
   history, read-only child navigation, and normal one-time permissions. A
   fixed-build rerun retained one exact tool row but duplicated both adjacent
-  assistant rows because live final text was an empty snapshot. The narrow
-  correction is implemented; the phone matrix remains partial until rerun.
+  assistant rows because live final text was an empty snapshot. Final build
+  `493bab1483` converged to one assistant/tool/assistant sequence across two
+  opens and private reads, completing the bounded phone matrix.
 
 ### Design
 
@@ -535,8 +538,8 @@ has no child session or full scoped stop.
   rows; a second reopen and private second backfill preserved that exact
   non-growing shape. The otherwise exact anchored window now accepts its empty
   live final text as a strict prefix only when replay text is nonempty; phone
-  confirmation remains pending. Background completion notification was
-  attempted in the earlier full run but not delivered or claimed. Owned
+  confirmation then passed on `493bab1483`. Background completion notification
+  was attempted in the earlier full run but not delivered or claimed. Owned
   resources were cleaned
   and protected resources were untouched.
 

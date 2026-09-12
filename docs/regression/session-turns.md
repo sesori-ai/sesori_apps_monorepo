@@ -198,8 +198,9 @@ defaults and queued client sends coherent.
   phone QA at `0187bb2b10` deduplicated the exact tool anchor but left two
   assistant rows on each side across two opens. The retained live final text
   part was empty rather than the nonempty prefix covered by tests. The exact
-  anchored empty-prefix case is now covered and implemented, but no full phone
-  pass is claimed before another fixed-build confirmation.
+  anchored empty-prefix case is covered and implemented. Final owned-phone QA
+  on build `493bab1483` passed exactly one initial plus assistant/tool/assistant
+  sequence across two cold opens, completing the bounded Grok phone gate.
 - Cursor supports narrower named-root stop for mode-unknown Task calls. Without
   unresolved background work, `confirm` and `keep` reject side-effect-free with
   exact active count; `stop` cancels only the root, waits up to 20 seconds, then

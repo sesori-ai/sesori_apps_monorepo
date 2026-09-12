@@ -307,8 +307,9 @@ state.
   assistant/tool/final sequence appeared twice under stable distinct rows.
   Fixed build `0187bb2b10` reduced this to one tool row while both adjacent
   assistant rows remained duplicated because live final text was an empty
-  snapshot. The exact anchored empty-prefix case is now implemented;
-  child-history presentation remains partial pending phone confirmation.
+  snapshot. Final owned-phone QA on build `493bab1483` showed exactly one
+  completed child tile and one initial plus assistant/tool/assistant transcript
+  on two cold opens, so the bounded child-history presentation gate passes.
 - Running root sessions remain ahead of inactive roots and order by the latest
   durable user-side activity marker, descending, then session ID. Projects with
   running roots likewise remain ahead of inactive projects and order by the

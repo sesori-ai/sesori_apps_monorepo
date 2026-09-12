@@ -251,7 +251,7 @@ guarantee.
   `claude_event_dispatcher.dart`, `claude_history_mapper.dart`, and
   `bridge/sesori_plugin_claude/test/claude_subtask_lifecycle_test.dart`
 - Plans (discovery only): `.plan/completed/output-image-support`,
-  `.plan/completed/attachment-references`, `.plan/active/claude-inline-subtasks`
+  `.plan/completed/attachment-references`, `.plan/completed/claude-inline-subtasks`
 
 ## Focused automated verification
 

@@ -112,7 +112,8 @@ provider because current payload content leaves the encrypted channel.
   completed. No OS banner or Notification Center item appeared, while relaunch
   showed new activity in product UI. Delivery was attempted but not observed;
   no provider, foreground, background, terminated-app, or open-routing pass is
-  claimed.
+  claimed. Final focused cold-history QA also backgrounded the app but did not
+  reclassify notification delivery.
 - DeepSeek final phone QA exercised scoped stop and pending-input sheets only;
   it did not exercise foreground, background, or terminated-app notifications,
   completion delivery, suppression, collapse, or open routing. No DeepSeek push

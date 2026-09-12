@@ -12,12 +12,11 @@
   bounded Codex Step 9 managed-0.153.4 actual-plugin policy QA passed on
   2026-09-10. Grok phone coverage is now partial: bounded visible lifecycle,
   stop, reuse, permission, cold-root, and read-only-child cases passed, but cold
-  child history remains duplicated. Fixed build `0187bb2b10` reduced the cold
-  transcript to one tool anchor with two assistant rows on each side because
-  live final text was an empty snapshot. The narrow empty-prefix correction is
-  implemented; harness follow-ups remain active pending phone confirmation.
-- **Next action:** Repeat the bounded cold child-history gate on the corrected
-  build. PR #1444 merged at
+  child history initially remained duplicated. Fixed build `0187bb2b10`
+  isolated an empty live final snapshot; final build `493bab1483` then passed
+  exact cold convergence on two opens and two private backfills. All harness
+  follow-ups are reconciled.
+- **Next action:** None; plan retired after the final Grok phone gate passed. PR #1444 merged at
   `67e173be1a`. The 2026-09-12 owned-phone run used an authenticated isolated
   official 1.0.5 runtime and executed the bounded matrix. Cursor actual-plugin
   coverage passed its
@@ -37,11 +36,10 @@
   post-turn background survival, repeated `session/load` facts, and the
   corrected exact ownership/stop policy
   are recorded in `followups/cursor-probe.md`. DeepSeek coverage merged as PR
-  #1431. Overall plan remains **ACTIVE** pending phone confirmation of the
-  anchored empty-prefix correction after fixed build `0187bb2b10` exposed the
-  remaining shape. Earlier WebDriverAgent and stale-authentication setup blocks
-  are superseded. No full Grok phone pass is claimed. Cursor follow-ups are
-  complete.
+  #1431. Overall plan is **COMPLETED** after build `493bab1483` passed the
+  bounded Grok cold-history phone gate. Earlier WebDriverAgent,
+  stale-authentication, and history-convergence blocks are superseded. Grok and
+  Cursor follow-ups are complete.
 - **Pinned facts source:** `PLAN.md` "Claude Code CLI 2.1.237 facts" plus the
   Step 3 capture below (CLI 2.1.257); the completed
   `claude-code-plugin/PROTOCOL.md` is historical and is not edited
@@ -400,7 +398,7 @@ post-merge E2E gates are unchanged.
   titles, and step total agree; PR
   [#1027](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1027) open.
   Changed lines (informational, not a pass/fail check): `git diff --numstat
-  <merge-base>..HEAD -- .plan/active/claude-inline-subtasks/PLAN.md` = 907
+  <merge-base>..HEAD -- .plan/completed/claude-inline-subtasks/PLAN.md` = 907
   additions / 0 deletions at the last plan edit — 257 lines over the 450-650
   target after the user-review lifecycle amendment, the scoped-stop step the
   user added, two architecture reviews, and the bot rounds; accepted
@@ -555,7 +553,7 @@ post-merge E2E gates are unchanged.
 
 - **Reviewer:** `architecture-plan-review` (sub-agent)
 - **Date:** 2026-08-22
-- **Reviewed scope:** complete `.plan/active/claude-inline-subtasks/`
+- **Reviewed scope:** complete `.plan/completed/claude-inline-subtasks/`
 - **Verdict:** rejected on first pass with six blocking ownership/layering
   findings; no client or shared findings. All six were applied directly to
   `PLAN.md` per repository policy (no re-review of applied fixes):
@@ -955,8 +953,8 @@ passed root/named-child confirmation and scoped interruption, including
 persisted native terminals, plugin settlement, runtime survival, and the
 non-atomic `subAgentsHandled: false` acknowledgment that retains client fanout.
 The live matrix remains partial because no pending question or permission
-surfaced. Final coverage 9/9 merged as PR #1424 at `b945755bfe`; the overall
-plan remains active for the other harness gates.
+surfaced. Final coverage 9/9 merged as PR #1424 at `b945755bfe`; at that point,
+the overall plan remained active for the other harness gates.
 Rejected tile work remains at
 `claude-inline-subtasks-codex-tiles-step4-integrated` (`c6aa29a8ce`), while
 `claude-inline-subtasks-codex-tiles-successor` (`8f9923b663`) and
@@ -1041,8 +1039,8 @@ push/notification delivery; bridge restart/reconnect; multiple clients; and
 alternate mobile platforms. Existing automated package coverage still applies to
 its own bounded cases but is not relabeled client E2E. This documentation-only
 gate changes no adapter/runtime, production/configuration/authentication code,
-persisted data, or capability implementation. The plan remains active for the
-Grok phone gate and both Cursor gates.
+persisted data, or capability implementation. At that point, the plan remained
+active for the Grok phone gate and both Cursor gates.
 
 A fresh headless Grok 1.0.5 reproduction then isolated the child-history
 regression without retaining private content. Live history held an id-less
@@ -1069,5 +1067,7 @@ the live final text part empty while replay supplied nonempty text, so the
 nonempty strict-prefix predicate rejected the otherwise matching unique window.
 The strict extension now accepts empty retained text only when replay text is
 nonempty; every anchor, adjacency, field, timestamp, ordering, and two-sided
-consumption guard remains unchanged. The plan stays active for another
-owned-phone cold-history gate.
+consumption guard remains unchanged. Final owned-phone QA at `493bab1483`
+showed exactly one initial row plus one assistant/tool/assistant sequence on two
+opens; two private reads remained at four imported rows with no retained live
+assistant identities. The Grok phone gate passed and the plan is retired.
