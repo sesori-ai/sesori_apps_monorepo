@@ -38,13 +38,10 @@ void main() {
       final output = CursorTaskOutputDto.fromJson(const {"isBackground": false});
 
       expect(
-        (update.sessionUpdate, update.status, input.subagentType?.presentation),
-        (
-          CursorTaskReplayUpdateKind.toolCall,
-          CursorTaskReplayStatus.pending,
-          CursorSubagentPresentation.unspecified,
-        ),
+        (update.sessionUpdate, update.status),
+        (CursorTaskReplayUpdateKind.toolCall, CursorTaskReplayStatus.pending),
       );
+      expect(input.subagentType?.unspecified, isA<CursorSubagentUnspecifiedDto>());
       expect(output.isBackground, isFalse);
     });
 
@@ -57,12 +54,12 @@ void main() {
         (unknown.sessionUpdate, unknown.status),
         (CursorTaskReplayUpdateKind.unknown, CursorTaskReplayStatus.unknown),
       );
-      expect(CursorTaskReplaySubagentTypeDto.fromJson(const {}).presentation, CursorSubagentPresentation.unknown);
+      expect(CursorTaskReplaySubagentTypeDto.fromJson(const {}).unspecified, isNull);
       expect(
         CursorTaskReplaySubagentTypeDto.fromJson(const {
           "futureAgent": <String, Object?>{},
-        }).presentation,
-        CursorSubagentPresentation.unknown,
+        }).unspecified,
+        isNull,
       );
       expect(
         () => CursorTaskReplayInputDto.fromJson(const {"_toolName": "task", "prompt": 7}),
@@ -90,7 +87,7 @@ void main() {
       expect(request.toolCallId, "task-1");
       expect(request.description, "Inspect");
       expect(request.prompt, "Inspect code");
-      expect(request.subagentType.presentation, CursorSubagentPresentation.unspecified);
+      expect(request.subagentType.custom?.unspecified, isA<CursorSubagentUnspecifiedDto>());
     });
 
     test("missing custom and unfamiliar tagged custom payload stay incomplete", () {
@@ -98,8 +95,8 @@ void main() {
       expect(
         CursorSubagentTypeDto.fromJson(const {
           "custom": {"futureAgent": <String, Object?>{}},
-        }).presentation,
-        CursorSubagentPresentation.unknown,
+        }).custom?.unspecified,
+        isNull,
       );
     });
 

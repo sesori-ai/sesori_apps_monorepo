@@ -293,16 +293,16 @@ post-merge E2E gates are unchanged.
   Pending/in-progress are mode-unknown and remain generic; cancelled and failed
   prompts settle generic cancelled/error standard cards and retire active
   records. Only complete correlated terminal `isBackground: false` facts create
-  a completed childless tile. Missing nullable `subagentType.custom` stays null
-  and incomplete/generic; `unknownEnumValue` applies only to unrecognized
-  non-null enum strings, with no default or converter. Native root `end_turn`
-  remains honest root idle, not
+  a completed childless tile. Only typed live nested `custom → unspecified` or
+  replay direct `unspecified` tags normalize in `CursorTaskMapper`; missing,
+  unknown, or malformed tags remain generic with no default or converter. Native
+  root `end_turn` remains honest root idle, not
   background completion; no background completion notification/tile is claimed.
 - [x] Assigned behavior docs to implementation slices: Step 2 generic lifecycle
   and request ack, Step 3 completed live tiles, Step 4 stop/lifecycle/capability,
   Step 5 replay/history, and Step 6 actual-plugin evidence/final reconciliation.
-- [x] Kept Cursor vocabulary/DTO parsing in Cursor and unobservable background
-  lifecycle/full stop/history/child sessions unsupported with the generic card.
+- [x] Kept Cursor vocabulary/DTO parsing in Cursor. Background completion/full
+  stop and child sessions remain unsupported; background history stays generic.
   Task terminal frames preceding a prompt result are assumed mapped before
   active settlement completes; no quiet timer, poller, speculative `end_turn`
   missing-terminal machinery, lock, controller, or recovery path was added. The

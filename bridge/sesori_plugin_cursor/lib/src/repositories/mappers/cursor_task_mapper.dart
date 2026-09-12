@@ -2,9 +2,22 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../api/models/cursor_task_dto.dart";
 
-/// Pure completed-foreground Cursor Task presentation shared by live mapping
-/// and replay-local history projection.
+enum CursorSubagentPresentation() {
+  unspecified,
+  unknown,
+}
+
+/// Pure Cursor Task transport normalization and completed presentation shared
+/// by live mapping and replay-local history projection.
 final class const CursorTaskMapper() {
+  CursorSubagentPresentation livePresentation({required CursorSubagentTypeDto subagentType}) =>
+      subagentType.custom?.unspecified == null
+      ? CursorSubagentPresentation.unknown
+      : CursorSubagentPresentation.unspecified;
+
+  CursorSubagentPresentation replayPresentation({required CursorTaskReplaySubagentTypeDto subagentType}) =>
+      subagentType.unspecified == null ? CursorSubagentPresentation.unknown : CursorSubagentPresentation.unspecified;
+
   PluginMessagePart? completedForeground({
     required PluginMessagePartTool genericPart,
     required String prompt,

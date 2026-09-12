@@ -10,11 +10,6 @@ enum CursorTaskTool() {
   unknown,
 }
 
-enum CursorSubagentPresentation() {
-  unspecified,
-  unknown,
-}
-
 enum CursorTaskReplayUpdateKind() {
   @JsonValue("tool_call")
   toolCall,
@@ -67,11 +62,6 @@ sealed class CursorSubagentTypeDto with _$CursorSubagentTypeDto {
   factory fromJson(Map<String, dynamic> json) => _$CursorSubagentTypeDtoFromJson(json);
 }
 
-extension CursorSubagentTypeDtoPresentation on CursorSubagentTypeDto {
-  CursorSubagentPresentation get presentation =>
-      custom?.unspecified == null ? CursorSubagentPresentation.unknown : CursorSubagentPresentation.unspecified;
-}
-
 /// Payload of Cursor's observed live `custom` sub-agent type variant.
 @Freezed(fromJson: true, toJson: false)
 sealed class CursorSubagentCustomTypeDto with _$CursorSubagentCustomTypeDto {
@@ -94,11 +84,6 @@ sealed class CursorTaskReplaySubagentTypeDto with _$CursorTaskReplaySubagentType
   const factory({required CursorSubagentUnspecifiedDto? unspecified}) = _CursorTaskReplaySubagentTypeDto;
 
   factory fromJson(Map<String, dynamic> json) => _$CursorTaskReplaySubagentTypeDtoFromJson(json);
-}
-
-extension CursorTaskReplaySubagentTypeDtoPresentation on CursorTaskReplaySubagentTypeDto {
-  CursorSubagentPresentation get presentation =>
-      unspecified == null ? CursorSubagentPresentation.unknown : CursorSubagentPresentation.unspecified;
 }
 
 /// Full standard Task input persisted by Cursor for history replay.
