@@ -3787,7 +3787,19 @@ abstract class AppLocalizations {
   /// **'Update the bridge to scan from here'**
   String get catalogScanUnsupportedDetail;
 
-  /// Title of the scan row when no harness could be scanned: none is connected and ready, or the bridge has not reported its harnesses yet.
+  /// Title of the scan row when a deep pull cannot start because there is no live bridge connection.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge not connected'**
+  String get catalogScanNotConnectedTitle;
+
+  /// Supporting line on the not-connected scan row, naming what the user must do before scanning.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to scan'**
+  String get catalogScanNotConnectedDetail;
+
+  /// Title of the scan row when the connected bridge has no harness ready to scan, or has not reported its harnesses yet.
   ///
   /// In en, this message translates to:
   /// **'No harness to scan'**

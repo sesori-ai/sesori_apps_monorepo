@@ -678,6 +678,7 @@ class PluginManagementCubit({
     CatalogRescanPartlyFailed() ||
     CatalogRescanFailed() ||
     CatalogRescanUnsupported() ||
+    CatalogRescanNotConnected() ||
     CatalogRescanNoHarness() => const {},
   };
 
@@ -734,6 +735,7 @@ class PluginManagementCubit({
     CatalogRescanReading() ||
     CatalogRescanSaving() ||
     CatalogRescanUnsupported() ||
+    CatalogRescanNotConnected() ||
     CatalogRescanNoHarness() => null,
   };
 

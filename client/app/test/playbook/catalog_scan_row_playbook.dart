@@ -365,6 +365,13 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     action: CatalogScanRowAction.dismiss,
   ),
   CatalogScanRowScenario(
+    id: "not-connected",
+    name: "Bridge not connected",
+    description: "A scan was requested while no live bridge connection was available.",
+    scan: CatalogRescanState.notConnected(),
+    action: CatalogScanRowAction.dismiss,
+  ),
+  CatalogScanRowScenario(
     id: "no-harness",
     name: "No harness ready",
     description: "No connected harness can be scanned from this surface.",

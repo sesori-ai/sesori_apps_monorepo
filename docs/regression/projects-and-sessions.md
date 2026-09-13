@@ -122,12 +122,14 @@ state.
   announces how the run ended, once, and only for a run it started itself.
 - A finished scan says what it found, sessions first, and clears itself shortly
   after. Everything else waits to be dismissed: some harnesses failing, all of
-  them failing, a bridge the app cannot start a scan on — either because it has
-  no import route at all or because it cannot tell the app which harnesses it
-  has — and no harness available to read. A diagnostic the user did not get to read is worse than a row that
-  outstays its welcome. Losing or regaining the connection clears any row,
-  waiting or not, as does the connected bridge turning out to be a different
-  machine — none of those rows describes a run this bridge is still party to.
+  them failing, a request made without a live bridge connection, a bridge the
+  app cannot start a scan on — either because it has no import route at all or
+  because it cannot tell the app which harnesses it has — and no harness
+  available to read on a connected bridge. A diagnostic the user did not get to
+  read is worse than a row that outstays its welcome. Losing or regaining the
+  connection clears any row, waiting or not, as does the connected bridge
+  turning out to be a different machine — none of those rows describes a run
+  this bridge is still party to.
 - What a scan reports is what was new, not what was published. When any harness
   in the run omits its delta the whole row falls back to naming published
   totals instead, because a delta missing one harness's contribution would
@@ -194,8 +196,10 @@ state.
   the height the control reserves for its indicator, so releasing springs the
   list to the top in one movement rather than parking it an indicator below and
   collapsing a moment later — and shows neither indicator nor caption
-  afterwards, because the scan row is the only report from then on. A pull that finds no harness to scan therefore reports
-  that and leaves the list as it was.
+  afterwards, because the scan row is the only report from then on. A pull made
+  without a live bridge reports that connection requirement rather than claiming
+  there are no harnesses. A connected pull that finds no harness to scan reports
+  that separately. Either outcome leaves the list as it was.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
@@ -475,7 +479,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - A reconnect announcing a scan that already finished, a recovered run claiming
   a summary it never saw, or a cancelled scan leaving its row behind.
 - A bridge with no import route reported as a failure rather than as one that
-  cannot scan, or a pull that finds no harness reporting nothing at all.
+  cannot scan, a disconnected pull falsely reporting no harness, or a connected
+  pull that finds no harness reporting nothing at all.
 - A project or session rename waits for the bridge response before dismissing,
   confirms success, or leaves the optimistic name in place after a failure.
 - A generated title/branch update fails to reach list/detail, changes unseen,

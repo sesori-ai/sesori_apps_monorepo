@@ -73,6 +73,8 @@ sealed class const CatalogRescanState() {
 
   const factory unsupported() = CatalogRescanUnsupported;
 
+  const factory notConnected() = CatalogRescanNotConnected;
+
   const factory noHarness() = CatalogRescanNoHarness;
 
   /// Whether a rescan is in flight. Leaving this is what tells a list to
@@ -137,8 +139,12 @@ final class const CatalogRescanFailed({required final int harnessCount}) extends
 /// This bridge cannot rescan at all, because it predates the import route.
 final class const CatalogRescanUnsupported() extends CatalogRescanState;
 
-/// There is no harness to rescan: either no management snapshot has arrived
-/// yet, the one that arrived failed, or none of its harnesses is routable.
+/// No live bridge connection is available to receive a rescan request.
+final class const CatalogRescanNotConnected() extends CatalogRescanState;
+
+/// There is no harness to rescan on the connected bridge: either no management
+/// snapshot has arrived yet, the one that arrived failed, or none of its
+/// harnesses is routable.
 ///
 /// One variant for all three, because a rescan cannot start in any of them and
 /// the user's next move is the same. Without it a fan-out over an empty set
