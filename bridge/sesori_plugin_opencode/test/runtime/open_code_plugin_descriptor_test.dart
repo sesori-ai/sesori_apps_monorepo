@@ -44,10 +44,10 @@ void main() {
       stateDirectory: stateDir.path,
     );
 
-    test("declines without a superseded managed runtime", () async {
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const OpenCodeRuntimeManifest().bundledVersion.raw);
 
-      expect(await needsUpgrade(candidateConfig: config), isFalse);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
     test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
