@@ -376,21 +376,18 @@ void main() {
   });
 
   test("PATH precedes managed pair and keeps an empty POSIX entry as current directory", () async {
-    final oldCurrent = Directory.current;
-    Directory.current = runtime;
-    try {
-      expect(
-        await descriptor(http: null).inspectSetup(
+    expect(
+      await IOOverrides.runZoned(
+        () => descriptor(http: null).inspectSetup(
           config: config(server: null),
           processes: processes,
           environment: const {"PATH": ":/definitely/missing"},
           stateDirectory: state.path,
         ),
-        isA<PluginSetupAuthenticationRequired>(),
-      );
-    } finally {
-      Directory.current = oldCurrent;
-    }
+        getCurrentDirectory: () => runtime,
+      ),
+      isA<PluginSetupAuthenticationRequired>(),
+    );
     expect(processes.launches.single.arguments, const ["--version"]);
     expect(processes.agents, isEmpty);
   });

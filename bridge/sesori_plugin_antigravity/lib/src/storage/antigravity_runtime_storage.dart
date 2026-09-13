@@ -169,6 +169,8 @@ class const AntigravityRuntimeStorage() {
     return directory;
   }
 
-  p.Context _pathContext({required PlatformTarget target}) =>
-      p.Context(style: target.os == PlatformOs.windows ? p.Style.windows : p.Style.posix);
+  p.Context _pathContext({required PlatformTarget target}) => p.Context(
+    style: target.os == PlatformOs.windows ? p.Style.windows : p.Style.posix,
+    current: Directory.current.path,
+  );
 }
