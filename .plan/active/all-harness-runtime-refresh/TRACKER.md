@@ -65,7 +65,7 @@
 | Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: CLI/SDK launch, native controlled-provider approval/replay/interrupt/reuse/cleanup plus production parsing/history mapping; tests/analyzer |
 | Hermes Agent | `0.21.2` | `0.20.0` unchanged | `0.21.2` | Updated in Step 5; 18 descriptor tests/analyzer pass. Failed load and unaccepted native procedure/evidence remain final investigation items |
 | Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six hashes/install/RPC, native production-plugin settlement/manual-compaction abort/ordering/reuse/cleanup; tests/analyzer |
-| Oh My Pi | `18.1.19` | `17.2.13` unchanged | `18.1.19` | Target updated in Step 5; Step 6 maps all eight verified hashes including Windows ARM64, with 10 focused cases/analyzer passing. Earlier native observations were 18.1.18; current native/configured checks remain |
+| Oh My Pi | `18.1.19` | `17.2.13` unchanged | `18.1.19` | Step 5 updated the target and seven mappings; Step 6 adds the remaining Windows ARM64 mapping, completing eight verified asset/hash pairs, with 10 focused cases/analyzer passing. Earlier native observations were 18.1.18; current native/configured checks remain |
 | Grok Build | `1.0.30` | `1.0.5` unchanged | stable channel `1.0.30` | Updated in Step 5; channel and 12 descriptor tests/analyzer pass. Native/authenticated coverage remains separate final follow-up |
 | DeepSeek | Not assessed (excluded) | Outside this series | None | Explicitly excluded; historical baseline is not a current-target claim, and unrelated upstream changes are neither audited nor modified here |
 
