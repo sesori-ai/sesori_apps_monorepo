@@ -173,4 +173,4 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Review-expanded ceiling: 1,450 → 1,850 for activation fencing, direct authority tests, and partial-pin repair.
 - Tests: 11/11 initial focused suites, full OpenCode package, and every review-affected suite passed.
 - Analysis/review: 11 strict package analyses passed; second/final architecture review approved with no violations.
-- Review-fix range `2d14f3ca2f..9b5112b607`: 1,477 additions + 363 deletions = 1,840 authored; generated zero.
+- Review-fix range `2d14f3ca2f..e5d6fa9765`: 1,477 additions + 363 deletions = 1,840 authored; generated zero.
