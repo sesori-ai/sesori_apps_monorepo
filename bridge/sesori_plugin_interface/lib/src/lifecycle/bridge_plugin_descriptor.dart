@@ -156,16 +156,19 @@ abstract class const BridgePluginDescriptor() {
   /// Whether a bridge start should install this plugin's pinned managed runtime
   /// in the background because Sesori already manages an older one.
   ///
-  /// True only when the plugin can install a managed runtime under [config] and
-  /// a managed version directory other than the pinned target exists under
-  /// [stateDirectory]. A machine that has never installed through Sesori keeps
-  /// the explicit Install command. Synchronous and disk-only: no probing, no
-  /// process spawning, no network. The default declines, which suits every
-  /// plugin without a managed runtime.
-  bool needsManagedRuntimeUpgrade({
+  /// True only when the plugin can install a managed runtime under [config],
+  /// an outdated managed version exists under [stateDirectory], and the
+  /// ordinary PATH command is genuinely absent. Every other bounded PATH probe
+  /// result declines the upgrade. A machine that has never installed through
+  /// Sesori keeps the explicit Install command. This check may probe PATH but
+  /// must not mutate a runtime or use the network. The default declines, which
+  /// suits every plugin without a managed runtime.
+  Future<bool> needsManagedRuntimeUpgrade({
     required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
     required String stateDirectory,
-  }) => false;
+  }) async => false;
 
   /// Resolves an already-present backend runtime and reports progress.
   ///

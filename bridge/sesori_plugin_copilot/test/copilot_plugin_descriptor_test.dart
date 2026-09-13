@@ -22,36 +22,42 @@ void main() {
       Directory("${stateDir.path}/${const CopilotRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("declines without a superseded managed runtime", () async {
       installedVersion(const CopilotRuntimeManifest().bundledVersion.raw);
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          processes: _Processes(),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isFalse,
       );
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("1.0.79");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          processes: _Processes(),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isTrue,
       );
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("1.0.79");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),
+          processes: _Processes(),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isFalse,

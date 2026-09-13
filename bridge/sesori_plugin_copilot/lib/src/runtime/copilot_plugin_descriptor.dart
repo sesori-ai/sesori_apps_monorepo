@@ -100,11 +100,20 @@ final class const CopilotPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: CopilotRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = CopilotRuntimeManifest();
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -138,16 +147,22 @@ final class const CopilotPluginDescriptor({
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     );
+    final versionValidator = RuntimeVersionValidator(
+      commandExecutor: commandExecutor,
+      manifest: manifest,
+      probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+    );
     final httpClient = http.Client();
     try {
       final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        candidateValidator: RuntimeVersionValidator(
-          commandExecutor: commandExecutor,
+        candidateValidator: versionValidator,
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
           manifest: manifest,
-          probeTimeout: _versionProbeTimeout,
+          versionValidator: versionValidator,
         ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
@@ -188,6 +203,14 @@ final class const CopilotPluginDescriptor({
       ManagedRuntimeExplicitNotSelected(:final primaryRejection) => _explicitSetupStatus(
         rejection: primaryRejection,
       ),
+      ManagedRuntimePathNotSelected(:final primaryRejection) => switch (primaryRejection) {
+        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+          actionHint: "Update the global GitHub Copilot CLI, then retry setup detection.",
+        ),
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+          actionHint: "GitHub Copilot setup could not be determined. Verify the global CLI and retry.",
+        ),
+      },
       ManagedRuntimeAutomaticNotSelected(:final primaryRejection, :final managedRejection) => _automaticSetupStatus(
         primaryRejection: primaryRejection,
         managedRejection: managedRejection,
@@ -242,6 +265,7 @@ final class const CopilotPluginDescriptor({
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     ),
     probeTimeout: _versionProbeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

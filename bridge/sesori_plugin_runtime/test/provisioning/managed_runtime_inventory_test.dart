@@ -53,26 +53,33 @@ void main() {
       Directory(p.join(stateDir.path, "opencode", version))..createSync(recursive: true);
 
   test("reports nothing when the managed directory does not exist", () {
-    expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isFalse);
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 
   test("reports nothing when only the pinned version is installed", () {
     versionDir("1.17.9");
 
-    expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isFalse);
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 
-  test("reports a superseded install when an older version remains", () {
+  test("reports an outdated install when an older version remains", () {
     versionDir("1.16.0");
 
-    expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isTrue);
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isTrue);
   });
 
-  test("reports a superseded install alongside the pinned version", () {
+  test("does not report an older directory when the pinned version is present", () {
     versionDir("1.16.0");
     versionDir("1.17.9");
 
-    expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isTrue);
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
+  });
+
+  test("does not report a newer managed version as outdated", () {
+    versionDir("1.16.0");
+    versionDir("1.18.0");
+
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 
   test("ignores stray files next to the version directories", () {
@@ -80,14 +87,14 @@ void main() {
       ..createSync(recursive: true)
       ..writeAsStringSync("stray");
 
-    expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isFalse);
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 
   test("ignores installer staging and non-version directories", () {
     versionDir(".sesori-runtime-staging");
     versionDir("notes");
 
-    expect(inventory.hasSupersededVersion(stateDirectory: stateDir.path), isFalse);
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 
   test("lists installed versions newest first", () {

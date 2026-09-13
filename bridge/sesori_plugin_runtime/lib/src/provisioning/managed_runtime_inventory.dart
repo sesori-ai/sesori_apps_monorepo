@@ -48,10 +48,9 @@ class const ManagedRuntimeInventory({required final RuntimeManifest _manifest}) 
     return List<RuntimeVersion>.unmodifiable(versions);
   }
 
-  /// Whether a managed version directory other than the pinned
-  /// [RuntimeManifest.bundledVersion] exists under [stateDirectory].
-  bool hasSupersededVersion({required String stateDirectory}) {
-    final pinned = _manifest.bundledVersion.raw;
-    return installedVersions(stateDirectory: stateDirectory).any((version) => version.raw != pinned);
+  /// Whether the newest managed version is older than the bundled version.
+  bool hasOutdatedVersion({required String stateDirectory}) {
+    final installed = installedVersions(stateDirectory: stateDirectory);
+    return installed.isNotEmpty && installed.first.compareTo(_manifest.bundledVersion) < 0;
   }
 }

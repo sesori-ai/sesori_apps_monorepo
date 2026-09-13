@@ -59,6 +59,20 @@ class const _StubManifest({required final bool hasAsset}) implements RuntimeMani
   }
 }
 
+class _FakePathAuthority({required final bool pathAbsent}) implements ManagedRuntimePathAuthority {
+  int checks = 0;
+
+  @override
+  Future<bool> isPathAbsent({
+    required Map<String, String> environment,
+    required StartAbortSignal abortSignal,
+  }) async {
+    checks++;
+    if (abortSignal.isAborted) throw const PluginStartAbortedException();
+    return pathAbsent;
+  }
+}
+
 class const _StubInUseSignal({required final bool _inUse}) implements RuntimeInUseSignal {
   @override
   bool get isInUse => _inUse;
@@ -142,6 +156,7 @@ void main() {
     RuntimeAssetResolver? assetResolver,
     void Function()? onDownload,
     RuntimeCandidateValidator? candidateValidator,
+    ManagedRuntimePathAuthority? pathAuthority,
   }) {
     final manifest = _StubManifest(hasAsset: hasAsset);
     return ManagedRuntimeInstallService(
@@ -155,6 +170,7 @@ void main() {
         runtimeId: "opencode",
       ),
       cleaner: ManagedRuntimeCleaner(runtimeId: "opencode"),
+      pathAuthority: pathAuthority ?? _FakePathAuthority(pathAbsent: true),
       assetResolver: assetResolver ?? ({required target}) async => manifest.assetFor(target: target),
     );
   }
@@ -193,6 +209,24 @@ void main() {
     expect(events.last, isA<ProvisionReady>());
     expect((events.last as ProvisionReady).binaryPath, binaryPath);
     expect(File(binaryPath).existsSync(), isTrue);
+  });
+
+  test("PATH authority is revalidated before cleanup or download", () async {
+    var downloaded = false;
+    final obsolete = versionDir("0.9.0");
+    final authority = _FakePathAuthority(pathAbsent: false);
+
+    final events = await install(
+      build(
+        pathAuthority: authority,
+        onDownload: () => downloaded = true,
+      ),
+    );
+
+    expect(authority.checks, 1);
+    expect(events, [isA<ProvisionResolving>(), isA<ProvisionFailed>()]);
+    expect(obsolete.existsSync(), isTrue);
+    expect(downloaded, isFalse);
   });
 
   test("fails when the platform has no published asset", () async {

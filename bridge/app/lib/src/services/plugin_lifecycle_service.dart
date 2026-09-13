@@ -360,18 +360,38 @@ class PluginLifecycleService({
   ///
   /// Called once per bridge start, after single-live-bridge ownership is settled
   /// so no other bridge is using this machine's managed runtime directories.
-  /// Returns immediately: startup never waits on a download, and a harness
-  /// already running an older supported version keeps serving until its next
-  /// generation. A plugin with a command already in flight is skipped; that
-  /// command owns the slot.
-  void upgradeManagedRuntimes() {
+  /// Startup awaits only bounded PATH-presence checks, never a download. A
+  /// managed refresh is admitted only when PATH is absent. A plugin with a
+  /// command already in flight is skipped; that command owns the slot.
+  Future<void> upgradeManagedRuntimes() async {
     if (_disposing) return;
-    for (final pluginId in _requireEligiblePluginIds()) {
-      if (_activePluginCommands.containsKey(pluginId)) continue;
-      if (!_lifecycleRepository.needsManagedRuntimeUpgrade(pluginId: pluginId)) continue;
-      Log.i('Plugin "$pluginId" has a superseded managed runtime; installing the current one in the background.');
+    final pluginIds = [
+      for (final pluginId in _requireEligiblePluginIds())
+        if (!_activePluginCommands.containsKey(pluginId)) pluginId,
+    ];
+    final decisions = await Future.wait(
+      pluginIds.map((pluginId) async {
+        try {
+          return (
+            pluginId: pluginId,
+            shouldUpgrade: await _lifecycleRepository.needsManagedRuntimeUpgrade(pluginId: pluginId),
+          );
+        } on Object catch (error, stackTrace) {
+          Log.w('Plugin "$pluginId" managed runtime upgrade eligibility failed', error, stackTrace);
+          return (pluginId: pluginId, shouldUpgrade: false);
+        }
+      }),
+    );
+    if (_disposing) return;
+    for (final decision in decisions) {
+      if (_disposing) return;
+      if (!decision.shouldUpgrade || _activePluginCommands.containsKey(decision.pluginId)) continue;
+      Log.i(
+        'Plugin "${decision.pluginId}" has an outdated managed runtime and no PATH install; '
+        "updating it in the background.",
+      );
       _admitInstall(
-        pluginId: pluginId,
+        pluginId: decision.pluginId,
         request: const PluginLifecycleInstallRequest(),
         completion: InstallCompletion.reinspectOnly,
       );

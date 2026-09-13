@@ -3,7 +3,13 @@ import "dart:io" as io;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show BinaryDownloadClient, CommandResult, HostProcessCommandExecutor, PlatformTarget, stripAnsi;
+    show
+        BinaryDownloadClient,
+        CommandResult,
+        HostProcessCommandExecutor,
+        IoHostExecutableLocator,
+        PlatformTarget,
+        stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
@@ -179,11 +185,23 @@ class const CursorPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: CursorRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = CursorRuntimeManifest();
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: _versionValidatorFor(
+            processes: processes,
+            maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+          ),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -202,15 +220,24 @@ class const CursorPluginDescriptor({
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
+    final candidateValidator = _versionValidatorFor(
+      processes: processes,
+      maxCapturedOutputCharactersPerStream: null,
+    );
+    final pathVersionValidator = _versionValidatorFor(
+      processes: processes,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
     final httpClient = http.Client();
     try {
       final installService = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        candidateValidator: _versionValidatorFor(
-          processes: processes,
-          maxCapturedOutputCharactersPerStream: null,
+        candidateValidator: candidateValidator,
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: pathVersionValidator,
         ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
@@ -240,6 +267,7 @@ class const CursorPluginDescriptor({
       ),
       manifest: const CursorRuntimeManifest(),
       probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     );
   }
 
@@ -274,7 +302,7 @@ class const CursorPluginDescriptor({
         return "Install the Cursor CLI locally, then retry setup detection.";
       }
       const inventory = ManagedRuntimeInventory(manifest: CursorRuntimeManifest());
-      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+      return inventory.hasOutdatedVersion(stateDirectory: stateDirectory)
           ? "This bridge needs a newer Cursor CLI. Install it from Sesori to update the managed runtime."
           : "Install the Cursor CLI from Sesori, or install it locally and retry setup detection.";
     }
@@ -290,6 +318,16 @@ class const CursorPluginDescriptor({
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
             actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
+          ),
+        };
+      }
+      if (selection is ManagedRuntimePathNotSelected) {
+        return switch (selection.primaryRejection) {
+          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+            actionHint: "Update the global Cursor CLI, then retry setup detection.",
+          ),
+          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+            actionHint: "Cursor setup could not be determined. Verify the global CLI and retry.",
           ),
         };
       }

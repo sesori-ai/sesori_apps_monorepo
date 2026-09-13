@@ -32,6 +32,20 @@ class _FakeCommandExecutor({final CommandResult? result, final Object? error}) i
   }
 }
 
+class const _Locator({
+  required final HostExecutablePresence presence,
+  required super.platformIsWindows,
+}) extends IoHostExecutableLocator {
+  @override
+  bool isPathCommandAbsent({
+    required String executable,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+  }) => presence == HostExecutablePresence.absent;
+}
+
+const _presentLocator = _Locator(presence: HostExecutablePresence.present, platformIsWindows: false);
+
 class const _SemverManifest() extends RuntimeManifest {
   @override
   String get runtimeId => "opencode";
@@ -70,6 +84,7 @@ void main() {
       return RuntimeVersionValidator(
         commandExecutor: executor,
         manifest: const _SemverManifest(),
+        executableLocator: _presentLocator,
       ).detectVersion(
         executable: "opencode",
         environment: const {"PATH": "/usr/bin"},
@@ -160,6 +175,7 @@ void main() {
       final validator = RuntimeVersionValidator(
         commandExecutor: _FakeCommandExecutor(),
         manifest: const _SemverManifest(),
+        executableLocator: _presentLocator,
       );
 
       expect(validator.parseVersionOutput(output: "codex-cli v0.144.5")?.raw, "0.144.5");
@@ -174,6 +190,7 @@ void main() {
       final validator = RuntimeVersionValidator(
         commandExecutor: executor,
         manifest: const _SemverManifest(),
+        executableLocator: _presentLocator,
       );
       final context = RuntimeCandidateValidationContext(
         executablePath: "/managed/staging/candidate/opencode",
@@ -192,6 +209,7 @@ void main() {
           result: const CommandResult(exitCode: 0, stdout: "1.17.8", stderr: ""),
         ),
         manifest: const _SemverManifest(),
+        executableLocator: _presentLocator,
       );
       expect(await mismatched.validate(context: context), isFalse);
     });
@@ -204,6 +222,7 @@ void main() {
       final validator = RuntimeVersionValidator(
         commandExecutor: executor,
         manifest: const _SemverManifest(),
+        executableLocator: _presentLocator,
       );
 
       await expectLater(
@@ -223,10 +242,14 @@ void main() {
   });
 
   group("RuntimeVersionValidator.probe", () {
-    Future<RuntimeProbeOutcome> probe(_FakeCommandExecutor executor) {
+    Future<RuntimeProbeOutcome> probe(
+      _FakeCommandExecutor executor, {
+      IoHostExecutableLocator executableLocator = _presentLocator,
+    }) {
       return RuntimeVersionValidator(
         commandExecutor: executor,
         manifest: const _SemverManifest(),
+        executableLocator: executableLocator,
       ).probe(
         executable: "opencode",
         environment: const {"PATH": "/usr/bin"},
@@ -262,7 +285,45 @@ void main() {
 
     test("distinguishes missing, timeout, and other failures", () async {
       expect(
-        await probe(_FakeCommandExecutor(error: const ProcessException("opencode", ["--version"]))),
+        await probe(
+          _FakeCommandExecutor(error: const ProcessException("opencode", ["--version"], "missing", 2)),
+          executableLocator: const _Locator(presence: HostExecutablePresence.absent, platformIsWindows: false),
+        ),
+        isA<RuntimeProbeMissing>(),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(
+            result: const CommandResult(exitCode: 1, stdout: "", stderr: "localized error"),
+          ),
+          executableLocator: const _Locator(presence: HostExecutablePresence.absent, platformIsWindows: true),
+        ),
+        isA<RuntimeProbeMissing>(),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(error: const ProcessException("opencode", ["--version"], "permission denied", 13)),
+        ),
+        isA<RuntimeProbeFailed>(),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(error: const ProcessException("opencode", ["--version"], "broken shim", 2)),
+        ),
+        isA<RuntimeProbeFailed>(),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(error: const ProcessException("opencode", ["--version"], "missing path", 3)),
+          executableLocator: const _Locator(presence: HostExecutablePresence.absent, platformIsWindows: false),
+        ),
+        isA<RuntimeProbeFailed>(),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(error: const ProcessException("opencode", ["--version"], "missing path", 3)),
+          executableLocator: const _Locator(presence: HostExecutablePresence.absent, platformIsWindows: true),
+        ),
         isA<RuntimeProbeMissing>(),
       );
       expect(
@@ -273,6 +334,24 @@ void main() {
         await probe(_FakeCommandExecutor(error: StateError("failed"))),
         isA<RuntimeProbeFailed>(),
       );
+    });
+
+    test("keeps a present PATH shim authoritative when its interpreter is missing", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("runtime-broken-shim");
+      addTearDown(() => pathDirectory.delete(recursive: true));
+      File("${pathDirectory.path}${Platform.pathSeparator}opencode").writeAsStringSync("#!/missing-interpreter\n");
+      for (final extension in [".COM", ".EXE", ".BAT", ".CMD"]) {
+        File("${pathDirectory.path}${Platform.pathSeparator}opencode$extension").writeAsStringSync("shim");
+      }
+      final outcome = await RuntimeVersionValidator(
+        commandExecutor: _FakeCommandExecutor(
+          error: const ProcessException("opencode", ["--version"], "interpreter missing", 2),
+        ),
+        manifest: const _SemverManifest(),
+        executableLocator: const IoHostExecutableLocator(platformIsWindows: false),
+      ).probe(executable: "opencode", environment: {"PATH": pathDirectory.path});
+
+      expect(outcome, isA<RuntimeProbeFailed>());
     });
 
     test("includes the attempted executable in unexpected failure logs", () async {

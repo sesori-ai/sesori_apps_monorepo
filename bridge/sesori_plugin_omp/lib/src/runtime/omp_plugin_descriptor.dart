@@ -119,11 +119,20 @@ final class const OmpPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: OmpRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = OmpRuntimeManifest();
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -159,13 +168,18 @@ final class const OmpPluginDescriptor({
       commandExecutor: commandExecutor,
       probeTimeout: _versionProbeTimeout,
     );
+    final versionValidator = _versionValidator(processes: processes);
     final httpClient = http.Client();
     try {
       final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        candidateValidator: _versionValidator(processes: processes),
+        candidateValidator: versionValidator,
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: versionValidator,
+        ),
         assetResolver: runtimeAssetService.resolve,
       );
       yield* service.install(
@@ -219,6 +233,16 @@ final class const OmpPluginDescriptor({
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
           actionHint: "Oh My Pi setup could not be determined. Verify the configured CLI and retry.",
+        ),
+      };
+    }
+    if (notSelected is ManagedRuntimePathNotSelected) {
+      return switch (notSelected.primaryRejection) {
+        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+          actionHint: "Update the global Oh My Pi CLI, then retry setup detection.",
+        ),
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+          actionHint: "Oh My Pi setup could not be determined. Verify the global CLI and retry.",
         ),
       };
     }
@@ -319,6 +343,7 @@ final class const OmpPluginDescriptor({
     ),
     manifest: const OmpRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

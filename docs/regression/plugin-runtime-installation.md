@@ -2,9 +2,9 @@
 
 ## Capability
 
-Installing a harness's pinned, bridge-managed runtime — on request from the app or the
-management API when it reports its runtime as missing or too old, and automatically on
-bridge start when Sesori already manages an older version.
+Installing a harness's pinned, bridge-managed runtime only when no authoritative PATH
+runtime exists — on request from the app or management API, and automatically on bridge
+start when Sesori already manages an older version and PATH is genuinely absent.
 
 ## Required Behavior
 
@@ -14,6 +14,11 @@ bridge start when Sesori already manages an older version.
   ready, authentication-required, or unknown states. Install-ready missing runtimes use
   the dedicated installation content; manual setup hints remain for externally installed
   harnesses and other setup failures.
+- PATH is authoritative for runtimes that can also use a Sesori-managed copy. Compatible PATH runtimes are selected
+  first; outdated, malformed, timed-out, nonzero, permission-denied, present-but-unlaunchable, partial-pair, and
+  otherwise ambiguous PATH results block managed fallback and mutation. Only positively verified command absence
+  permits managed selection or installation. Installation revalidates that absence before cleanup or staging, and
+  leaves every managed copy untouched while PATH remains present.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
@@ -71,10 +76,10 @@ bridge start when Sesori already manages an older version.
   stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
-- A bridge start upgrades every eligible harness that still has a Sesori-managed version
-  directory other than the pinned target, and only those: a machine with no managed
-  runtime keeps the explicit Install action and never downloads one unasked. The trigger
-  runs after single-live-bridge ownership is settled and returns without waiting, so
+- A bridge start upgrades every eligible harness whose newest Sesori-managed version is older than the pinned target,
+  and only when PATH is genuinely absent: a machine with no managed runtime never downloads one unasked, while a
+  pinned or newer managed version cannot trigger a downgrade because an older directory also exists. Eligibility
+  probes run concurrently after single-live-bridge ownership is settled and return before admitted downloads, so
   startup is never delayed by a download. Each upgrade occupies the harness's command
   slot exactly like a manual install, so an overlapping request joins it and another
   command conflicts. An explicit Install that joins a running upgrade carries the user's
@@ -195,10 +200,9 @@ download, verification, or placement. Use a disposable data directory.
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
   Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.
-- The upgrade replaces only a runtime Sesori already manages; a harness that has never
-  been installed through Sesori still needs the explicit Install action. A user who runs
-  a PATH install and also has a stale managed directory downloads one target they do not
-  run, once per target bump.
+- The upgrade replaces only a runtime Sesori already manages; a harness that has never been installed through Sesori
+  still needs the explicit Install action. A PATH runtime keeps existing managed directories preserved and suppresses
+  automatic managed downloads.
 - There is no hot swap: a generation started on the older supported runtime keeps it until
   it stops. A harness that is running when its upgrade completes keeps that version
   directory until a later install reclaims it.

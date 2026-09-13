@@ -43,36 +43,42 @@ void main() {
       Directory("${stateDir.path}/${const OmpRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("declines without a superseded managed runtime", () async {
       installedVersion(const OmpRuntimeManifest().bundledVersion.raw);
 
       expect(
-        OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
+        await OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {OmpPluginDescriptor.binOption: "omp"}),
+          processes: _Processes(spawnError: const ProcessException("omp", ["--version"], "missing", 2)),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isFalse,
       );
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("17.3.0");
 
       expect(
-        OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
+        await OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {OmpPluginDescriptor.binOption: "omp"}),
+          processes: _Processes(spawnError: const ProcessException("omp", ["--version"], "missing", 2)),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isTrue,
       );
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("17.3.0");
 
       expect(
-        OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
+        await OmpPluginDescriptor.production().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {OmpPluginDescriptor.binOption: "/custom/omp"}),
+          processes: _Processes(spawnError: const ProcessException("omp", ["--version"], "missing", 2)),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -105,17 +111,14 @@ void main() {
       expect(processes.executables, ["omp"]);
     });
 
-    test("ensureRuntime falls back to an installed managed binary", () async {
+    test("ensureRuntime blocks on an outdated PATH binary", () async {
       final processes = _Processes(
-        outputs: const [
-          _Output(stdout: "omp/17.2.12\n", exitCode: 0),
-          _Output(stdout: "omp/18.1.19\n", exitCode: 0),
-        ],
+        outputs: const [_Output(stdout: "omp/17.2.12\n", exitCode: 0)],
       );
       final events = await OmpPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
-      expect((events.last as ProvisionReady).binaryPath, contains("/state/omp/18.1.19/omp"));
-      expect(processes.executables, ["omp", contains("/state/omp/18.1.19/omp")]);
+      expect(events.last, isA<ProvisionFailed>());
+      expect(processes.executables, ["omp"]);
     });
 
     test("reports ready from the runtime and model listing probes without an ACP probe", () async {
@@ -206,8 +209,8 @@ void main() {
     test("reports an installable missing runtime after PATH and managed probes", () async {
       final result = await OmpPluginDescriptor.production().inspectSetup(
         config: config,
-        processes: _Processes(spawnError: const ProcessException("omp", ["--version"], "missing")),
-        environment: const {},
+        processes: _Processes(spawnError: const ProcessException("omp", ["--version"], "missing", 2)),
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: "/state",
       );
       expect(result, isA<PluginSetupRuntimeMissing>());
@@ -222,7 +225,7 @@ void main() {
       );
       final result = await descriptor.inspectSetup(
         config: explicit,
-        processes: _Processes(spawnError: const ProcessException("/custom/omp", ["--version"], "missing")),
+        processes: _Processes(spawnError: const ProcessException("/custom/omp", ["--version"], "missing", 2)),
         environment: const {},
         stateDirectory: "/state",
       );

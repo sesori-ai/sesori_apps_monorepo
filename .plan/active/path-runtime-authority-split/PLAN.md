@@ -115,16 +115,17 @@ Series slug `path-runtime-authority-split`; every PR title is
      independently useful safety slice carries finding `3999205383`.
 4. **Step 4/9**
    - Title: `🚧 [path-runtime-authority-split] runtime: make PATH authoritative for managed copies [step 4/9]`
-   - Scope: add managed PATH authority, newest-version inventory policy, mutation-boundary revalidation, and PATH-aware
-     startup refresh. PATH suppresses managed selection, install, cleanup, and startup upgrades.
+   - Scope: add managed PATH authority, newest-version inventory policy, mutation-boundary revalidation, PATH-aware
+     startup refresh, and pair-aware Antigravity mutation fencing. PATH suppresses standard managed selection and
+     managed install, cleanup, and startup upgrades everywhere; Antigravity pair selection completes in Step 6.
 5. **Step 5/9**
    - Title: `⚙️ [path-runtime-authority-split] plugins: report outdated PATH runtimes and safe updaters [step 5/9]`
    - Scope: add backend-neutral setup/update metadata and standard harness descriptors/tests. Explicit overrides and
      unsupported updaters remain manual.
 6. **Step 6/9**
    - Title: `⚙️ [path-runtime-authority-split] antigravity: inspect PATH pairs without side effects [step 6/9]`
-   - Scope: add inert Antigravity API/repository/service inspection and pair-aware authority, repository-domain mapping,
-     and exhaustive predicate tests.
+   - Scope: add inert Antigravity API/repository/service inspection, apply the Step 4 pair-authority predicate to
+     selection, complete repository-domain mapping, and add exhaustive predicate tests.
 7. **Step 7/9**
    - Title: `🚧 [path-runtime-authority-split] bridge: execute sanitized global runtime updates [step 7/9]`
    - Scope: add wire operation identity, bridge admission/execution, sanitized progress and failures, canonical
@@ -213,7 +214,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - interface `lifecycle/bridge_plugin_descriptor.dart` — asynchronous `needsManagedRuntimeUpgrade` contract only; and
   - descriptors in `sesori_plugin_opencode`, `sesori_plugin_codex`, `sesori_plugin_copilot`,
     `sesori_plugin_cursor`, `sesori_plugin_deepseek`, `sesori_plugin_omp`, and `sesori_plugin_pi` — managed startup
-    authority overrides and caller updates only.
+    authority overrides and caller updates only; and
+  - `sesori_plugin_antigravity` — pair-aware install/startup-upgrade mutation authority only; pair selection remains Step 6.
 - **Bridge consumers:** `bridge/app/lib/src/runtime/plugin_runtime.dart` passes injected `_setupProcesses` and immutable
   environment; `plugin_lifecycle_repository.dart` forwards the async decision;
   `plugin_lifecycle_service.dart.upgradeManagedRuntimes` admits only eligible startup refreshes; and

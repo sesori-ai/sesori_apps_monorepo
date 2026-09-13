@@ -26,30 +26,34 @@ void main() {
       Directory(p.join(stateDir.path, const CodexRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without any managed runtime on disk", () {
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+    Future<bool> needsUpgrade({required PluginConfig candidateConfig}) => descriptor.needsManagedRuntimeUpgrade(
+      config: candidateConfig,
+      processes: _ProbeProcessService(spawnError: const ProcessException("codex", ["--version"], "missing", 2)),
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: stateDir.path,
+    );
+
+    test("declines without any managed runtime on disk", () async {
+      expect(await needsUpgrade(candidateConfig: config), isFalse);
     });
 
-    test("declines when only the pinned version is installed", () {
+    test("declines when only the pinned version is installed", () async {
       installedVersion(const CodexRuntimeManifest().bundledVersion.raw);
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+      expect(await needsUpgrade(candidateConfig: config), isFalse);
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("0.140.0");
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("0.140.0");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
-          stateDirectory: stateDir.path,
-        ),
+        await needsUpgrade(candidateConfig: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"})),
         isFalse,
       );
     });
@@ -139,7 +143,7 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
@@ -180,7 +184,7 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDir.path,
       );
 
@@ -202,7 +206,7 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDir.path,
       );
 
@@ -239,7 +243,7 @@ void main() {
       final result = await descriptor.inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
@@ -274,7 +278,7 @@ void main() {
           ).inspectSetup(
             config: config,
             processes: processes,
-            environment: const <String, String>{},
+            environment: const {"PATH": "/definitely/missing"},
             stateDirectory: stateDirectory,
           );
 
@@ -307,7 +311,7 @@ void main() {
           ).inspectSetup(
             config: config,
             processes: processes,
-            environment: const <String, String>{},
+            environment: const {"PATH": "/definitely/missing"},
             stateDirectory: stateDirectory,
           );
 
@@ -381,7 +385,7 @@ void main() {
           ).inspectSetup(
             config: config,
             processes: processes,
-            environment: const <String, String>{},
+            environment: const {"PATH": "/definitely/missing"},
             stateDirectory: stateDirectory,
           );
 

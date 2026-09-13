@@ -409,10 +409,29 @@ void main() {
 
     final superseded = Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0"))
       ..createSync(recursive: true);
-    expect(candidate.needsManagedRuntimeUpgrade(config: config(server: null), stateDirectory: state.path), isTrue);
     expect(
-      candidate.needsManagedRuntimeUpgrade(
+      await candidate.needsManagedRuntimeUpgrade(
+        config: config(server: null),
+        processes: processes,
+        environment: const {"PATH": "/definitely/missing"},
+        stateDirectory: state.path,
+      ),
+      isTrue,
+    );
+    expect(
+      await candidate.needsManagedRuntimeUpgrade(
+        config: config(server: null),
+        processes: processes,
+        environment: {"PATH": runtime.path},
+        stateDirectory: state.path,
+      ),
+      isFalse,
+    );
+    expect(
+      await candidate.needsManagedRuntimeUpgrade(
         config: config(server: pair.server),
+        processes: processes,
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: state.path,
       ),
       isFalse,

@@ -232,6 +232,7 @@ class const CodexPluginDescriptor({
         ),
         manifest: manifest,
         probeTimeout: _versionProbeTimeout,
+        executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
       ),
       inventory: const ManagedRuntimeInventory(manifest: manifest),
     ).select(
@@ -268,11 +269,31 @@ class const CodexPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: CodexRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = CodexRuntimeManifest();
+    final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
+      processes: processes,
+      runInShell: io.Platform.isWindows,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: RuntimeVersionValidator(
+            commandExecutor: executor,
+            manifest: manifest,
+            probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+          ),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -291,6 +312,17 @@ class const CodexPluginDescriptor({
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
+    final pathVersionValidator = RuntimeVersionValidator(
+      commandExecutor: HostProcessCommandExecutor(
+        includeParentEnvironment: true,
+        processes: processes,
+        runInShell: io.Platform.isWindows,
+        maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+      ),
+      manifest: manifest,
+      probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+    );
     final httpClient = http.Client();
     try {
       final installService = const ManagedRuntimeComposition().createInstaller(
@@ -301,6 +333,11 @@ class const CodexPluginDescriptor({
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
+          executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
+        ),
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: pathVersionValidator,
         ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
@@ -326,7 +363,7 @@ class const CodexPluginDescriptor({
     const inventory = ManagedRuntimeInventory(manifest: manifest);
 
     String missingRuntimeHint() {
-      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+      return inventory.hasOutdatedVersion(stateDirectory: stateDirectory)
           ? "This bridge needs a newer Codex. Install it from Sesori to update the managed runtime."
           : "Install Codex from Sesori, or install it locally and retry setup detection.";
     }
@@ -341,6 +378,16 @@ class const CodexPluginDescriptor({
     );
     if (selection case ManagedRuntimeNotSelected(:final primaryRejection)) {
       final hasExplicitBinary = _explicitBin(config) != null;
+      if (selection is ManagedRuntimePathNotSelected) {
+        return switch (primaryRejection) {
+          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+            actionHint: "Update the global Codex installation, then retry setup detection.",
+          ),
+          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+            actionHint: "The global Codex installation could not be verified. Check it locally and retry.",
+          ),
+        };
+      }
       return switch (primaryRejection) {
         ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => PluginSetupRuntimeMissing(
           actionHint: hasExplicitBinary
@@ -440,6 +487,7 @@ class const CodexPluginDescriptor({
             ),
             manifest: manifest,
             probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
           fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
         )

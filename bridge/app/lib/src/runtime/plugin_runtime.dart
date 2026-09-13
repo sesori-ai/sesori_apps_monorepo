@@ -282,12 +282,14 @@ class PluginRuntime({
   /// Whether a bridge start should install this plugin's pinned managed runtime
   /// in the background because Sesori already manages an older one.
   ///
-  /// The descriptor owns the decision and answers from configuration and its
-  /// state directory alone — no probing, no process spawning, no network.
-  bool needsManagedRuntimeUpgrade({required String pluginId}) {
+  /// The descriptor owns the decision and may run a bounded inert PATH probe;
+  /// it must not mutate a runtime or use the network.
+  Future<bool> needsManagedRuntimeUpgrade({required String pluginId}) async {
     final slot = _requireSlot(pluginId);
-    return slot.registration.descriptor.needsManagedRuntimeUpgrade(
+    return await slot.registration.descriptor.needsManagedRuntimeUpgrade(
       config: slot.registration.config,
+      processes: _setupProcesses,
+      environment: _environment,
       stateDirectory: slot.registration.stateDirectory,
     );
   }

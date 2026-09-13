@@ -32,30 +32,48 @@ void main() {
       Directory(p.join(stateDir.path, const CursorRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("declines without a superseded managed runtime", () async {
       installedVersion(const CursorRuntimeManifest().bundledVersion.raw);
 
       expect(
-        const CursorPluginDescriptor().needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path),
+        await const CursorPluginDescriptor().needsManagedRuntimeUpgrade(
+          config: config,
+          processes: _ProbeProcessService(
+            spawnError: const ProcessException("cursor-agent", ["--version"], "missing", 2),
+          ),
+          environment: const {"PATH": "/definitely/missing"},
+          stateDirectory: stateDir.path,
+        ),
         isFalse,
       );
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("2026.07.20-abc1234");
 
       expect(
-        const CursorPluginDescriptor().needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path),
+        await const CursorPluginDescriptor().needsManagedRuntimeUpgrade(
+          config: config,
+          processes: _ProbeProcessService(
+            spawnError: const ProcessException("cursor-agent", ["--version"], "missing", 2),
+          ),
+          environment: const {"PATH": "/definitely/missing"},
+          stateDirectory: stateDir.path,
+        ),
         isTrue,
       );
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("2026.07.20-abc1234");
 
       expect(
-        const CursorPluginDescriptor().needsManagedRuntimeUpgrade(
+        await const CursorPluginDescriptor().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {"bin": "/custom/cursor-agent", "api-endpoint": null}),
+          processes: _ProbeProcessService(
+            spawnError: const ProcessException("cursor-agent", ["--version"], "missing", 2),
+          ),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -160,7 +178,6 @@ void main() {
       expect(result, isA<PluginSetupUnknown>());
       expect(processes.spawnedArguments, [
         const ["--version"],
-        const ["--version"],
       ]);
     });
 
@@ -220,7 +237,7 @@ void main() {
       final result = await const CursorPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
@@ -252,7 +269,7 @@ void main() {
       final result = await const CursorPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: stateDirectory,
       );
 
@@ -263,10 +280,9 @@ void main() {
       expect(processes.spawnedExecutables, ["cursor-agent", managedBinaryPath, managedBinaryPath]);
     });
 
-    test("an outdated PATH CLI is installable and never leaks version probe text", () async {
-      // Without an explicit --cursor-bin a managed install fixes a too-old
-      // CLI, so this reports runtimeMissing (installable) and probes the
-      // managed path as a fallback before giving up.
+    test("an outdated PATH CLI is authoritative and never leaks version probe text", () async {
+      // A discovered PATH command blocks managed fallback even when its
+      // reported version is too old.
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           _ProbeProcess(
@@ -285,10 +301,9 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result, isA<PluginSetupUnavailable>());
       expect(result.actionHint, isNot(contains("account-secret-output")));
       expect(processes.spawnedArguments, [
-        const ["--version"],
         const ["--version"],
       ]);
     });
@@ -361,9 +376,8 @@ void main() {
       );
 
       expect(result, isA<PluginSetupUnknown>());
-      // Both the PATH probe and the managed-runtime fallback probe hang and
-      // are force-killed.
-      expect(processes.forceSignals, equals(<int>[15, 15]));
+      // The authoritative PATH probe is force-killed without trying managed fallback.
+      expect(processes.forceSignals, equals(<int>[15]));
     });
 
     test("reports authentication required without starting a login flow", () async {
