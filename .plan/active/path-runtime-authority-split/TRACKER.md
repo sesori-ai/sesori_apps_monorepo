@@ -168,3 +168,9 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - First review-fix checkpoint: 472 additions plus 72 deletions, or 544 changed lines across 18 files.
 - Current review-fix tree: 813 additions plus 83 deletions, or 896 changed lines across 27 files.
 - All churn is authored; generated churn is zero; the total remains below the 1,000-line ceiling.
+
+## Step 4 Evidence
+- Base/initial implementation checkpoint: `2d14f3ca2f` → `d4b082b400`.
+- Focused matrix: 11/11 suites passed; strict analysis passed in all 11 owning packages; `git diff --check` passed.
+- Architecture implementation review: APPROVED with no violations on the first pass.
+- Direct numstat: 1,127 additions + 323 deletions = 1,450 authored lines; generated churn is zero.

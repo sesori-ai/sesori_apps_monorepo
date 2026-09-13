@@ -339,16 +339,15 @@ void main() {
     test("keeps a present PATH shim authoritative when its interpreter is missing", () async {
       final pathDirectory = await Directory.systemTemp.createTemp("runtime-broken-shim");
       addTearDown(() => pathDirectory.delete(recursive: true));
-      File("${pathDirectory.path}${Platform.pathSeparator}opencode").writeAsStringSync("#!/missing-interpreter\n");
-      for (final extension in [".COM", ".EXE", ".BAT", ".CMD"]) {
-        File("${pathDirectory.path}${Platform.pathSeparator}opencode$extension").writeAsStringSync("shim");
-      }
+      final executableName = Platform.isWindows ? "opencode.CMD" : "opencode";
+      File("${pathDirectory.path}${Platform.pathSeparator}$executableName")
+          .writeAsStringSync("#!/missing-interpreter\n");
       final outcome = await RuntimeVersionValidator(
         commandExecutor: _FakeCommandExecutor(
           error: const ProcessException("opencode", ["--version"], "interpreter missing", 2),
         ),
         manifest: const _SemverManifest(),
-        executableLocator: const IoHostExecutableLocator(platformIsWindows: false),
+        executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
       ).probe(executable: "opencode", environment: {"PATH": pathDirectory.path});
 
       expect(outcome, isA<RuntimeProbeFailed>());
