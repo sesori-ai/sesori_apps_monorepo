@@ -88,8 +88,9 @@ needs no browser of its own, but does need a current connected client for initia
 
 - **Isolation:** login and live execution share a plugin-owned `profile/antigravity-acp` beneath Antigravity's bridge
   state. It does not import ambient Google credentials or reuse your normal Google/Antigravity profile.
-  Runtime processes receive a sanitized environment with parent inheritance disabled. Setup inspection checks only
-  sibling files and isolated token-file presence; it does not read token contents, spawn a process or validate a login.
+  Runtime processes receive a sanitized environment with parent inheritance disabled. Setup inspection checks sibling
+  files, runs the selected server once with a bounded sanitized `--version` probe, and checks isolated token-file
+  presence. It does not read token contents, initialize ACP, mutate the profile or validate a login.
 - **Supervision:** prompts use mode `default`, never `auto_edit` or `yolo`. Ordinary permissions offer only
   safe advertised once-kind choices. Persistent approvals and every warning-bearing choice are excluded independently.
   Supported single-choice questions retain the provider's options; malformed or ambiguous requests cancel, not guess.

@@ -15,7 +15,7 @@ import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
-  test("maps outdated setup while keeping updater metadata dormant", () {
+  test("maps authoritative setup without exposing managed install or dormant updater metadata", () {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),
       inspectionGate: null,
@@ -46,6 +46,29 @@ void main() {
     expect(plugin.setup.state, PluginSetupState.runtimeOutdated);
     expect(plugin.setup.runtimeVersion, "1.0.0");
     expect(plugin.managementCapabilities, {PluginManagementCapability.setupRefresh});
+
+    final newerService = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {
+        PluginControlCapability.setupRefresh,
+        PluginControlCapability.install,
+      },
+    );
+    addTearDown(newerService.dispose);
+    newerService.initialize(
+      disabledPluginIds: const {},
+      setupById: const {
+        "one": PluginSetupUnknown.versioned(
+          actionHint: "The PATH runtime is newer than this bridge.",
+          runtimeVersion: "2.0.0",
+        ),
+      },
+    );
+
+    expect(newerService.managementSnapshot.plugins.single.managementCapabilities, {
+      PluginManagementCapability.setupRefresh,
+    });
   });
 
   test("authentication joins, publishes state, reinspects, and starts when ready", () async {

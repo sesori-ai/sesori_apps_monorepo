@@ -42,6 +42,31 @@ class const _CurrentVersion() implements AntigravityRuntimeVersionRepository {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class const _ReportedVersion({required final String buildLabel}) implements AntigravityRuntimeVersionRepository {
+  @override
+  Future<AntigravityRuntimeVersionProbeResult> probe({
+    required AntigravityRuntimeSource source,
+    required String serverPath,
+    required Map<String, String> environment,
+    required Duration timeout,
+  }) async {
+    final version = AntigravityRuntimeVersion.tryParse(buildLabel: buildLabel);
+    if (version == null) throw StateError("invalid test version");
+    return AntigravityRuntimeVersionProbeSucceeded(source: source, version: version);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class const _AuthenticatedProfile() implements AntigravityProfileInspectionService {
+  @override
+  AntigravityAuthenticationHint inspect({required String geminiHome}) => AntigravityAuthenticationHint.tokenPresent;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class const _ThrowingProfile() implements AntigravityProfileInspectionService {
   @override
   AntigravityAuthenticationHint inspect({required String geminiHome}) => throw StateError("profile unavailable");
@@ -51,6 +76,29 @@ class const _ThrowingProfile() implements AntigravityProfileInspectionService {
 }
 
 void main() {
+  test("a semantically equal but non-exact PATH label is not reported ready", () async {
+    const reportedVersion = "${AntigravityRelease.agentVersion}+local";
+    final setup =
+        await AntigravitySetupService(
+          runtime: const _FoundRuntime(),
+          runtimeVersions: const _ReportedVersion(buildLabel: reportedVersion),
+          profile: const _AuthenticatedProfile(),
+        ).inspect(
+          explicitServerPath: null,
+          managedServerPath: null,
+          pathEnvironment: const {},
+          probeEnvironment: const {},
+          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+          geminiHome: "/profile",
+          managedInstallAvailable: false,
+          timeout: const Duration(seconds: 1),
+        );
+
+    expect(setup, isA<PluginSetupUnknown>());
+    expect(setup.runtimeVersion, reportedVersion);
+    expect(setup.actionHint, contains("could not be verified"));
+  });
+
   test("retains a verified runtime version when profile inspection fails", () async {
     final setup =
         await AntigravitySetupService(

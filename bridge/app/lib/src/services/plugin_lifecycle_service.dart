@@ -1247,7 +1247,8 @@ class PluginLifecycleService({
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       managementCapabilities: {
         for (final capability in _managementCapabilitiesForPluginId(pluginId: plugin.id))
-          if (capability != PluginControlCapability.install || setupStatus is! PluginSetupRuntimeOutdated)
+          if (capability != PluginControlCapability.install ||
+              (setupStatus is! PluginSetupRuntimeOutdated && setupStatus is! PluginSetupUnknown))
             ?_mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),

@@ -23,7 +23,7 @@ class AntigravityRuntimeVersionRepository({required final AntigravityAcpApi _api
       return AntigravityRuntimeVersionProbeRejected(source: source, exitCode: dto.exitCode);
     } on Object catch (error, stackTrace) {
       Log.w('[antigravity] runtime version probe failed for "$serverPath"', error, stackTrace);
-      return AntigravityRuntimeVersionProbeFailed(source: source);
+      return AntigravityRuntimeVersionProbeFailed(source: source, cause: error, stackTrace: stackTrace);
     }
   }
 }

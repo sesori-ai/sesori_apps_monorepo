@@ -90,16 +90,16 @@ class AntigravitySetupService({
       case AntigravityRuntimeVersionProbeSucceeded(:final version):
         final supported = AntigravityRuntimeVersion.tryParse(buildLabel: AntigravityRelease.agentVersion);
         if (supported == null) throw StateError("The pinned Antigravity build label is invalid.");
-        final comparison = version.compareTo(supported);
-        if (comparison != 0) {
-          if (source == AntigravityRuntimeSource.path) {
-            return comparison < 0
-                ? _pathRuntimeOutdated(runtimeVersion: version.buildLabel)
-                : _pathRuntimeNewer(runtimeVersion: version.buildLabel);
-          }
-          return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
+        if (version.buildLabel == supported.buildLabel) {
+          return _inspectProfile(geminiHome: geminiHome, runtimeVersion: version.buildLabel);
         }
-        return _inspectProfile(geminiHome: geminiHome, runtimeVersion: version.buildLabel);
+        final comparison = version.compareTo(supported);
+        if (source == AntigravityRuntimeSource.path) {
+          if (comparison < 0) return _pathRuntimeOutdated(runtimeVersion: version.buildLabel);
+          if (comparison > 0) return _pathRuntimeNewer(runtimeVersion: version.buildLabel);
+          return _pathRuntimeUnknown(runtimeVersion: version.buildLabel);
+        }
+        return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
       case AntigravityRuntimeVersionProbeRejected():
         return source == AntigravityRuntimeSource.path
             ? _pathRuntimeUnknown()
@@ -156,7 +156,12 @@ class AntigravitySetupService({
     runtimeVersion: runtimeVersion,
   );
 
-  PluginSetupUnknown _pathRuntimeUnknown() => const PluginSetupUnknown(
-    actionHint: "The global Antigravity runtime could not be verified. Check its installation, then retry.",
-  );
+  PluginSetupUnknown _pathRuntimeUnknown({String? runtimeVersion}) => runtimeVersion == null
+      ? const PluginSetupUnknown(
+          actionHint: "The global Antigravity runtime could not be verified. Check its installation, then retry.",
+        )
+      : PluginSetupUnknown.versioned(
+          actionHint: "The global Antigravity runtime could not be verified. Check its installation, then retry.",
+          runtimeVersion: runtimeVersion,
+        );
 }

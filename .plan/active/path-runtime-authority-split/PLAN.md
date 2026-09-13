@@ -215,8 +215,9 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - descriptors in `sesori_plugin_opencode`, `sesori_plugin_codex`, `sesori_plugin_copilot`,
     `sesori_plugin_cursor`, `sesori_plugin_deepseek`, `sesori_plugin_omp`, and `sesori_plugin_pi` — managed startup
     authority overrides and caller updates only; and
-  - Antigravity `services/antigravity_managed_runtime_path_authority.dart` owns pair-aware mutation authority; its
-    descriptor composes it for install/startup upgrade only, while pair selection remains Step 6.
+  - Antigravity `services/antigravity_runtime_path_authority_calculator.dart` owns the shared physical-absence
+    predicate, while `services/antigravity_managed_runtime_path_authority.dart` applies it at the mutation boundary;
+    the descriptor composes that authority for install/startup upgrade only, while inert pair selection remains Step 6.
 - **Bridge consumers:** `bridge/app/lib/src/runtime/plugin_runtime.dart` passes injected `_setupProcesses` and immutable
   environment; `plugin_lifecycle_repository.dart` forwards the async decision;
   `plugin_lifecycle_service.dart.upgradeManagedRuntimes` admits only eligible startup refreshes; and
@@ -225,7 +226,7 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 - **Collaborators/ownership:** `RuntimeVersionManagedRuntimePathAuthority` requires `RuntimeManifest` and
   `RuntimeVersionValidator`; `ManagedRuntimeUpgradeService` requires `ManagedRuntimePathAuthority` and
   `ManagedRuntimeInventory`; `ManagedRuntimeInstallService` requires manifest, installer, cleaner, authority, and asset
-  resolver. Antigravity authority additionally injects its runtime repository, concrete executable locator, and target.
+  resolver. Antigravity authority additionally injects its runtime repository, pure authority calculator, and target.
   Composition constructs these stateless graphs; no app-owned PATH decision enters a plugin.
 - **Dependency/data flow:** Foundation locator/command result → `RuntimeVersionValidator`
   → `ManagedRuntimePathAuthority` → selection/install/upgrade services → descriptor
@@ -267,15 +268,15 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - models `models/antigravity_runtime_version.dart` — sealed domain variants
     `AntigravityRuntimeVersionProbeSucceeded`, `AntigravityRuntimeVersionProbeRejected`, and
     `AntigravityRuntimeVersionProbeFailed`, carrying no `CommandResult`;
-  - services `antigravity_runtime_path_authority_calculator.dart`, `antigravity_runtime_service.dart`, and
-    `antigravity_setup_service.dart` — the calculator is extracted once managed authority and inert selection both need
-    it; `AntigravityRuntimeService` and `AntigravitySetupService` consume the resulting pair policy; and
+  - services `antigravity_runtime_service.dart` and `antigravity_setup_service.dart` —
+    `AntigravityRuntimeService` consumes the Step 4 physical-absence predicate for inert selection, while
+    `AntigravitySetupService` consumes the resulting pair policy; and
   - `runtime/antigravity_plugin_descriptor.dart`, `runtime/antigravity_authentication_composer.dart`, and package export
     update composition/callers in lockstep.
 - **Collaborators/ownership:** `AntigravityAcpApi` keeps injected `AcpProcessFactory`, `AcpOutputInterceptor`, and
   `CommandExecutor`; version inspection uses only the executor. `AntigravityRuntimeVersionRepository` injects that API.
-  Runtime service and the Step 4 managed authority inject the calculator, which Step 6 extracts once both consumers
-  exist; storage and repository layers provide its physical PATH evidence.
+  Runtime service consumes the Step 4 calculator already used by managed authority; storage and repository layers
+  provide its physical PATH evidence.
   `AntigravitySetupService` injects runtime service, version repository, and existing profile inspection service.
 - **Dependency/data flow:** Foundation command result → `AntigravityAcpApi` DTO
   → `AntigravityRuntimeVersionRepository` domain probe → `AntigravitySetupService`
@@ -357,7 +358,7 @@ generated files. These are ceilings, not targets:
 | 3 | 1,000 | Narrow app lifecycle/process implementation and focused tests. |
 | 4 | 1,850 | Review-expanded mutation fencing, completion checks, and non-installable PATH setup. |
 | 5 | 1,400 | Standard descriptor behavior and tests; no Antigravity or app execution flow. |
-| 6 | 1,400 | Review-expanded for pair evidence, layering, typed version ordering, and probe timeout. |
+| 6 | 1,500 | Review-expanded for pair evidence, exact-label readiness, Windows PATH parity, and failure provenance. |
 | 7 | 1,500 | Shared wire, bridge execution, and minimum client-core consumption. |
 | 8 | 1,400 | Client UI/tests and current 354-line documentation change. |
 | 9 | 500 | Verification evidence and plan retirement only. |

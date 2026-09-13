@@ -87,14 +87,15 @@ void main() {
     }
   });
 
-  test("logs an API failure locally and returns an opaque-free domain failure", () async {
+  test("logs an API failure locally and retains its cause in the domain failure", () async {
     final logs = BufferingStdout();
+    final failure = StateError("synthetic version failure");
     final previousLevel = Log.level;
     late AntigravityRuntimeVersionProbeResult result;
     try {
       Log.level = LogLevel.debug;
       await IOOverrides.runZoned(
-        () async => result = await probe(outcome: () async => throw StateError("synthetic version failure")),
+        () async => result = await probe(outcome: () async => throw failure),
         stderr: () => logs,
       );
     } finally {
@@ -102,7 +103,10 @@ void main() {
     }
 
     expect(result, isA<AntigravityRuntimeVersionProbeFailed>());
-    expect((result as AntigravityRuntimeVersionProbeFailed).source, source);
+    final failed = result as AntigravityRuntimeVersionProbeFailed;
+    expect(failed.source, source);
+    expect(failed.cause, same(failure));
+    expect(failed.stackTrace.toString(), isNotEmpty);
     expect(logs.text, contains("synthetic version failure"));
     expect(logs.text, contains("/runtime/agy_acp_server.par"));
   });

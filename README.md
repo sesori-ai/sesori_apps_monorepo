@@ -176,13 +176,14 @@ Every integration ships enabled by default — pick your assistant when you star
 <details>
 <summary><strong>Google Antigravity notes</strong></summary>
 
-- **Runtime and license:** uses Google's proprietary official ACP pair, pinned to registry package `1.0.0` /
-  `agy_acp_server_20260818_01_RC01`. Review [Google's terms](https://antigravity.google/terms) and
+- **Runtime and license:** uses Google's proprietary official ACP pair, pinned to registry package `1.1.1` /
+  `agy_acp_server_1.1.1`. Review [Google's terms](https://antigravity.google/terms) and
   [documentation](https://antigravity.google/docs/) before downloading or authenticating.
 - **Hosts:** macOS arm64, Linux x64/arm64 and Windows x64/arm64. macOS x64 is unsupported, even with an explicit path.
   Linux managed installation requires Info-ZIP `unzip`.
 - **Setup:** choose Install in Antigravity's harness detail after reviewing its guidance, or provide the official matching
-  server/harness siblings locally. `--antigravity-bin <path>` is authoritative and disables managed installation.
+  server/harness siblings locally. `--antigravity-bin <path>` is authoritative and disables managed installation. Setup
+  runs only a bounded sanitized `--version` probe; it does not initialize ACP or validate a login.
 - **Login:** personal Google OAuth from a current mobile/desktop client, separate from Sesori account login.
   Sesori captures the issued loopback callback automatically; mobile returns through a nonce-only native app callback.
   The bridge validates and exchanges the captured callback. There is no copy/paste or CLI login fallback; credentials

@@ -96,6 +96,18 @@ void main() {
     );
   });
 
+  test("normalizes quoted Windows PATH entries before scanning the runtime pair", () {
+    if (!Platform.isWindows) return;
+    final paths = writePair(temporaryDirectory);
+
+    final result = storage.findOnPath(
+      environment: {"Path": '  "${temporaryDirectory.path}"  '},
+      target: target,
+    ) as AntigravityRuntimePairFound;
+
+    expect(result.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
+  });
+
   test("rejects wrong resolved names and identical members", () {
     if (Platform.isWindows) return;
     final realDirectory = Directory(p.join(temporaryDirectory.path, "real"))..createSync();

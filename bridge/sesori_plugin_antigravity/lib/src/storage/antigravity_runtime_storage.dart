@@ -106,7 +106,8 @@ class const AntigravityRuntimeStorage() {
 
     final context = _pathContext(target: target);
     final separator = target.os == PlatformOs.windows ? ";" : ":";
-    for (final directory in rawPath.split(separator)) {
+    for (final rawDirectory in rawPath.split(separator)) {
+      final directory = _pathDirectory(rawDirectory: rawDirectory, target: target);
       final result = inspectPair(
         serverPath: context.join(directory, AntigravityRelease.serverFileName(target: target)),
         target: target,
@@ -153,6 +154,15 @@ class const AntigravityRuntimeStorage() {
       if (entry.key.toLowerCase() == "path") return entry.value;
     }
     return null;
+  }
+
+  String _pathDirectory({required String rawDirectory, required PlatformTarget target}) {
+    if (target.os != PlatformOs.windows) return rawDirectory;
+    final directory = rawDirectory.trim();
+    if (directory.length >= 2 && directory.startsWith('"') && directory.endsWith('"')) {
+      return directory.substring(1, directory.length - 1);
+    }
+    return directory;
   }
 
   p.Context _pathContext({required PlatformTarget target}) =>

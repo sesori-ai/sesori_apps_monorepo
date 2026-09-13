@@ -76,5 +76,9 @@ final class const AntigravityRuntimeVersionProbeRejected({
   required final int exitCode,
 }) extends AntigravityRuntimeVersionProbeResult;
 
-final class const AntigravityRuntimeVersionProbeFailed({required final AntigravityRuntimeSource source})
-    extends AntigravityRuntimeVersionProbeResult;
+final class const AntigravityRuntimeVersionProbeFailed({
+  required final AntigravityRuntimeSource source,
+  // ignore: no_slop_linter/prefer_specific_type, caught version probe failures remain opaque
+  required final Object cause,
+  required final StackTrace stackTrace,
+}) extends AntigravityRuntimeVersionProbeResult;
