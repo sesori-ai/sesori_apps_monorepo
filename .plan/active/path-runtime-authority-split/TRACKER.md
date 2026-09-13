@@ -150,7 +150,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Second review accepted/evidence head: `fed982198691b1083660a12d9be8197148082e80`.
 - Named-launcher follow-up implementation checkpoint: `54cad58138ba96c89561d1f50c65a41834ca57a5`.
 - Acknowledged-handoff implementation checkpoint: `34e1827c2f1b1d2e36dde85110ca29a486d08c32`.
-- Native-environment handoff checkpoint: `PENDING_NATIVE_ENVIRONMENT_HANDOFF_HEAD`.
+- Native-environment handoff checkpoint: `61f8e0128efc1d300dc9457016044227e905f1f7`.
 - The following evidence-only commit replaces that placeholder without changing base-to-head numstat; its accepted head
   is recorded in the PR body because a commit cannot embed its own hash.
 - Initial focused process, shutdown, runtime, lifecycle, runner, and restart tests: 189 passed.
