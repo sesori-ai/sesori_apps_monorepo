@@ -111,7 +111,7 @@ class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration 
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: false,
+              rescanRequested: false,
               hydrationMarkerRequested: true,
             ),
           )

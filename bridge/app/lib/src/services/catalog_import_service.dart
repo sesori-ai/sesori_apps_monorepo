@@ -5,9 +5,17 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/catalog_import_repository.dart";
 import "../repositories/models/catalog_import_control.dart";
 
-enum CatalogImportTrigger() { automatic, explicit }
+/// Both triggers discover projects using the same visibility defaults.
+/// A rescan bypasses the startup hydration marker, not project hiding.
+enum CatalogImportTrigger() {
+  automatic,
+  rescan,
+}
 
-enum CatalogEmptyHydrationPolicy() { complete, retry }
+enum CatalogEmptyHydrationPolicy() {
+  complete,
+  retry,
+}
 
 class CatalogImportPluginUnknownException({required final String pluginId}) implements Exception;
 
@@ -16,14 +24,14 @@ class CatalogImportPluginNotEnabledException({required final String pluginId}) i
 class CatalogImportPluginUnavailableException({required final String pluginId}) implements Exception;
 
 class CatalogImportService({
-    required final CatalogImportRepository _repository,
-    required List<String> orderedPluginIds,
-    required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
-  }) {
-
+  required final CatalogImportRepository _repository,
+  required List<String> orderedPluginIds,
+  required Map<String, CatalogEmptyHydrationPolicy> emptyHydrationPolicies,
+}) {
   final List<String> _orderedPluginIds = List<String>.unmodifiable(orderedPluginIds);
   final Set<String> _knownPluginIds = Set<String>.unmodifiable(orderedPluginIds);
-  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies = Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);
+  final Map<String, CatalogEmptyHydrationPolicy> _emptyHydrationPolicies =
+      Map<String, CatalogEmptyHydrationPolicy>.unmodifiable(emptyHydrationPolicies);
   final StreamController<CatalogImportProgress> _progressController = StreamController<CatalogImportProgress>.broadcast(
     sync: true,
   );
@@ -54,7 +62,7 @@ class CatalogImportService({
     }
 
     final control = CatalogImportControl(
-      explicitImportRequested: trigger != CatalogImportTrigger.automatic,
+      rescanRequested: trigger == CatalogImportTrigger.rescan,
       hydrationMarkerRequested: trigger == CatalogImportTrigger.automatic,
     );
     _controls[pluginId] = control;
@@ -98,19 +106,21 @@ class CatalogImportService({
 
   Future<void> _run({required String pluginId, required CatalogImportControl control}) async {
     try {
-      if (!control.explicitImportRequested) {
+      if (!control.rescanRequested) {
         final completion = await _repository.getHydrationCompletion(pluginId: pluginId);
         if (control.cancellationRequested) {
           _publish(CatalogImportProgress.cancelled(pluginId: pluginId));
           return;
         }
-        if (!control.explicitImportRequested && completion != null) return;
+        if (!control.rescanRequested && completion != null) return;
       }
 
       await for (final progress in _repository.importCatalog(pluginId: pluginId, control: control)) {
-        if (progress case CatalogImportCommitting(
-          sessionsSeen: 0,
-        ) when _emptyHydrationPolicies[pluginId] == CatalogEmptyHydrationPolicy.retry) {
+        if (progress
+            case CatalogImportCommitting(
+              sessionsSeen: 0,
+            )
+            when _emptyHydrationPolicies[pluginId] == CatalogEmptyHydrationPolicy.retry) {
           control.hydrationMarkerRequested = false;
         }
         _publish(progress);
@@ -129,8 +139,8 @@ class CatalogImportService({
     switch (trigger) {
       case CatalogImportTrigger.automatic:
         control.hydrationMarkerRequested = true;
-      case CatalogImportTrigger.explicit:
-        control.explicitImportRequested = true;
+      case CatalogImportTrigger.rescan:
+        control.rescanRequested = true;
     }
   }
 
