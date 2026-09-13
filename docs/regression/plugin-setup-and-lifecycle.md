@@ -124,9 +124,10 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   model/reasoning writes never modify user settings.
 - Antigravity is an ACP v1 harness over Google's official proprietary runtime pair. An explicit
   `--antigravity-bin` server is authoritative and requires its matching sibling harness; otherwise PATH then the
-  installed managed pair are checked. Setup inspection is static and inert, reports personal-auth readiness from
-  token-file presence without reading it, and advertises current-client browser login only when required. It never
-  imports ambient credentials, starts a process, opens a browser or downloads a runtime. Managed Install is explicit,
+  installed managed pair are checked. Only verified physical PATH-server absence permits managed selection. Setup
+  inspection runs bounded `--version` without initializing ACP, reports personal-auth readiness from token-file presence
+  without reading it, and advertises current-client browser login only when required. It never imports ambient
+  credentials, opens a browser or downloads a runtime. Managed Install is explicit,
   limited to macOS arm64, Linux x64/arm64 and Windows x64/arm64 (not macOS x64), absent with an override, and preceded
   by Google terms/documentation guidance visible on the detail screen before installation. The overview download icon
   opens that screen rather than starting a download. Preparation, exact identity/version probing, login and live start use the same isolated profile/environment
@@ -481,9 +482,9 @@ owned-process exit; and restart.
   instead of the explicit no-harness state when none is usable.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
   being logged, failed, or restarted as an unexpected crash.
-- Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, launches ACP,
-  opens a browser, falls through from an explicit pair, downloads automatically, or offers managed install with an
-  override/on macOS x64; registration changes the OpenCode preferred default or adds a shared `Harness` enum case.
+- Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, initializes ACP,
+  opens a browser, falls through from PATH/explicit pair evidence, downloads automatically, or offers managed
+  install with an override/on macOS x64; registration changes the OpenCode default or adds a shared `Harness` enum case.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
   PATH release, offers install with an explicit path or on an unsupported

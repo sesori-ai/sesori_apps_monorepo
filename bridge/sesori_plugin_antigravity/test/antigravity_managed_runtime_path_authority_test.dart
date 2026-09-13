@@ -66,7 +66,7 @@ void main() {
     final locator = _ExecutableLocator(presence: serverPresence, platformIsWindows: false);
     final authority = AntigravityManagedRuntimePathAuthority(
       runtimeRepository: _RuntimeRepository(candidate: candidate),
-      executableLocator: locator,
+      pathAuthorityCalculator: AntigravityRuntimePathAuthorityCalculator(executableLocator: locator),
       target: target,
     );
     final absent = await authority.isPathAbsent(environment: const {}, abortSignal: StartAbortSignal.never);

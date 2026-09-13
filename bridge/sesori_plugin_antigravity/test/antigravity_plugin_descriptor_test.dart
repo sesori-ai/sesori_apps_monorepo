@@ -34,11 +34,11 @@ class _Store({required final _Store? parent}) implements HostJsonStore {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _HelperProcess({required final int status}) implements SpawnedProcess {
+class _HelperProcess({required final int status, final String stdoutText = ""}) implements SpawnedProcess {
   @override
   int get pid => 1;
   @override
-  Stream<List<int>> get stdout => const Stream.empty();
+  Stream<List<int>> get stdout => Stream.value(utf8.encode(stdoutText));
   @override
   Stream<List<int>> get stderr => const Stream.empty();
   @override
@@ -104,6 +104,7 @@ class _Processes({
   required final String serverPath,
   required final Map<String, dynamic> initialize,
   required final bool respondToInitialize,
+  final String versionOutput = "Build label: ${AntigravityRelease.agentVersion}\n",
 }) implements HostProcessService {
   final launches = <_Launch>[];
   final agents = <_AgentProcess>[];
@@ -126,6 +127,7 @@ class _Processes({
         includeParentEnvironment: includeParentEnvironment,
       ),
     );
+    if (arguments case ["--version"]) return _HelperProcess(status: 0, stdoutText: versionOutput);
     if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess(status: 0);
     final agent = _AgentProcess(
       initialize: initialize,
@@ -211,9 +213,13 @@ class _Http() implements HttpClient {
 
 class _DownloadHttp({required final Object failure}) extends http.BaseClient {
   bool closed = false;
+  int requests = 0;
 
   @override
-  Future<http.StreamedResponse> send(http.BaseRequest request) => Future.error(failure);
+  Future<http.StreamedResponse> send(http.BaseRequest request) {
+    requests++;
+    return Future.error(failure);
+  }
 
   @override
   void close() {
@@ -284,7 +290,7 @@ void main() {
   PluginConfig config({required String? server}) =>
       PluginConfig(values: {AntigravityPluginDescriptor.binOption: server});
 
-  test("inspection is inert, explicit is authoritative, and token contents are not read", () async {
+  test("inspection validates the explicit version without starting ACP or reading token contents", () async {
     final candidate = descriptor(http: null);
     final missing = await candidate.inspectSetup(
       config: config(server: p.join(state.path, AntigravityRelease.posixServerFileName)),
@@ -313,10 +319,14 @@ void main() {
         environment: const {},
         stateDirectory: state.path,
       ),
-      const PluginSetupReady(),
+      const PluginSetupReady.versioned(runtimeVersion: AntigravityRelease.agentVersion),
     );
     expect(token.readAsStringSync(), "synthetic-not-json-token-content");
-    expect(processes.launches, isEmpty);
+    expect(processes.launches, hasLength(2));
+    expect(processes.launches.map((launch) => launch.arguments), everyElement(const ["--version"]));
+    expect(processes.launches.every((launch) => !launch.includeParentEnvironment), isTrue);
+    expect(processes.launches.every((launch) => !launch.environment.containsKey("GOOGLE_API_KEY")), isTrue);
+    expect(processes.agents, isEmpty);
     expect(store.scopes, isEmpty);
   });
 
@@ -361,10 +371,82 @@ void main() {
     } finally {
       Directory.current = oldCurrent;
     }
-    expect(processes.launches, isEmpty);
+    expect(processes.launches.single.arguments, const ["--version"]);
+    expect(processes.agents, isEmpty);
   });
 
-  test("managed pair is the inert fallback after PATH", () async {
+  test("an incompatible PATH pair blocks managed fallback without starting ACP", () async {
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    _writePair(directory: managedDirectory);
+    processes = _Processes(
+      serverPath: pair.server,
+      initialize: _initialize(),
+      respondToInitialize: true,
+      versionOutput: "Build label: agy_acp_server_1.0.0\n",
+    );
+
+    final status = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: {"PATH": runtime.path},
+      stateDirectory: state.path,
+    );
+
+    expect(status, isA<PluginSetupRuntimeOutdated>());
+    expect(status.runtimeVersion, "agy_acp_server_1.0.0");
+    expect(processes.launches.single.executable, pair.server);
+    expect(processes.launches.single.arguments, const ["--version"]);
+    expect(processes.agents, isEmpty);
+  });
+
+  test("an incomplete PATH pair blocks managed fallback as unknown", () async {
+    File(pair.harness).deleteSync();
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    _writePair(directory: managedDirectory);
+
+    final status = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: {"PATH": runtime.path},
+      stateDirectory: state.path,
+    );
+
+    expect(status, isA<PluginSetupUnknown>());
+    expect(processes.launches, isEmpty);
+    expect(processes.agents, isEmpty);
+  });
+
+  test("an unsafe PATH build label remains local and blocks managed fallback", () async {
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    _writePair(directory: managedDirectory);
+    processes = _Processes(
+      serverPath: pair.server,
+      initialize: _initialize(),
+      respondToInitialize: true,
+      versionOutput: "Build label: private@example.com\n",
+    );
+
+    final status = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: {"PATH": runtime.path},
+      stateDirectory: state.path,
+    );
+
+    expect(status, isA<PluginSetupUnknown>());
+    expect(status.runtimeVersion, isNull);
+    expect(status.actionHint, isNot(contains("private@example.com")));
+    expect(processes.launches.single.executable, pair.server);
+    expect(processes.agents, isEmpty);
+  });
+
+  test("managed pair is validated only when PATH is physically absent", () async {
     final managedDirectory = Directory(
       p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
     )..createSync(recursive: true);
@@ -378,7 +460,8 @@ void main() {
       ),
       isA<PluginSetupAuthenticationRequired>(),
     );
-    expect(processes.launches, isEmpty);
+    expect(processes.launches.single.arguments, const ["--version"]);
+    expect(processes.agents, isEmpty);
   });
 
   test("managed install is advertised only for supported targets without an explicit override", () async {
@@ -387,6 +470,11 @@ void main() {
       candidate.managementCapabilities(config: config(server: null)),
       contains(PluginControlCapability.install),
     );
+    expect(
+      candidate.managementCapabilities(config: config(server: null)),
+      isNot(contains(PluginControlCapability.runtimeUpdate)),
+    );
+    expect(candidate.runtimeUpdateSpec(config: config(server: null)), isNull);
     expect(
       candidate.managementCapabilities(config: config(server: pair.server)),
       isNot(contains(PluginControlCapability.install)),
@@ -465,6 +553,19 @@ void main() {
       ),
       isFalse,
     );
+
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    _writePair(directory: managedDirectory);
+    final setup = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: {"PATH": brokenPath.path},
+      stateDirectory: state.path,
+    );
+    expect(setup, isA<PluginSetupUnknown>());
+    expect(processes.launches, isEmpty);
   });
 
   test("invalid managed pair retains both disclosure URLs before installation", () async {
@@ -491,6 +592,33 @@ void main() {
     );
     expect(processes.launches, isEmpty);
     expect(store.scopes, isEmpty);
+  });
+
+  test("managed install revalidates pair-aware PATH authority before mutating state", () async {
+    final obsolete = Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0"))..createSync(recursive: true);
+    final download = _DownloadHttp(failure: StateError("download must not start"));
+    final candidate = AntigravityPluginDescriptor(
+      target: _target,
+      callbackHttpClientFactory: unexpectedHttpClient,
+      runtimeDownloadHttpClientFactory: () => download,
+    );
+
+    final progress = await candidate
+        .installRuntime(
+          config: config(server: null),
+          processes: processes,
+          environment: {"PATH": runtime.path},
+          stateDirectory: state.path,
+          startAborted: StartAbortSignal.never,
+          runtimeInUse: RuntimeInUseSignal.never,
+        )
+        .toList();
+
+    expect(progress, [isA<ProvisionResolving>(), isA<ProvisionFailed>()]);
+    expect(obsolete.existsSync(), isTrue);
+    expect(download.requests, isZero);
+    expect(download.closed, isTrue);
+    expect(processes.launches, isEmpty);
   });
 
   test("explicit override prevents download and managed download failures stay plugin-local", () async {

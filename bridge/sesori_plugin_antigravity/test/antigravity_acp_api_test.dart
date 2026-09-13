@@ -3,8 +3,36 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+class const _UnusedCommands() implements CommandExecutor {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _VersionCommands({required final CommandResult result}) implements CommandExecutor {
+  String? executable;
+  List<String>? arguments;
+  Map<String, String>? environment;
+  Duration? timeout;
+
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async {
+    this.executable = executable;
+    this.arguments = List<String>.unmodifiable(arguments);
+    this.environment = environment == null ? null : Map<String, String>.unmodifiable(environment);
+    this.timeout = timeout;
+    return result;
+  }
+}
 
 class _AbortAfterInitializeSignal() implements StartAbortSignal {
   int _polls = 0;
@@ -25,6 +53,7 @@ void main() {
     process = FakeAcpProcess();
     launchSpecs = [];
     api = AntigravityAcpApi(
+      commands: const _UnusedCommands(),
       stderrInterceptor: AcpOutputInterceptor(
         maxLineBytes: 65536,
         consumeLine: const AntigravityStderrMapper().consumeLine,
@@ -37,12 +66,62 @@ void main() {
   });
   tearDown(() => process.close());
 
+  test("version runs only the bounded helper command and sanitizes its build label", () async {
+    const timeout = Duration(seconds: 1);
+    final commands = _VersionCommands(
+      result: const CommandResult(
+        exitCode: 0,
+        stdout: "diagnostic\nBuild label: ${AntigravityRelease.agentVersion}\n",
+        stderr: "ignored",
+      ),
+    );
+    api = AntigravityAcpApi(
+      commands: commands,
+      stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+      processFactory: (_) async => process,
+    );
+
+    final version = await api.version(
+      serverPath: "/runtime/agy_acp_server.par",
+      environment: const {"GEMINI_HOME": "/isolated"},
+      timeout: timeout,
+    );
+
+    expect((version.exitCode, version.buildLabel), (0, AntigravityRelease.agentVersion));
+    expect(commands.executable, "/runtime/agy_acp_server.par");
+    expect(commands.arguments, const ["--version"]);
+    expect(commands.environment, const {"GEMINI_HOME": "/isolated"});
+    expect(commands.timeout, timeout);
+    expect(launchSpecs, isEmpty);
+  });
+
+  test("version rejects blank and unsafe build labels", () async {
+    for (final output in ["Build label:   \n", "Build label: private@example.com\n", "development build\n"]) {
+      api = AntigravityAcpApi(
+        commands: _VersionCommands(
+          result: CommandResult(exitCode: 0, stdout: output, stderr: ""),
+        ),
+        stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+        processFactory: (_) async => process,
+      );
+
+      final version = await api.version(
+        serverPath: "/runtime/agy_acp_server.par",
+        environment: const {},
+        timeout: const Duration(seconds: 1),
+      );
+
+      expect(version.buildLabel, isNull, reason: output);
+    }
+  });
+
   for (final authenticating in [false, true]) {
     test("${authenticating ? 'authentication' : 'probe'} abort awaits and reaps a late spawn", () async {
       final spawn = Completer<AcpProcessHandle>();
       final spawning = Completer<void>();
       final abort = StartAbortController();
       api = AntigravityAcpApi(
+        commands: const _UnusedCommands(),
         processFactory: (_) {
           spawning.complete();
           return spawn.future;

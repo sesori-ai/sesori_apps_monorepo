@@ -263,7 +263,7 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - API `api/antigravity_acp_api.dart` and `api/models/antigravity_version_dto.dart` — `AntigravityAcpApi.version`
     performs only bounded `--version`; `AntigravityVersionDto` remains API-local;
   - repository `repositories/antigravity_runtime_version_repository.dart` — `AntigravityRuntimeVersionRepository`
-    maps DTO exit/output into domain probe variants;
+    maps the API-local exit/build-label DTO into domain probe variants;
   - models `models/antigravity_runtime_version.dart` — sealed domain variants
     `AntigravityRuntimeVersionProbeSucceeded`, `AntigravityRuntimeVersionProbeRejected`, and
     `AntigravityRuntimeVersionProbeFailed`, carrying no `CommandResult`;
@@ -274,14 +274,14 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
     update composition/callers in lockstep.
 - **Collaborators/ownership:** `AntigravityAcpApi` keeps injected `AcpProcessFactory`, `AcpOutputInterceptor`, and
   `CommandExecutor`; version inspection uses only the executor. `AntigravityRuntimeVersionRepository` injects that API.
-  `AntigravityRuntimeService` and managed authority inject the calculator once it has both production consumers.
+  Runtime service and managed authority inject the calculator, which combines pair results with physical PATH lookup.
   `AntigravitySetupService` injects runtime service, version repository, and existing profile inspection service.
 - **Dependency/data flow:** Foundation command result → `AntigravityAcpApi` DTO
   → `AntigravityRuntimeVersionRepository` domain probe → `AntigravitySetupService`
   → descriptor setup status. Physical pair evidence flows repository → calculator/service
   → descriptor or managed authority; it never enters shared code.
-- **Activation:** Antigravity setup becomes inert and pair-aware. Only `Missing(path, server)` permits managed fallback;
-  a missing sibling harness, storage error, malformed pair, or any present server remains authoritative.
+- **Activation:** Antigravity setup becomes inert and pair-aware. Only `Missing(path, server)` plus verified physical
+  absence permits managed fallback; a missing sibling, storage error, malformed pair, or present entry is authoritative.
 
 ### Step 7 — wire, bridge update execution, and client-core consumption
 
