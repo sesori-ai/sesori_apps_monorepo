@@ -259,6 +259,8 @@ class const BridgeRuntimeRunner._() {
     final processRunner = ProcessRunner();
     const serverClock = ServerClock();
     final environment = io.Platform.environment;
+    final restartPredecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
+    final restartPredecessorPid = restartPredecessorPidRaw == null ? null : int.tryParse(restartPredecessorPidRaw);
     final currentUser = _resolveCurrentUser(environment: environment);
     if (currentUser == null) {
       Log.w("Failed to determine current user from environment");
@@ -279,6 +281,7 @@ class const BridgeRuntimeRunner._() {
       clock: serverClock,
       isWindows: io.Platform.isWindows,
       platform: io.Platform.operatingSystem,
+      treeTerminationExcludedRootPid: restartPredecessorPid,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
       isWindows: io.Platform.isWindows,
@@ -692,11 +695,9 @@ class const BridgeRuntimeRunner._() {
       );
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
-      final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
-      final predecessorPid = predecessorPidRaw == null ? null : int.tryParse(predecessorPidRaw);
-      if (predecessorPid != null) {
+      if (restartPredecessorPid != null) {
         await bridgeInstanceService.awaitPredecessorBridgeExit(
-          predecessorPid: predecessorPid,
+          predecessorPid: restartPredecessorPid,
           timeout: const Duration(seconds: 30),
         );
 

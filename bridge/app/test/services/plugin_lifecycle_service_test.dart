@@ -2089,6 +2089,20 @@ void main() {
       () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()),
       throwsStateError,
     );
+    expect(() => service.authenticate(pluginId: "one"), throwsStateError);
+    await expectLater(
+      service.submitAuthenticationRedirect(pluginId: "one", redirectUri: Uri.parse("http://localhost/callback")),
+      throwsStateError,
+    );
+    await expectLater(service.cancelAuthentication(pluginId: "one"), throwsStateError);
+    expect(
+      () => service.updateIdleTimeout(
+        request: const PluginIdleTimeoutUpdateRequest.applyAll(idleTimeoutMins: 30),
+      ),
+      throwsStateError,
+    );
+    service.upgradeManagedRuntimes();
+    expect(repository.upgradeQueries, isEmpty);
 
     inspectionGate.complete();
     await refresh;

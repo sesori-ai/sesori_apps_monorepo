@@ -48,6 +48,7 @@ void main() {
                 clock: clock,
                 isWindows: Platform.isWindows,
                 platform: Platform.operatingSystem,
+                treeTerminationExcludedRootPid: null,
               ),
               currentUser: null,
             ),

@@ -11,6 +11,10 @@ class SystemProcessApi({
   required final ServerClock _clock,
   required final bool _isWindows,
   required final String _platform,
+  // A standalone restart successor remains a child of its predecessor on
+  // Windows. Excluding that one root prevents `taskkill /T` from killing the
+  // successor that is trying to replace it.
+  required final int? _treeTerminationExcludedRootPid,
 }) {
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
   /// waiting. Used to launch a successor bridge during a restart.
@@ -50,21 +54,53 @@ class SystemProcessApi({
     required bool force,
   }) async {
     final attemptedAt = _clock.now();
+    // SignalResult has POSIX-shaped vocabulary. `sigterm` represents the
+    // non-forced taskkill request; `/F` is the hard-kill escalation.
+    final deliveredSignal = force ? ProcessSignal.sigkill : ProcessSignal.sigterm;
     if (pid <= 0) {
       return SignalResult(
         pid: pid,
         requestedSignal: requestedSignal,
-        deliveredSignal: .sigkill,
+        deliveredSignal: deliveredSignal,
         wasRequested: false,
         attemptedAt: attemptedAt,
       );
     }
-    final result = await _processRunner.run("taskkill", ["/PID", "$pid", "/T", if (force) "/F"]);
+    final arguments = <String>[
+      "/PID",
+      "$pid",
+      if (pid != _treeTerminationExcludedRootPid) "/T",
+      if (force) "/F",
+    ];
+    final result = await _processRunner.run("taskkill", arguments);
+    if (result.exitCode != 0) {
+      try {
+        if (await _inspectWindowsProcess(pid: pid) == null) {
+          return SignalResult(
+            pid: pid,
+            requestedSignal: requestedSignal,
+            deliveredSignal: deliveredSignal,
+            wasRequested: false,
+            attemptedAt: attemptedAt,
+          );
+        }
+      } on Object catch (error, stackTrace) {
+        Log.w("Failed to inspect pid $pid after taskkill failed", error, stackTrace);
+      }
+      final stdout = result.stdout.toString().trim();
+      final stderr = result.stderr.toString().trim();
+      final details = [
+        if (stdout.isNotEmpty) "stdout: $stdout",
+        if (stderr.isNotEmpty) "stderr: $stderr",
+        if (stdout.isEmpty && stderr.isEmpty) "taskkill exited ${result.exitCode} while pid $pid remained present",
+      ].join("\n");
+      throw ProcessException("taskkill", arguments, details, result.exitCode);
+    }
     return SignalResult(
       pid: pid,
       requestedSignal: requestedSignal,
-      deliveredSignal: .sigkill,
-      wasRequested: result.exitCode == 0,
+      deliveredSignal: deliveredSignal,
+      wasRequested: true,
       attemptedAt: attemptedAt,
     );
   }

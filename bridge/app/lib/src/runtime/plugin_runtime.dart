@@ -1257,6 +1257,9 @@ class PluginRuntime({
   Future<void> _dispose() async {
     beginShutdown();
     final errors = <({Object error, StackTrace stackTrace})>[];
+    // Do not let disposal overtake code still using this runtime's subjects and
+    // slots. The bridge shutdown coordinator owns the process-level backstop;
+    // direct callers may bound their wait without releasing mutation ownership.
     await Future.wait([
       for (final mutation in _runtimeMutations.toList(growable: false)) mutation.settled.future,
     ]);

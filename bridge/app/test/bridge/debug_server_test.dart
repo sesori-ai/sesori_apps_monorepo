@@ -995,6 +995,7 @@ BridgeRestartService _spawnableRestartService({
         clock: const ServerClock(),
         isWindows: false,
         platform: "linux",
+        treeTerminationExcludedRootPid: null,
       ),
       currentUser: null,
     ),

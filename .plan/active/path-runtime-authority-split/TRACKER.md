@@ -139,13 +139,13 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 
 ## Step 3 Evidence
 
-- Base: `825583d25d53587c28292b506e27e34f251cf98d` (Step 2 squash merge).
+- Numstat/merge base: `825583d25d53587c28292b506e27e34f251cf98d` (Step 2 squash merge).
 - Implementation head: `87fdf32596bd1c7cfe7a68382dd84a8c2b3fa37f`.
 - Focused process, shutdown, runtime, and lifecycle tests: 167 passed.
 - `dart analyze --fatal-infos` for `bridge/app`: no issues.
 - Architecture implementation review: APPROVED with no violations.
 - `git diff --check`: passed.
 - Implementation head: 312 additions plus 66 deletions, or 378 changed lines across 11 files.
-- Plan/evidence reconciliation: 17 authored lines; final numstat: 326 additions + 67 deletions = 393.
+- Plan/evidence reconciliation: 14 additions plus 1 deletion; final numstat: 326 + 67 = 393.
 - All churn is authored; generated churn is zero.
 - Final changed-line total remains below the 1,000-line ceiling.

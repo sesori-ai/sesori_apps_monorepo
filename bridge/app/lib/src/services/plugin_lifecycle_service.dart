@@ -258,11 +258,15 @@ class PluginLifecycleService({
 
   Stream<String> get managementSnapshotTokens => _managementSnapshotTokenController.stream;
 
+  void _requireAcceptingRequests() {
+    if (_disposing) throw StateError("Plugin lifecycle is shutting down.");
+  }
+
   Future<PluginManagementResponse> command({
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) {
-    if (_disposing) throw StateError("Plugin lifecycle is shutting down.");
+    _requireAcceptingRequests();
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
@@ -361,6 +365,7 @@ class PluginLifecycleService({
   /// generation. A plugin with a command already in flight is skipped; that
   /// command owns the slot.
   void upgradeManagedRuntimes() {
+    if (_disposing) return;
     for (final pluginId in _requireEligiblePluginIds()) {
       if (_activePluginCommands.containsKey(pluginId)) continue;
       if (!_lifecycleRepository.needsManagedRuntimeUpgrade(pluginId: pluginId)) continue;
@@ -378,6 +383,7 @@ class PluginLifecycleService({
   Stream<PluginAuthenticationProgressUpdate> get authenticationProgress => _authenticationProgressController.stream;
 
   Future<PluginAuthenticationChallengeResponse> authenticate({required String pluginId}) {
+    _requireAcceptingRequests();
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
@@ -430,6 +436,7 @@ class PluginLifecycleService({
     required String pluginId,
     required Uri redirectUri,
   }) async {
+    _requireAcceptingRequests();
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
@@ -487,6 +494,7 @@ class PluginLifecycleService({
   );
 
   Future<SuccessEmptyResponse> cancelAuthentication({required String pluginId}) async {
+    _requireAcceptingRequests();
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
@@ -761,6 +769,7 @@ class PluginLifecycleService({
   }
 
   Future<PluginManagementResponse> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
+    _requireAcceptingRequests();
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }

@@ -171,13 +171,15 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   classes own bridge orchestration.
 - **Production files/classes:**
   - `lib/src/server/api/system_process_api.dart` — `SystemProcessApi.sendGracefulSignal` and `sendForceSignal` use
-    tree-aware Windows `taskkill`, with injected `ProcessRunner`, `ServerClock`, platform flag, and platform name;
+    tree-aware Windows `taskkill`, with injected `ProcessRunner`, `ServerClock`, platform facts, and the one restart
+    predecessor root that must exclude descendants so it cannot terminate its successor;
   - `lib/src/services/plugin_lifecycle_service.dart` — sealed `_ActivePluginCommand`, `_ActiveResponseCommand`, and
     install-only `_ActiveRuntimeProvisionCommand`, each owning non-null settlement;
   - `lib/src/runtime/plugin_runtime.dart` — private `_RuntimeMutation` owns one `StartAbortController` and one
     `Completer<void>` for each accepted install;
   - `lib/src/runtime/bridge_shutdown_coordinator.dart` — `BridgeShutdownPhase.runtimeDispose` and ordered phases; and
-  - `lib/src/runtime/bridge_runtime_runner.dart` — composition registers lifecycle disposal before runtime disposal.
+  - `lib/src/runtime/bridge_runtime_runner.dart` — composition parses the restart predecessor once and registers
+    lifecycle disposal before runtime disposal.
 - **Dependency/data flow:** `ProcessRunner` API result → `SystemProcessApi` → existing process service/repository
   → bridge ownership consumer. Separately, runtime mutation → `PluginRuntime` settlement
   → `PluginLifecycleService` → `BridgeShutdownCoordinator` ordered disposal.
