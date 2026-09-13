@@ -18,7 +18,7 @@
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
 | 4. Make PATH authoritative for managed copies | Merged | #1472 | 1,850 |
 | 5. Report outdated PATH runtimes and safe updaters | Merged | #1473 | 1,400 |
-| 6. Inspect Antigravity PATH pairs without side effects | In progress | #1474 | 1,600 |
+| 6. Inspect Antigravity PATH pairs without side effects | In progress | #1474 | 1,750 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
 | 8. Present runtime updates and reconcile docs | Not started | — | 1,400 |
 | 9. Run coverage and retire plan | Not started | — | 500 |
@@ -53,13 +53,13 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 | Comment / report | Target step | Status |
 |---|---:|---|
 | `3999200805` — concrete executable locator | 2 | Implemented |
-| `3999200808` — Antigravity repository mapping | 6 | Planned |
+| `3999200808` — Antigravity repository mapping | 6 | Implemented |
 | `3999205383` — Windows first-attempt process tree | 3 | Implemented |
 | `3999205385` — deterministic Codex PATH tests | 5 | Implemented |
 | `3999205390` — recovery inspection after enable failure | 7 | Planned |
-| `3999205396` — direct Antigravity absence predicate tests | 6 | Planned |
+| `3999205396` — direct Antigravity absence predicate tests | 6 | Implemented |
 | `3999205399` — centralized missing-command policy | 2, 5 | Implemented |
-| `5652131685` — Antigravity lint suppression | 6 | Planned removal |
+| `5652131685` — Antigravity lint suppression | 6 | Retained with justification |
 
 ## Step 1 Checklist
 
@@ -219,7 +219,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Add focused API, repository, authority, runtime, setup, descriptor, and composition coverage.
 - [x] Run final Antigravity package tests, strict analysis, diagnostics, and diff validation.
 - [x] Complete the final architecture-implementation review after review-driven fixes.
-- [x] Measure the full Step 6 diff against its final review-expanded 1,600-line ceiling.
+- [x] Measure the full Step 6 diff against its final review-expanded 1,750-line ceiling.
 - [x] Commit, push, open Step 6 PR, and start its monitor.
 
 ## Step 6 Evidence
@@ -231,11 +231,17 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
   characters.
 - Second/final architecture implementation review: APPROVED. Later feedback fixes require no third pass under the
   two-pass limit.
-- Latest review fixes add a source-aware authoritative-unknown setup variant, retain Install for managed-source
-  unknowns, scan the Windows working directory before PATH, and require both setup timeout and nullable helper parameters.
-- Accepted implementation/evidence head: `ca17e6fd9f2c57dad1679088d453fad352a75242`.
+- Review fixes distinguish authoritative unknown, generic unknown, and explicitly repairable managed setup. Only the
+  repair marker retains Install; all markers map to the existing wire unknown state.
+- Windows pair lookup scans the working directory only when PATH was supplied, normalizes quoted entries, and continues
+  past harness-only directories to the first server candidate. PATH-less inspection never consults ambient cwd state.
+- A failed Bridge CI run exposed process-global current-directory mutation between concurrent Dart test isolates. The
+  affected tests now use zone-scoped IO overrides and storage binds each path context to the call's current directory;
+  the full 221-test Antigravity suite passes after the fix.
+- Setup probe timeouts and nullable unknown-version arguments remain required at every call site.
+- Accepted implementation/evidence head: `0d3060ba09fe6ff6844ad32bb088af2370688bcb`.
 - Immutable range
-  `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..ca17e6fd9f2c57dad1679088d453fad352a75242`
-  is 1,580 lines (1,382+/198-) across 35 files, all authored and below the final review-expanded 1,600 ceiling.
+  `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..0d3060ba09fe6ff6844ad32bb088af2370688bcb`
+  is 1,707 lines (1,486+/221-) across 36 files, all authored and below the final review-expanded 1,750 ceiling.
 - The following tracker-only reconciliation changes no production, test, generated, plan, or regression-document
   content and is excluded from the exact accepted implementation range above.
