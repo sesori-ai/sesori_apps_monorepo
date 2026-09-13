@@ -59,7 +59,7 @@ void main() {
     newerService.initialize(
       disabledPluginIds: const {},
       setupById: const {
-        "one": PluginSetupAuthoritativeRuntimeUnknown(
+        "one": PluginSetupManagedInstallBlockedUnknown(
           actionHint: "The PATH runtime is newer than this bridge.",
           runtimeVersion: "2.0.0",
         ),
@@ -84,7 +84,7 @@ void main() {
     addTearDown(managedUnknownService.dispose);
     expect(
       managedUnknownService.managementSnapshot.plugins.single.managementCapabilities,
-      {PluginManagementCapability.setupRefresh},
+      {PluginManagementCapability.setupRefresh, PluginManagementCapability.install},
     );
 
     final managedRepairService =

@@ -260,8 +260,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 ### Step 6 — Antigravity inert pair inspection
 
 - **Packages/layers:** `bridge/sesori_plugin_antigravity` owns backend-specific behavior;
-  `sesori_plugin_interface` marks authoritative unknown and managed-repair setup; `bridge/app` maps both markers to the
-  existing wire unknown state while filtering managed Install to the repairable marker.
+  `sesori_plugin_interface` marks install-blocked and managed-repair unknown setup; `bridge/app` maps both markers to
+  the existing wire unknown state while preserving legacy generic-unknown behavior for unmigrated harnesses.
 - **Production files/classes:**
   - API `api/antigravity_acp_api.dart` and `api/models/antigravity_version_dto.dart` — `AntigravityAcpApi.version`
     performs only bounded `--version`; `AntigravityVersionDto` remains API-local;
@@ -271,8 +271,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
     `AntigravityRuntimeVersionProbeSucceeded`, `AntigravityRuntimeVersionProbeRejected`, and
     `AntigravityRuntimeVersionProbeFailed`, carrying no `CommandResult`;
   - interface `plugin_setup_status.dart` and app `plugin_lifecycle_service.dart` —
-    `PluginSetupAuthoritativeRuntimeUnknown` and `PluginSetupManagedRuntimeRepairRequired` preserve source-aware install
-    policy without adding a wire state;
+    `PluginSetupManagedInstallBlockedUnknown` and `PluginSetupManagedRuntimeRepairRequired` preserve source-aware
+    install policy without adding a wire state;
   - services `antigravity_runtime_service.dart` and `antigravity_setup_service.dart` —
     `AntigravityRuntimeService` consumes the Step 4 physical-absence predicate for inert selection, while
     `AntigravitySetupService` consumes the resulting pair policy; and
@@ -438,9 +438,9 @@ planned.
   classification.
 - **Step 6:** Antigravity package tests/analysis, plugin-interface contracts, and bridge lifecycle mapping
   tests/analysis. Cover blank build labels, unrelated ACP failures, profile failure retaining runtime metadata,
-  every pair candidate, inert inspection, both unknown-source markers mapping to wire unknown, and managed Install
-  appearing only for the
-  explicitly repairable marker.
+  every pair candidate, inert inspection, both policy markers mapping to wire unknown, the blocked marker hiding
+  managed Install, the repair marker preserving it, and generic unknown retaining established policy for unmigrated
+  harnesses.
 - **Step 7:** shared contract tests, bridge app lifecycle/runtime/runner tests, client-core state/service tests, and
   owning-package analysis. Cover duplicate joining, conflicts, abort, sanitized failures, recovery inspection after
   yielded/thrown failures, compatibility defaults, and startup abort recheck.

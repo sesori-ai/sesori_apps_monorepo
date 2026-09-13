@@ -5,7 +5,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
-class const _FoundRuntime() implements AntigravityRuntimeService {
+class const _FoundRuntime({required final AntigravityRuntimeSource source}) implements AntigravityRuntimeService {
   @override
   AntigravityRuntimeCandidateResult inspect({
     required String? explicitServerPath,
@@ -13,7 +13,7 @@ class const _FoundRuntime() implements AntigravityRuntimeService {
     required Map<String, String> pathEnvironment,
     required PlatformTarget target,
   }) => AntigravityRuntimeCandidateFound(
-    source: AntigravityRuntimeSource.path,
+    source: source,
     pair: AntigravityRuntimePair(
       serverPath: "/runtime/agy_acp_server.par",
       harnessPath: "/runtime/localharness_external",
@@ -80,7 +80,7 @@ void main() {
     const reportedVersion = "${AntigravityRelease.agentVersion}+local";
     final setup =
         await AntigravitySetupService(
-          runtime: const _FoundRuntime(),
+          runtime: const _FoundRuntime(source: AntigravityRuntimeSource.path),
           runtimeVersions: const _ReportedVersion(buildLabel: reportedVersion),
           profile: const _AuthenticatedProfile(),
         ).inspect(
@@ -94,29 +94,31 @@ void main() {
           timeout: const Duration(seconds: 1),
         );
 
-    expect(setup, isA<PluginSetupAuthoritativeRuntimeUnknown>());
+    expect(setup, isA<PluginSetupManagedInstallBlockedUnknown>());
     expect(setup.runtimeVersion, reportedVersion);
     expect(setup.actionHint, contains("could not be verified"));
   });
 
-  test("retains a verified runtime version when profile inspection fails", () async {
-    final setup =
-        await AntigravitySetupService(
-          runtime: const _FoundRuntime(),
-          runtimeVersions: const _CurrentVersion(),
-          profile: const _ThrowingProfile(),
-        ).inspect(
-          explicitServerPath: null,
-          managedServerPath: null,
-          pathEnvironment: const {},
-          probeEnvironment: const {},
-          target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
-          geminiHome: "/profile",
-          managedInstallAvailable: false,
-          timeout: const Duration(seconds: 1),
-        );
+  for (final source in [AntigravityRuntimeSource.path, AntigravityRuntimeSource.managed]) {
+    test("retains a verified runtime version when $source profile inspection fails", () async {
+      final setup =
+          await AntigravitySetupService(
+            runtime: _FoundRuntime(source: source),
+            runtimeVersions: const _CurrentVersion(),
+            profile: const _ThrowingProfile(),
+          ).inspect(
+            explicitServerPath: null,
+            managedServerPath: source == AntigravityRuntimeSource.managed ? "/managed/agy_acp_server.par" : null,
+            pathEnvironment: const {},
+            probeEnvironment: const {},
+            target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.arm64),
+            geminiHome: "/profile",
+            managedInstallAvailable: source == AntigravityRuntimeSource.managed,
+            timeout: const Duration(seconds: 1),
+          );
 
-    expect(setup, isA<PluginSetupAuthoritativeRuntimeUnknown>());
-    expect(setup.runtimeVersion, AntigravityRelease.agentVersion);
-  });
+      expect(setup, isA<PluginSetupManagedInstallBlockedUnknown>());
+      expect(setup.runtimeVersion, AntigravityRelease.agentVersion);
+    });
+  }
 }

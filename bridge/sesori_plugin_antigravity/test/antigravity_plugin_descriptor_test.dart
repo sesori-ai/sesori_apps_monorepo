@@ -437,7 +437,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
+    expect(status, isA<PluginSetupManagedInstallBlockedUnknown>());
     expect(status.runtimeVersion, "agy_acp_server_1.2.0");
     expect(status.actionHint, contains("newer"));
     expect(processes.launches.single.executable, pair.server);
@@ -458,7 +458,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
+    expect(status, isA<PluginSetupManagedInstallBlockedUnknown>());
     expect(processes.launches, isEmpty);
     expect(processes.agents, isEmpty);
   });
@@ -477,7 +477,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
+    expect(status, isA<PluginSetupManagedInstallBlockedUnknown>());
     expect(processes.launches, isEmpty);
     expect(processes.agents, isEmpty);
   });
@@ -501,7 +501,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
+    expect(status, isA<PluginSetupManagedInstallBlockedUnknown>());
     expect(status.runtimeVersion, isNull);
     expect(status.actionHint, isNot(contains("private@example.com")));
     expect(processes.launches.single.executable, pair.server);
@@ -560,16 +560,17 @@ void main() {
       respondToInitialize: true,
       versionExit: versionExit,
     );
-    final failedSetup = await descriptorWithTimeout(
-      http: null,
-      timeout: const Duration(seconds: 5),
-      versionProbeTimeout: const Duration(milliseconds: 20),
-    ).inspectSetup(
-      config: config(server: null),
-      processes: processes,
-      environment: const {"PATH": "/definitely/missing"},
-      stateDirectory: state.path,
-    );
+    final failedSetup =
+        await descriptorWithTimeout(
+          http: null,
+          timeout: const Duration(seconds: 5),
+          versionProbeTimeout: const Duration(milliseconds: 20),
+        ).inspectSetup(
+          config: config(server: null),
+          processes: processes,
+          environment: const {"PATH": "/definitely/missing"},
+          stateDirectory: state.path,
+        );
     expect(failedSetup, isA<PluginSetupManagedRuntimeRepairRequired>());
     expect(failedSetup.actionHint, contains("Reinstall"));
     expect(versionExit.isCompleted, isTrue);
@@ -677,7 +678,7 @@ void main() {
       environment: {"PATH": brokenPath.path},
       stateDirectory: state.path,
     );
-    expect(setup, isA<PluginSetupAuthoritativeRuntimeUnknown>());
+    expect(setup, isA<PluginSetupManagedInstallBlockedUnknown>());
     expect(processes.launches, isEmpty);
   });
 

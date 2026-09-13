@@ -99,21 +99,22 @@ final class const PluginSetupRuntimeOutdated({
   String toString() => "PluginSetupRuntimeOutdated(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
 }
 
-/// A host runtime is authoritative, but its setup cannot be classified safely.
+/// Setup is unknown and managed installation cannot safely repair it.
 ///
-/// Managed installation must not be offered because it cannot replace this
-/// runtime. [runtimeVersion] is null when no sanitized label was recovered.
-final class const PluginSetupAuthoritativeRuntimeUnknown({
+/// [runtimeVersion] is null when no sanitized label was recovered. This marker
+/// preserves the existing wire unknown state while suppressing a misleading
+/// managed-install action.
+final class const PluginSetupManagedInstallBlockedUnknown({
   @override required final String? actionHint,
   @override required final String? runtimeVersion,
 }) extends PluginSetupStatus {
   this
-    : assert(actionHint != "", "PluginSetupAuthoritativeRuntimeUnknown.actionHint must not be empty"),
-      assert(runtimeVersion != "", "PluginSetupAuthoritativeRuntimeUnknown.runtimeVersion must not be empty");
+    : assert(actionHint != "", "PluginSetupManagedInstallBlockedUnknown.actionHint must not be empty"),
+      assert(runtimeVersion != "", "PluginSetupManagedInstallBlockedUnknown.runtimeVersion must not be empty");
 
   @override
   bool operator ==(Object other) =>
-      other is PluginSetupAuthoritativeRuntimeUnknown &&
+      other is PluginSetupManagedInstallBlockedUnknown &&
       other.actionHint == actionHint &&
       other.runtimeVersion == runtimeVersion;
 
@@ -122,7 +123,7 @@ final class const PluginSetupAuthoritativeRuntimeUnknown({
 
   @override
   String toString() =>
-      "PluginSetupAuthoritativeRuntimeUnknown(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
+      "PluginSetupManagedInstallBlockedUnknown(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
 }
 
 /// Managed runtime inspection failed in a way that reinstalling can repair.

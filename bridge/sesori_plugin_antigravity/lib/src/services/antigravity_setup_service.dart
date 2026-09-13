@@ -60,11 +60,16 @@ class AntigravitySetupService({
         if (source != AntigravityRuntimeSource.path) {
           Log.w("[antigravity] setup runtime inspection failed", cause, stackTrace);
         }
-        return source == AntigravityRuntimeSource.path
-            ? _pathRuntimeUnknown(runtimeVersion: null)
-            : const PluginSetupUnknown(
-                actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
-              );
+        return switch (source) {
+          AntigravityRuntimeSource.path => _pathRuntimeUnknown(runtimeVersion: null),
+          AntigravityRuntimeSource.managed => const PluginSetupManagedInstallBlockedUnknown(
+            actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
+            runtimeVersion: null,
+          ),
+          AntigravityRuntimeSource.explicit => const PluginSetupUnknown(
+            actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
+          ),
+        };
       case AntigravityRuntimeCandidateUnsupported():
         return const PluginSetupUnavailable(
           actionHint: "Google does not publish the Antigravity ACP runtime for this platform.",
@@ -141,15 +146,16 @@ class AntigravitySetupService({
     } on Object catch (error, stackTrace) {
       Log.w("[antigravity] setup profile inspection failed", error, stackTrace);
       const actionHint = "Antigravity setup could not be determined. Check the isolated profile and retry.";
-      return source == AntigravityRuntimeSource.path
-          ? PluginSetupAuthoritativeRuntimeUnknown(
-              actionHint: actionHint,
-              runtimeVersion: runtimeVersion,
-            )
-          : PluginSetupUnknown.versioned(
-              actionHint: actionHint,
-              runtimeVersion: runtimeVersion,
-            );
+      return switch (source) {
+        AntigravityRuntimeSource.path || AntigravityRuntimeSource.managed => PluginSetupManagedInstallBlockedUnknown(
+          actionHint: actionHint,
+          runtimeVersion: runtimeVersion,
+        ),
+        AntigravityRuntimeSource.explicit => PluginSetupUnknown.versioned(
+          actionHint: actionHint,
+          runtimeVersion: runtimeVersion,
+        ),
+      };
     }
   }
 
@@ -172,14 +178,14 @@ class AntigravitySetupService({
     runtimeVersion: runtimeVersion,
   );
 
-  PluginSetupAuthoritativeRuntimeUnknown _pathRuntimeNewer({required String runtimeVersion}) =>
-      PluginSetupAuthoritativeRuntimeUnknown(
+  PluginSetupManagedInstallBlockedUnknown _pathRuntimeNewer({required String runtimeVersion}) =>
+      PluginSetupManagedInstallBlockedUnknown(
         actionHint: "The global Antigravity runtime is newer than the supported build. Update Sesori, then retry.",
         runtimeVersion: runtimeVersion,
       );
 
-  PluginSetupAuthoritativeRuntimeUnknown _pathRuntimeUnknown({required String? runtimeVersion}) =>
-      PluginSetupAuthoritativeRuntimeUnknown(
+  PluginSetupManagedInstallBlockedUnknown _pathRuntimeUnknown({required String? runtimeVersion}) =>
+      PluginSetupManagedInstallBlockedUnknown(
         actionHint: "The global Antigravity runtime could not be verified. Check its installation, then retry.",
         runtimeVersion: runtimeVersion,
       );
