@@ -9,11 +9,16 @@ as `fa0111b153f48b1bf4739f3fe95e2e4b1521f8cc` at `13:11:04Z`; terminal CI passed
 19/19, current-head Cubic/Codex feedback settled, and the sole documentation
 finding was corrected and resolved.
 
-**Delivery is complete; verification and retirement are not.** Missing fixtures,
-credentials and runners did not hold targets. No exceptional temporary version
-hold is established. The owner has not yet accepted the remaining coverage
-limits. This document consolidates existing evidence and the one final help
-batch; it does not authorize execution or describe new test passes.
+Step 8's reconciliation merged through [PR #1469](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1469)
+as `d46880ad76505782a93f3db200bf5dcc9b8c944a` at `14:11:02Z`; terminal CI passed
+9/9 and current-head Cubic/Codex feedback settled without findings.
+
+**Delivery is complete; the owner explicitly accepted verification limits for
+retirement on 2026-09-13.** Missing fixtures, credentials and runners did not hold
+targets. No exceptional temporary version hold is established. The owner chose
+"Accept all documented limits" and a separate cache-policy investigation issue.
+The matrices below retain their actual outcomes; this document neither authorizes
+further execution nor converts accepted gaps into test passes.
 
 The registry contains 11 harnesses: ten included and DeepSeek explicitly
 excluded. Direct-CLI targets are recommendation metadata, not an upgrade of the
@@ -91,10 +96,12 @@ values true. Its architecture implementation review approved the production
 change. Documentation reconciliation does not rerun unchanged passing suites or
 native probes.
 
-## One grouped remaining-check and help batch
+## Accepted limits from the grouped handoff
 
-The following are checks to complete or explicitly accept as limited, not
-requests to hold already-delivered updates. Every procedure inherits the
+The owner accepted all seven checks below as coverage limitations without
+further execution. Their evidence-to-close and help descriptions remain useful
+for future separately authorized work, not an active queue or a request to hold
+already-delivered updates. Any future procedure inherits the
 [verification contract](PLAN.md#verification-contract): read-only inputs, owned
 writable roots, no native environment inheritance or ambient secrets, precisely
 scoped networking, and trusted deadline/cleanup ownership starting before setup
@@ -226,11 +233,11 @@ retained. If a newer cached runtime is reclaimed or selection rolls backward,
 that may affect mixed-build reuse; the exact impact is not yet reproduced.
 
 The inventory/selection/installer/cleaner were unchanged by this refresh. There
-is no claim that this concern is fixed or harmless. The next decision is whether
-to track a dedicated investigation or explicitly expand scope to that bounded
-reproduction. Any retention/selection fix needs a separately agreed rollback
-policy and focused tests; do not silently change all managed harnesses, including
-excluded scope, or add broad coordination machinery here.
+is no claim that this concern is fixed or harmless. The owner selected a separate
+follow-up, now [issue #1470](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1470).
+No reproduction or policy change ran in Step 9. Any retention/selection fix needs
+a separately agreed rollback policy and focused tests; do not silently change
+all managed harnesses, including excluded scope, or add broad coordination.
 
 Other upstream models/providers, login/auth changes, sub-agent or plan UX,
 shell-command claims, floor changes and broad refactors remain unapproved or out
@@ -250,17 +257,39 @@ Only documentation checks ran locally, not Dart/Flutter or native candidates.
 
 ## Step 9 acceptance and retirement
 
-Present this batch once and ask the owner which named checks to complete and
-which remaining limits to accept. Possible dispositions are selected further
-QA, explicit acceptance of documented limits, or keeping the plan active.
-Selecting future QA does not itself approve an unreviewed procedure, provision
-credentials, or override the Codex/Hermes stop boundaries. The PR #1460 review
-waiver was limited to that PR; it was not runtime-coverage acceptance.
+On 2026-09-13, the owner answered the grouped final questions with
+**"Accept all documented limits"** and **"Separate follow-up issue"** for cache policy. The
+acceptance was explicitly described as accepting failed/unrun coverage as
+limitations, not passes, and retiring without further native execution.
 
-For each selected check, record its actual `Pass`, `Partial`, `Fail`, `Blocked`
-or `Not run` result and evidence. Any genuinely reproduced in-scope issue gets
-the smallest justified correction; a broader change requires a separate scope
-decision. Preserve rejected/lost-evidence history. Before retirement, record the
-owner's explicit acceptance of each remaining limit and disposition of the cache
-policy question. Until then keep `.plan/active/all-harness-runtime-refresh/`
-active. No update is rolled back merely because a final check is unavailable.
+| Area | Verification result retained | Final disposition |
+|---|---|---|
+| Codex | Partial target evidence; failed automatic probe teardown; retry blocked | Explicitly accepted; no retry |
+| Cursor | Partial target evidence; configured load/replay/model/mode not run | Explicitly accepted |
+| Hermes | Partial unit/source evidence; fresh load failed under an unaccepted procedure; faithful load/replay/deletion unqualified and rerun blocked | Explicitly accepted, including lost original evidence; no rerun |
+| OMP current target | Partial; native/configured `18.1.19` and broader source follow-up incomplete | Explicitly accepted; `18.1.18` observations remain version-bound |
+| Grok | Partial metadata/unit evidence; native/authenticated checks not run | Explicitly accepted; no credential provisioning or execution |
+| Windows ARM64 | Native installation/version/ACP/teardown not run | Explicitly accepted; mapping/tests are not native proof |
+| Live multi-select | Partial; automation passed, actual native/client roundtrip not run | Explicitly accepted, including omission/rejection/cancel/single-choice coverage |
+| Other stated boundaries | Other non-macOS, real-provider/account, full-client/service and deadline-fault coverage not run or not claimed | Explicitly accepted; existing scoped passes are not broadened |
+| Mixed-build cache policy | Impact not reproduced; shared policy unchanged | Separate investigation in issue #1470, not a fix or harmlessness claim |
+
+This satisfies the explicit-acceptance exception to the recorded L2 target and
+feature matrices. Their overall result remains **Partial**, with named `Fail`,
+`Blocked` and `Not run` checks preserved. The final PR moves the plan to
+`.plan/completed/all-harness-runtime-refresh/`. No further native/Dart checks,
+new production changes, credential access, optional feature or stopped-probe
+retry is authorized by retirement. Historical reports move unchanged; source
+paths and branch identities inside them describe their original attempts.
+
+The PR #1460 automated-review waiver remains distinct from this new explicit
+coverage acceptance. No included update is rolled back; DeepSeek remains excluded.
+
+### Retirement validation
+
+All 11 Markdown files moved together; only PLAN, TRACKER and this handoff changed
+content. The eight historical reports and the target/verification matrices are
+byte-unchanged from Step 8. Checked 54 relative links/anchors, nine synchronized
+PR titles, explicit acceptance/issue disposition, scope, privacy and whitespace.
+No external repository Markdown referenced the old active path. No production,
+test or generated file changed, and no native/Dart/analyzer check was rerun.
