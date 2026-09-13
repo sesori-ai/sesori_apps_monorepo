@@ -6,7 +6,7 @@
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
 - Current step: 3/9 — settle commands and terminate process trees
-- Open replacement implementation PRs: none; Step 3 is local
+- Open replacement implementation PRs: Step 3 — #1466
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -15,7 +15,7 @@
 |---|---|---|---:|
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
 | 2. Centralize executable and command control | Merged | #1463 | 850 |
-| 3. Settle commands and terminate process trees | In progress | — | 1,000 |
+| 3. Settle commands and terminate process trees | In progress | #1466 | 1,000 |
 | 4. Make PATH authoritative for managed copies | Not started | — | 1,450 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
 | 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
@@ -135,7 +135,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Run focused bridge tests and strict analysis.
 - [x] Complete architecture-implementation review and apply valid findings.
 - [x] Measure the full Step 3 diff against its 1,000-line ceiling.
-- [ ] Commit, push, open Step 3 PR, and start its monitor.
+- [x] Commit, push, open Step 3 PR, and start its monitor.
 
 ## Step 3 Evidence
 
