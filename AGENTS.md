@@ -45,6 +45,17 @@ eagerly "just in case."
 
 - Prefer the smallest change that fully solves the demonstrated problem. Do not
   add machinery for hypothetical consumers, rare timing windows, or future work.
+- Load and use `sesori-plan-maker` before every substantial change. Skip it only
+  for a clearly targeted simple bug fix or clearly targeted simple UI change.
+  Treat new features, meaningful refactors, cross-layer/package work, and
+  persistence, transport, lifecycle, concurrency, security, or material
+  PR-boundary decisions as substantial.
+- Plan-maker use does not require a durable plan or multiple PRs. When substantial
+  work is one implementation step that fits one coherent PR, make a proportional
+  ephemeral plan in chat or outside the repository, then implement the single PR.
+  Do not commit or merge a plan file for that case. Use `.plan/active/` only when
+  durable multi-step tracking, decisions, handoff, or a PR series will provide
+  ongoing value, or when the user explicitly requests a committed plan.
 - Strive for feature parity across harnesses. Treat every feature request as
   applying to all backend plugins whose harness can support it; do not enhance
   a single harness unless the user explicitly scopes the request to it. When

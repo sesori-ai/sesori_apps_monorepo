@@ -1,6 +1,9 @@
 ---
 name: sesori-plan-maker
-description: Create or update practical, code-informed plans and trackers. Use ONLY when the user explicitly asks to make or change a plan or tracker. It may also self-invoke while planning a new feature, larger refactor, or other large effort that would benefit from multiple steps or PR splits. Do not self-invoke for routine implementation, small fixes, or ordinary single-step work.
+description: >-
+  Create or update practical, code-informed plans and trackers. Load before
+  every substantial change, even when implementation fits one step and one PR.
+  Skip only clearly targeted simple bug fixes and simple UI changes.
 ---
 
 # Plan Maker
@@ -9,21 +12,31 @@ When this skill is loaded, turn a user's goal into a practical implementation
 plan grounded in the current codebase. Keep the process proportional to the
 work. Prefer a short useful plan over a large planning system.
 
+## Required Use And Plan Durability
+
+- Use this skill before every substantial change. Substantial work includes new
+  features, meaningful refactors, cross-layer or cross-package behavior, and
+  persistence, transport, lifecycle, concurrency, security, or material
+  PR-boundary decisions.
+- Skip it only for a clearly targeted simple bug fix or clearly targeted simple
+  UI change. Do not skip planning merely because substantial work happens to fit
+  one implementation step or one PR.
+- For substantial single-step work, make a concise ephemeral plan in chat or a
+  temporary file outside the repository, then continue with one normal PR. Do
+  not commit the plan or add plan-only, regression-doc, and retirement PR steps
+  merely because this skill was used.
+- Create a durable plan under `.plan/active/<slug>/` when implementation needs
+  multiple tracked steps or PRs, durable decisions, handoff, or ongoing status,
+  or when the user explicitly requests committed planning artifacts.
+
 ## User Direction
 
-The user has final authority. Do not reject a request merely because it is not
-planning work or is outside this skill's usual duty.
-
-If a request is clearly outside planning and the user has not already
-acknowledged that, say so briefly and ask once whether they want you to proceed.
-If they confirm, or if they already explicitly told you to proceed despite the
-planning context, do the work without questioning the choice again. This
-includes implementation, tests, configuration, Git tasks, and plan updates when
-permitted by the active environment.
-
-Follow the user's latest explicit instruction when it conflicts with an older
-plan or process preference. Explain concrete risks when useful, but do not use
-the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
+The user has final authority. When this skill is self-invoked for substantial
+implementation, do not ask whether planning is wanted: plan proportionally and
+continue the requested work unless the user asked for a plan only. Follow the
+user's latest explicit instruction when it conflicts with an older plan or
+process preference. Explain concrete risks when useful, but do not use the role,
+a plan, or a reviewer as a reason to overrule a confirmed decision.
 
 ## Planning
 
@@ -33,8 +46,9 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   from available context. Avoid exhaustive interviews and arbitrary checklists.
 - Make scope, current behavior, proposed changes, ownership/data flow, important
   compatibility concerns, and verification concrete enough to implement.
-- Scale detail to the task. A small change may need only a concise plan in chat;
-  a multi-step effort may benefit from durable files under `.plan/active/<slug>/`.
+- Scale detail to the task. Substantial single-step work may need only a concise
+  ephemeral plan; multi-step work may benefit from durable files under
+  `.plan/active/<slug>/`.
 - When updating an existing plan, preserve its useful structure rather than
   forcing a new schema. Keep its tracker or execution state in sync when needed.
 - Do not invent stages, waves, PR boundaries, worktrees, or process artifacts
