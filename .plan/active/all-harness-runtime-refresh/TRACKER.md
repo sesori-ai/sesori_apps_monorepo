@@ -111,33 +111,13 @@ with the smallest reproduction, expected result and specific needed help.
 | Grok authenticated seam | New/prompt/replay/model-selection/close | Testing authorized in principle; secure test credential and endpoint scope still needed |
 | OMP Windows ARM64 | Native install/version/ACP smoke | Native ARM64 runner or user assistance; other hosts do not prove it |
 | OMP ACP multi-select | Widget automation and live OMP/client array roundtrip, including omission/cancel and single choice | Implement/test locally first; arrange missing live fixture at the final stage |
+| Managed-cache policy | Bounded mixed-build reproduction and decision on newer cached versions when an older bridge starts | Pre-existing pinned-first selection/non-pinned cleanup; shared policy change is outside these target updates |
 
 ## Verification log
 
-- Owner policy correction on 2026-09-13 supersedes historical pin-blocking
-  decisions below: deliver all included updates, fix real incompatibilities,
-  and move unavailable tests/questions to final follow-up. No observed failure
-  is erased and no sandbox, credential or evidence-integrity rule is relaxed.
-- Step 4 merge: PR #1460 merged on 2026-09-13 as `600d94fb49`; final CI 16/16,
-  Cubic approval, no unresolved threads. The owner waived waiting for that PR's
-  pending Codex review, not any native candidate or feature verification gate.
-- Step 5 implementation: 121 cases across 10 suites pass, all five owning
-  analyzers pass and 12 changed Dart files format unchanged. Seventeen mapped
-  hashes reconcile to independent records; OMP 18.1.19 required eight new binary
-  downloads, including the reserved Windows ARM64 asset. No candidate was run
-  in Step 5. Detailed provenance and coverage: [STEP-5-VERIFICATION.md](STEP-5-VERIFICATION.md).
-- Step 5 metadata: official `https://x.ai/cli/stable` returned HTTP 200 and
-  `1.0.30` at `2026-09-13T09:57:32Z`. Raw body/headers/time are retained locally
-  under `.dart_tool/runtime-refresh-validation/grok/step-5/`. This was public
-  metadata retrieval only, not candidate download, execution or authentication.
-- Step 4: six new API cases and five existing repository cases pass; owning
-  analyzer passes. Two native attempts observed catalog cleanup/new/prompt/list
-  but failed fresh load. Parent review rejected the claimed isolated pass because
-  the wrapper bypassed CLI dispatch, inherited environment remained, permissions
-  were broader than agreed, and setup was outside the deadline. Original profile
-  DB/logs were reset before stop; latest JSON/report survive. A same-session
-  cleanup-only follow-up verified the extra fixture exited and its listener was
-  gone, without rerunning Hermes. See Step 4 verification for precise limits.
+Entries follow the series' evidence order. The later owner correction changes
+verification timing, not the results recorded before it.
+
 - Registry reconciled: 11 total, ten included, DeepSeek excluded.
 - Architecture plan review on 2026-09-12 rejected four ownership gaps. Applied
   the ownership clarifications for plugin/shared reply flow, immutable field
@@ -190,6 +170,35 @@ with the smallest reproduction, expected result and specific needed help.
   authentication-composer fixtures without rewriting the historical capture.
   The affected 19 cases and owning analyzer passed; unchanged passing suites
   and native probes were not repeated.
+- Step 4: six new API cases and five existing repository cases pass; owning
+  analyzer passes. Two native attempts observed catalog cleanup/new/prompt/list
+  but failed fresh load. Parent review rejected the claimed isolated pass because
+  the wrapper bypassed CLI dispatch, inherited environment remained, permissions
+  were broader than agreed, and setup was outside the deadline. Original profile
+  DB/logs were reset before stop; latest JSON/report survive. A same-session
+  cleanup-only follow-up verified the extra fixture exited and its listener was
+  gone, without rerunning Hermes. See Step 4 verification for precise limits.
+- Step 4 merge: PR #1460 merged on 2026-09-13 as `600d94fb49`; final CI 16/16,
+  Cubic approval, no unresolved threads. The owner waived waiting for that PR's
+  pending Codex review, not any native candidate or feature verification gate.
+- Step 5 metadata: official `https://x.ai/cli/stable` returned HTTP 200 and
+  `1.0.30` at `2026-09-13T09:57:32Z`. Raw body/headers/time are retained locally
+  under `.dart_tool/runtime-refresh-validation/grok/step-5/`. This was public
+  metadata retrieval only, not candidate download, execution or authentication.
+- Owner policy correction on 2026-09-13 supersedes the historical pin-blocking
+  decisions: deliver all included updates, fix real incompatibilities, and move
+  unavailable tests/questions to final follow-up. No observed failure is erased
+  and no sandbox, credential or evidence-integrity rule is relaxed.
+- Step 5 implementation: 121 cases across 10 suites pass, all five owning
+  analyzers pass and 12 changed Dart files format unchanged. Seventeen mapped
+  hashes reconcile to independent records; OMP 18.1.19 required eight new binary
+  downloads, including the reserved Windows ARM64 asset. No candidate was run
+  in Step 5. Detailed provenance and coverage: [STEP-5-VERIFICATION.md](STEP-5-VERIFICATION.md).
+- Step 5 review: CI passed 15/15 at `c67bfaf`; the follow-up clarifies probe-only
+  environment controls, distinguishes Grok's earlier metadata timestamp, orders
+  this log by series evidence, and adds durable target/coverage notes to
+  `docs/regression/plugin-setup-and-lifecycle.md`. Production code is unchanged
+  by the follow-up, so passing unit/analyzer/native commands are not repeated.
 - Coverage remains limited to each report's actual boundary. In particular,
   Hermes' rejected procedure cannot substantiate absence of inherited inputs.
   No live-profile access is authorized. Configured, multi-select and Windows

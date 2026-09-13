@@ -32,7 +32,8 @@ Hermes/Grok target comments now say targeted, not fully validated.
 
 ## Release and integrity evidence
 
-Official release/installer recheck began at `2026-09-13T10:20:52Z`:
+Codex, Cursor, Hermes and OMP release/installer rechecks began at
+`2026-09-13T10:20:52Z`. Grok's separate earlier retrieval is dated in its bullet:
 
 - [Codex rust-v0.154.0](https://github.com/openai/codex/releases/tag/rust-v0.154.0):
   stable, not draft/prerelease. Annotated tag object

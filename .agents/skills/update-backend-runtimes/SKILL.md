@@ -248,10 +248,14 @@ than re-asking the same decision or enforcing superseded pin-blocking language.
   not direct internal-module dispatch that bypasses startup. Use an empty
   project, isolated profile/config/cache roots and an explicit allowlist; disable
   environment inheritance at native spawn. Exporting selected variables or
-  extending inherited `PYTHONPATH` is not filtering. No ambient tokens, credential
-  helpers, SSH agent, sessions, MCP config or user files. Preserve production
-  launch flags and approval policy; do not build a full host composition when
-  the existing narrow production API proves the requested behavior.
+  extending inherited `PYTHONPATH` is not filtering. These are probe controls,
+  not a request to change production credential inheritance. Use a probe-owned
+  injectable process factory/host adapter to filter both passed environment maps
+  and disable actual spawn inheritance; inspect the final ACP/OS boundary and
+  disclose the test-only override. If the seam cannot do this safely, record the
+  check as unavailable, not compliant. No ambient tokens, credential helpers,
+  SSH agent, sessions, MCP config or user files. Preserve production launch flags
+  and approval policy; use the existing narrow production API when sufficient.
 - Start the trusted outer bound before fixture setup/compilation, not only the
   final probe. Bound startup, reads and shutdown; correlate responses by ID and
   distinguish server requests. Own process handles/groups or Windows Job Objects;

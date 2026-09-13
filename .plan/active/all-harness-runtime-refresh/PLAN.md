@@ -406,6 +406,15 @@ Include unresolved feature questions and any actual defect with a minimal
 reproduction, harm, smallest fix and evidence required to close it. Fix ordinary
 in-scope problems; do not invent large fallback/coordination machinery.
 
+A review also raised the pre-existing managed-cache policy when an older bridge
+runs after a newer one populated the same state: selection prefers the pinned
+version, and install cleanup may reclaim non-pinned versions when no local
+runtime is in use. The inventory/selection/cleanup code is unchanged by this
+refresh. Preserving newer cached versions would change shared target/rollback
+policy across managed harnesses, beyond these pins. Include that policy question
+and a bounded mixed-build reproduction in the final handoff rather than silently
+changing shared behavior or holding these version increases.
+
 Retire after all ten included targets are updated with real assets, relevant
 focused checks and the final matrix are recorded, feature/regression docs are
 reconciled, and remaining coverage is completed or explicitly accepted by the
