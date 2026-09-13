@@ -1,9 +1,9 @@
 ---
 name: sesori-plan-maker
 description: >-
-  Create or update practical, code-informed plans and trackers. Load before
-  every substantial change, even when implementation fits one step and one PR.
-  Skip only clearly targeted simple bug fixes and simple UI changes.
+  Create or update practical, code-informed plans and trackers. Use before every
+  substantial change as required by AGENTS.md, including work that fits one step
+  and one PR; planning output may be ephemeral or durable.
 ---
 
 # Plan Maker
@@ -14,15 +14,12 @@ work. Prefer a short useful plan over a large planning system.
 
 ## Required Use And Plan Durability
 
-- Use this skill before every substantial change. Substantial work includes new
-  features, meaningful refactors, cross-layer or cross-package behavior, and
-  persistence, transport, lifecycle, concurrency, security, or material
-  PR-boundary decisions.
-- Skip it only for a clearly targeted simple bug fix or clearly targeted simple
-  UI change. Do not skip planning merely because substantial work happens to fit
-  one implementation step or one PR.
-- For substantial single-step work, make a concise ephemeral plan in chat or a
-  temporary file outside the repository, then continue with one normal PR. Do
+- `AGENTS.md` is the source of truth for when substantial-change planning is
+  required and which targeted changes may skip it. Do not redefine that threshold
+  in this skill.
+- When this skill is required for single-step work, make a concise ephemeral
+  plan in chat or a temporary file outside the repository, then continue with
+  one normal PR. Do
   not commit the plan or add plan-only, regression-doc, and retirement PR steps
   merely because this skill was used.
 - Create a durable plan under `.plan/active/<slug>/` when implementation needs

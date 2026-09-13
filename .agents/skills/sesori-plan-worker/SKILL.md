@@ -21,8 +21,8 @@ guide, not a boundary on what you may do.
   better implementation path is acceptable; ask the user before making a
   considerable divergence, then update durable plan truth as appropriate.
   Cleanly splitting approved work into more PRs is not such a divergence and
-  never needs permission; follow repository sizing policy and Planned Step
-  Splitting below.
+  never needs permission; follow `PR Sizing And Review Convergence` in
+  `AGENTS.md` and Planned Step Splitting below.
 - Ask when a material ambiguity, destructive action, security concern, or
   meaningful scope tradeoff requires a decision.
 
