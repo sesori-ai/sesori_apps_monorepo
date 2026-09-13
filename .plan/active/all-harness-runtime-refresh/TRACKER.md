@@ -2,9 +2,9 @@
 
 ## Current state
 
-- **Series:** nine top-level steps; Steps 1–2 merged, Step 3 verified and ready for review.
-- **Branch/base:** `all-harness-runtime-refresh-step-3` /
-  `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`.
+- **Series:** nine top-level steps; Steps 1–3 merged, Step 4 in progress.
+- **Branch/base:** `all-harness-runtime-refresh-step-4` /
+  `d55b93c874e0f8f95f9e2aab6941f1f942697991`.
 - **Delivered scope:** PR #1455 merged four target updates, 18 managed digests,
   and focused target fixtures. Its additional Pi/Claude lifecycle evidence was
   accepted after merge; no required gate was waived. No new capabilities,
@@ -12,15 +12,22 @@
 - **Approved scope:** mechanical target refreshes, OMP Windows ARM64 mapping,
   and OMP-backed shared ACP multi-select questions. Floors remain unchanged;
   DeepSeek and unrelated upstream changes remain outside this series.
-- **Current branch:** Antigravity package `1.1.1` / server `agy_acp_server_1.1.1`
-  applied after five-asset integrity, macOS ARM64 installation, actual production
-  validator/initialize and cleanup gates. All 68 distinct tests across nine files
-  and the owning analyzer pass. Cursor remains unchanged.
-- **Next:** publish and monitor Step 3, then advance independently actionable work.
-  No credential/profile access, provider networking, or expanded feature scope
-  is authorized by the completed read-only sandbox correction.
-  Codex teardown proof and required configured/authenticated fixtures remain
-  blocking only for their respective pins. See [Step 3 verification](STEP-3-VERIFICATION.md),
+- **Latest merge:** PR #1457 accepted Antigravity `1.1.1` / `agy_acp_server_1.1.1`
+  with five-asset integrity, macOS ARM64 installation, actual production
+  validator/initialize/cleanup, 68 distinct tests and the owning analyzer.
+  It merged on 2026-09-13 with 16/16 checks, Cubic approval and no unresolved threads.
+  Cursor remains unchanged.
+- **Current branch:** the localized Hermes missing-session cleanup fix passes
+  six API and five repository tests plus the owning analyzer. The target stays
+  `0.20.4`: attempted candidate load failed, and parent review did not accept the
+  native run's isolation/launch/evidence boundary. The extra fixture was stopped
+  in a cleanup-only follow-up; original disposable DB/log files had been reset.
+- **Next:** publish the cleanup-only Step 4 PR, then advance independent work.
+  No more Hermes native execution is authorized without reviewing the procedure;
+  its required configured-load verification remains blocked. No live credentials
+  or external provider access are authorized. Codex teardown and other required
+  fixtures remain independently blocking. See [Step 4 verification](STEP-4-VERIFICATION.md),
+  [Step 3 verification](STEP-3-VERIFICATION.md),
   [Step 2 verification](STEP-2-VERIFICATION.md), and its
   [lifecycle follow-up](STEP-2-LIFECYCLE-VERIFICATION.md).
 
@@ -30,8 +37,8 @@
 |---|---|---|---|
 | [x] | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | PR #1453 merged as a644652e0c; no production changes |
 | [x] | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | PR #1455 merged as ba3264eab9; four targets verified including post-merge Pi/Claude follow-up; Codex/OMP remain blocked and unchanged |
-| [ ] | 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity verified/applied, including actual production-validator native gate; Cursor configured gates block its pin; review pending |
-| [ ] | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Blocked on empty-session cleanup seam |
+| [x] | 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | PR #1457 merged as d55b93c874; Antigravity verified/applied including actual production-validator gate; Cursor remains blocked and unchanged |
+| [ ] | 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | Localized cleanup fix, 11 tests and analyzer pass; candidate load failed and native verification was not accepted; pin unchanged; review pending |
 | [ ] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Channel/ACP probe pending; namespace/provenance policy corrected |
 | [ ] | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth asset; hash/mapping/native Windows ARM64 install-version-ACP smoke/documentation gates pending |
 | [ ] | 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Separate option/custom questions; widget/live OMP roundtrip gates plus same-PR question regression/capability docs pending |
@@ -48,7 +55,7 @@
 | GitHub Copilot | `1.0.83` | `1.0.78` unchanged | `1.0.83` | Pass: six hashes, install, ACP initialize, focused tests/analyzer |
 | Cursor | `2026.08.11-e8db854` | date floor `2026.07.16` unchanged | `2026.09.10-fd3934a` | Blocked: four hashes and macOS ARM64 install/initialize/cleanup pass; configured load/replay and model/mode evidence absent |
 | Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: CLI/SDK launch, native controlled-provider approval/replay/interrupt/reuse/cleanup plus production parsing/history mapping; tests/analyzer |
-| Hermes Agent | `0.20.4` | `0.20.0` unchanged | `0.21.2` | Blocked; cleanup and configured new/load fixture prerequisites |
+| Hermes Agent | `0.20.4` | `0.20.0` unchanged | `0.21.2` | Blocked: attempted fresh load failed; native isolation/launch/evidence not accepted. Local cleanup fix, 11 tests and analyzer pass |
 | Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six hashes/install/RPC, native production-plugin settlement/manual-compaction abort/ordering/reuse/cleanup; tests/analyzer |
 | Oh My Pi | `17.3.8` | `17.2.13` unchanged | `18.1.18` | Blocked: seven hashes/install/initialize pass; authorized authenticate/list/new/load/cleanup fixture absent |
 | Grok Build | `1.0.5` | `1.0.5` unchanged | stable channel `1.0.30` | Blocked; reference-required authenticated new/prompt/replay/model-selection/close probes pending |
@@ -59,9 +66,9 @@
 - **Approved:** preserve every floor and Antigravity exact-pair policy;
   refresh named stable candidates after gates; add OMP Windows ARM64; support
   ACP array `items.anyOf` forms for OMP through shared mapping and existing UI.
-- **Still prerequisite:** Hermes narrow not-found cleanup treatment must be
-  confirmed by candidate source/probe before pinning. Required configured gates
-  are also pin-blocking: Cursor load/replay/model/mode; OMP authenticate/list/new/load and
+- **Still prerequisite:** Hermes narrow not-found cleanup treatment is confirmed
+  in tagged source and fixed locally, but accepted native candidate/load evidence
+  is still missing. Required configured gates are also pin-blocking: Cursor load/replay/model/mode; OMP authenticate/list/new/load and
   persisted cleanup; Hermes new/load; and Grok authenticated
   new/prompt/replay/model-selection/close. Missing fixtures block their
   respective pins; optional broad provider/model/catalog/child exploration is
@@ -88,13 +95,21 @@ These gates are tracked independently from the target-only L2 matrix.
 |---|---|---|---|
 | Cursor configured lifecycle/options | Pin-blocking configured fixture | Authorized isolated load/replay/model/mode; missing fixture blocks Cursor pin | Blocked |
 | OMP configured lifecycle | Pin-blocking configured fixture | `authenticate(agent)`, list/new/load, persisted cleanup; missing fixture blocks OMP pin | Blocked |
-| Hermes configured lifecycle | Pin-blocking configured fixture | Configured new/load; missing fixture blocks Hermes pin | Blocked |
+| Hermes configured lifecycle | Pin-blocking configured fixture | Faithful isolated launch and actual persisted load; no real authentication claim | Blocked: attempted load failed and native procedure/evidence not accepted |
 | Grok authenticated seam | Pin-blocking authenticated fixture | New/prompt/replay/model-selection/close; missing fixture blocks Grok pin | Blocked |
 | OMP Windows ARM64 | L2 Routine platform-specific gate before platform claim/retirement | Native Windows ARM64 install/version/ACP smoke; missing Windows runner blocks feature, never implicit acceptance | Blocked |
 | OMP ACP multi-select | L2 Routine scoped to OMP ACP form questions, independent of target-only L2 | Existing-widget automation plus authoritative live OMP `askDialog`/ACP array roundtrip on at least one supported client: two choices+custom, selected values, required omission/cancel, single-choice unchanged | Blocked |
 
 ## Verification log
 
+- Step 4: six new API cases and five existing repository cases pass; owning
+  analyzer passes. Two native attempts observed catalog cleanup/new/prompt/list
+  but failed fresh load. Parent review rejected the claimed isolated pass because
+  the wrapper bypassed CLI dispatch, inherited environment remained, permissions
+  were broader than agreed, and setup was outside the deadline. Original profile
+  DB/logs were reset before stop; latest JSON/report survive. A same-session
+  cleanup-only follow-up verified the extra fixture exited and its listener was
+  gone, without rerunning Hermes. See Step 4 verification for precise limits.
 - Registry reconciled: 11 total, ten included, DeepSeek excluded.
 - Architecture plan review on 2026-09-12 rejected four ownership gaps. Applied
   the ownership clarifications for plugin/shared reply flow, immutable field
