@@ -219,17 +219,24 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Add focused API, repository, authority, runtime, setup, descriptor, and composition coverage.
 - [x] Run final Antigravity package tests, strict analysis, diagnostics, and diff validation.
 - [x] Complete the final architecture-implementation review after review-driven fixes.
-- [x] Measure the full Step 6 diff against its review-expanded 1,400-line ceiling.
+- [x] Measure the full Step 6 diff against its final review-expanded 1,500-line ceiling.
 - [x] Commit, push, open Step 6 PR, and start its monitor.
 
 ## Step 6 Evidence
 
 - Base: Step 5 squash merge `993315012c6c0f554bf7fa70eb3c86c249a2fe4d` on updated `main`.
-- Final Antigravity package suite: 219 tests passed; `dart analyze --fatal-infos` passed.
-- Dart LSP: zero diagnostics across 15 production files; diff check passed; no added line exceeds 120 characters.
-- Second/final architecture implementation review after review fixes: APPROVED with no violations.
-- Immutable implementation range:
-  `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..b9bb30aaf12a943a3df822ec7f2642a38e764140`
-  is 1,318 lines (1,141+/177-) across 28 files, all authored and below the review-expanded 1,400 ceiling.
-- The following tracker-only reconciliation changes no production, test, generated, or regression-document content;
-  the PR body records its immutable accepted head and accepted-range numstat.
+- Final Antigravity package suite: 221 tests passed; `dart analyze --fatal-infos` passed. The bridge lifecycle suite's
+  focused 66 tests and bridge app strict analysis also passed.
+- Dart LSP: zero diagnostics across all 15 affected production files, including the five rechecked after the latest
+  fixes; diff check passed; no added line exceeds 120 characters.
+- Second/final architecture implementation review after review fixes: APPROVED with no violations. Later automated
+  feedback fixes require no third architecture pass under the two-pass limit.
+- Follow-up review fixes require the exact pinned build label for readiness, normalize quoted Windows PATH entries,
+  retain version-probe cause/stack evidence, suppress managed Install for authoritative unknown setup, and correct the
+  setup-process documentation and Step 4 calculator ownership.
+- Immutable implementation and evidence range:
+  `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..2f033d9a63d13d09ff6b5540ac8a92162003ae61`
+  is 1,471 lines (1,277+/194-) across 33 files, all authored and below the final review-expanded 1,500 ceiling. It
+  includes every plan and documentation change present at reviewed head `e4f94881b130efb2d4d96fa303494cf59731ba2c`.
+- This tracker-only reconciliation changes no production, test, generated, plan, or regression-document content;
+  including it, the full PR tree is 1,478 lines (1,284+/194-) across 33 files. The PR body records the accepted head.
