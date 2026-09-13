@@ -146,15 +146,21 @@ void main() {
     );
   });
 
-  test("applies PATHEXT to explicit Windows paths", () {
+  test("applies PATHEXT without excluding exact Windows paths", () {
     File(p.join(temporaryDirectory.path, "runtime.EXE")).writeAsStringSync("runtime");
+    final exactRuntime = File(p.join(temporaryDirectory.path, "exact-runtime"))..writeAsStringSync("runtime");
+    const environment = {"PATHEXT": ".EXE"};
 
     expect(
       windowsLocator.locate(
         executable: p.join(temporaryDirectory.path, "runtime"),
-        environment: const {"PATHEXT": ".EXE"},
+        environment: environment,
         workingDirectory: null,
       ),
+      HostExecutablePresence.present,
+    );
+    expect(
+      windowsLocator.locate(executable: exactRuntime.path, environment: environment, workingDirectory: null),
       HostExecutablePresence.present,
     );
   });

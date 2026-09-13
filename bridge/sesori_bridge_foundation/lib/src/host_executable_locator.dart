@@ -59,7 +59,7 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
         candidates: candidates,
         directory: p.dirname(resolvedExecutable),
         executable: p.basename(resolvedExecutable),
-        extensions: extensions,
+        extensions: isWindows && p.extension(resolvedExecutable).isEmpty ? ["", ...extensions] : extensions,
       );
       return _inspectCandidates(candidates: candidates);
     }

@@ -68,11 +68,11 @@ void main() {
 
       final run = _runUpdate(
         executor: executor,
-        timeout: abortsDuringSpawn ? const Duration(minutes: 1) : const Duration(milliseconds: 10),
+        timeout: abortsDuringSpawn ? const Duration(minutes: 1) : const Duration(milliseconds: 100),
         abortSignal: aborted.signal,
       );
       unawaited(run.then<void>((_) => settled = true, onError: (Object _, StackTrace _) => settled = true));
-      await Future<void>.delayed(abortsDuringSpawn ? Duration.zero : const Duration(milliseconds: 20));
+      await Future<void>.delayed(abortsDuringSpawn ? Duration.zero : const Duration(milliseconds: 120));
       if (abortsDuringSpawn) aborted.abort();
       await Future<void>.delayed(Duration.zero);
       expect(settled, isFalse);
@@ -85,6 +85,25 @@ void main() {
       await expectLater(run, throwsA(abortsDuringSpawn ? isA<PluginStartAbortedException>() : isA<TimeoutException>()));
     });
   }
+
+  test("abort preserves its failure when spawn never settles", () async {
+    final processes = _FakeHostProcessService(
+      process: _HangingSpawnedProcess(),
+      spawnGate: Completer<void>().future,
+    );
+    final executor = _executor(processes: processes);
+    final aborted = StartAbortController();
+    final run = _runUpdate(executor: executor, timeout: const Duration(milliseconds: 20), abortSignal: aborted.signal);
+
+    await Future<void>.delayed(Duration.zero);
+    aborted.abort();
+
+    await expectLater(
+      run.timeout(const Duration(milliseconds: 200)),
+      throwsA(isA<PluginStartAbortedException>()),
+    );
+    expect(processes.forceSignals, isEmpty);
+  });
 
   test("abort force-stops a running command before settling", () async {
     final processes = _FakeHostProcessService(process: _HangingSpawnedProcess());
