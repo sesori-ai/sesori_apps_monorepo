@@ -14,6 +14,8 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
   does not create files, read token contents, spawn/probe a process, prepare a browser command or authenticate.
 - Runtime precedence is authoritative explicit pair, then PATH, then the installed managed-layout location. Empty POSIX
   PATH entries continue to mean the current directory. Static inspection does not claim a validated runtime version.
+  The current exact pair is package `1.1.1` / server `agy_acp_server_1.1.1`, ACP 1. After a target refresh, an explicit
+  pair reporting the previous identity must be rejected, never silently replaced through managed fallback.
 - Missing/rejected/unsupported/boundary outcomes map to honest setup statuses and current-client authentication hints.
   macOS x64 reports unsupported-platform guidance without constructing a managed filename, preparing a profile or
   launching a process, including when an explicit binary option is supplied.
@@ -58,6 +60,8 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
 - **L1/L2:** app `plugin_registry_test.dart` and `run_command_catalog_import_test.dart` cover the exact registered ID,
   display name, plugin-owned identity, current-target management capabilities, OpenCode default, inert
   declaration and namespaced CLI option. `antigravity_plugin_descriptor_test.dart` owns target/override gating.
+  Active-runtime descriptor/authentication tests use a synthetic current-release initialize fixture; the historical
+  `1.0.0` capture remains a decoder observation, not evidence that the old runtime identity is currently accepted.
   Client `harnesses_settings_screen_test.dart` covers overview-to-detail navigation without an install request and
   visible missing/invalid-runtime guidance before explicit installation. `antigravity_runtime_manifest_test.dart` covers the official five-target
   assets, checksums, package-directory layout, conservative two-minute archive-command budget, version directory and
@@ -71,7 +75,7 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
   browser-noop invocation, abort, exit reset/reconnect and shutdown. `antigravity_runtime_service_test.dart` covers
   recovered PATH storage diagnostics and inert managed fallback. `antigravity_plugin_test.dart` covers exact
   whitespace-bearing live/replay stamping and cold-reset resume before strict dispatch.
-- **L5 Full:** the managed macOS arm64 pipeline has run against the cached independently rehashed official archive in
+- **L5 Full:** the package `1.1.1` managed macOS arm64 pipeline has run against independently hashed official bytes in
   disposable state, preserving both siblings and completing isolated initialize-only validation/cleanup before result.
   Native Linux/Windows managed installs, real personal OAuth, cross-target launch/permissions, bridge import and
   tombstone behavior remain unverified. Automated registration/composition evidence does not replace them.

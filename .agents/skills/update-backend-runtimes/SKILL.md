@@ -175,6 +175,9 @@ Record planned versus completed checks distinctly. A target refresh requires
 official release evidence, integrity checks for **every managed asset**, isolated
 current-host production installation/identity/protocol checks, and focused owning
 package tests/analyzer. Use the harness reference for exceptions and extra gates.
+Apply every named required gate in the approved plan, including detailed harness
+prose; a shorter summary table does not silently replace it. Resolve contradictory
+requirements with the owner before marking a pin Pass. A merge is not a waiver.
 
 - Download and hash every managed asset as opaque bytes. Compare published
   digests and checksum lists where provided; distinguish metadata agreement from
@@ -211,6 +214,11 @@ package tests/analyzer. Use the harness reference for exceptions and extra gates
   credentials and network scope. Do not borrow the user's live session. Record
   required-but-unavailable checks as blocked; mocks or version output do not
   prove live behavior. Preserve useful source findings while pinning is blocked.
+- For lifecycle gates without a real-auth requirement, a controlled loopback
+  model fixture may drive the actual candidate. Never fabricate runtime events
+  as native evidence. Separate exercised production seams from merely inspected
+  code, and distinguish a replayed current prompt from persisted history. Record
+  controller wait budgets honestly: `Future.timeout` does not cancel its source.
 - Keep reports/commits free of secrets, prompts, transcripts, user-local paths,
   account identifiers and raw provider payloads. Record bounded outcomes and
   immutable public source links instead; preserve diagnostic detail in local

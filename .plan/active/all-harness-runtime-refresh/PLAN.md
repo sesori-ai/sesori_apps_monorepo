@@ -4,15 +4,23 @@
 
 - **Plan slug:** `all-harness-runtime-refresh`.
 - **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
-  merged. Step 2/9 applies four independently verified targets; Codex and OMP
-  remain unchanged and blocked. See [Step 2 verification](STEP-2-VERIFICATION.md).
+  and [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455)
+  merged. Four targets are verified, including the required Pi/Claude lifecycle
+  follow-up accepted after merge. Step 3 verifies and applies Antigravity
+  package `1.1.1` / server `agy_acp_server_1.1.1` on this branch: all five archive
+  records, native install/initialize, actual production validator, teardown and
+  focused checks pass. Cursor remains unchanged because configured
+  load/replay/model/mode gates are blocked; Codex/OMP also remain blocked. See
+  [Step 2 verification](STEP-2-VERIFICATION.md) and
+  [Step 3 verification](STEP-3-VERIFICATION.md).
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
-  reconciliation only and is explicitly excluded/unchanged.
-- **Implementation branch:** `all-harness-runtime-refresh-step-2`, based on
-  plan merge `a644652e0c1a03232dc33184b522124703636988`. Floors, layout/platform
-  policy, launch behavior, and Sesori database/wire contracts are unchanged.
+  inventory reconciliation only and is explicitly excluded from this series' audit and changes.
+- **Implementation branch:** `all-harness-runtime-refresh-step-3`, based on
+  Step 2 merge `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`. This series preserves
+  floors, layout/platform policy, launch behavior, and Sesori database/wire
+  contracts; unrelated upstream changes are not part of this refresh.
 - **Evidence:** [AUDIT.md](AUDIT.md) preserves the pre-implementation source
   snapshot. Step reports distinguish completed runtime gates from outstanding
   verification; unexecuted candidates remain provisional.
@@ -55,16 +63,16 @@ contains 11 entries. This pre-series baseline reconciles all 11, including the
 excluded row; [TRACKER.md](TRACKER.md) records current branch targets and gate
 status. Release links alone are not completed implementation gates.
 
-| Harness | Current target / floor or exact policy | Candidate and evidence | Distribution / status |
+| Harness | Pre-series target / floor or exact policy | Candidate and evidence | Distribution / status |
 |---|---|---|---|
 | OpenCode | `1.18.19` / `1.14.0` | [`v1.18.30`](https://github.com/anomalyco/opencode/releases/tag/v1.18.30) | Six managed single-binary archives; recommended after gates |
-| Antigravity | Registry package `1.0.0`; exact server `agy_acp_server_20260818_01_RC01`, ACP 1; no semantic floor | Registry [`v2026.09.12-d30bc9a`](https://github.com/agentclientprotocol/registry/releases/tag/v2026.09.12-d30bc9a), package `1.1.1`; exact server pending | Five package-directory ZIPs; probe-first exact-pair validation |
+| Antigravity | Registry package `1.0.0`; exact server `agy_acp_server_20260818_01_RC01`, ACP 1; no semantic floor | Registry [`v2026.09.12-d30bc9a`](https://github.com/agentclientprotocol/registry/releases/tag/v2026.09.12-d30bc9a), package `1.1.1`; observed server `agy_acp_server_1.1.1` | Five ZIP hashes and macOS ARM64 install/initialize/cleanup accepted in Step 3 |
 | Codex | `0.153.4` / `0.139.0` | [`rust-v0.154.0`](https://github.com/openai/codex/releases/tag/rust-v0.154.0) | Six canonical package tarballs; recommended after both transports pass |
 | GitHub Copilot | `1.0.80` / `1.0.78` | [`v1.0.83`](https://github.com/github/copilot-cli/releases/tag/v1.0.83) | Six single-binary archives; recommended after ACP/install gates |
 | Cursor | `2026.08.11-e8db854` / date floor `2026.07.16` | [official installer](https://cursor.com/install), exact `2026.09.10-fd3934a` | Four package tarballs; probe-first content/hash/install gate |
-| Claude Code | `2.1.237` / `2.1.221` | [`v2.1.269`](https://github.com/anthropics/claude-code/releases/tag/v2.1.269); npm `latest` agrees | Direct configured/PATH CLI, zero managed assets; recommended after stream gate |
+| Claude Code | `2.1.237` / `2.1.221` | [`v2.1.269`](https://github.com/anthropics/claude-code/releases/tag/v2.1.269); npm `latest` agrees | Direct configured/PATH CLI, zero managed assets; recommended after stream/approval/replay/interrupt gates |
 | Hermes Agent | `0.20.4` / `0.20.0` | [`v2026.9.11`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11), CLI `0.21.2` | Direct `hermes acp`; blocked by cleanup seam |
-| Pi | `0.84.4` / `0.84.1` | [`v0.85.1`](https://github.com/earendil-works/pi/releases/tag/v0.85.1); npm package `@earendil-works/pi-coding-agent` | Six package archives; recommended after RPC gate; compaction not reverified |
+| Pi | `0.84.4` / `0.84.1` | [`v0.85.1`](https://github.com/earendil-works/pi/releases/tag/v0.85.1); npm package `@earendil-works/pi-coding-agent` | Six package archives; recommended after RPC, settlement, and manual-compaction abort/ordering gates |
 | Oh My Pi (OMP) | `17.3.8` / `17.2.13` | [`v18.1.18`](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.18), published 2026-09-11 | Seven assets in current Sesori manifest; official candidate has eight including Windows ARM64; approved separate platform step |
 | Grok Build | `1.0.5` / `1.0.5` | [xAI stable channel](https://x.ai/cli/stable), channel `1.0.30` | Direct official CLI; recommended after channel/ACP gate |
 | DeepSeek (excluded) | `0.1.5` / `0.1.5` | None assessed | Existing six managed assets remain untouched; excluded/unchanged |
@@ -89,6 +97,8 @@ floor. OMP Windows ARM64 is an approved platform mapping, not a floor change.
   sibling `agy_acp_server`/`localharness_external` members, exact initialize
   identity, ACP 1, auth methods, and teardown pass. No OAuth/session probe or
   native delegation matrix lift; package version is not server identity.
+  Step 3 observed `agy_acp_server_1.1.1` from the candidate and applied only
+  release facts; the manifest already derives its package target from them.
 - **Codex:** update `codex_runtime_manifest.dart` and six canonical package
   assets after independent WebSocket and stdio app-server checks. Keep helpers,
   resources, capability opt-outs, rollout tailer, approvals, queue, history,
@@ -140,8 +150,11 @@ floor. OMP Windows ARM64 is an approved platform mapping, not a floor change.
   Source-to-binary association is optional evidence, not a signed or
   source-attestation gate. Preserve `--no-auto-update agent --no-leader stdio`,
   floor `1.0.5`, and current scoped-stop policy.
-- **DeepSeek:** no candidate audit or producer work. Keep target/minimum `0.1.5`,
-  six assets, capabilities, regressions, and historical evidence untouched.
+- **DeepSeek:** no candidate audit or producer work. The `0.1.5` target/minimum
+  and six assets in the inventory and `AUDIT.md` are historical pre-series
+  observations, not a requirement to freeze or restore the current upstream
+  target. Do not audit, modify, or revert unrelated DeepSeek changes; its current
+  target is intentionally not assessed by this series.
 
 No safe simplification was found. OMP native settlement and Hermes empty-shell
 behavior affect cleanup/ordering but do not authorize removing bridge queue,
@@ -321,9 +334,9 @@ Required target and configured gates are:
 | Codex | Package/helpers plus independent WebSocket and stdio initialize/list/correlation/teardown | None | Account prompt/history/approval |
 | Copilot | Install/version, exact ACP launch, initialize and `copilot-login` method without prompting | None | Entitlement/session/options/tool E2E |
 | Cursor | Four archive hashes; current-host package layout, exact build, ACP initialize/model/mode, teardown | Configured load/replay fixture; missing fixture blocks pin | Broad provider/model/cancel exploration |
-| Claude | Isolated version/help, all launch flags, stream-json startup/teardown | None | Provider/auth/queue/child terminal fixture |
+| Claude | Isolated version/help, all launch flags, stream-json startup, approval/replay/interrupt/teardown with a controlled provider | None | Real-provider/auth/queue/child terminal fixture |
 | Hermes | Tagged isolated `hermes acp` version/initialize/list/session-list plus scratch cleanup | Configured new/load fixture; missing fixture blocks pin | Provider/catalog/replay exploration |
-| Pi | Package/version, RPC launch/get_state/correlation/teardown, compaction ordering | None | Provider-backed prompt/catalog/history |
+| Pi | Package/version, RPC launch/get_state/correlation/teardown, settlement and manual-compaction abort/ordering with a controlled provider | None | Real-provider prompt/catalog/history |
 | OMP | Managed direct placement, `omp/<version>`, ACP initialize and bounded queue/cancel smoke | Configured `authenticate(agent)`, list/new/load, persisted cleanup; missing fixture blocks pin | Authenticated turn, plan UX, MCP, sub-agents |
 | Grok | Direct version/exact launch, ACP identity/list/resume/namespace/teardown | Reference-required authenticated new/prompt/replay/model-selection/close probes; missing fixture blocks pin | Optional broad provider/model/child exploration |
 
@@ -394,7 +407,7 @@ matrix/retirement decision.
 |---|---|---|
 | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | Publish this plan, tracker, audit, and verified reference corrections; no production changes |
 | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode, Codex, Copilot, Claude, Pi, and OMP target/assets refreshes with independent release/install/protocol/tests; OMP uses seven existing assets |
-| 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity exact package/server pair and Cursor exact installer build, content, hashes, layout, and ACP gates |
+| 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity exact package/server pair and Cursor exact installer build, content, hashes, layout, and ACP gates |
 | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Narrow empty-session cleanup prerequisite; pin `0.21.2` only after cleanup and target gates |
 | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Stable-channel `1.0.30`, normalized ACP namespace, exact launch/protocol gates; no source-binary gate |
 | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth executable, manifest/platform tests, native Windows gate, and platform regression/capability docs |
