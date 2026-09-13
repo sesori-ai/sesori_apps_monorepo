@@ -29,15 +29,19 @@ state.
   up arrow moves to the parent, while Home and Root shortcuts jump to the host
   user's home directory and filesystem root. Those controls remain available
   while a navigated directory loads or reports an access failure. Hiding delists
-  without destroying sessions or history. A catalog import lists newly inserted
-  projects immediately and preserves the stored visibility of every existing
-  project; it does not infer why an existing row is hidden. A new project found
-  by automatic hydration starts hidden when the first directory entry below the
-  resolved user home starts with `.`: both `~/.tool` and its descendants qualify.
-  Explicit catalog imports and manual project opens remain visible by default,
-  while a dot directory nested below a visible home entry does not qualify. No
-  existing project is backfilled or reclassified. Import is explicit, per plugin,
-  atomic, non-destructive, cancellable, and attributes progress.
+  without destroying sessions or history. Every catalog scan preserves the stored
+  visibility of existing projects. Newly discovered ordinary projects appear
+  immediately; projects at or below the host's system temporary directory,
+  `/tmp`, or `/private/tmp`, or whose first directory entry below the resolved
+  user home starts with `.`, start hidden.
+  Both `~/.tool` and its descendants qualify; a dot directory nested below a
+  visible home entry does not. Automatic hydration, Deep Scan/full refresh, and
+  scans from harness settings share these defaults. They still import and count
+  every project and session, including hidden temporary projects; rescanning an
+  unchanged catalog reports nothing new. Only deliberately selecting a folder
+  through Add/Open Project reveals it, and later scans preserve that choice.
+  No existing project is backfilled or reclassified. Catalog scans are per plugin,
+  atomic, non-destructive, cancellable, and attribute progress.
 - A completed import reports both the totals it published and, separately, how
   much of that was new. The two are not interchangeable: a re-import of an
   unchanged catalog still publishes every row, so the totals stay at the full
@@ -49,14 +53,14 @@ state.
   the producer omits the delta. An automatic hydration request whose completion
   marker is already current runs no import and emits no progress or completion
   line.
-- A user can start an import from the app. The three list surfaces — the
+- A user can start a catalog rescan from the app. The three list surfaces — the
   project list, the full-screen session list, and the wide split-view pane —
   offer it as a second, deeper stage of their pull, which invites itself with a
   caption once the ordinary trigger is passed and commits at the deeper one
   while the finger is still down. It covers every harness the bridge reports as
   routable, which is not the same as enabled: a blocked or failed harness is
   refused by the bridge and is left out. The harness settings surface offers the
-  same import for one named harness.
+  same rescan for one named harness.
 - A dormant OpenCode import first attempts a direct metadata-only SQLite snapshot. A
   successful snapshot must not resolve or start an OpenCode runtime, server, health
   probe, CLI session listing, or REST API. It reads projects, project-directory
@@ -268,24 +272,24 @@ state.
 - DeepSeek child reads merge persisted and live direct children, with persisted
   metadata winning. Live descendants inherit the tracked root's project before
   their headers reach persistence; only activity rolls up to the root.
-- DeepSeek explicit import enumerates only adapter-owned session headers below
+- DeepSeek catalog import enumerates only adapter-owned session headers below
   the isolated plugin state. It derives projects from normalized session `cwd`,
   preserves parent/child metadata, and never scans or imports normal
   `DSH_HOME/sessions`. Ordinary project/session list reads remain bridge-database
   reads after import; adapter JSONL is not a second normal catalog source.
-- Antigravity explicit import uses the isolated profile's bounded read-only `.meta` records to recover only UUID
+- Antigravity catalog import uses the isolated profile's bounded read-only `.meta` records to recover only UUID
   session IDs and canonical absolute working directories. It never scans ordinary catalog reads, parses private SQLite
   or brain content, reads tokens, mutates Google history, or replaces authoritative bridge/live attribution. The
   plugin's one recovery batch is prepared once per cold live connection and existing bridge tombstones keep locally
   deleted rows out of later import.
-- GitHub Copilot explicit import follows standard ACP `session/list` pagination,
+- GitHub Copilot catalog import follows standard ACP `session/list` pagination,
   up to the bounded page limit, attributes committed rows to `copilot`, and then
   returns to bridge-database reads for ordinary listing. Sesori never scans
   Copilot's configuration or history directories. Cancellation or a first-page
   failure leaves the prior catalog intact. A later-page failure logs the error
   and commits the pages gathered so far as a fail-soft partial observation;
   missing previously imported rows remain because import is non-destructive.
-- Grok explicit import uses bounded standard ACP `session/list` for roots, then
+- Grok catalog import uses bounded standard ACP `session/list` for roots, then
   enriches each reported root from its local
   `~/.grok/sessions/<encoded cwd>/<session id>/` summary and update records.
   Persisted and not-yet-flushed live sub-agents appear under the root through the
@@ -342,8 +346,8 @@ state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted projects, while preserving an existing project's stored visibility. Focused import coverage proves automatic hydration hides new projects at and below a top-level home dot directory, leaves a dot directory below a visible home entry visible, and lets an explicit import—including one joining an in-flight automatic write—remain visible; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, that terminal tones, platform corners, localized count branches, and Cancel/Dismiss semantics remain exact, and that a scan started from harness settings is announced there while one started elsewhere is not. |
-| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok explicitly imports a persisted session with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted ordinary projects, while preserving an existing project's stored visibility. Focused native, snapshot, and derived import coverage proves startup hydration and rescans hide new home dot-directory and temporary projects without omitting their sessions or changing their import counts, leave ordinary and nested-dot projects visible, and preserve a folder revealed through Add/Open Project; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, that terminal tones, platform corners, localized count branches, and Cancel/Dismiss semantics remain exact, and that a scan started from harness settings is announced there while one started elsewhere is not. |
+| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok scans a persisted session into the catalog with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all reports that it cannot scan, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
@@ -373,10 +377,12 @@ updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
-For catalog scanning, vary automatic hydration against explicit import and
-compare a direct home dot directory, its descendants, a dot directory nested
-below a visible home entry, and an existing project whose stored visibility must
-remain unchanged. Use the mobile component playbook to compare every scan
+For catalog scanning, vary automatic hydration, Deep Scan, and harness-settings
+rescans. Compare a direct home dot directory, its descendants, the host's system
+temporary directory, `/tmp` and `/private/tmp` projects, similarly prefixed
+ordinary paths, a dot directory nested
+below a visible home entry, and an existing project's stored visibility. Reveal
+a hidden folder through Add/Open Project and confirm rescanning preserves it. Use the mobile component playbook to compare every scan
 row state and meaningful count variant in light/dark themes, iPhone/Android
 viewports, and reduced motion. Then vary the number of enabled harnesses,
 whether any is blocked or failed, and which surface starts the run — each of
@@ -418,9 +424,9 @@ leave the surface that started one. Restore harness eligibility afterwards.
   completion changes its read/unread state or last user-message marker.
 - Unseen never clears, clears without viewing, or an unavailable plugin is idle.
 - Hiding destroys sessions, a cancelled import destroys the committed catalog,
-  automatic hydration exposes a newly discovered project below a top-level home
-  dot directory, or explicit import or an existing visibility choice is silently
-  hidden.
+  any scan exposes a new home dot-directory or temporary project, hidden projects'
+  sessions are omitted or counted as new again on an unchanged rescan, or a folder
+  deliberately revealed through Add/Open Project is hidden again.
 - Desktop wide navigation recreates the session inventory on each selected
   detail/diff route, loses selection, or narrow navigation renders both panes.
 - Antigravity import parses SQLite/brain/token content, writes Google files, scans during an ordinary catalog read,
@@ -504,7 +510,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
 - An old bridge cannot provide per-running-root ordering facts in
   `projects.summary`, so the current app falls back to project updated time.
 - Untested Hermes gap (remove this entry once verified): a failed or cancelled
-  in-flight Hermes import was never exercised; only completed explicit imports
+  in-flight Hermes import was never exercised; only completed catalog imports
   and non-destructive re-imports were verified.
 
 ## Sources
