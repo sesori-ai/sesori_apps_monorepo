@@ -12,7 +12,9 @@ import 'package:test/test.dart';
 
 class _RecordingProcessRunner() implements ProcessRunner {
   final List<({String executable, List<String> arguments, Map<String, String>? environment})> detachedCalls = [];
+  final List<({String executable, List<String> arguments, Map<String, String>? environment})> inheritingStdioCalls = [];
   bool throwOnSpawn = false;
+  int inheritingStdioExitCode = 0;
 
   @override
   Future<ProcessResult> run(
@@ -23,6 +25,18 @@ class _RecordingProcessRunner() implements ProcessRunner {
     Duration timeout = const Duration(seconds: 15),
   }) async {
     throw UnimplementedError();
+  }
+
+  Future<int> runInheritingStdio({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) async {
+    if (throwOnSpawn) {
+      throw const ProcessException('sesori-bridge', <String>[], 'spawn failed');
+    }
+    inheritingStdioCalls.add((executable: executable, arguments: arguments, environment: environment));
+    return inheritingStdioExitCode;
   }
 
   @override
@@ -69,6 +83,7 @@ void main() {
           clock: const ServerClock(),
           isWindows: false,
           platform: 'linux',
+          inheritingStdioProcessRunner: runner.runInheritingStdio,
         ),
         currentUser: null,
       ),
@@ -116,14 +131,25 @@ void main() {
     expect(call.environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
   });
 
-  test('Windows spawn uses a short-lived launcher to separate the successor process tree', () async {
+  test('Windows spawn waits for the launcher to acknowledge its real successor', () async {
     final service = buildService(binaryPath: r'C:\Sesori\sesori-bridge.exe', isWindows: true);
 
     expect(await service.spawnSuccessor(), isTrue);
 
-    final environment = runner.detachedCalls.single.environment!;
-    expect(environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
-    expect(environment, containsPair(sesoriRestartLauncherEnvVar, sesoriRestartLauncherEnvValue));
+    expect(runner.detachedCalls, isEmpty);
+    final call = runner.inheritingStdioCalls.single;
+    expect(call.executable, r'C:\Sesori\sesori-bridge.exe');
+    expect(call.environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
+    expect(call.environment, containsPair(sesoriRestartLauncherEnvVar, sesoriRestartLauncherEnvValue));
+  });
+
+  test('Windows spawn keeps the predecessor running when launcher acknowledgement fails', () async {
+    runner.inheritingStdioExitCode = 1;
+    final service = buildService(binaryPath: r'C:\Sesori\sesori-bridge.exe', isWindows: true);
+
+    expect(await service.spawnSuccessor(), isFalse);
+    expect(runner.inheritingStdioCalls, hasLength(1));
+    expect(runner.detachedCalls, isEmpty);
   });
 
   test('spawnSuccessor returns false when the process cannot be started', () async {

@@ -6,11 +6,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../../foundation/csv_parser.dart";
 import "../../foundation/process_runner.dart";
 
+typedef InheritingStdioProcessRunner = Future<int> Function({
+  required String executable,
+  required List<String> arguments,
+  required Map<String, String>? environment,
+});
+
 class SystemProcessApi({
   required final ProcessRunner _processRunner,
   required final ServerClock _clock,
   required final bool _isWindows,
   required final String _platform,
+  required final InheritingStdioProcessRunner _inheritingStdioProcessRunner,
 }) {
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
   /// waiting. Used to launch a successor bridge during a restart.
@@ -20,6 +27,32 @@ class SystemProcessApi({
     Map<String, String>? environment,
   }) {
     return _processRunner.startDetached(executable: executable, arguments: arguments, environment: environment);
+  }
+
+  Future<int> runInheritingStdio({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) {
+    return _inheritingStdioProcessRunner(
+      executable: executable,
+      arguments: arguments,
+      environment: environment,
+    );
+  }
+
+  static Future<int> ioInheritingStdioProcessRunner({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) async {
+    final process = await Process.start(
+      executable,
+      arguments,
+      environment: environment,
+      mode: ProcessStartMode.inheritStdio,
+    );
+    return await process.exitCode;
   }
 
   Future<ProcessIdentity?> inspectProcess({required int pid}) async {

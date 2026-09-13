@@ -13,6 +13,8 @@ typedef WindowsRestartLauncherExit = void Function({required int code});
 /// Once this launcher exits, the successor no longer has a live ancestry chain
 /// back to the predecessor. A later `taskkill /T` can therefore terminate the
 /// predecessor and every other descendant without terminating the successor.
+/// Exit code zero acknowledges successful child creation to the waiting
+/// predecessor; a spawn failure instead reaches the entrypoint's non-zero exit.
 class WindowsRestartSuccessorLauncher({
   required final bool _isWindows,
   required Map<String, String> environment,

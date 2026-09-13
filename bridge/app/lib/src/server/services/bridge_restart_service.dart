@@ -100,22 +100,33 @@ class BridgeRestartService({
   /// Spawns the successor bridge detached (inheriting this terminal). Returns
   /// `true` on success; `false` if the process could not be started.
   ///
-  /// Windows parent exit does not terminate child processes, and standalone
-  /// shutdown never signals its own process tree. The one-shot launcher stays
-  /// alive long enough to start the real successor even when shutdown begins
-  /// immediately after this method returns; no acknowledgement channel is
-  /// needed to protect it from the predecessor's normal shutdown path.
+  /// On Windows, waits for the one-shot launcher to exit successfully. That
+  /// exit acknowledges that it created the real successor and broke the live
+  /// ancestry chain before this method permits predecessor shutdown.
   Future<bool> spawnSuccessor() async {
     final BridgeRestartCommand command = _commandBuilder.build(binaryPath: _binaryPath, cliArgs: _cliArgs);
+    final environment = <String, String>{
+      sesoriRestartPredecessorPidEnvVar: '$_currentPid',
+      if (_isWindows) sesoriRestartLauncherEnvVar: sesoriRestartLauncherEnvValue,
+    };
     try {
-      await _processRepository.startDetached(
-        executable: command.executable,
-        arguments: command.arguments,
-        environment: <String, String>{
-          sesoriRestartPredecessorPidEnvVar: '$_currentPid',
-          if (_isWindows) sesoriRestartLauncherEnvVar: sesoriRestartLauncherEnvValue,
-        },
-      );
+      if (_isWindows) {
+        final exitCode = await _processRepository.runInheritingStdio(
+          executable: command.executable,
+          arguments: command.arguments,
+          environment: environment,
+        );
+        if (exitCode != 0) {
+          Log.e('Windows restart launcher exited with code $exitCode before acknowledging the successor');
+          return false;
+        }
+      } else {
+        await _processRepository.startDetached(
+          executable: command.executable,
+          arguments: command.arguments,
+          environment: environment,
+        );
+      }
       return true;
     } on Object catch (error, stackTrace) {
       Log.e('Failed to spawn successor bridge for restart: $error', error, stackTrace);

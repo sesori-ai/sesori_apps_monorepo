@@ -26,6 +26,18 @@ class ProcessRepository({
     return _api.startDetached(executable: executable, arguments: arguments, environment: environment);
   }
 
+  Future<int> runInheritingStdio({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) {
+    return _api.runInheritingStdio(
+      executable: executable,
+      arguments: arguments,
+      environment: environment,
+    );
+  }
+
   Future<SignalResult> sendGracefulSignal({required int pid}) {
     return _api.sendGracefulSignal(pid: pid);
   }

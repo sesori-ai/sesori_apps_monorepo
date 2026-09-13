@@ -281,6 +281,7 @@ class const BridgeRuntimeRunner._() {
       clock: serverClock,
       isWindows: io.Platform.isWindows,
       platform: io.Platform.operatingSystem,
+      inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
       isWindows: io.Platform.isWindows,

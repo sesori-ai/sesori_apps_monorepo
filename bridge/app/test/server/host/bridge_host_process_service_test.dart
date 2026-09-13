@@ -283,6 +283,7 @@ void main() {
               clock: const ServerClock(),
               isWindows: Platform.isWindows,
               platform: Platform.operatingSystem,
+              inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
             ),
             currentUser: null,
           ),
