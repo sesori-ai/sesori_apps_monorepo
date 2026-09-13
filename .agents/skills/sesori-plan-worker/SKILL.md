@@ -21,7 +21,8 @@ guide, not a boundary on what you may do.
   better implementation path is acceptable; ask the user before making a
   considerable divergence, then update durable plan truth as appropriate.
   Cleanly splitting approved work into more PRs is not such a divergence and
-  never needs permission; follow PR Sizing and Step Splitting below.
+  never needs permission; follow `PR Sizing And Review Convergence` in
+  `AGENTS.md` and Planned Step Splitting below.
 - Ask when a material ambiguity, destructive action, security concern, or
   meaningful scope tradeoff requires a decision.
 
@@ -78,42 +79,18 @@ add the slug/step wrapper to a single-PR task. In the workflow above, “success
 means the next executable step or substep, including `3.a` → `3.b`, not literal
 arithmetic on the original step number.
 
-## PR Sizing and Step Splitting
+## Planned Step Splitting
 
-Target **~1,500 changed lines per PR as a soft cap**, counting additions plus
-deletions across production code, tests, docs, and generated files. Count the
-whole diff against its merge base, but assess authored complexity separately:
-
-- Aim considerably lower for complex lifecycle, concurrency, security, or
-  cross-layer changes. Line count is not a quota to fill.
-- Larger coherent PRs are acceptable when most churn is generated boilerplate,
-  such as Drift output that can exceed 1,000 lines for one new table. Report
-  generated versus authored churn and explain substantial overages; never hide
-  generated files from the total or split generated outputs from their source.
-- Prefer smaller independently valid PRs whenever a clean split exists. Each
-  should compile, have focused verification, and be reviewable on its own without
-  artificial compatibility code solely to bridge the split.
-
-**Clean PR splits are always approved and encouraged. Never ask permission just
-to split**, including when new work is discovered, review feedback grows the
-change, or the original estimate was wrong. This approval covers delivery shape,
-not unrelated features, considerable refactors, or other substantive scope
-changes that still require the user's decision.
+Follow the repository-wide `PR Sizing And Review Convergence` policy in
+`AGENTS.md`. Its soft cap, standing approval for clean splits, and oversized-PR
+review-loop rules apply to every planned step.
 
 Split a growing Step `3` into `3.a`, `3.b`, and further substeps as needed. Update
-`PLAN.md`, `TRACKER.md`, step files, dependencies, estimates, complexity and PR
+`PLAN.md`, `TRACKER.md`, step files, dependencies, estimates, complexity, and PR
 boundaries together. Keep the series slug, recompute the shared PR total, and
 synchronize planned and published series titles. Map durable substep IDs to PR
 ordinals explicitly; preserve completed-step/PR links rather than losing history.
 Apply the same one-open-PR/one-local-successor workflow to the revised sequence.
-If a PR is already open, preserve reviewed work and explain the replacement or
-extraction; do not rewrite published history or force-push to manufacture a split.
-
-Every new pushed commit starts another AI review wave over the **entire PR**.
-Large diffs encourage fresh findings on each pass, creating fix/push/re-review
-loops, more latency, and repeated review cost. Smaller coherent PRs converge,
-get approved, and merge sooner. Reassess boundaries before pushing a growing
-fix batch instead of feeding that loop indefinitely.
 
 ## PR Complexity and Communication
 

@@ -45,6 +45,17 @@ eagerly "just in case."
 
 - Prefer the smallest change that fully solves the demonstrated problem. Do not
   add machinery for hypothetical consumers, rare timing windows, or future work.
+- Load and use `sesori-plan-maker` before every substantial change. Skip it only
+  for a clearly targeted simple bug fix or clearly targeted simple UI change.
+  Treat new features, meaningful refactors, cross-layer/package work, and
+  persistence, transport, lifecycle, concurrency, security, or material
+  PR-boundary decisions as substantial.
+- Plan-maker use does not require a durable plan or multiple PRs. When substantial
+  work is one implementation step that fits one coherent PR, make a proportional
+  ephemeral plan in chat or outside the repository, then implement the single PR.
+  Do not commit or merge a plan file for that case. Use `.plan/active/` only when
+  durable multi-step tracking, decisions, handoff, or a PR series will provide
+  ongoing value, or when the user explicitly requests a committed plan.
 - Strive for feature parity across harnesses. Treat every feature request as
   applying to all backend plugins whose harness can support it; do not enhance
   a single harness unless the user explicitly scopes the request to it. When
@@ -148,6 +159,35 @@ eagerly "just in case."
   typed `innerError` or `cause` field instead of discarding it. Keep the
   wrapper's presentation privacy-safe when the original may contain sensitive
   payload data.
+
+## PR Sizing And Review Convergence
+
+- Target **~1,500 changed lines per PR as a soft cap**. Count additions plus
+  deletions across the whole diff against its merge base, including production
+  code, tests, docs, and generated files. Line count is not a quota to fill.
+- Aim considerably lower for lifecycle, concurrency, security, cross-layer, or
+  otherwise complex changes.
+- Larger coherent PRs are acceptable when most churn is generated boilerplate,
+  such as Drift output that can exceed 1,000 lines for one new table. Report
+  generated versus authored churn, explain substantial overages, and keep
+  generated output with its source.
+- Prefer smaller independently valid PRs whenever a clean split exists. Each
+  split should compile, have focused verification, and remain reviewable without
+  artificial compatibility code created only to bridge the split.
+- Clean PR splits are always approved and encouraged. Never ask permission only
+  to split approved work, including when review feedback grows the change or an
+  estimate was wrong. This approval does not cover unrelated features,
+  considerable refactors, or other substantive scope expansion.
+- Every pushed commit starts another AI review wave over the **entire PR**, not
+  only the new commit. Oversized diffs invite fresh findings in already-reviewed
+  areas and can create a costly fix/push/full-re-review loop instead of
+  converging.
+- Measure before the first push and reassess before each follow-up push. When an
+  open PR significantly exceeds the soft cap and a clean decomposition exists,
+  stop feeding the review loop with more fix commits. Preserve published and
+  reviewed history, explain the replacement or extraction, and move remaining
+  work into smaller coherent PRs. Never rewrite published history or force-push
+  solely to manufacture a split.
 
 ## Code Quality And Change Risk
 
