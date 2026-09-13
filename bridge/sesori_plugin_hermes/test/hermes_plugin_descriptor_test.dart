@@ -7,6 +7,16 @@ import "package:hermes_plugin/hermes_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+Map<String, String> _environmentWithHermesShim() {
+  final pathDirectory = Directory.systemTemp.createTempSync("hermes-path-shim");
+  addTearDown(() {
+    if (pathDirectory.existsSync()) pathDirectory.deleteSync(recursive: true);
+  });
+  File("${pathDirectory.path}${Platform.pathSeparator}hermes").writeAsStringSync("shim");
+  File("${pathDirectory.path}${Platform.pathSeparator}hermes.CMD").writeAsStringSync("shim");
+  return {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"};
+}
+
 void main() {
   group("HermesPluginDescriptor", () {
     const stateDirectory = "/state";
@@ -256,6 +266,7 @@ void main() {
     });
 
     test("reports a PATH runtime outdated with an update hint for a pre-ACP install", () async {
+      final environment = _environmentWithHermesShim();
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -272,7 +283,7 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: environment,
         stateDirectory: stateDirectory,
       );
 
@@ -285,6 +296,7 @@ void main() {
     });
 
     test("reports unknown for an unrelated ACP command failure", () async {
+      final environment = _environmentWithHermesShim();
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -301,7 +313,7 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: environment,
         stateDirectory: stateDirectory,
       );
 
