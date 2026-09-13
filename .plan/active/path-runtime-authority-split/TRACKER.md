@@ -5,16 +5,16 @@
 - Slug: `path-runtime-authority-split`
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
-- Current step: 1/9 — plan replacement sequence
-- Open replacement implementation PRs: none
+- Current step: 2/9 — centralize executable and command control
+- Open replacement implementation PRs: Step 2 pending publication
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
 
 | Step | Status | PR | Changed-line ceiling |
 |---|---|---|---:|
-| 1. Plan replacement sequence | In progress | Pending | 650 |
-| 2. Centralize executable and command control | Not started | — | 700 |
+| 1. Plan replacement sequence | Merged | #1462 | 650 |
+| 2. Centralize executable and command control | In progress | Pending | 700 |
 | 3. Settle commands and terminate process trees | Not started | — | 1,000 |
 | 4. Make PATH authoritative for managed copies | Not started | — | 1,450 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
@@ -67,14 +67,34 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Map all latest review findings to replacement slices.
 - [x] Complete architecture-plan review and apply valid findings.
 - [x] Validate plan/tracker formatting and changed-line budget.
-- [ ] Commit, push, and open Step 1 PR.
-- [ ] Reply on #1458 with replacement provenance and close it without deleting the branch.
-- [ ] Start PR monitor for Step 1.
+- [x] Commit, push, and open Step 1 PR.
+- [x] Reply on #1458 with replacement provenance and close it without deleting the branch.
+- [x] Start PR monitor for Step 1.
 
-## Verification Evidence
+## Step 1 Evidence
 
+- PR #1462 merged at `27cd7c76fa`.
 - Architecture-plan review: APPROVED on permitted second pass; no blocking findings.
-- `git diff --check`: passes.
+- `git diff --check`: passed.
 - Added-line width: zero lines over 120 Unicode characters or UTF-8 bytes.
 - Step 1 content: 524 lines, below its 650-line ceiling.
 - No Dart/Flutter suites required for plan-only changes.
+
+## Step 2 Checklist
+
+- [x] Add injectable concrete `IoHostExecutableLocator`; retain no one-to-one interface.
+- [x] Centralize locale-independent process-missing and positive PATH-absence classification.
+- [x] Add abortable `HostProcessCommandExecutor` execution with observed termination.
+- [x] Add direct host lookup, classification, timeout, abort, and termination tests.
+- [x] Run focused Foundation tests and strict analysis.
+- [x] Complete architecture-implementation review and apply valid findings.
+- [x] Measure the full Step 2 diff against its 700-line ceiling.
+- [ ] Commit, push, and open Step 2 PR.
+- [ ] Start PR monitor for Step 2.
+
+## Step 2 Evidence
+
+- Focused Foundation tests: 11 passed.
+- `dart analyze --fatal-infos`: no issues.
+- Architecture implementation review: APPROVED with no violations.
+- Full Step 2 diff: 526 changed lines, below the 700-line ceiling.
