@@ -230,7 +230,7 @@ void main() {
     expect(events.last, isA<ProvisionReady>());
     expect((events.last as ProvisionReady).binaryPath, binaryPath);
     expect(File(binaryPath).existsSync(), isTrue);
-    expect(authority.checks, 3, reason: "before cleanup, install, and final cleanup");
+    expect(authority.checks, 6, reason: "before cleanup, scratch work, validation, activation, and cleanup");
   });
 
   test("PATH authority is revalidated before cleanup or download", () async {
@@ -276,9 +276,26 @@ void main() {
     );
   });
 
+  test("preserves the pinned directory when PATH appears after validation", () async {
+    final pinned = versionDir("1.17.9");
+    final stale = File(p.join(pinned.path, "stale"))..writeAsStringSync("OLD");
+    final authority = _FakePathAuthority(pathAbsence: const [true, true, true, true, false]);
+
+    final events = await install(
+      build(
+        managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
+        pathAuthority: authority,
+      ),
+    );
+
+    expect(events.last, isA<ProvisionFailed>());
+    expect(stale.readAsStringSync(), "OLD");
+    expect(File(p.join(pinned.path, RuntimeInstallService.sentinelFileName)).existsSync(), isFalse);
+  });
+
   test("preserves managed copies when PATH appears before final cleanup", () async {
     final supported = versionDir("1.0.0");
-    final authority = _FakePathAuthority(pathAbsence: const [true, true, false]);
+    final authority = _FakePathAuthority(pathAbsence: const [true, true, true, true, true, false]);
 
     final events = await install(
       build(

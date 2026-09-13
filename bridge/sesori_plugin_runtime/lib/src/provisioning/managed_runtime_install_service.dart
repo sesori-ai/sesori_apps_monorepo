@@ -27,7 +27,7 @@ import "runtime_version.dart";
 /// then sweeps managed versions before reporting the
 /// terminal event (a consumer may unsubscribe on that event).
 ///
-/// PATH authority is revalidated immediately before every cleanup, staging, and download boundary.
+/// PATH authority is revalidated before every cleanup, scratch, validation, activation, and download boundary.
 ///
 /// The sweep runs in two stages because the plugin may be running from an older
 /// managed version while this install downloads its replacement. Versions below
@@ -164,10 +164,6 @@ class ManagedRuntimeInstallService({
       Log.w("[$id] cached managed runtime at '$binaryPath' failed candidate validation; reinstalling");
     }
 
-    if (await _pathMutationBlocker(environment: environment, startAborted: startAborted) case final blocker?) {
-      yield ProvisionFailed(message: blocker);
-      return;
-    }
     try {
       // await-for (not yield*) so a failure from the install stream throws
       // into this try/catch; yield* would forward the error to the consumer.
@@ -178,12 +174,19 @@ class ManagedRuntimeInstallService({
         downloadUrl: _manifest.downloadUrlFor(asset: asset),
         asset: asset,
         environment: environment,
+        revalidateManagedMutation: () => _revalidatePathMutation(
+          environment: environment,
+          startAborted: startAborted,
+        ),
         startAborted: startAborted,
       )) {
         yield event;
       }
     } on PluginStartAbortedException {
       rethrow;
+    } on _ManagedRuntimeMutationBlockedException catch (error) {
+      yield ProvisionFailed(message: error.message);
+      return;
     } on RuntimeInstallException catch (error, stackTrace) {
       // The wire message must stay sanitized (install errors can carry local
       // paths and raw command output), so only the local log keeps the detail.
@@ -213,6 +216,15 @@ class ManagedRuntimeInstallService({
     // ProvisionReady arrives, which would cancel this stream mid-sweep.
     await _cleaner.sweep(managedDir: managedDir, keep: keepAfterInstall);
     yield ProvisionReady(binaryPath: binaryPath);
+  }
+
+  Future<void> _revalidatePathMutation({
+    required Map<String, String> environment,
+    required StartAbortSignal startAborted,
+  }) async {
+    if (await _pathMutationBlocker(environment: environment, startAborted: startAborted) case final blocker?) {
+      throw _ManagedRuntimeMutationBlockedException(message: blocker);
+    }
   }
 
   Future<String?> _pathMutationBlocker({
@@ -245,3 +257,5 @@ class ManagedRuntimeInstallService({
     }
   }
 }
+
+class const _ManagedRuntimeMutationBlockedException({required final String message}) implements Exception;

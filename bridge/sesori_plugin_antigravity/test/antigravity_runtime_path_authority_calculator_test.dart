@@ -17,6 +17,7 @@ void main() {
   );
 
   test("requires both a missing PATH server candidate and verified filesystem absence", () {
+    expect(calculator.requiresPhysicalServerAbsence(candidate: missingPathServer), isTrue);
     expect(
       calculator.provesServerAbsent(
         candidate: missingPathServer,
@@ -54,6 +55,7 @@ void main() {
     ];
 
     for (final candidate in candidates) {
+      expect(calculator.requiresPhysicalServerAbsence(candidate: candidate), isFalse);
       expect(
         calculator.provesServerAbsent(
           candidate: candidate,

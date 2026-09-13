@@ -15,8 +15,8 @@ from the app or management API, or at bridge start when Sesori manages an older 
   harnesses and other setup failures.
 - PATH is authoritative for runtimes that support managed copies. Every result except verified absence—including
   outdated, malformed, timed-out, nonzero, permission-denied, unlaunchable, partial-pair, or ambiguous evidence—blocks
-  managed fallback and mutation without exposing managed Install. Installation revalidates immediately before cleanup,
-  cached validation staging, fresh staging/download, and final cleanup, preserving managed copies while PATH is present.
+  managed fallback and mutation without exposing managed Install. Installation revalidates before cleanup, download,
+  scratch preparation, validation, activation, and final cleanup, preserving managed copies while PATH is present.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.

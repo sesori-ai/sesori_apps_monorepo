@@ -5,12 +5,13 @@ import "../models/antigravity_runtime_resolution.dart";
 
 /// Owns the pair-aware decision that permits managed Antigravity fallback.
 class const AntigravityRuntimePathAuthorityCalculator() {
-  bool provesServerAbsent({
-    required AntigravityRuntimeCandidateResult candidate,
-    required HostExecutablePresence serverPresence,
-  }) =>
-      serverPresence == HostExecutablePresence.absent &&
+  bool requiresPhysicalServerAbsence({required AntigravityRuntimeCandidateResult candidate}) =>
       candidate is AntigravityRuntimeCandidateMissing &&
       candidate.source == AntigravityRuntimeSource.path &&
       candidate.component == AntigravityRuntimeComponent.server;
+
+  bool provesServerAbsent({
+    required AntigravityRuntimeCandidateResult candidate,
+    required HostExecutablePresence serverPresence,
+  }) => requiresPhysicalServerAbsence(candidate: candidate) && serverPresence == HostExecutablePresence.absent;
 }

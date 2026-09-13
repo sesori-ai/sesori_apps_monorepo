@@ -1,5 +1,4 @@
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show HostExecutablePresence, IoHostExecutableLocator, PlatformTarget;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show IoHostExecutableLocator, PlatformTarget;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginStartAbortedException, StartAbortSignal;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRuntimePathAuthority;
@@ -27,13 +26,15 @@ class AntigravityManagedRuntimePathAuthority({
     if (candidate case AntigravityRuntimeCandidateStorageFailed(:final cause, :final stackTrace)) {
       Log.w("[antigravity] PATH authority inspection failed", cause, stackTrace);
     }
-    final serverPresence = AntigravityRelease.supportsTarget(target: _target)
-        ? _executableLocator.locate(
-            executable: AntigravityRelease.serverFileName(target: _target),
-            environment: environment,
-            workingDirectory: null,
-          )
-        : HostExecutablePresence.unknown;
+    if (!_pathAuthorityCalculator.requiresPhysicalServerAbsence(candidate: candidate) ||
+        !AntigravityRelease.supportsTarget(target: _target)) {
+      return false;
+    }
+    final serverPresence = _executableLocator.locate(
+      executable: AntigravityRelease.serverFileName(target: _target),
+      environment: environment,
+      workingDirectory: null,
+    );
     _throwIfAborted(abortSignal: abortSignal);
     return _pathAuthorityCalculator.provesServerAbsent(
       candidate: candidate,
