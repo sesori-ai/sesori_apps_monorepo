@@ -37,10 +37,10 @@ void main() {
       expect(await needsUpgrade(candidateConfig: config), isFalse);
     });
 
-    test("declines when only the pinned version is installed", () async {
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const CodexRuntimeManifest().bundledVersion.raw);
 
-      expect(await needsUpgrade(candidateConfig: config), isFalse);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
     test("asks for an upgrade when a superseded version exists and PATH is absent", () async {

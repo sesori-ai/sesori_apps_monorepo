@@ -49,15 +49,13 @@ class const ManagedRuntimeInventory({required final RuntimeManifest _manifest}) 
     return List<RuntimeVersion>.unmodifiable(versions);
   }
 
-  /// Whether a superseded managed version should trigger installation of the
-  /// bundled version. A partial pinned directory never suppresses repair.
+  /// Whether an outdated or incomplete pinned runtime should trigger
+  /// installation of the bundled version.
   bool hasOutdatedVersion({required String stateDirectory}) {
     if (_hasCompletedBundledInstallation(stateDirectory: stateDirectory)) return false;
 
-    final superseded = installedVersions(
-      stateDirectory: stateDirectory,
-    ).where((version) => version.raw != _manifest.bundledVersion.raw);
-    return superseded.isNotEmpty && superseded.first.compareTo(_manifest.bundledVersion) <= 0;
+    final installed = installedVersions(stateDirectory: stateDirectory);
+    return installed.isNotEmpty && installed.first.compareTo(_manifest.bundledVersion) <= 0;
   }
 
   bool _hasCompletedBundledInstallation({required String stateDirectory}) {

@@ -83,8 +83,7 @@ void main() {
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 
-  test("does not let a partial pinned directory hide an older runtime", () {
-    versionDir("1.16.0");
+  test("repairs a partial pinned directory even without an older runtime", () {
     final pinned = versionDir("1.17.9");
     final sentinel = File(p.join(pinned.path, RuntimeInstallService.sentinelFileName));
 

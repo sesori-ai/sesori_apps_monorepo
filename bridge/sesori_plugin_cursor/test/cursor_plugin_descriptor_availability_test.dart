@@ -32,7 +32,7 @@ void main() {
       Directory(p.join(stateDir.path, const CursorRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () async {
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const CursorRuntimeManifest().bundledVersion.raw);
 
       expect(
@@ -44,7 +44,7 @@ void main() {
           environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
-        isFalse,
+        isTrue,
       );
     });
 
