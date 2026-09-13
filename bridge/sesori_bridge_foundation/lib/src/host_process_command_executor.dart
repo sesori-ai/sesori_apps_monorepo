@@ -164,10 +164,10 @@ class HostProcessCommandExecutor({
     }
 
     try {
-      // Keep command ownership until forced termination is observed. Callers
-      // may bound shutdown independently, but this executor must not settle
-      // while the child could still be mutating runtime files.
-      await process.exitCode;
+      // Give force termination a bounded opportunity to settle. A child that
+      // still does not report exit surfaces as a termination failure rather
+      // than pinning setup, updates, or bridge shutdown indefinitely.
+      await process.exitCode.timeout(const Duration(seconds: 5));
     } on Object catch (error, stackTrace) {
       Log.w(
         "HostProcessCommandExecutor: failed to confirm termination of $reason '$executable'",
