@@ -52,7 +52,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 |---|---:|---|
 | `3999200805` — concrete executable locator | 2 | Planned |
 | `3999200808` — Antigravity repository mapping | 6 | Planned |
-| `3999205383` — Windows first-attempt process tree | 3 | In progress |
+| `3999205383` — Windows first-attempt process tree | 3 | Implemented |
 | `3999205385` — deterministic Codex PATH tests | 5 | Planned |
 | `3999205390` — recovery inspection after enable failure | 7 | Planned |
 | `3999205396` — direct Antigravity absence predicate tests | 6 | Planned |
@@ -136,3 +136,16 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Complete architecture-implementation review and apply valid findings.
 - [x] Measure the full Step 3 diff against its 1,000-line ceiling.
 - [ ] Commit, push, open Step 3 PR, and start its monitor.
+
+## Step 3 Evidence
+
+- Base: `825583d25d53587c28292b506e27e34f251cf98d` (Step 2 squash merge).
+- Implementation head: `87fdf32596bd1c7cfe7a68382dd84a8c2b3fa37f`.
+- Focused process, shutdown, runtime, and lifecycle tests: 167 passed.
+- `dart analyze --fatal-infos` for `bridge/app`: no issues.
+- Architecture implementation review: APPROVED with no violations.
+- `git diff --check`: passed.
+- Implementation head: 312 additions plus 66 deletions, or 378 changed lines across 11 files.
+- Evidence reconciliation: 15 authored lines; final numstat: 325 additions + 66 deletions = 391.
+- All churn is authored; generated churn is zero.
+- Final changed-line total remains below the 1,000-line ceiling.
