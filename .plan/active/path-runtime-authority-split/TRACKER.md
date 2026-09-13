@@ -146,7 +146,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - First review-fix checkpoint: `67e061722ad85a8f087f47a158227a28a98ec7c0`.
 - Second review-fix implementation checkpoint: `4d45b00c5db895f3fc355ea55acec070c92a8c63`.
 - Second review accepted/evidence head: `fed982198691b1083660a12d9be8197148082e80`.
-- Named-launcher follow-up implementation checkpoint: `PENDING_NAMED_LAUNCHER_HEAD`.
+- Named-launcher follow-up implementation checkpoint: `54cad58138ba96c89561d1f50c65a41834ca57a5`.
 - The following evidence-only commit replaces that placeholder without changing base-to-head numstat; its accepted head
   is recorded in the PR body because a commit cannot embed its own hash.
 - Initial focused process, shutdown, runtime, lifecycle, runner, and restart tests: 189 passed.
