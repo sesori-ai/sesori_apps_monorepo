@@ -198,7 +198,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         };
       case ManagedRuntimePathNotSelected(:final primaryRejection):
         return switch (primaryRejection) {
-          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+          ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
             actionHint: "Update the global DeepSeek adapter, then retry setup detection.",
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(

@@ -380,7 +380,7 @@ class const CodexPluginDescriptor({
       final hasExplicitBinary = _explicitBin(config) != null;
       if (selection is ManagedRuntimePathNotSelected) {
         return switch (primaryRejection) {
-          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+          ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
             actionHint: "Update the global Codex installation, then retry setup detection.",
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(

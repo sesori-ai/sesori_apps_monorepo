@@ -13,10 +13,11 @@ import "runtime_manifest.dart";
 
 /// Resolves an already-installed runtime without downloading or mutating it.
 ///
-/// PATH is authoritative whenever its command exists. A supported PATH runtime
-/// is selected; an outdated or otherwise unusable PATH runtime blocks startup.
-/// Only when PATH is absent does selection continue to fallback candidates and
-/// then the newest supported managed runtime, preferring the pinned version.
+/// An explicit executable is authoritative when supplied. Otherwise, PATH is
+/// authoritative whenever its command exists: a supported runtime is selected,
+/// while an outdated or unusable one blocks startup. Only verified PATH absence
+/// permits fallbacks and supported managed runtimes, preferring the pinned
+/// version before other versions in newest-first order.
 class ManagedRuntimeProvisionService({
   required final RuntimeManifest _manifest,
   required final ManagedRuntimeSelectionService _selectionService,

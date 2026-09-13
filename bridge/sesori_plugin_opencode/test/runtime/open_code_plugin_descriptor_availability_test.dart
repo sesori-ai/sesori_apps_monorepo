@@ -157,7 +157,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupUnavailable>());
+      expect(result, isA<PluginSetupUnknown>());
       expect(
         descriptor.managementCapabilities(config: automaticConfig),
         contains(PluginControlCapability.install),

@@ -323,7 +323,7 @@ class const CursorPluginDescriptor({
       }
       if (selection is ManagedRuntimePathNotSelected) {
         return switch (selection.primaryRejection) {
-          ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+          ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
             actionHint: "Update the global Cursor CLI, then retry setup detection.",
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(

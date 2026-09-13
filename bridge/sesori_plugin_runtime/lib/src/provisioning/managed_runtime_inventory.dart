@@ -51,6 +51,7 @@ class const ManagedRuntimeInventory({required final RuntimeManifest _manifest}) 
   /// Whether the newest managed version is older than the bundled version.
   bool hasOutdatedVersion({required String stateDirectory}) {
     final installed = installedVersions(stateDirectory: stateDirectory);
-    return installed.isNotEmpty && installed.first.compareTo(_manifest.bundledVersion) < 0;
+    if (installed.any((version) => version.raw == _manifest.bundledVersion.raw)) return false;
+    return installed.isNotEmpty && installed.first.compareTo(_manifest.bundledVersion) <= 0;
   }
 }

@@ -91,6 +91,18 @@ void main() {
     expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
   });
 
+  test("keeps an outdated PATH runtime non-installable until update metadata lands", () async {
+    final result = await CopilotPluginDescriptor.production().inspectSetup(
+      config: defaultConfig,
+      processes: _Processes(outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.77\n", exitCode: 0)]),
+      environment: const {},
+      stateDirectory: "/state",
+    );
+
+    expect(result, isA<PluginSetupUnknown>());
+    expect(result.actionHint, contains("Update the global GitHub Copilot CLI"));
+  });
+
   test("classifies an unrelated explicit runtime as unrecognized", () async {
     final unknown = await CopilotPluginDescriptor.production().inspectSetup(
       config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),

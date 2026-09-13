@@ -442,7 +442,7 @@ class const OpenCodePluginDescriptor({
     final rejection = (selection as ManagedRuntimeNotSelected).primaryRejection;
     if (selection is ManagedRuntimePathNotSelected) {
       return switch (rejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
           actionHint: "Update the global OpenCode installation, then retry setup detection.",
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(

@@ -238,7 +238,7 @@ final class const OmpPluginDescriptor({
     }
     if (notSelected is ManagedRuntimePathNotSelected) {
       return switch (notSelected.primaryRejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
           actionHint: "Update the global Oh My Pi CLI, then retry setup detection.",
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(

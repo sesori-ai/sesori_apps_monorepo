@@ -27,7 +27,7 @@ import "runtime_version.dart";
 /// then sweeps managed versions before reporting the
 /// terminal event (a consumer may unsubscribe on that event).
 ///
-/// PATH authority is revalidated before cleanup or staging mutates managed state.
+/// PATH authority is revalidated immediately before every cleanup, staging, and download boundary.
 ///
 /// The sweep runs in two stages because the plugin may be running from an older
 /// managed version while this install downloads its replacement. Versions below
@@ -56,29 +56,10 @@ class ManagedRuntimeInstallService({
 
     final String id = _manifest.runtimeId;
     final String name = _manifest.displayName;
-    final bool pathAbsent;
-    try {
-      pathAbsent = await _pathAuthority.isPathAbsent(
-        environment: environment,
-        abortSignal: startAborted,
-      );
-    } on PluginStartAbortedException {
-      rethrow;
-    } on Object catch (error, stackTrace) {
-      Log.w("[$id] could not revalidate PATH authority before managed mutation", error, stackTrace);
-      yield ProvisionFailed(
-        message: "Could not verify whether the global $name runtime is absent. Check the bridge logs and retry.",
-      );
+    if (await _pathMutationBlocker(environment: environment, startAborted: startAborted) case final blocker?) {
+      yield ProvisionFailed(message: blocker);
       return;
     }
-    if (!pathAbsent) {
-      Log.i("[$id] skipped managed $name mutation because the PATH runtime is authoritative");
-      yield ProvisionFailed(
-        message: "The global $name runtime now takes precedence. Retry setup detection instead.",
-      );
-      return;
-    }
-    _throwIfAborted(startAborted: startAborted);
 
     final RuntimeVersion bundled = _manifest.bundledVersion;
     final String managedDir = p.join(stateDirectory, id);
@@ -143,6 +124,10 @@ class ManagedRuntimeInstallService({
       binaryFileName: _manifest.binaryFileName,
       sha256: asset.sha256,
     )) {
+      if (await _pathMutationBlocker(environment: environment, startAborted: startAborted) case final blocker?) {
+        yield ProvisionFailed(message: blocker);
+        return;
+      }
       // Cached candidates use the same disposable private validation context
       // as downloads; a broken cached copy falls through to a reinstall.
       final bool cachedValid;
@@ -165,6 +150,10 @@ class ManagedRuntimeInstallService({
       _throwIfAborted(startAborted: startAborted);
       if (cachedValid) {
         Log.i("[$id] managed $name ${bundled.toString()} already installed");
+        if (await _pathMutationBlocker(environment: environment, startAborted: startAborted) case final blocker?) {
+          yield ProvisionFailed(message: blocker);
+          return;
+        }
         // Sweep before the terminal event: consumers may stop listening as
         // soon as ProvisionReady arrives, which would cancel this stream and
         // leave superseded version directories behind.
@@ -175,6 +164,10 @@ class ManagedRuntimeInstallService({
       Log.w("[$id] cached managed runtime at '$binaryPath' failed candidate validation; reinstalling");
     }
 
+    if (await _pathMutationBlocker(environment: environment, startAborted: startAborted) case final blocker?) {
+      yield ProvisionFailed(message: blocker);
+      return;
+    }
     try {
       // await-for (not yield*) so a failure from the install stream throws
       // into this try/catch; yield* would forward the error to the consumer.
@@ -212,10 +205,38 @@ class ManagedRuntimeInstallService({
     }
 
     Log.i("[$id] installed managed $name ${bundled.toString()}");
+    if (await _pathMutationBlocker(environment: environment, startAborted: startAborted) case final blocker?) {
+      yield ProvisionFailed(message: blocker);
+      return;
+    }
     // Sweep before the terminal event: consumers may stop listening as soon as
     // ProvisionReady arrives, which would cancel this stream mid-sweep.
     await _cleaner.sweep(managedDir: managedDir, keep: keepAfterInstall);
     yield ProvisionReady(binaryPath: binaryPath);
+  }
+
+  Future<String?> _pathMutationBlocker({
+    required Map<String, String> environment,
+    required StartAbortSignal startAborted,
+  }) async {
+    final id = _manifest.runtimeId;
+    final name = _manifest.displayName;
+    try {
+      final pathAbsent = await _pathAuthority.isPathAbsent(
+        environment: environment,
+        abortSignal: startAborted,
+      );
+      _throwIfAborted(startAborted: startAborted);
+      if (pathAbsent) return null;
+      Log.i("[$id] PATH authority blocked the next managed $name mutation");
+      return "The global $name runtime now takes precedence. Retry setup detection instead.";
+    } on PluginStartAbortedException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      _throwIfAborted(startAborted: startAborted);
+      Log.w("[$id] could not revalidate PATH authority before managed mutation", error, stackTrace);
+      return "Could not verify whether the global $name runtime is absent. Check the bridge logs and retry.";
+    }
   }
 
   void _throwIfAborted({required StartAbortSignal startAborted}) {

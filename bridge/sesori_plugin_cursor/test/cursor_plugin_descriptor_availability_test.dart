@@ -64,6 +64,23 @@ void main() {
       );
     });
 
+    test("upgrades a different managed build from the bundled calendar day", () async {
+      final bundled = const CursorRuntimeManifest().bundledVersion.raw;
+      installedVersion("${bundled.substring(0, 10)}-different");
+
+      expect(
+        await const CursorPluginDescriptor().needsManagedRuntimeUpgrade(
+          config: config,
+          processes: _ProbeProcessService(
+            spawnError: const ProcessException("cursor-agent", ["--version"], "missing", 2),
+          ),
+          environment: const {"PATH": "/definitely/missing"},
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
     test("declines with an explicit binary override", () async {
       installedVersion("2026.07.20-abc1234");
 
@@ -301,7 +318,7 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupUnavailable>());
+      expect(result, isA<PluginSetupUnknown>());
       expect(result.actionHint, isNot(contains("account-secret-output")));
       expect(processes.spawnedArguments, [
         const ["--version"],

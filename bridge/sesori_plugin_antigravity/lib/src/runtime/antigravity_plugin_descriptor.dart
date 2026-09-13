@@ -167,6 +167,7 @@ class const AntigravityPluginDescriptor({
   }) => AntigravityManagedRuntimePathAuthority(
     runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
     pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
+    executableLocator: IoHostExecutableLocator(platformIsWindows: target.os == PlatformOs.windows),
     target: target,
   );
 

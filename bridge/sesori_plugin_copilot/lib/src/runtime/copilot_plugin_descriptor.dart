@@ -204,7 +204,7 @@ final class const CopilotPluginDescriptor({
         rejection: primaryRejection,
       ),
       ManagedRuntimePathNotSelected(:final primaryRejection) => switch (primaryRejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
           actionHint: "Update the global GitHub Copilot CLI, then retry setup detection.",
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(

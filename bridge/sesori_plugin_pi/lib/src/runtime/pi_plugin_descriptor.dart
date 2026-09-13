@@ -249,7 +249,7 @@ final class const PiPluginDescriptor({
     }
     if (notSelected is ManagedRuntimePathNotSelected) {
       return switch (notSelected.primaryRejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnavailable(
+        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
           actionHint: "Update the global Pi CLI, then retry setup detection.",
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(

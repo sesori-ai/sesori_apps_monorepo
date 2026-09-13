@@ -449,6 +449,24 @@ void main() {
     );
   });
 
+  test("a broken PATH server symlink blocks managed startup upgrade", () async {
+    if (Platform.isWindows) return;
+    Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0")).createSync(recursive: true);
+    final brokenPath = Directory(p.join(state.path, "broken-path"))..createSync();
+    Link(p.join(brokenPath.path, AntigravityRelease.posixServerFileName))
+        .createSync(p.join(brokenPath.path, "missing-target"));
+
+    expect(
+      await descriptor(http: null).needsManagedRuntimeUpgrade(
+        config: config(server: null),
+        processes: processes,
+        environment: {"PATH": brokenPath.path},
+        stateDirectory: state.path,
+      ),
+      isFalse,
+    );
+  });
+
   test("invalid managed pair retains both disclosure URLs before installation", () async {
     final managed = Directory(
       p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
