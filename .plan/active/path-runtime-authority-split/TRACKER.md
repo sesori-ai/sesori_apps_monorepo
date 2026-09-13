@@ -99,26 +99,26 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 
 ## Step 2 Evidence
 
-- Focused Foundation tests: 20 passed.
+- Focused Foundation tests: 21 passed.
 - Cursor hung-version-probe CI regression: passed.
 - `dart analyze --fatal-infos`: no issues.
 - Architecture implementation review: APPROVED with no violations.
 - Immutable Step 2 implementation range: `b20e1268a2546daec24412db8700b2f1b7048515` to
-  `2b7676542dc008b4ac84ecc10775acf69e06b269`.
+  `058fdf5e466f4fcc36f2eea26c86f11a2ca8311a`.
 - Numstat basis: `.plan` paths are repository-relative; remaining paths are relative to
   `bridge/sesori_bridge_foundation/`.
 
   | File | Additions | Deletions |
   |---|---:|---:|
   | `.plan/active/path-runtime-authority-split/PLAN.md` | 1 | 1 |
-  | `.plan/active/path-runtime-authority-split/TRACKER.md` | 50 | 9 |
+  | `.plan/active/path-runtime-authority-split/TRACKER.md` | 53 | 9 |
   | `lib/sesori_bridge_foundation.dart` | 1 | 0 |
   | `lib/src/host_executable_locator.dart` | 169 | 0 |
-  | `lib/src/host_process_command_executor.dart` | 148 | 9 |
-  | `test/host_executable_locator_test.dart` | 187 | 0 |
-  | `test/host_process_command_executor_test.dart` | 197 | 8 |
+  | `lib/src/host_process_command_executor.dart` | 155 | 9 |
+  | `test/host_executable_locator_test.dart` | 193 | 0 |
+  | `test/host_process_command_executor_test.dart` | 216 | 8 |
 
-- Implementation head: 753 additions plus 27 deletions, or 780 changed lines across 7 files.
-- Tracker reconciliation: 15 additions/12 deletions; branch-added deletions net +3, yielding 783 final lines.
+- Implementation head: 788 additions plus 27 deletions, or 815 changed lines across 7 files.
+- This evidence edit replaces lines one-for-one; base-to-current numstat remains 788 + 27 = 815.
 - All churn is authored; generated churn is zero.
-- Review-expanded lookup and spawn fencing raised the Step 2 ceiling from 700 to 850; both totals remain below it.
+- Review-expanded lookup and spawn fencing raised the Step 2 ceiling from 700 to 850; the total remains below it.
