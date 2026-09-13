@@ -173,9 +173,12 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - `lib/src/server/api/system_process_api.dart` — `SystemProcessApi.sendGracefulSignal` and `sendForceSignal` first
     prove an already-absent Windows PID, then always use tree-aware `taskkill`; any non-zero tree request remains a
     diagnostic failure because root absence afterward cannot prove descendant termination;
-  - `lib/src/server/services/bridge_restart_service.dart` and `bin/bridge.dart` — standalone Windows restart uses a
-    marked one-shot launcher that spawns the real successor with inherited stdio, strips the marker, and exits
-    immediately, breaking process ancestry before the successor may terminate the predecessor's full tree;
+  - `lib/src/server/services/windows_restart_successor_launcher.dart`, `bridge_restart_service.dart`, and
+    `bin/bridge.dart` — the named `WindowsRestartSuccessorLauncher` owns injected process-start and exit dependencies;
+    standalone Windows restart marks that one-shot launcher, which spawns the real successor with inherited stdio,
+    strips the marker, and exits immediately, breaking process ancestry before the successor may terminate the
+    predecessor's full tree. The predecessor's normal standalone shutdown never signals its own tree, and Windows
+    parent exit does not terminate children, so shutdown may begin without a separate launcher acknowledgement;
   - `lib/src/services/plugin_lifecycle_service.dart` — sealed `_ActivePluginCommand`, `_ActiveResponseCommand`, and
     install-only `_ActiveRuntimeProvisionCommand`, each owning non-null settlement;
   - `lib/src/runtime/plugin_runtime.dart` — private `_RuntimeMutation` owns one `StartAbortController` and one

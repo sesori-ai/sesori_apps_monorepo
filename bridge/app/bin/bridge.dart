@@ -41,7 +41,7 @@ import 'package:sesori_bridge/src/server/repositories/bridge_instance_repository
 import 'package:sesori_bridge/src/server/repositories/process_repository.dart';
 import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository.dart';
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
-import 'package:sesori_bridge/src/server/services/bridge_restart_service.dart';
+import 'package:sesori_bridge/src/server/services/windows_restart_successor_launcher.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
@@ -813,11 +813,10 @@ class UpdateCommand() extends cli.Command<void> {
 
 Future<void> main(List<String> args) async {
   try {
-    final launchedRestartSuccessor = await launchWindowsRestartSuccessor(
+    final restartLauncher = WindowsRestartSuccessorLauncher(
       isWindows: Platform.isWindows,
       environment: Platform.environment,
       executable: Platform.resolvedExecutable,
-      arguments: args,
       start: ({required executable, required arguments, required environment}) async {
         await Process.start(
           executable,
@@ -829,6 +828,7 @@ Future<void> main(List<String> args) async {
       },
       exitLauncher: ({required code}) => exit(code),
     );
+    final launchedRestartSuccessor = await restartLauncher.launchIfRequested(arguments: args);
     if (launchedRestartSuccessor) return;
   } on Object catch (error, stackTrace) {
     Log.e('Failed to launch the Windows restart successor', error, stackTrace);

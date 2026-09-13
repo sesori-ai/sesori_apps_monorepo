@@ -127,7 +127,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 ## Step 3 Checklist
 
 - [x] Make graceful and forceful Windows shutdown requests process-tree-aware.
-- [x] Separate a standalone Windows successor through a one-shot launcher before terminating the predecessor tree.
+- [x] Separate a standalone Windows successor through the named one-shot launcher before terminating the predecessor tree.
 - [x] Preserve every non-zero tree-termination result unless pre-inspection proved the root was already absent.
 - [x] Track and await accepted `PluginRuntime` mutations during disposal.
 - [x] Give lifecycle response commands and accepted provisions distinct sealed ownership.
@@ -144,15 +144,18 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Numstat/merge base: `825583d25d53587c28292b506e27e34f251cf98d` (Step 2 squash merge).
 - Initial implementation head: `87fdf32596bd1c7cfe7a68382dd84a8c2b3fa37f`.
 - First review-fix checkpoint: `67e061722ad85a8f087f47a158227a28a98ec7c0`.
-- Current review-fix implementation checkpoint: `4d45b00c5db895f3fc355ea55acec070c92a8c63`.
+- Second review-fix implementation checkpoint: `4d45b00c5db895f3fc355ea55acec070c92a8c63`.
+- Second review accepted/evidence head: `fed982198691b1083660a12d9be8197148082e80`.
+- Named-launcher follow-up implementation checkpoint: `PENDING_NAMED_LAUNCHER_HEAD`.
 - The following evidence-only commit replaces that placeholder without changing base-to-head numstat; its accepted head
   is recorded in the PR body because a commit cannot embed its own hash.
 - Initial focused process, shutdown, runtime, lifecycle, runner, and restart tests: 189 passed.
 - Latest review-round affected process, runner, and restart tests: 80 passed.
+- Named-launcher extraction tests: 12 passed.
 - `dart analyze --fatal-infos` for `bridge/app`: no issues.
 - Second/final architecture implementation review: APPROVED with no violations.
 - `git diff --check`: passed.
 - Initial head: 312 additions plus 66 deletions, or 378 changed lines across 11 files.
 - First review-fix checkpoint: 472 additions plus 72 deletions, or 544 changed lines across 18 files.
-- Current review-fix tree: 611 additions plus 75 deletions, or 686 changed lines across 19 files.
+- Current review-fix tree: 631 additions plus 75 deletions, or 706 changed lines across 21 files.
 - All churn is authored; generated churn is zero; the total remains below the 1,000-line ceiling.

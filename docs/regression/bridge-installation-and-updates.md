@@ -124,7 +124,7 @@ after apply. Use a throwaway machine when mutating an install root.
   `client/app/{ios,android}/fastlane/Fastfile`
 - `bridge/RELEASING.md`, `bridge/INSTALL.md`, `install.sh`, `install.ps1`, `bridge/app/npm/`
 - `bridge/app/lib/src/foundation/bridge_startup_banner_formatter.dart`
-- `bridge/app/lib/src/server/services/bridge_restart_service.dart`,
+- `bridge/app/lib/src/server/services/{bridge_restart_service,windows_restart_successor_launcher}.dart`,
   `bridge/app/lib/src/server/api/system_process_api.dart`, and their focused tests
 - `bridge/app/lib/src/updater/` policy, track, lock, repositories, services;
   `bridge/app/bin/bridge.dart` (`update`, `config track`)

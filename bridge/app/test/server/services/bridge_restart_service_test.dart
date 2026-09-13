@@ -126,52 +126,6 @@ void main() {
     expect(environment, containsPair(sesoriRestartLauncherEnvVar, sesoriRestartLauncherEnvValue));
   });
 
-  test('the Windows launcher starts the real successor without recursively relaunching', () async {
-    final calls = <({String executable, List<String> arguments, Map<String, String> environment})>[];
-    final exitCodes = <int>[];
-
-    final launched = await launchWindowsRestartSuccessor(
-      isWindows: true,
-      environment: const <String, String>{
-        sesoriRestartPredecessorPidEnvVar: '7777',
-        sesoriRestartLauncherEnvVar: sesoriRestartLauncherEnvValue,
-        'PRESERVED': 'value',
-      },
-      executable: r'C:\Sesori\sesori-bridge.exe',
-      arguments: const <String>['run', '--relay', 'wss://relay.example'],
-      start: ({required executable, required arguments, required environment}) async {
-        calls.add((executable: executable, arguments: arguments, environment: environment));
-      },
-      exitLauncher: ({required code}) => exitCodes.add(code),
-    );
-
-    expect(launched, isTrue);
-    expect(exitCodes, const <int>[0]);
-    expect(calls, hasLength(1));
-    final call = calls.single;
-    expect(call.executable, r'C:\Sesori\sesori-bridge.exe');
-    expect(call.arguments, const <String>['run', '--relay', 'wss://relay.example']);
-    expect(call.environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
-    expect(call.environment, containsPair('PRESERVED', 'value'));
-    expect(call.environment.containsKey(sesoriRestartLauncherEnvVar), isFalse);
-  });
-
-  test('the restart launcher is inert without its marker', () async {
-    expect(
-      await launchWindowsRestartSuccessor(
-        isWindows: true,
-        environment: const <String, String>{},
-        executable: r'C:\Sesori\sesori-bridge.exe',
-        arguments: const <String>['run'],
-        start: ({required executable, required arguments, required environment}) async {
-          fail('an unmarked process must not launch a successor');
-        },
-        exitLauncher: ({required code}) => fail('an unmarked process must not exit'),
-      ),
-      isFalse,
-    );
-  });
-
   test('spawnSuccessor returns false when the process cannot be started', () async {
     runner.throwOnSpawn = true;
     final service = buildService(binaryPath: '/opt/sesori/sesori-bridge');
