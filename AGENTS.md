@@ -149,6 +149,35 @@ eagerly "just in case."
   wrapper's presentation privacy-safe when the original may contain sensitive
   payload data.
 
+## PR Sizing And Review Convergence
+
+- Target **~1,500 changed lines per PR as a soft cap**. Count additions plus
+  deletions across the whole diff against its merge base, including production
+  code, tests, docs, and generated files. Line count is not a quota to fill.
+- Aim considerably lower for lifecycle, concurrency, security, cross-layer, or
+  otherwise complex changes.
+- Larger coherent PRs are acceptable when most churn is generated boilerplate,
+  such as Drift output that can exceed 1,000 lines for one new table. Report
+  generated versus authored churn, explain substantial overages, and keep
+  generated output with its source.
+- Prefer smaller independently valid PRs whenever a clean split exists. Each
+  split should compile, have focused verification, and remain reviewable without
+  artificial compatibility code created only to bridge the split.
+- Clean PR splits are always approved and encouraged. Never ask permission only
+  to split approved work, including when review feedback grows the change or an
+  estimate was wrong. This approval does not cover unrelated features,
+  considerable refactors, or other substantive scope expansion.
+- Every pushed commit starts another AI review wave over the **entire PR**, not
+  only the new commit. Oversized diffs invite fresh findings in already-reviewed
+  areas and can create a costly fix/push/full-re-review loop instead of
+  converging.
+- Measure before the first push and reassess before each follow-up push. When an
+  open PR significantly exceeds the soft cap and a clean decomposition exists,
+  stop feeding the review loop with more fix commits. Preserve published and
+  reviewed history, explain the replacement or extraction, and move remaining
+  work into smaller coherent PRs. Never rewrite published history or force-push
+  solely to manufacture a split.
+
 ## Code Quality And Change Risk
 
 - Leave touched code cleaner and simpler than you found it when the

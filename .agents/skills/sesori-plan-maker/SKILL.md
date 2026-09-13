@@ -50,15 +50,10 @@ the role, a plan, or a reviewer as a reason to overrule a confirmed decision.
   such as `3.a` / `3.b`, map them to PR ordinals, and synchronize dependencies,
   tracker and series titles/totals. Clean splits of approved work never need
   permission; substantive scope expansion still does.
-- Target ~1,500 changed lines per PR as a soft cap, counting additions plus
-  deletions, generated code, tests, and docs. Prefer considerably smaller PRs for
-  complex changes; allow larger coherent diffs when most churn is generated
-  boilerplate, such as Drift output exceeding 1,000 lines for one new table.
-  Record generated versus authored churn and explain substantial overages when
-  no clean split is practical. Keep generated output with its source.
-  Every push restarts AI review of the entire PR; small coherent PRs avoid costly
-  fix/re-review loops and merge sooner. Follow the plan worker's PR Sizing and
-  Step Splitting rules during execution.
+- Follow the repository-wide `PR Sizing And Review Convergence` policy in
+  `AGENTS.md` when estimating PR boundaries. Record significant expected
+  exceptions in durable plans; execution-specific substep bookkeeping remains
+  in the plan worker skill.
 - For durable planned work, the first PR step always raises the plan under
   `.plan/active/<slug>/` before implementation begins. The penultimate step
   reconciles and completes the affected feature documents under

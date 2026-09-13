@@ -163,9 +163,10 @@ plan under `.plan/active/<slug>/`. It must contain:
 Do not pin production versions, publish adapters, or implement optional findings
 merely to finish planning. An explicit implementation request authorizes its
 stated scope; execute through [sesori-plan-worker](../sesori-plan-worker/SKILL.md)
-after planning and applicable gates. Follow its ~1,500-line soft cap, smaller
-complex PRs, generated-boilerplate allowance, and pre-approved clean step splits.
-Splitting never needs another permission request; adding unapproved behavior does.
+after planning and applicable gates. Follow the repository-wide `PR Sizing And
+Review Convergence` policy in `AGENTS.md`; execution-specific step sequencing
+remains in the plan worker. Splitting never needs another permission request;
+adding unapproved behavior does.
 Respect the current workspace restrictions for separate-repo dependencies: record
 an authorized handoff/blocker rather than creating a forbidden checkout.
 
