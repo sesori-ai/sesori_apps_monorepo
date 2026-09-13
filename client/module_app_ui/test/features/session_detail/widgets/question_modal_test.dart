@@ -87,6 +87,59 @@ SesoriQuestionAsked _questionAsked({required List<QuestionInfo> questions}) {
 }
 
 void main() {
+  for (final omitCustom in [false, true]) {
+    testWidgets("checkbox and separate text questions preserve ${omitCustom ? 'omission' : 'identical values'}", (
+      tester,
+    ) async {
+      final capture = _ReplyCapture();
+      final router = _createRouter(
+        question: _questionAsked(
+          questions: const [
+            QuestionInfo(
+              question: "Choose deployment targets",
+              header: "Targets",
+              multiple: true,
+              custom: false,
+              options: [
+                QuestionOption(label: "iOS", description: "iPhone"),
+                QuestionOption(label: "Android", description: "Android phone"),
+              ],
+            ),
+            QuestionInfo(question: "Add another target", header: "Other", custom: true, options: []),
+          ],
+        ),
+        capture: capture,
+      );
+      addTearDown(router.dispose);
+
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openQuestionModal(tester);
+      expect(find.byType(TextField), findsNothing);
+      await tester.tap(find.text("iOS"));
+      await tester.pump();
+      await tester.tap(find.text("Android"));
+      await tester.pump();
+      expect(capture.answers, isNull);
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+
+      if (omitCustom) {
+        await tester.tap(find.byKey(const Key("decline-current-question")));
+      } else {
+        await tester.enterText(find.byType(TextField), "iOS");
+      }
+      await tester.pump();
+      await tester.tap(find.byKey(const Key("question-primary-action")));
+      await tester.pumpAndSettle();
+
+      expect(capture.answers, [
+        const ReplyAnswer(values: ["iOS", "Android"]),
+        ReplyAnswer(values: omitCustom ? const [] : const ["iOS"]),
+      ]);
+      expect(capture.rejectedRequestId, isNull);
+    });
+  }
+
   testWidgets("multi-select questions submit selected options and custom text together", (tester) async {
     final capture = _ReplyCapture();
     final router = _createRouter(

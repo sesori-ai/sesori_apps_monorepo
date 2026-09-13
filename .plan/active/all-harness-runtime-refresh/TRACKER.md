@@ -2,37 +2,40 @@
 
 ## Current state
 
-- **Series:** nine top-level steps; Steps 1–5 merged, Step 6 implements OMP Windows ARM64.
-- **Branch/base:** `all-harness-runtime-refresh-step-6` /
-  `79932e1051cf46267dac8f3937546473ea56cf19`.
+- **Series:** nine top-level steps; Steps 1–6 merged, Step 7 implements shared ACP multi-select.
+- **Branch/base:** `all-harness-runtime-refresh-step-7` /
+  `acc970cf8452dcb58d5eff085f4ebfbabefb8110`.
 - **Delivered scope:** four Step 2 targets, 18 managed digests and focused
   fixtures; required Pi/Claude lifecycle evidence accepted after merge;
   Antigravity's exact `1.1.1` pair and actual production-validator verification;
-  localized Hermes discovery cleanup; and the remaining five target updates.
-  The current branch adds OMP Windows ARM64 mapping without generated files,
-  wire/database changes or a product release.
+  localized Hermes discovery cleanup; the remaining five target updates; and
+  OMP's eighth, Windows ARM64, mapping. The current branch adds shared ACP array
+  questions without new wire/database fields, generated files or a product release.
 - **Approved scope:** mechanical target refreshes, OMP Windows ARM64 mapping,
   and OMP-backed shared ACP multi-select questions. Floors remain unchanged;
   DeepSeek and unrelated upstream changes remain outside this series.
-- **Latest merge:** PR #1465 merged on 2026-09-13 at `11:25:53Z` as
-  `79932e1051cf46267dac8f3937546473ea56cf19`. Terminal CI passed 16/16; Cubic
-  approved, Codex completed the accepted head, and all five threads were
-  resolved. No review waiver was needed for this PR.
+- **Latest merge:** PR #1467 merged on 2026-09-13 at `12:00:25Z` as
+  `acc970cf8452dcb58d5eff085f4ebfbabefb8110`. Terminal CI passed 16/16; Cubic
+  approved, Codex completed the accepted head, and the one tracker-wording
+  thread was resolved. No review waiver was needed for this PR.
 - **Owner correction, 2026-09-13:** update every included harness. Missing tests,
   credentials or runners must become final-plan follow-ups, not old-version
   holds or repeated questions about whether to proceed. Only an exceptional
   concrete problem justifies a temporary hold with a specific resolution path;
   none is currently established for these updates.
-- **Current branch:** Step 6 maps `omp-windows-arm64.exe` at `18.1.19`, using
-  the independently verified reserved hash. All eight mappings reconcile with
-  the machine-readable records. Ten manifest/asset-service cases and the owning
-  analyzer pass; three Dart files format unchanged. Native ARM64 is unverified,
-  not an implementation hold. The actual diff is straightforward (`🌿`).
-- **Next:** publish/review Step 6, then implement shared ACP multi-select.
-  Group unresolved tests, feature questions and exact user help in Steps 8–9. Grok testing is authorized in
-  principle, but credential provisioning need not precede its target update.
-  No live credentials may be borrowed, and stopped Codex/Hermes probes are not
-  reauthorized by this timing change. See [Step 6 verification](STEP-6-VERIFICATION.md),
+- **Current branch:** Step 7 maps finite array `items.anyOf` string choices
+  through one immutable field encoder. Separate custom-text questions retain
+  their own slots, keys and required flags. OMP's existing live form support and
+  disabled scratch policy are unchanged. All 75 focused cases and four owning
+  analyzers pass; live OMP/client verification remains unrun. The five-file Dart
+  diff is 435 changed lines, straightforward (`🌿`), with no new wire/state machinery.
+- **Next:** complete architecture implementation review and publish Step 7.
+  Group unresolved tests, feature questions and exact user help in Steps 8–9.
+  Grok testing is authorized in principle, but credential provisioning need not
+  precede its target update. No live credentials may be borrowed, and stopped
+  Codex/Hermes probes are not reauthorized by this timing change. See
+  [Step 7 verification](STEP-7-VERIFICATION.md),
+  [Step 6 verification](STEP-6-VERIFICATION.md),
   [Step 5 verification](STEP-5-VERIFICATION.md),
   [Step 4 verification](STEP-4-VERIFICATION.md),
   [Step 3 verification](STEP-3-VERIFICATION.md),
@@ -48,8 +51,8 @@
 | [x] | 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | PR #1457 merged as d55b93c874; Antigravity verified/applied including actual production-validator gate; Cursor deferred then, now updated in Step 5 |
 | [x] | 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | PR #1460 merged as 600d94fb49; cleanup fix, 11 tests and analyzer pass; candidate native verification not accepted; target was unchanged at that merge |
 | [x] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime: finish remaining target updates [step 5/9]` | PR #1465 merged as 79932e1051; five targets, 17 mapped digests, 121 tests, five analyzers; native/configured limits remain final follow-ups |
-| [ ] | 6/9 | `🌿 [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Implemented eighth mapping/hash, 10 focused tests/analyzer and platform docs; publication/review pending; native ARM64 check remains final follow-up |
-| [ ] | 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Separate option/custom questions and owning tests/docs; missing live roundtrip becomes final follow-up |
+| [x] | 6/9 | `🌿 [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | PR #1467 merged as acc970cf84; eighth mapping/hash, 10 focused tests/analyzer and platform docs; native ARM64 remains final follow-up |
+| [ ] | 7/9 | `🌿 [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Implemented separate array/custom questions, 75 focused tests, four analyzers, question/capability docs; architecture review/publication pending; live roundtrip remains final follow-up |
 | [ ] | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Reconcile evidence/docs and prepare one grouped test/question/user-help handoff |
 | [ ] | 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final matrix, remaining tests/issues and user-assisted checks; explicit acceptance before retirement |
 
@@ -109,7 +112,7 @@ with the smallest reproduction, expected result and specific needed help.
 | Hermes configured lifecycle | Faithful isolated launch, actual persisted load/deletion | Attempted load failed; procedure/evidence not accepted; review before any execution |
 | Grok authenticated seam | New/prompt/replay/model-selection/close | Testing authorized in principle; secure test credential and endpoint scope still needed |
 | OMP Windows ARM64 | Native install/version/ACP smoke | Mapping/tests/docs implemented; native ARM64 runner or user assistance still needed |
-| OMP ACP multi-select | Widget automation and live OMP/client array roundtrip, including omission/cancel and single choice | Implement/test locally first; arrange missing live fixture at the final stage |
+| OMP ACP multi-select | Live OMP/client array roundtrip, including omission/cancel and single choice | Step 7 mapper/plugin/bridge/widget automation passes; arrange the missing live fixture at the final stage |
 | Managed-cache policy | Bounded mixed-build reproduction and decision on newer cached versions when an older bridge starts | Pre-existing pinned-first selection/non-pinned cleanup; shared policy change is outside these target updates |
 
 ## Verification log
@@ -208,6 +211,18 @@ verification timing, not the results recorded before it.
   parsing, candidate execution or native ARM64 verification was repeated or
   newly performed. Capability/regression docs distinguish implementation from
   native coverage. See [Step 6 verification](STEP-6-VERIFICATION.md).
+- Step 6 merge: PR #1467 merged as `acc970cf84` at `2026-09-13T12:00:25Z`;
+  terminal CI 16/16, Cubic approval, current-head Codex review complete. Its sole
+  tracker-wording finding was corrected and resolved without rerunning code tests.
+- Step 7: 23 ACP mapper/registry cases, 15 OMP plugin cases, 16 bridge question
+  repository cases and 21 widget cases pass; all four owning analyzers pass.
+  Cases include identical option/custom text in separate slots, independent
+  omission/required rejection, malformed-array decline, immutable encoding,
+  and unchanged scalar/reject/cancel paths. The OMP fake checks live form support
+  and scratch omission; it is not native execution. The missing client workspace
+  configuration was prepared once from cached dependencies with offline,
+  lockfile-enforced pub get; no dependency/generated tracked files changed.
+  See [Step 7 verification](STEP-7-VERIFICATION.md).
 - Coverage remains limited to each report's actual boundary. In particular,
   Hermes' rejected procedure cannot substantiate absence of inherited inputs.
   No live-profile access is authorized. Configured, multi-select and Windows

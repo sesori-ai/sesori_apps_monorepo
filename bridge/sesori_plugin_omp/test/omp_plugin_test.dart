@@ -126,6 +126,8 @@ void main() {
         discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
       );
       final initialize = await waitForFrame(AcpMethods.initialize);
+      final params = (initialize["params"] as Map).cast<String, dynamic>();
+      expect((params["clientCapabilities"] as Map).containsKey("elicitation"), isFalse);
       respond(initialize, {
         "protocolVersion": 1,
         "agentCapabilities": {
@@ -284,6 +286,62 @@ void main() {
 
       respond(firstPrompt, {"stopReason": "end_turn"});
       respond(secondPrompt, {"stopReason": "end_turn"});
+    });
+
+    test("roundtrips an upstream-shaped askDialog array and separate custom property", () async {
+      await connect();
+      final session = await create("dialog-session");
+      fake.emit({
+        "jsonrpc": "2.0",
+        "id": 41,
+        "method": AcpMethods.elicitationCreate,
+        "params": {
+          "sessionId": session.id,
+          "mode": "form",
+          "message": "Choose deployment targets",
+          "requestedSchema": {
+            "type": "object",
+            "properties": {
+              "q0": {
+                "type": "array",
+                "title": "Choose deployment targets",
+                "items": {
+                  "anyOf": [
+                    {"const": "iOS", "title": "iOS"},
+                    {"const": "Android", "title": "Android"},
+                  ],
+                },
+              },
+              "q0__other": {"type": "string", "title": "Other"},
+            },
+          },
+        },
+      });
+      await Future<void>.delayed(Duration.zero);
+      final pending = (await plugin.getPendingQuestions(sessionId: session.id)).single;
+      expect(pending.questions, hasLength(2));
+      expect(pending.questions[0].multiple, isTrue);
+      expect(pending.questions[0].custom, isFalse);
+      expect(pending.questions[1].multiple, isFalse);
+      expect(pending.questions[1].custom, isTrue);
+
+      await plugin.replyToQuestion(
+        questionId: pending.id,
+        sessionId: session.id,
+        answers: const [
+          ["iOS", "Android"],
+          ["iOS"],
+        ],
+      );
+
+      expect(fake.written.where((frame) => frame["id"] == 41).single["result"], {
+        "action": "accept",
+        "content": {
+          "q0": ["iOS", "Android"],
+          "q0__other": "iOS",
+        },
+      });
+      expect(await plugin.getPendingQuestions(sessionId: session.id), isEmpty);
     });
 
     test("a prompt queued on the active session cancels that turn before dispatch", () async {

@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/question_repository.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
@@ -85,6 +86,87 @@ void main() {
         );
       }
     }
+
+    test("preserves checkbox, custom, and omitted answer slots through the shared contract", () async {
+      await recordSession(
+        stableId: "stable-dialog",
+        backendId: "dialog",
+        projectId: "/repo",
+        parentStableId: null,
+      );
+      final plugin = _FakeDerivedQuestionPlugin(
+        launchDirectory: "/repo",
+        allSessions: [_session("/repo", id: "dialog")],
+        questionsBySession: const {
+          "dialog": [
+            PluginPendingQuestion(
+              id: "question-1",
+              sessionID: "dialog",
+              displaySessionId: null,
+              questions: [
+                PluginQuestionInfo(
+                  question: "Choose targets",
+                  header: "Targets",
+                  options: [
+                    PluginQuestionOption(label: "iOS", description: "iPhone"),
+                    PluginQuestionOption(label: "Android", description: "Android phone"),
+                  ],
+                  multiple: true,
+                  custom: false,
+                ),
+                PluginQuestionInfo(
+                  question: "Other target",
+                  header: "Other",
+                  options: [],
+                  multiple: false,
+                  custom: true,
+                ),
+                PluginQuestionInfo(question: "Notes", header: "Notes", options: [], multiple: false, custom: true),
+              ],
+            ),
+          ],
+        },
+      );
+      final repository = singlePluginQuestionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+      );
+
+      final pending = (await repository.getPendingQuestions(sessionId: "stable-dialog")).single;
+      expect(pending.questions.map((question) => question.header), ["Targets", "Other", "Notes"]);
+      expect(pending.questions[0].multiple, isTrue);
+      expect(pending.questions[0].custom, isFalse);
+      expect(pending.questions[0].options, const [
+        QuestionOption(label: "iOS", description: "iPhone"),
+        QuestionOption(label: "Android", description: "Android phone"),
+      ]);
+      expect(pending.questions[1].multiple, isFalse);
+      expect(pending.questions[1].custom, isTrue);
+
+      final request = ReplyToQuestionRequest.fromJson(
+        ReplyToQuestionRequest(
+          requestId: pending.id,
+          sessionId: pending.sessionID,
+          answers: const [
+            ReplyAnswer(values: ["iOS", "Android"]),
+            ReplyAnswer(values: ["iOS"]),
+            ReplyAnswer(values: []),
+          ],
+        ).toJson(),
+      );
+      await repository.replyToQuestion(
+        questionId: request.requestId,
+        sessionId: request.sessionId,
+        answers: request.answers,
+      );
+
+      expect(plugin.receivedAnswers, [
+        ["iOS", "Android"],
+        ["iOS"],
+        const <String>[],
+      ]);
+    });
 
     test("getProjectQuestions surfaces a question raised in a worktree session under its parent", () async {
       const parent = "/tmp/proj/alpha";
@@ -713,6 +795,7 @@ class _FakeDerivedQuestionPlugin({
 
   final List<String> queriedSessionIds = [];
   int questionMutationCalls = 0;
+  List<List<String>>? receivedAnswers;
 
   @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({required String sessionId}) async {
@@ -730,6 +813,7 @@ class _FakeDerivedQuestionPlugin({
     required List<List<String>> answers,
   }) async {
     questionMutationCalls++;
+    receivedAnswers = answers;
   }
 
   @override

@@ -6,25 +6,29 @@
 - **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453),
   [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455),
   [Step 3 PR #1457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1457),
-  [Step 4 PR #1460](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1460), and
-  [Step 5 PR #1465](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1465)
+  [Step 4 PR #1460](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1460),
+  [Step 5 PR #1465](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1465), and
+  [Step 6 PR #1467](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1467)
   merged. Five targets are verified, including the required Pi/Claude lifecycle
   follow-up and Antigravity's actual production-validator native gate. Step 4
   shipped localized Hermes cleanup, with 11 focused tests and analyzer passing.
   The owner corrected the delivery policy on 2026-09-13: missing verification
   must not keep harnesses on old targets. Step 5 delivered the five remaining
   targets—Codex, Cursor, Hermes, OMP and Grok—with 121 focused cases and five
-  owning analyzers passing. Step 6 implements OMP's eighth mapping, Windows
-  ARM64, with 10 focused cases/analyzer passing. Native Windows ARM64 remains
-  unverified and in final follow-up. See [Step 2](STEP-2-VERIFICATION.md),
+  owning analyzers passing. Step 6 delivered OMP's eighth mapping, Windows
+  ARM64, with 10 focused cases/analyzer passing. Step 7 implements shared ACP
+  multi-select through the existing plugin/shared/client flow, with 75 focused
+  cases and four analyzers passing. Native Windows ARM64 and the live OMP/client
+  array roundtrip remain unverified final follow-ups. See [Step 2](STEP-2-VERIFICATION.md),
   [Step 3](STEP-3-VERIFICATION.md), [Step 4](STEP-4-VERIFICATION.md),
-  [Step 5](STEP-5-VERIFICATION.md), and [Step 6](STEP-6-VERIFICATION.md) evidence.
+  [Step 5](STEP-5-VERIFICATION.md), [Step 6](STEP-6-VERIFICATION.md), and
+  [Step 7](STEP-7-VERIFICATION.md) evidence.
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
   inventory reconciliation only and is explicitly excluded from this series' audit and changes.
-- **Implementation branch:** `all-harness-runtime-refresh-step-6`, based on
-  Step 5 merge `79932e1051cf46267dac8f3937546473ea56cf19`. This series preserves
+- **Implementation branch:** `all-harness-runtime-refresh-step-7`, based on
+  Step 6 merge `acc970cf8452dcb58d5eff085f4ebfbabefb8110`. This series preserves
   floors, existing layout/selection policy, launch behavior, and Sesori database/wire
   contracts; unrelated upstream changes are not part of this refresh.
 - **Evidence:** [AUDIT.md](AUDIT.md) and Steps 2–4 preserve historical observations
@@ -192,7 +196,14 @@ user-assisted check rather than withholding the update or claiming it passed.
 
 ### Shared ACP multi-select questions
 
-Implement the approved generic mapping in
+Step 7 implements this approved design with one private immutable array-field
+encoder and shared parsing of titled string choices. No production OMP, bridge
+app, shared-model, client, or capability-advertisement changes are needed.
+The five Dart files total 435 additions plus deletions: 77 production and 358
+test lines. This is straightforward (`🌿`), rather than the original moderate
+estimate; no new coordination or generated code was required.
+
+The approved generic mapping lives in
 `bridge/sesori_plugin_acp/lib/src/repositories/mappers/acp_elicitation_mapper.dart`:
 
 - accept supported ACP form object properties whose array items use the approved
@@ -371,7 +382,7 @@ batch, not the first documentation of features already merged:
 | Feature | Minimum sufficient scope/boundary | Evidence still needed | Delivery handling |
 |---|---|---|---|
 | OMP Windows ARM64 | L2 Routine on native Windows ARM64 | Native install/version/ACP smoke | Mapping/tests/docs implemented in Step 6; native runner check remains final follow-up |
-| OMP ACP multi-select | L2 Routine scoped only to OMP ACP forms | Widget automation plus live askDialog/ACP roundtrip: two choices, separate custom text, required/optional omission, unchanged single choice | Implement approved flow; missing live fixture goes to final follow-up |
+| OMP ACP multi-select | L2 Routine scoped only to OMP ACP forms | Widget automation plus live askDialog/ACP roundtrip: two choices, separate custom text, required/optional omission, unchanged single choice | Step 7 mapping/plugin/bridge/widget automation passes; live roundtrip not run and remains final follow-up |
 
 Recorded coverage is **L2 Routine** plus the named current-host macOS arm64
 managed/direct target gate. The multi-select feature has an independent **L2
@@ -437,7 +448,7 @@ and record final coverage/retirement. This changes delivery timing, not scope.
 | 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | Merged narrow cleanup fix and honest native-evidence limits; target update now belongs to Step 5 |
 | 5/9 | `🌿 [all-harness-runtime-refresh] runtime: finish remaining target updates [step 5/9]` | Codex, Cursor, Hermes, OMP and Grok targets; reconcile real existing asset hashes, owning fixtures/checks, corrected skill and final follow-up queue |
 | 6/9 | `🌿 [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Implemented eighth mapping through existing ownership, manifest/asset-service tests and docs; native Windows evidence separately recorded |
-| 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared array mapper, OMP-only live capability, separate option/custom questions, bridge/client tests, and question regression/capability docs; no generated/new state |
+| 7/9 | `🌿 [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared array mapper, unchanged OMP live/scratch policy, separate option/custom questions, bridge/client tests, and question regression/capability docs; no generated/new coordination state |
 | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Penultimate evidence/docs reconciliation and one grouped follow-up/user-help handoff |
 | 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final L2 and feature checks, remaining issues/help, explicit coverage acceptance and conditional retirement |
 
