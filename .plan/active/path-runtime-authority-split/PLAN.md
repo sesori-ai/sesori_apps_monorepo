@@ -110,7 +110,7 @@ Series slug `path-runtime-authority-split`; every PR title is
    - Scope: add the concrete executable locator, locale-independent classification, abortable command execution, and
      direct Foundation tests. No plugin behavior activates.
 3. **Step 3/9**
-   - Title: `⚙️ [path-runtime-authority-split] bridge: settle commands and terminate process trees [step 3/9]`
+   - Title: `🚧 [path-runtime-authority-split] bridge: settle commands and terminate process trees [step 3/9]`
    - Scope: settle accepted lifecycle/runtime commands before disposal and make Windows shutdown tree-aware. This
      independently useful safety slice carries finding `3999205383`.
 4. **Step 4/9**

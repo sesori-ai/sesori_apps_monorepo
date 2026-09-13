@@ -146,6 +146,6 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Architecture implementation review: APPROVED with no violations.
 - `git diff --check`: passed.
 - Implementation head: 312 additions plus 66 deletions, or 378 changed lines across 11 files.
-- Evidence reconciliation: 15 authored lines; final numstat: 325 additions + 66 deletions = 391.
+- Plan/evidence reconciliation: 17 authored lines; final numstat: 326 additions + 67 deletions = 393.
 - All churn is authored; generated churn is zero.
 - Final changed-line total remains below the 1,000-line ceiling.
