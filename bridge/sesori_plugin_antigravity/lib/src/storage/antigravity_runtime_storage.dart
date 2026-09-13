@@ -114,8 +114,37 @@ class const AntigravityRuntimeStorage() {
       if (result is! AntigravityRuntimePairMissing || result.component != AntigravityRuntimeComponent.server) {
         return result;
       }
+      try {
+        final harnessType = FileSystemEntity.typeSync(
+          context.join(directory, AntigravityRelease.harnessFileName(target: target)),
+          followLinks: false,
+        );
+        if (harnessType != FileSystemEntityType.notFound) {
+          return const AntigravityRuntimePairInvalid(
+            component: AntigravityRuntimeComponent.harness,
+            reason: AntigravityRuntimePairInvalidReason.notSiblings,
+          );
+        }
+      } on FileSystemException catch (error, stackTrace) {
+        return AntigravityRuntimeStorageFailure(cause: error, stackTrace: stackTrace);
+      }
     }
     return const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
+  }
+
+  HostExecutablePresence inspectPathServerPresence({
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) {
+    if (!AntigravityRelease.supportsTarget(target: target) ||
+        _environmentPath(environment: environment, target: target) == null) {
+      return HostExecutablePresence.unknown;
+    }
+    return IoHostExecutableLocator(platformIsWindows: target.os == PlatformOs.windows).locate(
+      executable: AntigravityRelease.serverFileName(target: target),
+      environment: environment,
+      workingDirectory: null,
+    );
   }
 
   String? _environmentPath({required Map<String, String> environment, required PlatformTarget target}) {

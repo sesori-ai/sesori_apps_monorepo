@@ -1,29 +1,17 @@
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
-
-import "../foundation/antigravity_release.dart";
 import "../models/antigravity_runtime_pair.dart";
 import "../models/antigravity_runtime_resolution.dart";
 
-/// Owns the pair-aware evidence required for managed Antigravity fallback.
-class const AntigravityRuntimePathAuthorityCalculator({
-  required final IoHostExecutableLocator _executableLocator,
-}) {
+/// Shared pair-aware rule for managed fallback and mutation.
+class const AntigravityRuntimePathAuthorityCalculator() {
   bool provesServerAbsent({
     required AntigravityRuntimeCandidateResult candidate,
-    required Map<String, String> environment,
-    required PlatformTarget target,
+    required AntigravityPathServerPresence serverPresence,
   }) {
     if (candidate case AntigravityRuntimeCandidateMissing(
       source: AntigravityRuntimeSource.path,
       component: AntigravityRuntimeComponent.server,
     )) {
-      if (!AntigravityRelease.supportsTarget(target: target)) return false;
-      return _executableLocator.locate(
-            executable: AntigravityRelease.serverFileName(target: target),
-            environment: environment,
-            workingDirectory: null,
-          ) ==
-          HostExecutablePresence.absent;
+      return serverPresence == AntigravityPathServerPresence.absent;
     }
     return false;
   }

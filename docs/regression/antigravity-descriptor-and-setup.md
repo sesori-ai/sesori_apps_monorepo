@@ -11,13 +11,15 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
   name `Antigravity`. Asset provenance lives in `client/module_prego/BRAND_ASSETS.md`; brand-logo widget tests cover
   bundled image loading, sizing and decorative semantics. Harness behavior still uses the opaque plugin ID.
 - Setup inspection is bounded and inert. It checks the official sibling filenames, runs only the selected server's
-  `--version` command in the sanitized false-inheritance environment, and reads isolated token-file presence without
-  reading token contents. It does not create files, initialize ACP, prepare a browser command or authenticate.
+  `--version` command with a ten-second budget in the sanitized false-inheritance environment, and reads isolated
+  token-file presence without reading token contents. It does not create files, initialize ACP, prepare a browser
+  command or authenticate.
 - Runtime precedence is authoritative explicit pair, then PATH, then the installed managed-layout location. Empty POSIX
   PATH entries continue to mean the current directory. Managed selection requires both a missing PATH server candidate
-  and separate physical-absence evidence; incomplete, broken, unreadable or invalid PATH evidence remains authoritative.
-  The current exact pair is package `1.1.1` / server `agy_acp_server_1.1.1`, ACP 1. After a target refresh, an explicit
-  pair reporting the previous identity is rejected, never silently replaced through managed fallback.
+  and separate physical-absence evidence mapped through storage and repository layers; harness-only, incomplete, broken,
+  unreadable or invalid PATH evidence remains authoritative. The current exact pair is package `1.1.1` / server
+  `agy_acp_server_1.1.1`, ACP 1. Documented pre-semver official labels order below that pin; a newer official semantic
+  version is reported as incompatible/unknown rather than outdated. Explicit pairs never fall through to managed.
 - Missing/rejected/unsupported/boundary outcomes map to honest setup statuses and current-client authentication hints.
   macOS x64 reports unsupported-platform guidance without constructing a managed filename, preparing a profile or
   launching a process, including when an explicit binary option is supplied.
@@ -74,7 +76,8 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
   selection stamping, contradictory replies and atomic catalog/configuration reset. Shared ACP tracker coverage retains
   blank-as-absent behavior without normalizing valid opaque values.
 - **L3/L4:** `antigravity_plugin_descriptor_test.dart` covers inert explicit/PATH/managed inspection, shared root store,
-  sanitized setup/profile/probe/live inputs, PATH-pair authority, version metadata through profile failure,
+  sanitized setup/profile/probe/live inputs, PATH-pair authority, typed legacy/semantic version ordering, the short
+  setup-probe budget, and version metadata through profile failure,
   managed capability/override/failure behavior, Linux extractor preflight failure, abort and download ordering, source
   browser-noop invocation, abort, exit reset/reconnect and shutdown. The API, version-repository, setup-service, managed
   authority and runtime-service suites cover inert version parsing, domain mapping, physical absence, PATH diagnostics,

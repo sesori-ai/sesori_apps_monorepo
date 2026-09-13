@@ -32,10 +32,11 @@ class const _CurrentVersion() implements AntigravityRuntimeVersionRepository {
     required String serverPath,
     required Map<String, String> environment,
     required Duration timeout,
-  }) async => AntigravityRuntimeVersionProbeSucceeded(
-    source: source,
-    version: AntigravityRelease.agentVersion,
-  );
+  }) async {
+    final version = AntigravityRuntimeVersion.tryParse(buildLabel: AntigravityRelease.agentVersion);
+    if (version == null) throw StateError("invalid test version");
+    return AntigravityRuntimeVersionProbeSucceeded(source: source, version: version);
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

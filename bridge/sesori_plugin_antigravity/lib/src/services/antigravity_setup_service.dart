@@ -88,12 +88,18 @@ class AntigravitySetupService({
     );
     switch (probe) {
       case AntigravityRuntimeVersionProbeSucceeded(:final version):
-        if (version != AntigravityRelease.agentVersion) {
-          return source == AntigravityRuntimeSource.path
-              ? _pathRuntimeOutdated(runtimeVersion: version)
-              : _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
+        final supported = AntigravityRuntimeVersion.tryParse(buildLabel: AntigravityRelease.agentVersion);
+        if (supported == null) throw StateError("The pinned Antigravity build label is invalid.");
+        final comparison = version.compareTo(supported);
+        if (comparison != 0) {
+          if (source == AntigravityRuntimeSource.path) {
+            return comparison < 0
+                ? _pathRuntimeOutdated(runtimeVersion: version.buildLabel)
+                : _pathRuntimeNewer(runtimeVersion: version.buildLabel);
+          }
+          return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
         }
-        return _inspectProfile(geminiHome: geminiHome, runtimeVersion: version);
+        return _inspectProfile(geminiHome: geminiHome, runtimeVersion: version.buildLabel);
       case AntigravityRuntimeVersionProbeRejected():
         return source == AntigravityRuntimeSource.path
             ? _pathRuntimeUnknown()
@@ -142,6 +148,11 @@ class AntigravitySetupService({
   PluginSetupRuntimeOutdated _pathRuntimeOutdated({required String runtimeVersion}) => PluginSetupRuntimeOutdated(
     actionHint:
         "The global Antigravity runtime is incompatible. Update it using Google's installation method, then retry.",
+    runtimeVersion: runtimeVersion,
+  );
+
+  PluginSetupUnknown _pathRuntimeNewer({required String runtimeVersion}) => PluginSetupUnknown.versioned(
+    actionHint: "The global Antigravity runtime is newer than the supported build. Update Sesori, then retry.",
     runtimeVersion: runtimeVersion,
   );
 

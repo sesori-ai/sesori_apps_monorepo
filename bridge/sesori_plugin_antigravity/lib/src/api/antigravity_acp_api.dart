@@ -15,7 +15,10 @@ class AntigravityAcpApi({
   required final AcpOutputInterceptor _stderrInterceptor,
   required final CommandExecutor _commands,
 }) {
-  static final _buildLabelPattern = RegExp(r"^agy_acp_server_[0-9]+(?:\.[0-9]+){2}(?:[-+][0-9A-Za-z.-]+)?$");
+  static final _buildLabelPattern = RegExp(
+    "^${RegExp.escape(AntigravityRelease.serverBuildLabelPrefix)}"
+    r"(?:[0-9]+(?:\.[0-9]+){2}(?:[-+][0-9A-Za-z.-]+)?|[0-9]{8}_[0-9]{2}_RC[0-9]{2})$",
+  );
 
   /// Reads a sanitized official build label without starting ACP or initializing state.
   Future<AntigravityVersionDto> version({

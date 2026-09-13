@@ -43,6 +43,7 @@ class const AntigravityPluginDescriptor({
   required final HttpClient Function() callbackHttpClientFactory,
   required final http.Client Function() runtimeDownloadHttpClientFactory,
   final Duration operationTimeout = const Duration(minutes: 2),
+  final Duration versionProbeTimeout = const Duration(seconds: 10),
   final Duration connectBudget = const Duration(seconds: 15),
 }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
   factory production() => const AntigravityPluginDescriptor(
@@ -166,17 +167,15 @@ class const AntigravityPluginDescriptor({
     launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
   );
 
-  AntigravityRuntimePathAuthorityCalculator _pathAuthorityCalculator({required PlatformTarget target}) =>
-      AntigravityRuntimePathAuthorityCalculator(
-        executableLocator: IoHostExecutableLocator(platformIsWindows: target.os == PlatformOs.windows),
-      );
+  AntigravityRuntimePathAuthorityCalculator _pathAuthorityCalculator() =>
+      const AntigravityRuntimePathAuthorityCalculator();
 
   AntigravityRuntimeService _runtime({
     required HostProcessService processes,
     required Map<String, String> environment,
   }) => AntigravityRuntimeService(
     runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
-    pathAuthorityCalculator: _pathAuthorityCalculator(target: _target()),
+    pathAuthorityCalculator: _pathAuthorityCalculator(),
   );
 
   AntigravityManagedRuntimePathAuthority _pathAuthority({
@@ -185,7 +184,7 @@ class const AntigravityPluginDescriptor({
     required PlatformTarget target,
   }) => AntigravityManagedRuntimePathAuthority(
     runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
-    pathAuthorityCalculator: _pathAuthorityCalculator(target: target),
+    pathAuthorityCalculator: _pathAuthorityCalculator(),
     target: target,
   );
 
@@ -332,7 +331,7 @@ class const AntigravityPluginDescriptor({
       target: selectedTarget,
       geminiHome: geminiHome,
       managedInstallAvailable: _supportsManagedInstall(config: config),
-      timeout: operationTimeout,
+      timeout: versionProbeTimeout,
     );
   }
 

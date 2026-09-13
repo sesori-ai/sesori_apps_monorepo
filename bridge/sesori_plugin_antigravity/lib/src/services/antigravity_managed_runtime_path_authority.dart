@@ -3,6 +3,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginStartAbortedException, StartAbortSignal;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRuntimePathAuthority;
 
+import "../models/antigravity_runtime_pair.dart";
 import "../models/antigravity_runtime_resolution.dart";
 import "../repositories/antigravity_runtime_repository.dart";
 import "antigravity_runtime_path_authority_calculator.dart";
@@ -26,8 +27,12 @@ class AntigravityManagedRuntimePathAuthority({
     }
     final absent = _pathAuthorityCalculator.provesServerAbsent(
       candidate: candidate,
-      environment: environment,
-      target: _target,
+      serverPresence:
+          candidate is AntigravityRuntimeCandidateMissing &&
+              candidate.source == AntigravityRuntimeSource.path &&
+              candidate.component == AntigravityRuntimeComponent.server
+          ? _runtimeRepository.inspectPathServerPresence(environment: environment, target: _target)
+          : AntigravityPathServerPresence.unknown,
     );
     _throwIfAborted(abortSignal: abortSignal);
     return absent;

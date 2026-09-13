@@ -14,12 +14,13 @@ class AntigravityRuntimeVersionRepository({required final AntigravityAcpApi _api
   }) async {
     try {
       final dto = await _api.version(serverPath: serverPath, environment: environment, timeout: timeout);
-      final version = dto.buildLabel;
-      if (dto.exitCode != 0 || version == null) {
-        Log.w("[antigravity] runtime version probe returned no usable build label (exit ${dto.exitCode})");
-        return AntigravityRuntimeVersionProbeRejected(source: source, exitCode: dto.exitCode);
+      final buildLabel = dto.buildLabel;
+      final version = buildLabel == null ? null : AntigravityRuntimeVersion.tryParse(buildLabel: buildLabel);
+      if (dto.exitCode == 0 && version != null) {
+        return AntigravityRuntimeVersionProbeSucceeded(source: source, version: version);
       }
-      return AntigravityRuntimeVersionProbeSucceeded(source: source, version: version);
+      Log.w("[antigravity] runtime version probe returned no usable build label (exit ${dto.exitCode})");
+      return AntigravityRuntimeVersionProbeRejected(source: source, exitCode: dto.exitCode);
     } on Object catch (error, stackTrace) {
       Log.w('[antigravity] runtime version probe failed for "$serverPath"', error, stackTrace);
       return AntigravityRuntimeVersionProbeFailed(source: source);

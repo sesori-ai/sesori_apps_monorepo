@@ -274,7 +274,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
     update composition/callers in lockstep.
 - **Collaborators/ownership:** `AntigravityAcpApi` keeps injected `AcpProcessFactory`, `AcpOutputInterceptor`, and
   `CommandExecutor`; version inspection uses only the executor. `AntigravityRuntimeVersionRepository` injects that API.
-  Runtime service and managed authority inject the calculator, which combines pair results with physical PATH lookup.
+  Runtime service and the Step 4 managed authority inject the calculator, which Step 6 extracts once both consumers
+  exist; storage and repository layers provide its physical PATH evidence.
   `AntigravitySetupService` injects runtime service, version repository, and existing profile inspection service.
 - **Dependency/data flow:** Foundation command result → `AntigravityAcpApi` DTO
   → `AntigravityRuntimeVersionRepository` domain probe → `AntigravitySetupService`
@@ -356,7 +357,7 @@ generated files. These are ceilings, not targets:
 | 3 | 1,000 | Narrow app lifecycle/process implementation and focused tests. |
 | 4 | 1,850 | Review-expanded mutation fencing, completion checks, and non-installable PATH setup. |
 | 5 | 1,400 | Standard descriptor behavior and tests; no Antigravity or app execution flow. |
-| 6 | 1,000 | Current Antigravity diff is 737 lines plus required mapping/test corrections. |
+| 6 | 1,400 | Review-expanded for pair evidence, layering, typed version ordering, and probe timeout. |
 | 7 | 1,500 | Shared wire, bridge execution, and minimum client-core consumption. |
 | 8 | 1,400 | Client UI/tests and current 354-line documentation change. |
 | 9 | 500 | Verification evidence and plan retirement only. |

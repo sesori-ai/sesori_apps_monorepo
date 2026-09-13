@@ -34,7 +34,8 @@ class _Store({required final _Store? parent}) implements HostJsonStore {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _HelperProcess({required final int status, final String stdoutText = ""}) implements SpawnedProcess {
+class _HelperProcess({required final int status, final String stdoutText = "", final Future<int>? pendingExit})
+    implements SpawnedProcess {
   @override
   int get pid => 1;
   @override
@@ -42,7 +43,7 @@ class _HelperProcess({required final int status, final String stdoutText = ""}) 
   @override
   Stream<List<int>> get stderr => const Stream.empty();
   @override
-  Future<int> get exitCode async => status;
+  Future<int> get exitCode => pendingExit ?? Future<int>.value(status);
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
@@ -105,6 +106,7 @@ class _Processes({
   required final Map<String, dynamic> initialize,
   required final bool respondToInitialize,
   final String versionOutput = "Build label: ${AntigravityRelease.agentVersion}\n",
+  final Completer<int>? versionExit,
 }) implements HostProcessService {
   final launches = <_Launch>[];
   final agents = <_AgentProcess>[];
@@ -127,7 +129,9 @@ class _Processes({
         includeParentEnvironment: includeParentEnvironment,
       ),
     );
-    if (arguments case ["--version"]) return _HelperProcess(status: 0, stdoutText: versionOutput);
+    if (arguments case ["--version"]) {
+      return _HelperProcess(status: 0, stdoutText: versionOutput, pendingExit: versionExit?.future);
+    }
     if (p.basename(executable) != p.basename(serverPath)) return _HelperProcess(status: 0);
     final agent = _AgentProcess(
       initialize: initialize,
@@ -140,13 +144,21 @@ class _Processes({
 
   @override
   Future<SignalResult> signalGraceful({required int pid}) async {
-    agents.singleWhere((agent) => agent.pid == pid).process.kill();
+    if (pid == 1) {
+      if (versionExit case final exit? when !exit.isCompleted) exit.complete(143);
+    } else {
+      agents.singleWhere((agent) => agent.pid == pid).process.kill();
+    }
     return _signal(pid: pid, signal: ShutdownSignal.graceful);
   }
 
   @override
   Future<SignalResult> signalForce({required int pid}) async {
-    agents.singleWhere((agent) => agent.pid == pid).process.kill(ProcessSignal.sigkill);
+    if (pid == 1) {
+      if (versionExit case final exit? when !exit.isCompleted) exit.complete(137);
+    } else {
+      agents.singleWhere((agent) => agent.pid == pid).process.kill(ProcessSignal.sigkill);
+    }
     return _signal(pid: pid, signal: ShutdownSignal.force);
   }
 
@@ -272,17 +284,21 @@ void main() {
 
   HttpClient unexpectedHttpClient() => throw StateError("Authentication HTTP client was not expected");
 
-  AntigravityPluginDescriptor descriptorWithTimeout({required _Http? http, required Duration timeout}) =>
-      AntigravityPluginDescriptor(
-        target: _target,
-        browserExecutable: "/synthetic/bridge",
-        browserPrefixArguments: const [],
-        launchDirectory: "/synthetic/worktree",
-        callbackHttpClientFactory: http == null ? unexpectedHttpClient : () => http,
-        runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
-        operationTimeout: timeout,
-        connectBudget: const Duration(seconds: 2),
-      );
+  AntigravityPluginDescriptor descriptorWithTimeout({
+    required _Http? http,
+    required Duration timeout,
+    Duration versionProbeTimeout = const Duration(seconds: 10),
+  }) => AntigravityPluginDescriptor(
+    target: _target,
+    browserExecutable: "/synthetic/bridge",
+    browserPrefixArguments: const [],
+    launchDirectory: "/synthetic/worktree",
+    callbackHttpClientFactory: http == null ? unexpectedHttpClient : () => http,
+    runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
+    operationTimeout: timeout,
+    versionProbeTimeout: versionProbeTimeout,
+    connectBudget: const Duration(seconds: 2),
+  );
 
   AntigravityPluginDescriptor descriptor({required _Http? http}) =>
       descriptorWithTimeout(http: http, timeout: const Duration(seconds: 2));
@@ -401,8 +417,53 @@ void main() {
     expect(processes.agents, isEmpty);
   });
 
+  test("a newer PATH pair stays authoritative without being reported as outdated", () async {
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    _writePair(directory: managedDirectory);
+    processes = _Processes(
+      serverPath: pair.server,
+      initialize: _initialize(),
+      respondToInitialize: true,
+      versionOutput: "Build label: agy_acp_server_1.2.0\n",
+    );
+
+    final status = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: {"PATH": runtime.path},
+      stateDirectory: state.path,
+    );
+
+    expect(status, isA<PluginSetupUnknown>());
+    expect(status.runtimeVersion, "agy_acp_server_1.2.0");
+    expect(status.actionHint, contains("newer"));
+    expect(processes.launches.single.executable, pair.server);
+    expect(processes.agents, isEmpty);
+  });
+
   test("an incomplete PATH pair blocks managed fallback as unknown", () async {
     File(pair.harness).deleteSync();
+    final managedDirectory = Directory(
+      p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
+    )..createSync(recursive: true);
+    _writePair(directory: managedDirectory);
+
+    final status = await descriptor(http: null).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: {"PATH": runtime.path},
+      stateDirectory: state.path,
+    );
+
+    expect(status, isA<PluginSetupUnknown>());
+    expect(processes.launches, isEmpty);
+    expect(processes.agents, isEmpty);
+  });
+
+  test("a harness-only PATH entry blocks managed fallback as unknown", () async {
+    File(pair.server).deleteSync();
     final managedDirectory = Directory(
       p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
     )..createSync(recursive: true);
@@ -443,6 +504,34 @@ void main() {
     expect(status.runtimeVersion, isNull);
     expect(status.actionHint, isNot(contains("private@example.com")));
     expect(processes.launches.single.executable, pair.server);
+    expect(processes.agents, isEmpty);
+  });
+
+  test("a hanging setup version command uses the short probe budget", () async {
+    final versionExit = Completer<int>();
+    processes = _Processes(
+      serverPath: pair.server,
+      initialize: _initialize(),
+      respondToInitialize: true,
+      versionExit: versionExit,
+    );
+    final elapsed = Stopwatch()..start();
+
+    final status =
+        await descriptorWithTimeout(
+          http: null,
+          timeout: const Duration(seconds: 5),
+          versionProbeTimeout: const Duration(milliseconds: 20),
+        ).inspectSetup(
+          config: config(server: pair.server),
+          processes: processes,
+          environment: const {},
+          stateDirectory: state.path,
+        );
+
+    expect(status, isA<PluginSetupUnknown>());
+    expect(elapsed.elapsed, lessThan(const Duration(seconds: 1)));
+    expect(versionExit.isCompleted, isTrue);
     expect(processes.agents, isEmpty);
   });
 

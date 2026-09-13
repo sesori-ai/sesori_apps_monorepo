@@ -18,7 +18,7 @@
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
 | 4. Make PATH authoritative for managed copies | Merged | #1472 | 1,850 |
 | 5. Report outdated PATH runtimes and safe updaters | Merged | #1473 | 1,400 |
-| 6. Inspect Antigravity PATH pairs without side effects | In progress | #1474 | 1,000 |
+| 6. Inspect Antigravity PATH pairs without side effects | In progress | #1474 | 1,400 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
 | 8. Present runtime updates and reconcile docs | Not started | — | 1,400 |
 | 9. Run coverage and retire plan | Not started | — | 500 |
@@ -217,14 +217,14 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Report sanitized runtime versions while retaining verified metadata through profile-inspection failure.
 - [x] Keep setup inspection inert: no ACP initialize, authentication, profile mutation, browser, or download.
 - [x] Add focused API, repository, authority, runtime, setup, descriptor, and composition coverage.
-- [x] Run final Antigravity package tests, strict analysis, diagnostics, and diff validation.
-- [x] Complete architecture-implementation review and apply valid findings.
-- [x] Measure the full Step 6 diff against its 1,000-line ceiling.
+- [ ] Run final Antigravity package tests, strict analysis, diagnostics, and diff validation.
+- [ ] Complete the final architecture-implementation review after review-driven fixes.
+- [ ] Measure the full Step 6 diff against its review-expanded 1,400-line ceiling.
 - [x] Commit, push, open Step 6 PR, and start its monitor.
 
 ## Step 6 Evidence
 
 - Base: Step 5 squash merge `993315012c` on updated `main`.
-- Final Antigravity package suite: 214 tests passed; `dart analyze --fatal-infos` passed.
-- Dart LSP: zero diagnostics across 11 production files; diff check passed; no added line exceeds 120 characters.
-- Range `993315012c..a92b23d`: 997 lines (855+/142-; all authored; <1,000); accepted head: PR body.
+- Pre-review Antigravity suite: 214 tests passed; strict analysis and 11-file Dart LSP diagnostics passed.
+- Pre-review accepted range `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..44f4353899256ecc82040f898f4fb78f225aafb6`:
+  997 lines (855+/142-) across 23 files, all authored. Review-expanded final evidence is pending.

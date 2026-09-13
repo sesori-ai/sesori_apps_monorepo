@@ -483,8 +483,9 @@ owned-process exit; and restart.
 - Direct API disposal bypassing lifecycle shutdown, or a deliberate owned-runtime exit
   being logged, failed, or restarted as an unexpected crash.
 - Antigravity inspection creates profile state, reads token contents, inherits ambient credentials, initializes ACP,
-  opens a browser, falls through from PATH/explicit pair evidence, downloads automatically, or offers managed
-  install with an override/on macOS x64; registration changes the OpenCode default or adds a shared `Harness` enum case.
+  opens a browser, falls through from explicit or non-absence PATH evidence, or downloads automatically. Offering
+  managed install with an override/on macOS x64, changing the OpenCode default, or adding a shared `Harness` enum case
+  is also a regression.
 - A DeepSeek setup probe creates a session or mutates runtime state, accepts an
   old/malformed adapter version, selects managed runtime ahead of a supported
   PATH release, offers install with an explicit path or on an unsupported

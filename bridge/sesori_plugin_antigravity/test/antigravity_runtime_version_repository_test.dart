@@ -53,13 +53,31 @@ void main() {
 
     expect(result, isA<AntigravityRuntimeVersionProbeSucceeded>());
     final success = result as AntigravityRuntimeVersionProbeSucceeded;
-    expect((success.source, success.version), (source, AntigravityRelease.agentVersion));
+    expect((success.source, success.version.buildLabel), (source, AntigravityRelease.agentVersion));
+  });
+
+  test("maps legacy and semantic labels into comparable domain versions", () async {
+    final versions = <AntigravityRuntimeVersion>[];
+    for (final label in const [
+      "agy_acp_server_20260818_01_RC01",
+      AntigravityRelease.agentVersion,
+      "agy_acp_server_1.2.0",
+    ]) {
+      final result = await probe(
+        outcome: () async => AntigravityVersionDto(exitCode: 0, buildLabel: label),
+      );
+      versions.add((result as AntigravityRuntimeVersionProbeSucceeded).version);
+    }
+
+    expect(versions[0].compareTo(versions[1]), isNegative);
+    expect(versions[1].compareTo(versions[2]), isNegative);
   });
 
   test("maps nonzero and missing-label DTOs without exposing command output", () async {
     for (final dto in const [
       AntigravityVersionDto(exitCode: 23, buildLabel: AntigravityRelease.agentVersion),
       AntigravityVersionDto(exitCode: 0, buildLabel: null),
+      AntigravityVersionDto(exitCode: 0, buildLabel: "agy_acp_server_not-a-version"),
     ]) {
       final result = await probe(outcome: () async => dto);
 

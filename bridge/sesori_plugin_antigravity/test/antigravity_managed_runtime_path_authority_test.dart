@@ -4,8 +4,11 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show StartAbortSignal;
 import "package:test/test.dart";
 
-class _RuntimeRepository({required final AntigravityRuntimeCandidateResult candidate})
-    implements AntigravityRuntimeRepository {
+class _RuntimeRepository({
+  required final AntigravityRuntimeCandidateResult candidate,
+  required final AntigravityPathServerPresence serverPresence,
+}) implements AntigravityRuntimeRepository {
+  int presenceInspections = 0;
   @override
   AntigravityRuntimeCandidateResult inspectPath({
     required Map<String, String> environment,
@@ -20,6 +23,15 @@ class _RuntimeRepository({required final AntigravityRuntimeCandidateResult candi
   }) => throw UnsupportedError("unused");
 
   @override
+  AntigravityPathServerPresence inspectPathServerPresence({
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) {
+    presenceInspections++;
+    return serverPresence;
+  }
+
+  @override
   Future<AntigravityRuntimeProbeResult> probe({
     required AntigravityRuntimeSource source,
     required AntigravityRuntimePair pair,
@@ -28,23 +40,6 @@ class _RuntimeRepository({required final AntigravityRuntimeCandidateResult candi
     required Duration timeout,
     required StartAbortSignal abortSignal,
   }) => throw UnsupportedError("unused");
-}
-
-class _ExecutableLocator({
-  required final HostExecutablePresence presence,
-  required super.platformIsWindows,
-}) extends IoHostExecutableLocator {
-  int calls = 0;
-
-  @override
-  HostExecutablePresence locate({
-    required String executable,
-    required Map<String, String>? environment,
-    required String? workingDirectory,
-  }) {
-    calls++;
-    return presence;
-  }
 }
 
 void main() {
@@ -61,22 +56,22 @@ void main() {
 
   Future<({bool absent, int scans})> inspect({
     required AntigravityRuntimeCandidateResult candidate,
-    required HostExecutablePresence serverPresence,
+    required AntigravityPathServerPresence serverPresence,
   }) async {
-    final locator = _ExecutableLocator(presence: serverPresence, platformIsWindows: false);
+    final repository = _RuntimeRepository(candidate: candidate, serverPresence: serverPresence);
     final authority = AntigravityManagedRuntimePathAuthority(
-      runtimeRepository: _RuntimeRepository(candidate: candidate),
-      pathAuthorityCalculator: AntigravityRuntimePathAuthorityCalculator(executableLocator: locator),
+      runtimeRepository: repository,
+      pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
       target: target,
     );
     final absent = await authority.isPathAbsent(environment: const {}, abortSignal: StartAbortSignal.never);
-    return (absent: absent, scans: locator.calls);
+    return (absent: absent, scans: repository.presenceInspections);
   }
 
   test("requires both a missing PATH server candidate and verified filesystem absence", () async {
-    for (final presence in HostExecutablePresence.values) {
+    for (final presence in AntigravityPathServerPresence.values) {
       final result = await inspect(candidate: missingPathServer, serverPresence: presence);
-      expect(result.absent, presence == HostExecutablePresence.absent);
+      expect(result.absent, presence == AntigravityPathServerPresence.absent);
       expect(result.scans, 1);
     }
   });
@@ -106,7 +101,7 @@ void main() {
     ];
 
     for (final candidate in candidates) {
-      final result = await inspect(candidate: candidate, serverPresence: HostExecutablePresence.absent);
+      final result = await inspect(candidate: candidate, serverPresence: AntigravityPathServerPresence.absent);
       expect(result.absent, isFalse, reason: candidate.runtimeType.toString());
       expect(result.scans, 0, reason: candidate.runtimeType.toString());
     }

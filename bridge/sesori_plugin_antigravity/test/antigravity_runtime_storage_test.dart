@@ -204,6 +204,23 @@ void main() {
       target: target,
     );
     expect(shadowed, isA<AntigravityRuntimePairMissing>());
+
+    final harnessOnlyDirectory = Directory(p.join(temporaryDirectory.path, "harness-only"))..createSync();
+    File(
+      p.join(harnessOnlyDirectory.path, AntigravityRelease.harnessFileName(target: target)),
+    ).writeAsStringSync("harness");
+    final harnessOnly = storage.findOnPath(
+      environment: {
+        "PATH": [harnessOnlyDirectory.path, pairDirectory.path].join(separator),
+      },
+      target: target,
+    ) as AntigravityRuntimePairInvalid;
+    expect(harnessOnly.reason, AntigravityRuntimePairInvalidReason.notSiblings);
+
     expect(storage.findOnPath(environment: const {}, target: target), isA<AntigravityRuntimePairMissing>());
+    expect(
+      storage.inspectPathServerPresence(environment: const {}, target: target),
+      HostExecutablePresence.unknown,
+    );
   });
 }

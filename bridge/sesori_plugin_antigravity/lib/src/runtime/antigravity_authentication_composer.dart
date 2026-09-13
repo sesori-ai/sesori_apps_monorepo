@@ -74,9 +74,7 @@ class const AntigravityAuthenticationComposer() {
         acpApi: acpApi,
         launchSpecBuilder: launchSpecBuilder,
       ),
-      pathAuthorityCalculator: AntigravityRuntimePathAuthorityCalculator(
-        executableLocator: IoHostExecutableLocator(platformIsWindows: target.os == PlatformOs.windows),
-      ),
+      pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
     );
     final authentication = AntigravityAuthenticationService(
       repository: AntigravityAuthenticationRepository(

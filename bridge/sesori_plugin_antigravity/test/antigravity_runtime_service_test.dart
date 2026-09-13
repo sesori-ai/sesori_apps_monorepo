@@ -34,8 +34,10 @@ AntigravityInitializeDto initializeResult({required String agentVersion}) => Ant
 class _FakeStorage({
   required final Map<String, AntigravityRuntimePairReadResult> pairResults,
   required final AntigravityRuntimePairReadResult pathResult,
+  final HostExecutablePresence pathServerPresence = HostExecutablePresence.absent,
 }) extends AntigravityRuntimeStorage {
   int pathInspections = 0;
+  int pathPresenceInspections = 0;
   final List<String> inspectedPaths = [];
 
   @override
@@ -52,6 +54,15 @@ class _FakeStorage({
     pathInspections++;
     return pathResult;
   }
+
+  @override
+  HostExecutablePresence inspectPathServerPresence({
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) {
+    pathPresenceInspections++;
+    return pathServerPresence;
+  }
 }
 
 Future<AcpProcessHandle> _unimplementedFactory(AcpLaunchSpec spec) => throw UnimplementedError();
@@ -59,22 +70,6 @@ Future<AcpProcessHandle> _unimplementedFactory(AcpLaunchSpec spec) => throw Unim
 class const _UnusedCommands() implements CommandExecutor {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _ExecutableLocator({required final HostExecutablePresence presence}) extends IoHostExecutableLocator {
-  this : super(platformIsWindows: false);
-
-  int calls = 0;
-
-  @override
-  HostExecutablePresence locate({
-    required String executable,
-    required Map<String, String>? environment,
-    required String? workingDirectory,
-  }) {
-    calls++;
-    return presence;
-  }
 }
 
 class _FakeAcpApi({required final List<Future<AntigravityInitializeDto> Function()> outcomes})
@@ -102,24 +97,15 @@ class _FakeAcpApi({required final List<Future<AntigravityInitializeDto> Function
   }
 }
 
-AntigravityRuntimeService _service({required _FakeStorage storage, required _FakeAcpApi api}) => _serviceWithLocator(
-  storage: storage,
-  api: api,
-  locator: _ExecutableLocator(presence: HostExecutablePresence.absent),
-);
-
-AntigravityRuntimeService _serviceWithLocator({
-  required _FakeStorage storage,
-  required _FakeAcpApi api,
-  required _ExecutableLocator locator,
-}) => AntigravityRuntimeService(
-  runtimeRepository: AntigravityRuntimeRepository(
-    runtimeStorage: storage,
-    acpApi: api,
-    launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
-  ),
-  pathAuthorityCalculator: AntigravityRuntimePathAuthorityCalculator(executableLocator: locator),
-);
+AntigravityRuntimeService _service({required _FakeStorage storage, required _FakeAcpApi api}) =>
+    AntigravityRuntimeService(
+      runtimeRepository: AntigravityRuntimeRepository(
+        runtimeStorage: storage,
+        acpApi: api,
+        launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
+      ),
+      pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
+    );
 
 Future<AntigravityRuntimeResolution> _resolve({
   required AntigravityRuntimeService service,
@@ -199,14 +185,13 @@ void main() {
       final storage = _FakeStorage(
         pairResults: const {"/managed/agy_acp_server.par": AntigravityRuntimePairFound(pair: managedPair)},
         pathResult: const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server),
+        pathServerPresence: presence,
       );
-      final locator = _ExecutableLocator(presence: presence);
 
       final result =
-          _serviceWithLocator(
+          _service(
             storage: storage,
             api: _FakeAcpApi(outcomes: []),
-            locator: locator,
           ).inspect(
             explicitServerPath: null,
             managedServerPath: managedPair.serverPath,
@@ -222,7 +207,7 @@ void main() {
         reason: presence.name,
       );
       expect(storage.inspectedPaths, presence == HostExecutablePresence.absent ? [managedPair.serverPath] : isEmpty);
-      expect(locator.calls, 1);
+      expect(storage.pathPresenceInspections, 1);
     }
   });
 
