@@ -39,8 +39,8 @@
 - **7:** shared wire → bridge runtime/repository/service → client-core repository/service/cubit;
   `PluginRuntimeProvisionKind`, `PluginLifecycleService`, `PluginRuntime`, `PluginManagementService`, and
   `PluginManagementCubit`; headless update plus non-presentational client consumption.
-- **8:** client-core service/cubit → app UI consumers and docs; settings/session presentation; complete user action and
-  copy with no persistence.
+- **8:** client-core service/cubit → app UI consumers and docs; settings/session presentation;
+  complete user action and copy with no persistence.
 - **9:** plan evidence only; no production owner or behavior.
 
 Exact files, constructor collaborators, dependency flows, compatibility defaults, and plugin ownership are recorded in
@@ -75,6 +75,6 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 
 - Architecture-plan review: APPROVED on permitted second pass; no blocking findings.
 - `git diff --check`: passes.
-- Added-line width: zero lines over 120 characters before commit.
-- Step 1 content: 522 lines, below its 650-line ceiling.
+- Added-line width: zero lines over 120 Unicode characters or UTF-8 bytes.
+- Step 1 content: 524 lines, below its 650-line ceiling.
 - No Dart/Flutter suites required for plan-only changes.

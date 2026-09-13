@@ -178,9 +178,9 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
     `Completer<void>` for each accepted install;
   - `lib/src/runtime/bridge_shutdown_coordinator.dart` — `BridgeShutdownPhase.runtimeDispose` and ordered phases; and
   - `lib/src/orchestrator.dart` — composition registers lifecycle disposal before runtime disposal.
-- **Dependency/data flow:** `ProcessRunner` API result → `SystemProcessApi` → existing process service/repository →
-  bridge ownership consumer; separately, runtime mutation → `PluginRuntime` settlement → `PluginLifecycleService`
-  → `BridgeShutdownCoordinator` ordered disposal.
+- **Dependency/data flow:** `ProcessRunner` API result → `SystemProcessApi` → existing process service/repository
+  → bridge ownership consumer. Separately, runtime mutation → `PluginRuntime` settlement
+  → `PluginLifecycleService` → `BridgeShutdownCoordinator` ordered disposal.
 - **Activation:** lifecycle safety for existing install commands only. Global-update request types do not land early.
 
 ### Step 4 — managed runtime PATH authority
@@ -211,9 +211,9 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   `RuntimeVersionValidator`; `ManagedRuntimeUpgradeService` requires `ManagedRuntimePathAuthority` and
   `ManagedRuntimeInventory`; `ManagedRuntimeInstallService` requires manifest, installer, cleaner, authority, and asset
   resolver. `ManagedRuntimeComposition` constructs these stateless graphs. No app-owned PATH decision enters a plugin.
-- **Dependency/data flow:** Foundation locator/command result → `RuntimeVersionValidator` →
-  `ManagedRuntimePathAuthority` → selection/install/upgrade services → descriptor → `PluginRuntime` repository/service
-  adapters → `BridgeRuntimeRunner` startup consumer.
+- **Dependency/data flow:** Foundation locator/command result → `RuntimeVersionValidator`
+  → `ManagedRuntimePathAuthority` → selection/install/upgrade services → descriptor
+  → `PluginRuntime` repository/service adapters → `BridgeRuntimeRunner` startup consumer.
 - **Activation:** PATH presence now blocks managed selection, mutation, cleanup, and startup refresh. No outdated
   status, global updater, wire change, or UI action lands in this step.
 
@@ -261,9 +261,10 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   `AntigravityRuntimeService` injects `AntigravityRuntimeRepository` and the stateless calculator.
   `AntigravitySetupService` injects runtime service, version repository, and existing profile inspection service.
   `AntigravityManagedRuntimePathAuthority` injects runtime repository, calculator, and `PlatformTarget`.
-- **Dependency/data flow:** Foundation command result → `AntigravityAcpApi` DTO →
-  `AntigravityRuntimeVersionRepository` domain probe → `AntigravitySetupService` → descriptor setup status. Physical
-  pair evidence flows repository → calculator/service → descriptor or managed authority; it never enters shared code.
+- **Dependency/data flow:** Foundation command result → `AntigravityAcpApi` DTO
+  → `AntigravityRuntimeVersionRepository` domain probe → `AntigravitySetupService`
+  → descriptor setup status. Physical pair evidence flows repository → calculator/service
+  → descriptor or managed authority; it never enters shared code.
 - **Activation:** Antigravity setup becomes inert and pair-aware. Only `Missing(path, server)` permits managed fallback;
   a missing sibling harness, storage error, malformed pair, or any present server remains authoritative.
 
@@ -290,10 +291,11 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   `cubits/plugin_management/plugin_management_cubit.dart` exposes `updateRuntime` through the existing
   service/repository request seam. Global updates are not reported as
   managed-install analytics.
-- **Dependency/data flow:** shared Freezed contract → bridge command API → `PluginLifecycleService` →
-  `PluginLifecycleRepository` → `PluginRuntime` → descriptor-owned updater; progress returns through the legacy SSE name
-  with explicit operation. On client: shared event/request → existing `PluginRepository` → `PluginManagementService`
-  → `PluginManagementCubit`. No UI consumer lands yet.
+- **Dependency/data flow:** shared Freezed contract → bridge command API → `PluginLifecycleService`
+  → `PluginLifecycleRepository` → `PluginRuntime`
+  → descriptor-owned updater. Progress returns through the legacy SSE name with explicit operation.
+  On client: shared event/request → existing `PluginRepository`
+  → `PluginManagementService` → `PluginManagementCubit`. No UI consumer lands yet.
 - **Released compatibility:** omitted `SesoriPluginInstallProgress.operation` defaults to `managedInstall` for older
   bridges; unknown enum strings map to `unknown`; the legacy event name remains; older clients can receive progress but
   cannot send the new request, and newer clients show generic non-actionable state for unknown future operations.
