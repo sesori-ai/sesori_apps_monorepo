@@ -4,6 +4,7 @@ typedef WindowsRestartSuccessorStarter = Future<void> Function({
   required String executable,
   required List<String> arguments,
   required Map<String, String> environment,
+  required bool includeParentEnvironment,
 });
 
 typedef WindowsRestartLauncherExit = void Function({required int code});
@@ -26,11 +27,14 @@ class WindowsRestartSuccessorLauncher({
 
   Future<bool> launchIfRequested({required List<String> arguments}) async {
     if (!_isWindows || _environment[sesoriRestartLauncherEnvVar] != sesoriRestartLauncherEnvValue) return false;
-    final childEnvironment = Map<String, String>.of(_environment)..remove(sesoriRestartLauncherEnvVar);
+    // Inherit the native Windows environment rather than replaying it through
+    // Dart's ASCII-only explicit environment encoder. Override only this
+    // marker so the real successor cannot recursively enter launcher mode.
     await _start(
       executable: _executable,
       arguments: List<String>.unmodifiable(arguments),
-      environment: Map<String, String>.unmodifiable(childEnvironment),
+      environment: const <String, String>{sesoriRestartLauncherEnvVar: sesoriRestartLauncherConsumedEnvValue},
+      includeParentEnvironment: true,
     );
     // Process.start keeps a process watcher alive even when nobody awaits the
     // child's exit. Terminate this dedicated launcher explicitly so its process

@@ -50,6 +50,7 @@ class SystemProcessApi({
       executable,
       arguments,
       environment: environment,
+      includeParentEnvironment: true,
       mode: ProcessStartMode.inheritStdio,
     );
     return await process.exitCode;

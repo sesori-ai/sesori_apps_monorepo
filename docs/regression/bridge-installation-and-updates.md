@@ -58,8 +58,9 @@ reconciliation, periodic check, in-place apply, and explicit update command.
   A transient or real manual failure returns immediately with reinstall guidance.
 - A standalone restart spawns a successor carrying the predecessor PID and waits before
   enforcing single-live-bridge ownership. On Windows, the predecessor waits for a marked
-  one-shot launcher to start the real successor with inherited stdio, remove its own marker,
-  and exit successfully before committing to shutdown. This acknowledged exit breaks the
+  one-shot launcher to start the real successor with inherited stdio, inherit the native
+  environment while overriding only its launch marker with an inert value, and exit successfully
+  before committing to shutdown. This acknowledged exit breaks the
   ancestry chain so the successor can terminate the predecessor with tree-aware `taskkill`
   without killing itself or abandoning the predecessor's other children; launcher spawn or
   non-zero exit failure leaves the predecessor running.
@@ -102,8 +103,9 @@ after apply. Use a throwaway machine when mutating an install root.
   managed install, an auto-update transient reported as a hard failure, or a manual
   failure hidden instead of returned with guidance.
 - A Windows restart launcher recursively launching, staying alive with the real successor,
-  losing inherited stdio, allowing predecessor shutdown before successful child creation,
-  being killed with the predecessor tree, or forcing predecessor-only termination that leaves
+  losing inherited stdio or non-ASCII inherited environment entries, allowing predecessor
+  shutdown before successful child creation, being killed with the predecessor tree, or forcing
+  predecessor-only termination that leaves
   bridge-owned descendants behind.
 
 ## Known Limitations

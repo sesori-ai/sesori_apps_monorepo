@@ -8,3 +8,7 @@ const String sesoriRestartPredecessorPidEnvVar = 'SESORI_RESTART_PREDECESSOR_PID
 /// process ancestry before it may terminate the predecessor's full tree.
 const String sesoriRestartLauncherEnvVar = 'SESORI_RESTART_LAUNCHER';
 const String sesoriRestartLauncherEnvValue = '1';
+
+/// Replaces the launch marker in the real successor without replaying the
+/// inherited Windows environment through Dart's ASCII-only override map.
+const String sesoriRestartLauncherConsumedEnvValue = 'consumed';

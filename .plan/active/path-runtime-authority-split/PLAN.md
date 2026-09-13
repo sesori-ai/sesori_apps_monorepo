@@ -176,9 +176,10 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
     `runInheritingStdio` seam waits for the one-shot launcher exit code;
   - `lib/src/server/services/windows_restart_successor_launcher.dart`, `bridge_restart_service.dart`, and
     `bin/bridge.dart` — the named `WindowsRestartSuccessorLauncher` owns injected process-start and exit dependencies;
-    standalone Windows restart marks that one-shot launcher, which spawns the real successor with inherited stdio,
-    strips the marker, and exits immediately, breaking process ancestry before the successor may terminate the
-    predecessor's full tree. `BridgeRestartService` waits for its successful exit as child-creation acknowledgement;
+    standalone Windows restart marks that one-shot launcher, which spawns the real successor with inherited stdio and
+    the native inherited environment, overrides only its launch marker with an inert value, and exits immediately,
+    breaking process ancestry before the successor may terminate the predecessor's full tree. `BridgeRestartService`
+    waits for its successful exit as child-creation acknowledgement;
     spawn or non-zero exit failure keeps the predecessor running;
   - `lib/src/services/plugin_lifecycle_service.dart` — sealed `_ActivePluginCommand`, `_ActiveResponseCommand`, and
     install-only `_ActiveRuntimeProvisionCommand`, each owning non-null settlement;

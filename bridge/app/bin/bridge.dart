@@ -818,15 +818,16 @@ Future<void> main(List<String> args) async {
       isWindows: Platform.isWindows,
       environment: Platform.environment,
       executable: Platform.resolvedExecutable,
-      start: ({required executable, required arguments, required environment}) async {
-        await Process.start(
-          executable,
-          arguments,
-          environment: environment,
-          includeParentEnvironment: false,
-          mode: ProcessStartMode.inheritStdio,
-        );
-      },
+      start:
+          ({required executable, required arguments, required environment, required includeParentEnvironment}) async {
+            await Process.start(
+              executable,
+              arguments,
+              environment: environment,
+              includeParentEnvironment: includeParentEnvironment,
+              mode: ProcessStartMode.inheritStdio,
+            );
+          },
       exitLauncher: ({required code}) => exit(code),
     );
     final launchedRestartSuccessor = await restartLauncher.launchIfRequested(arguments: args);

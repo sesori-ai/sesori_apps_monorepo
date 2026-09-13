@@ -129,6 +129,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Make graceful and forceful Windows shutdown requests process-tree-aware.
 - [x] Separate a standalone Windows successor through the named one-shot launcher before terminating the predecessor tree.
 - [x] Await the launcher's zero-exit child-creation acknowledgement before permitting predecessor shutdown.
+- [x] Preserve the native Windows environment and override only the consumed launcher marker for the real successor.
 - [x] Preserve every non-zero tree-termination result unless pre-inspection proved the root was already absent.
 - [x] Track and await accepted `PluginRuntime` mutations during disposal.
 - [x] Give lifecycle response commands and accepted provisions distinct sealed ownership.
@@ -149,16 +150,18 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Second review accepted/evidence head: `fed982198691b1083660a12d9be8197148082e80`.
 - Named-launcher follow-up implementation checkpoint: `54cad58138ba96c89561d1f50c65a41834ca57a5`.
 - Acknowledged-handoff implementation checkpoint: `34e1827c2f1b1d2e36dde85110ca29a486d08c32`.
+- Native-environment handoff checkpoint: `PENDING_NATIVE_ENVIRONMENT_HANDOFF_HEAD`.
 - The following evidence-only commit replaces that placeholder without changing base-to-head numstat; its accepted head
   is recorded in the PR body because a commit cannot embed its own hash.
 - Initial focused process, shutdown, runtime, lifecycle, runner, and restart tests: 189 passed.
 - Latest review-round affected process, runner, and restart tests: 80 passed.
 - Named-launcher extraction tests: 12 passed.
 - Acknowledged-handoff affected matrix: 90 tests passed.
+- Native-environment handoff affected matrix: 90 tests passed.
 - `dart analyze --fatal-infos` for `bridge/app`: no issues.
 - Second/final architecture implementation review: APPROVED with no violations.
 - `git diff --check`: passed.
 - Initial head: 312 additions plus 66 deletions, or 378 changed lines across 11 files.
 - First review-fix checkpoint: 472 additions plus 72 deletions, or 544 changed lines across 18 files.
-- Current review-fix tree: 780 additions plus 83 deletions, or 863 changed lines across 27 files.
+- Current review-fix tree: 813 additions plus 83 deletions, or 896 changed lines across 27 files.
 - All churn is authored; generated churn is zero; the total remains below the 1,000-line ceiling.
