@@ -18,7 +18,10 @@ bridge start when Sesori already manages an older version.
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
   OMP selects its official Linux glibc or musl executable from bounded Alpine-marker and
-  `ldd` evidence; macOS and Windows use direct target mapping, and Windows arm64 remains unsupported.
+  `ldd` evidence; macOS and Windows use direct target mapping, including the official
+  `omp-windows-arm64.exe` on Windows ARM64. OMP has eight pinned direct-binary mappings;
+  Windows ARM64 uses the existing install capability and `omp.exe` placement, selecting
+  the ARM64 artifact rather than the x64 asset.
   Pi installs its complete official package tree on all six published targets and keeps the
   `pi`/`pi.exe` entry beside its assets, native modules, and package metadata.
   Codex installs its canonical package tree on all six targets, preserving
@@ -123,7 +126,7 @@ bridge start when Sesori already manages an older version.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. Installation is a deliberate network-bound action, not a heartbeat. |
-| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install and automatic upgrade, the rest do neither. A start with no managed version directory triggers no upgrade. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, Antigravity's five official targets and macOS x64 omission, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
+| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install and automatic upgrade, the rest do neither. A start with no managed version directory triggers no upgrade. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, Antigravity's five official targets and macOS x64 omission, OMP's eight direct-binary mappings including Windows ARM64 capability/hash/URL and asset-service routing without a Linux libc probe, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
 | L3 Release | One complete install on the release-target bridge host from missing runtime through verification and extraction to enabled, re-inspected, and selectable, with progress shown on the release-target client platform. Plus a start with a raised target over an older supported managed version: the harness stays selectable throughout, startup does not block, and the new version is used by the next generation; and over a below-minimum version: the harness is blocked briefly, then becomes selectable without a bridge restart or an Install press. Client end to end; every harness advertising install. |
 | L4 Extended | Checksum mismatch or interrupted download failing safely, shutdown mid-install, duplicate join, competing-command rejection, authentication-required outcome, too-old runtime, and an alternate bridge host. An Install pressed while a startup upgrade downloads, which joins it and still leaves the harness enabled and started. A forced upgrade failure over each of an older supported and a below-minimum version, leaving the documented fallback state. A session running on the older supported runtime during an upgrade continuing uninterrupted, with its version directory surviving until the generation stops and the next start resolving the pinned version. Live plugin for bridge outcome, client end to end for card state. Separate cubit/shared-widget automation proves retained progress/failure and same-harness exclusion while peer toggles remain usable, without claiming a real installation. |
 | L5 Full | Install on every supported platform and architecture where the harness publishes an asset, a superseded managed version swept after success, and pinned digests matching the upstream release assets. Copilot's complete matrix is its six official arm64/x64 macOS, Linux, and Windows archives. Antigravity's is macOS arm64 plus Linux and Windows arm64/x64; macOS x64 must omit Install. Packaged or external, since real upstream artifacts are part of the claim. |
@@ -182,8 +185,13 @@ download, verification, or placement. Use a disposable data directory.
   login, and it never supersedes a configured binary path. Copilot authentication remains
   an out-of-band `copilot login`, supported token environment, or BYOK configuration.
 - Pinned digests are release-engineering state, checked upstream externally.
-- Antigravity's managed manifest uses the registry package version `1.0.0` for its version directory and separately
-  validates the exact ACP runtime identity `agy_acp_server_20260818_01_RC01`. The initialize-only validator uses
+- OMP's Windows ARM64 mapping is implemented for `18.1.19`, with an independently
+  downloaded hash matching the official release digest and checksum list. Native
+  Windows ARM64 install, `omp/18.1.19`, ACP initialize and teardown have not been
+  exercised; they remain required coverage rather than inferred from metadata,
+  simulated platform tests or macOS/x64 runs.
+- Antigravity's managed manifest uses the registry package version `1.1.1` for its version directory and separately
+  validates the exact ACP runtime identity `agy_acp_server_1.1.1`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
   Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.

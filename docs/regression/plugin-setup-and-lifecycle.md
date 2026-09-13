@@ -17,7 +17,7 @@ metadata, not forced upgrades. Compatible PATH binaries remain authoritative.
 | Codex | `0.154.0` | `0.139.0` | macOS ARM64 package/install and both app-server transports were exercised; automatic probe teardown failed and remains unresolved. |
 | Cursor | `2026.09.10-fd3934a` | date `2026.07.16` | macOS ARM64 package/install/initialize/cleanup were exercised; configured load/replay/model/mode remains unverified. |
 | Hermes Agent | `0.21.2` | `0.20.0` | A fresh-load attempt failed under an unaccepted launcher/isolation procedure; faithful CLI load/replay and configured persisted deletion remain unverified. |
-| Oh My Pi | `18.1.19` | `17.2.13` | Seven direct-binary mappings have independently verified hashes. Native observations covered `18.1.18` only; current-target install/version/ACP and configured lifecycle/cleanup remain unverified. |
+| Oh My Pi | `18.1.19` | `17.2.13` | Eight direct-binary mappings, including Windows ARM64, have independently verified hashes. Native observations covered `18.1.18` only; current-target install/version/ACP and configured lifecycle/cleanup remain unverified. |
 | Grok Build | `1.0.30` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
