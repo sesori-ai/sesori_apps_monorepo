@@ -177,7 +177,7 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - `lib/src/runtime/plugin_runtime.dart` — private `_RuntimeMutation` owns one `StartAbortController` and one
     `Completer<void>` for each accepted install;
   - `lib/src/runtime/bridge_shutdown_coordinator.dart` — `BridgeShutdownPhase.runtimeDispose` and ordered phases; and
-  - `lib/src/orchestrator.dart` — composition registers lifecycle disposal before runtime disposal.
+  - `lib/src/runtime/bridge_runtime_runner.dart` — composition registers lifecycle disposal before runtime disposal.
 - **Dependency/data flow:** `ProcessRunner` API result → `SystemProcessApi` → existing process service/repository
   → bridge ownership consumer. Separately, runtime mutation → `PluginRuntime` settlement
   → `PluginLifecycleService` → `BridgeShutdownCoordinator` ordered disposal.

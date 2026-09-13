@@ -79,6 +79,71 @@ void main() {
       expect(await api.inspectProcess(pid: -1), isNull);
       expect(runner.calls, isEmpty);
     });
+
+    test("sendGracefulSignal requests the full Windows process tree without forcing", () async {
+      final runner = RecordingProcessRunner();
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      final result = await api.sendGracefulSignal(pid: 321);
+
+      expect(runner.calls, hasLength(1));
+      expect(runner.calls.single.executable, "taskkill");
+      expect(runner.calls.single.arguments, ["/PID", "321", "/T"]);
+      expect(result.requestedSignal, ShutdownSignal.graceful);
+      expect(result.deliveredSignal, ProcessSignal.sigkill);
+      expect(result.wasRequested, isTrue);
+    });
+
+    test("sendForceSignal force-terminates the full Windows process tree", () async {
+      final runner = RecordingProcessRunner();
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      final result = await api.sendForceSignal(pid: 321);
+
+      expect(runner.calls, hasLength(1));
+      expect(runner.calls.single.executable, "taskkill");
+      expect(runner.calls.single.arguments, ["/PID", "321", "/T", "/F"]);
+      expect(result.requestedSignal, ShutdownSignal.force);
+      expect(result.deliveredSignal, ProcessSignal.sigkill);
+      expect(result.wasRequested, isTrue);
+    });
+
+    test("Windows signals report a failed taskkill request", () async {
+      final runner = RecordingProcessRunner(exitCode: 1, stderr: "taskkill failed");
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      expect((await api.sendGracefulSignal(pid: 321)).wasRequested, isFalse);
+      expect((await api.sendForceSignal(pid: 321)).wasRequested, isFalse);
+    });
+
+    test("Windows signals reject non-positive PIDs without shelling out", () async {
+      final runner = RecordingProcessRunner();
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      expect((await api.sendGracefulSignal(pid: 0)).wasRequested, isFalse);
+      expect((await api.sendForceSignal(pid: -1)).wasRequested, isFalse);
+      expect(runner.calls, isEmpty);
+    });
   });
 
   group("SystemProcessApi (POSIX)", () {

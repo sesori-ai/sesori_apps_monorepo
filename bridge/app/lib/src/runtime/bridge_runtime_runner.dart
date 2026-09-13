@@ -232,7 +232,9 @@ class const BridgeRuntimeRunner._() {
         budget: _pluginShutdownBudget,
       )
       ..addPhase(
-        phase: BridgeShutdownPhase.lifecycle,
+        // Lifecycle disposal waits for accepted runtime provisions to finish
+        // using PluginRuntime. Dispose that lower owner only afterward.
+        phase: BridgeShutdownPhase.runtimeDispose,
         action: () => pluginRuntime?.dispose() ?? Future<void>.value(),
         budget: _pluginShutdownBudget,
       )

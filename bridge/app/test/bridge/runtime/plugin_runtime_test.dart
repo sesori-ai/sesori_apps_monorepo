@@ -73,7 +73,7 @@ void main() {
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
   });
 
-  test("installRuntime forwards descriptor progress and aborts on shutdown", () async {
+  test("dispose aborts and awaits an active managed install", () async {
     final installGate = Completer<void>();
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
@@ -93,9 +93,15 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(events.single, isA<ProvisionResolving>());
 
-    runtime.beginShutdown();
+    var disposed = false;
+    final disposal = runtime.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+
     installGate.complete();
     await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+    await disposal;
+    expect(disposed, isTrue);
   });
 
   test("installRuntime reports a live generation to the descriptor", () async {

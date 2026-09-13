@@ -2028,6 +2028,74 @@ void main() {
     expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.blocked);
   });
 
+  test("dispose keeps install progress open until an active provision settles", () async {
+    final installGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionFailed(message: "aborted")]
+          ..installGate = installGate;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupNotInspected()},
+        );
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await _waitUntil(() => repository.installCalls == 1);
+    var disposed = false;
+    final disposal = service.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+
+    installGate.complete();
+    await disposal;
+    expect(disposed, isTrue);
+    expect(progress.single.phase, PluginInstallPhase.failed);
+  });
+
+  test("dispose waits for an active lifecycle command before closing owned streams", () async {
+    final inspectionGate = Completer<void>();
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: inspectionGate,
+      startFailureMessage: null,
+    );
+    addTearDown(repository.dispose);
+    final service = _commandService(repository: repository, settingsRepository: null)
+      ..initialize(
+        disabledPluginIds: const {},
+        setupById: const {"one": PluginSetupReady()},
+      );
+
+    final refresh = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+    await _waitUntil(() => repository.inspectCalls == 1);
+    var disposed = false;
+    final disposal = service.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+    expect(
+      () => service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh()),
+      throwsStateError,
+    );
+
+    inspectionGate.complete();
+    await refresh;
+    await disposal;
+    expect(disposed, isTrue);
+  });
+
   test("a duplicate install joins and a different command conflicts while installing", () async {
     final installGate = Completer<void>();
     final repository =

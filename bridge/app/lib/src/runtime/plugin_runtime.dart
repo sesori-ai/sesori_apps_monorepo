@@ -157,7 +157,7 @@ class PluginRuntime({
   bool _shuttingDown = false;
   Future<void>? _shutdownStartedPluginsFuture;
   Future<void>? _disposeFuture;
-  final Set<StartAbortController> _installAbortControllers = <StartAbortController>{};
+  final Set<_RuntimeMutation> _runtimeMutations = <_RuntimeMutation>{};
   final Set<StartAbortController> _authenticationAbortControllers = <StartAbortController>{};
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
@@ -262,19 +262,20 @@ class PluginRuntime({
       yield const ProvisionFailed(message: "The bridge is shutting down.");
       return;
     }
-    final abortController = StartAbortController();
-    _installAbortControllers.add(abortController);
+    final mutation = _RuntimeMutation();
+    _runtimeMutations.add(mutation);
     try {
       yield* slot.registration.descriptor.installRuntime(
         config: slot.registration.config,
         processes: _setupProcesses,
         environment: _environment,
         stateDirectory: slot.registration.stateDirectory,
-        startAborted: abortController.signal,
+        startAborted: mutation.abortController.signal,
         runtimeInUse: _SlotRuntimeInUseSignal(slot: slot),
       );
     } finally {
-      _installAbortControllers.remove(abortController);
+      _runtimeMutations.remove(mutation);
+      mutation.settled.complete();
     }
   }
 
@@ -1158,8 +1159,8 @@ class PluginRuntime({
   void beginShutdown() {
     if (_shuttingDown) return;
     _shuttingDown = true;
-    for (final controller in _installAbortControllers) {
-      controller.abort();
+    for (final mutation in _runtimeMutations) {
+      mutation.abortController.abort();
     }
     for (final controller in _authenticationAbortControllers) {
       controller.abort();
@@ -1256,6 +1257,9 @@ class PluginRuntime({
   Future<void> _dispose() async {
     beginShutdown();
     final errors = <({Object error, StackTrace stackTrace})>[];
+    await Future.wait([
+      for (final mutation in _runtimeMutations.toList(growable: false)) mutation.settled.future,
+    ]);
     await Future.wait([
       for (final slot in _slots.values)
         () async {
@@ -2111,6 +2115,11 @@ class PluginRuntime({
 }
 
 typedef _CommandTransition = ({Object owner, Completer<void> completer});
+
+class _RuntimeMutation() {
+  final StartAbortController abortController = StartAbortController();
+  final Completer<void> settled = Completer<void>();
+}
 
 class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}) {
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);

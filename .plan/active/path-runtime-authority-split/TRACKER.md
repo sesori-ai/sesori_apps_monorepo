@@ -5,8 +5,8 @@
 - Slug: `path-runtime-authority-split`
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
-- Current step: 2/9 — centralize executable and command control
-- Open replacement implementation PRs: Step 2 — #1463
+- Current step: 3/9 — settle commands and terminate process trees
+- Open replacement implementation PRs: none; Step 3 is local
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -14,8 +14,8 @@
 | Step | Status | PR | Changed-line ceiling |
 |---|---|---|---:|
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
-| 2. Centralize executable and command control | In progress | #1463 | 850 |
-| 3. Settle commands and terminate process trees | Not started | — | 1,000 |
+| 2. Centralize executable and command control | Merged | #1463 | 850 |
+| 3. Settle commands and terminate process trees | In progress | — | 1,000 |
 | 4. Make PATH authoritative for managed copies | Not started | — | 1,450 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
 | 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
@@ -52,7 +52,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 |---|---:|---|
 | `3999200805` — concrete executable locator | 2 | Planned |
 | `3999200808` — Antigravity repository mapping | 6 | Planned |
-| `3999205383` — Windows first-attempt process tree | 3 | Planned |
+| `3999205383` — Windows first-attempt process tree | 3 | In progress |
 | `3999205385` — deterministic Codex PATH tests | 5 | Planned |
 | `3999205390` — recovery inspection after enable failure | 7 | Planned |
 | `3999205396` — direct Antigravity absence predicate tests | 6 | Planned |
@@ -99,6 +99,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 
 ## Step 2 Evidence
 
+- PR #1463 merged as `825583d25d` from accepted head `869eb8c65b`.
 - Focused Foundation tests: 21 passed.
 - Cursor hung-version-probe CI regression: passed.
 - `dart analyze --fatal-infos`: no issues.
@@ -122,3 +123,16 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - This evidence edit replaces lines one-for-one; base-to-current numstat remains 798 + 27 = 825.
 - All churn is authored; generated churn is zero.
 - Review-expanded lookup and spawn fencing raised the Step 2 ceiling from 700 to 850; the total remains below it.
+
+## Step 3 Checklist
+
+- [x] Make graceful and forceful Windows shutdown requests process-tree-aware.
+- [x] Track and await accepted `PluginRuntime` mutations during disposal.
+- [x] Give lifecycle response commands and accepted provisions distinct sealed ownership.
+- [x] Settle active lifecycle commands before closing their progress and snapshot streams.
+- [x] Dispose `PluginLifecycleService` before `PluginRuntime` in separate shutdown phases.
+- [x] Add focused process-tree, mutation-settlement, command-settlement, and phase-order tests.
+- [x] Run focused bridge tests and strict analysis.
+- [x] Complete architecture-implementation review and apply valid findings.
+- [x] Measure the full Step 3 diff against its 1,000-line ceiling.
+- [ ] Commit, push, open Step 3 PR, and start its monitor.

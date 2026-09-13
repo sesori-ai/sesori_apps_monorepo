@@ -262,6 +262,7 @@ class PluginLifecycleService({
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) {
+    if (_disposing) throw StateError("Plugin lifecycle is shutting down.");
     if (_setupById == null) {
       throw StateError("Plugin lifecycle has not been initialized.");
     }
@@ -291,10 +292,16 @@ class PluginLifecycleService({
           // The in-flight install may be a startup upgrade, which deliberately
           // does not start the harness. An explicit Install carries the user's
           // intent to enable and start it, so it takes over the completion.
-          active.installCompletion = InstallCompletion.enableAndStart;
-          return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
+          if (active case final _ActiveRuntimeProvisionCommand runtimeProvision) {
+            runtimeProvision.installCompletion = InstallCompletion.enableAndStart;
+            return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
+          }
+          throw StateError("An active install must own runtime-provision state.");
         }
-        return active.completer.future;
+        if (active case final _ActiveResponseCommand responseCommand) {
+          return responseCommand.completer.future;
+        }
+        throw StateError("A non-install command must own response state.");
       }
       throw PluginManagementConflictException(
         PluginLifecycleConflict(
@@ -322,7 +329,7 @@ class PluginLifecycleService({
       _admitInstall(pluginId: pluginId, request: request, completion: InstallCompletion.enableAndStart);
       return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
     }
-    final command = _ActivePluginCommand(request: request);
+    final command = _ActiveResponseCommand(request: request);
     _activePluginCommands[pluginId] = command;
     unawaited(_executeCommand(pluginId: pluginId, command: command));
     return command.completer.future;
@@ -338,7 +345,8 @@ class PluginLifecycleService({
     required PluginLifecycleInstallRequest request,
     required InstallCompletion completion,
   }) {
-    final command = _ActivePluginCommand(request: request, installCompletion: completion);
+    if (_disposing) return;
+    final command = _ActiveRuntimeProvisionCommand(request: request, installCompletion: completion);
     _activePluginCommands[pluginId] = command;
     unawaited(_executeInstall(pluginId: pluginId, command: command));
   }
@@ -612,7 +620,7 @@ class PluginLifecycleService({
 
   Future<void> _executeInstall({
     required String pluginId,
-    required _ActivePluginCommand command,
+    required _ActiveRuntimeProvisionCommand command,
   }) async {
     try {
       RuntimeProvisionProgress? terminal;
@@ -719,13 +727,14 @@ class PluginLifecycleService({
         message: "The runtime installed state could not be completed. Check the bridge logs.",
       );
     } finally {
-      if (identical(_activePluginCommands[pluginId], command)) {
-        _activePluginCommands.remove(pluginId);
+      try {
+        if (identical(_activePluginCommands[pluginId], command)) {
+          _activePluginCommands.remove(pluginId);
+        }
+        _publishManagementIfChanged();
+      } finally {
+        command.settled.complete();
       }
-      _publishManagementIfChanged();
-      // The install completer is never awaited (the HTTP response returned at
-      // acceptance; a joined duplicate also returns immediately), so it is
-      // deliberately left unsettled.
     }
   }
 
@@ -808,7 +817,7 @@ class PluginLifecycleService({
 
   Future<void> _executeCommand({
     required String pluginId,
-    required _ActivePluginCommand command,
+    required _ActiveResponseCommand command,
   }) async {
     Object? failure;
     StackTrace? failureStackTrace;
@@ -830,18 +839,24 @@ class PluginLifecycleService({
       failureStackTrace = stackTrace;
     }
 
-    if (identical(_activePluginCommands[pluginId], command)) {
-      _activePluginCommands.remove(pluginId);
-    }
-    _publishManagementIfChanged();
-    if (failure == null) {
-      try {
-        command.completer.complete(_managementSnapshotAfterMutation);
-      } on Object catch (error, stackTrace) {
-        command.completer.completeError(error, stackTrace);
+    try {
+      if (identical(_activePluginCommands[pluginId], command)) {
+        _activePluginCommands.remove(pluginId);
       }
-    } else {
-      command.completer.completeError(failure, failureStackTrace);
+      _publishManagementIfChanged();
+      if (failure == null) {
+        try {
+          command.completer.complete(_managementSnapshotAfterMutation);
+        } on Object catch (error, stackTrace) {
+          command.completer.completeError(error, stackTrace);
+        }
+      } else {
+        command.completer.completeError(failure, failureStackTrace);
+      }
+    } on Object catch (error, stackTrace) {
+      if (!command.completer.isCompleted) command.completer.completeError(error, stackTrace);
+    } finally {
+      command.settled.complete();
     }
   }
 
@@ -1341,6 +1356,12 @@ class PluginLifecycleService({
     Object? firstError;
     StackTrace? firstStackTrace;
     try {
+      await Future.wait([for (final command in _activePluginCommands.values) command.settled.future]);
+    } on Object catch (error, stackTrace) {
+      firstError = error;
+      firstStackTrace = stackTrace;
+    }
+    try {
       await _runtimeSubscription?.cancel();
     } on Object catch (error, stackTrace) {
       firstError = error;
@@ -1602,16 +1623,21 @@ enum InstallCompletion() {
   reinspectOnly,
 }
 
-class _ActivePluginCommand({
-  required final PluginLifecycleCommandRequest request,
+sealed class _ActivePluginCommand({required final PluginLifecycleCommandRequest request}) {
+  final Completer<void> settled = Completer<void>();
+}
 
-  /// Read only when [request] is an install, and read at the terminal event so
-  /// an explicit Install that joins a running startup upgrade can still promote
-  /// it. Defaults to the meaning every user-issued command carries.
-  var InstallCompletion installCompletion = InstallCompletion.enableAndStart,
-}) {
+final class _ActiveResponseCommand({required super.request}) extends _ActivePluginCommand {
   final Completer<PluginManagementResponse> completer = Completer<PluginManagementResponse>();
 }
+
+final class _ActiveRuntimeProvisionCommand({
+  required super.request,
+
+  /// Read at the terminal event so an explicit Install that joins a running
+  /// startup upgrade can still promote it to enable-and-start behavior.
+  required var InstallCompletion installCompletion,
+}) extends _ActivePluginCommand;
 
 class _ActivePluginAuthentication({required final PluginRuntimeAuthenticationOperation operation}) {
   final Completer<PluginAuthenticationChallengeResponse> challenge = Completer<PluginAuthenticationChallengeResponse>();

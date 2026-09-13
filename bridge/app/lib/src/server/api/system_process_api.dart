@@ -36,17 +36,38 @@ class SystemProcessApi({
     return await _inspectPosixProcess(pid: pid);
   }
 
-  Future<SignalResult> sendGracefulSignal({required int pid}) => _sendSignal(
-    pid: pid,
-    requestedSignal: .graceful,
-    deliveredSignal: _isWindows ? .sigkill : .sigterm,
-  );
+  Future<SignalResult> sendGracefulSignal({required int pid}) => _isWindows
+      ? _sendWindowsTreeSignal(pid: pid, requestedSignal: .graceful, force: false)
+      : _sendSignal(pid: pid, requestedSignal: .graceful, deliveredSignal: .sigterm);
 
-  Future<SignalResult> sendForceSignal({required int pid}) => _sendSignal(
-    pid: pid,
-    requestedSignal: .force,
-    deliveredSignal: .sigkill,
-  );
+  Future<SignalResult> sendForceSignal({required int pid}) => _isWindows
+      ? _sendWindowsTreeSignal(pid: pid, requestedSignal: .force, force: true)
+      : _sendSignal(pid: pid, requestedSignal: .force, deliveredSignal: .sigkill);
+
+  Future<SignalResult> _sendWindowsTreeSignal({
+    required int pid,
+    required ShutdownSignal requestedSignal,
+    required bool force,
+  }) async {
+    final attemptedAt = _clock.now();
+    if (pid <= 0) {
+      return SignalResult(
+        pid: pid,
+        requestedSignal: requestedSignal,
+        deliveredSignal: .sigkill,
+        wasRequested: false,
+        attemptedAt: attemptedAt,
+      );
+    }
+    final result = await _processRunner.run("taskkill", ["/PID", "$pid", "/T", if (force) "/F"]);
+    return SignalResult(
+      pid: pid,
+      requestedSignal: requestedSignal,
+      deliveredSignal: .sigkill,
+      wasRequested: result.exitCode == 0,
+      attemptedAt: attemptedAt,
+    );
+  }
 
   Future<SignalResult> _sendSignal({
     required int pid,
