@@ -42,13 +42,6 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
   }) {
     if (executable.isEmpty) return HostExecutablePresence.unknown;
 
-    if (executable.contains("/") || (isWindows && executable.contains(r"\"))) {
-      final resolvedExecutable = p.isAbsolute(executable)
-          ? executable
-          : p.join(workingDirectory ?? Directory.current.path, executable);
-      return _inspectCandidates(candidates: [resolvedExecutable]);
-    }
-
     final extensions = isWindows && p.extension(executable).isEmpty
         ? (_environmentValue(environment: environment, name: "PATHEXT") ??
                   _environmentValue(environment: Platform.environment, name: "PATHEXT") ??
@@ -57,6 +50,20 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
               .where((extension) => extension.isNotEmpty)
               .toList(growable: false)
         : const [""];
+    if (executable.contains("/") || (isWindows && executable.contains(r"\"))) {
+      final resolvedExecutable = p.isAbsolute(executable)
+          ? executable
+          : p.join(workingDirectory ?? Directory.current.path, executable);
+      final candidates = <String>[];
+      _addCandidates(
+        candidates: candidates,
+        directory: p.dirname(resolvedExecutable),
+        executable: p.basename(resolvedExecutable),
+        extensions: extensions,
+      );
+      return _inspectCandidates(candidates: candidates);
+    }
+
     final candidates = <String>[];
     if (isWindows) {
       _addCandidates(
@@ -79,7 +86,7 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
 
     final baseDirectory = workingDirectory ?? Directory.current.path;
     for (final rawDirectory in pathValue.split(isWindows ? ";" : ":")) {
-      final directory = _unquote(value: rawDirectory.trim());
+      final directory = isWindows ? _unquote(value: rawDirectory.trim()) : rawDirectory;
       final resolvedDirectory = directory.isEmpty
           ? baseDirectory
           : p.isAbsolute(directory)

@@ -6,18 +6,33 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+HostProcessCommandExecutor _executor({required HostProcessService processes}) => HostProcessCommandExecutor(
+  includeParentEnvironment: true,
+  processes: processes,
+  runInShell: false,
+  maxCapturedOutputCharactersPerStream: 6,
+);
+
+Future<CommandResult> _runUpdate({
+  required HostProcessCommandExecutor executor,
+  required Duration timeout,
+  required StartAbortSignal abortSignal,
+}) => executor.runAbortable(
+  executable: "updater",
+  arguments: const ["update"],
+  workingDirectory: null,
+  environment: const {},
+  timeout: timeout,
+  abortSignal: abortSignal,
+);
+
 void main() {
   test("caps captured output while continuing to drain both process streams", () async {
     final process = _FakeSpawnedProcess(
       stdoutChunks: [utf8.encode("12345"), utf8.encode("67890")],
       stderrChunks: [utf8.encode("abcde"), utf8.encode("fghij")],
     );
-    final executor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: _FakeHostProcessService(process: process),
-      runInShell: false,
-      maxCapturedOutputCharactersPerStream: 6,
-    );
+    final executor = _executor(processes: _FakeHostProcessService(process: process));
 
     final result = await executor.run("probe", const []);
 
@@ -29,45 +44,54 @@ void main() {
 
   test("timeout force-stops a running command before settling", () async {
     final processes = _FakeHostProcessService(process: _HangingSpawnedProcess());
-    final executor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: false,
-      maxCapturedOutputCharactersPerStream: 6,
-    );
+    final executor = _executor(processes: processes);
 
     await expectLater(
-      executor.runAbortable(
-        executable: "updater",
-        arguments: const ["update"],
-        workingDirectory: null,
-        environment: const {},
-        timeout: const Duration(milliseconds: 10),
-        abortSignal: StartAbortSignal.never,
-      ),
+      _runUpdate(executor: executor, timeout: const Duration(milliseconds: 10), abortSignal: StartAbortSignal.never),
       throwsA(isA<TimeoutException>()),
     );
     expect(processes.forceSignals, [42]);
   });
 
+  for (final abortsDuringSpawn in [true, false]) {
+    test("${abortsDuringSpawn ? "abort" : "timeout"} during spawn terminates the late child before settling", () async {
+      final process = _HangingSpawnedProcess();
+      final spawnGate = Completer<void>();
+      final processes = _FakeHostProcessService(
+        process: process,
+        spawnGate: spawnGate.future,
+        completeExitOnForceSignal: false,
+      );
+      final executor = _executor(processes: processes);
+      final aborted = StartAbortController();
+      var settled = false;
+
+      final run = _runUpdate(
+        executor: executor,
+        timeout: abortsDuringSpawn ? const Duration(minutes: 1) : const Duration(milliseconds: 10),
+        abortSignal: aborted.signal,
+      );
+      unawaited(run.then<void>((_) => settled = true, onError: (Object _, StackTrace _) => settled = true));
+      await Future<void>.delayed(abortsDuringSpawn ? Duration.zero : const Duration(milliseconds: 20));
+      if (abortsDuringSpawn) aborted.abort();
+      await Future<void>.delayed(Duration.zero);
+      expect(settled, isFalse);
+
+      spawnGate.complete();
+      await processes.forceSignaled.future;
+      expect(settled, isFalse);
+      process.completeExit(-9);
+
+      await expectLater(run, throwsA(abortsDuringSpawn ? isA<PluginStartAbortedException>() : isA<TimeoutException>()));
+    });
+  }
+
   test("abort force-stops a running command before settling", () async {
     final processes = _FakeHostProcessService(process: _HangingSpawnedProcess());
-    final executor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: false,
-      maxCapturedOutputCharactersPerStream: 6,
-    );
+    final executor = _executor(processes: processes);
     final aborted = StartAbortController();
 
-    final run = executor.runAbortable(
-      executable: "updater",
-      arguments: const ["update"],
-      workingDirectory: null,
-      environment: const {},
-      timeout: const Duration(minutes: 1),
-      abortSignal: aborted.signal,
-    );
+    final run = _runUpdate(executor: executor, timeout: const Duration(minutes: 1), abortSignal: aborted.signal);
     await Future<void>.delayed(Duration.zero);
     aborted.abort();
 
@@ -78,22 +102,10 @@ void main() {
   test("abort during output drain reports cancellation after the exited child settles", () async {
     final process = _DrainPendingSpawnedProcess();
     final processes = _FakeHostProcessService(process: process);
-    final executor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: false,
-      maxCapturedOutputCharactersPerStream: 6,
-    );
+    final executor = _executor(processes: processes);
     final aborted = StartAbortController();
 
-    final run = executor.runAbortable(
-      executable: "updater",
-      arguments: const ["update"],
-      workingDirectory: null,
-      environment: const {},
-      timeout: const Duration(minutes: 1),
-      abortSignal: aborted.signal,
-    );
+    final run = _runUpdate(executor: executor, timeout: const Duration(minutes: 1), abortSignal: aborted.signal);
     await process.drainStarted.future;
     process.completeExit(0);
     await Future<void>.delayed(Duration.zero);
@@ -111,23 +123,11 @@ void main() {
       forceSignalWasRequested: false,
       completeExitOnForceSignal: false,
     );
-    final executor = HostProcessCommandExecutor(
-      includeParentEnvironment: true,
-      processes: processes,
-      runInShell: false,
-      maxCapturedOutputCharactersPerStream: 6,
-    );
+    final executor = _executor(processes: processes);
     final aborted = StartAbortController();
     var settled = false;
 
-    final run = executor.runAbortable(
-      executable: "updater",
-      arguments: const ["update"],
-      workingDirectory: null,
-      environment: const {},
-      timeout: const Duration(minutes: 1),
-      abortSignal: aborted.signal,
-    );
+    final run = _runUpdate(executor: executor, timeout: const Duration(minutes: 1), abortSignal: aborted.signal);
     unawaited(run.then<void>((_) => settled = true, onError: (Object _, StackTrace _) => settled = true));
     await Future<void>.delayed(Duration.zero);
     aborted.abort();
@@ -143,10 +143,12 @@ void main() {
 
 class _FakeHostProcessService({
   required final SpawnedProcess process,
+  final Future<void>? spawnGate,
   final bool forceSignalWasRequested = true,
   final bool completeExitOnForceSignal = true,
 }) implements HostProcessService {
   final forceSignals = <int>[];
+  final forceSignaled = Completer<void>();
   @override
   Future<SpawnedProcess> spawn({
     required String executable,
@@ -157,6 +159,8 @@ class _FakeHostProcessService({
     required bool includeParentEnvironment,
   }) async {
     expect(includeParentEnvironment, isTrue);
+    final gate = spawnGate;
+    if (gate != null) await gate;
     return process;
   }
 
@@ -166,6 +170,7 @@ class _FakeHostProcessService({
   @override
   Future<SignalResult> signalForce({required int pid}) async {
     forceSignals.add(pid);
+    if (!forceSignaled.isCompleted) forceSignaled.complete();
     if (completeExitOnForceSignal) {
       final spawnedProcess = process;
       if (spawnedProcess is _HangingSpawnedProcess) spawnedProcess.completeExit(-9);

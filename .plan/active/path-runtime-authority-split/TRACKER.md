@@ -14,7 +14,7 @@
 | Step | Status | PR | Changed-line ceiling |
 |---|---|---|---:|
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
-| 2. Centralize executable and command control | In progress | #1463 | 700 |
+| 2. Centralize executable and command control | In progress | #1463 | 850 |
 | 3. Settle commands and terminate process trees | Not started | — | 1,000 |
 | 4. Make PATH authoritative for managed copies | Not started | — | 1,450 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
@@ -93,7 +93,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Add direct host lookup, classification, timeout, abort, output-drain, and termination tests.
 - [x] Run focused Foundation tests and strict analysis.
 - [x] Complete architecture-implementation review and apply valid findings.
-- [x] Measure the full Step 2 diff against its 700-line ceiling.
+- [x] Measure the full Step 2 diff against its review-adjusted 850-line ceiling.
 - [x] Commit, push, and open Step 2 PR (#1463).
 - [x] Start PR monitor for Step 2.
 

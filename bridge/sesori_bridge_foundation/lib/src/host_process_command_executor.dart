@@ -6,6 +6,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 
 import "command_executor.dart";
 
+enum _TerminationObservation() { bounded, untilExit }
+
 /// A [CommandExecutor] that runs commands through the bridge's
 /// [HostProcessService] rather than spawning OS processes directly.
 ///
@@ -71,7 +73,9 @@ class HostProcessCommandExecutor({
     required StartAbortSignal? abortSignal,
   }) async {
     if (abortSignal?.isAborted ?? false) throw const PluginStartAbortedException();
-    final SpawnedProcess process = await _processes.spawn(
+    final effectiveTimeout = timeout ?? _defaultTimeout;
+    final budget = Stopwatch()..start();
+    final spawn = _processes.spawn(
       includeParentEnvironment: _includeParentEnvironment,
       executable: executable,
       arguments: arguments,
@@ -79,6 +83,31 @@ class HostProcessCommandExecutor({
       workingDirectory: workingDirectory,
       runInShell: _runInShell,
     );
+    final SpawnedProcess process;
+    try {
+      process = abortSignal == null
+          ? await spawn.timeout(effectiveTimeout)
+          : await Future.any<SpawnedProcess>([
+              spawn,
+              abortSignal.whenAborted.then<SpawnedProcess>((_) => throw const PluginStartAbortedException()),
+            ]).timeout(effectiveTimeout);
+    } on PluginStartAbortedException catch (error, stackTrace) {
+      await _terminateLateSpawn(
+        spawn: spawn,
+        executable: executable,
+        reason: "aborted",
+        observation: .untilExit,
+      );
+      Error.throwWithStackTrace(error, stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      await _terminateLateSpawn(
+        spawn: spawn,
+        executable: executable,
+        reason: "timed-out",
+        observation: abortSignal == null ? .bounded : .untilExit,
+      );
+      Error.throwWithStackTrace(error, stackTrace);
+    }
 
     final stdoutBuffer = StringBuffer();
     final stderrBuffer = StringBuffer();
@@ -106,14 +135,16 @@ class HostProcessCommandExecutor({
     final Future<void> stderrDone = stderrSub.asFuture<void>();
     var processExited = false;
     try {
+      if (abortSignal?.isAborted ?? false) throw const PluginStartAbortedException();
+      final remainingTimeout = effectiveTimeout - budget.elapsed;
+      if (remainingTimeout <= Duration.zero) throw TimeoutException("Command timed out while spawning '$executable'");
       final exit = process.exitCode;
-      final effectiveTimeout = timeout ?? _defaultTimeout;
       final int exitCode = abortSignal == null
-          ? await exit.timeout(effectiveTimeout)
+          ? await exit.timeout(remainingTimeout)
           : await Future.any<int>([
               exit,
               abortSignal.whenAborted.then<int>((_) => throw const PluginStartAbortedException()),
-            ]).timeout(effectiveTimeout);
+            ]).timeout(remainingTimeout);
       processExited = true;
       // Wait for the output streams to finish before reading the buffers, so a
       // command whose stdout/stderr is still buffered at exit (e.g. a fast
@@ -135,10 +166,17 @@ class HostProcessCommandExecutor({
         stderr: stderrBuffer.toString(),
       );
     } on PluginStartAbortedException {
-      if (!processExited) await _kill(process: process, executable: executable, reason: "aborted");
+      if (!processExited) {
+        await _kill(process: process, executable: executable, reason: "aborted", observation: .untilExit);
+      }
       rethrow;
     } on TimeoutException {
-      await _kill(process: process, executable: executable, reason: "timed-out");
+      await _kill(
+        process: process,
+        executable: executable,
+        reason: "timed-out",
+        observation: abortSignal == null ? .bounded : .untilExit,
+      );
       rethrow;
     } finally {
       // Isolate each cancel: a cancel failure must neither mask the in-flight
@@ -148,10 +186,27 @@ class HostProcessCommandExecutor({
     }
   }
 
+  Future<void> _terminateLateSpawn({
+    required Future<SpawnedProcess> spawn,
+    required String executable,
+    required String reason,
+    required _TerminationObservation observation,
+  }) async {
+    final SpawnedProcess process;
+    try {
+      process = await spawn;
+    } on Object catch (error, stackTrace) {
+      Log.w("HostProcessCommandExecutor: '$executable' spawn failed after $reason", error, stackTrace);
+      return;
+    }
+    await _kill(process: process, executable: executable, reason: reason, observation: observation);
+  }
+
   Future<void> _kill({
     required SpawnedProcess process,
     required String executable,
     required String reason,
+    required _TerminationObservation observation,
   }) async {
     Object? signalError;
     StackTrace? signalStackTrace;
@@ -164,10 +219,15 @@ class HostProcessCommandExecutor({
     }
 
     try {
-      // Give force termination a bounded opportunity to settle. A child that
-      // still does not report exit surfaces as a termination failure rather
-      // than pinning setup, updates, or bridge shutdown indefinitely.
-      await process.exitCode.timeout(const Duration(seconds: 5));
+      final exit = process.exitCode;
+      if (observation == _TerminationObservation.untilExit) {
+        // Runtime mutations retain ownership until the child actually exits;
+        // bridge shutdown independently bounds its wait on the operation.
+        await exit;
+      } else {
+        // Inert probes surface failed termination instead of hanging setup.
+        await exit.timeout(const Duration(seconds: 5));
+      }
     } on Object catch (error, stackTrace) {
       Log.w(
         "HostProcessCommandExecutor: failed to confirm termination of $reason '$executable'",
