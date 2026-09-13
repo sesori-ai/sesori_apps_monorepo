@@ -434,7 +434,7 @@ acceptance, keep this directory active. DeepSeek remains excluded.
 
 ## Nine-step delivery sequence
 
-The series retains nine top-level steps and the five merged PRs. Step 5
+The series retains nine top-level steps and all merged PRs. Step 5
 finished all five remaining targets under the corrected update-first policy;
 Steps 6–7 deliver the already-approved features. Steps 8–9 collect unresolved
 questions, perform available follow-ups, request specific user help together,
