@@ -260,8 +260,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 ### Step 6 — Antigravity inert pair inspection
 
 - **Packages/layers:** `bridge/sesori_plugin_antigravity` owns backend-specific behavior;
-  `sesori_plugin_interface` marks an authoritative unknown runtime; `bridge/app` maps that marker to the existing
-  wire unknown state while filtering managed Install.
+  `sesori_plugin_interface` marks authoritative unknown and managed-repair setup; `bridge/app` maps both markers to the
+  existing wire unknown state while filtering managed Install to the repairable marker.
 - **Production files/classes:**
   - API `api/antigravity_acp_api.dart` and `api/models/antigravity_version_dto.dart` — `AntigravityAcpApi.version`
     performs only bounded `--version`; `AntigravityVersionDto` remains API-local;
@@ -271,7 +271,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
     `AntigravityRuntimeVersionProbeSucceeded`, `AntigravityRuntimeVersionProbeRejected`, and
     `AntigravityRuntimeVersionProbeFailed`, carrying no `CommandResult`;
   - interface `plugin_setup_status.dart` and app `plugin_lifecycle_service.dart` —
-    `PluginSetupAuthoritativeRuntimeUnknown` preserves source-aware install policy without adding a wire state;
+    `PluginSetupAuthoritativeRuntimeUnknown` and `PluginSetupManagedRuntimeRepairRequired` preserve source-aware install
+    policy without adding a wire state;
   - services `antigravity_runtime_service.dart` and `antigravity_setup_service.dart` —
     `AntigravityRuntimeService` consumes the Step 4 physical-absence predicate for inert selection, while
     `AntigravitySetupService` consumes the resulting pair policy; and
@@ -362,7 +363,7 @@ generated files. These are ceilings, not targets:
 | 3 | 1,000 | Narrow app lifecycle/process implementation and focused tests. |
 | 4 | 1,850 | Review-expanded mutation fencing, completion checks, and non-installable PATH setup. |
 | 5 | 1,400 | Standard descriptor behavior and tests; no Antigravity or app execution flow. |
-| 6 | 1,600 | Review-expanded for pair evidence, source-aware setup, Windows PATH parity, and failure provenance. |
+| 6 | 1,750 | Review-expanded for pair evidence, source-aware repair policy, Windows PATH parity, and CI isolation. |
 | 7 | 1,500 | Shared wire, bridge execution, and minimum client-core consumption. |
 | 8 | 1,400 | Client UI/tests and current 354-line documentation change. |
 | 9 | 500 | Verification evidence and plan retirement only. |
@@ -435,8 +436,11 @@ planned.
 - **Step 5:** every standard harness descriptor test and analysis. Cover outdated versus unknown, explicit overrides,
   safe updater availability, manual-only harnesses, deterministic host-independent PATH fixtures, and shared missing
   classification.
-- **Step 6:** Antigravity package tests and analysis. Cover blank build labels, unrelated ACP failures, profile failure
-  retaining runtime metadata, every pair candidate, and inert inspection.
+- **Step 6:** Antigravity package tests/analysis, plugin-interface contracts, and bridge lifecycle mapping
+  tests/analysis. Cover blank build labels, unrelated ACP failures, profile failure retaining runtime metadata,
+  every pair candidate, inert inspection, both unknown-source markers mapping to wire unknown, and managed Install
+  appearing only for the
+  explicitly repairable marker.
 - **Step 7:** shared contract tests, bridge app lifecycle/runtime/runner tests, client-core state/service tests, and
   owning-package analysis. Cover duplicate joining, conflicts, abort, sanitized failures, recovery inspection after
   yielded/thrown failures, compatibility defaults, and startup abort recheck.

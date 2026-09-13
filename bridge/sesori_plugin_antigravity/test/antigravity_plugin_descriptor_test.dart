@@ -536,7 +536,7 @@ void main() {
     expect(processes.agents, isEmpty);
   });
 
-  test("managed pair is validated only when PATH is physically absent", () async {
+  test("managed pair is validated only after PATH absence and exposes repairable probe failure", () async {
     final managedDirectory = Directory(
       p.join(state.path, AntigravityIdentity.pluginId, AntigravityRelease.registryPackageVersion),
     )..createSync(recursive: true);
@@ -551,6 +551,28 @@ void main() {
       isA<PluginSetupAuthenticationRequired>(),
     );
     expect(processes.launches.single.arguments, const ["--version"]);
+    expect(processes.agents, isEmpty);
+
+    final versionExit = Completer<int>();
+    processes = _Processes(
+      serverPath: pair.server,
+      initialize: _initialize(),
+      respondToInitialize: true,
+      versionExit: versionExit,
+    );
+    final failedSetup = await descriptorWithTimeout(
+      http: null,
+      timeout: const Duration(seconds: 5),
+      versionProbeTimeout: const Duration(milliseconds: 20),
+    ).inspectSetup(
+      config: config(server: null),
+      processes: processes,
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: state.path,
+    );
+    expect(failedSetup, isA<PluginSetupManagedRuntimeRepairRequired>());
+    expect(failedSetup.actionHint, contains("Reinstall"));
+    expect(versionExit.isCompleted, isTrue);
     expect(processes.agents, isEmpty);
   });
 

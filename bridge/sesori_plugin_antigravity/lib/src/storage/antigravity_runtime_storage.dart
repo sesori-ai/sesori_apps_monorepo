@@ -100,7 +100,7 @@ class const AntigravityRuntimeStorage() {
       return AntigravityRuntimeTargetUnsupported(target: target);
     }
     final rawPath = _environmentPath(environment: environment, target: target);
-    if (rawPath == null && target.os != PlatformOs.windows) {
+    if (rawPath == null) {
       return const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
     }
 
@@ -108,8 +108,9 @@ class const AntigravityRuntimeStorage() {
     final separator = target.os == PlatformOs.windows ? ";" : ":";
     final directories = [
       if (target.os == PlatformOs.windows) Directory.current.path,
-      if (rawPath != null) ...rawPath.split(separator),
+      ...rawPath.split(separator),
     ];
+    AntigravityRuntimePairInvalid? harnessOnly;
     for (final rawDirectory in directories) {
       final directory = _pathDirectory(rawDirectory: rawDirectory, target: target);
       final result = inspectPair(
@@ -125,7 +126,7 @@ class const AntigravityRuntimeStorage() {
           followLinks: false,
         );
         if (harnessType != FileSystemEntityType.notFound) {
-          return const AntigravityRuntimePairInvalid(
+          harnessOnly ??= const AntigravityRuntimePairInvalid(
             component: AntigravityRuntimeComponent.harness,
             reason: AntigravityRuntimePairInvalidReason.notSiblings,
           );
@@ -134,7 +135,7 @@ class const AntigravityRuntimeStorage() {
         return AntigravityRuntimeStorageFailure(cause: error, stackTrace: stackTrace);
       }
     }
-    return const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
+    return harnessOnly ?? const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
   }
 
   HostExecutablePresence inspectPathServerPresence({

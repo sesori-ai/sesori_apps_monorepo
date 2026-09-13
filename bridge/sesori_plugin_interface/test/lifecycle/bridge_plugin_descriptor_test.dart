@@ -140,6 +140,10 @@ void main() {
       );
       expect(const PluginSetupReady().runtimeVersion, isNull);
       expect(const PluginSetupRuntimeMissing(actionHint: null).runtimeVersion, isNull);
+      expect(
+        const PluginSetupManagedRuntimeRepairRequired(actionHint: "Reinstall.").runtimeVersion,
+        isNull,
+      );
     });
   });
 

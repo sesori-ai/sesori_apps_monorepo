@@ -84,6 +84,23 @@ void main() {
     addTearDown(managedUnknownService.dispose);
     expect(
       managedUnknownService.managementSnapshot.plugins.single.managementCapabilities,
+      {PluginManagementCapability.setupRefresh},
+    );
+
+    final managedRepairService =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: const {PluginControlCapability.setupRefresh, PluginControlCapability.install},
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {
+            "one": PluginSetupManagedRuntimeRepairRequired(actionHint: "Reinstall the managed runtime."),
+          },
+        );
+    addTearDown(managedRepairService.dispose);
+    expect(
+      managedRepairService.managementSnapshot.plugins.single.managementCapabilities,
       {PluginManagementCapability.setupRefresh, PluginManagementCapability.install},
     );
   });
