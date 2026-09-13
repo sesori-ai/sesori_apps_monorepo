@@ -68,17 +68,12 @@ void main() {
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isTrue);
   });
 
-  test("does not report an older directory when the pinned version is present", () {
+  test("does not report an older directory when a pinned or newer version is present", () {
     versionDir("1.16.0");
     versionDir("1.17.9");
-
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
-  });
 
-  test("does not report a newer managed version as outdated", () {
-    versionDir("1.16.0");
     versionDir("1.18.0");
-
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 

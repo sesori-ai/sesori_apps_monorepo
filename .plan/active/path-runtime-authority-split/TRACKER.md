@@ -6,7 +6,7 @@
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
 - Current step: 4/9 — make PATH authoritative for managed copies
-- Open replacement implementation PRs: Step 4 — local implementation (PR pending)
+- Open replacement implementation PRs: Step 4 — #1472
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -16,7 +16,7 @@
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
 | 2. Centralize executable and command control | Merged | #1463 | 850 |
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
-| 4. Make PATH authoritative for managed copies | In progress | — | 1,450 |
+| 4. Make PATH authoritative for managed copies | In progress | #1472 | 1,450 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
 | 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
@@ -170,7 +170,5 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - All churn is authored; generated churn is zero; the total remains below the 1,000-line ceiling.
 
 ## Step 4 Evidence
-- Base/initial implementation checkpoint: `2d14f3ca2f` → `d4b082b400`.
-- Focused matrix: 11/11 suites passed; strict analysis passed in all 11 owning packages; `git diff --check` passed.
-- Architecture implementation review: APPROVED with no violations on the first pass.
-- Direct numstat: 1,127 additions + 323 deletions = 1,450 authored lines; generated churn is zero.
+- Verification: 11/11 focused suites, full OpenCode tests, and 11 strict analyses passed; architecture review approved.
+- Direct numstat: 1,106 additions + 335 deletions = 1,441 authored lines; generated churn is zero.
