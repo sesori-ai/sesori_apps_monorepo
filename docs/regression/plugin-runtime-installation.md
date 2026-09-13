@@ -13,10 +13,11 @@ from the app or management API, or at bridge start when Sesori manages an older 
   ready, authentication-required, or unknown states. Install-ready missing runtimes use
   the dedicated installation content; manual setup hints remain for externally installed
   harnesses and other setup failures.
-- PATH is authoritative for runtimes that support managed copies. Every result except verified absence—including
-  outdated, malformed, timed-out, nonzero, permission-denied, unlaunchable, partial-pair, or ambiguous evidence—blocks
-  managed fallback and mutation without exposing managed Install. Installation revalidates before cleanup, download,
-  scratch preparation, validation, activation, and final cleanup, preserving managed copies while PATH is present.
+- PATH is authoritative for standard single-command runtimes. Every result except verified absence—including outdated,
+  malformed, timed-out, nonzero, permission-denied, unlaunchable, or ambiguous evidence—blocks managed fallback and
+  mutation without exposing managed Install. Installation revalidates before cleanup, download, scratch preparation,
+  validation, activation, and final cleanup, preserving managed copies while PATH is present.
+- Antigravity managed install and startup mutation require both a missing PATH server candidate and physical absence.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.

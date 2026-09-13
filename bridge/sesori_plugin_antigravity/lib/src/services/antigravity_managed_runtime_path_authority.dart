@@ -1,17 +1,17 @@
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show IoHostExecutableLocator, PlatformTarget;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show HostExecutablePresence, IoHostExecutableLocator, PlatformTarget;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show Log, PluginStartAbortedException, StartAbortSignal;
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart" show ManagedRuntimePathAuthority;
 
 import "../foundation/antigravity_release.dart";
+import "../models/antigravity_runtime_pair.dart";
 import "../models/antigravity_runtime_resolution.dart";
 import "../repositories/antigravity_runtime_repository.dart";
-import "antigravity_runtime_path_authority_calculator.dart";
 
 /// Pair-aware PATH authority for Antigravity managed-runtime mutation.
 class AntigravityManagedRuntimePathAuthority({
   required final AntigravityRuntimeRepository _runtimeRepository,
-  required final AntigravityRuntimePathAuthorityCalculator _pathAuthorityCalculator,
   required final IoHostExecutableLocator _executableLocator,
   required final PlatformTarget _target,
 }) implements ManagedRuntimePathAuthority {
@@ -26,8 +26,7 @@ class AntigravityManagedRuntimePathAuthority({
     if (candidate case AntigravityRuntimeCandidateStorageFailed(:final cause, :final stackTrace)) {
       Log.w("[antigravity] PATH authority inspection failed", cause, stackTrace);
     }
-    if (!_pathAuthorityCalculator.requiresPhysicalServerAbsence(candidate: candidate) ||
-        !AntigravityRelease.supportsTarget(target: _target)) {
+    if (!_requiresPhysicalServerAbsence(candidate: candidate) || !AntigravityRelease.supportsTarget(target: _target)) {
       return false;
     }
     final serverPresence = _executableLocator.locate(
@@ -36,11 +35,13 @@ class AntigravityManagedRuntimePathAuthority({
       workingDirectory: null,
     );
     _throwIfAborted(abortSignal: abortSignal);
-    return _pathAuthorityCalculator.provesServerAbsent(
-      candidate: candidate,
-      serverPresence: serverPresence,
-    );
+    return serverPresence == HostExecutablePresence.absent;
   }
+
+  bool _requiresPhysicalServerAbsence({required AntigravityRuntimeCandidateResult candidate}) =>
+      candidate is AntigravityRuntimeCandidateMissing &&
+      candidate.source == AntigravityRuntimeSource.path &&
+      candidate.component == AntigravityRuntimeComponent.server;
 
   void _throwIfAborted({required StartAbortSignal abortSignal}) {
     if (abortSignal.isAborted) throw const PluginStartAbortedException();

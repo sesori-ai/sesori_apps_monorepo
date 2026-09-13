@@ -48,8 +48,9 @@ class const RuntimeInstallException(
 /// Staging paths are fixed and self-healing. The plugin may be running from an
 /// older managed version directory throughout; placement only ever touches the
 /// pinned version directory and this runtime's staging paths. The caller's
-/// mutation-revalidation fence runs before scratch preparation, candidate
-/// validation, and the synchronous placement-plus-sentinel activation.
+/// mutation-revalidation fence runs before managed-directory/download setup,
+/// scratch preparation, candidate validation, and the synchronous
+/// placement-plus-sentinel activation.
 class RuntimeInstallService({
   required final BinaryDownloadClient _downloadClient,
   required final ChecksumValidator _checksumValidator,
