@@ -187,6 +187,15 @@ class _FakeSystemProcessApi() implements SystemProcessApi {
   }
 
   @override
+  Future<int> runInheritingStdio({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+  }) {
+    throw UnimplementedError();
+  }
+
+  @override
   Future<SignalResult> sendForceSignal({required int pid}) {
     throw UnimplementedError();
   }

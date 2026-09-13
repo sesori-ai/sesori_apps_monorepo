@@ -232,7 +232,9 @@ class const BridgeRuntimeRunner._() {
         budget: _pluginShutdownBudget,
       )
       ..addPhase(
-        phase: BridgeShutdownPhase.lifecycle,
+        // Lifecycle disposal waits for accepted runtime provisions to finish
+        // using PluginRuntime. Dispose that lower owner only afterward.
+        phase: BridgeShutdownPhase.runtimeDispose,
         action: () => pluginRuntime?.dispose() ?? Future<void>.value(),
         budget: _pluginShutdownBudget,
       )
@@ -257,6 +259,8 @@ class const BridgeRuntimeRunner._() {
     final processRunner = ProcessRunner();
     const serverClock = ServerClock();
     final environment = io.Platform.environment;
+    final restartPredecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
+    final restartPredecessorPid = restartPredecessorPidRaw == null ? null : int.tryParse(restartPredecessorPidRaw);
     final currentUser = _resolveCurrentUser(environment: environment);
     if (currentUser == null) {
       Log.w("Failed to determine current user from environment");
@@ -277,6 +281,7 @@ class const BridgeRuntimeRunner._() {
       clock: serverClock,
       isWindows: io.Platform.isWindows,
       platform: io.Platform.operatingSystem,
+      inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
       isWindows: io.Platform.isWindows,
@@ -690,11 +695,9 @@ class const BridgeRuntimeRunner._() {
       );
       // If this bridge was spawned by a restart, wait for the predecessor to
       // exit before single-live-bridge enforcement so the handoff is clean.
-      final predecessorPidRaw = environment[sesoriRestartPredecessorPidEnvVar];
-      final predecessorPid = predecessorPidRaw == null ? null : int.tryParse(predecessorPidRaw);
-      if (predecessorPid != null) {
+      if (restartPredecessorPid != null) {
         await bridgeInstanceService.awaitPredecessorBridgeExit(
-          predecessorPid: predecessorPid,
+          predecessorPid: restartPredecessorPid,
           timeout: const Duration(seconds: 30),
         );
 
@@ -781,6 +784,7 @@ class const BridgeRuntimeRunner._() {
         // exits with the sentinel code instead of spawning a successor (which
         // would replay --control-url with no off-argv secret and fail closed).
         isSupervised: options.isSupervised,
+        isWindows: io.Platform.isWindows,
         // Record the GUI-respawn sentinel the moment the handoff is decided —
         // before the shutdown it triggers — so the normal return, the error
         // paths, and a hung-teardown backstop all report the same code.

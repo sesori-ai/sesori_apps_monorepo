@@ -11,7 +11,7 @@ import "package:test/test.dart";
 
 void main() {
   group("BridgeShutdownCoordinator", () {
-    test("runs signal, drain, plugin disposal, lifecycle, and shared phases in order", () async {
+    test("runs signal, drain, plugin disposal, lifecycle, runtime disposal, and shared phases in order", () async {
       final coordinator = BridgeShutdownCoordinator(
         startAbortSignal: StartAbortSignal.never,
         exitProcess: (_) {},
@@ -36,13 +36,17 @@ void main() {
           action: () => operations.add("lifecycle"),
         )
         ..addPhase(
+          phase: BridgeShutdownPhase.runtimeDispose,
+          action: () => operations.add("runtimeDispose"),
+        )
+        ..addPhase(
           phase: BridgeShutdownPhase.drain,
           action: () => operations.add("drain"),
         );
 
       await coordinator.shutdown();
 
-      expect(operations, ["signal", "drain", "pluginDispose", "lifecycle", "shared"]);
+      expect(operations, ["signal", "drain", "pluginDispose", "lifecycle", "runtimeDispose", "shared"]);
     });
 
     test("runs ordered steps in order, before the parallel phase", () async {
@@ -143,6 +147,37 @@ void main() {
       interrupt.complete();
       await shutdown;
       expect(operations, ["signal.interrupt", "drain"]);
+    });
+
+    test("runtime disposal starts only after lifecycle disposal settles", () async {
+      final coordinator = BridgeShutdownCoordinator(
+        startAbortSignal: StartAbortSignal.never,
+        exitProcess: (_) {},
+      );
+      final lifecycleSettled = Completer<void>();
+      final operations = <String>[];
+
+      coordinator
+        ..addPhase(
+          phase: BridgeShutdownPhase.lifecycle,
+          action: () async {
+            operations.add("lifecycle.start");
+            await lifecycleSettled.future;
+            operations.add("lifecycle.done");
+          },
+        )
+        ..addPhase(
+          phase: BridgeShutdownPhase.runtimeDispose,
+          action: () => operations.add("runtime.dispose"),
+        );
+
+      final shutdown = coordinator.shutdown();
+      await Future<void>.delayed(Duration.zero);
+      expect(operations, ["lifecycle.start"]);
+
+      lifecycleSettled.complete();
+      await shutdown;
+      expect(operations, ["lifecycle.start", "lifecycle.done", "runtime.dispose"]);
     });
 
     test("starts plugin shutdown and catalog drain together before awaiting either", () async {

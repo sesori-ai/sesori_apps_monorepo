@@ -18,6 +18,7 @@ BridgeRestartService buildTestRestartService() {
         clock: const ServerClock(),
         isWindows: false,
         platform: 'linux',
+        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       ),
       currentUser: null,
     ),
@@ -26,6 +27,7 @@ BridgeRestartService buildTestRestartService() {
     cliArgs: const <String>[],
     currentPid: 0,
     isSupervised: false,
+    isWindows: false,
     onSupervisedRestartRequested: () {},
   );
 }

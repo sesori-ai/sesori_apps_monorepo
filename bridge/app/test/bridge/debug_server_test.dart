@@ -995,6 +995,7 @@ BridgeRestartService _spawnableRestartService({
         clock: const ServerClock(),
         isWindows: false,
         platform: "linux",
+        inheritingStdioProcessRunner: SystemProcessApi.ioInheritingStdioProcessRunner,
       ),
       currentUser: null,
     ),
@@ -1003,6 +1004,7 @@ BridgeRestartService _spawnableRestartService({
     cliArgs: const <String>[],
     currentPid: 4321,
     isSupervised: false,
+    isWindows: false,
     onSupervisedRestartRequested: () {},
   );
 }

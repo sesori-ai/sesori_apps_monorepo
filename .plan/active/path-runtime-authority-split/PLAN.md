@@ -110,7 +110,7 @@ Series slug `path-runtime-authority-split`; every PR title is
    - Scope: add the concrete executable locator, locale-independent classification, abortable command execution, and
      direct Foundation tests. No plugin behavior activates.
 3. **Step 3/9**
-   - Title: `⚙️ [path-runtime-authority-split] bridge: settle commands and terminate process trees [step 3/9]`
+   - Title: `🚧 [path-runtime-authority-split] bridge: settle commands and terminate process trees [step 3/9]`
    - Scope: settle accepted lifecycle/runtime commands before disposal and make Windows shutdown tree-aware. This
      independently useful safety slice carries finding `3999205383`.
 4. **Step 4/9**
@@ -170,17 +170,29 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 - **Package/layer:** `bridge/app`; `SystemProcessApi` is the operating-system API boundary, while runtime/lifecycle
   classes own bridge orchestration.
 - **Production files/classes:**
-  - `lib/src/server/api/system_process_api.dart` — `SystemProcessApi.sendGracefulSignal` and `sendForceSignal` use
-    tree-aware Windows `taskkill`, with injected `ProcessRunner`, `ServerClock`, platform flag, and platform name;
+  - `lib/src/server/api/system_process_api.dart` — `SystemProcessApi.sendGracefulSignal` and `sendForceSignal` first
+    prove an already-absent Windows PID, then always use tree-aware `taskkill`; any non-zero tree request remains a
+    diagnostic failure because root absence afterward cannot prove descendant termination. Its injected
+    `runInheritingStdio` seam waits for the one-shot launcher exit code;
+  - `lib/src/server/services/windows_restart_successor_launcher.dart`, `bridge_restart_service.dart`, and
+    `bin/bridge.dart` — the named `WindowsRestartSuccessorLauncher` owns injected process-start and exit dependencies;
+    standalone Windows restart marks that one-shot launcher, which spawns the real successor with inherited stdio and
+    the native inherited environment, overrides only its launch marker with an inert value, and exits immediately,
+    breaking process ancestry before the successor may terminate the predecessor's full tree. `BridgeRestartService`
+    waits for its successful exit as child-creation acknowledgement;
+    spawn or non-zero exit failure keeps the predecessor running;
   - `lib/src/services/plugin_lifecycle_service.dart` — sealed `_ActivePluginCommand`, `_ActiveResponseCommand`, and
     install-only `_ActiveRuntimeProvisionCommand`, each owning non-null settlement;
   - `lib/src/runtime/plugin_runtime.dart` — private `_RuntimeMutation` owns one `StartAbortController` and one
     `Completer<void>` for each accepted install;
   - `lib/src/runtime/bridge_shutdown_coordinator.dart` — `BridgeShutdownPhase.runtimeDispose` and ordered phases; and
-  - `lib/src/orchestrator.dart` — composition registers lifecycle disposal before runtime disposal.
-- **Dependency/data flow:** `ProcessRunner` API result → `SystemProcessApi` → existing process service/repository
-  → bridge ownership consumer. Separately, runtime mutation → `PluginRuntime` settlement
-  → `PluginLifecycleService` → `BridgeShutdownCoordinator` ordered disposal.
+  - `lib/src/runtime/bridge_runtime_runner.dart` — composition parses restart ancestry once and registers lifecycle
+    disposal before runtime disposal.
+- **Dependency/data flow:** injected process runner → `SystemProcessApi` → `ProcessRepository`
+  → `BridgeRestartService` → acknowledged marked launcher → ancestry-separated successor; process signals use the
+  same API/repository boundary before reaching bridge ownership consumers. Separately, runtime
+  mutation/command transition → `PluginRuntime` settlement → `PluginLifecycleService`
+  → `BridgeShutdownCoordinator` ordered disposal.
 - **Activation:** lifecycle safety for existing install commands only. Global-update request types do not land early.
 
 ### Step 4 — managed runtime PATH authority
