@@ -3,22 +3,24 @@
 ## Status and constraints
 
 - **Plan slug:** `all-harness-runtime-refresh`.
-- **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
-  and [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455)
-  merged. Four targets are verified, including the required Pi/Claude lifecycle
-  follow-up accepted after merge. Step 3 verifies and applies Antigravity
-  package `1.1.1` / server `agy_acp_server_1.1.1` on this branch: all five archive
-  records, native install/initialize, actual production validator, teardown and
-  focused checks pass. Cursor remains unchanged because configured
-  load/replay/model/mode gates are blocked; Codex/OMP also remain blocked. See
-  [Step 2 verification](STEP-2-VERIFICATION.md) and
-  [Step 3 verification](STEP-3-VERIFICATION.md).
+- **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453),
+  [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455), and
+  [Step 3 PR #1457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1457)
+  merged. Five targets are verified, including the required Pi/Claude lifecycle
+  follow-up and Antigravity's actual production-validator native gate. Step 4's
+  localized Hermes cleanup fix passes 11 focused tests and the owning analyzer.
+  Candidate `0.21.2` remains blocked: attempted load failed and the native run
+  did not meet the agreed isolation/evidence boundary. The pin stays `0.20.4`.
+  Cursor, Codex and OMP retain their blocked pins. See
+  [Step 2 verification](STEP-2-VERIFICATION.md),
+  [Step 3 verification](STEP-3-VERIFICATION.md), and
+  [Step 4 verification](STEP-4-VERIFICATION.md).
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
   inventory reconciliation only and is explicitly excluded from this series' audit and changes.
-- **Implementation branch:** `all-harness-runtime-refresh-step-3`, based on
-  Step 2 merge `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`. This series preserves
+- **Implementation branch:** `all-harness-runtime-refresh-step-4`, based on
+  Step 3 merge `d55b93c874e0f8f95f9e2aab6941f1f942697991`. This series preserves
   floors, layout/platform policy, launch behavior, and Sesori database/wire
   contracts; unrelated upstream changes are not part of this refresh.
 - **Evidence:** [AUDIT.md](AUDIT.md) preserves the pre-implementation source
@@ -71,7 +73,7 @@ status. Release links alone are not completed implementation gates.
 | GitHub Copilot | `1.0.80` / `1.0.78` | [`v1.0.83`](https://github.com/github/copilot-cli/releases/tag/v1.0.83) | Six single-binary archives; recommended after ACP/install gates |
 | Cursor | `2026.08.11-e8db854` / date floor `2026.07.16` | [official installer](https://cursor.com/install), exact `2026.09.10-fd3934a` | Four package tarballs; probe-first content/hash/install gate |
 | Claude Code | `2.1.237` / `2.1.221` | [`v2.1.269`](https://github.com/anthropics/claude-code/releases/tag/v2.1.269); npm `latest` agrees | Direct configured/PATH CLI, zero managed assets; recommended after stream/approval/replay/interrupt gates |
-| Hermes Agent | `0.20.4` / `0.20.0` | [`v2026.9.11`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11), CLI `0.21.2` | Direct `hermes acp`; blocked by cleanup seam |
+| Hermes Agent | `0.20.4` / `0.20.0` | [`v2026.9.11`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11), CLI `0.21.2` | Direct `hermes acp`; cleanup fix implemented; candidate load/isolation gates blocked |
 | Pi | `0.84.4` / `0.84.1` | [`v0.85.1`](https://github.com/earendil-works/pi/releases/tag/v0.85.1); npm package `@earendil-works/pi-coding-agent` | Six package archives; recommended after RPC, settlement, and manual-compaction abort/ordering gates |
 | Oh My Pi (OMP) | `17.3.8` / `17.2.13` | [`v18.1.18`](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.18), published 2026-09-11 | Seven assets in current Sesori manifest; official candidate has eight including Windows ARM64; approved separate platform step |
 | Grok Build | `1.0.5` / `1.0.5` | [xAI stable channel](https://x.ai/cli/stable), channel `1.0.30` | Direct official CLI; recommended after channel/ACP gate |
@@ -120,13 +122,14 @@ floor. OMP Windows ARM64 is an approved platform mapping, not a floor change.
   approval, replay, interrupt, and teardown checks. npm `latest=2.1.269` while
   stable dist-tag remains `2.1.236` is a channel distinction, not prerelease
   evidence. SDK `0.3.269` is separate and not a bridge dependency.
-- **Hermes:** Step 4 resolves one narrow candidate cleanup seam before any pin.
-  Candidate `0.21.2` does not persist empty `session/new` shells, while current
-  catalog cleanup deletes the scratch ID and treats not-found as failure. Make
-  cleanup idempotent only if source/probe confirms this ordinary flow; preserve
-  real database errors and floor `0.20.0`. A configured fixture must also verify
-  new/load before pinning; an unavailable required fixture blocks the Hermes
-  pin. No broad compatibility layer.
+- **Hermes:** Step 4 implements narrow idempotent cleanup for unpersisted empty
+  discovery sessions, as confirmed in tagged source. Only exit 1 with the exact
+  requested-ID not-found stdout and empty stderr is accepted; real errors and
+  floor `0.20.0` remain intact. The target stays `0.20.4`: candidate `0.21.2`
+  fresh-process load failed, and native isolation/launch/evidence was not
+  accepted. Required configured-load and cleanup verification still block the
+  pin; see [Step 4 verification](STEP-4-VERIFICATION.md). No broad compatibility
+  layer or further native execution without procedure review.
 - **Pi:** update target and six package assets to `0.85.1` after RPC startup,
   framing, `get_state`, settlement, package-tree, and manual-compaction abort
   checks. The correct npm comparison is `@earendil-works/pi-coding-agent`;
@@ -408,7 +411,7 @@ matrix/retirement decision.
 | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | Publish this plan, tracker, audit, and verified reference corrections; no production changes |
 | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode, Codex, Copilot, Claude, Pi, and OMP target/assets refreshes with independent release/install/protocol/tests; OMP uses seven existing assets |
 | 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity exact package/server pair and Cursor exact installer build, content, hashes, layout, and ACP gates |
-| 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Narrow empty-session cleanup prerequisite; pin `0.21.2` only after cleanup and target gates |
+| 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | Deliver narrow cleanup fix; hold `0.20.4` because candidate load and accepted isolated verification remain blocked |
 | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Stable-channel `1.0.30`, normalized ACP namespace, exact launch/protocol gates; no source-binary gate |
 | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth executable, manifest/platform tests, native Windows gate, and platform regression/capability docs |
 | 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared array mapper, OMP-only live capability, separate option/custom questions, bridge/client tests, and question regression/capability docs; no generated/new state |
