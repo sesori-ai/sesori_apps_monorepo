@@ -16,7 +16,7 @@
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
-  reconciliation only and is explicitly excluded/unchanged.
+  inventory reconciliation only and is explicitly excluded from this series' audit and changes.
 - **Implementation branch:** `all-harness-runtime-refresh-step-3`, based on
   Step 2 merge `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`. This series preserves
   floors, layout/platform policy, launch behavior, and Sesori database/wire
@@ -63,7 +63,7 @@ contains 11 entries. This pre-series baseline reconciles all 11, including the
 excluded row; [TRACKER.md](TRACKER.md) records current branch targets and gate
 status. Release links alone are not completed implementation gates.
 
-| Harness | Current target / floor or exact policy | Candidate and evidence | Distribution / status |
+| Harness | Pre-series target / floor or exact policy | Candidate and evidence | Distribution / status |
 |---|---|---|---|
 | OpenCode | `1.18.19` / `1.14.0` | [`v1.18.30`](https://github.com/anomalyco/opencode/releases/tag/v1.18.30) | Six managed single-binary archives; recommended after gates |
 | Antigravity | Registry package `1.0.0`; exact server `agy_acp_server_20260818_01_RC01`, ACP 1; no semantic floor | Registry [`v2026.09.12-d30bc9a`](https://github.com/agentclientprotocol/registry/releases/tag/v2026.09.12-d30bc9a), package `1.1.1`; observed server `agy_acp_server_1.1.1` | Five ZIP hashes and macOS ARM64 install/initialize/cleanup accepted in Step 3 |
@@ -150,8 +150,11 @@ floor. OMP Windows ARM64 is an approved platform mapping, not a floor change.
   Source-to-binary association is optional evidence, not a signed or
   source-attestation gate. Preserve `--no-auto-update agent --no-leader stdio`,
   floor `1.0.5`, and current scoped-stop policy.
-- **DeepSeek:** no candidate audit or producer work. Keep target/minimum `0.1.5`,
-  six assets, capabilities, regressions, and historical evidence untouched.
+- **DeepSeek:** no candidate audit or producer work. The `0.1.5` target/minimum
+  and six assets in the inventory and `AUDIT.md` are historical pre-series
+  observations, not a requirement to freeze or restore the current upstream
+  target. Do not audit, modify, or revert unrelated DeepSeek changes; its current
+  target is intentionally not assessed by this series.
 
 No safe simplification was found. OMP native settlement and Hermes empty-shell
 behavior affect cleanup/ordering but do not authorize removing bridge queue,

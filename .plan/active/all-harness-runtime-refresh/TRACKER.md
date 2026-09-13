@@ -52,7 +52,7 @@
 | Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six hashes/install/RPC, native production-plugin settlement/manual-compaction abort/ordering/reuse/cleanup; tests/analyzer |
 | Oh My Pi | `17.3.8` | `17.2.13` unchanged | `18.1.18` | Blocked: seven hashes/install/initialize pass; authorized authenticate/list/new/load/cleanup fixture absent |
 | Grok Build | `1.0.5` | `1.0.5` unchanged | stable channel `1.0.30` | Blocked; reference-required authenticated new/prompt/replay/model-selection/close probes pending |
-| DeepSeek | Upstream main | Outside this series | None | Explicitly excluded; unrelated upstream changes are neither audited nor modified here |
+| DeepSeek | Not assessed (excluded) | Outside this series | None | Explicitly excluded; historical baseline is not a current-target claim, and unrelated upstream changes are neither audited nor modified here |
 
 ## Approved and deferred decisions
 
