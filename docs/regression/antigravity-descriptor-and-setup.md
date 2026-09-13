@@ -22,10 +22,10 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
   later server pair, but harness-only, incomplete, broken, unreadable or invalid final PATH evidence remains
   authoritative. The current exact pair is package `1.1.1` / server `agy_acp_server_1.1.1`, ACP 1.
   Only that byte-exact label reports ready; equal-precedence labels remain unknown. Documented pre-semver official
-  labels order below that pin, while newer official semantic versions remain incompatible/unknown. Outdated or
-  PATH-authoritative and non-repairable managed unknown setup use an install-blocked marker; the dedicated
-  managed-repair marker retains Install after a repairable managed probe failure.
-  Explicit pairs never fall through to managed.
+  labels order below that pin, while newer official semantic versions remain incompatible/unknown. Outdated PATH
+  setup uses the dedicated runtime-outdated state. PATH-authoritative unknown and managed storage, profile or probe
+  uncertainty use an install-blocked marker that suppresses Install in both snapshots and command admission. Explicit
+  pairs never fall through to managed.
 - Missing/rejected/unsupported/boundary outcomes map to honest setup statuses and current-client authentication hints.
   macOS x64 reports unsupported-platform guidance without constructing a managed filename, preparing a profile or
   launching a process, including when an explicit binary option is supplied.

@@ -126,27 +126,6 @@ final class const PluginSetupManagedInstallBlockedUnknown({
       "PluginSetupManagedInstallBlockedUnknown(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
 }
 
-/// Managed runtime inspection failed in a way that reinstalling can repair.
-///
-/// Transport still reports unknown setup; this marker only preserves the safe
-/// managed-install action at the bridge boundary.
-final class const PluginSetupManagedRuntimeRepairRequired({@override required final String? actionHint})
-    extends PluginSetupStatus {
-  this : assert(actionHint != "", "PluginSetupManagedRuntimeRepairRequired.actionHint must not be empty");
-
-  @override
-  String? get runtimeVersion => null;
-
-  @override
-  bool operator ==(Object other) => other is PluginSetupManagedRuntimeRepairRequired && other.actionHint == actionHint;
-
-  @override
-  int get hashCode => actionHint.hashCode;
-
-  @override
-  String toString() => "PluginSetupManagedRuntimeRepairRequired(actionHint: $actionHint)";
-}
-
 /// The runtime exists, but the backend requires authentication.
 base class const PluginSetupAuthenticationRequired({@override required final String? actionHint})
     extends PluginSetupStatus {

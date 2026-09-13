@@ -114,18 +114,16 @@ class AntigravitySetupService({
             ? _pathRuntimeUnknown(runtimeVersion: null)
             : _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
       case AntigravityRuntimeVersionProbeFailed():
-        if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown(runtimeVersion: null);
-        if (source == AntigravityRuntimeSource.managed && managedInstallAvailable) {
-          return const PluginSetupManagedRuntimeRepairRequired(
-            actionHint:
-                "The managed Antigravity runtime could not be verified. Reinstall Google's official proprietary "
-                "runtime after reviewing Google's terms (https://antigravity.google/terms) and documentation "
-                "(https://antigravity.google/docs/), or replace the local pair.",
-          );
-        }
-        return const PluginSetupUnknown(
-          actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
-        );
+        return switch (source) {
+          AntigravityRuntimeSource.path => _pathRuntimeUnknown(runtimeVersion: null),
+          AntigravityRuntimeSource.managed => const PluginSetupManagedInstallBlockedUnknown(
+            actionHint: "The managed Antigravity runtime could not be verified. Restart the bridge and retry.",
+            runtimeVersion: null,
+          ),
+          AntigravityRuntimeSource.explicit => const PluginSetupUnknown(
+            actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
+          ),
+        };
     }
   }
 

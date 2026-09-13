@@ -69,6 +69,11 @@ void main() {
     expect(newerService.managementSnapshot.plugins.single.managementCapabilities, {
       PluginManagementCapability.setupRefresh,
     });
+    expect(
+      () => newerService.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install()),
+      throwsA(isA<PluginManagementConflictException>()),
+    );
+    expect(repository.installCalls, isZero);
 
     final managedUnknownService =
         _commandService(
@@ -84,23 +89,6 @@ void main() {
     addTearDown(managedUnknownService.dispose);
     expect(
       managedUnknownService.managementSnapshot.plugins.single.managementCapabilities,
-      {PluginManagementCapability.setupRefresh, PluginManagementCapability.install},
-    );
-
-    final managedRepairService =
-        _commandService(
-          repository: repository,
-          settingsRepository: null,
-          managementCapabilities: const {PluginControlCapability.setupRefresh, PluginControlCapability.install},
-        )..initialize(
-          disabledPluginIds: const {},
-          setupById: const {
-            "one": PluginSetupManagedRuntimeRepairRequired(actionHint: "Reinstall the managed runtime."),
-          },
-        );
-    addTearDown(managedRepairService.dispose);
-    expect(
-      managedRepairService.managementSnapshot.plugins.single.managementCapabilities,
       {PluginManagementCapability.setupRefresh, PluginManagementCapability.install},
     );
   });

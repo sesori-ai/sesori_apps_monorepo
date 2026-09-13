@@ -260,8 +260,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 ### Step 6 — Antigravity inert pair inspection
 
 - **Packages/layers:** `bridge/sesori_plugin_antigravity` owns backend-specific behavior;
-  `sesori_plugin_interface` marks install-blocked and managed-repair unknown setup; `bridge/app` maps both markers to
-  the existing wire unknown state while preserving legacy generic-unknown behavior for unmigrated harnesses.
+  `sesori_plugin_interface` marks install-blocked unknown setup; `bridge/app` maps the marker to the existing wire
+  unknown state while preserving generic-unknown behavior for unmigrated harnesses.
 - **Production files/classes:**
   - API `api/antigravity_acp_api.dart` and `api/models/antigravity_version_dto.dart` — `AntigravityAcpApi.version`
     performs only bounded `--version`; `AntigravityVersionDto` remains API-local;
@@ -271,8 +271,7 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
     `AntigravityRuntimeVersionProbeSucceeded`, `AntigravityRuntimeVersionProbeRejected`, and
     `AntigravityRuntimeVersionProbeFailed`, carrying no `CommandResult`;
   - interface `plugin_setup_status.dart` and app `plugin_lifecycle_service.dart` —
-    `PluginSetupManagedInstallBlockedUnknown` and `PluginSetupManagedRuntimeRepairRequired` preserve source-aware
-    install policy without adding a wire state;
+    `PluginSetupManagedInstallBlockedUnknown` preserves source-aware install policy without adding a wire state;
   - services `antigravity_runtime_service.dart` and `antigravity_setup_service.dart` —
     `AntigravityRuntimeService` consumes the Step 4 physical-absence predicate for inert selection, while
     `AntigravitySetupService` consumes the resulting pair policy; and
@@ -363,7 +362,7 @@ generated files. These are ceilings, not targets:
 | 3 | 1,000 | Narrow app lifecycle/process implementation and focused tests. |
 | 4 | 1,850 | Review-expanded mutation fencing, completion checks, and non-installable PATH setup. |
 | 5 | 1,400 | Standard descriptor behavior and tests; no Antigravity or app execution flow. |
-| 6 | 1,750 | Review-expanded for pair evidence, source-aware repair policy, Windows PATH parity, and CI isolation. |
+| 6 | 1,750 | Review-expanded for pair evidence, source-aware install policy, Windows PATH parity, and CI isolation. |
 | 7 | 1,500 | Shared wire, bridge execution, and minimum client-core consumption. |
 | 8 | 1,400 | Client UI/tests and current 354-line documentation change. |
 | 9 | 500 | Verification evidence and plan retirement only. |
@@ -438,9 +437,8 @@ planned.
   classification.
 - **Step 6:** Antigravity package tests/analysis, plugin-interface contracts, and bridge lifecycle mapping
   tests/analysis. Cover blank build labels, unrelated ACP failures, profile failure retaining runtime metadata,
-  every pair candidate, inert inspection, both policy markers mapping to wire unknown, the blocked marker hiding
-  managed Install, the repair marker preserving it, and generic unknown retaining established policy for unmigrated
-  harnesses.
+  every pair candidate, inert inspection, the blocked marker mapping to wire unknown and denying managed Install at
+  projection and admission, and generic unknown retaining established policy for unmigrated harnesses.
 - **Step 7:** shared contract tests, bridge app lifecycle/runtime/runner tests, client-core state/service tests, and
   owning-package analysis. Cover duplicate joining, conflicts, abort, sanitized failures, recovery inspection after
   yielded/thrown failures, compatibility defaults, and startup abort recheck.
