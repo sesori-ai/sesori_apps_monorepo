@@ -205,4 +205,4 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - PR review fixes mark updater specs immutable, avoid logging failed Claude probe output, and reconcile capability and
   Step 7 ownership docs; the two affected suites passed 28 tests and both package analyses passed.
 - Inert descriptor updater metadata remains in Step 5 by the approved series scope; execution remains Step 7.
-- Final size: 1,008 lines (830 additions, 178 deletions) across 36 files; 1,007 authored, 1 generated (<1,400).
+- Range `ec6dde9fcd..dc042c8f96`: 1,008 lines (830+/178-; 1,007 authored, 1 generated; <1,400); accepted head: PR body.
