@@ -1995,6 +1995,37 @@ void main() {
     expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.ready);
   });
 
+  test("a thrown install failure re-inspects canonical setup before releasing the command", () async {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady.versioned(runtimeVersion: "2.0.0"),
+      inspectionGate: null,
+      startFailureMessage: null,
+    )..installError = StateError("installer crashed");
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {"one"},
+          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "Install")},
+        );
+    addTearDown(service.dispose);
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await installSettled(progress: progress);
+
+    expect(repository.inspectCalls, 1);
+    expect(repository.startCalls, isZero);
+    expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.ready);
+    expect(progress.single.phase, PluginInstallPhase.failed);
+    expect(progress.single.message, isNot(contains("installer crashed")));
+  });
+
   test("an install that discovers login is needed completes without starting the harness", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupAuthenticationRequired(actionHint: "Log in"),
@@ -2027,6 +2058,70 @@ void main() {
     expect(repository.startCalls, isZero);
     expect(service.managementSnapshot.plugins.single.setup.state, PluginSetupState.authenticationRequired);
     expect(service.managementSnapshot.plugins.single.runtimeState, shared.PluginRuntimeState.blocked);
+  });
+
+  test("dispose keeps install progress open until an active provision settles", () async {
+    final installGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupRuntimeMissing(actionHint: "Install"),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..installEvents = const [ProvisionFailed(message: "aborted")]
+          ..installGate = installGate;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupRuntimeMissing(actionHint: "Install")},
+        );
+    final progress = <PluginInstallProgressUpdate>[];
+    final progressSubscription = service.installProgress.listen(progress.add);
+    addTearDown(progressSubscription.cancel);
+
+    await service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install());
+    await _waitUntil(() => repository.installCalls == 1);
+    var disposed = false;
+    final disposal = service.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+
+    installGate.complete();
+    await disposal;
+    expect(disposed, isTrue);
+    expect(progress.single.phase, PluginInstallPhase.failed);
+  });
+
+  test("dispose waits for an active lifecycle command before closing owned streams", () async {
+    final inspectionGate = Completer<void>();
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: inspectionGate,
+      startFailureMessage: null,
+    );
+    addTearDown(repository.dispose);
+    final service = _commandService(repository: repository, settingsRepository: null)
+      ..initialize(
+        disabledPluginIds: const {},
+        setupById: const {"one": PluginSetupReady()},
+      );
+
+    final refresh = service.command(pluginId: "one", request: const PluginLifecycleCommandRequest.refresh());
+    await _waitUntil(() => repository.inspectCalls == 1);
+    var disposed = false;
+    final disposal = service.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+
+    inspectionGate.complete();
+    await refresh;
+    await disposal;
+    expect(disposed, isTrue);
   });
 
   test("a duplicate install joins and a different command conflicts while installing", () async {
@@ -2227,6 +2322,37 @@ void main() {
     await installSettled(progress: progress);
     expect(repository.startCalls, isZero, reason: "a startup upgrade never spawns a process");
     expect(progress.last.phase, PluginInstallPhase.completed);
+  });
+
+  test("startup does not admit an upgrade after disposal begins during its PATH probe", () async {
+    final upgradeGate = Completer<void>();
+    final repository =
+        _CommandLifecycleRepository(
+            inspectionResult: const PluginSetupReady(),
+            inspectionGate: null,
+            startFailureMessage: null,
+          )
+          ..needsUpgrade = true
+          ..upgradeGate = upgradeGate;
+    addTearDown(repository.dispose);
+    final service =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: installCapableManagementCapabilities,
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {"one": PluginSetupReady()},
+        );
+
+    final upgrading = service.upgradeManagedRuntimes();
+    await _waitUntil(() => repository.upgradeQueries.isNotEmpty);
+    final disposal = service.dispose();
+    upgradeGate.complete();
+    await upgrading;
+    await disposal;
+
+    expect(repository.installCalls, isZero);
   });
 
   test("startup skips a plugin whose descriptor reports no superseded runtime", () async {
@@ -3155,11 +3281,13 @@ class _CommandLifecycleRepository({
   int installCalls = 0;
   List<RuntimeProvisionProgress> installEvents = const [];
   Completer<void>? installGate;
+  Object? installError;
   int updateCalls = 0;
   List<RuntimeProvisionProgress> updateEvents = const [];
   Completer<void>? updateGate;
   bool needsUpgrade = false;
   final List<String> upgradeQueries = [];
+  Completer<void>? upgradeGate;
   final StreamController<PluginAuthenticationEvent> authenticationEvents =
       StreamController<PluginAuthenticationEvent>();
   int authenticationCalls = 0;
@@ -3198,6 +3326,8 @@ class _CommandLifecycleRepository({
   Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) async* {
     installCalls++;
     await installGate?.future;
+    final currentInstallError = installError;
+    if (currentInstallError != null) throw currentInstallError;
     yield* Stream.fromIterable(installEvents);
   }
 
@@ -3211,6 +3341,7 @@ class _CommandLifecycleRepository({
   @override
   Future<bool> needsManagedRuntimeUpgrade({required String pluginId}) async {
     upgradeQueries.add(pluginId);
+    await upgradeGate?.future;
     return needsUpgrade;
   }
 

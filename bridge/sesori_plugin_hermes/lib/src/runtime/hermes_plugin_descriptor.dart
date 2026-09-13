@@ -3,7 +3,14 @@ import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show CommandResult, HostProcessCommandExecutor, SemanticVersion, stripAnsi;
+    show
+        CommandResult,
+        HostExecutableLocator,
+        HostExecutablePresence,
+        HostProcessCommandExecutor,
+        IoHostExecutableLocator,
+        SemanticVersion,
+        stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../api/hermes_acp_api.dart";
@@ -27,6 +34,7 @@ const int _setupProbeOutputLimit = 64 * 1024;
 class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
+  static const HostExecutableLocator _executableLocator = IoHostExecutableLocator(platformIsWindows: null);
 
   /// Oldest Hermes Agent release with the ACP behavior this plugin requires.
   static const String minVersion = "0.20.0";
@@ -269,9 +277,10 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       );
       return const _HermesRuntimeUnknown();
     } on io.ProcessException catch (error, stackTrace) {
-      // The host process seam reports spawn failures as ProcessException;
-      // ENOENT (errorCode 2) means not installed / not on PATH.
-      if (error.errorCode == 2 || error.errorCode == 3) return const _HermesRuntimeMissing();
+      if (_isMissingProcessError(error: error) &&
+          _pathExecutableIsAbsent(executable: executablePath, environment: environment)) {
+        return const _HermesRuntimeMissing();
+      }
       Log.w("[hermes] availability probe could not launch '$executablePath acp --version'", error, stackTrace);
       return const _HermesRuntimeUnknown();
     } on Object catch (error, stackTrace) {
@@ -287,7 +296,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       // parser error. That positively identifies an outdated installation;
       // unrelated nonzero failures remain unknown.
       final stderr = result.stderr.toLowerCase();
-      if (_isShellCommandNotFound(executable: executablePath, result: result)) {
+      if (_pathExecutableIsAbsent(executable: executablePath, environment: environment)) {
         return const _HermesRuntimeMissing();
       }
       if (stderr.contains("acp") && stderr.contains("invalid choice")) {
@@ -311,12 +320,19 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     return _HermesRuntimeReady(version: version);
   }
 
-  bool _isShellCommandNotFound({required String executable, required CommandResult result}) {
-    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
-    final command = executable.toLowerCase();
-    return output.contains("'$command' is not recognized as an internal or external command") ||
-        output.contains("the term '$command' is not recognized as the name of a cmdlet");
-  }
+  bool _isMissingProcessError({required io.ProcessException error}) =>
+      error.errorCode == 2 || (_executableLocator.isWindows && error.errorCode == 3);
+
+  bool _pathExecutableIsAbsent({
+    required String executable,
+    required Map<String, String> environment,
+  }) =>
+      _executableLocator.locate(
+        executable: executable,
+        environment: environment,
+        workingDirectory: null,
+      ) ==
+      HostExecutablePresence.absent;
 
   SemanticVersion? _tryParseVersion({required String value}) {
     for (final rawToken in value.split(RegExp(r"\s+"))) {

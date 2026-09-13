@@ -142,7 +142,10 @@ class AntigravityAcpApi({
     const prefix = "Build label:";
     for (final line in output.split("\n")) {
       final trimmed = line.trim();
-      if (trimmed.startsWith(prefix)) return trimmed.substring(prefix.length).trim();
+      if (trimmed.startsWith(prefix)) {
+        final buildLabel = trimmed.substring(prefix.length).trim();
+        return buildLabel.isEmpty ? null : buildLabel;
+      }
     }
     return null;
   }

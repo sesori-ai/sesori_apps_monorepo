@@ -12,6 +12,17 @@ class const _UnusedCommands() implements CommandExecutor {
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
+class const _VersionCommands({required final CommandResult result}) implements CommandExecutor {
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async => result;
+}
+
 class _AbortAfterInitializeSignal() implements StartAbortSignal {
   int _polls = 0;
 
@@ -43,6 +54,24 @@ void main() {
     );
   });
   tearDown(() => process.close());
+
+  test("version treats a blank build label as absent", () async {
+    api = AntigravityAcpApi(
+      commands: const _VersionCommands(
+        result: CommandResult(exitCode: 0, stdout: "Build label:   \n", stderr: ""),
+      ),
+      stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+      processFactory: (_) async => process,
+    );
+
+    final version = await api.version(
+      serverPath: "/runtime/agy_acp_server.par",
+      environment: const {},
+      timeout: const Duration(seconds: 1),
+    );
+
+    expect(version.buildLabel, isNull);
+  });
 
   for (final authenticating in [false, true]) {
     test("${authenticating ? 'authentication' : 'probe'} abort awaits and reaps a late spawn", () async {

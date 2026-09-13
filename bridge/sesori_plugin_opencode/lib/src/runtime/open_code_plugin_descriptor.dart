@@ -338,6 +338,7 @@ class const OpenCodePluginDescriptor({
             commandExecutor: executor,
             manifest: manifest,
             probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
         )
         .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
@@ -368,6 +369,7 @@ class const OpenCodePluginDescriptor({
       ),
       manifest: manifest,
       probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     );
     final httpClient = http.Client();
     try {
@@ -379,6 +381,7 @@ class const OpenCodePluginDescriptor({
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
+          executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
         ),
         pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
           manifest: manifest,
@@ -422,7 +425,7 @@ class const OpenCodePluginDescriptor({
     /// needs a first install.
     String missingRuntimeHint() {
       const inventory = ManagedRuntimeInventory(manifest: manifest);
-      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+      return inventory.hasOutdatedVersion(stateDirectory: stateDirectory)
           ? "This bridge needs a newer OpenCode. Install it from Sesori to update the managed runtime."
           : "Install OpenCode from Sesori, or install it locally and retry setup detection.";
     }
@@ -434,6 +437,7 @@ class const OpenCodePluginDescriptor({
             commandExecutor: executor,
             manifest: manifest,
             probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
           inventory: const ManagedRuntimeInventory(manifest: manifest),
         ).select(
@@ -544,6 +548,7 @@ class const OpenCodePluginDescriptor({
         commandExecutor: commandExecutor,
         manifest: manifest,
         probeTimeout: _versionProbeTimeout,
+        executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
       ),
       // OpenCode has no desktop app bundling a CLI.
       fallbackExecutableCandidates: const [],

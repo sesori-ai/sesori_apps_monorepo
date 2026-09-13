@@ -232,6 +232,7 @@ class const CodexPluginDescriptor({
         ),
         manifest: manifest,
         probeTimeout: _versionProbeTimeout,
+        executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
       ),
       inventory: const ManagedRuntimeInventory(manifest: manifest),
     ).select(
@@ -300,6 +301,7 @@ class const CodexPluginDescriptor({
             commandExecutor: executor,
             manifest: manifest,
             probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
         )
         .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
@@ -330,6 +332,7 @@ class const CodexPluginDescriptor({
       ),
       manifest: manifest,
       probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     );
     final httpClient = http.Client();
     try {
@@ -341,6 +344,7 @@ class const CodexPluginDescriptor({
           commandExecutor: commandExecutor,
           manifest: manifest,
           probeTimeout: _versionProbeTimeout,
+          executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
         ),
         pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
           manifest: manifest,
@@ -370,7 +374,7 @@ class const CodexPluginDescriptor({
     const inventory = ManagedRuntimeInventory(manifest: manifest);
 
     String missingRuntimeHint() {
-      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+      return inventory.hasOutdatedVersion(stateDirectory: stateDirectory)
           ? "This bridge needs a newer Codex. Install it from Sesori to update the managed runtime."
           : "Install Codex from Sesori, or install it locally and retry setup detection.";
     }
@@ -496,6 +500,7 @@ class const CodexPluginDescriptor({
             ),
             manifest: manifest,
             probeTimeout: _versionProbeTimeout,
+            executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
           ),
           fallbackExecutableCandidates: _desktopCandidates(environment: host.environment),
         )

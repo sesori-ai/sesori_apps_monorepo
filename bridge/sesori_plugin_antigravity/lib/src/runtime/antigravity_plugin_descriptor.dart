@@ -23,6 +23,7 @@ import "../repositories/mappers/antigravity_stderr_mapper.dart";
 import "../services/antigravity_managed_runtime_path_authority.dart";
 import "../services/antigravity_profile_inspection_service.dart";
 import "../services/antigravity_profile_service.dart";
+import "../services/antigravity_runtime_path_authority_calculator.dart";
 import "../services/antigravity_runtime_service.dart";
 import "../services/antigravity_setup_service.dart";
 import "../storage/antigravity_profile_inspection_storage.dart";
@@ -170,6 +171,7 @@ class const AntigravityPluginDescriptor({
     required Map<String, String> environment,
   }) => AntigravityRuntimeService(
     runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
+    pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
   );
 
   AntigravityManagedRuntimePathAuthority _pathAuthority({
@@ -178,6 +180,7 @@ class const AntigravityPluginDescriptor({
     required PlatformTarget target,
   }) => AntigravityManagedRuntimePathAuthority(
     runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
+    pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
     target: target,
   );
 

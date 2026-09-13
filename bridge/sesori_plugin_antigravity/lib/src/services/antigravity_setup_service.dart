@@ -80,32 +80,41 @@ class AntigravitySetupService({
     required bool managedInstallAvailable,
     required Duration timeout,
   }) async {
+    final AntigravityRuntimeVersionProbeResult probe;
     try {
-      final probe = await _runtimeVersions.probe(
+      probe = await _runtimeVersions.probe(
         source: source,
         serverPath: serverPath,
         environment: probeEnvironment,
         timeout: timeout,
       );
-      switch (probe) {
-        case AntigravityRuntimeVersionProbeCompleted(:final command, :final version):
-          if (command.exitCode != 0 || version == null) {
-            Log.w("[antigravity] setup runtime version probe returned no usable build label", command);
-            if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown();
-            return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
-          }
-          if (version != AntigravityRelease.agentVersion) {
-            Log.w("[antigravity] setup runtime version probe rejected the selected pair", command);
-            if (source == AntigravityRuntimeSource.path) return _pathRuntimeOutdated(runtimeVersion: version);
-            return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
-          }
-        case AntigravityRuntimeVersionProbeFailed(:final cause, :final stackTrace):
-          Log.w("[antigravity] setup runtime version probe failed", cause, stackTrace);
+    } on Object catch (error, stackTrace) {
+      Log.w("[antigravity] setup runtime version probe failed", error, stackTrace);
+      if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown();
+      return const PluginSetupUnknown(
+        actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
+      );
+    }
+    switch (probe) {
+      case AntigravityRuntimeVersionProbeCompleted(:final command, :final version):
+        if (command.exitCode != 0 || version == null) {
+          Log.w("[antigravity] setup runtime version probe returned no usable build label", command);
           if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown();
-          return const PluginSetupUnknown(
-            actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
-          );
-      }
+          return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
+        }
+        if (version != AntigravityRelease.agentVersion) {
+          Log.w("[antigravity] setup runtime version probe rejected the selected pair", command);
+          if (source == AntigravityRuntimeSource.path) return _pathRuntimeOutdated(runtimeVersion: version);
+          return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
+        }
+      case AntigravityRuntimeVersionProbeFailed(:final cause, :final stackTrace):
+        Log.w("[antigravity] setup runtime version probe failed", cause, stackTrace);
+        if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown();
+        return const PluginSetupUnknown(
+          actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
+        );
+    }
+    try {
       return switch (_profile.inspect(geminiHome: geminiHome)) {
         AntigravityAuthenticationHint.tokenPresent => const PluginSetupReady.versioned(
           runtimeVersion: AntigravityRelease.agentVersion,
@@ -118,8 +127,9 @@ class AntigravitySetupService({
       };
     } on Object catch (error, stackTrace) {
       Log.w("[antigravity] setup profile inspection failed", error, stackTrace);
-      return const PluginSetupUnknown(
+      return const PluginSetupUnknown.versioned(
         actionHint: "Antigravity setup could not be determined. Check the isolated profile and retry.",
+        runtimeVersion: AntigravityRelease.agentVersion,
       );
     }
   }

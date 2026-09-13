@@ -2218,8 +2218,18 @@ void main() {
         pluginId: "codex",
         request: const PluginLifecycleCommandRequest.updateRuntime(),
       );
-      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.completed);
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.failed);
       await _pump();
+      expect(
+        service.installStates.value["codex"],
+        const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.globalUpdate,
+            phase: PluginInstallPhase.unknown,
+            percent: null,
+          ),
+        ),
+      );
       mutation.complete(PluginManagementMutationResult.failure(error: ApiError.generic()));
       await command;
       await _pump();

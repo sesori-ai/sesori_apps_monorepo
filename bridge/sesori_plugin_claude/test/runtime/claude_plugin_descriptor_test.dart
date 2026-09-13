@@ -63,37 +63,44 @@ void main() {
       ]);
     });
 
-    test("reports runtime missing when the version process cannot spawn", () async {
+    test("reports runtime missing when the PATH command cannot spawn", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("claude-missing-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final status = await const ClaudePluginDescriptor().inspectSetup(
         config: config,
         processes: _ProcessService([
           const ProcessException("claude", ["--version"], "missing", 2),
         ]),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: "/state",
       );
 
       _expectNonReady<PluginSetupRuntimeMissing>(status);
     });
 
-    test("recognizes only the probed Windows shell command as missing", () async {
+    test("uses PATH presence rather than localized shell output to classify failures", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("claude-shell-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final missing = await const ClaudePluginDescriptor().inspectSetup(
         config: config,
         processes: _ProcessService([
-          _ProbeProcess(
-            stdoutText: "'claude' is not recognized as an internal or external command\n",
-            exitCode: Future.value(1),
-          ),
+          _ProbeProcess(stdoutText: "localized command error\n", exitCode: Future.value(1)),
         ]),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: "/state",
       );
+      File("${pathDirectory.path}${Platform.pathSeparator}claude").writeAsStringSync("shim");
+      File("${pathDirectory.path}${Platform.pathSeparator}claude.CMD").writeAsStringSync("shim");
       final ambiguous = await const ClaudePluginDescriptor().inspectSetup(
         config: config,
         processes: _ProcessService([
           _ProbeProcess(stdoutText: "dependency: command not found\n", exitCode: Future.value(1)),
         ]),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"},
         stateDirectory: "/state",
       );
 

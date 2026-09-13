@@ -40,6 +40,7 @@ export "src/services/antigravity_authentication_service.dart";
 export "src/services/antigravity_interaction_service.dart";
 export "src/services/antigravity_profile_inspection_service.dart";
 export "src/services/antigravity_profile_service.dart";
+export "src/services/antigravity_runtime_path_authority_calculator.dart";
 export "src/services/antigravity_runtime_service.dart";
 export "src/services/antigravity_session_metadata_service.dart";
 export "src/services/antigravity_session_options_service.dart";

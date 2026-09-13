@@ -257,6 +257,7 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
     commandExecutor: _executor(processes),
     manifest: const DeepSeekRuntimeManifest(),
     probeTimeout: _probeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

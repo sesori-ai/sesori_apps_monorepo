@@ -151,6 +151,7 @@ final class const CopilotPluginDescriptor({
       commandExecutor: commandExecutor,
       manifest: manifest,
       probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     );
     final httpClient = http.Client();
     try {
@@ -275,6 +276,7 @@ final class const CopilotPluginDescriptor({
       maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
     ),
     probeTimeout: _versionProbeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

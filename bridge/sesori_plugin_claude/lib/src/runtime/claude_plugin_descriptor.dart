@@ -60,6 +60,7 @@ final class const ClaudePluginDescriptor({
 
   /// Latest stable Claude Code release validated against this plugin.
   static const String targetVersion = "2.1.269";
+  static const HostExecutableLocator _executableLocator = IoHostExecutableLocator(platformIsWindows: null);
 
   static final Random _secureRandom = Random.secure();
 
@@ -141,7 +142,8 @@ final class const ClaudePluginDescriptor({
         timeout: _probeTimeout,
       );
     } on io.ProcessException catch (error, stackTrace) {
-      if (error.errorCode == 2 || error.errorCode == 3) {
+      if (_isMissingProcessError(error: error) &&
+          _pathExecutableIsAbsent(executable: executable, environment: environment)) {
         return const PluginSetupRuntimeMissing(
           actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
         );
@@ -157,7 +159,7 @@ final class const ClaudePluginDescriptor({
       );
     }
     if (versionResult.exitCode != 0) {
-      if (_isShellCommandNotFound(executable: executable, result: versionResult)) {
+      if (_pathExecutableIsAbsent(executable: executable, environment: environment)) {
         return const PluginSetupRuntimeMissing(
           actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
         );
@@ -300,12 +302,19 @@ final class const ClaudePluginDescriptor({
     return configured == null || configured.isEmpty ? defaultBinary : configured;
   }
 
-  bool _isShellCommandNotFound({required String executable, required CommandResult result}) {
-    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
-    final command = executable.toLowerCase();
-    return output.contains("'$command' is not recognized as an internal or external command") ||
-        output.contains("the term '$command' is not recognized as the name of a cmdlet");
-  }
+  bool _isMissingProcessError({required io.ProcessException error}) =>
+      error.errorCode == 2 || (_executableLocator.isWindows && error.errorCode == 3);
+
+  bool _pathExecutableIsAbsent({
+    required String executable,
+    required Map<String, String> environment,
+  }) =>
+      _executableLocator.locate(
+        executable: executable,
+        environment: environment,
+        workingDirectory: null,
+      ) ==
+      HostExecutablePresence.absent;
 
   static SemanticVersion? _parseVersion(String output) {
     final match = RegExp(r"(?:^|\s)(\d+\.\d+\.\d+)(?:\s|$)").firstMatch(output);

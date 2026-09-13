@@ -74,7 +74,7 @@ void main() {
     expect(runtime.snapshot.single.state, PluginRuntimeState.active);
   });
 
-  test("installRuntime forwards descriptor progress and aborts on shutdown", () async {
+  test("dispose aborts and awaits an active managed install", () async {
     final installGate = Completer<void>();
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
@@ -94,9 +94,15 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(events.single, isA<ProvisionResolving>());
 
-    runtime.beginShutdown();
+    var disposed = false;
+    final disposal = runtime.dispose().then((_) => disposed = true);
+    await Future<void>.delayed(Duration.zero);
+    expect(disposed, isFalse);
+
     installGate.complete();
     await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+    await disposal;
+    expect(disposed, isTrue);
   });
 
   test("updateRuntime runs the descriptor-owned command and reports sanitized progress", () async {
@@ -127,8 +133,8 @@ void main() {
     expect(processes.environments, [const <String, String>{}]);
   });
 
-  test("updateRuntime force-stops the updater on shutdown", () async {
-    final processes = _UpdaterProcessService(exitCode: null);
+  test("dispose force-stops and awaits an active updater", () async {
+    final processes = _UpdaterProcessService(exitCode: null, completeOnForce: false);
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
       descriptor: const _FakeDescriptor(
@@ -143,10 +149,18 @@ void main() {
     addTearDown(runtime.dispose);
 
     final done = runtime.updateRuntime(pluginId: "one").drain<void>();
+    final operationExpectation = expectLater(done, throwsA(isA<PluginStartAbortedException>()));
     await _waitUntil(() => processes.executables.isNotEmpty);
-    runtime.beginShutdown();
+    var disposed = false;
+    final disposal = runtime.dispose().then((_) => disposed = true);
+    await _waitUntil(() => processes.forceSignals.isNotEmpty);
+    await Future<void>.delayed(Duration.zero);
 
-    await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+    expect(disposed, isFalse);
+    processes.spawnedProcess!.completeExit(-9);
+    await operationExpectation;
+    await disposal;
+    expect(disposed, isTrue);
     expect(processes.forceSignals, [42]);
   });
 
@@ -2518,7 +2532,10 @@ class _FakeApi({
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-class _UpdaterProcessService({required final int? exitCode}) implements HostProcessService {
+class _UpdaterProcessService({
+  required final int? exitCode,
+  final bool completeOnForce = true,
+}) implements HostProcessService {
   final executables = <String>[];
   final arguments = <List<String>>[];
   final environments = <Map<String, String>?>[];
@@ -2545,7 +2562,7 @@ class _UpdaterProcessService({required final int? exitCode}) implements HostProc
   @override
   Future<SignalResult> signalForce({required int pid}) async {
     forceSignals.add(pid);
-    spawnedProcess?.completeExit(-9);
+    if (completeOnForce) spawnedProcess?.completeExit(-9);
     return SignalResult(
       pid: pid,
       requestedSignal: ShutdownSignal.force,

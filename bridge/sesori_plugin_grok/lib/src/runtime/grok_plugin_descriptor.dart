@@ -3,7 +3,14 @@ import "dart:io" as io;
 
 import "package:acp_plugin/acp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show CommandResult, HostProcessCommandExecutor, SemanticVersion, stripAnsi;
+    show
+        CommandResult,
+        HostExecutableLocator,
+        HostExecutablePresence,
+        HostProcessCommandExecutor,
+        IoHostExecutableLocator,
+        SemanticVersion,
+        stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../grok_binary.dart";
@@ -14,12 +21,13 @@ const int _setupProbeOutputLimit = 64 * 1024;
 
 /// Direct-CLI descriptor for the user-installed Grok Build runtime.
 ///
-/// Sesori never installs or updates Grok. Setup and provisioning only run a
-/// bounded `--version` probe, while authentication remains authoritative at the
-/// ACP initialize handshake.
+/// Sesori never installs Grok. Setup runs a bounded `--version` probe and may
+/// invoke Grok's own non-interactive updater for an outdated PATH runtime,
+/// while authentication remains authoritative at the ACP initialize handshake.
 class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
+  static const HostExecutableLocator _executableLocator = IoHostExecutableLocator(platformIsWindows: null);
 
   /// Oldest and latest stable Grok Build release validated for this plugin.
   static const String minVersion = "1.0.5";
@@ -220,7 +228,10 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
       );
       return const _GrokRuntimeUnknown();
     } on io.ProcessException catch (error, stackTrace) {
-      if (error.errorCode == 2 || error.errorCode == 3) return const _GrokRuntimeMissing();
+      if (_isMissingProcessError(error: error) &&
+          _pathExecutableIsAbsent(executable: executablePath, environment: environment)) {
+        return const _GrokRuntimeMissing();
+      }
       Log.w("[grok] version probe could not launch '$executablePath --version'", error, stackTrace);
       return const _GrokRuntimeUnknown();
     } on Object catch (error, stackTrace) {
@@ -229,7 +240,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
     }
 
     if (result.exitCode != 0) {
-      if (_isShellCommandNotFound(executable: executablePath, result: result)) {
+      if (_pathExecutableIsAbsent(executable: executablePath, environment: environment)) {
         return const _GrokRuntimeMissing();
       }
       Log.w("[grok] version probe '$executablePath --version' exited with code ${result.exitCode}");
@@ -247,12 +258,19 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
     return _GrokRuntimeReady(version: parsed.toString());
   }
 
-  bool _isShellCommandNotFound({required String executable, required CommandResult result}) {
-    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
-    final command = executable.toLowerCase();
-    return output.contains("'$command' is not recognized as an internal or external command") ||
-        output.contains("the term '$command' is not recognized as the name of a cmdlet");
-  }
+  bool _isMissingProcessError({required io.ProcessException error}) =>
+      error.errorCode == 2 || (_executableLocator.isWindows && error.errorCode == 3);
+
+  bool _pathExecutableIsAbsent({
+    required String executable,
+    required Map<String, String> environment,
+  }) =>
+      _executableLocator.locate(
+        executable: executable,
+        environment: environment,
+        workingDirectory: null,
+      ) ==
+      HostExecutablePresence.absent;
 
   SemanticVersion? _tryParseVersion({required String output}) {
     final sanitized = stripAnsi(value: output);

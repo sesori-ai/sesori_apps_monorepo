@@ -347,6 +347,7 @@ final class const PiPluginDescriptor({
     ),
     manifest: const PiRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

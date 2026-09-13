@@ -8,9 +8,13 @@ import "../foundation/antigravity_release.dart";
 import "../models/antigravity_runtime_pair.dart";
 import "../models/antigravity_runtime_resolution.dart";
 import "../repositories/antigravity_runtime_repository.dart";
+import "antigravity_runtime_path_authority_calculator.dart";
 
 /// Owns Antigravity runtime precedence, exact contract policy, and sequencing.
-class AntigravityRuntimeService({required final AntigravityRuntimeRepository _runtimeRepository}) {
+class AntigravityRuntimeService({
+  required final AntigravityRuntimeRepository _runtimeRepository,
+  required final AntigravityRuntimePathAuthorityCalculator _pathAuthorityCalculator,
+}) {
   /// Selects an existing pair without spawning or probing it. Explicit paths
   /// remain authoritative. Any PATH pair evidence also remains authoritative;
   /// only a genuinely absent PATH server allows the managed installation.
@@ -28,10 +32,7 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
       );
     }
     final pathCandidate = _runtimeRepository.inspectPath(environment: pathEnvironment, target: target);
-    final pathAbsent =
-        pathCandidate is AntigravityRuntimeCandidateMissing &&
-        pathCandidate.component == AntigravityRuntimeComponent.server;
-    if (!pathAbsent || managedServerPath == null) {
+    if (!_pathAuthorityCalculator.provesServerAbsent(candidate: pathCandidate) || managedServerPath == null) {
       _logPathInspectionFailure(candidate: pathCandidate);
       return pathCandidate;
     }
@@ -72,16 +73,14 @@ class AntigravityRuntimeService({required final AntigravityRuntimeRepository _ru
     }
 
     final pathCandidate = _runtimeRepository.inspectPath(environment: pathEnvironment, target: target);
-    final pathResolution = await _resolveCandidate(
-      candidate: pathCandidate,
-      probeEnvironment: probeEnvironment,
-      workingDirectory: null,
-      timeout: _remaining(timeout: timeout, deadline: deadline),
-      abortSignal: abortSignal,
-    );
-    final pathAbsent =
-        pathResolution is AntigravityRuntimeMissing && pathResolution.component == AntigravityRuntimeComponent.server;
-    if (!pathAbsent || managedServerPath == null) {
+    if (!_pathAuthorityCalculator.provesServerAbsent(candidate: pathCandidate) || managedServerPath == null) {
+      final pathResolution = await _resolveCandidate(
+        candidate: pathCandidate,
+        probeEnvironment: probeEnvironment,
+        workingDirectory: null,
+        timeout: _remaining(timeout: timeout, deadline: deadline),
+        abortSignal: abortSignal,
+      );
       _logPathBoundaryFailure(resolution: pathResolution);
       _remaining(timeout: timeout, deadline: deadline);
       return pathResolution;

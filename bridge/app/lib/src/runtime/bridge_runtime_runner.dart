@@ -232,7 +232,9 @@ class const BridgeRuntimeRunner._() {
         budget: _pluginShutdownBudget,
       )
       ..addPhase(
-        phase: BridgeShutdownPhase.lifecycle,
+        // Lifecycle disposal waits for accepted runtime provisions to finish
+        // using PluginRuntime. Dispose that lower owner only afterward.
+        phase: BridgeShutdownPhase.runtimeDispose,
         action: () => pluginRuntime?.dispose() ?? Future<void>.value(),
         budget: _pluginShutdownBudget,
       )
@@ -736,6 +738,10 @@ class const BridgeRuntimeRunner._() {
       // machine's managed runtime directories when the obsolete sweep runs.
       // Await only bounded PATH checks; any admitted downloads continue behind startup.
       await activePluginLifecycleService.upgradeManagedRuntimes();
+      if (startAbortController.isAborted) {
+        Log.i("Bridge startup aborted as requested.");
+        return 0;
+      }
       for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");

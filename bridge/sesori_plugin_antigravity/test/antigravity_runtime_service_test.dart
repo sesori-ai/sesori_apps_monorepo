@@ -93,6 +93,7 @@ AntigravityRuntimeService _service({required _FakeStorage storage, required _Fak
         acpApi: api,
         launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
       ),
+      pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
     );
 
 Future<AntigravityRuntimeResolution> _resolve({

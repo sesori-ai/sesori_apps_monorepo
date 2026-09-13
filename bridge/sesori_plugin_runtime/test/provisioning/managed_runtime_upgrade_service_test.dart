@@ -73,11 +73,25 @@ void main() {
     inventory: const ManagedRuntimeInventory(manifest: manifest),
   );
 
-  void addSupersededInstall() {
+  void addOutdatedInstall() {
     Directory(p.join(stateDirectory.path, "runtime", "1.5.0")).createSync(recursive: true);
   }
 
-  test("declines without a superseded managed install and skips PATH", () async {
+  test("declines without an outdated managed install and skips PATH", () async {
+    final validator = _Validator(
+      outcome: RuntimeProbeReady(version: SemanticRuntimeVersion.parse(value: "1.5.0")),
+    );
+
+    expect(
+      await service(validator).shouldUpgrade(environment: const {}, stateDirectory: stateDirectory.path),
+      isFalse,
+    );
+    expect(validator.probeCount, 0);
+  });
+
+  test("declines when a newer managed install exists and skips PATH", () async {
+    addOutdatedInstall();
+    Directory(p.join(stateDirectory.path, "runtime", "2.1.0")).createSync(recursive: true);
     final validator = _Validator(
       outcome: RuntimeProbeReady(version: SemanticRuntimeVersion.parse(value: "1.5.0")),
     );
@@ -90,7 +104,7 @@ void main() {
   });
 
   test("declines whenever PATH answers, including below the minimum", () async {
-    addSupersededInstall();
+    addOutdatedInstall();
     final validator = _Validator(
       outcome: RuntimeProbeReady(version: SemanticRuntimeVersion.parse(value: "0.9.0")),
     );
@@ -102,7 +116,7 @@ void main() {
   });
 
   test("upgrades only when PATH is genuinely absent", () async {
-    addSupersededInstall();
+    addOutdatedInstall();
     final validator = _Validator(
       outcome: RuntimeProbeMissing(
         innerError: const ProcessException("runtime", ["--version"], "missing", 2),
@@ -117,7 +131,7 @@ void main() {
   });
 
   test("declines when the PATH probe fails ambiguously", () async {
-    addSupersededInstall();
+    addOutdatedInstall();
     final validator = _Validator(outcome: const RuntimeProbeNonZeroExit(exitCode: 1));
 
     expect(

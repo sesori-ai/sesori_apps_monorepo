@@ -356,6 +356,7 @@ final class const OmpPluginDescriptor({
     ),
     manifest: const OmpRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

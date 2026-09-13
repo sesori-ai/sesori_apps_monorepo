@@ -8,17 +8,17 @@ enum _HarnessGroup() {
 }
 
 _HarnessGroup _group({required PluginManagementMetadata plugin, required PluginInstallState? install}) {
+  // A stopping harness is winding down, not asking for attention. Group it with
+  // disabled harnesses so a toggled-off harness lands where it will settle.
+  if (plugin.runtimeState == PluginRuntimeState.disabled || plugin.runtimeState == PluginRuntimeState.stopping) {
+    return _HarnessGroup.disabled;
+  }
   if (install case PluginInstallInProgress(
     progress: PluginInstallProgress(operation: PluginRuntimeProvisionKind.managedInstall),
   )) {
     return _HarnessGroup.notInstalled;
   }
   if (install is PluginInstallInProgress) return _HarnessGroup.needsAttention;
-  // A stopping harness is winding down, not asking for attention. Group it with
-  // disabled harnesses so a toggled-off harness lands where it will settle.
-  if (plugin.runtimeState == PluginRuntimeState.disabled || plugin.runtimeState == PluginRuntimeState.stopping) {
-    return _HarnessGroup.disabled;
-  }
   if (plugin.setup.state == PluginSetupState.runtimeMissing) return _HarnessGroup.notInstalled;
   if (plugin.setup.state == PluginSetupState.ready &&
       (plugin.runtimeState == PluginRuntimeState.dormant ||

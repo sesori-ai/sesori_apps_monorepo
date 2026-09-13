@@ -3,7 +3,13 @@ import "dart:io" as io;
 import "package:acp_plugin/acp_plugin.dart";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show BinaryDownloadClient, CommandResult, HostProcessCommandExecutor, PlatformTarget, stripAnsi;
+    show
+        BinaryDownloadClient,
+        CommandResult,
+        HostProcessCommandExecutor,
+        IoHostExecutableLocator,
+        PlatformTarget,
+        stripAnsi;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
@@ -272,6 +278,7 @@ class const CursorPluginDescriptor({
       ),
       manifest: const CursorRuntimeManifest(),
       probeTimeout: _versionProbeTimeout,
+      executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
     );
   }
 
@@ -306,7 +313,7 @@ class const CursorPluginDescriptor({
         return "Install the Cursor CLI locally, then retry setup detection.";
       }
       const inventory = ManagedRuntimeInventory(manifest: CursorRuntimeManifest());
-      return inventory.hasSupersededVersion(stateDirectory: stateDirectory)
+      return inventory.hasOutdatedVersion(stateDirectory: stateDirectory)
           ? "This bridge needs a newer Cursor CLI. Install it from Sesori to update the managed runtime."
           : "Install the Cursor CLI from Sesori, or install it locally and retry setup detection.";
     }

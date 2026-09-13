@@ -189,6 +189,40 @@ void main() {
     expect(find.text("Stopping"), findsOneWidget);
   });
 
+  testWidgets("disabled harness stays in the disabled group during a global update", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _plugin(id: "disabled", runtime: PluginRuntimeState.disabled, setup: PluginSetupState.runtimeOutdated),
+        _ready,
+      ],
+    );
+    installs.add({
+      "disabled": const PluginInstallState.inProgress(
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.globalUpdate,
+          phase: PluginInstallPhase.updating,
+          percent: null,
+        ),
+      ),
+    });
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final ids = tester
+        .widgetList<PregoGroupedRow>(find.byType(PregoGroupedRow))
+        .map((row) => row.key)
+        .whereType<Key>()
+        .toList();
+    expect(ids, [
+      const Key("harnesses_card_ready"),
+      const Key("harnesses_card_disabled"),
+      const Key("harness_management_default_timeout"),
+    ]);
+    expect(find.text("Needs attention"), findsNothing);
+    expect(find.text("Disabled"), findsOneWidget);
+  });
+
   testWidgets("a harness changing group animates out of the old section instead of jumping", (tester) async {
     phone(tester: tester);
     publish(plugins: [_ready]);

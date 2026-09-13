@@ -37,7 +37,10 @@ class RuntimeVersionValidator({
   required final CommandExecutor _commandExecutor,
   required final RuntimeManifest _manifest,
   final Duration _probeTimeout = const Duration(seconds: 10),
+  required HostExecutableLocator executableLocator,
 }) implements RuntimeCandidateValidator {
+  final HostExecutableLocator _executableLocator = executableLocator;
+
   /// Runs `<executable> --version` and classifies the result without throwing.
   Future<RuntimeProbeOutcome> probe({
     required String executable,
@@ -59,7 +62,13 @@ class RuntimeVersionValidator({
         timeout: _probeTimeout,
       );
     } on ProcessException catch (error, stackTrace) {
-      if (_isMissingProcessError(error: error)) {
+      if (_isMissingProcessError(error: error) &&
+          _executableLocator.locate(
+                executable: executable,
+                environment: environment,
+                workingDirectory: workingDirectory,
+              ) ==
+              HostExecutablePresence.absent) {
         return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
       }
       Log.w(
@@ -77,7 +86,13 @@ class RuntimeVersionValidator({
     }
 
     if (result.exitCode != 0) {
-      if (_isWindowsShellCommandMissing(executable: executable, result: result)) {
+      if (_executableLocator.isWindows &&
+          _executableLocator.locate(
+                executable: executable,
+                environment: environment,
+                workingDirectory: workingDirectory,
+              ) ==
+              HostExecutablePresence.absent) {
         return RuntimeProbeMissing(
           innerError: ProcessException(
             executable,
@@ -164,17 +179,7 @@ class RuntimeVersionValidator({
 
   bool _isMissingProcessError({required ProcessException error}) {
     // POSIX ENOENT and Windows ERROR_FILE_NOT_FOUND / ERROR_PATH_NOT_FOUND.
-    return error.errorCode == 2 || error.errorCode == 3;
-  }
-
-  bool _isWindowsShellCommandMissing({
-    required String executable,
-    required CommandResult result,
-  }) {
-    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
-    final command = executable.toLowerCase();
-    return output.contains("'$command' is not recognized as an internal or external command") ||
-        output.contains("the term '$command' is not recognized as the name of a cmdlet");
+    return error.errorCode == 2 || (_executableLocator.isWindows && error.errorCode == 3);
   }
 
   void _throwIfAborted({required RuntimeCandidateValidationContext context}) {

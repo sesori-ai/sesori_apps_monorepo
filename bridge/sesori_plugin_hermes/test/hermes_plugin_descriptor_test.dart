@@ -157,7 +157,11 @@ void main() {
       ]);
     });
 
-    test("reports runtime missing when the CLI cannot spawn", () async {
+    test("reports runtime missing when the PATH command cannot spawn", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("hermes-missing-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final processes = _ProbeProcessService(
         spawnError: const ProcessException("hermes", [], "No such file", 2),
         processSequence: const [],
@@ -167,7 +171,7 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: stateDirectory,
       );
 
@@ -178,7 +182,11 @@ void main() {
       );
     });
 
-    test("reports runtime missing for a Windows shell command-not-found result", () async {
+    test("uses PATH presence rather than localized shell output to classify failures", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("hermes-shell-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -198,11 +206,32 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: stateDirectory,
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
+
+      File("${pathDirectory.path}${Platform.pathSeparator}hermes").writeAsStringSync("shim");
+      File("${pathDirectory.path}${Platform.pathSeparator}hermes.CMD").writeAsStringSync("shim");
+      final ambiguous = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess(
+              pid: 2,
+              stdoutBytes: const [],
+              stderrBytes: utf8.encode("dependency: command not found\n"),
+              exitCode: Future<int>.value(1),
+            ),
+          ],
+          servesAcp: false,
+        ),
+        environment: {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"},
+        stateDirectory: stateDirectory,
+      );
+      expect(ambiguous, isA<PluginSetupUnknown>());
     });
 
     test("reports unknown when the host process seam fails for a non-spawn reason", () async {

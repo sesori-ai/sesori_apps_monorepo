@@ -879,6 +879,8 @@ class PluginManagementService({
     required int? percent,
   }) {
     if (_disposed || _installStates.isClosed) return;
+    final startedOperation = _selfStartedRuntimeOperations[pluginId];
+    if (startedOperation != null && !_runtimeOperationsMatch(started: startedOperation, reported: operation)) return;
     final next = Map<String, PluginInstallState>.from(_installStates.value);
     switch (phase) {
       case PluginInstallPhase.completed || PluginInstallPhase.failed:
@@ -892,8 +894,7 @@ class PluginManagementService({
         // started, since every connected surface sees the same event. While
         // this app's own command is still in flight, hold the outcome until
         // acceptance is known instead of dropping or misreporting it.
-        final startedOperation = _selfStartedRuntimeOperations[pluginId];
-        if (startedOperation != null && _runtimeOperationsMatch(started: startedOperation, reported: operation)) {
+        if (startedOperation != null) {
           if (_runtimeOperationRequestsInFlight.contains(pluginId)) {
             _pendingRuntimeOperationOutcomes[pluginId] = (phase: phase, operation: operation);
           } else {

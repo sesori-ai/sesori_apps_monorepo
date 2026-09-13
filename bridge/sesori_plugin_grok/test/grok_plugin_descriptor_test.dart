@@ -163,6 +163,10 @@ void main() {
     });
 
     test("reports missing, malformed, and outdated runtimes distinctly", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("grok-missing-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final missing = await const GrokPluginDescriptor().inspectSetup(
         config: config,
         processes: _ProbeProcessService(
@@ -170,7 +174,7 @@ void main() {
           processSequence: const [],
           servesHeadlessAcp: false,
         ),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: stateDirectory,
       );
       final malformed = await const GrokPluginDescriptor().inspectSetup(
@@ -214,7 +218,11 @@ void main() {
       expect(outdated.runtimeVersion, "1.0.4");
     });
 
-    test("recognizes only the probed Windows shell command as missing", () async {
+    test("uses PATH presence rather than localized shell output to classify failures", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("grok-shell-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final missing = await const GrokPluginDescriptor().inspectSetup(
         config: config,
         processes: _ProbeProcessService(
@@ -229,9 +237,11 @@ void main() {
           ],
           servesHeadlessAcp: false,
         ),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: stateDirectory,
       );
+      File("${pathDirectory.path}${Platform.pathSeparator}grok").writeAsStringSync("shim");
+      File("${pathDirectory.path}${Platform.pathSeparator}grok.CMD").writeAsStringSync("shim");
       final ambiguous = await const GrokPluginDescriptor().inspectSetup(
         config: config,
         processes: _ProbeProcessService(
@@ -246,7 +256,7 @@ void main() {
           ],
           servesHeadlessAcp: false,
         ),
-        environment: const {},
+        environment: {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"},
         stateDirectory: stateDirectory,
       );
 

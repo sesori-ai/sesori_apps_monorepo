@@ -16,7 +16,7 @@ class ManagedRuntimeUpgradeService({
     required Map<String, String> environment,
     required String stateDirectory,
   }) async {
-    if (!_inventory.hasSupersededVersion(stateDirectory: stateDirectory)) {
+    if (!_inventory.hasOutdatedVersion(stateDirectory: stateDirectory)) {
       return false;
     }
 

@@ -20,8 +20,10 @@ bridge start when PATH is genuinely absent.
 - PATH is authoritative across every harness that can also use a Sesori-managed runtime.
   A compatible PATH runtime is selected before managed state. An outdated, malformed,
   timed-out, permission-denied, nonzero, partial-pair, or otherwise ambiguous PATH result
-  blocks startup and managed fallback; only process-not-found evidence permits managed
-  selection or installation. Setup state gates user requests, and the managed installer
+  blocks startup and managed fallback. Process-not-found evidence permits managed selection
+  or installation only after host lookup confirms that no executable entry exists; lookup includes
+  the Windows working directory plus case-insensitive PATH/PATHEXT resolution. A present shim with
+  a missing interpreter remains authoritative. Setup state gates user requests, and the managed installer
   revalidates PATH authority again before its first cleanup or staging mutation so a stale
   setup or startup-upgrade decision cannot bypass the rule. Existing managed copies remain
   untouched while PATH is present.
@@ -88,7 +90,8 @@ bridge start when PATH is genuinely absent.
   `hermes update --yes`, and `grok update`. Copilot, DeepSeek, and Antigravity stay blocked
   with manual guidance because no safe updater is declared.
 - Update runs immediately after the user action, without a confirmation prompt, under a
-  bounded abortable host process. Shutdown force-stops it. Exit failure, timeout, or a
+  bounded abortable host process. Shutdown force-stops it (including the Windows child
+  process tree) and awaits its exit before lifecycle progress streams close. Exit failure, timeout, or a
   post-update setup that is still not usable reports a sanitized failure while executable,
   arguments, output, paths, and original errors remain only in local logs. Success enables,
   re-inspects, and starts the harness under the same lifecycle rules as a requested managed
@@ -100,8 +103,8 @@ bridge start when PATH is genuinely absent.
   stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
-- A bridge start upgrades every eligible harness that still has a Sesori-managed version
-  directory other than the pinned target, and only those whose PATH command is genuinely
+- A bridge start upgrades every eligible harness whose newest Sesori-managed version is
+  older than the pinned target, and only those whose PATH command is genuinely
   absent: a machine with no managed runtime keeps the explicit Install action and never
   downloads one unasked. Eligibility probes run concurrently and are bounded. The trigger
   runs after single-live-bridge ownership is settled and returns without waiting for
