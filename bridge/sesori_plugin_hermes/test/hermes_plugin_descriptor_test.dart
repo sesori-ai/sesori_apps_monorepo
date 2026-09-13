@@ -7,6 +7,16 @@ import "package:hermes_plugin/hermes_plugin.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+Map<String, String> _environmentWithHermesShim() {
+  final pathDirectory = Directory.systemTemp.createTempSync("hermes-path-shim");
+  addTearDown(() {
+    if (pathDirectory.existsSync()) pathDirectory.deleteSync(recursive: true);
+  });
+  File("${pathDirectory.path}${Platform.pathSeparator}hermes").writeAsStringSync("shim");
+  File("${pathDirectory.path}${Platform.pathSeparator}hermes.CMD").writeAsStringSync("shim");
+  return {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"};
+}
+
 void main() {
   group("HermesPluginDescriptor", () {
     const stateDirectory = "/state";
@@ -28,6 +38,12 @@ void main() {
       );
       expect(HermesPluginDescriptor.minVersion, "0.20.0");
       expect(HermesPluginDescriptor.targetVersion, "0.20.4");
+      expect(
+        const HermesPluginDescriptor().managementCapabilities(config: config),
+        contains(PluginControlCapability.runtimeUpdate),
+      );
+      expect(const HermesPluginDescriptor().runtimeUpdateSpec(config: config)?.executable, "hermes");
+      expect(const HermesPluginDescriptor().runtimeUpdateSpec(config: config)?.arguments, const ["update", "--yes"]);
     });
 
     test("declares only the binary option and no install capability", () {
@@ -39,6 +55,12 @@ void main() {
         isNot(contains(PluginControlCapability.install)),
         reason: "Hermes installs itself; the bridge never manages its runtime",
       );
+      const explicit = PluginConfig(values: {HermesPluginDescriptor.binOption: "/custom/hermes"});
+      expect(
+        descriptor.managementCapabilities(config: explicit),
+        isNot(contains(PluginControlCapability.runtimeUpdate)),
+      );
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("ensureRuntime resolves a supported PATH adapter", () async {
@@ -145,7 +167,11 @@ void main() {
       ]);
     });
 
-    test("reports runtime missing when the CLI cannot spawn", () async {
+    test("reports runtime missing when the PATH command cannot spawn", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("hermes-missing-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final processes = _ProbeProcessService(
         spawnError: const ProcessException("hermes", [], "No such file", 2),
         processSequence: const [],
@@ -155,7 +181,7 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: stateDirectory,
       );
 
@@ -166,7 +192,11 @@ void main() {
       );
     });
 
-    test("reports runtime missing for a Windows shell command-not-found result", () async {
+    test("uses PATH presence rather than localized shell output to classify failures", () async {
+      final pathDirectory = await Directory.systemTemp.createTemp("hermes-shell-path");
+      addTearDown(() async {
+        await pathDirectory.delete(recursive: true);
+      });
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -186,11 +216,32 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: {"PATH": pathDirectory.path},
         stateDirectory: stateDirectory,
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
+
+      File("${pathDirectory.path}${Platform.pathSeparator}hermes").writeAsStringSync("shim");
+      File("${pathDirectory.path}${Platform.pathSeparator}hermes.CMD").writeAsStringSync("shim");
+      final ambiguous = await const HermesPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess(
+              pid: 2,
+              stdoutBytes: const [],
+              stderrBytes: utf8.encode("dependency: command not found\n"),
+              exitCode: Future<int>.value(1),
+            ),
+          ],
+          servesAcp: false,
+        ),
+        environment: {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"},
+        stateDirectory: stateDirectory,
+      );
+      expect(ambiguous, isA<PluginSetupUnknown>());
     });
 
     test("reports unknown when the host process seam fails for a non-spawn reason", () async {
@@ -214,7 +265,8 @@ void main() {
       );
     });
 
-    test("reports runtime missing with an update hint for a pre-ACP install", () async {
+    test("reports a PATH runtime outdated with an update hint for a pre-ACP install", () async {
+      final environment = _environmentWithHermesShim();
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -231,26 +283,27 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: environment,
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
       expect(
-        (result as PluginSetupRuntimeMissing).actionHint,
-        contains("Update Hermes"),
+        (result as PluginSetupRuntimeOutdated).actionHint,
+        contains("Update the global Hermes Agent"),
         reason: "the binary exists but predates the acp subcommand",
       );
     });
 
     test("reports unknown for an unrelated ACP command failure", () async {
+      final environment = _environmentWithHermesShim();
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
           _ProbeProcess(
             pid: 1,
             stdoutBytes: const [],
-            stderrBytes: utf8.encode("ACP initialization error: configuration unavailable\n"),
+            stderrBytes: utf8.encode("ACP dependency: command not found\n"),
             exitCode: Future<int>.value(1),
           ),
         ],
@@ -260,14 +313,14 @@ void main() {
       final result = await const HermesPluginDescriptor().inspectSetup(
         config: config,
         processes: processes,
-        environment: const <String, String>{},
+        environment: environment,
         stateDirectory: stateDirectory,
       );
 
       expect(result, isA<PluginSetupUnknown>());
     });
 
-    test("reports unavailable when Hermes Agent is below the supported floor", () async {
+    test("reports a PATH runtime outdated when Hermes Agent is below the supported floor", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -288,7 +341,8 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupUnavailable>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.19.0");
     });
 
     test("an outdated explicit binary points back to the configured path", () async {

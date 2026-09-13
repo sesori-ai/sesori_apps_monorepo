@@ -92,17 +92,20 @@ void main() {
     );
   });
 
-  test("install capability round-trips on the wire", () {
+  test("runtime provisioning capabilities round-trip on the wire", () {
     final json = plugin
         .copyWith(
-          managementCapabilities: {PluginManagementCapability.install},
+          managementCapabilities: {
+            PluginManagementCapability.install,
+            PluginManagementCapability.runtimeUpdate,
+          },
         )
         .toJson();
 
-    expect(json["managementCapabilities"], ["install"]);
+    expect(json["managementCapabilities"], unorderedEquals(["install", "runtimeUpdate"]));
     expect(
       PluginManagementMetadata.fromJson(json).managementCapabilities,
-      {PluginManagementCapability.install},
+      {PluginManagementCapability.install, PluginManagementCapability.runtimeUpdate},
     );
   });
 
@@ -304,6 +307,7 @@ void main() {
       PluginLifecycleCommandRequest.restart(mode: PluginStopMode.force),
       PluginLifecycleCommandRequest.refresh(),
       PluginLifecycleCommandRequest.install(),
+      PluginLifecycleCommandRequest.updateRuntime(),
     ];
     const expectedJson = <Map<String, dynamic>>[
       {"type": "enable"},
@@ -313,6 +317,7 @@ void main() {
       {"type": "restart", "mode": "force"},
       {"type": "refresh"},
       {"type": "install"},
+      {"type": "updateRuntime"},
     ];
     for (final (index, request) in requests.indexed) {
       final json = request.toJson();

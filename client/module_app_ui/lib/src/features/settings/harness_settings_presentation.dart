@@ -8,12 +8,17 @@ enum _HarnessGroup() {
 }
 
 _HarnessGroup _group({required PluginManagementMetadata plugin, required PluginInstallState? install}) {
-  if (install is PluginInstallInProgress) return _HarnessGroup.notInstalled;
   // A stopping harness is winding down, not asking for attention. Group it with
   // disabled harnesses so a toggled-off harness lands where it will settle.
   if (plugin.runtimeState == PluginRuntimeState.disabled || plugin.runtimeState == PluginRuntimeState.stopping) {
     return _HarnessGroup.disabled;
   }
+  if (install case PluginInstallInProgress(
+    progress: PluginInstallProgress(operation: PluginRuntimeProvisionKind.managedInstall),
+  )) {
+    return _HarnessGroup.notInstalled;
+  }
+  if (install is PluginInstallInProgress) return _HarnessGroup.needsAttention;
   if (plugin.setup.state == PluginSetupState.runtimeMissing) return _HarnessGroup.notInstalled;
   if (plugin.setup.state == PluginSetupState.ready &&
       (plugin.runtimeState == PluginRuntimeState.dormant ||
@@ -35,6 +40,10 @@ bool _canInstall({required PluginManagementMetadata plugin}) =>
     plugin.managementCapabilities.contains(PluginManagementCapability.install) &&
     (plugin.setup.state == PluginSetupState.runtimeMissing || plugin.setup.state == PluginSetupState.unavailable);
 
+bool _canUpdateRuntime({required PluginManagementMetadata plugin}) =>
+    plugin.managementCapabilities.contains(PluginManagementCapability.runtimeUpdate) &&
+    plugin.setup.state == PluginSetupState.runtimeOutdated;
+
 bool _showOverviewStatus({required PluginManagementMetadata plugin, required PluginInstallState? install}) {
   if (_group(plugin: plugin, install: install) == _HarnessGroup.disabled) {
     return plugin.runtimeState == PluginRuntimeState.stopping;
@@ -49,7 +58,13 @@ String _status({
   required PluginManagementMetadata plugin,
   required PluginInstallState? install,
 }) {
-  if (install is PluginInstallInProgress) return context.loc.harnessesInstallingStatus;
+  if (install case PluginInstallInProgress(:final progress)) {
+    return switch (progress.operation) {
+      PluginRuntimeProvisionKind.managedInstall => context.loc.harnessesInstallingStatus,
+      PluginRuntimeProvisionKind.globalUpdate => context.loc.harnessesUpdatingRuntimeStatus,
+      PluginRuntimeProvisionKind.unknown => context.loc.harnessesRuntimeOperationStatus,
+    };
+  }
   if (plugin.setup.state == PluginSetupState.runtimeMissing) return context.loc.harnessesNotInstalled;
   if (plugin.setup.state != PluginSetupState.ready) return _setupStatus(context: context, state: plugin.setup.state);
   if (plugin.runtimeState == PluginRuntimeState.disabled) return context.loc.harnessesStatusDisabled;
@@ -72,9 +87,15 @@ class const _HarnessStatus({
   @override
   Widget build(BuildContext context) {
     final group = _group(plugin: plugin, install: install);
+    final failureOperation = switch (install) {
+      PluginInstallFailed(:final operation) => operation,
+      PluginInstallInProgress() || null => null,
+    };
     final color = install is PluginInstallInProgress
         ? context.prego.colors.fgBrandPrimary
-        : plugin.setup.state == PluginSetupState.runtimeMissing || install is PluginInstallFailed
+        : plugin.setup.state == PluginSetupState.runtimeMissing ||
+              plugin.setup.state == PluginSetupState.runtimeOutdated ||
+              install is PluginInstallFailed
         ? context.prego.colors.fgErrorPrimary
         : group == _HarnessGroup.enabled && plugin.workState == PluginManagementWorkState.busy
         ? context.prego.colors.fgSuccessPrimary
@@ -90,8 +111,12 @@ class const _HarnessStatus({
         const SizedBox(width: PregoSpacing.md),
         Flexible(
           child: Text(
-            overview && install is PluginInstallFailed
-                ? context.loc.harnessesInstallationFailed
+            overview && failureOperation != null
+                ? switch (failureOperation) {
+                    PluginRuntimeProvisionKind.managedInstall => context.loc.harnessesInstallationFailed,
+                    PluginRuntimeProvisionKind.globalUpdate => context.loc.harnessesUpdateFailed,
+                    PluginRuntimeProvisionKind.unknown => context.loc.harnessesRuntimeOperationFailed,
+                  }
                 : _status(context: context, plugin: plugin, install: install),
           ),
         ),
@@ -162,6 +187,14 @@ class const _HarnessSwitch({
 }
 
 String _installPhase({required BuildContext context, required PluginInstallProgress progress}) => switch (progress) {
+  PluginInstallProgress(
+    operation: PluginRuntimeProvisionKind.globalUpdate,
+    phase: PluginInstallPhase.finalizing,
+  ) =>
+    context.loc.harnessesUpdateFinalizing,
+  PluginInstallProgress(operation: PluginRuntimeProvisionKind.globalUpdate) => context.loc.harnessesUpdateInProgress,
+  PluginInstallProgress(operation: PluginRuntimeProvisionKind.unknown) =>
+    context.loc.harnessesRuntimeOperationInProgress,
   PluginInstallProgress(phase: PluginInstallPhase.downloading, :final percent?) =>
     context.loc.harnessManagementInstallDownloadingPercent(percent),
   PluginInstallProgress(phase: PluginInstallPhase.downloading) => context.loc.harnessManagementInstallDownloading,

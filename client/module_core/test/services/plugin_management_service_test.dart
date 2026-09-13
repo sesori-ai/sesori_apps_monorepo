@@ -2101,7 +2101,11 @@ void main() {
         service.installStates.value,
         const {
           "codex": PluginInstallState.inProgress(
-            progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 30),
+            progress: PluginInstallProgress(
+              operation: PluginRuntimeProvisionKind.managedInstall,
+              phase: PluginInstallPhase.downloading,
+              percent: 30,
+            ),
           ),
         },
       );
@@ -2112,7 +2116,11 @@ void main() {
         service.installStates.value,
         const {
           "codex": PluginInstallState.inProgress(
-            progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+            progress: PluginInstallProgress(
+              operation: PluginRuntimeProvisionKind.managedInstall,
+              phase: PluginInstallPhase.extracting,
+              percent: null,
+            ),
           ),
         },
       );
@@ -2126,6 +2134,108 @@ void main() {
       // This surface only watched the install, so it is not its outcome to
       // report — otherwise the metric would count surfaces, not installs.
       expect(reportedEvents, isEmpty);
+    });
+
+    test("tracks a locally requested global update without reporting install analytics", () async {
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(_success(_response(token: "accepted")));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      await service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.updateRuntime(),
+      );
+      expect(repository.commands.single.request, isA<PluginLifecycleUpdateRuntimeRequest>());
+      expect(
+        service.installStates.value["codex"],
+        const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.globalUpdate,
+            phase: PluginInstallPhase.unknown,
+            percent: null,
+          ),
+        ),
+      );
+
+      connection.emitRuntimeProgress(
+        pluginId: "codex",
+        operation: PluginRuntimeProvisionKind.globalUpdate,
+        phase: PluginInstallPhase.updating,
+        percent: null,
+      );
+      await _pump();
+      expect(
+        service.installStates.value["codex"],
+        const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.globalUpdate,
+            phase: PluginInstallPhase.updating,
+            percent: null,
+          ),
+        ),
+      );
+
+      connection.emitRuntimeProgress(
+        pluginId: "codex",
+        operation: PluginRuntimeProvisionKind.globalUpdate,
+        phase: PluginInstallPhase.completed,
+        percent: null,
+      );
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+      expect(reportedEvents, isEmpty);
+    });
+
+    test("a different runtime operation cannot claim a rejected update request", () async {
+      final mutation = Completer<PluginManagementMutationResult>();
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one")))
+        ..queueMutation(mutation.future);
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      final command = service.command(
+        pluginId: "codex",
+        request: const PluginLifecycleCommandRequest.updateRuntime(),
+      );
+      connection.emitInstallProgress(pluginId: "codex", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect(
+        service.installStates.value["codex"],
+        const PluginInstallState.inProgress(
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.globalUpdate,
+            phase: PluginInstallPhase.unknown,
+            percent: null,
+          ),
+        ),
+      );
+      mutation.complete(PluginManagementMutationResult.failure(error: ApiError.generic()));
+      await command;
+      await _pump();
+
+      expect(reportedEvents, isEmpty);
+      expect(service.installStates.value, isEmpty);
     });
 
     test("authentication-required setup clears a stale install failure without starting login", () async {
@@ -2150,13 +2260,65 @@ void main() {
       await _waitFor(() => service.snapshots.hasValue);
       connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
       await _pump();
-      expect(service.installStates.value["one"], const PluginInstallState.failed());
+      expect(
+        service.installStates.value["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+      );
 
       await service.refresh();
       await _pump();
       expect(service.installStates.value, isEmpty);
       expect(service.authenticationChallenges.value, isEmpty);
       expect(reportedEvents, isEmpty);
+    });
+
+    test("a setup-kind change clears failure from the no-longer-applicable runtime operation", () async {
+      final missing = _conflict([]).current.copyWith(
+        setup: _conflict([]).current.setup.copyWith(state: PluginSetupState.runtimeMissing),
+      );
+      final outdated = missing.copyWith(
+        setup: missing.setup.copyWith(state: PluginSetupState.runtimeOutdated),
+      );
+      final repository = _FakePluginRepository()
+        ..queueLoad(_supported(_response(token: "one").copyWith(plugins: [missing])))
+        ..queueLoad(_supported(_response(token: "two").copyWith(plugins: [outdated])))
+        ..queueLoad(_supported(_response(token: "three").copyWith(plugins: [missing])));
+      final connection = _FakeConnectionService(initialStatus: _connected);
+      final service = _pluginManagementService(
+        pluginRepository: repository,
+        connectionService: connection,
+        productAnalyticsService: analytics,
+      );
+      addTearDown(() async {
+        await service.onDispose();
+        await connection.dispose();
+      });
+      await _waitFor(() => service.snapshots.hasValue);
+
+      connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
+      await _pump();
+      expect(
+        service.installStates.value["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+      );
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value, isEmpty);
+
+      connection.emitRuntimeProgress(
+        pluginId: "one",
+        operation: PluginRuntimeProvisionKind.globalUpdate,
+        phase: PluginInstallPhase.failed,
+        percent: null,
+      );
+      await _pump();
+      expect(
+        service.installStates.value["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.globalUpdate),
+      );
+      await service.refresh();
+      await _pump();
+      expect(service.installStates.value, isEmpty);
     });
 
     test("failed installs replay, survive missing snapshots, recover, and reset on disconnect", () async {
@@ -2180,7 +2342,10 @@ void main() {
       await _waitFor(() => service.snapshots.hasValue);
       connection.emitInstallProgress(pluginId: "one", phase: PluginInstallPhase.failed);
       await _pump();
-      expect((await service.installStates.first)["one"], const PluginInstallState.failed());
+      expect(
+        (await service.installStates.first)["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+      );
       final emittedStates = <Map<String, PluginInstallState>>[];
       final subscription = service.installStates.listen(emittedStates.add);
       addTearDown(subscription.cancel);
@@ -2189,7 +2354,10 @@ void main() {
 
       await service.refresh();
       await _pump();
-      expect(service.installStates.value["one"], const PluginInstallState.failed());
+      expect(
+        service.installStates.value["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+      );
       expect(emittedStates, isEmpty, reason: "An unchanged snapshot is not an install-state update.");
       await service.refresh();
       await _pump();
@@ -2237,14 +2405,19 @@ void main() {
           connection.emitInstallProgress(pluginId: "codex", phase: terminal);
           await _pump();
           if (terminal == PluginInstallPhase.failed) {
-            expect(service.installStates.value["codex"], const PluginInstallState.failed());
+            expect(
+              service.installStates.value["codex"],
+              const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+            );
           }
           mutation.complete(response);
           await command;
           await _pump();
           expect(
             service.installStates.value["codex"],
-            terminal == PluginInstallPhase.failed ? const PluginInstallState.failed() : null,
+            terminal == PluginInstallPhase.failed
+                ? const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall)
+                : null,
           );
           expect(reportedEvents.single.parameters, {"outcome": terminal.name});
           if (terminal == PluginInstallPhase.failed) {
@@ -2364,7 +2537,11 @@ void main() {
       expect(
         service.installStates.value["codex"],
         const PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 5),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.downloading,
+            percent: 5,
+          ),
         ),
       );
 
@@ -2616,6 +2793,7 @@ class _FakePluginRepository() implements PluginRepository {
   final Queue<Future<PluginAuthenticationCancelResult>> _authenticationCancels = Queue();
   final Queue<Future<PluginAuthenticationContinuationResult>> _authenticationContinuations = Queue();
   final List<Uri> authenticationRedirects = [];
+  final List<({String pluginId, PluginLifecycleCommandRequest request})> commands = [];
   int loadCalls = 0;
   int mutationCalls = 0;
   int authenticationCancelCalls = 0;
@@ -2671,6 +2849,7 @@ class _FakePluginRepository() implements PluginRepository {
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) {
+    commands.add((pluginId: pluginId, request: request));
     return _nextMutation();
   }
 
@@ -2725,10 +2904,25 @@ class _FakeConnectionService({required ConnectionStatus initialStatus}) implemen
     required PluginInstallPhase phase,
     int? percent,
   }) {
+    emitRuntimeProgress(
+      pluginId: pluginId,
+      operation: PluginRuntimeProvisionKind.managedInstall,
+      phase: phase,
+      percent: percent,
+    );
+  }
+
+  void emitRuntimeProgress({
+    required String pluginId,
+    required PluginRuntimeProvisionKind operation,
+    required PluginInstallPhase phase,
+    required int? percent,
+  }) {
     _events.add(
       SseEvent(
         data: SesoriSseEvent.pluginInstallProgress(
           pluginId: pluginId,
+          operation: operation,
           phase: phase,
           percent: percent,
           message: null,

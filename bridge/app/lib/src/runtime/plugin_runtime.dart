@@ -1,6 +1,8 @@
 import "dart:async";
+import "dart:io" as io;
 
 import "package:rxdart/rxdart.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "plugin_generation_factory.dart";
@@ -157,7 +159,7 @@ class PluginRuntime({
   bool _shuttingDown = false;
   Future<void>? _shutdownStartedPluginsFuture;
   Future<void>? _disposeFuture;
-  final Set<StartAbortController> _installAbortControllers = <StartAbortController>{};
+  final Set<_RuntimeMutation> _runtimeMutations = <_RuntimeMutation>{};
   final Set<StartAbortController> _authenticationAbortControllers = <StartAbortController>{};
 
   Stream<List<PluginRuntimeSnapshot>> get snapshots => _snapshotsSubject.stream;
@@ -262,31 +264,98 @@ class PluginRuntime({
       yield const ProvisionFailed(message: "The bridge is shutting down.");
       return;
     }
-    final abortController = StartAbortController();
-    _installAbortControllers.add(abortController);
+    final mutation = _RuntimeMutation();
+    _runtimeMutations.add(mutation);
     try {
       yield* slot.registration.descriptor.installRuntime(
         config: slot.registration.config,
         processes: _setupProcesses,
         environment: _environment,
         stateDirectory: slot.registration.stateDirectory,
-        startAborted: abortController.signal,
+        startAborted: mutation.abortController.signal,
         runtimeInUse: _SlotRuntimeInUseSignal(slot: slot),
       );
     } finally {
-      _installAbortControllers.remove(abortController);
+      _runtimeMutations.remove(mutation);
+      mutation.settled.complete();
+    }
+  }
+
+  /// Runs the descriptor-owned updater against the harness installation found
+  /// on PATH. Output remains in local logs; progress exposes no command output
+  /// or paths. Shutdown force-stops the updater before releasing ownership.
+  Stream<RuntimeProvisionProgress> updateRuntime({required String pluginId}) async* {
+    final slot = _requireSlot(pluginId);
+    if (_shuttingDown) {
+      yield const ProvisionFailed(message: "The bridge is shutting down.");
+      return;
+    }
+    final descriptor = slot.registration.descriptor;
+    final spec = descriptor.runtimeUpdateSpec(config: slot.registration.config);
+    if (spec == null) {
+      yield ProvisionFailed(message: "${descriptor.displayName} does not support automatic global updates.");
+      return;
+    }
+
+    final updaterDescription = 'executable="${spec.executable}", arguments=${spec.arguments}';
+    final mutation = _RuntimeMutation();
+    _runtimeMutations.add(mutation);
+    try {
+      yield const ProvisionResolving();
+      final result =
+          await HostProcessCommandExecutor(
+            includeParentEnvironment: true,
+            processes: _setupProcesses,
+            runInShell: io.Platform.isWindows,
+            maxCapturedOutputCharactersPerStream: 64 * 1024,
+          ).runAbortable(
+            executable: spec.executable,
+            arguments: spec.arguments,
+            workingDirectory: null,
+            environment: _environment,
+            timeout: spec.timeout,
+            abortSignal: mutation.abortController.signal,
+          );
+      if (mutation.abortController.signal.isAborted) throw const PluginStartAbortedException();
+      if (result.exitCode != 0) {
+        Log.w(
+          '[${descriptor.id}] global runtime updater exited ${result.exitCode} ($updaterDescription)',
+          result,
+        );
+        yield ProvisionFailed(
+          message:
+              "${descriptor.displayName} could not be updated automatically. Use its installation method, then retry.",
+        );
+        return;
+      }
+      Log.i('[${descriptor.id}] global runtime updater completed ($updaterDescription)');
+      yield ProvisionReady(binaryPath: spec.executable);
+    } on PluginStartAbortedException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      if (mutation.abortController.signal.isAborted) Error.throwWithStackTrace(error, stackTrace);
+      Log.w('[${descriptor.id}] global runtime updater failed ($updaterDescription)', error, stackTrace);
+      yield ProvisionFailed(
+        message:
+            "${descriptor.displayName} could not be updated automatically. Use its installation method, then retry.",
+      );
+    } finally {
+      _runtimeMutations.remove(mutation);
+      mutation.settled.complete();
     }
   }
 
   /// Whether a bridge start should install this plugin's pinned managed runtime
   /// in the background because Sesori already manages an older one.
   ///
-  /// The descriptor owns the decision and answers from configuration and its
-  /// state directory alone — no probing, no process spawning, no network.
-  bool needsManagedRuntimeUpgrade({required String pluginId}) {
+  /// The descriptor may run one bounded PATH probe, but never mutates a runtime
+  /// or uses the network while deciding.
+  Future<bool> needsManagedRuntimeUpgrade({required String pluginId}) {
     final slot = _requireSlot(pluginId);
     return slot.registration.descriptor.needsManagedRuntimeUpgrade(
       config: slot.registration.config,
+      processes: _setupProcesses,
+      environment: _environment,
       stateDirectory: slot.registration.stateDirectory,
     );
   }
@@ -1158,8 +1227,8 @@ class PluginRuntime({
   void beginShutdown() {
     if (_shuttingDown) return;
     _shuttingDown = true;
-    for (final controller in _installAbortControllers) {
-      controller.abort();
+    for (final mutation in _runtimeMutations) {
+      mutation.abortController.abort();
     }
     for (final controller in _authenticationAbortControllers) {
       controller.abort();
@@ -1256,6 +1325,9 @@ class PluginRuntime({
   Future<void> _dispose() async {
     beginShutdown();
     final errors = <({Object error, StackTrace stackTrace})>[];
+    await Future.wait([
+      for (final mutation in _runtimeMutations.toList(growable: false)) mutation.settled.future,
+    ]);
     await Future.wait([
       for (final slot in _slots.values)
         () async {
@@ -2111,6 +2183,11 @@ class PluginRuntime({
 }
 
 typedef _CommandTransition = ({Object owner, Completer<void> completer});
+
+class _RuntimeMutation() {
+  final StartAbortController abortController = StartAbortController();
+  final Completer<void> settled = Completer<void>();
+}
 
 class _PluginRuntimeSlot({required final PluginRuntimeRegistration registration}) {
   PluginSetupStatus setup = const PluginSetupUnknown(actionHint: null);

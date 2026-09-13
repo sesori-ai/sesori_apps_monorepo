@@ -217,7 +217,8 @@ Every integration ships enabled by default — pick your assistant when you star
 - **Install:** install Grok Build through [xAI's official CLI](https://x.ai/cli).
   Sesori requires version `1.0.5` or newer and uses `grok` from your PATH by
   default. Point `--grok-bin <path>` at a specific binary to make it
-  authoritative. Sesori does not install or update Grok.
+  authoritative. Sesori does not install Grok; when the PATH runtime is
+  outdated, the app can run Grok's own non-interactive updater.
 - **Authentication:** sign in locally with `grok login` or configure a supported
   API key, enterprise account, or custom model. Credentials stay on the bridge
   machine and are never sent to phone clients.
@@ -283,9 +284,10 @@ Every integration ships enabled by default — pick your assistant when you star
 <summary><strong>Hermes Agent notes</strong></summary>
 
 - **Version:** requires Hermes Agent 0.20.0 or later.
-- **Install:** Sesori never installs or updates Hermes. It uses the `hermes`
-  CLI from your PATH; point `--hermes-bin <path>` at a specific binary to make
-  it authoritative.
+- **Install:** Sesori does not install Hermes. It uses the `hermes` CLI from
+  your PATH and can run Hermes' own non-interactive updater when that runtime
+  is outdated. Point `--hermes-bin <path>` at a specific binary to make it
+  authoritative and keep updates manual.
 - **Model & login:** pick your model and provider, and log in, with the Hermes
   CLI itself — Sesori inherits that configuration and never handles provider
   credentials.

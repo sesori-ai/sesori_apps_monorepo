@@ -5,6 +5,7 @@ enum SessionInteractionBlockedReason() {
   disabled,
   authenticationRequired,
   runtimeMissing,
+  runtimeOutdated,
   unavailable,
   stopping,
   notInspected,

@@ -2,18 +2,31 @@
 
 ## Capability
 
-Installing a harness's pinned, bridge-managed runtime — on request from the app or the
-management API when it reports its runtime as missing or too old, and automatically on
-bridge start when Sesori already manages an older version.
+Installing a harness's pinned, bridge-managed runtime when no authoritative PATH runtime
+exists, and updating a supported harness's outdated PATH runtime through its verified
+non-interactive global updater. Superseded managed runtimes still update automatically on
+bridge start when PATH is genuinely absent.
 
 ## Required Behavior
 
 - Install is offered only where the bridge advertises the capability for that harness in
   its configuration and platform; a binary override or a platform with no pinned asset
-  removes the offer. The app offers it only for runtimeMissing or unavailable setup with advertised install support, never for
-  ready, authentication-required, or unknown states. Install-ready missing runtimes use
-  the dedicated installation content; manual setup hints remain for externally installed
-  harnesses and other setup failures.
+  removes the offer. The app offers it only for `runtimeMissing` or `unavailable` setup
+  with advertised install support, never for `runtimeOutdated`, ready,
+  authentication-required, or unknown states. The bridge enforces the same setup-state
+  gate before admitting a new Install, while a matching request may still join an already
+  admitted startup upgrade. Install-ready missing runtimes use the dedicated installation
+  content; manual setup hints remain for explicit binaries and other setup failures.
+- PATH is authoritative across every harness that can also use a Sesori-managed runtime.
+  A compatible PATH runtime is selected before managed state. An outdated, malformed,
+  timed-out, permission-denied, nonzero, partial-pair, or otherwise ambiguous PATH result
+  blocks startup and managed fallback. Process-not-found evidence permits managed selection
+  or installation only after host lookup confirms that no executable entry exists; lookup includes
+  the Windows working directory plus case-insensitive PATH/PATHEXT resolution. A present shim with
+  a missing interpreter remains authoritative. Setup state gates user requests, and the managed installer
+  revalidates PATH authority again before its first cleanup or staging mutation so a stale
+  setup or startup-upgrade decision cannot bypass the rule. Existing managed copies remain
+  untouched while PATH is present.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
@@ -58,9 +71,31 @@ bridge start when Sesori already manages an older version.
   30 seconds. The policy is bounded and intentionally not derived from host timings. Bare binaries are unaffected. A
   larger budget never skips traversal or symlink checks; command timeouts remain observable failures with rejected
   staging cleanup.
-- The command is accepted immediately because an install can outlast a request budget;
-  progress reports phases with an optional download percentage. Completion re-inspects setup;
-  a setup snapshot alone is not evidence of a historical installation failure.
+- A provisioning command is accepted immediately because installation or a global update
+  can outlast a request budget. Progress identifies `managedInstall` versus `globalUpdate`;
+  older peers that omit the discriminator decode it as `managedInstall`; newer unknown
+  operations render as a generic runtime change with no guessed retry. Released older clients
+  can label a global update started on another surface as installation progress, but send no
+  incorrect command. Only managed downloads report an optional percentage. Completion
+  re-inspects setup. Terminal failure
+  also re-inspects because PATH authority may have changed after command admission; unchanged
+  setup retains the operation failure, while changed setup replaces the stale action. A setup
+  snapshot alone is not evidence of a historical provisioning failure.
+- `runtimeOutdated` is a distinct setup state for the ordinary PATH command when its parsed
+  version is below the supported floor or a recognized response positively identifies a
+  missing required capability, such as a pre-ACP Hermes release. A direct Update action is advertised only when the
+  descriptor owns a verified non-interactive updater and no explicit binary override is
+  configured. The supported commands are `opencode upgrade`, `codex update`,
+  `cursor-agent update`, `omp update`, `pi update --self --no-approve`, `claude update`,
+  `hermes update --yes`, and `grok update`. Copilot, DeepSeek, and Antigravity stay blocked
+  with manual guidance because no safe updater is declared.
+- Update runs immediately after the user action, without a confirmation prompt, under a
+  bounded abortable host process. Shutdown force-stops it (including the Windows child
+  process tree) and awaits its exit before lifecycle progress streams close. Exit failure, timeout, or a
+  post-update setup that is still not usable reports a sanitized failure while executable,
+  arguments, output, paths, and original errors remain only in local logs. Success enables,
+  re-inspects, and starts the harness under the same lifecycle rules as a requested managed
+  install.
 - Success then implies enable: the harness is persisted enabled, setup is re-inspected,
   and the post-install enable phase starts it when ready. Authentication-required after successful provisioning reports
   installation completed, while setup remains blocked and offers login; it is not a reason to reinstall. Other unresolved
@@ -68,11 +103,12 @@ bridge start when Sesori already manages an older version.
   stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
-- A bridge start upgrades every eligible harness that still has a Sesori-managed version
-  directory other than the pinned target, and only those: a machine with no managed
-  runtime keeps the explicit Install action and never downloads one unasked. The trigger
-  runs after single-live-bridge ownership is settled and returns without waiting, so
-  startup is never delayed by a download. Each upgrade occupies the harness's command
+- A bridge start upgrades every eligible harness whose newest Sesori-managed version is
+  older than the pinned target, and only those whose PATH command is genuinely
+  absent: a machine with no managed runtime keeps the explicit Install action and never
+  downloads one unasked. Eligibility probes run concurrently and are bounded. The trigger
+  runs after single-live-bridge ownership is settled and returns without waiting for
+  admitted downloads, so startup is never delayed by a download. Each upgrade occupies the harness's command
   slot exactly like a manual install, so an overlapping request joins it and another
   command conflicts. An explicit Install that joins a running upgrade carries the user's
   intent with it: the joined install enables and starts the harness on success, even
@@ -82,8 +118,9 @@ bridge start when Sesori already manages an older version.
   install, a startup upgrade re-inspects but never starts a harness, so a blocked harness
   becomes ready and selectable without a bridge restart and a running one keeps its
   current generation until it stops.
-- Cleanup follows what is still usable. A below-minimum version directory is removed
-  before the download begins, because it can never be selected either way. A superseded
+- Cleanup follows what is still usable and runs only after PATH absence is established.
+  A below-minimum managed version directory is removed before the download begins, because
+  it can never be selected either way. A superseded
   but still supported one survives until the pinned version is installed and verified,
   and is kept when the harness has a live generation; a later install reclaims it. Candidate rejection or abort before
   placement leaves retained supported prior packages and their sentinels untouched and removes staging. Placement itself is not claimed to be
@@ -93,19 +130,23 @@ bridge start when Sesori already manages an older version.
   and a harness whose only managed runtime was below the minimum stays runtime-missing
   with its install hint. Failure detail stays in the bridge log.
 
-- The client marks a requested installation busy immediately, before its command response or
-  first progress event. Only reported download percentage is determinate; verification,
-  extraction, finalization and unknown phases remain indeterminate rather than claiming
-  total-install completion. No install pause/stop menu or stopped outcome is invented.
+- The client marks a requested managed install or global update busy immediately, before
+  its command response or first progress event. It keeps operation-specific progress,
+  failure, retry, and accessibility copy. Only reported managed-download percentage is
+  determinate; verification, extraction, finalization, update, and unknown phases remain
+  indeterminate rather than claiming total completion. No pause/stop menu or stopped
+  outcome is invented.
 - Harness detail Back returns to overview without recreating its flow-owned cubit. Settings-opened
   pages offer Back only; New Session modal X dismisses the entire harness modal from either
   page while retaining the composer and draft.
 - Failed terminal SSE is retained in connection-scoped client memory and replayed across
   overview/detail navigation and cubit recreation. Retry starts immediately and clears it;
-  observed progress from another surface replaces it. An unchanged missing/unavailable
-  snapshot preserves failure; a newly applied ready or authentication-required snapshot, or completed SSE, clears it.
-  Login-required reconciliation removes stale installation failure without starting authentication or claiming readiness.
-  Connection/bridge invalidation clears all retained installation state.
+  observed progress from another surface replaces it. Failure reconciliation is scoped to
+  its operation: managed-install failure survives missing/unavailable setup but clears when
+  install no longer applies; global-update failure survives `runtimeOutdated` but clears
+  when update no longer applies. Completed SSE also clears it. Login-required reconciliation
+  removes stale provisioning failure without starting authentication or claiming readiness.
+  Connection/bridge invalidation clears all retained provisioning state.
 - Failure detail offers Restart installation where install remains eligible. Status still
   follows actual setup: a missing runtime is Not installed, unavailable remains Unavailable,
   and a recovered runtime is never relabelled missing. A definite command rejection is an
@@ -115,27 +156,30 @@ bridge start when Sesori already manages an older version.
   harness's conflicting controls remain blocked until its install settles.
 - Terminal events racing accepted, uncertain or rejected command responses settle correctly:
   retained failure is not replaced by synthetic progress or removed on response settlement.
-  Analytics reports each locally authored outcome once; merely observing another surface's
-  installation or navigating its detail never reports another outcome.
+  Analytics reports each locally authored managed-install outcome once; merely observing
+  another surface's operation or navigating its detail never reports another outcome.
+  Global updates do not masquerade as managed-install analytics.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. Installation is a deliberate network-bound action, not a heartbeat. |
-| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install and automatic upgrade, the rest do neither. A start with no managed version directory triggers no upgrade. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, Antigravity's five official targets and macOS x64 omission, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
-| L3 Release | One complete install on the release-target bridge host from missing runtime through verification and extraction to enabled, re-inspected, and selectable, with progress shown on the release-target client platform. Plus a start with a raised target over an older supported managed version: the harness stays selectable throughout, startup does not block, and the new version is used by the next generation; and over a below-minimum version: the harness is blocked briefly, then becomes selectable without a bridge restart or an Install press. Client end to end; every harness advertising install. |
+| L2 Routine | Capability declaration is honest for every registered harness on the release-target bridge host: those with a pinned asset and no override advertise install, descriptors with a verified updater advertise update, and manual-only harnesses do not. PATH presence blocks managed selection, startup upgrade, and cleanup; only process-not-found permits fallback. A start with no managed version directory triggers no upgrade. Automated manifest coverage includes Codex's and Copilot's exact six platform/architecture mappings and digests, Antigravity's five official targets and macOS x64 omission, plus preservation of nested package entries and sibling resources. Headless bridge; every supporting production harness. |
+| L3 Release | One complete install on the release-target bridge host from missing runtime through verification and extraction to enabled, re-inspected, and selectable, with progress shown on the release-target client platform. Exercise one outdated PATH runtime through its real global updater to ready, including operation-specific progress. Plus a start with a raised target over an older supported managed version and PATH absent: the harness stays selectable throughout, startup does not block on the download, and the new version is used by the next generation; and over a below-minimum managed version: the harness is blocked briefly, then becomes selectable without a bridge restart or an Install press. |
 | L4 Extended | Checksum mismatch or interrupted download failing safely, shutdown mid-install, duplicate join, competing-command rejection, authentication-required outcome, too-old runtime, and an alternate bridge host. An Install pressed while a startup upgrade downloads, which joins it and still leaves the harness enabled and started. A forced upgrade failure over each of an older supported and a below-minimum version, leaving the documented fallback state. A session running on the older supported runtime during an upgrade continuing uninterrupted, with its version directory surviving until the generation stops and the next start resolving the pinned version. Live plugin for bridge outcome, client end to end for card state. Separate cubit/shared-widget automation proves retained progress/failure and same-harness exclusion while peer toggles remain usable, without claiming a real installation. |
 | L5 Full | Install on every supported platform and architecture where the harness publishes an asset, a superseded managed version swept after success, and pinned digests matching the upstream release assets. Copilot's complete matrix is its six official arm64/x64 macOS, Linux, and Windows archives. Antigravity's is macOS arm64 plus Linux and Windows arm64/x64; macOS x64 must omit Install. Packaged or external, since real upstream artifacts are part of the claim. |
 
 ## Exploration Guidance
 
 Vary the starting state: no runtime, a superseded but still supported managed runtime, a
-below-minimum managed runtime, the pinned version already installed, a too-old runtime on
-the path, and a previously disabled harness. Vary the trigger between the app, the
-management API, and a bridge start; whether the harness is running, idle, or blocked when
-an upgrade completes; whether another harness is busy; and the interruption point during
-download, verification, or placement. Use a disposable data directory.
+below-minimum managed runtime, the pinned version already installed, compatible, too-old,
+malformed, and ambiguously failing PATH commands, and a previously disabled harness. Keep
+a stale managed copy present for the PATH cases and verify it is neither selected nor
+changed. Vary the trigger between the app, the management API, and a bridge start; whether
+the harness is running, idle, or blocked when an operation completes; whether another
+harness is busy; and the interruption point during download, verification, placement, or
+global update. Use a disposable data directory.
 
 ## Failure Signals
 
@@ -144,14 +188,16 @@ download, verification, or placement. Use a disposable data directory.
 - Displaying download percentage as total progress or enabling conflicting controls between
   acceptance and the first progress event.
 
-- Install offered where it cannot apply, or hidden where it genuinely can.
+- Install or Update offered where it cannot apply, or hidden where it genuinely can.
+- Any PATH evidence other than genuine command absence selecting a managed copy, triggering
+  a startup managed upgrade, or deleting managed state.
 - Anything written outside the managed state area, a system-wide install, or an
   unverified or partly extracted binary adopted.
 - The request blocking on the download, progress stalling or moving backwards, a busy
   state that never clears, or a duplicate request starting a second install.
-- A completed install leaving the harness disabled, not re-inspected, or unselectable
-  while reporting success, a Codex install missing `codex-code-mode-host` or package
-  resources, or raw paths and command output reaching the client.
+- A completed install or update leaving the harness disabled, not re-inspected, or
+  unselectable while reporting success, a Codex install missing `codex-code-mode-host` or
+  package resources, or raw paths and command output reaching the client.
 - Bridge startup blocking on an upgrade download, an upgrade running for a harness with no
   managed runtime directory or an explicit binary override, or a startup upgrade starting
   a harness the user had not enabled.
@@ -169,12 +215,14 @@ download, verification, or placement. Use a disposable data directory.
   restarted.
 - A failed upgrade downgrading a harness that was ready on an older supported runtime, or
   its failure detail reaching the client instead of the log.
+- A global updater escaping its descriptor-owned command, outliving bridge shutdown,
+  falling back to managed state, or appearing as a managed installation in copy or analytics.
 
 ## Known Limitations
 
 - Retained client failure is not persisted or historical: a new surface cannot reconstruct an
-  earlier failure from runtimeMissing alone. Automatic bridge-start upgrades remain independent
-  of the unsupported client automatic-update preference.
+  earlier failure from setup alone. Automatic bridge-start managed upgrades remain independent
+  of app-triggered PATH updates; there is no client-controlled automatic-update preference.
 
 - Only harnesses declaring the capability with a pinned per-platform asset can install; a
   registered harness without one is correctly not installable.
@@ -187,19 +235,20 @@ download, verification, or placement. Use a disposable data directory.
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
   Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.
-- The upgrade replaces only a runtime Sesori already manages; a harness that has never
-  been installed through Sesori still needs the explicit Install action. A user who runs
-  a PATH install and also has a stale managed directory downloads one target they do not
-  run, once per target bump.
+- A startup managed upgrade replaces only a runtime Sesori already manages and runs only
+  when PATH is genuinely absent. A harness that has never been installed through Sesori
+  still needs the explicit Install action. A PATH install leaves every stale managed
+  directory untouched.
 - There is no hot swap: a generation started on the older supported runtime keeps it until
   it stops. A harness that is running when its upgrade completes keeps that version
   directory until a later install reclaims it.
 - A below-minimum upgrade whose download fails does not retry on the next start, because
   its obsolete directory was already removed; the harness stays runtime-missing until the
   user presses Install.
-- The trigger is bridge start only. There is no periodic or relay-driven update check, and
-  a headless startup upgrade shows no console progress — the log records start, outcome,
-  and failure detail.
+- Automatic managed upgrade triggers only on bridge start. There is no periodic or
+  relay-driven update check. A headless startup upgrade shows no console progress — the
+  log records start, outcome, and failure detail. Global PATH update is explicit user
+  action only.
 
 ## Sources
 

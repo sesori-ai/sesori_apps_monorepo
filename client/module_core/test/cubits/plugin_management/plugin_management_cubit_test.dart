@@ -656,7 +656,11 @@ void main() {
 
       installStates.add(const {
         "one": PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.downloading,
+            percent: 42,
+          ),
         ),
       });
       await _settle();
@@ -664,7 +668,11 @@ void main() {
         (cubit.state as PluginManagementReady).installs,
         const {
           "one": PluginInstallState.inProgress(
-            progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+            progress: PluginInstallProgress(
+              operation: PluginRuntimeProvisionKind.managedInstall,
+              phase: PluginInstallPhase.downloading,
+              percent: 42,
+            ),
           ),
         },
       );
@@ -674,10 +682,25 @@ void main() {
       expect((cubit.state as PluginManagementReady).installs, isEmpty);
     });
 
+    test("updateRuntime sends the global updater command", () async {
+      await cubit.updateRuntime(pluginId: "one");
+
+      verify(
+        () => service.command(
+          pluginId: "one",
+          request: const PluginLifecycleCommandRequest.updateRuntime(),
+        ),
+      ).called(1);
+    });
+
     test("a cubit created mid-install seeds progress from the service", () async {
       installStates.add(const {
         "one": PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.verifying,
+            percent: null,
+          ),
         ),
       });
       await _settle();
@@ -693,7 +716,11 @@ void main() {
         (reopened.state as PluginManagementReady).installs,
         const {
           "one": PluginInstallState.inProgress(
-            progress: PluginInstallProgress(phase: PluginInstallPhase.verifying, percent: null),
+            progress: PluginInstallProgress(
+              operation: PluginRuntimeProvisionKind.managedInstall,
+              phase: PluginInstallPhase.verifying,
+              percent: null,
+            ),
           ),
         },
       );
@@ -721,24 +748,37 @@ void main() {
     });
 
     test("retained install failure replays into a recreated flow cubit", () async {
-      installStates.add(const {"one": PluginInstallState.failed()});
+      installStates.add(const {"one": PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall)});
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
       await _settle();
       final reopened = PluginManagementCubit(service: service, urlLauncher: urlLauncher, catalogRescanService: rescan);
       addTearDown(reopened.close);
       await _settle();
-      expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
+      expect(
+        (reopened.state as PluginManagementReady).installs["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+      );
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
       await _settle();
-      expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
+      expect(
+        (reopened.state as PluginManagementReady).installs["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+      );
       await reopened.enable(pluginId: "two");
-      expect((reopened.state as PluginManagementReady).installs["one"], const PluginInstallState.failed());
+      expect(
+        (reopened.state as PluginManagementReady).installs["one"],
+        const PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+      );
     });
 
     test("a loading transition mid-install restores progress with the next snapshot", () async {
       installStates.add(const {
         "one": PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.downloading,
+            percent: 10,
+          ),
         ),
       });
       await _settle();
@@ -754,7 +794,11 @@ void main() {
         (cubit.state as PluginManagementReady).installs,
         const {
           "one": PluginInstallState.inProgress(
-            progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 10),
+            progress: PluginInstallProgress(
+              operation: PluginRuntimeProvisionKind.managedInstall,
+              phase: PluginInstallPhase.downloading,
+              percent: 10,
+            ),
           ),
         },
       );
@@ -763,7 +807,11 @@ void main() {
     test("an equivalent progress map does not emit a new state", () async {
       installStates.add(const {
         "one": PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.extracting,
+            percent: null,
+          ),
         ),
       });
       await _settle();
@@ -773,7 +821,11 @@ void main() {
 
       installStates.add(const {
         "one": PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.extracting,
+            percent: null,
+          ),
         ),
       });
       await _settle();
@@ -784,7 +836,11 @@ void main() {
     test("install progress survives a refreshed snapshot", () async {
       installStates.add(const {
         "one": PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.extracting,
+            percent: null,
+          ),
         ),
       });
       await _settle();
@@ -796,7 +852,11 @@ void main() {
         (cubit.state as PluginManagementReady).installs,
         const {
           "one": PluginInstallState.inProgress(
-            progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+            progress: PluginInstallProgress(
+              operation: PluginRuntimeProvisionKind.managedInstall,
+              phase: PluginInstallPhase.extracting,
+              percent: null,
+            ),
           ),
         },
       );
@@ -1343,7 +1403,11 @@ void main() {
       await starting;
       installStates.add(const {
         "one": PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+          progress: PluginInstallProgress(
+            operation: PluginRuntimeProvisionKind.managedInstall,
+            phase: PluginInstallPhase.unknown,
+            percent: null,
+          ),
         ),
       });
       await _settle();

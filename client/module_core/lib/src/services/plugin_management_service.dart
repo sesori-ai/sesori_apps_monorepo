@@ -107,20 +107,16 @@ class PluginManagementService({
   bool _activeBridgeIdentityKnown = false;
   String? _activeBridgeId;
 
-  /// Plugin ids whose install this app started, so its analytics report counts
-  /// installs rather than surfaces watching one. An id is added when the
-  /// command is issued and removed when its terminal event is reported or the
-  /// bridge rejects the command.
-  final Set<String> _selfStartedInstalls = {};
+  /// Runtime mutations this app started, so terminal progress is attributed to
+  /// the initiating surface rather than every surface observing the SSE event.
+  final Map<String, PluginRuntimeProvisionKind> _selfStartedRuntimeOperations = {};
 
-  /// Terminal phases that arrived before the issuing command returned. A fast
-  /// install can settle within the request round trip, so the outcome is held
-  /// here until acceptance is known rather than dropped.
-  final Map<String, PluginInstallPhase> _pendingInstallOutcomes = {};
+  /// Terminal progress that arrived before the issuing command returned.
+  final Map<String, ({PluginInstallPhase phase, PluginRuntimeProvisionKind operation})>
+  _pendingRuntimeOperationOutcomes = {};
 
-  /// Plugin ids with an install command still awaiting its response, used only
-  /// to decide whether a terminal event must be held until acceptance is known.
-  final Set<String> _installRequestsInFlight = {};
+  /// Plugin ids whose runtime-mutation request is awaiting its response.
+  final Set<String> _runtimeOperationRequestsInFlight = {};
 
   /// Per-request identity prevents a stale same-plugin completion from
   /// releasing pending outcome coordination owned by a replacement attempt.
@@ -157,29 +153,37 @@ class PluginManagementService({
     required String pluginId,
     required PluginLifecycleCommandRequest request,
   }) async {
-    final isInstall = request is PluginLifecycleInstallRequest;
-    // Install progress is broadcast to every connected surface, so track which
-    // installs this app started. Authorship is claimed up front because the
-    // bridge can finish a cached install before this request returns; a
-    // rejected command withdraws it below.
-    if (isInstall) {
-      _selfStartedInstalls.add(pluginId);
-      _installRequestsInFlight.add(pluginId);
+    final runtimeOperation = switch (request) {
+      PluginLifecycleInstallRequest() => PluginRuntimeProvisionKind.managedInstall,
+      PluginLifecycleUpdateRuntimeRequest() => PluginRuntimeProvisionKind.globalUpdate,
+      PluginLifecycleEnableRequest() ||
+      PluginLifecycleDisableRequest() ||
+      PluginLifecycleRestartRequest() ||
+      PluginLifecycleRefreshRequest() => null,
+    };
+    // Runtime progress is broadcast to every connected surface. Claim
+    // authorship before dispatch because a fast operation can settle during the
+    // request round trip; a definite rejection withdraws it below.
+    if (runtimeOperation != null) {
+      _selfStartedRuntimeOperations[pluginId] = runtimeOperation;
+      _runtimeOperationRequestsInFlight.add(pluginId);
       _publishInstallStates(Map<String, PluginInstallState>.from(_installStates.value)..remove(pluginId));
     }
     final result = await _runMutation(
       request: () => _pluginRepository.command(pluginId: pluginId, request: request),
     );
-    if (!isInstall) return result;
+    if (runtimeOperation == null) return result;
 
-    _installRequestsInFlight.remove(pluginId);
+    _runtimeOperationRequestsInFlight.remove(pluginId);
 
     // A terminal event that raced the response proves the bridge ran this
-    // install, whatever the response ended up saying, so it settles the
-    // install regardless of the result branch below.
-    final pending = _pendingInstallOutcomes.remove(pluginId);
+    // operation, whatever the response ended up saying.
+    final pending = _pendingRuntimeOperationOutcomes.remove(pluginId);
     if (pending != null) {
-      if (_selfStartedInstalls.remove(pluginId)) _reportInstallOutcome(phase: pending);
+      final startedOperation = _selfStartedRuntimeOperations.remove(pluginId);
+      if (startedOperation != null && _runtimeOperationsMatch(started: startedOperation, reported: pending.operation)) {
+        _reportInstallOutcome(operation: startedOperation, phase: pending.phase);
+      }
       _releaseInstallRow(pluginId: pluginId);
       return result;
     }
@@ -198,7 +202,7 @@ class PluginManagementService({
       case PluginManagementMutationResultNotFound() ||
           PluginManagementMutationResultConflict() ||
           PluginManagementMutationResultFailure():
-        _selfStartedInstalls.remove(pluginId);
+        _selfStartedRuntimeOperations.remove(pluginId);
         _releaseInstallRow(pluginId: pluginId);
         return result;
     }
@@ -672,8 +676,13 @@ class PluginManagementService({
       _applyAuthenticationProgress(pluginId: pluginId, progress: progress);
       return;
     }
-    if (event.data case SesoriPluginInstallProgress(:final pluginId, :final phase, :final percent)) {
-      _applyInstallProgress(pluginId: pluginId, phase: phase, percent: percent);
+    if (event.data case SesoriPluginInstallProgress(
+      :final pluginId,
+      :final operation,
+      :final phase,
+      :final percent,
+    )) {
+      _applyInstallProgress(pluginId: pluginId, operation: operation, phase: phase, percent: percent);
       return;
     }
     if (event.data case SesoriPluginManagementChanged(:final snapshotToken)) {
@@ -865,15 +874,18 @@ class PluginManagementService({
 
   void _applyInstallProgress({
     required String pluginId,
+    required PluginRuntimeProvisionKind operation,
     required PluginInstallPhase phase,
     required int? percent,
   }) {
     if (_disposed || _installStates.isClosed) return;
+    final startedOperation = _selfStartedRuntimeOperations[pluginId];
+    if (startedOperation != null && !_runtimeOperationsMatch(started: startedOperation, reported: operation)) return;
     final next = Map<String, PluginInstallState>.from(_installStates.value);
     switch (phase) {
       case PluginInstallPhase.completed || PluginInstallPhase.failed:
         if (phase == PluginInstallPhase.failed) {
-          next[pluginId] = const PluginInstallState.failed();
+          next[pluginId] = PluginInstallState.failed(operation: operation);
         } else {
           next.remove(pluginId);
         }
@@ -882,23 +894,27 @@ class PluginManagementService({
         // started, since every connected surface sees the same event. While
         // this app's own command is still in flight, hold the outcome until
         // acceptance is known instead of dropping or misreporting it.
-        if (_installRequestsInFlight.contains(pluginId)) {
-          _pendingInstallOutcomes[pluginId] = phase;
-        } else if (_selfStartedInstalls.remove(pluginId)) {
-          _reportInstallOutcome(phase: phase);
+        if (startedOperation != null) {
+          if (_runtimeOperationRequestsInFlight.contains(pluginId)) {
+            _pendingRuntimeOperationOutcomes[pluginId] = (phase: phase, operation: operation);
+          } else {
+            _selfStartedRuntimeOperations.remove(pluginId);
+            _reportInstallOutcome(operation: startedOperation, phase: phase);
+          }
         }
       case PluginInstallPhase.downloading ||
           PluginInstallPhase.verifying ||
           PluginInstallPhase.extracting ||
+          PluginInstallPhase.updating ||
           PluginInstallPhase.finalizing:
         next[pluginId] = PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: phase, percent: percent),
+          progress: PluginInstallProgress(operation: operation, phase: phase, percent: percent),
         );
       case PluginInstallPhase.unknown:
         // A newer bridge phase: keep the row in an in-progress state without
         // claiming a phase this app can name.
-        next[pluginId] = const PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+        next[pluginId] = PluginInstallState.inProgress(
+          progress: PluginInstallProgress(operation: operation, phase: PluginInstallPhase.unknown, percent: null),
         );
     }
     _publishInstallStates(next);
@@ -912,31 +928,43 @@ class PluginManagementService({
     _publishInstallStates(Map<String, PluginInstallState>.from(_installStates.value)..remove(pluginId));
   }
 
-  /// Publishes [progress] plus a synthetic entry for every install this app
-  /// started that the bridge has not reported on yet, so the row stays busy for
-  /// the whole window between the tap and the first progress event — which
-  /// spans the command's own round trip and the gap after it.
+  /// Publishes [progress] plus a synthetic entry for every runtime mutation this
+  /// app started but the bridge has not reported on yet.
   void _publishInstallStates(Map<String, PluginInstallState> progress) {
     if (_disposed || _installStates.isClosed) return;
     final next = Map<String, PluginInstallState>.from(progress);
-    for (final pluginId in _selfStartedInstalls) {
+    for (final MapEntry(key: pluginId, value: operation) in _selfStartedRuntimeOperations.entries) {
       next.putIfAbsent(
         pluginId,
-        () => const PluginInstallState.inProgress(
-          progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+        () => PluginInstallState.inProgress(
+          progress: PluginInstallProgress(
+            operation: operation,
+            phase: PluginInstallPhase.unknown,
+            percent: null,
+          ),
         ),
       );
     }
     _installStates.add(Map<String, PluginInstallState>.unmodifiable(next));
   }
 
-  void _reportInstallOutcome({required PluginInstallPhase phase}) {
+  bool _runtimeOperationsMatch({
+    required PluginRuntimeProvisionKind started,
+    required PluginRuntimeProvisionKind reported,
+  }) => reported == started || reported == PluginRuntimeProvisionKind.unknown;
+
+  void _reportInstallOutcome({
+    required PluginRuntimeProvisionKind operation,
+    required PluginInstallPhase phase,
+  }) {
+    if (operation != PluginRuntimeProvisionKind.managedInstall) return;
     final outcome = switch (phase) {
       PluginInstallPhase.completed => AnalyticsHarnessInstallOutcome.completed,
       PluginInstallPhase.failed => AnalyticsHarnessInstallOutcome.failed,
       PluginInstallPhase.downloading ||
       PluginInstallPhase.verifying ||
       PluginInstallPhase.extracting ||
+      PluginInstallPhase.updating ||
       PluginInstallPhase.finalizing ||
       PluginInstallPhase.unknown => null,
     };
@@ -959,9 +987,9 @@ class PluginManagementService({
     // unattributable, so authorship is forgotten with the progress itself. The
     // in-flight set goes too, otherwise a command still awaiting its response
     // would resurrect a busy row on the fresh connection.
-    _selfStartedInstalls.clear();
-    _pendingInstallOutcomes.clear();
-    _installRequestsInFlight.clear();
+    _selfStartedRuntimeOperations.clear();
+    _pendingRuntimeOperationOutcomes.clear();
+    _runtimeOperationRequestsInFlight.clear();
     if (_disposed || _installStates.isClosed || _installStates.value.isEmpty) return;
     _installStates.add(const {});
   }
@@ -1133,12 +1161,16 @@ class PluginManagementService({
         _reconcileAuthenticationAfterRefresh(response: response);
         final installs = Map<String, PluginInstallState>.from(_installStates.value);
         for (final plugin in response.plugins) {
-          final runtimeInstalled =
-              plugin.setup.state == PluginSetupState.ready ||
-              plugin.setup.state == PluginSetupState.authenticationRequired;
-          if (runtimeInstalled && installs[plugin.setup.id] is PluginInstallFailed) {
-            installs.remove(plugin.setup.id);
-          }
+          final failed = installs[plugin.setup.id];
+          if (failed is! PluginInstallFailed) continue;
+          final staleFailure = switch ((failed.operation, plugin.setup.state)) {
+            (_, PluginSetupState.ready || PluginSetupState.authenticationRequired) => true,
+            (PluginRuntimeProvisionKind.managedInstall, PluginSetupState.runtimeOutdated) => true,
+            (PluginRuntimeProvisionKind.globalUpdate, _) => plugin.setup.state != PluginSetupState.runtimeOutdated,
+            (PluginRuntimeProvisionKind.unknown, _) => false,
+            (PluginRuntimeProvisionKind.managedInstall, _) => false,
+          };
+          if (staleFailure) installs.remove(plugin.setup.id);
         }
         if (installs.length != _installStates.value.length) {
           _publishInstallStates(installs);

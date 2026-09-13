@@ -12,6 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         StartAbortSignal;
 
 import "managed_runtime_cleaner.dart";
+import "managed_runtime_path_authority.dart";
 import "runtime_install_service.dart";
 import "runtime_manifest.dart";
 import "runtime_version.dart";
@@ -26,6 +27,10 @@ import "runtime_version.dart";
 /// then sweeps managed versions before reporting the
 /// terminal event (a consumer may unsubscribe on that event).
 ///
+/// Before either sweep or staging begins, PATH authority is revalidated at this
+/// mutation boundary. Managed work proceeds only when the ordinary PATH runtime
+/// is genuinely absent.
+///
 /// The sweep runs in two stages because the plugin may be running from an older
 /// managed version while this install downloads its replacement. Versions below
 /// [RuntimeManifest.minPathVersion] can never be selected, so they go before the
@@ -39,6 +44,7 @@ class ManagedRuntimeInstallService({
   required final RuntimeManifest _manifest,
   required final RuntimeInstallService _installService,
   required final ManagedRuntimeCleaner _cleaner,
+  required final ManagedRuntimePathAuthority _pathAuthority,
   required final RuntimeAssetResolver _assetResolver,
 }) {
   Stream<RuntimeProvisionProgress> install({
@@ -52,6 +58,30 @@ class ManagedRuntimeInstallService({
 
     final String id = _manifest.runtimeId;
     final String name = _manifest.displayName;
+    final bool pathAbsent;
+    try {
+      pathAbsent = await _pathAuthority.isPathAbsent(
+        environment: environment,
+        abortSignal: startAborted,
+      );
+    } on PluginStartAbortedException {
+      rethrow;
+    } on Object catch (error, stackTrace) {
+      Log.w("[$id] could not revalidate PATH authority before managed mutation", error, stackTrace);
+      yield ProvisionFailed(
+        message: "Could not verify whether the global $name runtime is absent. Check the bridge logs and retry.",
+      );
+      return;
+    }
+    if (!pathAbsent) {
+      Log.i("[$id] skipped managed $name mutation because the PATH runtime is authoritative");
+      yield ProvisionFailed(
+        message: "The global $name runtime now takes precedence. Retry setup detection instead.",
+      );
+      return;
+    }
+    _throwIfAborted(startAborted: startAborted);
+
     final RuntimeVersion bundled = _manifest.bundledVersion;
     final String managedDir = p.join(stateDirectory, id);
 

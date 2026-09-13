@@ -1086,7 +1086,11 @@ void main() {
     // continuously, so never settle here.
     installStates.add(const {
       "future-harness": PluginInstallState.inProgress(
-        progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 42),
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.managedInstall,
+          phase: PluginInstallPhase.downloading,
+          percent: 42,
+        ),
       ),
     });
     await tester.pump();
@@ -1095,7 +1099,11 @@ void main() {
 
     installStates.add(const {
       "future-harness": PluginInstallState.inProgress(
-        progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: null),
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.managedInstall,
+          phase: PluginInstallPhase.extracting,
+          percent: null,
+        ),
       ),
     });
     await tester.pump();
@@ -1115,7 +1123,11 @@ void main() {
     // A phase only a newer bridge names still reads as work in progress.
     installStates.add(const {
       "future-harness": PluginInstallState.inProgress(
-        progress: PluginInstallProgress(phase: PluginInstallPhase.unknown, percent: null),
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.managedInstall,
+          phase: PluginInstallPhase.unknown,
+          percent: null,
+        ),
       ),
     });
     await tester.pump();

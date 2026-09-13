@@ -72,6 +72,13 @@ Map<String, dynamic> _$SesoriPluginManagementChangedToJson(
 SesoriPluginInstallProgress _$SesoriPluginInstallProgressFromJson(Map json) =>
     SesoriPluginInstallProgress(
       pluginId: json['pluginId'] as String,
+      operation:
+          $enumDecodeNullable(
+            _$PluginRuntimeProvisionKindEnumMap,
+            json['operation'],
+            unknownValue: PluginRuntimeProvisionKind.unknown,
+          ) ??
+          PluginRuntimeProvisionKind.managedInstall,
       phase: $enumDecode(
         _$PluginInstallPhaseEnumMap,
         json['phase'],
@@ -86,16 +93,24 @@ Map<String, dynamic> _$SesoriPluginInstallProgressToJson(
   SesoriPluginInstallProgress instance,
 ) => <String, dynamic>{
   'pluginId': instance.pluginId,
+  'operation': _$PluginRuntimeProvisionKindEnumMap[instance.operation]!,
   'phase': _$PluginInstallPhaseEnumMap[instance.phase]!,
   'percent': ?instance.percent,
   'message': ?instance.message,
   'type': instance.$type,
 };
 
+const _$PluginRuntimeProvisionKindEnumMap = {
+  PluginRuntimeProvisionKind.managedInstall: 'managedInstall',
+  PluginRuntimeProvisionKind.globalUpdate: 'globalUpdate',
+  PluginRuntimeProvisionKind.unknown: 'unknown',
+};
+
 const _$PluginInstallPhaseEnumMap = {
   PluginInstallPhase.downloading: 'downloading',
   PluginInstallPhase.verifying: 'verifying',
   PluginInstallPhase.extracting: 'extracting',
+  PluginInstallPhase.updating: 'updating',
   PluginInstallPhase.finalizing: 'finalizing',
   PluginInstallPhase.completed: 'completed',
   PluginInstallPhase.failed: 'failed',

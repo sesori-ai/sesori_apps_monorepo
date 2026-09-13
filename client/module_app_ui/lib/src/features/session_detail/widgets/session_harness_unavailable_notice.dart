@@ -25,6 +25,7 @@ class const SessionHarnessUnavailableNotice({
         harnessName,
       ),
       SessionInteractionBlockedReason.runtimeMissing => loc.sessionDetailHarnessRuntimeMissingReason(harnessName),
+      SessionInteractionBlockedReason.runtimeOutdated => loc.sessionDetailHarnessRuntimeOutdatedReason(harnessName),
       SessionInteractionBlockedReason.stopping => loc.sessionDetailHarnessStoppingReason(harnessName),
       SessionInteractionBlockedReason.notInspected => loc.sessionDetailHarnessNotInspectedReason(harnessName),
       SessionInteractionBlockedReason.unknownStatus => loc.sessionDetailHarnessUnknownReason(harnessName),

@@ -60,6 +60,7 @@ final class const ClaudePluginDescriptor({
 
   /// Latest stable Claude Code release validated against this plugin.
   static const String targetVersion = "2.1.269";
+  static const HostExecutableLocator _executableLocator = IoHostExecutableLocator(platformIsWindows: null);
 
   static final Random _secureRandom = Random.secure();
 
@@ -103,6 +104,22 @@ final class const ClaudePluginDescriptor({
   List<PluginOption> get options => cliOptions;
 
   @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
+    ...super.managementCapabilities(config: config),
+    if (_binary(config) == defaultBinary) PluginControlCapability.runtimeUpdate,
+  };
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_binary(config) != defaultBinary) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: defaultBinary,
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
+  }
+
+  @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,
     required HostProcessService processes,
@@ -124,16 +141,30 @@ final class const ClaudePluginDescriptor({
         environment: environment,
         timeout: _probeTimeout,
       );
-    } on io.ProcessException {
-      return const PluginSetupRuntimeMissing(
-        actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
+    } on io.ProcessException catch (error, stackTrace) {
+      if (_isMissingProcessError(error: error) &&
+          _pathExecutableIsAbsent(executable: executable, environment: environment)) {
+        return const PluginSetupRuntimeMissing(
+          actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
+        );
+      }
+      Log.w("[claude] version probe could not launch '$executable --version'", error, stackTrace);
+      return const PluginSetupUnknown(
+        actionHint: "Claude Code could not be launched. Verify the local installation and retry.",
       );
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Log.w("[claude] version probe failed for '$executable --version'", error, stackTrace);
       return const PluginSetupUnknown(
         actionHint: "Claude Code did not answer its version check. Verify the local installation and retry.",
       );
     }
     if (versionResult.exitCode != 0) {
+      if (_pathExecutableIsAbsent(executable: executable, environment: environment)) {
+        return const PluginSetupRuntimeMissing(
+          actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
+        );
+      }
+      Log.w("[claude] version probe '$executable --version' exited ${versionResult.exitCode}", versionResult);
       return const PluginSetupUnknown(
         actionHint: "Claude Code did not answer its version check. Verify the local installation and retry.",
       );
@@ -146,8 +177,14 @@ final class const ClaudePluginDescriptor({
     }
     final minimum = SemanticVersion.parse(value: minVersion);
     if (version.compareTo(minimum) < 0) {
+      if (executable == defaultBinary) {
+        return PluginSetupRuntimeOutdated(
+          actionHint: "Update the global Claude Code installation to $minVersion or newer.",
+          runtimeVersion: version.toString(),
+        );
+      }
       return const PluginSetupUnavailable(
-        actionHint: "Update Claude Code to a supported version, then retry setup detection.",
+        actionHint: "Update the configured Claude Code binary, then restart the bridge.",
       );
     }
     final runtimeVersion = version.toString();
@@ -264,6 +301,20 @@ final class const ClaudePluginDescriptor({
     final configured = config.value(binOption)?.trim();
     return configured == null || configured.isEmpty ? defaultBinary : configured;
   }
+
+  bool _isMissingProcessError({required io.ProcessException error}) =>
+      error.errorCode == 2 || (_executableLocator.isWindows && error.errorCode == 3);
+
+  bool _pathExecutableIsAbsent({
+    required String executable,
+    required Map<String, String> environment,
+  }) =>
+      _executableLocator.locate(
+        executable: executable,
+        environment: environment,
+        workingDirectory: null,
+      ) ==
+      HostExecutablePresence.absent;
 
   static SemanticVersion? _parseVersion(String output) {
     final match = RegExp(r"(?:^|\s)(\d+\.\d+\.\d+)(?:\s|$)").firstMatch(output);

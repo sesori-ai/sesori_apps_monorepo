@@ -16,6 +16,7 @@ import "../repositories/mappers/antigravity_authorization_mapper.dart";
 import "../repositories/mappers/antigravity_stderr_mapper.dart";
 import "../services/antigravity_authentication_service.dart";
 import "../services/antigravity_profile_service.dart";
+import "../services/antigravity_runtime_path_authority_calculator.dart";
 import "../services/antigravity_runtime_service.dart";
 import "../storage/antigravity_profile_storage.dart";
 import "../storage/antigravity_runtime_storage.dart";
@@ -42,6 +43,12 @@ class const AntigravityAuthenticationComposer() {
     final acpApi = AntigravityAcpApi(
       processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
       stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
+      commands: HostProcessCommandExecutor(
+        processes: processes,
+        runInShell: false,
+        includeParentEnvironment: false,
+        maxCapturedOutputCharactersPerStream: 4096,
+      ),
     );
     final profile = AntigravityProfileService(
       repository: AntigravityProfileRepository(
@@ -67,6 +74,7 @@ class const AntigravityAuthenticationComposer() {
         acpApi: acpApi,
         launchSpecBuilder: launchSpecBuilder,
       ),
+      pathAuthorityCalculator: const AntigravityRuntimePathAuthorityCalculator(),
     );
     final authentication = AntigravityAuthenticationService(
       repository: AntigravityAuthenticationRepository(

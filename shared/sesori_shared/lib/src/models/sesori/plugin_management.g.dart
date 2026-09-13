@@ -87,6 +87,7 @@ const _$PluginManagementCapabilityEnumMap = {
   PluginManagementCapability.setupRefresh: 'setupRefresh',
   PluginManagementCapability.idleTimeout: 'idleTimeout',
   PluginManagementCapability.install: 'install',
+  PluginManagementCapability.runtimeUpdate: 'runtimeUpdate',
   PluginManagementCapability.authentication: 'authentication',
   PluginManagementCapability.unknown: 'unknown',
 };
@@ -257,6 +258,14 @@ PluginLifecycleInstallRequest _$PluginLifecycleInstallRequestFromJson(
 
 Map<String, dynamic> _$PluginLifecycleInstallRequestToJson(
   PluginLifecycleInstallRequest instance,
+) => <String, dynamic>{'type': instance.$type};
+
+PluginLifecycleUpdateRuntimeRequest
+_$PluginLifecycleUpdateRuntimeRequestFromJson(Map json) =>
+    PluginLifecycleUpdateRuntimeRequest($type: json['type'] as String?);
+
+Map<String, dynamic> _$PluginLifecycleUpdateRuntimeRequestToJson(
+  PluginLifecycleUpdateRuntimeRequest instance,
 ) => <String, dynamic>{'type': instance.$type};
 
 PluginIdleTimeoutApplyAllRequest _$PluginIdleTimeoutApplyAllRequestFromJson(

@@ -59,7 +59,7 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
-    test("reports missing when PATH and the existing managed runtime are unusable", () async {
+    test("a failed PATH shim blocks managed fallback as unknown", () async {
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           _ProbeProcess(
@@ -78,8 +78,9 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result, isA<PluginSetupUnknown>());
       expect(result.actionHint, isNot(contains("broken PATH shim output")));
+      expect(processes.spawnedExecutables, ["opencode"]);
     });
 
     test("recognizes a previously installed managed runtime when PATH is missing", () async {
@@ -137,10 +138,7 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
-    test("a too-old default runtime stays in an installable state with the install capability", () async {
-      // Pins the phone gate invariant: while the install capability is
-      // advertised (default binary), a too-old runtime maps to runtimeMissing
-      // (installable), never to unavailable.
+    test("a too-old PATH runtime reports update required without managed fallback", () async {
       final processes = _ProbeProcessService(
         spawnOutcomes: [
           _ProbeProcess(
@@ -160,11 +158,13 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.0.1");
       expect(
         descriptor.managementCapabilities(config: automaticConfig),
-        contains(PluginControlCapability.install),
+        contains(PluginControlCapability.runtimeUpdate),
       );
+      expect(processes.spawnedExecutables, ["opencode"]);
     });
 
     test("a too-old explicit binary is unavailable and never advertises install", () async {

@@ -189,6 +189,40 @@ void main() {
     expect(find.text("Stopping"), findsOneWidget);
   });
 
+  testWidgets("disabled harness stays in the disabled group during a global update", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _plugin(id: "disabled", runtime: PluginRuntimeState.disabled, setup: PluginSetupState.runtimeOutdated),
+        _ready,
+      ],
+    );
+    installs.add({
+      "disabled": const PluginInstallState.inProgress(
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.globalUpdate,
+          phase: PluginInstallPhase.updating,
+          percent: null,
+        ),
+      ),
+    });
+    await tester.pumpWidget(app());
+    await tester.pumpAndSettle();
+
+    final ids = tester
+        .widgetList<PregoGroupedRow>(find.byType(PregoGroupedRow))
+        .map((row) => row.key)
+        .whereType<Key>()
+        .toList();
+    expect(ids, [
+      const Key("harnesses_card_ready"),
+      const Key("harnesses_card_disabled"),
+      const Key("harness_management_default_timeout"),
+    ]);
+    expect(find.text("Needs attention"), findsNothing);
+    expect(find.text("Disabled"), findsOneWidget);
+  });
+
   testWidgets("a harness changing group animates out of the old section instead of jumping", (tester) async {
     phone(tester: tester);
     publish(plugins: [_ready]);
@@ -724,12 +758,127 @@ void main() {
     expect(tester.getSemantics(find.bySemanticsLabel("Ready harness enabled")).rect.height, 44);
   });
 
+  testWidgets("outdated PATH detail runs the global updater and keeps operation-specific progress", (tester) async {
+    phone(tester: tester);
+    final outdated =
+        _plugin(
+          id: "outdated",
+          runtime: PluginRuntimeState.blocked,
+          setup: PluginSetupState.runtimeOutdated,
+        ).copyWith(
+          setup: _ready.setup.copyWith(
+            id: "outdated",
+            displayName: "Outdated harness",
+            state: PluginSetupState.runtimeOutdated,
+            runtimeVersion: "1.0.0",
+            actionHint: "Update the global installation.",
+          ),
+          managementCapabilities: const {
+            PluginManagementCapability.lifecycle,
+            PluginManagementCapability.setupRefresh,
+            PluginManagementCapability.runtimeUpdate,
+          },
+        );
+    publish(plugins: [outdated]);
+    await tester.pumpWidget(app(detailId: "outdated"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Update required"), findsOneWidget);
+    expect(find.text("Update Outdated harness"), findsOneWidget);
+    expect(find.text("Update the global installation."), findsOneWidget);
+    expect(find.byKey(const Key("harness_management_install_outdated")), findsNothing);
+    final update = find.byKey(const Key("harness_management_update_outdated"));
+    await tester.ensureVisible(update);
+    await tester.tap(update);
+    await tester.pump();
+    verify(
+      () => service.command(
+        pluginId: "outdated",
+        request: const PluginLifecycleCommandRequest.updateRuntime(),
+      ),
+    ).called(1);
+
+    installs.add(const {
+      "outdated": PluginInstallState.inProgress(
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.globalUpdate,
+          phase: PluginInstallPhase.finalizing,
+          percent: null,
+        ),
+      ),
+    });
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    expect(
+      (cubit.state as PluginManagementReady).installs["outdated"],
+      const PluginInstallState.inProgress(
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.globalUpdate,
+          phase: PluginInstallPhase.finalizing,
+          percent: null,
+        ),
+      ),
+    );
+    expect(find.text("Checking the updated harness…"), findsOneWidget);
+    expect(find.textContaining("Downloading"), findsNothing);
+
+    installs.add(const {
+      "outdated": PluginInstallState.failed(operation: PluginRuntimeProvisionKind.globalUpdate),
+    });
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pump();
+    expect(find.text("Update failed"), findsWidgets);
+    expect(find.text("Retry update"), findsOneWidget);
+  });
+
+  testWidgets("unknown runtime operation stays generic and offers no incorrect retry", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _plugin(id: "future", runtime: PluginRuntimeState.blocked, setup: PluginSetupState.runtimeOutdated).copyWith(
+          managementCapabilities: {
+            PluginManagementCapability.lifecycle,
+            PluginManagementCapability.runtimeUpdate,
+          },
+        ),
+      ],
+    );
+    installs.add(const {
+      "future": PluginInstallState.inProgress(
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.unknown,
+          phase: PluginInstallPhase.unknown,
+          percent: null,
+        ),
+      ),
+    });
+    await tester.pumpWidget(app(detailId: "future"));
+    await tester.pump();
+
+    expect(find.text("Runtime change"), findsOneWidget);
+    expect(find.text("Changing future runtime"), findsOneWidget);
+    expect(find.text("A newer Sesori bridge is changing this harness runtime…"), findsOneWidget);
+    expect(find.textContaining("Install"), findsNothing);
+
+    installs.add(const {
+      "future": PluginInstallState.failed(operation: PluginRuntimeProvisionKind.unknown),
+    });
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Runtime change failed"), findsOneWidget);
+    expect(find.text("Use the latest Sesori version to inspect or retry this runtime change."), findsOneWidget);
+    expect(find.byType(PregoButtonsSolid), findsNothing);
+  });
+
   testWidgets("failed detail retains truthful unavailable status and offers a functional retry", (tester) async {
     phone(tester: tester);
     publish(
       plugins: [_plugin(id: "unavailable", runtime: PluginRuntimeState.blocked, setup: PluginSetupState.unavailable)],
     );
-    installs.add(const {"unavailable": PluginInstallState.failed()});
+    installs.add(const {
+      "unavailable": PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall),
+    });
     await tester.pumpWidget(app(detailId: "unavailable"));
     await tester.pumpAndSettle();
     expect(find.text("Unavailable"), findsOneWidget);
@@ -775,7 +924,7 @@ void main() {
     publish(
       plugins: [_plugin(id: "missing", runtime: PluginRuntimeState.disabled, setup: PluginSetupState.runtimeMissing)],
     );
-    installs.add(const {"missing": PluginInstallState.failed()});
+    installs.add(const {"missing": PluginInstallState.failed(operation: PluginRuntimeProvisionKind.managedInstall)});
     await tester.pumpWidget(app(detailId: "missing"));
     await tester.pumpAndSettle();
     expect(find.text("Not installed"), findsOneWidget);
@@ -792,7 +941,11 @@ void main() {
     );
     installs.add(const {
       "missing": PluginInstallState.inProgress(
-        progress: PluginInstallProgress(phase: PluginInstallPhase.downloading, percent: 40),
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.managedInstall,
+          phase: PluginInstallPhase.downloading,
+          percent: 40,
+        ),
       ),
     });
     await tester.pumpWidget(app(detailId: "missing"));
@@ -804,7 +957,11 @@ void main() {
     expect(find.byType(PregoButtonsSolid), findsNothing);
     installs.add(const {
       "missing": PluginInstallState.inProgress(
-        progress: PluginInstallProgress(phase: PluginInstallPhase.extracting, percent: 40),
+        progress: PluginInstallProgress(
+          operation: PluginRuntimeProvisionKind.managedInstall,
+          phase: PluginInstallPhase.extracting,
+          percent: 40,
+        ),
       ),
     });
     await tester.runAsync(() => Future<void>.delayed(Duration.zero));

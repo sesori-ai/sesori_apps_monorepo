@@ -48,7 +48,6 @@ final class const ManagedRuntimePathSelected({
 final class const ManagedRuntimeFallbackSelected({
   @override required final String binaryPath,
   @override required final RuntimeVersion version,
-  required final RuntimeVersion? rejectedPathVersion,
 }) extends ManagedRuntimeSelected {
   @override
   ManagedRuntimeSource get source => ManagedRuntimeSource.fallback;
@@ -57,7 +56,6 @@ final class const ManagedRuntimeFallbackSelected({
 final class const ManagedRuntimeManagedSelected({
   @override required final String binaryPath,
   @override required final RuntimeVersion version,
-  required final RuntimeVersion? rejectedPathVersion,
 }) extends ManagedRuntimeSelected {
   @override
   ManagedRuntimeSource get source => ManagedRuntimeSource.managed;
@@ -68,6 +66,14 @@ sealed class const ManagedRuntimeNotSelected() extends ManagedRuntimeSelection {
 }
 
 final class const ManagedRuntimeExplicitNotSelected({
+  @override required final ManagedRuntimeRejection primaryRejection,
+}) extends ManagedRuntimeNotSelected;
+
+/// The ordinary PATH command exists but cannot safely run this plugin.
+///
+/// Its presence is authoritative: selection must not inspect or run any
+/// Sesori-managed or app-bundled alternative.
+final class const ManagedRuntimePathNotSelected({
   @override required final ManagedRuntimeRejection primaryRejection,
 }) extends ManagedRuntimeNotSelected;
 
@@ -116,15 +122,18 @@ class ManagedRuntimeSelectionService({
       environment: environment,
       abortSignal: abortSignal,
     );
-    final pathVersion = switch (pathProbe) {
-      RuntimeProbeReady(:final version) => version,
-      RuntimeProbeFailure() => null,
-    };
-    if (pathVersion != null && pathVersion.compareTo(_manifest.minPathVersion) >= 0) {
-      return ManagedRuntimePathSelected(
-        binaryPath: _manifest.pathExecutableName,
-        version: pathVersion,
-      );
+    switch (pathProbe) {
+      case RuntimeProbeReady(:final version) when version.compareTo(_manifest.minPathVersion) >= 0:
+        return ManagedRuntimePathSelected(
+          binaryPath: _manifest.pathExecutableName,
+          version: version,
+        );
+      case RuntimeProbeReady():
+        return ManagedRuntimePathNotSelected(primaryRejection: _rejectionFor(probe: pathProbe));
+      case RuntimeProbeMissing():
+        break;
+      case RuntimeProbeFailure():
+        return ManagedRuntimePathNotSelected(primaryRejection: _rejectionFor(probe: pathProbe));
     }
     final pathRejection = _rejectionFor(probe: pathProbe);
 
@@ -139,7 +148,6 @@ class ManagedRuntimeSelectionService({
         return ManagedRuntimeFallbackSelected(
           binaryPath: candidate,
           version: version,
-          rejectedPathVersion: pathVersion,
         );
       }
       final rejection = _rejectionFor(probe: probe);
@@ -164,7 +172,6 @@ class ManagedRuntimeSelectionService({
       return ManagedRuntimeManagedSelected(
         binaryPath: pinnedPath,
         version: version,
-        rejectedPathVersion: pathVersion,
       );
     }
     final pinnedRejection = _rejectionFor(probe: pinnedProbe);
@@ -181,7 +188,6 @@ class ManagedRuntimeSelectionService({
         return ManagedRuntimeManagedSelected(
           binaryPath: candidatePath,
           version: version,
-          rejectedPathVersion: pathVersion,
         );
       }
       final rejection = _rejectionFor(probe: probe);

@@ -107,8 +107,10 @@ class const _HarnessControlCard({
     final enabled = plugin.runtimeState.isEnabled;
     final showOperational = setupReady && enabled;
     final showWork = showOperational && plugin.workState != PluginManagementWorkState.unknown;
-    // The advertised capability is authoritative; unavailable does not imply an update.
+    // Advertised capabilities are authoritative. Only the explicit outdated
+    // state exposes global update; unavailable does not imply one.
     final showInstall = _canInstall(plugin: plugin);
+    final showRuntimeUpdate = _canUpdateRuntime(plugin: plugin);
     final showRestart = showOperational && supportsLifecycle;
     final showScan = plugin.runtimeState.isRoutable;
     // A rejection replaces the row's description until the user starts another
@@ -244,7 +246,7 @@ class const _HarnessControlCard({
                         : () => context.read<PluginManagementCubit>().startAuthentication(pluginId: pluginId),
                   ),
 
-                if (showInstall || install != null)
+                if (showInstall || showRuntimeUpdate || install != null)
                   _HarnessInstallation(plugin: plugin, install: install, blocked: blocked),
               ],
             ),
@@ -339,16 +341,45 @@ class const _HarnessInstallation({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final install = this.install;
+    final operation = switch (install) {
+      PluginInstallInProgress(:final progress) => progress.operation,
+      PluginInstallFailed(:final operation) => operation,
+      null when _canUpdateRuntime(plugin: plugin) => PluginRuntimeProvisionKind.globalUpdate,
+      null => PluginRuntimeProvisionKind.managedInstall,
+    };
+    final isUpdate = operation == PluginRuntimeProvisionKind.globalUpdate;
+    final canStart = switch (operation) {
+      PluginRuntimeProvisionKind.managedInstall => _canInstall(plugin: plugin),
+      PluginRuntimeProvisionKind.globalUpdate => _canUpdateRuntime(plugin: plugin),
+      PluginRuntimeProvisionKind.unknown => false,
+    };
     return Padding(
       padding: const EdgeInsets.all(PregoSpacing.xl),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          Text(switch (install) {
-            PluginInstallInProgress() => loc.harnessesInstallingTitle(plugin.setup.displayName),
-            PluginInstallFailed() => loc.harnessesInstallationFailed,
-            null => loc.harnessesInstallTitle(plugin.setup.displayName),
-          }, style: context.prego.textTheme.textMd.medium.copyWith(color: context.prego.colors.textPrimary)),
+          Text(
+            switch ((install, operation)) {
+              (PluginInstallInProgress(), PluginRuntimeProvisionKind.managedInstall) => loc.harnessesInstallingTitle(
+                plugin.setup.displayName,
+              ),
+              (PluginInstallInProgress(), PluginRuntimeProvisionKind.globalUpdate) => loc.harnessesUpdatingLabel(
+                plugin.setup.displayName,
+              ),
+              (PluginInstallInProgress(), PluginRuntimeProvisionKind.unknown) => loc.harnessesRuntimeOperationTitle(
+                plugin.setup.displayName,
+              ),
+              (PluginInstallFailed(), PluginRuntimeProvisionKind.managedInstall) => loc.harnessesInstallationFailed,
+              (PluginInstallFailed(), PluginRuntimeProvisionKind.globalUpdate) => loc.harnessesUpdateFailed,
+              (PluginInstallFailed(), PluginRuntimeProvisionKind.unknown) => loc.harnessesRuntimeOperationFailed,
+              (null, PluginRuntimeProvisionKind.managedInstall) => loc.harnessesInstallTitle(plugin.setup.displayName),
+              (null, PluginRuntimeProvisionKind.globalUpdate) => loc.harnessesUpdateTitle(plugin.setup.displayName),
+              (null, PluginRuntimeProvisionKind.unknown) => loc.harnessesRuntimeOperationTitle(
+                plugin.setup.displayName,
+              ),
+            },
+            style: context.prego.textTheme.textMd.medium.copyWith(color: context.prego.colors.textPrimary),
+          ),
           const SizedBox(height: PregoSpacing.md),
           if (install case PluginInstallInProgress(:final progress)) ...[
             Text(
@@ -365,23 +396,37 @@ class const _HarnessInstallation({
             ),
           ] else ...[
             Text(
-              install is PluginInstallFailed
-                  ? loc.harnessesInstallationFailedDescription
-                  : loc.harnessesInstallDescription,
+              switch ((install is PluginInstallFailed, operation)) {
+                (true, PluginRuntimeProvisionKind.managedInstall) => loc.harnessesInstallationFailedDescription,
+                (true, PluginRuntimeProvisionKind.globalUpdate) => loc.harnessesUpdateFailedDescription,
+                (true, PluginRuntimeProvisionKind.unknown) => loc.harnessesRuntimeOperationFailedDescription,
+                (false, PluginRuntimeProvisionKind.managedInstall) => loc.harnessesInstallDescription,
+                (false, PluginRuntimeProvisionKind.globalUpdate) => loc.harnessesUpdateDescription,
+                (false, PluginRuntimeProvisionKind.unknown) => loc.harnessesRuntimeOperationInProgress,
+              },
               style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
             ),
-            if (_canInstall(plugin: plugin)) ...[
+            if (canStart) ...[
               const SizedBox(height: PregoSpacing.xl),
               PregoButtonsSolid(
-                key: Key("harness_management_install_${plugin.setup.id}"),
-                label: install is PluginInstallFailed
-                    ? loc.harnessesRestartInstallation
-                    : loc.harnessesStartInstallation,
+                key: Key(
+                  isUpdate
+                      ? "harness_management_update_${plugin.setup.id}"
+                      : "harness_management_install_${plugin.setup.id}",
+                ),
+                label: switch ((install is PluginInstallFailed, isUpdate)) {
+                  (true, true) => loc.harnessesRetryUpdate,
+                  (true, false) => loc.harnessesRestartInstallation,
+                  (false, true) => loc.harnessesStartUpdate,
+                  (false, false) => loc.harnessesStartInstallation,
+                },
                 hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
                 size: PregoButtonsSolidSize.lg,
                 fullWidth: true,
                 onPressed: blocked
                     ? null
+                    : isUpdate
+                    ? () => context.read<PluginManagementCubit>().updateRuntime(pluginId: plugin.setup.id)
                     : () => context.read<PluginManagementCubit>().install(pluginId: plugin.setup.id),
               ),
             ],

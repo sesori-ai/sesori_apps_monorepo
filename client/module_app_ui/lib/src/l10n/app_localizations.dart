@@ -1255,6 +1255,12 @@ abstract class AppLocalizations {
   /// **'Runtime missing'**
   String get harnessesSetupRuntimeMissing;
 
+  /// No description provided for @harnessesSetupRuntimeOutdated.
+  ///
+  /// In en, this message translates to:
+  /// **'Update required'**
+  String get harnessesSetupRuntimeOutdated;
+
   /// No description provided for @harnessesSetupAuthenticationRequired.
   ///
   /// In en, this message translates to:
@@ -3109,6 +3115,12 @@ abstract class AppLocalizations {
   /// **'{harnessName} is not installed or cannot be used.'**
   String sessionDetailHarnessRuntimeMissingReason(String harnessName);
 
+  /// No description provided for @sessionDetailHarnessRuntimeOutdatedReason.
+  ///
+  /// In en, this message translates to:
+  /// **'{harnessName} must be updated before this session can continue.'**
+  String sessionDetailHarnessRuntimeOutdatedReason(String harnessName);
+
   /// No description provided for @sessionDetailHarnessUnavailableReason.
   ///
   /// In en, this message translates to:
@@ -3925,6 +3937,42 @@ abstract class AppLocalizations {
   /// **'Installing'**
   String get harnessesInstallingStatus;
 
+  /// No description provided for @harnessesUpdatingRuntimeStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Updating'**
+  String get harnessesUpdatingRuntimeStatus;
+
+  /// No description provided for @harnessesRuntimeOperationStatus.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime change'**
+  String get harnessesRuntimeOperationStatus;
+
+  /// No description provided for @harnessesRuntimeOperationTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Changing {name} runtime'**
+  String harnessesRuntimeOperationTitle(String name);
+
+  /// No description provided for @harnessesRuntimeOperationInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'A newer Sesori bridge is changing this harness runtime…'**
+  String get harnessesRuntimeOperationInProgress;
+
+  /// No description provided for @harnessesRuntimeOperationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Runtime change failed'**
+  String get harnessesRuntimeOperationFailed;
+
+  /// No description provided for @harnessesRuntimeOperationFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the latest Sesori version to inspect or retry this runtime change.'**
+  String get harnessesRuntimeOperationFailedDescription;
+
   /// No description provided for @harnessesInstallTitle.
   ///
   /// In en, this message translates to:
@@ -3966,6 +4014,54 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start the installation again when you’re ready.'**
   String get harnessesInstallationFailedDescription;
+
+  /// No description provided for @harnessesUpdateTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Update {name}'**
+  String harnessesUpdateTitle(String name);
+
+  /// No description provided for @harnessesUpdateDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the harness installed globally on your connected computer. Sesori runs the harness’s built-in updater.'**
+  String get harnessesUpdateDescription;
+
+  /// No description provided for @harnessesStartUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Update harness'**
+  String get harnessesStartUpdate;
+
+  /// No description provided for @harnessesRetryUpdate.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry update'**
+  String get harnessesRetryUpdate;
+
+  /// No description provided for @harnessesUpdateFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Update failed'**
+  String get harnessesUpdateFailed;
+
+  /// No description provided for @harnessesUpdateFailedDescription.
+  ///
+  /// In en, this message translates to:
+  /// **'Retry the update or use the harness’s installation method on the connected computer.'**
+  String get harnessesUpdateFailedDescription;
+
+  /// No description provided for @harnessesUpdateInProgress.
+  ///
+  /// In en, this message translates to:
+  /// **'Running the harness updater on your connected computer…'**
+  String get harnessesUpdateInProgress;
+
+  /// No description provided for @harnessesUpdateFinalizing.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking the updated harness…'**
+  String get harnessesUpdateFinalizing;
 
   /// No description provided for @harnessesEnabledLabel.
   ///

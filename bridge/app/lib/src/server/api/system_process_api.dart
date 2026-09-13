@@ -42,11 +42,29 @@ class SystemProcessApi({
     deliveredSignal: _isWindows ? .sigkill : .sigterm,
   );
 
-  Future<SignalResult> sendForceSignal({required int pid}) => _sendSignal(
-    pid: pid,
-    requestedSignal: .force,
-    deliveredSignal: .sigkill,
-  );
+  Future<SignalResult> sendForceSignal({required int pid}) async {
+    final attemptedAt = _clock.now();
+    if (!_isWindows) {
+      return await _sendSignal(pid: pid, requestedSignal: .force, deliveredSignal: .sigkill);
+    }
+    if (pid <= 0) {
+      return SignalResult(
+        pid: pid,
+        requestedSignal: .force,
+        deliveredSignal: .sigkill,
+        wasRequested: false,
+        attemptedAt: attemptedAt,
+      );
+    }
+    final result = await _processRunner.run("taskkill", ["/PID", "$pid", "/T", "/F"]);
+    return SignalResult(
+      pid: pid,
+      requestedSignal: .force,
+      deliveredSignal: .sigkill,
+      wasRequested: result.exitCode == 0,
+      attemptedAt: attemptedAt,
+    );
+  }
 
   Future<SignalResult> _sendSignal({
     required int pid,

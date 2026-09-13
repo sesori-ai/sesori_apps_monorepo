@@ -37,36 +37,56 @@ void main() {
       Directory(p.join(stateDir.path, const OpenCodeRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("declines without a superseded managed runtime", () async {
       installedVersion(const OpenCodeRuntimeManifest().bundledVersion.raw);
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
-    });
-
-    test("asks for an upgrade when a superseded version is installed", () {
-      installedVersion("1.17.9");
-
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
-    });
-
-    test("declines with an explicit binary override", () {
-      installedVersion("1.17.9");
-
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: config,
+          processes: const _MissingHostProcessService(),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isFalse,
       );
     });
 
-    test("declines in attach mode, where Sesori does not own the runtime", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("1.17.9");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: config,
+          processes: const _MissingHostProcessService(),
+          environment: const {},
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () async {
+      installedVersion("1.17.9");
+
+      expect(
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
+          processes: const _MissingHostProcessService(),
+          environment: const {},
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
+    });
+
+    test("declines in attach mode, where Sesori does not own the runtime", () async {
+      installedVersion("1.17.9");
+
+      expect(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {"no-auto-start": true, "bin": null}),
+          processes: const _MissingHostProcessService(),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -140,8 +160,14 @@ void main() {
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
           PluginControlCapability.install,
+          PluginControlCapability.runtimeUpdate,
         },
       );
+      final update = descriptor.runtimeUpdateSpec(
+        config: const PluginConfig(values: {"no-auto-start": false, "bin": null}),
+      );
+      expect(update?.executable, "opencode");
+      expect(update?.arguments, const ["upgrade"]);
     });
 
     test("does not advertise install with an explicit binary override", () {
@@ -154,6 +180,12 @@ void main() {
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
         },
+      );
+      expect(
+        descriptor.runtimeUpdateSpec(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/usr/local/bin/opencode"}),
+        ),
+        isNull,
       );
     });
 
@@ -1143,6 +1175,23 @@ class _FakePortService() implements HostPortService {
 
   @override
   Future<bool> isBindable({required String host, required int port}) async => byPort[port] ?? defaultBindable;
+}
+
+class const _MissingHostProcessService() implements HostProcessService {
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) {
+    throw ProcessException(executable, arguments, "missing", 2);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeHostProcessService() implements HostProcessService {

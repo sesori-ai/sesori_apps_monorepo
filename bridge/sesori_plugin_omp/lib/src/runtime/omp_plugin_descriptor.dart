@@ -111,19 +111,39 @@ final class const OmpPluginDescriptor({
 
   @override
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return super.managementCapabilities(config: config);
-    if (_supportsManagedInstall()) {
-      return {...super.managementCapabilities(config: config), PluginControlCapability.install};
-    }
-    return super.managementCapabilities(config: config);
+    final explicitBin = _explicitBin(config);
+    return {
+      ...super.managementCapabilities(config: config),
+      if (explicitBin == null && _supportsManagedInstall()) PluginControlCapability.install,
+      if (explicitBin == null) PluginControlCapability.runtimeUpdate,
+    };
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "omp",
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
+  }
+
+  @override
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: OmpRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = OmpRuntimeManifest();
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -159,13 +179,18 @@ final class const OmpPluginDescriptor({
       commandExecutor: commandExecutor,
       probeTimeout: _versionProbeTimeout,
     );
+    final versionValidator = _versionValidator(processes: processes);
     final httpClient = http.Client();
     try {
       final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        candidateValidator: _versionValidator(processes: processes),
+        candidateValidator: versionValidator,
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: versionValidator,
+        ),
         assetResolver: runtimeAssetService.resolve,
       );
       yield* service.install(
@@ -209,6 +234,18 @@ final class const OmpPluginDescriptor({
       );
     }
     final notSelected = selection as ManagedRuntimeNotSelected;
+    if (notSelected is ManagedRuntimePathNotSelected) {
+      return switch (notSelected.primaryRejection) {
+        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+          actionHint: "Update the global Oh My Pi installation to ${manifest.minPathVersion.raw} or newer.",
+          runtimeVersion: version.raw,
+        ),
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+          actionHint:
+              "The global Oh My Pi installation could not be verified. Check it locally and retry setup detection.",
+        ),
+      };
+    }
     if (explicitBin != null) {
       return switch (notSelected.primaryRejection) {
         ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
@@ -319,6 +356,7 @@ final class const OmpPluginDescriptor({
     ),
     manifest: const OmpRuntimeManifest(),
     probeTimeout: _versionProbeTimeout,
+    executableLocator: const IoHostExecutableLocator(platformIsWindows: null),
   );
 
   @override

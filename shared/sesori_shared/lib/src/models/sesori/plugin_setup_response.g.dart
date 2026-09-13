@@ -33,6 +33,7 @@ const _$PluginSetupStateEnumMap = {
   PluginSetupState.notInspected: 'notInspected',
   PluginSetupState.ready: 'ready',
   PluginSetupState.runtimeMissing: 'runtimeMissing',
+  PluginSetupState.runtimeOutdated: 'runtimeOutdated',
   PluginSetupState.authenticationRequired: 'authenticationRequired',
   PluginSetupState.unavailable: 'unavailable',
   PluginSetupState.unknown: 'unknown',

@@ -1,17 +1,38 @@
 import "dart:async";
 
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../foundation/antigravity_authentication_budget.dart";
 import "../foundation/antigravity_release.dart";
 import "models/antigravity_initialize_dto.dart";
+import "models/antigravity_version_dto.dart";
 
-/// Layer-1 ACP process boundary used by unauthenticated runtime probes.
+/// Layer-1 process boundary for the official Antigravity server.
 class AntigravityAcpApi({
   required final AcpProcessFactory _processFactory,
   required final AcpOutputInterceptor _stderrInterceptor,
+  required final CommandExecutor _commands,
 }) {
+  /// Reads the official build label without starting ACP or initializing state.
+  Future<AntigravityVersionDto> version({
+    required String serverPath,
+    required Map<String, String> environment,
+    required Duration timeout,
+  }) async {
+    final command = await _commands.run(
+      serverPath,
+      const ["--version"],
+      environment: environment,
+      timeout: timeout,
+    );
+    return AntigravityVersionDto(
+      command: command,
+      buildLabel: _parseBuildLabel(output: command.stdout),
+    );
+  }
+
   Future<AntigravityInitializeDto> initializeOnly({
     required AcpLaunchSpec launchSpec,
     required Duration timeout,
@@ -115,6 +136,18 @@ class AntigravityAcpApi({
       remaining,
       onTimeout: () => throw TimeoutException("Antigravity ACP initialize probe exceeded its deadline"),
     );
+  }
+
+  String? _parseBuildLabel({required String output}) {
+    const prefix = "Build label:";
+    for (final line in output.split("\n")) {
+      final trimmed = line.trim();
+      if (trimmed.startsWith(prefix)) {
+        final buildLabel = trimmed.substring(prefix.length).trim();
+        return buildLabel.isEmpty ? null : buildLabel;
+      }
+    }
+    return null;
   }
 
   Duration _remaining({required Duration timeout, required Stopwatch deadline}) {

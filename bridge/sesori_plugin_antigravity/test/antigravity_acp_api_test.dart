@@ -3,8 +3,25 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+class const _UnusedCommands() implements CommandExecutor {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class const _VersionCommands({required final CommandResult result}) implements CommandExecutor {
+  @override
+  Future<CommandResult> run(
+    String executable,
+    List<String> arguments, {
+    String? workingDirectory,
+    Map<String, String>? environment,
+    Duration? timeout,
+  }) async => result;
+}
 
 class _AbortAfterInitializeSignal() implements StartAbortSignal {
   int _polls = 0;
@@ -25,6 +42,7 @@ void main() {
     process = FakeAcpProcess();
     launchSpecs = [];
     api = AntigravityAcpApi(
+      commands: const _UnusedCommands(),
       stderrInterceptor: AcpOutputInterceptor(
         maxLineBytes: 65536,
         consumeLine: const AntigravityStderrMapper().consumeLine,
@@ -37,12 +55,31 @@ void main() {
   });
   tearDown(() => process.close());
 
+  test("version treats a blank build label as absent", () async {
+    api = AntigravityAcpApi(
+      commands: const _VersionCommands(
+        result: CommandResult(exitCode: 0, stdout: "Build label:   \n", stderr: ""),
+      ),
+      stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: ({required line}) => false),
+      processFactory: (_) async => process,
+    );
+
+    final version = await api.version(
+      serverPath: "/runtime/agy_acp_server.par",
+      environment: const {},
+      timeout: const Duration(seconds: 1),
+    );
+
+    expect(version.buildLabel, isNull);
+  });
+
   for (final authenticating in [false, true]) {
     test("${authenticating ? 'authentication' : 'probe'} abort awaits and reaps a late spawn", () async {
       final spawn = Completer<AcpProcessHandle>();
       final spawning = Completer<void>();
       final abort = StartAbortController();
       api = AntigravityAcpApi(
+        commands: const _UnusedCommands(),
         processFactory: (_) {
           spawning.complete();
           return spawn.future;

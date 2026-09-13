@@ -276,6 +276,15 @@ class PluginManagementCubit({
     replacePendingConfirmation: false,
   );
 
+  /// Updates the harness installed globally on the connected bridge computer.
+  /// The bridge accepts immediately and streams progress without confirmation.
+  Future<void> updateRuntime({required String pluginId}) => _runCommand(
+    pluginId: pluginId,
+    request: const PluginLifecycleCommandRequest.updateRuntime(),
+    forceAction: null,
+    replacePendingConfirmation: false,
+  );
+
   Future<void> refreshSetup({required String pluginId}) => _runCommand(
     pluginId: pluginId,
     request: const PluginLifecycleCommandRequest.refresh(),

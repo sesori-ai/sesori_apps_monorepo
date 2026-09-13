@@ -79,6 +79,36 @@ void main() {
       expect(await api.inspectProcess(pid: -1), isNull);
       expect(runner.calls, isEmpty);
     });
+
+    test("sendForceSignal terminates the full Windows process tree", () async {
+      final runner = RecordingProcessRunner();
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      final result = await api.sendForceSignal(pid: 321);
+
+      expect(runner.calls, hasLength(1));
+      expect(runner.calls.single.executable, "taskkill");
+      expect(runner.calls.single.arguments, ["/PID", "321", "/T", "/F"]);
+      expect(result.wasRequested, isTrue);
+      expect(result.deliveredSignal, ProcessSignal.sigkill);
+    });
+
+    test("sendForceSignal reports a failed taskkill request", () async {
+      final runner = RecordingProcessRunner(exitCode: 1, stderr: "taskkill failed");
+      final api = SystemProcessApi(
+        processRunner: runner,
+        clock: const ServerClock(),
+        isWindows: true,
+        platform: "windows",
+      );
+
+      expect((await api.sendForceSignal(pid: 321)).wasRequested, isFalse);
+    });
   });
 
   group("SystemProcessApi (POSIX)", () {
