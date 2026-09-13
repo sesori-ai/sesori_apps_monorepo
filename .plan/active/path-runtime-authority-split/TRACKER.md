@@ -6,7 +6,7 @@
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
 - Current step: 5/9 — report outdated PATH runtimes and safe updaters
-- Open replacement implementation PRs: none; Step 5 is in local implementation
+- Open replacement implementation PRs: Step 5 — #1473
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -17,7 +17,7 @@
 | 2. Centralize executable and command control | Merged | #1463 | 850 |
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
 | 4. Make PATH authoritative for managed copies | Merged | #1472 | 1,850 |
-| 5. Report outdated PATH runtimes and safe updaters | In progress | — | 1,400 |
+| 5. Report outdated PATH runtimes and safe updaters | In progress | #1473 | 1,400 |
 | 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
 | 8. Present runtime updates and reconcile docs | Not started | — | 1,400 |
@@ -189,7 +189,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Run focused tests and strict package analysis.
 - [x] Complete architecture-implementation review and apply valid findings.
 - [x] Measure the full Step 5 diff against its 1,400-line ceiling.
-- [ ] Commit, push, open Step 5 PR, and start its monitor.
+- [x] Commit, push, open Step 5 PR, and start its monitor.
 
 ## Step 5 Evidence
 
