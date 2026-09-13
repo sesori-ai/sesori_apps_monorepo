@@ -6,7 +6,7 @@
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
 - Current step: 2/9 — centralize executable and command control
-- Open replacement implementation PRs: Step 2 pending publication
+- Open replacement implementation PRs: Step 2 — #1463
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -14,7 +14,7 @@
 | Step | Status | PR | Changed-line ceiling |
 |---|---|---|---:|
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
-| 2. Centralize executable and command control | In progress | Pending | 700 |
+| 2. Centralize executable and command control | In progress | #1463 | 700 |
 | 3. Settle commands and terminate process trees | Not started | — | 1,000 |
 | 4. Make PATH authoritative for managed copies | Not started | — | 1,450 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
@@ -77,6 +77,11 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Architecture-plan review: APPROVED on permitted second pass; no blocking findings.
 - `git diff --check`: passed.
 - Added-line width: zero lines over 120 Unicode characters or UTF-8 bytes.
+- Immutable size range: `4854865eedf6152d1371777f061adbb1514a34c5` to
+  `27cd7c76faa0fc9814be465c2ccb9bcb9773e5ac`.
+- Base-to-head numstat: `444 0` for `PLAN.md` and `80 0` for `TRACKER.md`; 524 changed lines total.
+- Final review-fix commit (`2f79efb056ae` to `27cd7c76faa0`) changed `PLAN.md` by `15 13` and `TRACKER.md` by
+  `4 4`; the immutable base-to-head total above includes that tracker reconciliation.
 - Step 1 content: 524 lines, below its 650-line ceiling.
 - No Dart/Flutter suites required for plan-only changes.
 
@@ -85,16 +90,16 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Add injectable concrete `IoHostExecutableLocator`; retain no one-to-one interface.
 - [x] Centralize locale-independent process-missing and positive PATH-absence classification.
 - [x] Add abortable `HostProcessCommandExecutor` execution with observed termination.
-- [x] Add direct host lookup, classification, timeout, abort, and termination tests.
+- [x] Add direct host lookup, classification, timeout, abort, output-drain, and termination tests.
 - [x] Run focused Foundation tests and strict analysis.
 - [x] Complete architecture-implementation review and apply valid findings.
 - [x] Measure the full Step 2 diff against its 700-line ceiling.
-- [ ] Commit, push, and open Step 2 PR.
-- [ ] Start PR monitor for Step 2.
+- [x] Commit, push, and open Step 2 PR (#1463).
+- [x] Start PR monitor for Step 2.
 
 ## Step 2 Evidence
 
-- Focused Foundation tests: 11 passed.
+- Focused Foundation tests: 16 passed.
 - `dart analyze --fatal-infos`: no issues.
 - Architecture implementation review: APPROVED with no violations.
-- Full Step 2 diff: 526 changed lines, below the 700-line ceiling.
+- Full Step 2 diff: 671 changed lines, below the 700-line ceiling.

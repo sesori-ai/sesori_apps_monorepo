@@ -40,11 +40,13 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
     required Map<String, String>? environment,
     required String? workingDirectory,
   }) {
-    if (executable.contains("/") || executable.contains(r"\")) {
-      final resolvedExecutable = workingDirectory != null && !p.isAbsolute(executable)
-          ? p.join(workingDirectory, executable)
-          : executable;
-      return _inspectCandidates([resolvedExecutable]);
+    if (executable.isEmpty) return HostExecutablePresence.unknown;
+
+    if (executable.contains("/") || (isWindows && executable.contains(r"\"))) {
+      final resolvedExecutable = p.isAbsolute(executable)
+          ? executable
+          : p.join(workingDirectory ?? Directory.current.path, executable);
+      return _inspectCandidates(candidates: [resolvedExecutable]);
     }
 
     final extensions = isWindows && p.extension(executable).isEmpty
@@ -69,22 +71,28 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
         _environmentValue(environment: environment, name: "PATH") ??
         _environmentValue(environment: Platform.environment, name: "PATH");
     if (pathValue == null) {
-      final currentDirectoryPresence = _inspectCandidates(candidates);
+      final currentDirectoryPresence = _inspectCandidates(candidates: candidates);
       return currentDirectoryPresence == HostExecutablePresence.present
           ? HostExecutablePresence.present
           : HostExecutablePresence.unknown;
     }
 
+    final baseDirectory = workingDirectory ?? Directory.current.path;
     for (final rawDirectory in pathValue.split(isWindows ? ";" : ":")) {
-      final directory = _unquote(rawDirectory.trim());
+      final directory = _unquote(value: rawDirectory.trim());
+      final resolvedDirectory = directory.isEmpty
+          ? baseDirectory
+          : p.isAbsolute(directory)
+          ? directory
+          : p.join(baseDirectory, directory);
       _addCandidates(
         candidates: candidates,
-        directory: directory.isEmpty ? workingDirectory ?? Directory.current.path : directory,
+        directory: resolvedDirectory,
         executable: executable,
         extensions: extensions,
       );
     }
-    return _inspectCandidates(candidates);
+    return _inspectCandidates(candidates: candidates);
   }
 
   void _addCandidates({
@@ -98,22 +106,38 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
     }
   }
 
-  HostExecutablePresence _inspectCandidates(List<String> candidates) {
+  HostExecutablePresence _inspectCandidates({required List<String> candidates}) {
     var hadUnknown = false;
     for (final candidate in candidates) {
-      if (candidate.contains("\u0000")) {
-        hadUnknown = true;
-        continue;
-      }
-      try {
-        if (FileSystemEntity.typeSync(candidate, followLinks: false) != FileSystemEntityType.notFound) {
-          return HostExecutablePresence.present;
-        }
-      } on FileSystemException {
-        hadUnknown = true;
-      }
+      final presence = _inspectCandidate(candidate: candidate);
+      if (presence == HostExecutablePresence.present) return presence;
+      if (presence == HostExecutablePresence.unknown) hadUnknown = true;
     }
     return hadUnknown ? HostExecutablePresence.unknown : HostExecutablePresence.absent;
+  }
+
+  HostExecutablePresence _inspectCandidate({required String candidate}) {
+    if (candidate.contains("\u0000")) return HostExecutablePresence.unknown;
+    try {
+      if (FileSystemEntity.typeSync(candidate, followLinks: false) != FileSystemEntityType.notFound) {
+        return HostExecutablePresence.present;
+      }
+    } on FileSystemException {
+      return HostExecutablePresence.unknown;
+    }
+
+    // dart:io reports notFound for both a missing entry and some inaccessible
+    // paths. A read-only open preserves the specific failure: only a true
+    // PathNotFoundException proves absence, while permission and filesystem
+    // failures remain unknown and therefore authoritative.
+    try {
+      File(candidate).openSync().closeSync();
+      return HostExecutablePresence.present;
+    } on PathNotFoundException {
+      return HostExecutablePresence.absent;
+    } on FileSystemException {
+      return HostExecutablePresence.unknown;
+    }
   }
 
   String? _environmentValue({
@@ -129,7 +153,7 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
     return null;
   }
 
-  String _unquote(String value) {
+  String _unquote({required String value}) {
     if (value.length >= 2 && value.startsWith('"') && value.endsWith('"')) {
       return value.substring(1, value.length - 1);
     }

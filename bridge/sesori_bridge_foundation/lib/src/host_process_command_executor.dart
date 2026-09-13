@@ -104,6 +104,7 @@ class HostProcessCommandExecutor({
     // these alongside exitCode never deadlocks on a full pipe.
     final Future<void> stdoutDone = stdoutSub.asFuture<void>();
     final Future<void> stderrDone = stderrSub.asFuture<void>();
+    var processExited = false;
     try {
       final exit = process.exitCode;
       final effectiveTimeout = timeout ?? _defaultTimeout;
@@ -113,6 +114,7 @@ class HostProcessCommandExecutor({
               exit,
               abortSignal.whenAborted.then<int>((_) => throw const PluginStartAbortedException()),
             ]).timeout(effectiveTimeout);
+      processExited = true;
       // Wait for the output streams to finish before reading the buffers, so a
       // command whose stdout/stderr is still buffered at exit (e.g. a fast
       // `--version` or a `tar -tzf` listing) is not captured truncated. Bounded
@@ -126,13 +128,14 @@ class HostProcessCommandExecutor({
           stackTrace,
         );
       }
+      if (abortSignal?.isAborted ?? false) throw const PluginStartAbortedException();
       return CommandResult(
         exitCode: exitCode,
         stdout: stdoutBuffer.toString(),
         stderr: stderrBuffer.toString(),
       );
     } on PluginStartAbortedException {
-      await _kill(process: process, executable: executable, reason: "aborted");
+      if (!processExited) await _kill(process: process, executable: executable, reason: "aborted");
       rethrow;
     } on TimeoutException {
       await _kill(process: process, executable: executable, reason: "timed-out");
@@ -161,7 +164,10 @@ class HostProcessCommandExecutor({
     }
 
     try {
-      await process.exitCode.timeout(const Duration(seconds: 5));
+      // Keep command ownership until forced termination is observed. Callers
+      // may bound shutdown independently, but this executor must not settle
+      // while the child could still be mutating runtime files.
+      await process.exitCode;
     } on Object catch (error, stackTrace) {
       Log.w(
         "HostProcessCommandExecutor: failed to confirm termination of $reason '$executable'",

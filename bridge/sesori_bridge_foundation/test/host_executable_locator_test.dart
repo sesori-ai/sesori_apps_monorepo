@@ -29,6 +29,58 @@ void main() {
     );
   });
 
+  test("finds a POSIX PATH command whose name contains a backslash", () {
+    File(p.join(temporaryDirectory.path, r"foo\bar")).writeAsStringSync("runtime");
+    const locator = IoHostExecutableLocator(platformIsWindows: false);
+
+    expect(
+      locator.locate(
+        executable: r"foo\bar",
+        environment: {"PATH": temporaryDirectory.path},
+        workingDirectory: null,
+      ),
+      HostExecutablePresence.present,
+    );
+  }, skip: Platform.isWindows);
+
+  test("resolves relative PATH entries from the requested working directory", () {
+    final workingDirectory = Directory(p.join(temporaryDirectory.path, "workspace"))..createSync();
+    final binDirectory = Directory(p.join(workingDirectory.path, "bin"))..createSync();
+    File(p.join(binDirectory.path, "runtime")).writeAsStringSync("runtime");
+    const locator = IoHostExecutableLocator(platformIsWindows: false);
+
+    expect(
+      locator.locate(
+        executable: "runtime",
+        environment: const {"PATH": "bin"},
+        workingDirectory: workingDirectory.path,
+      ),
+      HostExecutablePresence.present,
+    );
+  });
+
+  test("rejects an empty command without treating PATH directories as executables", () {
+    const locator = IoHostExecutableLocator(platformIsWindows: false);
+
+    expect(
+      locator.locate(executable: "", environment: {"PATH": temporaryDirectory.path}, workingDirectory: null),
+      HostExecutablePresence.unknown,
+    );
+  });
+
+  test("keeps an unreadable PATH entry indeterminate", () {
+    final lockedDirectory = Directory(p.join(temporaryDirectory.path, "locked"))..createSync();
+    final chmodResult = Process.runSync("chmod", ["000", lockedDirectory.path]);
+    expect(chmodResult.exitCode, 0);
+    addTearDown(() => Process.runSync("chmod", ["700", lockedDirectory.path]));
+    const locator = IoHostExecutableLocator(platformIsWindows: false);
+
+    expect(
+      locator.locate(executable: "runtime", environment: {"PATH": lockedDirectory.path}, workingDirectory: null),
+      HostExecutablePresence.unknown,
+    );
+  }, skip: Platform.isWindows);
+
   test("reports an absent POSIX PATH command", () {
     const locator = IoHostExecutableLocator(platformIsWindows: false);
 

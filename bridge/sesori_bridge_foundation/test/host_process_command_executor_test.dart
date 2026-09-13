@@ -75,6 +75,35 @@ void main() {
     expect(processes.forceSignals, [42]);
   });
 
+  test("abort during output drain reports cancellation after the exited child settles", () async {
+    final process = _DrainPendingSpawnedProcess();
+    final processes = _FakeHostProcessService(process: process);
+    final executor = HostProcessCommandExecutor(
+      includeParentEnvironment: true,
+      processes: processes,
+      runInShell: false,
+      maxCapturedOutputCharactersPerStream: 6,
+    );
+    final aborted = StartAbortController();
+
+    final run = executor.runAbortable(
+      executable: "updater",
+      arguments: const ["update"],
+      workingDirectory: null,
+      environment: const {},
+      timeout: const Duration(minutes: 1),
+      abortSignal: aborted.signal,
+    );
+    await process.drainStarted.future;
+    process.completeExit(0);
+    await Future<void>.delayed(Duration.zero);
+    aborted.abort();
+    process.completeDrain();
+
+    await expectLater(run, throwsA(isA<PluginStartAbortedException>()));
+    expect(processes.forceSignals, isEmpty);
+  });
+
   test("an unsuccessful force signal does not settle before the process exits", () async {
     final process = _HangingSpawnedProcess();
     final processes = _FakeHostProcessService(
@@ -172,6 +201,35 @@ class _HangingSpawnedProcess() implements SpawnedProcess {
 
   @override
   Stream<List<int>> get stdout => const Stream.empty();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _DrainPendingSpawnedProcess() implements SpawnedProcess {
+  final drainStarted = Completer<void>();
+  final Completer<void> _drain = Completer<void>();
+  final Completer<int> _exit = Completer<int>();
+
+  void completeDrain() => _drain.complete();
+
+  void completeExit(int exitCode) => _exit.complete(exitCode);
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  int get pid => 42;
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stdout async* {
+    drainStarted.complete();
+    await _drain.future;
+    yield utf8.encode("done");
+  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
