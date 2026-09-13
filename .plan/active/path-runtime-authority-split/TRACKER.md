@@ -104,7 +104,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - `dart analyze --fatal-infos`: no issues.
 - Architecture implementation review: APPROVED with no violations.
 - Immutable Step 2 implementation range: `b20e1268a2546daec24412db8700b2f1b7048515` to
-  `058fdf5e466f4fcc36f2eea26c86f11a2ca8311a`.
+  `c0bfe0cb00e273ccba3026d7f034fb4877a09b03`.
 - Numstat basis: `.plan` paths are repository-relative; remaining paths are relative to
   `bridge/sesori_bridge_foundation/`.
 
@@ -113,12 +113,12 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
   | `.plan/active/path-runtime-authority-split/PLAN.md` | 1 | 1 |
   | `.plan/active/path-runtime-authority-split/TRACKER.md` | 53 | 9 |
   | `lib/sesori_bridge_foundation.dart` | 1 | 0 |
-  | `lib/src/host_executable_locator.dart` | 169 | 0 |
+  | `lib/src/host_executable_locator.dart` | 170 | 0 |
   | `lib/src/host_process_command_executor.dart` | 155 | 9 |
-  | `test/host_executable_locator_test.dart` | 193 | 0 |
+  | `test/host_executable_locator_test.dart` | 202 | 0 |
   | `test/host_process_command_executor_test.dart` | 216 | 8 |
 
-- Implementation head: 788 additions plus 27 deletions, or 815 changed lines across 7 files.
-- This evidence edit replaces lines one-for-one; base-to-current numstat remains 788 + 27 = 815.
+- Implementation head: 798 additions plus 27 deletions, or 825 changed lines across 7 files.
+- This evidence edit replaces lines one-for-one; base-to-current numstat remains 798 + 27 = 825.
 - All churn is authored; generated churn is zero.
 - Review-expanded lookup and spawn fencing raised the Step 2 ceiling from 700 to 850; the total remains below it.
