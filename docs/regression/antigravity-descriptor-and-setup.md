@@ -24,8 +24,8 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
   Only that byte-exact label reports ready; equal-precedence labels remain unknown. Documented pre-semver official
   labels order below that pin, while newer official semantic versions remain incompatible/unknown. Outdated PATH
   setup uses the dedicated runtime-outdated state. PATH-authoritative unknown and managed storage, profile or probe
-  uncertainty use an install-blocked marker that suppresses Install in both snapshots and command admission. Explicit
-  pairs never fall through to managed.
+  uncertainty use an install-blocked marker that suppresses Install in snapshots, direct command admission, and
+  startup-upgrade admission. Explicit pairs never fall through to managed.
 - Missing/rejected/unsupported/boundary outcomes map to honest setup statuses and current-client authentication hints.
   macOS x64 reports unsupported-platform guidance without constructing a managed filename, preparing a profile or
   launching a process, including when an explicit binary option is supplied.

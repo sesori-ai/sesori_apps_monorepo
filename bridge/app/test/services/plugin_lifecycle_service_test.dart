@@ -15,7 +15,7 @@ import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
-  test("maps authoritative setup without exposing managed install or dormant updater metadata", () {
+  test("maps authoritative setup without exposing managed install or dormant updater metadata", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),
       inspectionGate: null,
@@ -73,6 +73,10 @@ void main() {
       () => newerService.command(pluginId: "one", request: const PluginLifecycleCommandRequest.install()),
       throwsA(isA<PluginManagementConflictException>()),
     );
+    expect(repository.installCalls, isZero);
+    repository.needsUpgrade = true;
+    await newerService.upgradeManagedRuntimes();
+    expect(repository.upgradeQueries, ["one"]);
     expect(repository.installCalls, isZero);
 
     final managedUnknownService =

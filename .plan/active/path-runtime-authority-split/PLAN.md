@@ -438,7 +438,8 @@ planned.
 - **Step 6:** Antigravity package tests/analysis, plugin-interface contracts, and bridge lifecycle mapping
   tests/analysis. Cover blank build labels, unrelated ACP failures, profile failure retaining runtime metadata,
   every pair candidate, inert inspection, the blocked marker mapping to wire unknown and denying managed Install at
-  projection and admission, and generic unknown retaining established policy for unmigrated harnesses.
+  projection, direct admission, and startup-upgrade admission, plus generic unknown retaining established policy for
+  unmigrated harnesses.
 - **Step 7:** shared contract tests, bridge app lifecycle/runtime/runner tests, client-core state/service tests, and
   owning-package analysis. Cover duplicate joining, conflicts, abort, sanitized failures, recovery inspection after
   yielded/thrown failures, compatibility defaults, and startup abort recheck.

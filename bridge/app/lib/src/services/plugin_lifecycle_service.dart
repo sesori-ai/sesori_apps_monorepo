@@ -385,7 +385,14 @@ class PluginLifecycleService({
     if (_disposing) return;
     for (final decision in decisions) {
       if (_disposing) return;
-      if (!decision.shouldUpgrade || _activePluginCommands.containsKey(decision.pluginId)) continue;
+      if (!decision.shouldUpgrade ||
+          _activePluginCommands.containsKey(decision.pluginId) ||
+          !_isManagementCapabilityAvailable(
+            pluginId: decision.pluginId,
+            capability: PluginControlCapability.install,
+          )) {
+        continue;
+      }
       Log.i(
         'Plugin "${decision.pluginId}" has an outdated managed runtime and no PATH install; '
         "updating it in the background.",
