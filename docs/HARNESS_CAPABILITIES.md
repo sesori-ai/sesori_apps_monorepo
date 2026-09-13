@@ -135,6 +135,21 @@ variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
 
+## ACP multi-select form questions
+
+| Harness | Sesori implementation | Verification boundary |
+|---|---|---|
+| OMP | ✅ Live ACP `items.anyOf` string-choice arrays render as checkbox questions; separate string properties render as separate custom-text questions | Mapper, synthetic ACP plugin, shared bridge contract, and widget tests pass; live `18.1.19` `askDialog`/ACP/client roundtrip not run |
+
+Property keys, order, independent required flags, and option/custom provenance
+are retained, including identical submitted text in separate questions.
+Optional omission uses the existing per-question decline in multi-question
+forms; single-question decline still rejects the request. Catalog/cleanup
+scratch connections do not advertise form support. Other plugins keep their
+existing question channels and capability policy; this change makes no new
+upstream-support claim for them. See [question regression coverage](regression/questions-and-permissions.md)
+for the supported array shape and remaining live check.
+
 ## Codex question input
 
 **Implemented:** Codex synchronous user-input requests and asynchronous

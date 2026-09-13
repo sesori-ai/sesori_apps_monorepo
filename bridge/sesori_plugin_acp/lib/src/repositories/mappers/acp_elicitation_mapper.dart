@@ -63,6 +63,24 @@ final class const _EnumField({
   Object? encode({required List<String> selected}) => selected.isEmpty ? null : valuesByLabel[selected.first];
 }
 
+final class const _ArrayEnumField({
+  required super.key,
+  required super.required,
+  required final Map<String, String> valuesByLabel,
+}) extends AcpElicitationField {
+  @override
+  Object? encode({required List<String> selected}) {
+    if (selected.isEmpty) return null;
+    final values = <String>[];
+    for (final label in selected) {
+      final value = valuesByLabel[label];
+      if (value == null) return null;
+      values.add(value);
+    }
+    return values;
+  }
+}
+
 /// Maps the standard ACP v1 `elicitation/create` form shape to Sesori questions.
 class const AcpElicitationMapper() {
   AcpElicitationForm parse({required Map<String, dynamic> params}) {
@@ -130,6 +148,27 @@ class const AcpElicitationMapper() {
       _string(property["description"]) ?? _string(property["title"]) ?? requestMessage,
     );
     switch (property["type"]) {
+      case "array":
+        final alternatives = _map(property["items"])?["anyOf"];
+        if (alternatives is! List) return null;
+        final choices = _constChoices(alternatives: alternatives);
+        if (choices == null) return null;
+        return (
+          question: PluginQuestionInfo(
+            question: questionText,
+            header: title,
+            options: [
+              for (final choice in choices) PluginQuestionOption(label: choice.label, description: choice.description),
+            ],
+            multiple: true,
+            custom: false,
+          ),
+          field: _ArrayEnumField(
+            key: key,
+            required: required,
+            valuesByLabel: Map.unmodifiable({for (final choice in choices) choice.label: choice.value}),
+          ),
+        );
       case "boolean":
         return (
           question: PluginQuestionInfo(
@@ -193,23 +232,7 @@ class const AcpElicitationMapper() {
     Map<String, dynamic> property,
   ) {
     final rawOneOf = property["oneOf"];
-    if (rawOneOf is List) {
-      final choices = <({String label, String value, String description})>[];
-      final usedLabels = <String>{};
-      for (final raw in rawOneOf) {
-        final item = _map(raw);
-        final value = _enumValue(item?["const"]);
-        if (item == null || value == null) return null;
-        final baseLabel = _bounded(_string(item["title"]) ?? _enumDisplayValue(value));
-        final label = _uniqueLabel(base: baseLabel, used: usedLabels);
-        choices.add((
-          label: label,
-          value: value,
-          description: _bounded(_string(item["description"]) ?? ""),
-        ));
-      }
-      return choices.isEmpty ? null : choices;
-    }
+    if (rawOneOf is List) return _constChoices(alternatives: rawOneOf);
     final rawEnum = property["enum"];
     if (rawEnum is! List) return null;
     final values = rawEnum.whereType<String>().toList(growable: false);
@@ -223,6 +246,26 @@ class const AcpElicitationMapper() {
           description: "",
         ),
     ];
+  }
+
+  List<({String label, String value, String description})>? _constChoices({
+    required List<dynamic> alternatives,
+  }) {
+    final choices = <({String label, String value, String description})>[];
+    final usedLabels = <String>{};
+    for (final raw in alternatives) {
+      final item = _map(raw);
+      final value = _enumValue(item?["const"]);
+      if (item == null || value == null) return null;
+      final baseLabel = _bounded(_string(item["title"]) ?? _enumDisplayValue(value));
+      final label = _uniqueLabel(base: baseLabel, used: usedLabels);
+      choices.add((
+        label: label,
+        value: value,
+        description: _bounded(_string(item["description"]) ?? ""),
+      ));
+    }
+    return choices.isEmpty ? null : choices;
   }
 
   static String _uniqueLabel({required String base, required Set<String> used}) {
