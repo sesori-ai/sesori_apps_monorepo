@@ -465,8 +465,6 @@ class CatalogImportRepository({
         // extra enumeration or query is needed.
         var projectsAdded = 0;
         var sessionsAdded = 0;
-        final automaticallyHiddenProjectIds = <String>{};
-        final hideNewHiddenHomeProjects = !control.explicitImportRequested;
         for (final observation in publicationProjects.values) {
           final existing = _projectCatalogIdentityCalculator.calculate(
             projectsById: projectsById,
@@ -475,15 +473,12 @@ class CatalogImportRepository({
             observedPath: observation.path,
           );
           if (existing == null) projectsAdded++;
-          final hiddenWhenNew =
-              hideNewHiddenHomeProjects && _isUnderTopLevelHiddenHomeDirectory(projectPath: observation.path);
           final row = _mergeProjectRow(
             observation: observation,
             existing: existing,
-            hiddenWhenNew: hiddenWhenNew,
+            hiddenWhenNew: _shouldHideDiscoveredProject(projectPath: observation.path),
             importStartedAt: importStartedAt,
           );
-          if (existing == null && hiddenWhenNew) automaticallyHiddenProjectIds.add(row.projectId);
           projectRows.add(row);
           final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
           final nextPath = _normalizeRequiredPath(row.path);
@@ -566,17 +561,6 @@ class CatalogImportRepository({
               projectionVersion: projectionVersion,
               completedAt: completedAt,
             ),
-          );
-        }
-        // An explicit scan can join while the first project write is pending.
-        // Correct only new rows this automatic import hid; existing visibility stays authoritative.
-        if (control.explicitImportRequested && automaticallyHiddenProjectIds.isNotEmpty) {
-          requireCurrentGeneration();
-          await _projectsDao.upsertProjectRows(
-            rows: [
-              for (final row in projectRows)
-                if (automaticallyHiddenProjectIds.contains(row.projectId)) row.copyWith(hidden: false),
-            ],
           );
         }
         requireCurrentGeneration();
@@ -757,7 +741,11 @@ class CatalogImportRepository({
     }
   }
 
-  bool _isUnderTopLevelHiddenHomeDirectory({required String projectPath}) {
+  bool _shouldHideDiscoveredProject({required String projectPath}) {
+    // Scans discover history; only Add/Open Project explicitly reveals these folders.
+    for (final temporaryDirectory in const ["/tmp", "/private/tmp"]) {
+      if (p.equals(temporaryDirectory, projectPath) || p.isWithin(temporaryDirectory, projectPath)) return true;
+    }
     final userHomeDirectory = _normalizedUserHomeDirectory;
     if (userHomeDirectory == null || !p.isWithin(userHomeDirectory, projectPath)) return false;
     final relativeSegments = p.split(p.relative(projectPath, from: userHomeDirectory));

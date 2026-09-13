@@ -28,12 +28,12 @@ void main() {
 
     setUp(() async {
       database = createTestDatabase();
-      directory = await Directory.systemTemp.createTemp("sesori-catalog-import-test-");
+      // Catalog fixtures are metadata-only; ordinary project paths must not live below /tmp.
+      directory = Directory(p.join(_userHomeDirectory(), "sesori-catalog-import-test"));
     });
 
     tearDown(() async {
       await database.close();
-      await directory.delete(recursive: true);
     });
 
     test("native import validates ancestry, preserves bridge state, and is idempotent", () async {
@@ -113,7 +113,7 @@ void main() {
       );
       final repository = _repository(database: database, plugin: plugin);
       final control = CatalogImportControl(
-        explicitImportRequested: false,
+        rescanRequested: false,
         hydrationMarkerRequested: true,
       );
 
@@ -163,7 +163,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -175,7 +175,7 @@ void main() {
     });
 
     test("pre-start snapshot uses the same atomic publication and tombstones", () async {
-      final projectPath = "${directory.path}/snapshot";
+      final projectPath = p.join(_userHomeDirectory(), ".sesori-test-snapshot", "project");
       await database.sessionDao.insertSessionTombstone(
         backendSessionId: "deleted",
         pluginId: "snapshot",
@@ -192,6 +192,10 @@ void main() {
                 _pluginSession(id: "deleted", directory: projectPath),
               ],
             ),
+            PluginProjectCatalogSnapshot(
+              project: const PluginProject(id: "snapshot-temporary", directory: "/private/tmp/snapshot"),
+              sessions: [_pluginSession(id: "temporary-root", directory: "/private/tmp/snapshot")],
+            ),
           ],
         ),
       );
@@ -207,7 +211,7 @@ void main() {
       final statuses = await repository
           .importCatalog(
             pluginId: "snapshot",
-            control: CatalogImportControl(explicitImportRequested: true, hydrationMarkerRequested: true),
+            control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: true),
           )
           .toList();
 
@@ -217,12 +221,18 @@ void main() {
       expect(child?.parentSessionId, root?.sessionId);
       expect(await database.sessionDao.getSessionByBinding(pluginId: "snapshot", backendSessionId: "deleted"), isNull);
       expect(await repository.getHydrationCompletion(pluginId: "snapshot"), isNotNull);
+      expect((await database.projectsDao.getAllProjects()).map((project) => project.hidden), everyElement(isTrue));
+      expect(await database.projectsDao.getCatalogProjects(), isEmpty);
+      expect(
+        await database.sessionDao.getSessionByBinding(pluginId: "snapshot", backendSessionId: "temporary-root"),
+        isNotNull,
+      );
     });
 
-    test("explicit native import shows new projects while preserving existing visibility", () async {
+    test("rescan hides noisy new projects while preserving existing visibility", () async {
       final visiblePath = "${directory.path}/visible";
       final hiddenPath = "${directory.path}/hidden";
-      final importedPath = p.join(_userHomeDirectory(), ".sesori-test-explicit-import", "project");
+      final importedPath = p.join(_userHomeDirectory(), ".sesori-test-rescan", "project");
       await database.projectsDao.upsertProjectRows(
         rows: [
           _projectRow(id: "visible-project", path: visiblePath),
@@ -246,7 +256,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -254,10 +264,10 @@ void main() {
 
       expect((await database.projectsDao.getProject(projectId: "visible-project"))?.hidden, isFalse);
       expect((await database.projectsDao.getProject(projectId: "hidden-project"))?.hidden, isTrue);
-      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isFalse);
+      expect((await database.projectsDao.getProject(projectId: "imported-project"))?.hidden, isTrue);
       expect(
         (await database.projectsDao.getCatalogProjects()).map((project) => project.projectId),
-        unorderedEquals(["visible-project", "imported-project"]),
+        ["visible-project"],
       );
       expect(
         (await database.sessionDao.getSessionByBinding(
@@ -280,7 +290,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: false,
+              rescanRequested: false,
               hydrationMarkerRequested: true,
             ),
           )
@@ -313,7 +323,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: false,
+              rescanRequested: false,
               hydrationMarkerRequested: true,
             ),
           )
@@ -325,33 +335,91 @@ void main() {
       expect((await database.projectsDao.getProject(projectId: "existing-project"))?.hidden, isFalse);
     });
 
-    test("an explicit import joining an automatic project write keeps the new project visible", () async {
-      final projectPath = p.join(_userHomeDirectory(), ".sesori-test-joined-explicit", "project");
-      final plugin = _NativeImportPlugin(
-        projects: [PluginProject(id: "joined-explicit-project", directory: projectPath)],
-        rootsByProject: const {},
-        childrenByParent: const {},
-      );
-      final projectsDao = _BlockingProjectWriteDao(database: database);
-      final repository = CatalogImportRepository(
-        runtime: createTestPluginRuntime(plugins: [plugin]),
-        projectsDao: projectsDao,
-        sessionDao: database.sessionDao,
-        catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
-      );
-      final control = CatalogImportControl(
-        explicitImportRequested: false,
-        hydrationMarkerRequested: true,
-      );
-      final publication = repository.importCatalog(pluginId: plugin.id, control: control).drain<void>();
-      await projectsDao.firstWriteStarted.future;
+    for (final rescanRequested in [false, true]) {
+      test("temporary discovery stays hidden and counted (rescan: $rescanRequested)", () async {
+        const visibility = {
+          "/tmp": true,
+          "/tmp/qa": true,
+          "/private/tmp": true,
+          "/private/tmp/qa": true,
+          "/tmp-project": false,
+          "/private/tmp-project": false,
+        };
+        final plugin = _NativeImportPlugin(
+          projects: [
+            for (final path in visibility.keys) PluginProject(id: path, directory: path),
+          ],
+          rootsByProject: {
+            for (final path in visibility.keys) path: [_pluginSession(id: "root-$path", directory: path)],
+          },
+          childrenByParent: {
+            "root-/tmp/qa": [_pluginSession(id: "temporary-child", directory: "/tmp/qa/child")],
+          },
+        );
+        final statuses = await _repository(database: database, plugin: plugin)
+            .importCatalog(
+              pluginId: plugin.id,
+              control: CatalogImportControl(
+                rescanRequested: rescanRequested,
+                hydrationMarkerRequested: !rescanRequested,
+              ),
+            )
+            .toList();
+        final completed = statuses.whereType<CatalogImportCompleted>().single;
 
-      control.explicitImportRequested = true;
-      projectsDao.releaseFirstWrite();
-      await publication;
+        for (final entry in visibility.entries) {
+          expect((await database.projectsDao.getProject(projectId: entry.key))?.hidden, entry.value);
+        }
+        expect(completed.projectsImported, visibility.length);
+        expect(completed.sessionsImported, visibility.length + 1);
+        expect(completed.newItems, CatalogImportNewItems(projects: visibility.length, sessions: visibility.length + 1));
+        expect(
+          (await database.sessionDao.getSessionByBinding(
+            pluginId: plugin.id,
+            backendSessionId: "temporary-child",
+          ))?.projectId,
+          "/tmp/qa",
+        );
 
-      expect((await database.projectsDao.getProject(projectId: "joined-explicit-project"))?.hidden, isFalse);
+        final repeated = await _importCompletion(database: database, plugin: plugin);
+        expect(repeated.newItems, const CatalogImportNewItems(projects: 0, sessions: 0));
+        expect((await database.projectsDao.getProject(projectId: "/tmp/qa"))?.hidden, isTrue);
+
+        await database.projectsDao.recordOpenedProject(
+          projectId: "/tmp/qa",
+          path: "/tmp/qa",
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 100,
+        );
+        await _importCompletion(database: database, plugin: plugin);
+        expect((await database.projectsDao.getProject(projectId: "/tmp/qa"))?.hidden, isFalse);
+      });
+    }
+
+    test("derived scans hide noisy launch and session projects without dropping history", () async {
+      final hiddenHomePath = p.join(_userHomeDirectory(), ".sesori-test-derived", "project");
+      final plugin = _DerivedImportPlugin(
+        launchDirectory: "/tmp/launch",
+        sessions: [
+          _pluginSession(id: "temporary-root", directory: "/private/tmp/session"),
+          _pluginSession(id: "temporary-child", parentId: "temporary-root", directory: "/private/tmp/child"),
+          _pluginSession(id: "hidden-home-root", directory: hiddenHomePath),
+        ],
+      );
+
+      final completed = await _importCompletion(database: database, plugin: plugin);
+
+      expect(completed.newItems, const CatalogImportNewItems(projects: 3, sessions: 3));
+      expect((await database.projectsDao.getAllProjects()).map((project) => project.hidden), everyElement(isTrue));
+      expect(await database.projectsDao.getCatalogProjects(), isEmpty);
+      expect(
+        (await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "temporary-child",
+        ))?.projectId,
+        "/private/tmp/session",
+      );
     });
 
     test("native import gives an exact project id precedence during a move", () async {
@@ -375,7 +443,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -398,7 +466,7 @@ void main() {
           .importCatalog(
             pluginId: derived.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -415,7 +483,7 @@ void main() {
           .importCatalog(
             pluginId: native.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -460,7 +528,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -498,7 +566,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -555,7 +623,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -630,7 +698,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -706,7 +774,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -741,7 +809,7 @@ void main() {
           .importCatalog(
             pluginId: "native",
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -867,7 +935,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -900,7 +968,7 @@ void main() {
       );
       final repository = _repository(database: database, plugin: plugin);
       final control = CatalogImportControl(
-        explicitImportRequested: true,
+        rescanRequested: true,
         hydrationMarkerRequested: false,
       );
       final result = repository.importCatalog(pluginId: plugin.id, control: control).toList();
@@ -924,7 +992,7 @@ void main() {
         projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
       );
       final control = CatalogImportControl(
-        explicitImportRequested: true,
+        rescanRequested: true,
         hydrationMarkerRequested: true,
       );
       final statuses = <CatalogImportProgress>[];
@@ -965,7 +1033,7 @@ void main() {
           .importCatalog(
             pluginId: "snapshot",
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: true,
             ),
           )
@@ -991,7 +1059,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -1028,7 +1096,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: true,
+              rescanRequested: true,
               hydrationMarkerRequested: false,
             ),
           )
@@ -1074,7 +1142,7 @@ void main() {
           .importCatalog(
             pluginId: plugin.id,
             control: CatalogImportControl(
-              explicitImportRequested: false,
+              rescanRequested: false,
               hydrationMarkerRequested: true,
             ),
           )
@@ -1123,7 +1191,7 @@ void main() {
             .importCatalog(
               pluginId: plugin.id,
               control: CatalogImportControl(
-                explicitImportRequested: false,
+                rescanRequested: false,
                 hydrationMarkerRequested: true,
               ),
             )
@@ -1230,26 +1298,6 @@ class _BlockingProjectsDao({required AppDatabase database}) extends ProjectsDao 
   }
 }
 
-class _BlockingProjectWriteDao({required AppDatabase database}) extends ProjectsDao {
-  this : super(database);
-
-  final Completer<void> firstWriteStarted = Completer<void>();
-  final Completer<void> _firstWriteGate = Completer<void>();
-  var _firstWriteReleased = false;
-
-  void releaseFirstWrite() => _firstWriteGate.complete();
-
-  @override
-  Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
-    if (!_firstWriteReleased) {
-      _firstWriteReleased = true;
-      firstWriteStarted.complete();
-      await _firstWriteGate.future;
-    }
-    await super.upsertProjectRows(rows: rows);
-  }
-}
-
 class _RecordingSessionDao({
   required AppDatabase database,
   required final int? failOnWriteCall,
@@ -1316,7 +1364,7 @@ class _TrackingProjectCatalogIdentityCalculator({required final String firstProj
   }
 }
 
-/// Runs one explicit import and returns its completion status.
+/// Runs one catalog rescan and returns its completion status.
 Future<CatalogImportCompleted> _importCompletion({
   required AppDatabase database,
   required BridgePluginApi plugin,
@@ -1325,7 +1373,7 @@ Future<CatalogImportCompleted> _importCompletion({
       .importCatalog(
         pluginId: plugin.id,
         control: CatalogImportControl(
-          explicitImportRequested: true,
+          rescanRequested: true,
           hydrationMarkerRequested: false,
         ),
       )
