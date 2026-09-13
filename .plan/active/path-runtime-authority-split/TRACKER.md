@@ -5,8 +5,8 @@
 - Slug: `path-runtime-authority-split`
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
-- Current step: 5/9 — report outdated PATH runtimes and safe updaters
-- Open replacement implementation PRs: Step 5 — #1473
+- Current step: 6/9 — inspect Antigravity PATH pairs without side effects
+- Open replacement implementation PRs: Step 6 — #1474
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -17,8 +17,8 @@
 | 2. Centralize executable and command control | Merged | #1463 | 850 |
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
 | 4. Make PATH authoritative for managed copies | Merged | #1472 | 1,850 |
-| 5. Report outdated PATH runtimes and safe updaters | In progress | #1473 | 1,400 |
-| 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
+| 5. Report outdated PATH runtimes and safe updaters | Merged | #1473 | 1,400 |
+| 6. Inspect Antigravity PATH pairs without side effects | In progress | #1474 | 1,750 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
 | 8. Present runtime updates and reconcile docs | Not started | — | 1,400 |
 | 9. Run coverage and retire plan | Not started | — | 500 |
@@ -53,13 +53,13 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 | Comment / report | Target step | Status |
 |---|---:|---|
 | `3999200805` — concrete executable locator | 2 | Implemented |
-| `3999200808` — Antigravity repository mapping | 6 | Planned |
+| `3999200808` — Antigravity repository mapping | 6 | Implemented |
 | `3999205383` — Windows first-attempt process tree | 3 | Implemented |
 | `3999205385` — deterministic Codex PATH tests | 5 | Implemented |
 | `3999205390` — recovery inspection after enable failure | 7 | Planned |
-| `3999205396` — direct Antigravity absence predicate tests | 6 | Planned |
+| `3999205396` — direct Antigravity absence predicate tests | 6 | Implemented |
 | `3999205399` — centralized missing-command policy | 2, 5 | Implemented |
-| `5652131685` — Antigravity lint suppression | 6 | Planned removal |
+| `5652131685` — Antigravity lint suppression | 6 | Retained with justification |
 
 ## Step 1 Checklist
 
@@ -193,6 +193,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 
 ## Step 5 Evidence
 
+- PR #1473 merged as `993315012c` from accepted head `f3efbfc8d6`.
 - Base: Step 4 squash merge `ec6dde9fcd` on updated `main`.
 - Focused interface, shared-contract, lifecycle-mapping, descriptor, and client interaction tests: 353 passed.
 - Downstream `module_desktop_core` regression suite: 264 passed after the shared-enum exhaustiveness fix.
@@ -206,3 +207,43 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
   Step 7 ownership docs; the two affected suites passed 28 tests and both package analyses passed.
 - Inert descriptor updater metadata remains in Step 5 by the approved series scope; execution remains Step 7.
 - Range `ec6dde9fcd..dc042c8f96`: 1,008 lines (830+/178-; 1,007 authored, 1 generated; <1,400); accepted head: PR body.
+
+## Step 6 Checklist
+
+- [x] Advance from merged Step 5 on updated `main`.
+- [x] Add bounded API-local Antigravity `--version` parsing and repository-domain probe mapping.
+- [x] Share candidate-plus-physical-absence authority between managed mutation and inert runtime selection.
+- [x] Keep incomplete, invalid, unreadable, broken, and ambiguous PATH pair evidence authoritative.
+- [x] Report sanitized runtime versions while retaining verified metadata through profile-inspection failure.
+- [x] Keep setup inspection inert: no ACP initialize, authentication, profile mutation, browser, or download.
+- [x] Add focused API, repository, authority, runtime, setup, descriptor, and composition coverage.
+- [x] Run final Antigravity package tests, strict analysis, diagnostics, and diff validation.
+- [x] Complete the final architecture-implementation review after review-driven fixes.
+- [x] Measure the full Step 6 diff against its final review-expanded 1,750-line ceiling.
+- [x] Commit, push, open Step 6 PR, and start its monitor.
+
+## Step 6 Evidence
+
+- Base: Step 5 squash merge `993315012c6c0f554bf7fa70eb3c86c249a2fe4d` on updated `main`.
+- Final Antigravity package suite: 222 tests passed; its strict analysis passed. The plugin-interface contract's 15
+  focused tests, bridge lifecycle's 66 focused tests, and strict analysis in both packages also passed.
+- Dart LSP: zero diagnostics across all affected production files; diff check passed; no added line exceeds 120
+  characters.
+- Second/final architecture implementation review: APPROVED. Later feedback fixes require no third pass under the
+  two-pass limit.
+- Review fixes add an install-blocked unknown marker while preserving generic-unknown Install behavior for unmigrated
+  harnesses. Antigravity maps PATH authority and managed storage, profile, or probe uncertainty to the blocked marker;
+  snapshot projection, direct command admission, and startup-upgrade admission all reject Install while retaining the
+  existing wire unknown state.
+- Windows pair lookup scans the working directory only when PATH was supplied, normalizes quoted entries, and continues
+  past harness-only directories to the first server candidate. PATH-less inspection never consults ambient cwd state.
+- A failed Bridge CI run exposed process-global current-directory mutation between concurrent Dart test isolates. The
+  affected tests now use zone-scoped IO overrides and storage binds each path context to the call's current directory;
+  the full 222-test Antigravity suite passes after the latest policy coverage.
+- Setup probe timeouts and nullable unknown-version arguments remain required at every call site.
+- Latest implementation/evidence checkpoint: `8b72905c4724c199b3472a12242b1aeae74977be`.
+- Immutable range
+  `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..8b72905c4724c199b3472a12242b1aeae74977be`
+  is 1,714 lines (1,485+/229-) across 35 files, all authored and below the final review-expanded 1,750 ceiling.
+- The following tracker-only reconciliation changes no production, test, generated, plan, or regression-document
+  content and is excluded from the exact accepted implementation range above.

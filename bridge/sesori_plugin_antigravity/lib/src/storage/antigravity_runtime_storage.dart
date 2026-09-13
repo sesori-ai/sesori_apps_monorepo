@@ -106,7 +106,13 @@ class const AntigravityRuntimeStorage() {
 
     final context = _pathContext(target: target);
     final separator = target.os == PlatformOs.windows ? ";" : ":";
-    for (final directory in rawPath.split(separator)) {
+    final directories = [
+      if (target.os == PlatformOs.windows) Directory.current.path,
+      ...rawPath.split(separator),
+    ];
+    AntigravityRuntimePairInvalid? harnessOnly;
+    for (final rawDirectory in directories) {
+      final directory = _pathDirectory(rawDirectory: rawDirectory, target: target);
       final result = inspectPair(
         serverPath: context.join(directory, AntigravityRelease.serverFileName(target: target)),
         target: target,
@@ -114,8 +120,37 @@ class const AntigravityRuntimeStorage() {
       if (result is! AntigravityRuntimePairMissing || result.component != AntigravityRuntimeComponent.server) {
         return result;
       }
+      try {
+        final harnessType = FileSystemEntity.typeSync(
+          context.join(directory, AntigravityRelease.harnessFileName(target: target)),
+          followLinks: false,
+        );
+        if (harnessType != FileSystemEntityType.notFound) {
+          harnessOnly ??= const AntigravityRuntimePairInvalid(
+            component: AntigravityRuntimeComponent.harness,
+            reason: AntigravityRuntimePairInvalidReason.notSiblings,
+          );
+        }
+      } on FileSystemException catch (error, stackTrace) {
+        return AntigravityRuntimeStorageFailure(cause: error, stackTrace: stackTrace);
+      }
     }
-    return const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
+    return harnessOnly ?? const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
+  }
+
+  HostExecutablePresence inspectPathServerPresence({
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) {
+    if (!AntigravityRelease.supportsTarget(target: target) ||
+        _environmentPath(environment: environment, target: target) == null) {
+      return HostExecutablePresence.unknown;
+    }
+    return IoHostExecutableLocator(platformIsWindows: target.os == PlatformOs.windows).locate(
+      executable: AntigravityRelease.serverFileName(target: target),
+      environment: environment,
+      workingDirectory: null,
+    );
   }
 
   String? _environmentPath({required Map<String, String> environment, required PlatformTarget target}) {
@@ -126,6 +161,17 @@ class const AntigravityRuntimeStorage() {
     return null;
   }
 
-  p.Context _pathContext({required PlatformTarget target}) =>
-      p.Context(style: target.os == PlatformOs.windows ? p.Style.windows : p.Style.posix);
+  String _pathDirectory({required String rawDirectory, required PlatformTarget target}) {
+    if (target.os != PlatformOs.windows) return rawDirectory;
+    final directory = rawDirectory.trim();
+    if (directory.length >= 2 && directory.startsWith('"') && directory.endsWith('"')) {
+      return directory.substring(1, directory.length - 1);
+    }
+    return directory;
+  }
+
+  p.Context _pathContext({required PlatformTarget target}) => p.Context(
+    style: target.os == PlatformOs.windows ? p.Style.windows : p.Style.posix,
+    current: Directory.current.path,
+  );
 }

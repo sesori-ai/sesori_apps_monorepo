@@ -99,6 +99,33 @@ final class const PluginSetupRuntimeOutdated({
   String toString() => "PluginSetupRuntimeOutdated(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
 }
 
+/// Setup is unknown and managed installation cannot safely repair it.
+///
+/// [runtimeVersion] is null when no sanitized label was recovered. This marker
+/// preserves the existing wire unknown state while suppressing a misleading
+/// managed-install action.
+final class const PluginSetupManagedInstallBlockedUnknown({
+  @override required final String? actionHint,
+  @override required final String? runtimeVersion,
+}) extends PluginSetupStatus {
+  this
+    : assert(actionHint != "", "PluginSetupManagedInstallBlockedUnknown.actionHint must not be empty"),
+      assert(runtimeVersion != "", "PluginSetupManagedInstallBlockedUnknown.runtimeVersion must not be empty");
+
+  @override
+  bool operator ==(Object other) =>
+      other is PluginSetupManagedInstallBlockedUnknown &&
+      other.actionHint == actionHint &&
+      other.runtimeVersion == runtimeVersion;
+
+  @override
+  int get hashCode => Object.hash(actionHint, runtimeVersion);
+
+  @override
+  String toString() =>
+      "PluginSetupManagedInstallBlockedUnknown(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
+}
+
 /// The runtime exists, but the backend requires authentication.
 base class const PluginSetupAuthenticationRequired({@override required final String? actionHint})
     extends PluginSetupStatus {

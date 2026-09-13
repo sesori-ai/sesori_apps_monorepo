@@ -18,6 +18,11 @@ class _Input({required final void Function({required Map<String, dynamic> frame}
   }
 }
 
+class const _UnusedCommands() implements CommandExecutor {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 enum _Outcome() {
   complete,
   stall,
@@ -122,6 +127,7 @@ void main() {
     launches = [];
     repository = AntigravityAuthenticationRepository(
       acpApi: AntigravityAcpApi(
+        commands: const _UnusedCommands(),
         processFactory: (launch) async {
           launches.add(launch);
           return process;

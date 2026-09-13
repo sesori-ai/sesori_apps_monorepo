@@ -33,6 +33,15 @@ class AntigravityRuntimeRepository({
     return _mapPairReadResult(source: AntigravityRuntimeSource.path, result: result);
   }
 
+  AntigravityPathServerPresence inspectPathServerPresence({
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) => switch (_runtimeStorage.inspectPathServerPresence(environment: environment, target: target)) {
+    HostExecutablePresence.present => AntigravityPathServerPresence.present,
+    HostExecutablePresence.absent => AntigravityPathServerPresence.absent,
+    HostExecutablePresence.unknown => AntigravityPathServerPresence.unknown,
+  };
+
   Future<AntigravityRuntimeProbeResult> probe({
     required AntigravityRuntimeSource source,
     required AntigravityRuntimePair pair,

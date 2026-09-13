@@ -21,7 +21,10 @@ from the app or management API, or at bridge start when Sesori manages an older 
   and descriptor-authored guidance. OpenCode, Codex, Cursor, OMP, Pi, Claude, Hermes, and Grok retain inert metadata for
   bounded non-interactive self-updaters. Copilot, DeepSeek, Antigravity, explicit overrides, and OpenCode attach mode
   remain manual. No updater command is exposed or executed at this stage.
-- Antigravity managed install and startup mutation require both a missing PATH server candidate and physical absence.
+- Antigravity managed selection, install, and startup mutation require both a missing PATH server candidate and
+  physical absence. Incomplete, invalid, broken, unreadable, or ambiguous PATH pair evidence remains authoritative.
+  Setup runs only bounded sanitized `--version`; it never initializes ACP and retains verified version metadata when
+  isolated profile inspection fails.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.

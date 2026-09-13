@@ -385,7 +385,14 @@ class PluginLifecycleService({
     if (_disposing) return;
     for (final decision in decisions) {
       if (_disposing) return;
-      if (!decision.shouldUpgrade || _activePluginCommands.containsKey(decision.pluginId)) continue;
+      if (!decision.shouldUpgrade ||
+          _activePluginCommands.containsKey(decision.pluginId) ||
+          !_isManagementCapabilityAvailable(
+            pluginId: decision.pluginId,
+            capability: PluginControlCapability.install,
+          )) {
+        continue;
+      }
       Log.i(
         'Plugin "${decision.pluginId}" has an outdated managed runtime and no PATH install; '
         "updating it in the background.",
@@ -1222,6 +1229,7 @@ class PluginLifecycleService({
         PluginSetupReady() => PluginSetupState.ready,
         PluginSetupRuntimeMissing() => PluginSetupState.runtimeMissing,
         PluginSetupRuntimeOutdated() => PluginSetupState.runtimeOutdated,
+        PluginSetupManagedInstallBlockedUnknown() => PluginSetupState.unknown,
         PluginSetupAuthenticationRequired() => PluginSetupState.authenticationRequired,
         PluginSetupUnavailable() => PluginSetupState.unavailable,
         PluginSetupUnknown() => PluginSetupState.unknown,
@@ -1247,7 +1255,7 @@ class PluginLifecycleService({
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       managementCapabilities: {
         for (final capability in _managementCapabilitiesForPluginId(pluginId: plugin.id))
-          if (capability != PluginControlCapability.install || setupStatus is! PluginSetupRuntimeOutdated)
+          if (_isManagementCapabilityAvailable(pluginId: plugin.id, capability: capability))
             ?_mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
@@ -1285,7 +1293,7 @@ class PluginLifecycleService({
   }
 
   void _requireManagementCapability({required String pluginId, required PluginControlCapability capability}) {
-    if (_supportsManagementCapability(pluginId: pluginId, capability: capability)) return;
+    if (_isManagementCapabilityAvailable(pluginId: pluginId, capability: capability)) return;
     throw PluginManagementConflictException(
       PluginLifecycleConflict(
         pluginId: pluginId,
@@ -1297,6 +1305,13 @@ class PluginLifecycleService({
 
   bool _supportsManagementCapability({required String pluginId, required PluginControlCapability capability}) {
     return _managementCapabilitiesForPluginId(pluginId: pluginId).contains(capability);
+  }
+
+  bool _isManagementCapabilityAvailable({required String pluginId, required PluginControlCapability capability}) {
+    if (!_supportsManagementCapability(pluginId: pluginId, capability: capability)) return false;
+    if (capability != PluginControlCapability.install) return true;
+    final setup = _setupById?[pluginId] ?? (throw StateError('Plugin "$pluginId" setup is not available.'));
+    return setup is! PluginSetupRuntimeOutdated && setup is! PluginSetupManagedInstallBlockedUnknown;
   }
 
   bool _supportsIdleSuspension({required String pluginId}) {

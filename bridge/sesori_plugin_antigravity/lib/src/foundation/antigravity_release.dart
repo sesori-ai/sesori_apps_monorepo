@@ -14,7 +14,8 @@ abstract final class AntigravityRelease() {
   static const String registryCommit = "d30bc9a7c011b522e8502281d5fbcfca51abd5ff";
   static const String registryPackageVersion = "1.1.1";
   static const int protocolVersion = 1;
-  static const String agentVersion = "agy_acp_server_1.1.1";
+  static const String serverBuildLabelPrefix = "agy_acp_server_";
+  static const String agentVersion = "${serverBuildLabelPrefix}1.1.1";
 
   static const String personalOauthMethodId = "oauth-personal";
   static const Set<String> advertisedAuthenticationMethodIds = {

@@ -8,6 +8,12 @@ enum AntigravityRuntimeSource() {
   managed,
 }
 
+enum AntigravityPathServerPresence() {
+  present,
+  absent,
+  unknown,
+}
+
 enum AntigravityRuntimePairIssue() {
   wrongName,
   notAFile,
