@@ -73,7 +73,7 @@ status. Release links alone are not completed implementation gates.
 | GitHub Copilot | `1.0.80` / `1.0.78` | [`v1.0.83`](https://github.com/github/copilot-cli/releases/tag/v1.0.83) | Six single-binary archives; recommended after ACP/install gates |
 | Cursor | `2026.08.11-e8db854` / date floor `2026.07.16` | [official installer](https://cursor.com/install), exact `2026.09.10-fd3934a` | Four package tarballs; probe-first content/hash/install gate |
 | Claude Code | `2.1.237` / `2.1.221` | [`v2.1.269`](https://github.com/anthropics/claude-code/releases/tag/v2.1.269); npm `latest` agrees | Direct configured/PATH CLI, zero managed assets; recommended after stream/approval/replay/interrupt gates |
-| Hermes Agent | `0.20.4` / `0.20.0` | [`v2026.9.11`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11), CLI `0.21.2` | Direct `hermes acp`; blocked by cleanup seam |
+| Hermes Agent | `0.20.4` / `0.20.0` | [`v2026.9.11`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11), CLI `0.21.2` | Direct `hermes acp`; cleanup fix implemented; candidate load/isolation gates blocked |
 | Pi | `0.84.4` / `0.84.1` | [`v0.85.1`](https://github.com/earendil-works/pi/releases/tag/v0.85.1); npm package `@earendil-works/pi-coding-agent` | Six package archives; recommended after RPC, settlement, and manual-compaction abort/ordering gates |
 | Oh My Pi (OMP) | `17.3.8` / `17.2.13` | [`v18.1.18`](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.18), published 2026-09-11 | Seven assets in current Sesori manifest; official candidate has eight including Windows ARM64; approved separate platform step |
 | Grok Build | `1.0.5` / `1.0.5` | [xAI stable channel](https://x.ai/cli/stable), channel `1.0.30` | Direct official CLI; recommended after channel/ACP gate |
@@ -122,13 +122,14 @@ floor. OMP Windows ARM64 is an approved platform mapping, not a floor change.
   approval, replay, interrupt, and teardown checks. npm `latest=2.1.269` while
   stable dist-tag remains `2.1.236` is a channel distinction, not prerelease
   evidence. SDK `0.3.269` is separate and not a bridge dependency.
-- **Hermes:** Step 4 resolves one narrow candidate cleanup seam before any pin.
-  Candidate `0.21.2` does not persist empty `session/new` shells, while current
-  catalog cleanup deletes the scratch ID and treats not-found as failure. Make
-  cleanup idempotent only if source/probe confirms this ordinary flow; preserve
-  real database errors and floor `0.20.0`. A configured fixture must also verify
-  new/load before pinning; an unavailable required fixture blocks the Hermes
-  pin. No broad compatibility layer.
+- **Hermes:** Step 4 implements narrow idempotent cleanup for unpersisted empty
+  discovery sessions, as confirmed in tagged source. Only exit 1 with the exact
+  requested-ID not-found stdout and empty stderr is accepted; real errors and
+  floor `0.20.0` remain intact. The target stays `0.20.4`: candidate `0.21.2`
+  fresh-process load failed, and native isolation/launch/evidence was not
+  accepted. Required configured-load and cleanup verification still block the
+  pin; see [Step 4 verification](STEP-4-VERIFICATION.md). No broad compatibility
+  layer or further native execution without procedure review.
 - **Pi:** update target and six package assets to `0.85.1` after RPC startup,
   framing, `get_state`, settlement, package-tree, and manual-compaction abort
   checks. The correct npm comparison is `@earendil-works/pi-coding-agent`;

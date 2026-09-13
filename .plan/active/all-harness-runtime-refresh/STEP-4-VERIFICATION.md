@@ -5,8 +5,9 @@
 - **Ship the localized cleanup fix; do not update the Hermes target.** The target
   remains `0.20.4`, with independent minimum `0.20.0` unchanged.
 - Six API tests, five existing catalog-repository tests and the owning analyzer
-  pass. No production classes, lifecycle ownership, database schema, wire
-  contract, authentication policy or generated files changed.
+  pass. No production classes were added or moved. Lifecycle ownership,
+  database schema, wire contracts, authentication policy and generated files
+  are unchanged.
 - Candidate `0.21.2` native verification is **not accepted**. The attempted
   saved-session load failed, and parent review found isolation, launch and
   evidence-preservation departures from the agreed verification procedure.
