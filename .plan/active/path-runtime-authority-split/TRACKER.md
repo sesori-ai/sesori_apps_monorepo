@@ -173,4 +173,4 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Review-expanded ceiling: 1,450 → 1,700 for repeated mutation gates, pair-absence proof, and direct tests.
 - Tests: 11/11 initial focused suites, full OpenCode package, and every review-affected suite passed.
 - Analysis/review: 11 strict package analyses passed; second/final architecture review approved with no violations.
-- Review-fix range `2d14f3ca2f..288e65a4ef`: 1,339 additions + 348 deletions = 1,687 authored; generated zero.
+- Review-fix range `2d14f3ca2f..fc5e36a21b`: 1,340 additions + 348 deletions = 1,688 authored; generated zero.
