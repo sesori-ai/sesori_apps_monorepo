@@ -231,18 +231,18 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
   characters.
 - Second/final architecture implementation review: APPROVED. Later feedback fixes require no third pass under the
   two-pass limit.
-- Review fixes distinguish install-blocked and explicitly repairable managed setup while preserving generic-unknown
-  Install behavior for unmigrated harnesses. Antigravity maps PATH authority and non-repairable managed uncertainty to
-  the blocked marker; both policy markers retain the existing wire unknown state.
+- Review fixes add an install-blocked unknown marker while preserving generic-unknown Install behavior for unmigrated
+  harnesses. Antigravity maps PATH authority and managed storage, profile, or probe uncertainty to the blocked marker;
+  snapshot projection and command admission both reject Install while retaining the existing wire unknown state.
 - Windows pair lookup scans the working directory only when PATH was supplied, normalizes quoted entries, and continues
   past harness-only directories to the first server candidate. PATH-less inspection never consults ambient cwd state.
 - A failed Bridge CI run exposed process-global current-directory mutation between concurrent Dart test isolates. The
   affected tests now use zone-scoped IO overrides and storage binds each path context to the call's current directory;
   the full 222-test Antigravity suite passes after the latest policy coverage.
 - Setup probe timeouts and nullable unknown-version arguments remain required at every call site.
-- Accepted implementation/evidence head: `da29722ad0c91d707c4d8dd2fddcc4b8ea5e3124`.
+- Accepted implementation/evidence head: `724b6a9a17b911142c426cd16f5ecf241c35218a`.
 - Immutable range
-  `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..da29722ad0c91d707c4d8dd2fddcc4b8ea5e3124`
-  is 1,727 lines (1,503+/224-) across 36 files, all authored and below the final review-expanded 1,750 ceiling.
+  `993315012c6c0f554bf7fa70eb3c86c249a2fe4d..724b6a9a17b911142c426cd16f5ecf241c35218a`
+  is 1,700 lines (1,472+/228-) across 35 files, all authored and below the final review-expanded 1,750 ceiling.
 - The following tracker-only reconciliation changes no production, test, generated, plan, or regression-document
   content and is excluded from the exact accepted implementation range above.
