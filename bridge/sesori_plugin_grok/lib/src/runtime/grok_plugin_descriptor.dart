@@ -21,9 +21,11 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   static const Duration _connectBudget = Duration(seconds: 15);
   static const Duration _versionProbeTimeout = Duration(seconds: 10);
 
-  /// Oldest and latest stable Grok Build release validated for this plugin.
+  /// Oldest Grok Build release supported by this plugin.
   static const String minVersion = "1.0.5";
-  static const String targetVersion = "1.0.5";
+
+  /// Latest stable Grok Build release targeted by this plugin.
+  static const String targetVersion = "1.0.30";
 
   static final SemanticVersion _minimumVersion = SemanticVersion.parse(value: minVersion);
 

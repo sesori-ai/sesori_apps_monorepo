@@ -109,13 +109,13 @@ void main() {
       final processes = _Processes(
         outputs: const [
           _Output(stdout: "omp/17.2.12\n", exitCode: 0),
-          _Output(stdout: "omp/17.3.8\n", exitCode: 0),
+          _Output(stdout: "omp/18.1.19\n", exitCode: 0),
         ],
       );
       final events = await OmpPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
-      expect((events.last as ProvisionReady).binaryPath, contains("/state/omp/17.3.8/omp"));
-      expect(processes.executables, ["omp", contains("/state/omp/17.3.8/omp")]);
+      expect((events.last as ProvisionReady).binaryPath, contains("/state/omp/18.1.19/omp"));
+      expect(processes.executables, ["omp", contains("/state/omp/18.1.19/omp")]);
     });
 
     test("reports ready from the runtime and model listing probes without an ACP probe", () async {

@@ -6,6 +6,12 @@ manifest/descriptor and tests are authoritative over these starting points.
 Re-check release channels and protocol observations on every audit; do not copy
 an old pin or claim another harness's ACP behavior as evidence.
 
+These are verification checklists, not a requirement to hold old targets until
+every fixture is available. Follow the skill's update-first policy: update all
+included harnesses, run safely available checks, and group unavailable/failed
+checks in final follow-up. Keep coverage claims honest. Only an exceptional,
+concrete problem can justify a documented temporary hold with a resolution path.
+
 ## OpenCode
 
 - **Source:** stable `anomalyco/opencode` GitHub release (`vX.Y.Z`); compare
@@ -138,7 +144,8 @@ an old pin or claim another harness's ACP behavior as evidence.
 
 - **Source:** read `https://cursor.com/install` as text. Extract one unambiguous
   published build used in its version directory and download URLs; do not run
-  the installer. Ambiguous discovery blocks pinning rather than inviting guesses.
+  the installer. Resolve ambiguous discovery from official evidence rather than
+  guessing identities or treating an old pin as the completed update.
 - **Pin:** `bridge/sesori_plugin_cursor/lib/src/runtime/cursor_runtime_manifest.dart`.
   Target is the exact `YYYY.MM.DD-<build>` string. PATH comparison uses the leading
   calendar date; preserve that separate minimum and the raw bundled build value.
@@ -150,9 +157,9 @@ an old pin or claim another harness's ACP behavior as evidence.
   must fail the old pin rather than bypass checksum verification.
 - **Probe:** production current-host package placement, exact build identity and
   the descriptor's ACP launch. Verify initialization, advertised model/mode and
-  configured load/replay behavior used by the adapter; an unavailable required
-  fixture blocks the Cursor pin. Confirm download URLs resolve before consumer
-  publication.
+  configured load/replay behavior used by the adapter. If that fixture is
+  unavailable, update the target and retain load/replay/model/mode checks in
+  final follow-up. Confirm download URLs resolve before consumer publication.
 - **Audit:** model switching, history/load, native Task/subagent coverage and
   settings. Report inaccessible upstream source rather than guessing from CLI UX.
 
@@ -167,8 +174,9 @@ an old pin or claim another harness's ACP behavior as evidence.
 - **Probe:** isolated official current-host CLI, exact `--version`, every public
   flag in `bridge/sesori_plugin_claude/lib/src/api/claude_launch_spec.dart`, and
   matching SDK launch code for headless stream-json/stdio permission behavior.
-  Stop on required-flag or semantic regressions. Version/help/source checks do
-  not re-verify live stream observations; label them accurately and keep existing
+  Fix demonstrated required-flag or semantic incompatibilities as update work;
+  use the exceptional temporary-hold policy only for concrete severe harm.
+  Version/help/source checks do not re-verify live streams; keep existing
   historical `Verified against` claims unless that trace is repeated.
 - **Audit:** stream-json/control envelopes, tool and subagent lifecycle, replay,
   permissions, questions, models and settings. This plugin drives the CLI seam,
@@ -185,9 +193,12 @@ an old pin or claim another harness's ACP behavior as evidence.
   install its `acp` extra there, and verify `hermes acp --version`, ACP v1
   initialize, advertised list/load capabilities and `session/list`. Do not run
   remote installers for discovery or create a forbidden checkout. Isolate HOME;
-  a fresh profile can lack model/provider setup. Use an authorized configured
-  fixture for new/load coverage; an unavailable required fixture blocks the
-  Hermes pin. Report unavailable evidence explicitly.
+  a fresh profile can lack model/provider setup. Preserve the real CLI dispatch,
+  not a direct call into `acp_adapter.entry`. Build/install offline from verified
+  fetched artifacts inside the restricted boundary. Use an authorized configured
+  fixture for new/load coverage; missing access or inconclusive probe results go
+  into final follow-up, not an old target. Separate fixture/provider-restore
+  failures from demonstrated production regressions and preserve failed state.
 - **Audit:** the actual Hermes ACP implementation, not only its CLI release
   notes: settings, model/provider discovery, history, tools and subagents.
 
@@ -245,16 +256,15 @@ an old pin or claim another harness's ACP behavior as evidence.
   independently downloaded bytes for every selected asset. Preserve direct-binary
   layout and the plugin's libc selection, never model these assets as ZIPs.
 - **Probe:** exact `omp/<version>` and the owning ACP launch/initialization.
-  A disposable configured fixture must cover `authenticate(agent)`, list/new/load,
-  and persisted cleanup before the pin; an unavailable required fixture blocks
-  the OMP pin. Isolate `PI_CODING_AGENT_DIR` and all other profile roots; use an
-  allowlisted environment, not inherited credentials. Report required
-  fixture/protocol blockers. Preserve normal production approval policy.
-  Current-host execution is sufficient for ordinary existing-platform target
-  bumps. A new Windows ARM64 mapping separately requires native Windows ARM64
-  install/version/ACP smoke before its platform claim or retirement; another
-  host's evidence is insufficient and a missing Windows runner blocks that
-  feature claim.
+  Use a disposable configured fixture for `authenticate(agent)`, list/new/load
+  and persisted cleanup. Isolate `PI_CODING_AGENT_DIR` and all other profile
+  roots; use an allowlist, not inherited credentials, and preserve production
+  approval policy. Missing fixtures become final checks while the target moves
+  forward. Current-host execution is the ordinary existing-platform scope.
+  A new Windows ARM64 mapping needs native install/version/ACP smoke to claim
+  native verification; another host is not that proof. If a runner is missing,
+  retain the approved implementation and record the native check for final
+  user-assisted verification, without claiming it passed.
 - **Audit:** OMP's ACP projection, not Pi RPC. Trace auth, configuration, history,
   models, tools, subagent and cancellation behavior at that seam.
 
@@ -288,8 +298,9 @@ an old pin or claim another harness's ACP behavior as evidence.
   adapter, `deepseek-harness/<pin>` and `acp/1`, `check`, then the producer's
   packaged initialize/list/new/prompt/history/restart/load/close smoke. Distinguish
   fake-provider conformance from separately authorized authenticated feature E2E.
-  Unexpected protocol/harness identity drift blocks pinning, not a reason to
-  loosen the consumer validator.
+  Resolve unexpected protocol/harness identity drift in the producer/adapter,
+  never by loosening the consumer validator. An unresolved severe incompatibility
+  needs an explicit temporary-hold resolution, not permanent version divergence.
 - **Plan dependencies honestly:** publish and verify all assets before pinning
   hashes; never use placeholders or temporary dual-version support solely for
   unreleased intermediate states. Ask separately if a real supported-runtime
@@ -313,12 +324,14 @@ an old pin or claim another harness's ACP behavior as evidence.
   normalization emits the `_x.ai/...` wire namespace; compare normalized wire
   methods before treating this as drift. Versioned normalization evidence is
   [ACP 0.10.4 source](https://docs.rs/agent-client-protocol/0.10.4/src/agent_client_protocol/lib.rs.html#221-234).
-  Required authenticated new/prompt/replay/model-selection/close probes use
-  explicitly authorized test credentials and are pin gates; an unavailable
-  required fixture blocks the Grok pin. Optional broad provider/model/child
-  exploration remains non-gating. Source-to-binary association is useful
-  evidence but is not a routine signed or source-attestation gate.
+  Authenticated new/prompt/replay/model-selection/close checks require explicitly
+  authorized test credentials and endpoint scope. If unavailable, update the
+  stable target and put those checks in final follow-up; do not repeatedly ask
+  whether to hold Grok or obtain credentials before the update. Optional broad
+  provider/model/child exploration remains separate. Source-to-binary association
+  is useful evidence, not a routine signed/source-attestation requirement.
 - **Audit:** Grok-owned model metadata and `session/set_model`, replay, tool/
   subagent extensions and scoped cancellation. Neither a generic ACP ACK nor
   an idle notification proves those behaviors. Preserve no-auto-update/no-leader
-  launch policy and stop on required-surface regressions.
+  launch policy. Fix demonstrated required-surface regressions as update work;
+  distinguish a real severe compatibility problem from unavailable test access.

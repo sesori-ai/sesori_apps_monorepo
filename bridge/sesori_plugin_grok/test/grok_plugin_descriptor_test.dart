@@ -22,7 +22,7 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.plugin);
       expect(descriptor.supportsPromptAttachments, isFalse);
       expect(GrokPluginDescriptor.minVersion, "1.0.5");
-      expect(GrokPluginDescriptor.targetVersion, "1.0.5");
+      expect(GrokPluginDescriptor.targetVersion, "1.0.30");
       expect(descriptor.options.single.name, GrokPluginDescriptor.binOption);
       expect(
         descriptor.managementCapabilities(config: config),
@@ -31,7 +31,7 @@ void main() {
       );
     });
 
-    test("reports a current PATH runtime and its sanitized version", () async {
+    test("accepts the supported PATH floor and reports its sanitized version", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
