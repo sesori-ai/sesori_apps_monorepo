@@ -5,16 +5,16 @@
 - Slug: `path-runtime-authority-split`
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
-- Current step: 1/9 — plan replacement sequence
-- Open replacement implementation PRs: none
+- Current step: 2/9 — centralize executable and command control
+- Open replacement implementation PRs: Step 2 — #1463
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
 
 | Step | Status | PR | Changed-line ceiling |
 |---|---|---|---:|
-| 1. Plan replacement sequence | In progress | Pending | 650 |
-| 2. Centralize executable and command control | Not started | — | 700 |
+| 1. Plan replacement sequence | Merged | #1462 | 650 |
+| 2. Centralize executable and command control | In progress | #1463 | 850 |
 | 3. Settle commands and terminate process trees | Not started | — | 1,000 |
 | 4. Make PATH authoritative for managed copies | Not started | — | 1,450 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
@@ -67,14 +67,58 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Map all latest review findings to replacement slices.
 - [x] Complete architecture-plan review and apply valid findings.
 - [x] Validate plan/tracker formatting and changed-line budget.
-- [ ] Commit, push, and open Step 1 PR.
-- [ ] Reply on #1458 with replacement provenance and close it without deleting the branch.
-- [ ] Start PR monitor for Step 1.
+- [x] Commit, push, and open Step 1 PR.
+- [x] Reply on #1458 with replacement provenance and close it without deleting the branch.
+- [x] Start PR monitor for Step 1.
 
-## Verification Evidence
+## Step 1 Evidence
 
+- PR #1462 merged at `27cd7c76fa`.
 - Architecture-plan review: APPROVED on permitted second pass; no blocking findings.
-- `git diff --check`: passes.
+- `git diff --check`: passed.
 - Added-line width: zero lines over 120 Unicode characters or UTF-8 bytes.
+- Immutable size range: `4854865eedf6152d1371777f061adbb1514a34c5` to
+  `27cd7c76faa0fc9814be465c2ccb9bcb9773e5ac`.
+- Base-to-head numstat: `444 0` for `PLAN.md` and `80 0` for `TRACKER.md`; 524 changed lines total.
+- Final review-fix commit (`2f79efb056ae` to `27cd7c76faa0`) changed `PLAN.md` by `15 13` and `TRACKER.md` by
+  `4 4`; the immutable base-to-head total above includes that tracker reconciliation.
 - Step 1 content: 524 lines, below its 650-line ceiling.
 - No Dart/Flutter suites required for plan-only changes.
+
+## Step 2 Checklist
+
+- [x] Add injectable concrete `IoHostExecutableLocator`; retain no one-to-one interface.
+- [x] Centralize locale-independent process-missing and positive PATH-absence classification.
+- [x] Add abortable `HostProcessCommandExecutor` execution with observed termination.
+- [x] Add direct host lookup, classification, timeout, abort, output-drain, and termination tests.
+- [x] Run focused Foundation tests and strict analysis.
+- [x] Complete architecture-implementation review and apply valid findings.
+- [x] Measure the full Step 2 diff against its review-adjusted 850-line ceiling.
+- [x] Commit, push, and open Step 2 PR (#1463).
+- [x] Start PR monitor for Step 2.
+
+## Step 2 Evidence
+
+- Focused Foundation tests: 21 passed.
+- Cursor hung-version-probe CI regression: passed.
+- `dart analyze --fatal-infos`: no issues.
+- Architecture implementation review: APPROVED with no violations.
+- Immutable Step 2 implementation range: `b20e1268a2546daec24412db8700b2f1b7048515` to
+  `c0bfe0cb00e273ccba3026d7f034fb4877a09b03`.
+- Numstat basis: `.plan` paths are repository-relative; remaining paths are relative to
+  `bridge/sesori_bridge_foundation/`.
+
+  | File | Additions | Deletions |
+  |---|---:|---:|
+  | `.plan/active/path-runtime-authority-split/PLAN.md` | 1 | 1 |
+  | `.plan/active/path-runtime-authority-split/TRACKER.md` | 53 | 9 |
+  | `lib/sesori_bridge_foundation.dart` | 1 | 0 |
+  | `lib/src/host_executable_locator.dart` | 170 | 0 |
+  | `lib/src/host_process_command_executor.dart` | 155 | 9 |
+  | `test/host_executable_locator_test.dart` | 202 | 0 |
+  | `test/host_process_command_executor_test.dart` | 216 | 8 |
+
+- Implementation head: 798 additions plus 27 deletions, or 825 changed lines across 7 files.
+- This evidence edit replaces lines one-for-one; base-to-current numstat remains 798 + 27 = 825.
+- All churn is authored; generated churn is zero.
+- Review-expanded lookup and spawn fencing raised the Step 2 ceiling from 700 to 850; the total remains below it.
