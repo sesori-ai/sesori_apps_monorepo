@@ -59,6 +59,34 @@ class const _StubManifest({required final bool hasAsset}) implements RuntimeMani
   }
 }
 
+class _FakePathAuthority({required List<bool> pathAbsence}) implements ManagedRuntimePathAuthority {
+  final List<bool> _pathAbsence = List<bool>.of(pathAbsence);
+  int checks = 0;
+
+  @override
+  Future<bool> isPathAbsent({
+    required Map<String, String> environment,
+    required StartAbortSignal abortSignal,
+  }) async {
+    checks++;
+    if (abortSignal.isAborted) throw const PluginStartAbortedException();
+    final absent = _pathAbsence.first;
+    if (_pathAbsence.length > 1) _pathAbsence.removeAt(0);
+    return absent;
+  }
+}
+
+class _AbortThenFailPathAuthority({required final StartAbortController abort}) implements ManagedRuntimePathAuthority {
+  @override
+  Future<bool> isPathAbsent({
+    required Map<String, String> environment,
+    required StartAbortSignal abortSignal,
+  }) async {
+    abort.abort();
+    throw StateError("PATH probe failed after abort");
+  }
+}
+
 class const _StubInUseSignal({required final bool _inUse}) implements RuntimeInUseSignal {
   @override
   bool get isInUse => _inUse;
@@ -142,6 +170,7 @@ void main() {
     RuntimeAssetResolver? assetResolver,
     void Function()? onDownload,
     RuntimeCandidateValidator? candidateValidator,
+    ManagedRuntimePathAuthority? pathAuthority,
   }) {
     final manifest = _StubManifest(hasAsset: hasAsset);
     return ManagedRuntimeInstallService(
@@ -155,6 +184,7 @@ void main() {
         runtimeId: "opencode",
       ),
       cleaner: ManagedRuntimeCleaner(runtimeId: "opencode"),
+      pathAuthority: pathAuthority ?? _FakePathAuthority(pathAbsence: const [true]),
       assetResolver: assetResolver ?? ({required target}) async => manifest.assetFor(target: target),
     );
   }
@@ -162,12 +192,13 @@ void main() {
   Future<List<RuntimeProvisionProgress>> install(
     ManagedRuntimeInstallService service, {
     RuntimeInUseSignal runtimeInUse = RuntimeInUseSignal.never,
+    StartAbortSignal? startAborted,
   }) {
     return service
         .install(
           environment: const {},
           stateDirectory: stateDir.path,
-          startAborted: StartAbortSignal.never,
+          startAborted: startAborted ?? StartAbortSignal.never,
           runtimeInUse: runtimeInUse,
         )
         .toList();
@@ -185,7 +216,13 @@ void main() {
   }
 
   test("installs, probes the placed binary, and ends ready", () async {
-    final events = await install(build(managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9")));
+    final authority = _FakePathAuthority(pathAbsence: const [true]);
+    final events = await install(
+      build(
+        managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
+        pathAuthority: authority,
+      ),
+    );
 
     final binaryPath = p.join(stateDir.path, "opencode", "1.17.9", "opencode");
     expect(events.first, isA<ProvisionResolving>());
@@ -193,6 +230,82 @@ void main() {
     expect(events.last, isA<ProvisionReady>());
     expect((events.last as ProvisionReady).binaryPath, binaryPath);
     expect(File(binaryPath).existsSync(), isTrue);
+    expect(authority.checks, 6, reason: "before cleanup, scratch work, validation, activation, and cleanup");
+  });
+
+  test("PATH authority is revalidated before cleanup or download", () async {
+    var downloaded = false;
+    final obsolete = versionDir("0.9.0");
+    final authority = _FakePathAuthority(pathAbsence: const [false]);
+
+    final events = await install(
+      build(
+        pathAuthority: authority,
+        onDownload: () => downloaded = true,
+      ),
+    );
+
+    expect(authority.checks, 1);
+    expect(events, [isA<ProvisionResolving>(), isA<ProvisionFailed>()]);
+    expect(obsolete.existsSync(), isTrue);
+    expect(downloaded, isFalse);
+  });
+
+  test("rechecks PATH immediately before staging and download", () async {
+    var downloaded = false;
+    final authority = _FakePathAuthority(pathAbsence: const [true, false]);
+
+    final events = await install(
+      build(pathAuthority: authority, onDownload: () => downloaded = true),
+    );
+
+    expect(authority.checks, 2);
+    expect(events.last, isA<ProvisionFailed>());
+    expect(downloaded, isFalse);
+  });
+
+  test("preserves an abort when PATH probing fails after shutdown begins", () async {
+    final aborted = StartAbortController();
+
+    await expectLater(
+      install(
+        build(pathAuthority: _AbortThenFailPathAuthority(abort: aborted)),
+        startAborted: aborted.signal,
+      ),
+      throwsA(isA<PluginStartAbortedException>()),
+    );
+  });
+
+  test("preserves the pinned directory when PATH appears after validation", () async {
+    final pinned = versionDir("1.17.9");
+    final stale = File(p.join(pinned.path, "stale"))..writeAsStringSync("OLD");
+    final authority = _FakePathAuthority(pathAbsence: const [true, true, true, true, false]);
+
+    final events = await install(
+      build(
+        managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
+        pathAuthority: authority,
+      ),
+    );
+
+    expect(events.last, isA<ProvisionFailed>());
+    expect(stale.readAsStringSync(), "OLD");
+    expect(File(p.join(pinned.path, RuntimeInstallService.sentinelFileName)).existsSync(), isFalse);
+  });
+
+  test("preserves managed copies when PATH appears before final cleanup", () async {
+    final supported = versionDir("1.0.0");
+    final authority = _FakePathAuthority(pathAbsence: const [true, true, true, true, true, false]);
+
+    final events = await install(
+      build(
+        managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
+        pathAuthority: authority,
+      ),
+    );
+
+    expect(events.last, isA<ProvisionFailed>());
+    expect(supported.existsSync(), isTrue);
   });
 
   test("fails when the platform has no published asset", () async {
@@ -345,6 +458,7 @@ void main() {
 
   test("validates a cached candidate in disposable managed staging", () async {
     installPinned();
+    final authority = _FakePathAuthority(pathAbsence: const [true]);
     final validator = _FakeCandidateValidator(
       managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
       onValidate: (context) async {
@@ -358,11 +472,12 @@ void main() {
       },
     );
 
-    final events = await install(build(candidateValidator: validator));
+    final events = await install(build(candidateValidator: validator, pathAuthority: authority));
 
     expect(events.whereType<ProvisionDownloading>(), isEmpty);
     expect(events.last, isA<ProvisionReady>());
     expect(validator.contexts, hasLength(1));
+    expect(authority.checks, 3, reason: "before cleanup, cached validation, and final cleanup");
     expect(Directory(p.join(stateDir.path, "opencode", ".sesori-runtime-staging")).existsSync(), isFalse);
   });
 

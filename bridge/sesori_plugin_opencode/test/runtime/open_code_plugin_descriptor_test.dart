@@ -37,38 +37,41 @@ void main() {
       Directory(p.join(stateDir.path, const OpenCodeRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    Future<bool> needsUpgrade({required PluginConfig candidateConfig}) => descriptor.needsManagedRuntimeUpgrade(
+      config: candidateConfig,
+      processes: const _MissingHostProcessService(),
+      environment: const {"PATH": "/definitely/missing"},
+      stateDirectory: stateDir.path,
+    );
+
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const OpenCodeRuntimeManifest().bundledVersion.raw);
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("1.17.9");
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
+      expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("1.17.9");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
-          stateDirectory: stateDir.path,
+        await needsUpgrade(
+          candidateConfig: const PluginConfig(values: {"no-auto-start": false, "bin": "/custom/opencode"}),
         ),
         isFalse,
       );
     });
 
-    test("declines in attach mode, where Sesori does not own the runtime", () {
+    test("declines in attach mode, where Sesori does not own the runtime", () async {
       installedVersion("1.17.9");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {"no-auto-start": true, "bin": null}),
-          stateDirectory: stateDir.path,
-        ),
+        await needsUpgrade(candidateConfig: const PluginConfig(values: {"no-auto-start": true, "bin": null})),
         isFalse,
       );
     });
@@ -1143,6 +1146,23 @@ class _FakePortService() implements HostPortService {
 
   @override
   Future<bool> isBindable({required String host, required int port}) async => byPort[port] ?? defaultBindable;
+}
+
+class const _MissingHostProcessService() implements HostProcessService {
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) {
+    throw ProcessException(executable, arguments, "missing", 2);
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeHostProcessService() implements HostProcessService {

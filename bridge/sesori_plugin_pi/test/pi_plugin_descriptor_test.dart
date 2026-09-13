@@ -24,36 +24,42 @@ void main() {
       Directory(p.join(stateDir.path, const PiRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const PiRuntimeManifest().bundledVersion.raw);
 
       expect(
-        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+        await PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
-          stateDirectory: stateDir.path,
-        ),
-        isFalse,
-      );
-    });
-
-    test("asks for an upgrade when a superseded version is installed", () {
-      installedVersion("0.84.2");
-
-      expect(
-        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
+          processes: _Processes(spawnError: const ProcessException("pi", ["--version"], "missing", 2)),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isTrue,
       );
     });
 
-    test("declines with an explicit binary override", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("0.84.2");
 
       expect(
-        PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+        await PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {PiPluginDescriptor.binOption: null}),
+          processes: _Processes(spawnError: const ProcessException("pi", ["--version"], "missing", 2)),
+          environment: const {"PATH": "/definitely/missing"},
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () async {
+      installedVersion("0.84.2");
+
+      expect(
+        await PiPluginDescriptor.production().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {PiPluginDescriptor.binOption: "/custom/pi"}),
+          processes: _Processes(spawnError: const ProcessException("pi", ["--version"], "missing", 2)),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -88,17 +94,12 @@ void main() {
       expect(processes.executables, ["pi"]);
     });
 
-    test("ensureRuntime falls back to the exact managed binary", () async {
-      final processes = _Processes(
-        outputs: const [
-          _Output(stdout: "0.84.0\n", exitCode: 0),
-          _Output(stdout: "0.85.1\n", exitCode: 0),
-        ],
-      );
+    test("ensureRuntime blocks on an outdated PATH binary", () async {
+      final processes = _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]);
       final events = await PiPluginDescriptor.production().ensureRuntime(host: _Host(processes: processes)).toList();
 
-      expect((events.last as ProvisionReady).binaryPath, contains("/state/pi/0.85.1/pi"));
-      expect(processes.executables, ["pi", contains("/state/pi/0.85.1/pi")]);
+      expect(events.last, isA<ProvisionFailed>());
+      expect(processes.executables, ["pi"]);
     });
 
     test("inspectSetup reports a usable model listing as ready and preserves the environment", () async {
@@ -203,7 +204,7 @@ void main() {
 
       final missing = await descriptor.inspectSetup(
         config: config,
-        processes: _Processes(spawnError: const ProcessException("/custom/pi", ["--version"], "missing")),
+        processes: _Processes(spawnError: const ProcessException("/custom/pi", ["--version"], "missing", 2)),
         environment: const {},
         stateDirectory: "/state",
       );

@@ -4,7 +4,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginHost,
         PluginStartAbortedException,
         ProvisionFailed,
-        ProvisionNotice,
         ProvisionReady,
         ProvisionResolving,
         RuntimeProvisionProgress;
@@ -14,11 +13,11 @@ import "runtime_manifest.dart";
 
 /// Resolves an already-installed runtime without downloading or mutating it.
 ///
-/// Precedence is a sufficiently recent PATH runtime, then the first
-/// sufficiently recent fallback executable candidate (e.g. a CLI bundled by a
-/// backend's desktop app, enumerated by the owning plugin), then the newest
-/// installed managed runtime that is still at or above the minimum, preferring
-/// the pinned version.
+/// An explicit executable is authoritative when supplied. Otherwise, PATH is
+/// authoritative whenever its command exists: a supported runtime is selected,
+/// while an outdated or unusable one blocks startup. Only verified PATH absence
+/// permits fallbacks and supported managed runtimes, preferring the pinned
+/// version before other versions in newest-first order.
 class ManagedRuntimeProvisionService({
   required final RuntimeManifest _manifest,
   required final ManagedRuntimeSelectionService _selectionService,
@@ -37,7 +36,6 @@ class ManagedRuntimeProvisionService({
 
     final id = _manifest.runtimeId;
     final name = _manifest.displayName;
-    final minimum = _manifest.minPathVersion;
     final selection = await _selectionService.select(
       explicitExecutablePath: explicitExecutablePath,
       fallbackExecutableCandidates: _fallbackExecutableCandidates,
@@ -50,13 +48,6 @@ class ManagedRuntimeProvisionService({
       :final source,
       :final version,
     )) {
-      if (selection case ManagedRuntimeManagedSelected(:final rejectedPathVersion) when rejectedPathVersion != null) {
-        yield ProvisionNotice(
-          message:
-              "Installed $name ${rejectedPathVersion.toString()} is older than the minimum supported ${minimum.toString()}; "
-              "using the existing managed $name ${version.toString()} instead.",
-        );
-      }
       Log.i("[$id] using ${source.name} $name ${version.toString()}");
       yield ProvisionReady(binaryPath: binaryPath);
       return;

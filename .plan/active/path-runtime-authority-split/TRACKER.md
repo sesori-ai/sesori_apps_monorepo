@@ -5,8 +5,8 @@
 - Slug: `path-runtime-authority-split`
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
-- Current step: 3/9 — settle commands and terminate process trees
-- Open replacement implementation PRs: Step 3 — #1466
+- Current step: 4/9 — make PATH authoritative for managed copies
+- Open replacement implementation PRs: Step 4 — #1472
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -15,8 +15,8 @@
 |---|---|---|---:|
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
 | 2. Centralize executable and command control | Merged | #1463 | 850 |
-| 3. Settle commands and terminate process trees | In progress | #1466 | 1,000 |
-| 4. Make PATH authoritative for managed copies | Not started | — | 1,450 |
+| 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
+| 4. Make PATH authoritative for managed copies | In progress | #1472 | 1,850 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
 | 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
@@ -31,11 +31,13 @@
 - **3:** `bridge/app` API/runtime/service; `SystemProcessApi`, `PluginRuntime`, `PluginLifecycleService`, and
   `BridgeShutdownCoordinator`; existing install/shutdown safety only.
 - **4:** plugin runtime/interface → managed descriptors → app startup; `RuntimeVersionManagedRuntimePathAuthority`,
-  selection/install/upgrade services, and `BridgeRuntimeRunner`; PATH blocks every managed path with no updater action.
+  selection/install/upgrade services, Antigravity pair mutation authority, and `BridgeRuntimeRunner`; PATH blocks managed
+  mutation everywhere and standard managed selection, with Antigravity pair selection completed in Step 6.
 - **5:** plugin interface → standard descriptors; `PluginSetupRuntimeOutdated`, `PluginRuntimeUpdateSpec`, and each
   owning descriptor; setup/capability only with no command execution.
 - **6:** Antigravity API → repository → service → descriptor; `AntigravityAcpApi`,
-  `AntigravityRuntimeVersionRepository`, `AntigravitySetupService`, and authority calculator; inert pair-aware setup.
+  `AntigravityRuntimeVersionRepository`, `AntigravitySetupService`, and the Step 4 authority calculator; inert pair-aware
+  setup and selection.
 - **7:** shared wire → bridge runtime/repository/service → client-core repository/service/cubit;
   `PluginRuntimeProvisionKind`, `PluginLifecycleService`, `PluginRuntime`, `PluginManagementService`, and
   `PluginManagementCubit`; headless update plus non-presentational client consumption.
@@ -143,6 +145,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 
 ## Step 3 Evidence
 
+- PR #1466 merged as `2d14f3ca2f` from accepted head `b9a4577acd`.
 - Numstat/merge base: `825583d25d53587c28292b506e27e34f251cf98d` (Step 2 squash merge).
 - Initial implementation head: `87fdf32596bd1c7cfe7a68382dd84a8c2b3fa37f`.
 - First review-fix checkpoint: `67e061722ad85a8f087f47a158227a28a98ec7c0`.
@@ -165,3 +168,9 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - First review-fix checkpoint: 472 additions plus 72 deletions, or 544 changed lines across 18 files.
 - Current review-fix tree: 813 additions plus 83 deletions, or 896 changed lines across 27 files.
 - All churn is authored; generated churn is zero; the total remains below the 1,000-line ceiling.
+
+## Step 4 Evidence
+- Review-expanded ceiling: 1,450 → 1,850 for activation fencing, direct authority tests, and partial-pin repair.
+- Tests: 11/11 initial focused suites, full OpenCode package, and every review-affected suite passed.
+- Analysis/review: 11 strict package analyses passed; second/final architecture review approved with no violations.
+- Review-fix range `2d14f3ca2f..e5d6fa9765`: 1,477 additions + 363 deletions = 1,840 authored; generated zero.

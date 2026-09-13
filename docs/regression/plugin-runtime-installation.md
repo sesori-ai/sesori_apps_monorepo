@@ -2,9 +2,8 @@
 
 ## Capability
 
-Installing a harness's pinned, bridge-managed runtime — on request from the app or the
-management API when it reports its runtime as missing or too old, and automatically on
-bridge start when Sesori already manages an older version.
+Installing a harness's pinned, bridge-managed runtime only when no authoritative PATH runtime exists — on request
+from the app or management API, or at bridge start when Sesori manages an older version and PATH is verified absent.
 
 ## Required Behavior
 
@@ -14,6 +13,11 @@ bridge start when Sesori already manages an older version.
   ready, authentication-required, or unknown states. Install-ready missing runtimes use
   the dedicated installation content; manual setup hints remain for externally installed
   harnesses and other setup failures.
+- PATH is authoritative for standard single-command runtimes. Every result except verified absence—including outdated,
+  malformed, timed-out, nonzero, permission-denied, unlaunchable, or ambiguous evidence—blocks managed fallback and
+  mutation without exposing managed Install. Installation revalidates before cleanup, download, scratch preparation,
+  validation, activation, and final cleanup, preserving managed copies while PATH is present.
+- Antigravity managed install and startup mutation require both a missing PATH server candidate and physical absence.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its
   required package directory, never installs system-wide, touches files elsewhere, or starts the backend.
@@ -71,11 +75,10 @@ bridge start when Sesori already manages an older version.
   stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
-- A bridge start upgrades every eligible harness that still has a Sesori-managed version
-  directory other than the pinned target, and only those: a machine with no managed
-  runtime keeps the explicit Install action and never downloads one unasked. The trigger
-  runs after single-live-bridge ownership is settled and returns without waiting, so
-  startup is never delayed by a download. Each upgrade occupies the harness's command
+- Startup upgrades run only when an outdated or incomplete pinned runtime exists and PATH is verified absent. An exact
+  pin suppresses repair only when its canonical binary and last-written non-empty sentinel are present. PATH presence, a
+  completed pin, or any newer-version directory blocks an unasked download or downgrade. Concurrent probes
+  follow ownership settlement and finish before downloads, so downloads never delay startup. Each upgrade occupies the
   slot exactly like a manual install, so an overlapping request joins it and another
   command conflicts. An explicit Install that joins a running upgrade carries the user's
   intent with it: the joined install enables and starts the harness on success, even
@@ -195,10 +198,8 @@ download, verification, or placement. Use a disposable data directory.
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. Native managed-pipeline correctness has been executed on macOS arm64. Linux x64,
   Linux arm64, Windows x64 and Windows arm64 native correctness remains unverified.
-- The upgrade replaces only a runtime Sesori already manages; a harness that has never
-  been installed through Sesori still needs the explicit Install action. A user who runs
-  a PATH install and also has a stale managed directory downloads one target they do not
-  run, once per target bump.
+- Startup upgrade replaces only an existing Sesori-managed runtime; otherwise Install remains explicit. A PATH runtime
+  preserves managed directories and suppresses automatic managed downloads.
 - There is no hot swap: a generation started on the older supported runtime keeps it until
   it stops. A harness that is running when its upgrade completes keeps that version
   directory until a later install reclaims it.

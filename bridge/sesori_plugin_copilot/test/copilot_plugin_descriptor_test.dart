@@ -22,36 +22,42 @@ void main() {
       Directory("${stateDir.path}/${const CopilotRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("repairs an incomplete pinned directory", () async {
       installedVersion(const CopilotRuntimeManifest().bundledVersion.raw);
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
-          stateDirectory: stateDir.path,
-        ),
-        isFalse,
-      );
-    });
-
-    test("asks for an upgrade when a superseded version is installed", () {
-      installedVersion("1.0.79");
-
-      expect(
-        descriptor.needsManagedRuntimeUpgrade(
-          config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          processes: _Processes(),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isTrue,
       );
     });
 
-    test("declines with an explicit binary override", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("1.0.79");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          processes: _Processes(),
+          environment: const {"PATH": "/definitely/missing"},
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () async {
+      installedVersion("1.0.79");
+
+      expect(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),
+          processes: _Processes(),
+          environment: const {"PATH": "/definitely/missing"},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -83,6 +89,18 @@ void main() {
     );
 
     expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
+  });
+
+  test("keeps an outdated PATH runtime non-installable until update metadata lands", () async {
+    final result = await CopilotPluginDescriptor.production().inspectSetup(
+      config: defaultConfig,
+      processes: _Processes(outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.77\n", exitCode: 0)]),
+      environment: const {},
+      stateDirectory: "/state",
+    );
+
+    expect(result, isA<PluginSetupUnknown>());
+    expect(result.actionHint, contains("Update the global GitHub Copilot CLI"));
   });
 
   test("classifies an unrelated explicit runtime as unrecognized", () async {

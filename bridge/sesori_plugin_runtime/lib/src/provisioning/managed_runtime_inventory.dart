@@ -3,6 +3,7 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "runtime_install_service.dart";
 import "runtime_manifest.dart";
 import "runtime_version.dart";
 
@@ -48,10 +49,28 @@ class const ManagedRuntimeInventory({required final RuntimeManifest _manifest}) 
     return List<RuntimeVersion>.unmodifiable(versions);
   }
 
-  /// Whether a managed version directory other than the pinned
-  /// [RuntimeManifest.bundledVersion] exists under [stateDirectory].
-  bool hasSupersededVersion({required String stateDirectory}) {
-    final pinned = _manifest.bundledVersion.raw;
-    return installedVersions(stateDirectory: stateDirectory).any((version) => version.raw != pinned);
+  /// Whether an outdated or incomplete pinned runtime should trigger
+  /// installation of the bundled version.
+  bool hasOutdatedVersion({required String stateDirectory}) {
+    if (_hasCompletedBundledInstallation(stateDirectory: stateDirectory)) return false;
+
+    final installed = installedVersions(stateDirectory: stateDirectory);
+    return installed.isNotEmpty && installed.first.compareTo(_manifest.bundledVersion) <= 0;
+  }
+
+  bool _hasCompletedBundledInstallation({required String stateDirectory}) {
+    final binary = File(
+      _manifest.managedBinaryPath(stateDirectory: stateDirectory, version: _manifest.bundledVersion),
+    );
+    final sentinel = File(
+      p.join(stateDirectory, _manifest.runtimeId, _manifest.bundledVersion.raw, RuntimeInstallService.sentinelFileName),
+    );
+    if (!binary.existsSync() || !sentinel.existsSync()) return false;
+    try {
+      return sentinel.readAsStringSync().trim().isNotEmpty;
+    } on Object catch (error, stackTrace) {
+      Log.w("[${_manifest.runtimeId}] managed runtime sentinel is unreadable", error, stackTrace);
+      return false;
+    }
   }
 }

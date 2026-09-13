@@ -87,8 +87,8 @@ The replacement must address these latest #1458 findings in their assigned slice
 - **`3999205383` (Step 3):** make the first owned Windows shutdown attempt tree-aware and require observed exit.
 - **`3999205385` (Step 5):** give Codex setup tests deterministic executable presence instead of developer PATH.
 - **`3999205390` (Step 7):** mark canonical inspection only after success or re-inspect from failure handling.
-- **`3999205396` (Step 6):** directly test every Antigravity candidate, especially a missing PATH harness beside a
-  present server.
+- **`3999205396` (Step 4):** directly test every Antigravity mutation-authority candidate, especially a missing PATH
+  harness beside a present server.
 - **`3999205399` (Steps 2 and 5):** centralize missing-command classification in Foundation and reuse it in
   descriptors.
 - **Lint report `5652131685` (Step 6):** remove the opaque Antigravity command-result model and its suppression through
@@ -115,16 +115,17 @@ Series slug `path-runtime-authority-split`; every PR title is
      independently useful safety slice carries finding `3999205383`.
 4. **Step 4/9**
    - Title: `🚧 [path-runtime-authority-split] runtime: make PATH authoritative for managed copies [step 4/9]`
-   - Scope: add managed PATH authority, newest-version inventory policy, mutation-boundary revalidation, and PATH-aware
-     startup refresh. PATH suppresses managed selection, install, cleanup, and startup upgrades.
+   - Scope: add managed PATH authority, newest-version inventory policy, mutation-boundary revalidation, PATH-aware
+     startup refresh, and pair-aware Antigravity mutation fencing. PATH suppresses standard managed selection and
+     managed install, cleanup, and startup upgrades everywhere; Antigravity pair selection completes in Step 6.
 5. **Step 5/9**
    - Title: `⚙️ [path-runtime-authority-split] plugins: report outdated PATH runtimes and safe updaters [step 5/9]`
    - Scope: add backend-neutral setup/update metadata and standard harness descriptors/tests. Explicit overrides and
      unsupported updaters remain manual.
 6. **Step 6/9**
    - Title: `⚙️ [path-runtime-authority-split] antigravity: inspect PATH pairs without side effects [step 6/9]`
-   - Scope: add inert Antigravity API/repository/service inspection and pair-aware authority, repository-domain mapping,
-     and exhaustive predicate tests.
+   - Scope: add inert Antigravity API/repository/service inspection, apply the Step 4 pair-authority predicate to
+     selection, complete repository-domain mapping, and add inert inspection and selection tests.
 7. **Step 7/9**
    - Title: `🚧 [path-runtime-authority-split] bridge: execute sanitized global runtime updates [step 7/9]`
    - Scope: add wire operation identity, bridge admission/execution, sanitized progress and failures, canonical
@@ -213,7 +214,9 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - interface `lifecycle/bridge_plugin_descriptor.dart` — asynchronous `needsManagedRuntimeUpgrade` contract only; and
   - descriptors in `sesori_plugin_opencode`, `sesori_plugin_codex`, `sesori_plugin_copilot`,
     `sesori_plugin_cursor`, `sesori_plugin_deepseek`, `sesori_plugin_omp`, and `sesori_plugin_pi` — managed startup
-    authority overrides and caller updates only.
+    authority overrides and caller updates only; and
+  - Antigravity `services/antigravity_managed_runtime_path_authority.dart` owns pair-aware mutation authority; its
+    descriptor composes it for install/startup upgrade only, while pair selection remains Step 6.
 - **Bridge consumers:** `bridge/app/lib/src/runtime/plugin_runtime.dart` passes injected `_setupProcesses` and immutable
   environment; `plugin_lifecycle_repository.dart` forwards the async decision;
   `plugin_lifecycle_service.dart.upgradeManagedRuntimes` admits only eligible startup refreshes; and
@@ -222,7 +225,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 - **Collaborators/ownership:** `RuntimeVersionManagedRuntimePathAuthority` requires `RuntimeManifest` and
   `RuntimeVersionValidator`; `ManagedRuntimeUpgradeService` requires `ManagedRuntimePathAuthority` and
   `ManagedRuntimeInventory`; `ManagedRuntimeInstallService` requires manifest, installer, cleaner, authority, and asset
-  resolver. `ManagedRuntimeComposition` constructs these stateless graphs. No app-owned PATH decision enters a plugin.
+  resolver. Antigravity authority additionally injects its runtime repository, concrete executable locator, and target.
+  Composition constructs these stateless graphs; no app-owned PATH decision enters a plugin.
 - **Dependency/data flow:** Foundation locator/command result → `RuntimeVersionValidator`
   → `ManagedRuntimePathAuthority` → selection/install/upgrade services → descriptor
   → `PluginRuntime` repository/service adapters → `BridgeRuntimeRunner` startup consumer.
@@ -262,17 +266,15 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - models `models/antigravity_runtime_version.dart` — sealed domain variants
     `AntigravityRuntimeVersionProbeSucceeded`, `AntigravityRuntimeVersionProbeRejected`, and
     `AntigravityRuntimeVersionProbeFailed`, carrying no `CommandResult`;
-  - services `antigravity_runtime_service.dart`, `antigravity_setup_service.dart`,
-    `antigravity_runtime_path_authority_calculator.dart`, and `antigravity_managed_runtime_path_authority.dart` —
-    `AntigravityRuntimeService`, `AntigravitySetupService`, `AntigravityRuntimePathAuthorityCalculator`, and
-    `AntigravityManagedRuntimePathAuthority`; and
+  - services `antigravity_runtime_path_authority_calculator.dart`, `antigravity_runtime_service.dart`, and
+    `antigravity_setup_service.dart` — the calculator is extracted once managed authority and inert selection both need
+    it; `AntigravityRuntimeService` and `AntigravitySetupService` consume the resulting pair policy; and
   - `runtime/antigravity_plugin_descriptor.dart`, `runtime/antigravity_authentication_composer.dart`, and package export
     update composition/callers in lockstep.
 - **Collaborators/ownership:** `AntigravityAcpApi` keeps injected `AcpProcessFactory`, `AcpOutputInterceptor`, and
   `CommandExecutor`; version inspection uses only the executor. `AntigravityRuntimeVersionRepository` injects that API.
-  `AntigravityRuntimeService` injects `AntigravityRuntimeRepository` and the stateless calculator.
+  `AntigravityRuntimeService` and managed authority inject the calculator once it has both production consumers.
   `AntigravitySetupService` injects runtime service, version repository, and existing profile inspection service.
-  `AntigravityManagedRuntimePathAuthority` injects runtime repository, calculator, and `PlatformTarget`.
 - **Dependency/data flow:** Foundation command result → `AntigravityAcpApi` DTO
   → `AntigravityRuntimeVersionRepository` domain probe → `AntigravitySetupService`
   → descriptor setup status. Physical pair evidence flows repository → calculator/service
@@ -351,7 +353,7 @@ generated files. These are ceilings, not targets:
 | 1 | 650 | Plan and tracker only. |
 | 2 | 850 | Review-expanded Foundation fencing and lookup fidelity; authored code/tests only. |
 | 3 | 1,000 | Narrow app lifecycle/process implementation and focused tests. |
-| 4 | 1,450 | Runtime core, managed-descriptor startup hooks, and tests must compile together. |
+| 4 | 1,850 | Review-expanded mutation fencing, completion checks, and non-installable PATH setup. |
 | 5 | 1,400 | Standard descriptor behavior and tests; no Antigravity or app execution flow. |
 | 6 | 1,000 | Current Antigravity diff is 737 lines plus required mapping/test corrections. |
 | 7 | 1,500 | Shared wire, bridge execution, and minimum client-core consumption. |
@@ -365,10 +367,10 @@ clean inactive portion to a later step; do not add compatibility code solely to 
 
 - Step 2 lands neutral primitives before consumers.
 - Step 3 may use Step 2 command-abort primitives but cannot introduce global-update product behavior.
-- Step 4 updates every caller affected by managed-runtime interface changes in the same PR.
+- Step 4 updates every caller affected by managed-runtime interface changes and owns Antigravity mutation authority.
 - Step 5 may add dormant setup/update metadata; include only minimal boundary mapping required for every package to
   compile. Do not activate a client command early.
-- Step 6 owns every Antigravity-specific identifier, pair rule, DTO, and profile interpretation.
+- Step 6 owns the remaining Antigravity DTO/profile identifiers and applies Step 4's pair rule to inert selection.
 - Step 7 updates shared contracts and all consumers required for source compatibility in lockstep. It may carry minimum
   client-core parsing/state support, but presentation stays in Step 8.
 - Step 8 owns user copy, grouping, sheets/actions, analytics outcome wording, and feature documentation.

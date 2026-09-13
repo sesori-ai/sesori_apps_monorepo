@@ -3,8 +3,10 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "../provisioning/managed_runtime_cleaner.dart";
 import "../provisioning/managed_runtime_install_service.dart";
 import "../provisioning/managed_runtime_inventory.dart";
+import "../provisioning/managed_runtime_path_authority.dart";
 import "../provisioning/managed_runtime_provision_service.dart";
 import "../provisioning/managed_runtime_selection_service.dart";
+import "../provisioning/managed_runtime_upgrade_service.dart";
 import "../provisioning/runtime_candidate_validator.dart";
 import "../provisioning/runtime_install_service.dart";
 import "../provisioning/runtime_manifest.dart";
@@ -25,6 +27,7 @@ class const ManagedRuntimeComposition() {
     required CommandExecutor commandExecutor,
     required BinaryDownloadClient downloadClient,
     required RuntimeCandidateValidator candidateValidator,
+    required ManagedRuntimePathAuthority pathAuthority,
     required RuntimeAssetResolver assetResolver,
   }) {
     return ManagedRuntimeInstallService(
@@ -38,6 +41,7 @@ class const ManagedRuntimeComposition() {
         runtimeId: manifest.runtimeId,
       ),
       cleaner: ManagedRuntimeCleaner(runtimeId: manifest.runtimeId),
+      pathAuthority: pathAuthority,
       assetResolver: assetResolver,
     );
   }
@@ -58,6 +62,21 @@ class const ManagedRuntimeComposition() {
         inventory: ManagedRuntimeInventory(manifest: manifest),
       ),
       fallbackExecutableCandidates: fallbackExecutableCandidates,
+    );
+  }
+
+  /// Startup refresh policy: mutate a stale managed install only when the PATH
+  /// command is genuinely absent.
+  ManagedRuntimeUpgradeService createUpgradeService({
+    required RuntimeManifest manifest,
+    required RuntimeVersionValidator versionValidator,
+  }) {
+    return ManagedRuntimeUpgradeService(
+      pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+        manifest: manifest,
+        versionValidator: versionValidator,
+      ),
+      inventory: ManagedRuntimeInventory(manifest: manifest),
     );
   }
 }

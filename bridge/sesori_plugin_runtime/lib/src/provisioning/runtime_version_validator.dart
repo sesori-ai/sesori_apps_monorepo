@@ -29,15 +29,18 @@ final class RuntimeProbeFailed({required final Object innerError, required final
 
 /// Probes a candidate runtime binary's version by running `<bin> --version`.
 ///
-/// Used to decide whether a pre-installed (PATH) runtime is recent enough to use
-/// as-is, or whether the bridge should fall back to the managed runtime, and to
-/// confirm a freshly-installed managed binary actually runs and reports the
+/// Used to decide whether a pre-installed PATH runtime is recent enough to use
+/// as-is, whether the PATH command is genuinely absent so managed fallback is
+/// allowed, and whether a freshly installed managed binary runs and reports the
 /// expected version.
 class RuntimeVersionValidator({
   required final CommandExecutor _commandExecutor,
   required final RuntimeManifest _manifest,
   final Duration _probeTimeout = const Duration(seconds: 10),
+  required IoHostExecutableLocator executableLocator,
 }) implements RuntimeCandidateValidator {
+  final IoHostExecutableLocator _executableLocator = executableLocator;
+
   /// Runs `<executable> --version` and classifies the result without throwing.
   Future<RuntimeProbeOutcome> probe({
     required String executable,
@@ -59,7 +62,20 @@ class RuntimeVersionValidator({
         timeout: _probeTimeout,
       );
     } on ProcessException catch (error, stackTrace) {
-      return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
+      if (_executableLocator.isProcessMissingError(error: error) &&
+          _executableLocator.isPathCommandAbsent(
+            executable: executable,
+            environment: environment,
+            workingDirectory: workingDirectory,
+          )) {
+        return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
+      }
+      Log.w(
+        "[${_manifest.runtimeId}] runtime version probe could not launch '$executable --version'",
+        error,
+        stackTrace,
+      );
+      return RuntimeProbeFailed(innerError: error, stackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
       Log.w("[${_manifest.runtimeId}] runtime version probe timed out for '$executable --version'", error, stackTrace);
       return RuntimeProbeTimedOut(innerError: error, stackTrace: stackTrace);
@@ -69,6 +85,22 @@ class RuntimeVersionValidator({
     }
 
     if (result.exitCode != 0) {
+      if (_executableLocator.isWindows &&
+          _executableLocator.isPathCommandAbsent(
+            executable: executable,
+            environment: environment,
+            workingDirectory: workingDirectory,
+          )) {
+        return RuntimeProbeMissing(
+          innerError: ProcessException(
+            executable,
+            const ["--version"],
+            "${result.stdout}\n${result.stderr}".trim(),
+            result.exitCode,
+          ),
+          stackTrace: StackTrace.empty,
+        );
+      }
       Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' exited ${result.exitCode}");
       return RuntimeProbeNonZeroExit(exitCode: result.exitCode);
     }

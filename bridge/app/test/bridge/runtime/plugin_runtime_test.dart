@@ -130,28 +130,32 @@ void main() {
     expect(inUseReadings, [false, true], reason: "the signal is read live, not captured at install start");
   });
 
-  test("needsManagedRuntimeUpgrade asks the descriptor with the slot's registration", () {
-    final queries = <({PluginConfig config, String stateDirectory})>[];
+  test("needsManagedRuntimeUpgrade asks the descriptor with the slot's registration", () async {
+    final queries =
+        <
+          ({PluginConfig config, Map<String, String> environment, HostProcessService processes, String stateDirectory})
+        >[];
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
       descriptor: _FakeDescriptor(
-        upgradeNeeded: ({required config, required stateDirectory}) {
-          queries.add((config: config, stateDirectory: stateDirectory));
+        upgradeNeeded: ({required config, required processes, required environment, required stateDirectory}) {
+          queries.add((config: config, processes: processes, environment: environment, stateDirectory: stateDirectory));
           return true;
         },
       ),
     );
     addTearDown(runtime.dispose);
 
-    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isTrue);
+    expect(await runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isTrue);
     expect(queries.single.stateDirectory, ".");
+    expect(queries.single.environment, isEmpty);
   });
 
-  test("needsManagedRuntimeUpgrade declines for a descriptor without a managed runtime", () {
+  test("needsManagedRuntimeUpgrade declines for a descriptor without a managed runtime", () async {
     final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
     addTearDown(runtime.dispose);
 
-    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isFalse);
+    expect(await runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isFalse);
   });
 
   test("installRuntime fails immediately while shutting down", () async {
@@ -2237,7 +2241,13 @@ class const _FakeDescriptor({
   final Future<PluginCatalogSnapshotResult> Function()? catalogSnapshot,
   final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted, RuntimeInUseSignal runtimeInUse)?
   install,
-  final bool Function({required PluginConfig config, required String stateDirectory})? upgradeNeeded,
+  final FutureOr<bool> Function({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  })?
+  upgradeNeeded,
 }) extends BridgePluginDescriptor {
   @override
   String get id => "one";
@@ -2297,12 +2307,27 @@ class const _FakeDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     final handler = upgradeNeeded;
     if (handler == null) {
-      return super.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDirectory);
+      return await super.needsManagedRuntimeUpgrade(
+        config: config,
+        processes: processes,
+        environment: environment,
+        stateDirectory: stateDirectory,
+      );
     }
-    return handler(config: config, stateDirectory: stateDirectory);
+    return await handler(
+      config: config,
+      processes: processes,
+      environment: environment,
+      stateDirectory: stateDirectory,
+    );
   }
 
   @override

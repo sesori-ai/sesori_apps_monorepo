@@ -18,6 +18,7 @@ import "../repositories/antigravity_profile_inspection_repository.dart";
 import "../repositories/antigravity_profile_repository.dart";
 import "../repositories/antigravity_runtime_repository.dart";
 import "../repositories/mappers/antigravity_stderr_mapper.dart";
+import "../services/antigravity_managed_runtime_path_authority.dart";
 import "../services/antigravity_profile_inspection_service.dart";
 import "../services/antigravity_profile_service.dart";
 import "../services/antigravity_runtime_service.dart";
@@ -83,11 +84,22 @@ class const AntigravityPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!_supportsManagedInstall(config: config)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: AntigravityRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    final selectedTarget = _target();
+    return await ManagedRuntimeUpgradeService(
+      pathAuthority: _pathAuthority(
+        processes: processes,
+        environment: environment,
+        target: selectedTarget,
+      ),
+      inventory: const ManagedRuntimeInventory(manifest: AntigravityRuntimeManifest()),
+    ).shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   String? _explicitServerPath({required PluginConfig config}) {
@@ -125,22 +137,37 @@ class const AntigravityPluginDescriptor({
     );
   }
 
-  AntigravityRuntimeService _runtime({
+  AntigravityRuntimeRepository _runtimeRepository({
     required HostProcessService processes,
     required Map<String, String> environment,
   }) {
     const stderrMapper = AntigravityStderrMapper();
-    return AntigravityRuntimeService(
-      runtimeRepository: AntigravityRuntimeRepository(
-        runtimeStorage: const AntigravityRuntimeStorage(),
-        acpApi: AntigravityAcpApi(
-          processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
-          stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
-        ),
-        launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
+    return AntigravityRuntimeRepository(
+      runtimeStorage: const AntigravityRuntimeStorage(),
+      acpApi: AntigravityAcpApi(
+        processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
+        stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
       ),
+      launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
     );
   }
+
+  AntigravityRuntimeService _runtime({
+    required HostProcessService processes,
+    required Map<String, String> environment,
+  }) => AntigravityRuntimeService(
+    runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
+  );
+
+  AntigravityManagedRuntimePathAuthority _pathAuthority({
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) => AntigravityManagedRuntimePathAuthority(
+    runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
+    executableLocator: IoHostExecutableLocator(platformIsWindows: target.os == PlatformOs.windows),
+    target: target,
+  );
 
   AntigravityProfileService _profile({
     required HostProcessService processes,
@@ -186,6 +213,7 @@ class const AntigravityPluginDescriptor({
     }
 
     const manifest = AntigravityRuntimeManifest();
+    final selectedTarget = _target();
     final commandExecutor = HostProcessCommandExecutor(
       processes: processes,
       runInShell: Platform.isWindows,
@@ -193,7 +221,7 @@ class const AntigravityPluginDescriptor({
       maxCapturedOutputCharactersPerStream: null,
     );
     if (startAborted.isAborted) throw const PluginStartAbortedException();
-    if (_target().os == PlatformOs.linux) {
+    if (selectedTarget.os == PlatformOs.linux) {
       final extractorAvailable = await _hasLinuxZipExtractor(commands: commandExecutor, environment: environment);
       if (startAborted.isAborted) throw const PluginStartAbortedException();
       if (!extractorAvailable) {
@@ -213,6 +241,11 @@ class const AntigravityPluginDescriptor({
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
         candidateValidator: AntigravityRuntimeVersionValidator(runtimeService: runtimeService),
+        pathAuthority: _pathAuthority(
+          processes: processes,
+          environment: environment,
+          target: selectedTarget,
+        ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* installer.install(

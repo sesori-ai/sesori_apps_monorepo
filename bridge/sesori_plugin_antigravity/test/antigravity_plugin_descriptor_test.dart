@@ -409,10 +409,29 @@ void main() {
 
     final superseded = Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0"))
       ..createSync(recursive: true);
-    expect(candidate.needsManagedRuntimeUpgrade(config: config(server: null), stateDirectory: state.path), isTrue);
     expect(
-      candidate.needsManagedRuntimeUpgrade(
+      await candidate.needsManagedRuntimeUpgrade(
+        config: config(server: null),
+        processes: processes,
+        environment: const {"PATH": "/definitely/missing"},
+        stateDirectory: state.path,
+      ),
+      isTrue,
+    );
+    expect(
+      await candidate.needsManagedRuntimeUpgrade(
+        config: config(server: null),
+        processes: processes,
+        environment: {"PATH": runtime.path},
+        stateDirectory: state.path,
+      ),
+      isFalse,
+    );
+    expect(
+      await candidate.needsManagedRuntimeUpgrade(
         config: config(server: pair.server),
+        processes: processes,
+        environment: const {"PATH": "/definitely/missing"},
         stateDirectory: state.path,
       ),
       isFalse,
@@ -427,6 +446,24 @@ void main() {
     expect(
       unsupported.managementCapabilities(config: config(server: null)),
       isNot(contains(PluginControlCapability.install)),
+    );
+  });
+
+  test("a broken PATH server symlink blocks managed startup upgrade", () async {
+    if (Platform.isWindows) return;
+    Directory(p.join(state.path, AntigravityIdentity.pluginId, "0.9.0")).createSync(recursive: true);
+    final brokenPath = Directory(p.join(state.path, "broken-path"))..createSync();
+    Link(p.join(brokenPath.path, AntigravityRelease.posixServerFileName))
+        .createSync(p.join(brokenPath.path, "missing-target"));
+
+    expect(
+      await descriptor(http: null).needsManagedRuntimeUpgrade(
+        config: config(server: null),
+        processes: processes,
+        environment: {"PATH": brokenPath.path},
+        stateDirectory: state.path,
+      ),
+      isFalse,
     );
   });
 
