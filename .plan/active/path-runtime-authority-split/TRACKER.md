@@ -144,7 +144,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - Numstat/merge base: `825583d25d53587c28292b506e27e34f251cf98d` (Step 2 squash merge).
 - Initial implementation head: `87fdf32596bd1c7cfe7a68382dd84a8c2b3fa37f`.
 - First review-fix checkpoint: `67e061722ad85a8f087f47a158227a28a98ec7c0`.
-- Current review-fix implementation checkpoint: `PENDING_REVIEW_FIX_HEAD`.
+- Current review-fix implementation checkpoint: `4d45b00c5db895f3fc355ea55acec070c92a8c63`.
 - The following evidence-only commit replaces that placeholder without changing base-to-head numstat; its accepted head
   is recorded in the PR body because a commit cannot embed its own hash.
 - Initial focused process, shutdown, runtime, lifecycle, runner, and restart tests: 189 passed.
