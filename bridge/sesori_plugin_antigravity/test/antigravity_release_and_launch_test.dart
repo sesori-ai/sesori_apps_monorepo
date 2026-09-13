@@ -22,29 +22,29 @@ void main() {
       (
         "antigravity",
         "antigravity-acp",
-        "536e378b70a7a6d5f078a9160180e3569a23253c",
-        "1.0.0",
-        "agy_acp_server_20260818_01_RC01",
+        "d30bc9a7c011b522e8502281d5fbcfca51abd5ff",
+        "1.1.1",
+        "agy_acp_server_1.1.1",
       ),
     );
     final macArtifact = AntigravityRelease.artifactFor(target: macArm)!;
     expect(
       (macArtifact.archiveBytes, macArtifact.serverBytes, macArtifact.harnessBytes),
-      (314500221, 792105680, 101551680),
+      (316014828, 802163856, 116766704),
     );
     expect(
       macArtifact.archiveUrl,
       "https://dl.google.com/agy-extensions/releases/macos/"
-      "agy-acp-server-agy_acp_server_20260818_01_RC01-darwin-arm64.zip",
+      "agy-acp-server-agy_acp_server_1.1.1-darwin-arm64.zip",
     );
-    expect(macArtifact.archiveSha256, "f122ca7e7030a27f9649da4cf1a7d80e12c48c5f6118ff35affc34d56cbf83dd");
+    expect(macArtifact.archiveSha256, "fdfa915652cdb7ba8085cc8fffed072cbe009251aa2c951aabdda07a8c28a189");
     expect(
       AntigravityRelease.macosArm64ServerSha256,
-      "6d700b48eaaab70b1083b4d18d63e81b6d8cdc1da1c4670db29f5986f9d484ef",
+      "9d900b93031fc42397f88206e14eba4193729bbef631a70b18e7a19631a6dfac",
     );
     expect(
       AntigravityRelease.macosArm64HarnessSha256,
-      "34d78dd5fd0e24a628ed6487bc6a042ff9419f7122f5f761b001d218f2c9d026",
+      "e0a8ef9d80a1ffb178f945159dda33f73d4a5be65516642542352584b834fa2a",
     );
     expect(
       AntigravityRelease.advertisedAuthenticationMethodIds,
@@ -56,38 +56,38 @@ void main() {
     final expected = <PlatformTarget, (String, String, int, int, int)>{
       macArm: (
         "darwin-arm64.zip",
-        "f122ca7e7030a27f9649da4cf1a7d80e12c48c5f6118ff35affc34d56cbf83dd",
-        314500221,
-        792105680,
-        101551680,
+        "fdfa915652cdb7ba8085cc8fffed072cbe009251aa2c951aabdda07a8c28a189",
+        316014828,
+        802163856,
+        116766704,
       ),
       linuxX64: (
         "linux-x86_64.zip",
-        "ce3f09628575b25497cf5a3c19d073b49acb80f1dab1ff8592919e9c9b8799e1",
-        543411011,
-        1529513909,
-        117532520,
+        "38f62d01b32deb0907b3d39a71ec301fd36369f6ffd1cf262d4af385177f79df",
+        681969407,
+        1880360328,
+        128966920,
       ),
       linuxArm: (
         "linux-arm64.zip",
-        "70fcdac70684de60f7a0eb16ea497d6cc4498728420f060e0850cfc9a9329b40",
-        524995159,
-        1519373648,
-        110601552,
+        "ed69e64b308fcb123ab54bf3277bf9cb0d651064f885ea5aab0ff520c7175398",
+        656572786,
+        1862073131,
+        122158704,
       ),
       winX64: (
         "windows-x86_64.zip",
-        "35c7dd169c2794172ce02e9444a6db4a8ed4bb11398be07976cac2ee494f44e6",
-        331985114,
-        297200088,
-        122038424,
+        "47cb50eef14f0a4655d78cfcfda869bcea7aaee5f9787e936bc2935ea612c3b8",
+        468238392,
+        430801616,
+        130971800,
       ),
       winArm: (
         "windows-arm64.zip",
-        "1522056748d45fbc34d0be72b41b99b0637be1b4caad0b34d37eb16d04ccb9c4",
-        332484576,
-        301449928,
-        114173080,
+        "35f4b1f47ba6a3fea7b0a3e30010df5ea73a64b4f0e7cf991cddc673ddfbcafc",
+        468521191,
+        435075816,
+        122455704,
       ),
     };
     for (final entry in expected.entries) {

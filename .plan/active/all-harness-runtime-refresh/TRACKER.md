@@ -2,7 +2,7 @@
 
 ## Current state
 
-- **Series:** nine top-level steps; Steps 1–2 merged, Step 3 verification active.
+- **Series:** nine top-level steps; Steps 1–2 merged, Step 3 verified and ready for review.
 - **Branch/base:** `all-harness-runtime-refresh-step-3` /
   `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`.
 - **Delivered scope:** PR #1455 merged four target updates, 18 managed digests,
@@ -12,10 +12,16 @@
 - **Approved scope:** mechanical target refreshes, OMP Windows ARM64 mapping,
   and OMP-backed shared ACP multi-select questions. Floors remain unchanged;
   DeepSeek and unrelated upstream changes remain outside this series.
-- **Next:** accept independent Antigravity/Cursor release/install/protocol
-  evidence and apply only passing targets. Codex teardown proof and required
-  configured/authenticated fixtures remain blocking only for their respective
-  pins. See [Step 2 verification](STEP-2-VERIFICATION.md) and its
+- **Current branch:** Antigravity package `1.1.1` / server `agy_acp_server_1.1.1`
+  applied after five-asset integrity, macOS ARM64 installation, actual production
+  validator/initialize and cleanup gates. All 68 distinct tests across nine files
+  and the owning analyzer pass. Cursor remains unchanged.
+- **Next:** publish and monitor Step 3, then advance independently actionable work.
+  No credential/profile access, provider networking, or expanded feature scope
+  is authorized by the completed read-only sandbox correction.
+  Codex teardown proof and required configured/authenticated fixtures remain
+  blocking only for their respective pins. See [Step 3 verification](STEP-3-VERIFICATION.md),
+  [Step 2 verification](STEP-2-VERIFICATION.md), and its
   [lifecycle follow-up](STEP-2-LIFECYCLE-VERIFICATION.md).
 
 ## Delivery ledger
@@ -24,7 +30,7 @@
 |---|---|---|---|
 | [x] | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | PR #1453 merged as a644652e0c; no production changes |
 | [x] | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | PR #1455 merged as ba3264eab9; four targets verified including post-merge Pi/Claude follow-up; Codex/OMP remain blocked and unchanged |
-| [ ] | 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Independent exact-pair/build/hash/install probes running; no target applied yet |
+| [ ] | 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity verified/applied, including actual production-validator native gate; Cursor configured gates block its pin; review pending |
 | [ ] | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Blocked on empty-session cleanup seam |
 | [ ] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Channel/ACP probe pending; namespace/provenance policy corrected |
 | [ ] | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth asset; hash/mapping/native Windows ARM64 install-version-ACP smoke/documentation gates pending |
@@ -37,10 +43,10 @@
 | Harness | Branch target | Floor/exact policy | Candidate | Status |
 |---|---:|---|---:|---|
 | OpenCode | `1.18.30` | `1.14.0` unchanged | `1.18.30` | Pass: six hashes, install, REST/SSE, read-only catalog, focused tests/analyzer |
-| Antigravity | package `1.0.0`; server `agy_acp_server_20260818_01_RC01` | Exact package/server/ACP 1; no semantic floor | package `1.1.1`; server pending | Probe-first |
+| Antigravity | package `1.1.1`; server `agy_acp_server_1.1.1` | Exact package/server/ACP 1; no semantic floor | package `1.1.1`; server `agy_acp_server_1.1.1` | Pass: five hashes, macOS ARM64 install/actual production validator/initialize/cleanup, focused tests/analyzer |
 | Codex | `0.153.4` | `0.139.0` unchanged | `0.154.0` | Partial / blocked: assets/install/both transports pass; scratch sandbox group teardown fails after one focused retry |
 | GitHub Copilot | `1.0.83` | `1.0.78` unchanged | `1.0.83` | Pass: six hashes, install, ACP initialize, focused tests/analyzer |
-| Cursor | `2026.08.11-e8db854` | date floor `2026.07.16` unchanged | `2026.09.10-fd3934a` | Probe-first; four content hashes and configured load/replay fixture pending; missing fixture blocks pin |
+| Cursor | `2026.08.11-e8db854` | date floor `2026.07.16` unchanged | `2026.09.10-fd3934a` | Blocked: four hashes and macOS ARM64 install/initialize/cleanup pass; configured load/replay and model/mode evidence absent |
 | Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: CLI/SDK launch, native controlled-provider approval/replay/interrupt/reuse/cleanup plus production parsing/history mapping; tests/analyzer |
 | Hermes Agent | `0.20.4` | `0.20.0` unchanged | `0.21.2` | Blocked; cleanup and configured new/load fixture prerequisites |
 | Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six hashes/install/RPC, native production-plugin settlement/manual-compaction abort/ordering/reuse/cleanup; tests/analyzer |
@@ -55,7 +61,7 @@
   ACP array `items.anyOf` forms for OMP through shared mapping and existing UI.
 - **Still prerequisite:** Hermes narrow not-found cleanup treatment must be
   confirmed by candidate source/probe before pinning. Required configured gates
-  are also pin-blocking: Cursor load/replay; OMP authenticate/list/new/load and
+  are also pin-blocking: Cursor load/replay/model/mode; OMP authenticate/list/new/load and
   persisted cleanup; Hermes new/load; and Grok authenticated
   new/prompt/replay/model-selection/close. Missing fixtures block their
   respective pins; optional broad provider/model/catalog/child exploration is
@@ -80,7 +86,7 @@ These gates are tracked independently from the target-only L2 matrix.
 
 | Feature/gate | Minimum sufficient scope | Required evidence | Status |
 |---|---|---|---|
-| Cursor configured load/replay | Pin-blocking configured fixture | Authorized isolated configured load/replay; missing fixture blocks Cursor pin | Blocked |
+| Cursor configured lifecycle/options | Pin-blocking configured fixture | Authorized isolated load/replay/model/mode; missing fixture blocks Cursor pin | Blocked |
 | OMP configured lifecycle | Pin-blocking configured fixture | `authenticate(agent)`, list/new/load, persisted cleanup; missing fixture blocks OMP pin | Blocked |
 | Hermes configured lifecycle | Pin-blocking configured fixture | Configured new/load; missing fixture blocks Hermes pin | Blocked |
 | Grok authenticated seam | Pin-blocking authenticated fixture | New/prompt/replay/model-selection/close; missing fixture blocks Grok pin | Blocked |
@@ -116,6 +122,31 @@ These gates are tracked independently from the target-only L2 matrix.
   through the production plugin, and Claude native approval/replay/interrupt
   with production parsing/history mapping. Controlled loopback providers only;
   real-provider behavior and deadline-expiry fault injection are not claimed.
+- Step 3 recovered both completed native-lane reports after an independent
+  parent-runner failure, without re-execution or an execution-mode fallback.
+  Antigravity's five hashes/member sizes and Cursor's four hashes were reconciled
+  against machine-readable records. Only Antigravity's verified exact pair was
+  applied after the actual production-validator native follow-up passed.
+  Other platforms remain natively untested; no authenticated or
+  broader capability claim is added. See [Step 3 verification](STEP-3-VERIFICATION.md).
+- The production-validator helper first failed before Dart `main()` due to cwd
+  access. One same-protocol retry used an allowed cwd and an unchanged wrapper
+  copy inside existing grants; it reached the production validator but returned
+  `false` through `AntigravityRuntimeStorageFailed` during symbolic-link
+  resolution. No candidate or ACP process started in either attempt. Both
+  controllers reaped their helpers with no survivors; no sandbox permissions
+  changed in those attempts. After owner approval, three exact metadata/existence
+  literals repaired path resolution without additional file-content, write,
+  execution, signal or network permissions. The actual production validator then
+  returned `true` for the real `agy_acp_server_1.1.1` candidate; native exit `-15`,
+  controller exit 0 in 1.434 seconds, no timeout and no surviving owned processes
+  were observed. Original profiles/reports and dirty diffs remain preserved.
+- Antigravity post-pin checks cover 68 distinct cases across nine files. Two
+  initial descriptor failures identified historical `1.0.0` data reused as a
+  current-runtime fake; separate synthetic current data fixed descriptor and
+  authentication-composer fixtures without rewriting the historical capture.
+  The affected 19 cases and owning analyzer passed; unchanged passing suites
+  and native probes were not repeated.
 - No real credentials or live profiles were used. Required configured fixtures,
   multi-select, and Windows ARM64 native gates remain blocked; other non-macOS
   native paths remain untested. Full evidence and limits are in

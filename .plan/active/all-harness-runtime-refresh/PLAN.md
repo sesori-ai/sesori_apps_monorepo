@@ -6,9 +6,13 @@
 - **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
   and [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455)
   merged. Four targets are verified, including the required Pi/Claude lifecycle
-  follow-up accepted after merge. Codex/OMP remain unchanged and blocked;
-  Step 3 Antigravity/Cursor verification is active. See
-  [Step 2 verification](STEP-2-VERIFICATION.md).
+  follow-up accepted after merge. Step 3 verifies and applies Antigravity
+  package `1.1.1` / server `agy_acp_server_1.1.1` on this branch: all five archive
+  records, native install/initialize, actual production validator, teardown and
+  focused checks pass. Cursor remains unchanged because configured
+  load/replay/model/mode gates are blocked; Codex/OMP also remain blocked. See
+  [Step 2 verification](STEP-2-VERIFICATION.md) and
+  [Step 3 verification](STEP-3-VERIFICATION.md).
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
@@ -62,7 +66,7 @@ status. Release links alone are not completed implementation gates.
 | Harness | Current target / floor or exact policy | Candidate and evidence | Distribution / status |
 |---|---|---|---|
 | OpenCode | `1.18.19` / `1.14.0` | [`v1.18.30`](https://github.com/anomalyco/opencode/releases/tag/v1.18.30) | Six managed single-binary archives; recommended after gates |
-| Antigravity | Registry package `1.0.0`; exact server `agy_acp_server_20260818_01_RC01`, ACP 1; no semantic floor | Registry [`v2026.09.12-d30bc9a`](https://github.com/agentclientprotocol/registry/releases/tag/v2026.09.12-d30bc9a), package `1.1.1`; exact server pending | Five package-directory ZIPs; probe-first exact-pair validation |
+| Antigravity | Registry package `1.0.0`; exact server `agy_acp_server_20260818_01_RC01`, ACP 1; no semantic floor | Registry [`v2026.09.12-d30bc9a`](https://github.com/agentclientprotocol/registry/releases/tag/v2026.09.12-d30bc9a), package `1.1.1`; observed server `agy_acp_server_1.1.1` | Five ZIP hashes and macOS ARM64 install/initialize/cleanup accepted in Step 3 |
 | Codex | `0.153.4` / `0.139.0` | [`rust-v0.154.0`](https://github.com/openai/codex/releases/tag/rust-v0.154.0) | Six canonical package tarballs; recommended after both transports pass |
 | GitHub Copilot | `1.0.80` / `1.0.78` | [`v1.0.83`](https://github.com/github/copilot-cli/releases/tag/v1.0.83) | Six single-binary archives; recommended after ACP/install gates |
 | Cursor | `2026.08.11-e8db854` / date floor `2026.07.16` | [official installer](https://cursor.com/install), exact `2026.09.10-fd3934a` | Four package tarballs; probe-first content/hash/install gate |
@@ -93,6 +97,8 @@ floor. OMP Windows ARM64 is an approved platform mapping, not a floor change.
   sibling `agy_acp_server`/`localharness_external` members, exact initialize
   identity, ACP 1, auth methods, and teardown pass. No OAuth/session probe or
   native delegation matrix lift; package version is not server identity.
+  Step 3 observed `agy_acp_server_1.1.1` from the candidate and applied only
+  release facts; the manifest already derives its package target from them.
 - **Codex:** update `codex_runtime_manifest.dart` and six canonical package
   assets after independent WebSocket and stdio app-server checks. Keep helpers,
   resources, capability opt-outs, rollout tailer, approvals, queue, history,
@@ -398,7 +404,7 @@ matrix/retirement decision.
 |---|---|---|
 | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | Publish this plan, tracker, audit, and verified reference corrections; no production changes |
 | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode, Codex, Copilot, Claude, Pi, and OMP target/assets refreshes with independent release/install/protocol/tests; OMP uses seven existing assets |
-| 3/9 | `⚙️ [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity exact package/server pair and Cursor exact installer build, content, hashes, layout, and ACP gates |
+| 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity exact package/server pair and Cursor exact installer build, content, hashes, layout, and ACP gates |
 | 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Narrow empty-session cleanup prerequisite; pin `0.21.2` only after cleanup and target gates |
 | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Stable-channel `1.0.30`, normalized ACP namespace, exact launch/protocol gates; no source-binary gate |
 | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth executable, manifest/platform tests, native Windows gate, and platform regression/capability docs |

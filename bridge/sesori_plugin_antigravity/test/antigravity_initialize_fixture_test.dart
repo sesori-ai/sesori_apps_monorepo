@@ -13,7 +13,8 @@ void main() {
     expect(dto.protocolVersion, AntigravityRelease.protocolVersion);
     expect(dto.agentInfo?.name, AntigravityIdentity.upstreamAgentName);
     expect(dto.agentInfo?.title, "Google Antigravity");
-    expect(dto.agentInfo?.version, AntigravityRelease.agentVersion);
+    // This historical observation is not the currently accepted runtime identity.
+    expect(dto.agentInfo?.version, "agy_acp_server_20260818_01_RC01");
     expect(dto.agentCapabilities?.loadSession, isTrue);
     expect(dto.agentCapabilities?.sessionCapabilities?.list, isTrue);
     expect(dto.agentCapabilities?.sessionCapabilities?.resume, isTrue);

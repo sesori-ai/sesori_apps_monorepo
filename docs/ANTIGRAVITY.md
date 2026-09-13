@@ -9,8 +9,8 @@ before downloading or authenticating. Installing the runtime does not grant Goog
 
 | Item | Supported contract |
 |---|---|
-| ACP registry package | `1.0.0` |
-| Exact ACP runtime identity | `agy_acp_server_20260818_01_RC01` |
+| ACP registry package | `1.1.1` |
+| Exact ACP runtime identity | `agy_acp_server_1.1.1` |
 | Bridge hosts | macOS arm64; Linux x64/arm64; Windows x64/arm64 |
 | Unsupported host | macOS x64, including an explicit binary path |
 | Authentication | Personal Google OAuth (`oauth-personal`) only |
@@ -18,7 +18,9 @@ before downloading or authenticating. Installing the runtime does not grant Goog
 Business/Enterprise OAuth, Gemini API keys and Agent Platform authentication are not exposed by this integration.
 The [pinned release facts](../bridge/sesori_plugin_antigravity/lib/src/foundation/antigravity_release.dart) contain the
 five official archive URLs, checksums and file sizes. Registry package version and ACP runtime identity are different:
-managed version directories use `1.0.0`, while validation checks the exact runtime identity above.
+managed version directories use `1.1.1`, while validation checks the exact runtime identity above.
+A pair reporting the earlier `agy_acp_server_20260818_01_RC01` identity no longer passes that exact check.
+An explicit binary path remains authoritative, so replace its complete pair rather than expecting managed fallback.
 
 ## Install or supply the pair
 
@@ -118,9 +120,10 @@ needs no browser of its own, but does need a current connected client for initia
 ## Verification status and further contracts
 
 Implementation is not a claim of completed cross-platform end-to-end verification. Official archive integrity was
-checked for all five targets. Native initialize-only and managed-pipeline correctness has been exercised on macOS arm64
-in disposable state. One bounded authenticated ACP probe verified only the generic sub-agent projection described
-above. Native Linux/Windows installation, real personal OAuth, authenticated discovery-session creation/resume, full
+checked for all five targets of package `1.1.1`. Native initialize-only and managed-pipeline correctness has been exercised
+on macOS arm64 in disposable state. The earlier bounded authenticated ACP probe against package `1.0.0` verified only
+the generic sub-agent projection described above; that observation was not rerun for `1.1.1`.
+Native Linux/Windows installation, real personal OAuth, authenticated discovery-session creation/resume, full
 ordinary session/image/history flows and the final cumulative L1–L5 matrix remain unverified. Missing test
 infrastructure is a blocked result, not a pass.
 

@@ -223,7 +223,7 @@ class _DownloadHttp({required final Object failure}) extends http.BaseClient {
 }
 
 Map<String, dynamic> _initialize() =>
-    jsonDecode(File("test/fixtures/official_initialize_1_0_0.json").readAsStringSync()) as Map<String, dynamic>;
+    jsonDecode(File("test/fixtures/synthetic_current_initialize.json").readAsStringSync()) as Map<String, dynamic>;
 
 ({String server, String harness}) _writePair({required Directory directory}) {
   final server = p.join(directory.path, AntigravityRelease.serverFileName(target: _target));
