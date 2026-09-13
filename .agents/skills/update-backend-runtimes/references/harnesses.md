@@ -43,6 +43,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   and `lib/src/runtime/antigravity_runtime_manifest.dart` in that package. Record
   registry commit/package version, exact `agentVersion`, protocol version,
   artifact URLs/hashes/sizes, and server/harness member facts separately.
+  Extracted-member hashes are not additional platform mappings.
 - **Compatibility exception:** the manifest aliases `minPathVersion` and
   `bundledVersion` to the registry package version; the validator accepts an
   exact ACP identity/pair, not a free-standing semantic floor. Identify effects
@@ -267,6 +268,14 @@ concrete problem can justify a documented temporary hold with a resolution path.
   user-assisted verification, without claiming it passed.
 - **Audit:** OMP's ACP projection, not Pi RPC. Trace auth, configuration, history,
   models, tools, subagent and cancellation behavior at that seam.
+- **Forms:** The shared ACP mapper supports finite array `items.anyOf` string
+  choices. Keep one question/encoder per property: checkbox selections and
+  separate custom text retain their keys, order, required flags and answer slots,
+  even for identical text. Do not interpret OMP's `qN`/`qN__other` naming in the
+  generic mapper or add a second wire answer shape. Live
+  `OmpPlugin.supportsFormElicitation` remains enabled; `OmpAcpApi.open()` keeps
+  scratch/catalog/cleanup form elicitation disabled. See
+  `docs/regression/questions-and-permissions.md` for the focused live-client gate.
 
 ## DeepSeek
 

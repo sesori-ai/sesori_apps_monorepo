@@ -2,39 +2,35 @@
 
 ## Current state
 
-- **Series:** nine top-level steps; Steps 1–6 merged, Step 7 implements shared ACP multi-select.
-- **Branch/base:** `all-harness-runtime-refresh-step-7` /
-  `acc970cf8452dcb58d5eff085f4ebfbabefb8110`.
-- **Delivered scope:** four Step 2 targets, 18 managed digests and focused
-  fixtures; required Pi/Claude lifecycle evidence accepted after merge;
-  Antigravity's exact `1.1.1` pair and actual production-validator verification;
-  localized Hermes discovery cleanup; the remaining five target updates; and
-  OMP's eighth, Windows ARM64, mapping. The current branch adds shared ACP array
-  questions without new wire/database fields, generated files or a product release.
+- **Series:** nine top-level steps; Steps 1–7 merged, Step 8 reconciles evidence and final help.
+- **Branch/base:** `all-harness-runtime-refresh-step-8` /
+  `fa0111b153f48b1bf4739f3fe95e2e4b1521f8cc`.
+- **Delivered scope:** all ten included targets and 41 managed asset/hash pairs;
+  required Pi/Claude lifecycle follow-up and Antigravity's actual production
+  validator; localized Hermes discovery cleanup; OMP Windows ARM64 mapping;
+  and shared ACP array questions. No new wire/database fields, generated churn
+  or product release. Verification is scoped and incomplete, not inferred from delivery.
 - **Approved scope:** mechanical target refreshes, OMP Windows ARM64 mapping,
-  and OMP-backed shared ACP multi-select questions. Floors remain unchanged;
-  DeepSeek and unrelated upstream changes remain outside this series.
-- **Latest merge:** PR #1467 merged on 2026-09-13 at `12:00:25Z` as
-  `acc970cf8452dcb58d5eff085f4ebfbabefb8110`. Terminal CI passed 16/16; Cubic
-  approved, Codex completed the accepted head, and the one tracker-wording
+  and OMP-backed shared ACP multi-select questions. Floors and Antigravity's
+  exact-pair policy are preserved; DeepSeek and unrelated changes remain excluded.
+- **Latest merge:** PR #1468 merged on 2026-09-13 at `13:11:04Z` as
+  `fa0111b153f48b1bf4739f3fe95e2e4b1521f8cc`. Terminal CI passed 19/19; Cubic
+  approved, Codex completed the accepted head, and the sole documentation
   thread was resolved. No review waiver was needed for this PR.
 - **Owner correction, 2026-09-13:** update every included harness. Missing tests,
   credentials or runners must become final-plan follow-ups, not old-version
   holds or repeated questions about whether to proceed. Only an exceptional
   concrete problem justifies a temporary hold with a specific resolution path;
   none is currently established for these updates.
-- **Current branch:** Step 7 maps finite array `items.anyOf` string choices
-  through one immutable field encoder. Separate custom-text questions retain
-  their own slots, keys and required flags. OMP's existing live form support and
-  disabled scratch policy are unchanged. All 75 focused cases and four owning
-  analyzers pass; live OMP/client verification remains unrun. The five-file Dart
-  diff is 435 changed lines, straightforward (`🌿`), with no new wire/state machinery.
-- **Next:** publish/review Step 7; architecture implementation review approved
-  `266babbf85` with no findings.
-  Group unresolved tests, feature questions and exact user help in Steps 8–9.
-  Grok testing is authorized in principle, but credential provisioning need not
-  precede its target update. No live credentials may be borrowed, and stopped
-  Codex/Hermes probes are not reauthorized by this timing change. See
+- **Current branch:** documentation-only reconciliation of the ten-harness
+  matrix, 41 mapped assets, regression coverage, historical policy wording and
+  final check/help batch. No new download, rehash, candidate execution, Dart test
+  or analyzer run locally; existing evidence and failed-procedure limits are retained.
+- **Next:** publish/review Step 8, then obtain one grouped Step 9 decision on
+  remaining checks, concrete help, cache-policy disposition and explicit coverage
+  acceptance. No live credentials may be borrowed, and stopped Codex/Hermes
+  probes are not reauthorized. The detailed next checks and resources are in
+  [final coverage and handoff](FINAL-COVERAGE-HANDOFF.md). See
   [Step 7 verification](STEP-7-VERIFICATION.md),
   [Step 6 verification](STEP-6-VERIFICATION.md),
   [Step 5 verification](STEP-5-VERIFICATION.md),
@@ -53,8 +49,8 @@
 | [x] | 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | PR #1460 merged as 600d94fb49; cleanup fix, 11 tests and analyzer pass; candidate native verification not accepted; target was unchanged at that merge |
 | [x] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime: finish remaining target updates [step 5/9]` | PR #1465 merged as 79932e1051; five targets, 17 mapped digests, 121 tests, five analyzers; native/configured limits remain final follow-ups |
 | [x] | 6/9 | `🌿 [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | PR #1467 merged as acc970cf84; eighth mapping/hash, 10 focused tests/analyzer and platform docs; native ARM64 remains final follow-up |
-| [ ] | 7/9 | `🌿 [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Implemented separate array/custom questions, 75 focused tests, four analyzers, question/capability docs; architecture approved, PR review/merge pending; live roundtrip remains final follow-up |
-| [ ] | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Reconcile evidence/docs and prepare one grouped test/question/user-help handoff |
+| [x] | 7/9 | `🌿 [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | PR #1468 merged as fa0111b153; separate array/custom questions, 75 focused tests, four analyzers, architecture approved and feature docs; live roundtrip remains final follow-up |
+| [ ] | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Prepared scoped matrix, durable regression coverage and one grouped check/policy/user-help handoff; publication/review pending |
 | [ ] | 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final matrix, remaining tests/issues and user-assisted checks; explicit acceptance before retirement |
 
 ## Harness status matrix
@@ -66,10 +62,10 @@
 | Codex | `0.154.0` | `0.139.0` unchanged | `0.154.0` | Updated in Step 5; six digests and 38 tests/analyzer pass. Retained install/transports passed; probe teardown remains unresolved |
 | GitHub Copilot | `1.0.83` | `1.0.78` unchanged | `1.0.83` | Pass: six hashes, install, ACP initialize, focused tests/analyzer |
 | Cursor | `2026.09.10-fd3934a` | date floor `2026.07.16` unchanged | `2026.09.10-fd3934a` | Updated in Step 5; four hashes, retained native setup and 26 tests/analyzer pass. Configured load/replay/model/mode remain unverified |
-| Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: CLI/SDK launch, native controlled-provider approval/replay/interrupt/reuse/cleanup plus production parsing/history mapping; tests/analyzer |
+| Claude Code | `2.1.269` | `2.1.221` unchanged | `2.1.269` | Pass: CLI launch, native controlled-provider approval/replay/interrupt/reuse/cleanup plus production parsing/history mapping; tests/analyzer |
 | Hermes Agent | `0.21.2` | `0.20.0` unchanged | `0.21.2` | Updated in Step 5; 18 descriptor tests/analyzer pass. Failed load and unaccepted native procedure/evidence remain final investigation items |
 | Pi | `0.85.1` | `0.84.1` unchanged | `0.85.1` | Pass: six hashes/install/RPC, native production-plugin settlement/manual-compaction abort/ordering/reuse/cleanup; tests/analyzer |
-| Oh My Pi | `18.1.19` | `17.2.13` unchanged | `18.1.19` | Step 5 updated the target and seven mappings; Step 6 adds the remaining Windows ARM64 mapping, completing eight verified asset/hash pairs, with 10 focused cases/analyzer passing. Earlier native observations were 18.1.18; current native/configured checks remain |
+| Oh My Pi | `18.1.19` | `17.2.13` unchanged | `18.1.19` | Step 5 updated the target and seven mappings; Step 6 added the remaining Windows ARM64 mapping, completing eight verified asset/hash pairs, with 10 focused cases/analyzer passing. Earlier native observations were 18.1.18; current native/configured checks remain |
 | Grok Build | `1.0.30` | `1.0.5` unchanged | stable channel `1.0.30` | Updated in Step 5; channel and 12 descriptor tests/analyzer pass. Native/authenticated coverage remains separate final follow-up |
 | DeepSeek | Not assessed (excluded) | Outside this series | None | Explicitly excluded; historical baseline is not a current-target claim, and unrelated upstream changes are neither audited nor modified here |
 
@@ -93,17 +89,20 @@
   `@earendil-works/pi-coding-agent`.
 - **Analytics:** reuse existing authoritative question-answer instrumentation.
   Add no new event; add zero new persistent or in-memory coordination parts; no generated churn is expected.
-- **Estimates:** approximately 200-450 authored lines for multi-select and
-  40-100 for OMP Windows ARM64 mapping; refine against local implementation
-  without widening scope.
+- **Actual implementation shape:** Step 6 changed one mapping and its owning
+  tests; Step 7 changed 435 Dart lines (77 production, 358 tests). Both were
+  straightforward (`🌿`) without new wire/state machinery; original estimates
+  remain historical audit context, not a reason to add code.
 - **Declined/deferred:** upstream optional models/providers, auth/login beyond
   named required probes, sub-agents, plan UX, shell-command claims,
   cancellation redesign, floor changes, and broad cleanup/refactors.
 
 ## Final verification follow-ups
 
-Check status is independent of target adoption. Group these in Steps 8–9,
-with the smallest reproduction, expected result and specific needed help.
+Check status is independent of target adoption. The
+[final handoff](FINAL-COVERAGE-HANDOFF.md) supplies each smallest next check,
+potential harm, evidence to close, and exact resource/authorization needed.
+Step 9 obtains the grouped owner decision; none of these checks is silently waived.
 
 | Check | Evidence still needed | Current evidence limit / help |
 |---|---|---|
@@ -111,7 +110,7 @@ with the smallest reproduction, expected result and specific needed help.
 | Cursor configured lifecycle/options | Isolated load/replay/model/mode | Configured fixture or user-assisted check needed |
 | OMP current-target lifecycle | Complete 18.1.19 source/native follow-up; authenticate(agent), list/new/load, persisted cleanup | Configured fixture needed; earlier native observations are 18.1.18 only |
 | Hermes configured lifecycle | Faithful isolated launch, actual persisted load/deletion | Attempted load failed; procedure/evidence not accepted; review before any execution |
-| Grok authenticated seam | New/prompt/replay/model-selection/close | Testing authorized in principle; secure test credential and endpoint scope still needed |
+| Grok native/authenticated seam | Branded identity, exact launch/ACP, then new/prompt/replay/model-selection/close | Testing authorized in principle; secure test credential, endpoint/budget scope and procedure still needed |
 | OMP Windows ARM64 | Native install/version/ACP smoke | Mapping/tests/docs implemented; native ARM64 runner or user assistance still needed |
 | OMP ACP multi-select | Live OMP/client array roundtrip, including omission/cancel and single choice | Step 7 mapper/plugin/bridge/widget automation passes; arrange the missing live fixture at the final stage |
 | Managed-cache policy | Bounded mixed-build reproduction and decision on newer cached versions when an older bridge starts | Pre-existing pinned-first selection/non-pinned cleanup; shared policy change is outside these target updates |
@@ -227,6 +226,18 @@ verification timing, not the results recorded before it.
 - Step 7 architecture implementation review approved `266babbf85` with no
   findings. It confirmed ACP-layer ownership, immutable choice encoding and
   unchanged cross-layer boundaries; no code fix or repeated test was needed.
+- Step 7 merge: PR #1468 merged as `fa0111b153` at `2026-09-13T13:11:04Z`;
+  terminal CI 19/19, Cubic approval, accepted-head Codex review complete. Its sole
+  stale merged-PR-count finding was corrected in `49657930be` and resolved;
+  documentation-only follow-ups did not repeat code or native checks.
+- Step 8 reconciled the 11 registered / ten included inventory and 41 actual
+  managed mappings from unchanged source, separately from extra member digests.
+  Expanded durable setup coverage to all ten included targets and consolidated
+  accepted, partial, failed, blocked and unrun evidence plus exact final help.
+  No candidate was fetched, parsed, installed or executed; no unchanged native,
+  Dart or analyzer check was repeated. Seven Markdown documents, 50 relative
+  links/anchors, nine synchronized titles, all ten target/floor rows and skill
+  YAML metadata passed the relevant checks; no production/generated file changed.
 - Coverage remains limited to each report's actual boundary. In particular,
   Hermes' rejected procedure cannot substantiate absence of inherited inputs.
   No live-profile access is authorized. Configured, multi-select and Windows
