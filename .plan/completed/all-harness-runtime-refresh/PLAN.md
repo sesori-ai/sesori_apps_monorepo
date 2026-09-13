@@ -8,8 +8,9 @@
   [Step 3 PR #1457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1457),
   [Step 4 PR #1460](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1460),
   [Step 5 PR #1465](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1465),
-  [Step 6 PR #1467](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1467), and
-  [Step 7 PR #1468](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1468)
+  [Step 6 PR #1467](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1467),
+  [Step 7 PR #1468](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1468), and
+  [Step 8 PR #1469](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1469)
   merged. Five targets have accepted scoped verification, including the required Pi/Claude lifecycle
   follow-up and Antigravity's actual production-validator native gate. Step 4
   shipped localized Hermes cleanup, with 11 focused tests and analyzer passing.
@@ -20,23 +21,51 @@
   ARM64, with 10 focused cases/analyzer passing. Step 7 delivered shared ACP
   multi-select through the existing plugin/shared/client flow, with 75 focused
   cases and four analyzers passing. Native Windows ARM64 and the live OMP/client
-  array roundtrip remain unverified final follow-ups. See [Step 2](STEP-2-VERIFICATION.md),
+  array roundtrip remain unverified, now explicitly accepted coverage limits. See [Step 2](STEP-2-VERIFICATION.md),
   [Step 3](STEP-3-VERIFICATION.md), [Step 4](STEP-4-VERIFICATION.md),
   [Step 5](STEP-5-VERIFICATION.md), [Step 6](STEP-6-VERIFICATION.md), and
-  [Step 7](STEP-7-VERIFICATION.md) evidence. Step 8 consolidates the
-  [coverage matrix and final help batch](FINAL-COVERAGE-HANDOFF.md); retirement
-  still requires completed coverage or explicit owner acceptance of its limits.
+  [Step 7](STEP-7-VERIFICATION.md) evidence. Step 8 consolidated the
+  [coverage matrix and final help batch](FINAL-COVERAGE-HANDOFF.md). The owner
+  explicitly accepted all documented coverage limits on 2026-09-13; Step 9
+  records that decision and retires this plan without further native execution.
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
   inventory reconciliation only and is explicitly excluded from this series' audit and changes.
-- **Implementation branch:** `all-harness-runtime-refresh-step-8`, based on
-  Step 7 merge `fa0111b153f48b1bf4739f3fe95e2e4b1521f8cc`. This series preserves
+- **Final branch:** `all-harness-runtime-refresh-step-9`, based on
+  Step 8 merge `d46880ad76505782a93f3db200bf5dcc9b8c944a`. This series preserves
   floors, existing layout/selection policy, launch behavior, and Sesori database/wire
   contracts; unrelated upstream changes are not part of this refresh.
 - **Evidence:** [AUDIT.md](AUDIT.md) and Steps 2–4 preserve historical observations
   and decisions. Their former pin-blocking language is superseded by the owner
   direction below; actual failed/unexecuted checks remain failed/unexecuted.
+
+### Explicit owner acceptance — 2026-09-13
+
+After reviewing the grouped final handoff, the owner selected
+**"Accept all documented limits"** and **"Separate follow-up issue"** for the
+managed-cache question. This explicitly accepts the remaining required coverage for retirement:
+
+- Codex's failed probe teardown/controller and prohibited further retry;
+- Cursor configured load/replay/model/mode;
+- Hermes' unaccepted procedure, fresh-load failure, lost original evidence and
+  unqualified faithful load/replay/persisted deletion;
+- OMP `18.1.19` source/native/configured lifecycle beyond the `18.1.18` observations;
+- Grok native branded identity/exact launch/ACP and authenticated lifecycle;
+- native Windows ARM64 install/version/ACP/teardown;
+- live OMP/client multi-select, omission/rejection/cancel and single-choice proof;
+- the handoff's other non-macOS, provider/account, full-client/service and
+  unexercised deadline-fault coverage limits.
+
+The L2 target/feature matrices remain **Partial**, with their named `Fail`,
+`Blocked` and `Not run` checks unchanged. Acceptance is not verification and
+never turns these into passes. No further native execution, credential access or
+Codex/Hermes retry is authorized. The cache question is separately tracked in
+[issue #1470](https://github.com/sesori-ai/sesori_apps_monorepo/issues/1470), not
+fixed or declared harmless. All included updates and approved features remain
+delivered; DeepSeek remains excluded. This explicit acceptance satisfies the
+plan's retirement exception and accompanies its move to
+`.plan/completed/all-harness-runtime-refresh/` in the final PR.
 
 ### Owner direction — 2026-09-13
 
@@ -358,8 +387,9 @@ transport, catalog, session, approval, cleanup, and adapter tests identified in
 the runtime reference. Shared ACP multi-select additionally runs bridge mapper,
 OMP policy, shared-model serialization (unchanged models), and client widget
 coverage. Documentation-only commits run Markdown, link, inventory, title and
-diff checks, not Dart/Flutter suites. Actual Step 9 runtime/feature checks use
-their recorded boundaries rather than repeating unchanged passing work.
+diff checks, not Dart/Flutter suites. Step 9 records the owner's explicit
+acceptance instead of running further runtime/feature checks or repeating
+unchanged passing work.
 
 ## Regression, matrix, and retirement
 
@@ -384,15 +414,14 @@ batch, not the first documentation of features already merged:
 
 | Feature | Minimum sufficient scope/boundary | Evidence still needed | Delivery handling |
 |---|---|---|---|
-| OMP Windows ARM64 | L2 Routine on native Windows ARM64 | Native install/version/ACP smoke | Mapping/tests/docs implemented in Step 6; native runner check remains final follow-up |
-| OMP ACP multi-select | L2 Routine scoped only to OMP ACP forms | Widget automation plus live askDialog/ACP roundtrip: two choices, separate custom text, required/optional omission, unchanged single choice | Step 7 mapping/plugin/bridge/widget automation passes; live roundtrip not run and remains final follow-up |
+| OMP Windows ARM64 | L2 Routine on native Windows ARM64 | Native install/version/ACP smoke | Implemented in Step 6; native check not run, explicitly accepted as a coverage limit on 2026-09-13 |
+| OMP ACP multi-select | L2 Routine scoped only to OMP ACP forms | Live askDialog/ACP roundtrip: two choices, separate custom text, required/optional omission, unchanged single choice | Step 7 automation passes; live roundtrip not run, explicitly accepted as a coverage limit on 2026-09-13 |
 
 The required minimum scope is **L2 Routine** plus the named current-host macOS
 arm64 managed/direct target gate; it is not complete across all included
 harnesses. The [consolidated matrix](FINAL-COVERAGE-HANDOFF.md) records the scoped
 passes, partial coverage, failures and unrun checks separately. The multi-select
-feature has an independent **L2
-Routine** matrix scoped only to the OMP ACP form-question path: existing-widget
+feature has an independent **L2 Routine** matrix scoped only to the OMP ACP form-question path: existing-widget
 automation plus an authoritative live OMP `askDialog`/ACP array roundtrip on at
 least one supported client. This does not claim full client L3, broad
 authenticated-provider, full catalog, or unrelated alternate-platform
@@ -400,17 +429,18 @@ coverage. Current macOS arm64 remains sufficient for ordinary old-platform
 target updates. OMP Windows ARM64 still needs its native install/version/ACP
 check to claim that verification. A missing runner is a blocked **check**, not
 an automatic implementation hold. Other non-macOS native paths remain
-`Untested`. Evidence results use `Pass`, `Partial`, `Fail`, `Blocked` or `Not run`;
+`Not run`. Evidence results use `Pass`, `Partial`, `Fail`, `Blocked` or `Not run`;
 track target adoption independently.
 
 ### Final follow-up batch — Steps 8–9
 
 The [final coverage handoff](FINAL-COVERAGE-HANDOFF.md) now consolidates the
 minimum next check, potential harm, evidence to close, and exact needed help for
-these items, plus the mixed-build cache policy question. Use it for the Step 9
-grouped decision. Do not re-ask whether to update, repeat unchanged passes, or
-silently discard a check. No new procedure or stopped-probe retry is authorized
-by preparing the handoff.
+these items, plus the mixed-build cache policy question. The owner accepted all
+named limits in Step 9 and requested a separate cache investigation issue. The
+table below retains evidence-to-close criteria for future separately authorized
+work, not an active execution queue. No new procedure or stopped-probe retry is
+authorized by acceptance or retirement.
 
 | Item | Smallest remaining check / expected result | Needed resource or help |
 |---|---|---|
@@ -418,7 +448,7 @@ by preparing the handoff.
 | Cursor | Persist/load/replay a synthetic session and change model/mode through the real adapter | Isolated authorized configured fixture or user-assisted execution |
 | Hermes | Use faithful CLI dispatch and reviewed isolation; reproduce fresh load, then prove real persisted deletion | Review retained evidence and corrected procedure; original deleted state must not be reconstructed as evidence |
 | OMP lifecycle | Complete 18.1.19 source/native follow-up; authenticate(agent), create/list/fresh-load a synthetic session, then delete it | Isolated configured fixture; no ambient credentials; 18.1.18 observations do not prove 18.1.19 |
-| Grok | At most bounded synthetic new/prompt/replay/model-selection/close checks on the official endpoint | Secure separate test credential and precise endpoint scope, or user-assisted execution |
+| Grok | Native identity/exact launch/ACP, then bounded authenticated new/prompt/replay/model-selection/close | Secure separate test credential, endpoint/budget scope and reviewed procedure, or user-assisted execution |
 | Windows ARM64 | Install the selected native asset and prove version plus ACP initialize | Native ARM64 runner or user-assisted check; x64/macOS do not count |
 | Multi-select | Live OMP/client roundtrip including same-text option/custom answers, omission/cancel and single choice | Supported client plus an authorized live OMP fixture |
 
@@ -435,20 +465,20 @@ policy across managed harnesses, beyond these pins. Include that policy question
 and a bounded mixed-build reproduction in the final handoff rather than silently
 changing shared behavior or holding these version increases.
 
-Retire after all ten included targets are updated with real assets, relevant
-focused checks and the final matrix are recorded, feature/regression docs are
-reconciled, and remaining coverage is completed or explicitly accepted by the
-owner. An exceptional temporary version hold must have a concrete separately
-tracked resolution, not disappear into a completed refresh. Until final
-acceptance, keep this directory active. DeepSeek remains excluded.
+Retirement criteria are satisfied: all ten included targets and approved
+features are delivered, real assets and scoped checks are recorded, regression
+docs are reconciled, and the owner explicitly accepted every remaining coverage
+limit. No exceptional version hold is established. Issue #1470 owns the separate
+cache investigation. The final PR moves this record to the completed directory;
+it does not claim complete native/L2 coverage or assess excluded DeepSeek.
 
 ## Nine-step delivery sequence
 
 The series retains nine top-level steps and all merged PRs. Step 5
 finished all five remaining targets under the corrected update-first policy;
-Steps 6–7 deliver the already-approved features. Steps 8–9 collect unresolved
-questions, perform available follow-ups, request specific user help together,
-and record final coverage/retirement. This changes delivery timing, not scope.
+Steps 6–7 delivered the approved features. Step 8 grouped remaining evidence and
+specific help; Step 9 records the owner's accepted limits and separate issue,
+then retires the plan. It performs no further native checks or scope expansion.
 
 | Step | Exact PR title | Boundary |
 |---|---|---|
@@ -460,7 +490,7 @@ and record final coverage/retirement. This changes delivery timing, not scope.
 | 6/9 | `🌿 [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Implemented eighth mapping through existing ownership, manifest/asset-service tests and docs; native Windows evidence separately recorded |
 | 7/9 | `🌿 [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared array mapper, unchanged OMP live/scratch policy, separate option/custom questions, bridge/client tests, and question regression/capability docs; no generated/new coordination state |
 | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Penultimate evidence/docs reconciliation and one grouped follow-up/user-help handoff |
-| 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final L2 and feature checks, remaining issues/help, explicit coverage acceptance and conditional retirement |
+| 9/9 | `🌱 [all-harness-runtime-refresh] docs: record accepted coverage and retire plan [step 9/9]` | Owner-accepted coverage limits, separate cache issue and retirement; documentation-only, no new native checks |
 
 Every implementation PR body uses real multiline Markdown with `## Complexity`,
 `## What`, `## Why`, `## Risk and test focus`, and `## Expected result`, naming
