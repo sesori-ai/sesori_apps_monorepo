@@ -4,7 +4,13 @@ This is the pre-implementation source-audit snapshot published in Step 1.
 Its pending-gate statements describe that snapshot, not later execution.
 [Step 2 verification](STEP-2-VERIFICATION.md) records subsequent downloaded-byte,
 installer, runtime, and package-check evidence; [TRACKER.md](TRACKER.md) owns
-current branch targets and outstanding blockers.
+current branch targets and outstanding checks.
+
+The owner's 2026-09-13 update-first direction supersedes the historical "blocks
+the pin" and feature-delivery holds below. It does not change failed or unrun
+checks into passes. The [final coverage handoff](FINAL-COVERAGE-HANDOFF.md)
+separates merged updates/features from remaining verification and required owner
+acceptance; do not restore old targets or infer native coverage from this snapshot.
 
 ## Scope and evidence status
 

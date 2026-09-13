@@ -75,6 +75,9 @@ The explicit inventory is:
 | Grok Build | `sesori_plugin_grok` | `lib/src/runtime/grok_plugin_descriptor.dart` |
 
 Treat the registry, not this table or a capability-matrix column count, as truth.
+Count actual `knownPlugins` entries, including named `.production()` factories;
+counting only bare constructor calls misses registered harnesses. For assets,
+count platform mappings, not every digest literal or checksum-file entry.
 Shared ACP, interface, foundation, and runtime packages are not harnesses.
 Reconcile the registry, this inventory, reference sections, and plan rows before
 claiming coverage. **If anything is omitted, add its inventory/reference entry

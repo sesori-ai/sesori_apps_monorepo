@@ -8,15 +8,23 @@ idle suspension, the management snapshot, and lifecycle commands.
 
 ## Runtime Target Coverage
 
-The following setup/installation targets changed on 2026-09-13. Managed installs
+These targets were adopted during the 2026-09-12–13 refresh. Managed installs
 use their target's verified asset digests; direct-CLI targets are recommendation
 metadata, not forced upgrades. Compatible PATH binaries remain authoritative.
+Independent minimums are unchanged; Antigravity retains its exact-pair policy
+rather than an independent floor. DeepSeek was excluded from this refresh and
+is not assessed by this table.
 
-| Harness | Target | Unchanged minimum | Native evidence and outstanding coverage |
+| Harness | Target | Minimum / exact policy | Native evidence and outstanding coverage |
 |---|---|---|---|
+| OpenCode | `1.18.30` | `1.14.0` | macOS ARM64 install/version, serve/health/SSE, typed reads, read-only catalog and shutdown passed. Database/WAL were unchanged; transient SQLite SHM bookkeeping changed. Provider/account behavior was not exercised. |
+| Antigravity | package `1.1.1`, server `agy_acp_server_1.1.1` | Exact package/server/ACP 1 | Five official archive hashes/layouts and the actual macOS ARM64 production validator/initialize/teardown passed. Current-target OAuth/session/model/delegation behavior was not exercised. |
 | Codex | `0.154.0` | `0.139.0` | macOS ARM64 package/install and both app-server transports were exercised; automatic probe teardown failed and remains unresolved. |
+| GitHub Copilot | `1.0.83` | `1.0.78` | macOS ARM64 install/version and exact ACP launch/initialize passed, including the advertised login method. No login or provider turn ran. |
 | Cursor | `2026.09.10-fd3934a` | date `2026.07.16` | macOS ARM64 package/install/initialize/cleanup were exercised; configured load/replay/model/mode remains unverified. |
+| Claude Code | `2.1.269` | `2.1.221` | Controlled-provider CLI permission/replay/interrupt/reuse and production transcript/event mapping passed. Real authentication/provider behavior and complete session-service orchestration are not claimed. |
 | Hermes Agent | `0.21.2` | `0.20.0` | A fresh-load attempt failed under an unaccepted launcher/isolation procedure; faithful CLI load/replay and configured persisted deletion remain unverified. |
+| Pi | `0.85.1` | `0.84.1` | macOS ARM64 package/RPC and production-plugin settlement, manual-compaction abort, ordering and fresh-process reuse passed. Real-provider/account coverage is not claimed. |
 | Oh My Pi | `18.1.19` | `17.2.13` | Eight direct-binary mappings, including Windows ARM64, have independently verified hashes. Native observations covered `18.1.18` only; current-target install/version/ACP and configured lifecycle/cleanup remain unverified. |
 | Grok Build | `1.0.30` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
@@ -50,8 +58,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   nothing, and all registered harnesses appear in the snapshots. Setup inspection never
   installs, logs in, or starts a backend, reporting a bounded state and action hint
   without secrets or raw output.
-- Host process spawning explicitly selects environment inheritance. Existing registered
-  harnesses retain inherited environment behavior; an isolated launch must not receive
+- Host process spawning explicitly selects environment inheritance. Each harness
+  retains its declared inheritance policy; an isolated launch must not receive
   parent variables again through either the OS spawn or ACP host adapter.
 - Plugin JSON child scopes select one directory segment without filesystem I/O, retain
   bare-file/reserved-name restrictions, and share the root's per-directory atomic-update

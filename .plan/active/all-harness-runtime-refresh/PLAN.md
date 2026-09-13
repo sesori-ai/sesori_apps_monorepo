@@ -7,28 +7,31 @@
   [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455),
   [Step 3 PR #1457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1457),
   [Step 4 PR #1460](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1460),
-  [Step 5 PR #1465](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1465), and
-  [Step 6 PR #1467](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1467)
-  merged. Five targets are verified, including the required Pi/Claude lifecycle
+  [Step 5 PR #1465](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1465),
+  [Step 6 PR #1467](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1467), and
+  [Step 7 PR #1468](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1468)
+  merged. Five targets have accepted scoped verification, including the required Pi/Claude lifecycle
   follow-up and Antigravity's actual production-validator native gate. Step 4
   shipped localized Hermes cleanup, with 11 focused tests and analyzer passing.
   The owner corrected the delivery policy on 2026-09-13: missing verification
   must not keep harnesses on old targets. Step 5 delivered the five remaining
   targets—Codex, Cursor, Hermes, OMP and Grok—with 121 focused cases and five
   owning analyzers passing. Step 6 delivered OMP's eighth mapping, Windows
-  ARM64, with 10 focused cases/analyzer passing. Step 7 implements shared ACP
+  ARM64, with 10 focused cases/analyzer passing. Step 7 delivered shared ACP
   multi-select through the existing plugin/shared/client flow, with 75 focused
   cases and four analyzers passing. Native Windows ARM64 and the live OMP/client
   array roundtrip remain unverified final follow-ups. See [Step 2](STEP-2-VERIFICATION.md),
   [Step 3](STEP-3-VERIFICATION.md), [Step 4](STEP-4-VERIFICATION.md),
   [Step 5](STEP-5-VERIFICATION.md), [Step 6](STEP-6-VERIFICATION.md), and
-  [Step 7](STEP-7-VERIFICATION.md) evidence.
+  [Step 7](STEP-7-VERIFICATION.md) evidence. Step 8 consolidates the
+  [coverage matrix and final help batch](FINAL-COVERAGE-HANDOFF.md); retirement
+  still requires completed coverage or explicit owner acceptance of its limits.
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
   inventory reconciliation only and is explicitly excluded from this series' audit and changes.
-- **Implementation branch:** `all-harness-runtime-refresh-step-7`, based on
-  Step 6 merge `acc970cf8452dcb58d5eff085f4ebfbabefb8110`. This series preserves
+- **Implementation branch:** `all-harness-runtime-refresh-step-8`, based on
+  Step 7 merge `fa0111b153f48b1bf4739f3fe95e2e4b1521f8cc`. This series preserves
   floors, existing layout/selection policy, launch behavior, and Sesori database/wire
   contracts; unrelated upstream changes are not part of this refresh.
 - **Evidence:** [AUDIT.md](AUDIT.md) and Steps 2–4 preserve historical observations
@@ -339,16 +342,16 @@ The retained verification checklist is:
 
 | Harness | Current-host evidence | Configured/final follow-up when unavailable | Optional boundary not claimed |
 |---|---|---|---|
-| OpenCode | Install/version/sentinel, serve/health/SSE, typed reads, shutdown, DB untouched | None outstanding from adopted update | Provider/account behavior |
+| OpenCode | Install/version/sentinel, serve/health/SSE, typed reads, shutdown; DB/WAL unchanged, transient SHM bookkeeping changed | None outstanding from adopted update | Provider/account behavior |
 | Antigravity | Five hashes, exact pair/ACP 1 production validator, auth methods, teardown | None outstanding from adopted update | OAuth/session/model/delegation |
 | Codex | Package/helpers and independent WebSocket/stdio initialize/list/correlation | Reconcile failed probe teardown; no unauthorized retry | Account prompt/history/approval |
 | Copilot | Install/version, exact ACP launch, initialize and copilot-login | None outstanding from adopted update | Entitlement/session/options/tool E2E |
 | Cursor | Four hashes, native package/build/initialize/teardown | Configured load/replay/model/mode | Broad provider/model/cancel exploration |
 | Claude | CLI flags, native controlled-provider approval/replay/interrupt, production parsing/history | None outstanding from adopted update | Real-provider/auth/queue/child terminal fixture |
-| Hermes | Tagged CLI/initialize/list and scratch-cleanup observations, with recorded limits | Faithful isolated configured load and persisted cleanup; investigate reported failure | Broad provider/catalog/replay exploration |
+| Hermes | Cleanup/descriptor tests; native observations came from an unaccepted procedure | Faithful isolated configured load and persisted cleanup; investigate reported failure | Broad provider/catalog/replay exploration |
 | Pi | Package/RPC, settlement and compaction-abort/ordering/reuse | None outstanding from adopted update | Real-provider prompt/catalog/history |
 | OMP | Eight 18.1.19 binary hashes; earlier native evidence was 18.1.18 only | Current 18.1.19 native/production seam, configured authenticate(agent), list/new/load, cleanup | Unrelated turn/plan/MCP/sub-agent behavior |
-| Grok | Stable channel; native version/exact launch/ACP when safely available | Authenticated new/prompt/replay/model-selection/close | Broad provider/model/child exploration |
+| Grok | Stable-channel and descriptor-unit evidence only; native CLI/ACP not run | Native identity/exact launch/ACP, then authenticated new/prompt/replay/model-selection/close | Broad provider/model/child exploration |
 
 Focused package checks cover each owning manifest/descriptor, runtime policy,
 transport, catalog, session, approval, cleanup, and adapter tests identified in
@@ -368,7 +371,7 @@ Step 8 reconciles cross-harness evidence and prepares one grouped final follow-u
 batch, not the first documentation of features already merged:
 
 - `docs/regression/plugin-runtime-installation.md` for target assets/layouts,
-  exact Antigravity pair, OMP seven/eight-platform policy, and install failures;
+  exact Antigravity pair, OMP's eight mappings, and install failures;
 - `docs/regression/plugin-setup-and-lifecycle.md` for target/floor selection,
   PATH/explicit precedence, direct-versus-managed status, and exact validation;
 - `docs/regression/questions-and-permissions.md` for ACP multi-select values,
@@ -384,8 +387,11 @@ batch, not the first documentation of features already merged:
 | OMP Windows ARM64 | L2 Routine on native Windows ARM64 | Native install/version/ACP smoke | Mapping/tests/docs implemented in Step 6; native runner check remains final follow-up |
 | OMP ACP multi-select | L2 Routine scoped only to OMP ACP forms | Widget automation plus live askDialog/ACP roundtrip: two choices, separate custom text, required/optional omission, unchanged single choice | Step 7 mapping/plugin/bridge/widget automation passes; live roundtrip not run and remains final follow-up |
 
-Recorded coverage is **L2 Routine** plus the named current-host macOS arm64
-managed/direct target gate. The multi-select feature has an independent **L2
+The required minimum scope is **L2 Routine** plus the named current-host macOS
+arm64 managed/direct target gate; it is not complete across all included
+harnesses. The [consolidated matrix](FINAL-COVERAGE-HANDOFF.md) records the scoped
+passes, partial coverage, failures and unrun checks separately. The multi-select
+feature has an independent **L2
 Routine** matrix scoped only to the OMP ACP form-question path: existing-widget
 automation plus an authoritative live OMP `askDialog`/ACP array roundtrip on at
 least one supported client. This does not claim full client L3, broad
@@ -399,8 +405,12 @@ track target adoption independently.
 
 ### Final follow-up batch — Steps 8–9
 
-Do available work first, then ask for concrete help in one grouped handoff. Do
-not re-ask whether to update or silently discard any of these checks.
+The [final coverage handoff](FINAL-COVERAGE-HANDOFF.md) now consolidates the
+minimum next check, potential harm, evidence to close, and exact needed help for
+these items, plus the mixed-build cache policy question. Use it for the Step 9
+grouped decision. Do not re-ask whether to update, repeat unchanged passes, or
+silently discard a check. No new procedure or stopped-probe retry is authorized
+by preparing the handoff.
 
 | Item | Smallest remaining check / expected result | Needed resource or help |
 |---|---|---|
