@@ -281,7 +281,6 @@ class const BridgeRuntimeRunner._() {
       clock: serverClock,
       isWindows: io.Platform.isWindows,
       platform: io.Platform.operatingSystem,
-      treeTerminationExcludedRootPid: restartPredecessorPid,
     );
     final processIdLookupApi = ProcessIdLookupApi.forPlatform(
       isWindows: io.Platform.isWindows,
@@ -784,6 +783,7 @@ class const BridgeRuntimeRunner._() {
         // exits with the sentinel code instead of spawning a successor (which
         // would replay --control-url with no off-argv secret and fail closed).
         isSupervised: options.isSupervised,
+        isWindows: io.Platform.isWindows,
         // Record the GUI-respawn sentinel the moment the handoff is decided —
         // before the shutdown it triggers — so the normal return, the error
         // paths, and a hung-teardown backstop all report the same code.

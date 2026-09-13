@@ -7,6 +7,9 @@ import "package:test/test.dart";
 import "../../helpers/fake_process_runner.dart";
 
 void main() {
+  const windowsProcessRow =
+      '"sesori-bridge.exe","321","Console","1","12,345 K","Running","HOST\\alex","0:00:01","N/A"\r\n';
+
   group("SystemProcessApi (Windows)", () {
     test("inspectProcess issues a PID-scoped tasklist filter", () async {
       final runner = RecordingProcessRunner(
@@ -17,7 +20,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       final identity = await api.inspectProcess(pid: 321);
@@ -44,7 +46,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       final identity = await api.inspectProcess(pid: 999999);
@@ -60,7 +61,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       await expectLater(
@@ -76,7 +76,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       expect(await api.inspectProcess(pid: 0), isNull);
@@ -85,62 +84,73 @@ void main() {
     });
 
     test("sendGracefulSignal requests the full Windows process tree without forcing", () async {
-      final runner = RecordingProcessRunner();
+      final runner = RecordingProcessRunner(stdout: windowsProcessRow);
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       final result = await api.sendGracefulSignal(pid: 321);
 
-      expect(runner.calls, hasLength(1));
-      expect(runner.calls.single.executable, "taskkill");
-      expect(runner.calls.single.arguments, ["/PID", "321", "/T"]);
+      expect(runner.calls, hasLength(2));
+      expect(runner.calls.first.executable, "tasklist");
+      expect(runner.calls.last.executable, "taskkill");
+      expect(runner.calls.last.arguments, ["/PID", "321", "/T"]);
       expect(result.requestedSignal, ShutdownSignal.graceful);
       expect(result.deliveredSignal, ProcessSignal.sigterm);
       expect(result.wasRequested, isTrue);
     });
 
     test("sendForceSignal force-terminates the full Windows process tree", () async {
-      final runner = RecordingProcessRunner();
+      final runner = RecordingProcessRunner(stdout: windowsProcessRow);
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       final result = await api.sendForceSignal(pid: 321);
 
-      expect(runner.calls, hasLength(1));
-      expect(runner.calls.single.executable, "taskkill");
-      expect(runner.calls.single.arguments, ["/PID", "321", "/T", "/F"]);
+      expect(runner.calls, hasLength(2));
+      expect(runner.calls.first.executable, "tasklist");
+      expect(runner.calls.last.executable, "taskkill");
+      expect(runner.calls.last.arguments, ["/PID", "321", "/T", "/F"]);
       expect(result.requestedSignal, ShutdownSignal.force);
       expect(result.deliveredSignal, ProcessSignal.sigkill);
       expect(result.wasRequested, isTrue);
     });
 
-    test("Windows signals exclude a restart predecessor from tree termination", () async {
-      final runner = RecordingProcessRunner();
+    test("a failed tree request is not hidden by the root disappearing afterward", () async {
+      final runner = RecordingProcessRunner(
+        responder: (executable, arguments, {environment, workingDirectory, timeout = const Duration(seconds: 15)}) {
+          return executable == "tasklist"
+              ? ProcessResult(1, 0, windowsProcessRow, "")
+              : ProcessResult(2, 5, "", "A descendant could not be terminated");
+        },
+      );
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: 321,
       );
 
-      await api.sendGracefulSignal(pid: 321);
-      await api.sendForceSignal(pid: 321);
-
-      expect(runner.calls.map((call) => call.arguments).toList(), [
-        ["/PID", "321"],
-        ["/PID", "321", "/F"],
-      ]);
+      await expectLater(
+        api.sendForceSignal(pid: 321),
+        throwsA(
+          isA<ProcessException>().having(
+            (error) => error.message,
+            "message",
+            contains("A descendant could not be terminated"),
+          ),
+        ),
+      );
+      // Root-only post-inspection would be unable to prove tree success. There
+      // must be no third call that can collapse the partial failure to absence.
+      expect(runner.calls.map((call) => call.executable).toList(), ["tasklist", "taskkill"]);
     });
 
     test("Windows signals throw with taskkill diagnostics while the process remains", () async {
@@ -160,7 +170,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       await expectLater(
@@ -171,27 +180,22 @@ void main() {
               .having((error) => error.message, "message", contains("Access is denied")),
         ),
       );
-      expect(runner.calls.map((call) => call.executable).toList(), ["taskkill", "tasklist"]);
+      expect(runner.calls.map((call) => call.executable).toList(), ["tasklist", "taskkill"]);
     });
 
-    test("Windows signals treat a failed taskkill as already gone only after inspection", () async {
+    test("Windows signals skip taskkill when inspection proves the process is already gone", () async {
       final runner = RecordingProcessRunner(
-        responder: (executable, arguments, {environment, workingDirectory, timeout = const Duration(seconds: 15)}) {
-          return executable == "taskkill"
-              ? ProcessResult(1, 128, "", "No running instance")
-              : ProcessResult(2, 0, "INFO: No tasks match the specified criteria.\r\n", "");
-        },
+        stdout: "INFO: No tasks match the specified criteria.\r\n",
       );
       final api = SystemProcessApi(
         processRunner: runner,
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       expect((await api.sendGracefulSignal(pid: 321)).wasRequested, isFalse);
-      expect(runner.calls.map((call) => call.executable).toList(), ["taskkill", "tasklist"]);
+      expect(runner.calls.map((call) => call.executable).toList(), ["tasklist"]);
     });
 
     test("Windows signals reject non-positive PIDs without shelling out", () async {
@@ -201,7 +205,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: true,
         platform: "windows",
-        treeTerminationExcludedRootPid: null,
       );
 
       expect((await api.sendGracefulSignal(pid: 0)).wasRequested, isFalse);
@@ -220,7 +223,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: false,
         platform: "macos",
-        treeTerminationExcludedRootPid: null,
       );
 
       final identity = await api.inspectProcess(pid: 321);
@@ -253,7 +255,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: false,
         platform: "macos",
-        treeTerminationExcludedRootPid: null,
       );
 
       final identity = await api.inspectProcess(pid: 999999);
@@ -273,7 +274,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: false,
         platform: "macos",
-        treeTerminationExcludedRootPid: null,
       );
 
       await expectLater(
@@ -289,7 +289,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: false,
         platform: "macos",
-        treeTerminationExcludedRootPid: null,
       );
 
       expect(await api.inspectProcess(pid: 321), isNull);
@@ -302,7 +301,6 @@ void main() {
         clock: const ServerClock(),
         isWindows: false,
         platform: "macos",
-        treeTerminationExcludedRootPid: null,
       );
 
       expect(await api.inspectProcess(pid: 0), isNull);

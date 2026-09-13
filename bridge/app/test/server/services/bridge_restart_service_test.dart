@@ -60,6 +60,7 @@ void main() {
     required String binaryPath,
     List<String> cliArgs = const ['run'],
     bool isSupervised = false,
+    bool isWindows = false,
   }) {
     return BridgeRestartService(
       processRepository: ProcessRepository(
@@ -68,7 +69,6 @@ void main() {
           clock: const ServerClock(),
           isWindows: false,
           platform: 'linux',
-          treeTerminationExcludedRootPid: null,
         ),
         currentUser: null,
       ),
@@ -77,6 +77,7 @@ void main() {
       cliArgs: cliArgs,
       currentPid: 7777,
       isSupervised: isSupervised,
+      isWindows: isWindows,
       onSupervisedRestartRequested: () => supervisedRestartNotifications++,
     );
   }
@@ -113,6 +114,62 @@ void main() {
     expect(call.executable, '/opt/sesori/sesori-bridge');
     expect(call.arguments, ['run', '--relay', 'wss://r']);
     expect(call.environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
+  });
+
+  test('Windows spawn uses a short-lived launcher to separate the successor process tree', () async {
+    final service = buildService(binaryPath: r'C:\Sesori\sesori-bridge.exe', isWindows: true);
+
+    expect(await service.spawnSuccessor(), isTrue);
+
+    final environment = runner.detachedCalls.single.environment!;
+    expect(environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
+    expect(environment, containsPair(sesoriRestartLauncherEnvVar, sesoriRestartLauncherEnvValue));
+  });
+
+  test('the Windows launcher starts the real successor without recursively relaunching', () async {
+    final calls = <({String executable, List<String> arguments, Map<String, String> environment})>[];
+    final exitCodes = <int>[];
+
+    final launched = await launchWindowsRestartSuccessor(
+      isWindows: true,
+      environment: const <String, String>{
+        sesoriRestartPredecessorPidEnvVar: '7777',
+        sesoriRestartLauncherEnvVar: sesoriRestartLauncherEnvValue,
+        'PRESERVED': 'value',
+      },
+      executable: r'C:\Sesori\sesori-bridge.exe',
+      arguments: const <String>['run', '--relay', 'wss://relay.example'],
+      start: ({required executable, required arguments, required environment}) async {
+        calls.add((executable: executable, arguments: arguments, environment: environment));
+      },
+      exitLauncher: ({required code}) => exitCodes.add(code),
+    );
+
+    expect(launched, isTrue);
+    expect(exitCodes, const <int>[0]);
+    expect(calls, hasLength(1));
+    final call = calls.single;
+    expect(call.executable, r'C:\Sesori\sesori-bridge.exe');
+    expect(call.arguments, const <String>['run', '--relay', 'wss://relay.example']);
+    expect(call.environment, containsPair(sesoriRestartPredecessorPidEnvVar, '7777'));
+    expect(call.environment, containsPair('PRESERVED', 'value'));
+    expect(call.environment.containsKey(sesoriRestartLauncherEnvVar), isFalse);
+  });
+
+  test('the restart launcher is inert without its marker', () async {
+    expect(
+      await launchWindowsRestartSuccessor(
+        isWindows: true,
+        environment: const <String, String>{},
+        executable: r'C:\Sesori\sesori-bridge.exe',
+        arguments: const <String>['run'],
+        start: ({required executable, required arguments, required environment}) async {
+          fail('an unmarked process must not launch a successor');
+        },
+        exitLauncher: ({required code}) => fail('an unmarked process must not exit'),
+      ),
+      isFalse,
+    );
   });
 
   test('spawnSuccessor returns false when the process cannot be started', () async {

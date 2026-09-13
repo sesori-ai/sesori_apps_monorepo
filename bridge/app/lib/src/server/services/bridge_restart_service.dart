@@ -7,6 +7,41 @@ import '../foundation/bridge_restart_command_builder.dart';
 import '../foundation/bridge_restart_env.dart';
 import '../repositories/process_repository.dart';
 
+typedef BridgeRestartSuccessorStarter = Future<void> Function({
+  required String executable,
+  required List<String> arguments,
+  required Map<String, String> environment,
+});
+
+typedef BridgeRestartLauncherExit = void Function({required int code});
+
+/// Runs the real Windows restart successor behind one short-lived launcher.
+///
+/// Once this launcher exits, the successor no longer has a live ancestry chain
+/// back to the predecessor. A later `taskkill /T` can therefore terminate the
+/// predecessor and every other descendant without terminating the successor.
+Future<bool> launchWindowsRestartSuccessor({
+  required bool isWindows,
+  required Map<String, String> environment,
+  required String executable,
+  required List<String> arguments,
+  required BridgeRestartSuccessorStarter start,
+  required BridgeRestartLauncherExit exitLauncher,
+}) async {
+  if (!isWindows || environment[sesoriRestartLauncherEnvVar] != sesoriRestartLauncherEnvValue) return false;
+  final childEnvironment = Map<String, String>.of(environment)..remove(sesoriRestartLauncherEnvVar);
+  await start(
+    executable: executable,
+    arguments: List<String>.unmodifiable(arguments),
+    environment: Map<String, String>.unmodifiable(childEnvironment),
+  );
+  // Process.start keeps a process watcher alive even when nobody awaits the
+  // child's exit. Terminate this dedicated launcher explicitly so its process
+  // cannot remain as an ancestry link back to the predecessor.
+  exitLauncher(code: 0);
+  return true;
+}
+
 /// Owns the process side of an explicit, user-triggered bridge restart:
 /// deciding how the running bridge is replaced and carrying that out.
 ///
@@ -34,6 +69,7 @@ class BridgeRestartService({
   required final List<String> _cliArgs,
   required final int _currentPid,
   required final bool _isSupervised,
+  required final bool _isWindows,
 
   /// Invoked the moment a supervised restart handoff is decided, before the
   /// shutdown it triggers, so the composition root can record the GUI-respawn
@@ -106,6 +142,7 @@ class BridgeRestartService({
         arguments: command.arguments,
         environment: <String, String>{
           sesoriRestartPredecessorPidEnvVar: '$_currentPid',
+          if (_isWindows) sesoriRestartLauncherEnvVar: sesoriRestartLauncherEnvValue,
         },
       );
       return true;

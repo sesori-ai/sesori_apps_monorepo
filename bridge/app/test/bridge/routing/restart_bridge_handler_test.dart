@@ -34,7 +34,6 @@ void main() {
           clock: const ServerClock(),
           isWindows: false,
           platform: 'linux',
-          treeTerminationExcludedRootPid: null,
         ),
         currentUser: null,
       ),
@@ -43,6 +42,7 @@ void main() {
       cliArgs: const ['run'],
       currentPid: 1234,
       isSupervised: isSupervised,
+      isWindows: false,
       onSupervisedRestartRequested: () {},
     );
   }

@@ -170,19 +170,23 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 - **Package/layer:** `bridge/app`; `SystemProcessApi` is the operating-system API boundary, while runtime/lifecycle
   classes own bridge orchestration.
 - **Production files/classes:**
-  - `lib/src/server/api/system_process_api.dart` — `SystemProcessApi.sendGracefulSignal` and `sendForceSignal` use
-    tree-aware Windows `taskkill`, with injected `ProcessRunner`, `ServerClock`, platform facts, and the one restart
-    predecessor root that must exclude descendants so it cannot terminate its successor;
+  - `lib/src/server/api/system_process_api.dart` — `SystemProcessApi.sendGracefulSignal` and `sendForceSignal` first
+    prove an already-absent Windows PID, then always use tree-aware `taskkill`; any non-zero tree request remains a
+    diagnostic failure because root absence afterward cannot prove descendant termination;
+  - `lib/src/server/services/bridge_restart_service.dart` and `bin/bridge.dart` — standalone Windows restart uses a
+    marked one-shot launcher that spawns the real successor with inherited stdio, strips the marker, and exits
+    immediately, breaking process ancestry before the successor may terminate the predecessor's full tree;
   - `lib/src/services/plugin_lifecycle_service.dart` — sealed `_ActivePluginCommand`, `_ActiveResponseCommand`, and
     install-only `_ActiveRuntimeProvisionCommand`, each owning non-null settlement;
   - `lib/src/runtime/plugin_runtime.dart` — private `_RuntimeMutation` owns one `StartAbortController` and one
     `Completer<void>` for each accepted install;
   - `lib/src/runtime/bridge_shutdown_coordinator.dart` — `BridgeShutdownPhase.runtimeDispose` and ordered phases; and
-  - `lib/src/runtime/bridge_runtime_runner.dart` — composition parses the restart predecessor once and registers
-    lifecycle disposal before runtime disposal.
+  - `lib/src/runtime/bridge_runtime_runner.dart` — composition parses restart ancestry once and registers lifecycle
+    disposal before runtime disposal.
 - **Dependency/data flow:** `ProcessRunner` API result → `SystemProcessApi` → existing process service/repository
-  → bridge ownership consumer. Separately, runtime mutation → `PluginRuntime` settlement
-  → `PluginLifecycleService` → `BridgeShutdownCoordinator` ordered disposal.
+  → bridge ownership consumer; restart service → marked launcher → ancestry-separated successor. Separately, runtime
+  mutation/command transition → `PluginRuntime` settlement → `PluginLifecycleService`
+  → `BridgeShutdownCoordinator` ordered disposal.
 - **Activation:** lifecycle safety for existing install commands only. Global-update request types do not land early.
 
 ### Step 4 — managed runtime PATH authority

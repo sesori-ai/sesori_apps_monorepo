@@ -11,10 +11,6 @@ class SystemProcessApi({
   required final ServerClock _clock,
   required final bool _isWindows,
   required final String _platform,
-  // A standalone restart successor remains a child of its predecessor on
-  // Windows. Excluding that one root prevents `taskkill /T` from killing the
-  // successor that is trying to replace it.
-  required final int? _treeTerminationExcludedRootPid,
 }) {
   /// Spawns [executable] detached (inheriting stdio), returning its pid without
   /// waiting. Used to launch a successor bridge during a restart.
@@ -66,33 +62,33 @@ class SystemProcessApi({
         attemptedAt: attemptedAt,
       );
     }
-    final arguments = <String>[
-      "/PID",
-      "$pid",
-      if (pid != _treeTerminationExcludedRootPid) "/T",
-      if (force) "/F",
-    ];
+    // Check absence before signalling. After a failed `/T` request, inspecting
+    // only the root cannot prove the descendants were terminated: taskkill may
+    // have killed the root before failing on one of its children.
+    try {
+      if (await _inspectWindowsProcess(pid: pid) == null) {
+        return SignalResult(
+          pid: pid,
+          requestedSignal: requestedSignal,
+          deliveredSignal: deliveredSignal,
+          wasRequested: false,
+          attemptedAt: attemptedAt,
+        );
+      }
+    } on Object catch (error, stackTrace) {
+      // An unavailable inspection must not suppress the best-effort signal.
+      // A non-zero taskkill result below remains a diagnostic failure.
+      Log.w("Could not inspect Windows process $pid before signalling; attempting taskkill", error, stackTrace);
+    }
+    final arguments = <String>["/PID", "$pid", "/T", if (force) "/F"];
     final result = await _processRunner.run("taskkill", arguments);
     if (result.exitCode != 0) {
-      try {
-        if (await _inspectWindowsProcess(pid: pid) == null) {
-          return SignalResult(
-            pid: pid,
-            requestedSignal: requestedSignal,
-            deliveredSignal: deliveredSignal,
-            wasRequested: false,
-            attemptedAt: attemptedAt,
-          );
-        }
-      } on Object catch (error, stackTrace) {
-        Log.w("Failed to inspect pid $pid after taskkill failed", error, stackTrace);
-      }
       final stdout = result.stdout.toString().trim();
       final stderr = result.stderr.toString().trim();
       final details = [
         if (stdout.isNotEmpty) "stdout: $stdout",
         if (stderr.isNotEmpty) "stderr: $stderr",
-        if (stdout.isEmpty && stderr.isEmpty) "taskkill exited ${result.exitCode} while pid $pid remained present",
+        if (stdout.isEmpty && stderr.isEmpty) "taskkill exited ${result.exitCode} for pid $pid",
       ].join("\n");
       throw ProcessException("taskkill", arguments, details, result.exitCode);
     }

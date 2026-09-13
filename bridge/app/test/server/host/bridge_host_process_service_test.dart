@@ -283,7 +283,6 @@ void main() {
               clock: const ServerClock(),
               isWindows: Platform.isWindows,
               platform: Platform.operatingSystem,
-              treeTerminationExcludedRootPid: null,
             ),
             currentUser: null,
           ),
