@@ -53,9 +53,8 @@ final class const DirectBinaryRuntimeAsset({required super.assetName, required s
 ///
 /// Two version constants drive provisioning:
 /// - [minPathVersion] gates a *pre-installed* (PATH) runtime: at or above it,
-///   the bridge uses the user's own install; below it, the bridge falls back to
-///   the managed runtime (so a too-old install can't break the bridge, and a
-///   newer one is never downgraded).
+///   the bridge uses the user's own install; below it, setup rejects it while
+///   its PATH presence remains authoritative and blocks managed fallback.
 /// - [bundledVersion] is the exact version the managed runtime downloads.
 abstract class const RuntimeManifest() {
   /// Stable runtime identifier. Doubles as the managed-runtime subdirectory name
@@ -78,8 +77,8 @@ abstract class const RuntimeManifest() {
   /// version directory (platform-aware, e.g. `opencode` or `bin/codex.exe`).
   String get binaryFileName;
 
-  /// Minimum version the bridge will use as-is, for a pre-installed (PATH)
-  /// runtime and for a managed one alike: a managed version at or above it stays
+  /// Minimum version the bridge will use as-is. A PATH runtime below it remains
+  /// authoritative but is rejected; a managed version at or above it stays
   /// usable while a newer [bundledVersion] downloads, and one below it is never
   /// selected.
   RuntimeVersion get minPathVersion;

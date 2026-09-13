@@ -52,12 +52,18 @@ void main() {
   Directory versionDir(String version) =>
       Directory(p.join(stateDir.path, "opencode", version))..createSync(recursive: true);
 
+  void installPinned() {
+    final pinned = versionDir("1.17.9");
+    File(p.join(pinned.path, "opencode")).writeAsStringSync("BINARY");
+    File(p.join(pinned.path, RuntimeInstallService.sentinelFileName)).writeAsStringSync("abc123");
+  }
+
   test("reports nothing when the managed directory does not exist", () {
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 
   test("reports nothing when only the pinned version is installed", () {
-    versionDir("1.17.9");
+    installPinned();
 
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
@@ -70,10 +76,24 @@ void main() {
 
   test("does not report an older directory when a pinned or newer version is present", () {
     versionDir("1.16.0");
-    versionDir("1.17.9");
+    installPinned();
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
 
     versionDir("1.18.0");
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
+  });
+
+  test("does not let a partial pinned directory hide an older runtime", () {
+    versionDir("1.16.0");
+    final pinned = versionDir("1.17.9");
+    final sentinel = File(p.join(pinned.path, RuntimeInstallService.sentinelFileName));
+
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isTrue);
+    File(p.join(pinned.path, "opencode")).writeAsStringSync("BINARY");
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isTrue);
+    sentinel.writeAsStringSync("");
+    expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isTrue);
+    sentinel.writeAsStringSync("abc123");
     expect(inventory.hasOutdatedVersion(stateDirectory: stateDir.path), isFalse);
   });
 

@@ -75,8 +75,9 @@ from the app or management API, or at bridge start when Sesori manages an older 
   stay in the log.
 - A duplicate request joins the running install, another command for the same harness
   conflicts, and a shutdown mid-install ends it as interrupted so a retry redoes it.
-- Startup upgrades run only when the newest managed version is below the pin and PATH is verified absent. No runtime,
-  or a pinned/newer version alongside old directories, prevents an unasked download or downgrade. Concurrent probes
+- Startup upgrades run only when a superseded managed version exists and PATH is verified absent. An exact pin suppresses
+  repair only when its canonical binary and last-written non-empty sentinel are present; a partial pin cannot hide an older
+  runtime. No superseded runtime or any newer-version directory permits an unasked download or downgrade. Concurrent probes
   follow ownership settlement and finish before downloads, so downloads never delay startup. Each upgrade occupies the
   slot exactly like a manual install, so an overlapping request joins it and another
   command conflicts. An explicit Install that joins a running upgrade carries the user's

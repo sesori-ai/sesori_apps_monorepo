@@ -353,7 +353,7 @@ generated files. These are ceilings, not targets:
 | 1 | 650 | Plan and tracker only. |
 | 2 | 850 | Review-expanded Foundation fencing and lookup fidelity; authored code/tests only. |
 | 3 | 1,000 | Narrow app lifecycle/process implementation and focused tests. |
-| 4 | 1,800 | Review-expanded mutation fencing, pair-absence tests, and non-installable PATH setup. |
+| 4 | 1,850 | Review-expanded mutation fencing, completion checks, and non-installable PATH setup. |
 | 5 | 1,400 | Standard descriptor behavior and tests; no Antigravity or app execution flow. |
 | 6 | 1,000 | Current Antigravity diff is 737 lines plus required mapping/test corrections. |
 | 7 | 1,500 | Shared wire, bridge execution, and minimum client-core consumption. |

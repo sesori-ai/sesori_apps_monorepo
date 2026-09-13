@@ -16,7 +16,7 @@
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
 | 2. Centralize executable and command control | Merged | #1463 | 850 |
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
-| 4. Make PATH authoritative for managed copies | In progress | #1472 | 1,800 |
+| 4. Make PATH authoritative for managed copies | In progress | #1472 | 1,850 |
 | 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
 | 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
@@ -170,7 +170,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - All churn is authored; generated churn is zero; the total remains below the 1,000-line ceiling.
 
 ## Step 4 Evidence
-- Review-expanded ceiling: 1,450 → 1,800 for activation fencing and direct authority tests after inlining pair policy.
+- Review-expanded ceiling: 1,450 → 1,850 for activation fencing, direct authority tests, and partial-pin repair.
 - Tests: 11/11 initial focused suites, full OpenCode package, and every review-affected suite passed.
 - Analysis/review: 11 strict package analyses passed; second/final architecture review approved with no violations.
 - Review-fix range `2d14f3ca2f..945746dc76`: 1,427 additions + 351 deletions = 1,778 authored; generated zero.
