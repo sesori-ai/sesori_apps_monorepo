@@ -71,10 +71,31 @@ void main() {
       expect(json, {
         'type': 'plugin.install.progress',
         'pluginId': 'codex',
+        'operation': 'managedInstall',
         'phase': 'downloading',
         'percent': 42,
       });
       expect(SesoriSseEvent.fromJson(json), event);
+    });
+
+    test('round-trips global update progress and defaults legacy events to managed install', () {
+      const update = SesoriSseEvent.pluginInstallProgress(
+        pluginId: 'codex',
+        operation: PluginRuntimeProvisionKind.globalUpdate,
+        phase: PluginInstallPhase.updating,
+        percent: null,
+        message: null,
+      );
+
+      expect(update.toJson()['operation'], 'globalUpdate');
+      expect(SesoriSseEvent.fromJson(update.toJson()), update);
+
+      final legacy = SesoriSseEvent.fromJson({
+        'type': 'plugin.install.progress',
+        'pluginId': 'codex',
+        'phase': 'completed',
+      }) as SesoriPluginInstallProgress;
+      expect(legacy.operation, PluginRuntimeProvisionKind.managedInstall);
     });
 
     test('round-trips a terminal failure with a message', () {
@@ -102,6 +123,7 @@ void main() {
       expect(parsed, isA<SesoriPluginInstallProgress>());
       final cast = parsed as SesoriPluginInstallProgress;
       expect(cast.phase, PluginInstallPhase.unknown);
+      expect(cast.operation, PluginRuntimeProvisionKind.managedInstall);
       expect(cast.percent, isNull);
       expect(cast.message, isNull);
     });

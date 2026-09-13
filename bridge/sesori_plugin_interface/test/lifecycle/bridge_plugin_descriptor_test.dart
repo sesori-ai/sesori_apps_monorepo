@@ -67,13 +67,19 @@ void main() {
       expect((events.single as ProvisionFailed).message, contains('does not support installing'));
     });
 
-    test('the default descriptor never asks for a managed runtime upgrade', () {
+    test('the default descriptor never asks for a managed runtime upgrade', () async {
       const descriptor = _MinimalDescriptor();
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(config: const PluginConfig.empty(), stateDirectory: '/state'),
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: const PluginConfig.empty(),
+          processes: const _UnusedProcessService(),
+          environment: const {},
+          stateDirectory: '/state',
+        ),
         isFalse,
       );
+      expect(descriptor.runtimeUpdateSpec(config: const PluginConfig.empty()), isNull);
     });
 
     test('a descriptor can reject configuration with PluginConfigException', () {

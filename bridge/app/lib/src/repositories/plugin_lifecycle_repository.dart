@@ -36,7 +36,10 @@ class PluginLifecycleRepository({required final PluginRuntime _runtime}) {
   Stream<RuntimeProvisionProgress> installRuntime({required String pluginId}) =>
       _runtime.installRuntime(pluginId: pluginId);
 
-  bool needsManagedRuntimeUpgrade({required String pluginId}) =>
+  Stream<RuntimeProvisionProgress> updateRuntime({required String pluginId}) =>
+      _runtime.updateRuntime(pluginId: pluginId);
+
+  Future<bool> needsManagedRuntimeUpgrade({required String pluginId}) =>
       _runtime.needsManagedRuntimeUpgrade(pluginId: pluginId);
 
   PluginRuntimeAuthenticationOperation authenticate({required String pluginId}) =>

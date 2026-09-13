@@ -10,6 +10,11 @@ import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
+class const _UnusedCommands() implements CommandExecutor {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
 class _Input({required final void Function({required Map<String, dynamic> frame}) received}) extends CapturingIOSink {
   @override
   void add(List<int> data) {
@@ -122,6 +127,7 @@ void main() {
     launches = [];
     repository = AntigravityAuthenticationRepository(
       acpApi: AntigravityAcpApi(
+        commands: const _UnusedCommands(),
         processFactory: (launch) async {
           launches.add(launch);
           return process;

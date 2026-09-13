@@ -17,6 +17,14 @@ import "runtime_in_use_signal.dart";
 import "runtime_provision_progress.dart";
 import "start_abort_signal.dart";
 
+/// A descriptor-owned non-interactive update command for the harness resolved
+/// from PATH. Running it mutates the user's global harness installation.
+class const PluginRuntimeUpdateSpec({
+  required final String executable,
+  required final List<String> arguments,
+  required final Duration timeout,
+});
+
 /// The registration unit for a bridge plugin.
 ///
 /// Descriptors are const and inert: constructing or registering one has no
@@ -91,6 +99,13 @@ abstract class const BridgePluginDescriptor() {
     };
   }
 
+  /// Verified updater for the ordinary PATH installation.
+  ///
+  /// Returns null for explicit binary overrides and harnesses without a safe
+  /// harness-owned updater. The bridge invokes it only after setup identifies
+  /// an outdated PATH runtime and the user explicitly requests an update.
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) => null;
+
   /// Inspects whether this plugin's runtime and authentication are already set
   /// up without installing, starting, or initiating a login flow.
   ///
@@ -156,16 +171,20 @@ abstract class const BridgePluginDescriptor() {
   /// Whether a bridge start should install this plugin's pinned managed runtime
   /// in the background because Sesori already manages an older one.
   ///
-  /// True only when the plugin can install a managed runtime under [config] and
+  /// True only when the plugin can install a managed runtime under [config],
   /// a managed version directory other than the pinned target exists under
-  /// [stateDirectory]. A machine that has never installed through Sesori keeps
-  /// the explicit Install command. Synchronous and disk-only: no probing, no
-  /// process spawning, no network. The default declines, which suits every
-  /// plugin without a managed runtime.
-  bool needsManagedRuntimeUpgrade({
+  /// [stateDirectory], and the ordinary PATH command is genuinely absent.
+  /// Every other bounded PATH probe result declines the upgrade. A machine that
+  /// has never installed through Sesori keeps the
+  /// explicit Install command. This check may probe PATH but must not mutate a
+  /// runtime or use the network. The default declines, which suits every plugin
+  /// without a managed runtime.
+  Future<bool> needsManagedRuntimeUpgrade({
     required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
     required String stateDirectory,
-  }) => false;
+  }) async => false;
 
   /// Resolves an already-present backend runtime and reports progress.
   ///

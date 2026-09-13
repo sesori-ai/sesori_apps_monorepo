@@ -262,8 +262,28 @@ void main() {
 
     test("distinguishes missing, timeout, and other failures", () async {
       expect(
-        await probe(_FakeCommandExecutor(error: const ProcessException("opencode", ["--version"]))),
+        await probe(_FakeCommandExecutor(error: const ProcessException("opencode", ["--version"], "missing", 2))),
         isA<RuntimeProbeMissing>(),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(
+            result: const CommandResult(
+              exitCode: 1,
+              stdout: "",
+              stderr:
+                  "'opencode' is not recognized as an internal or external command,\r\n"
+                  "operable program or batch file.\r\n",
+            ),
+          ),
+        ),
+        isA<RuntimeProbeMissing>(),
+      );
+      expect(
+        await probe(
+          _FakeCommandExecutor(error: const ProcessException("opencode", ["--version"], "permission denied", 13)),
+        ),
+        isA<RuntimeProbeFailed>(),
       );
       expect(
         await probe(_FakeCommandExecutor(error: TimeoutException("timed out"))),

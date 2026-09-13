@@ -734,8 +734,8 @@ class const BridgeRuntimeRunner._() {
       }
       // After ownership is settled, so no other live bridge is using this
       // machine's managed runtime directories when the obsolete sweep runs.
-      // Returns immediately; the downloads continue behind startup.
-      activePluginLifecycleService.upgradeManagedRuntimes();
+      // Await only bounded PATH checks; any admitted downloads continue behind startup.
+      await activePluginLifecycleService.upgradeManagedRuntimes();
       for (final pluginId in startupPolicy.eligiblePluginIds) {
         final diagnostics = activePluginRuntime.describe(pluginId: pluginId);
         if (diagnostics != null) Console.message("Target [$pluginId]: ${diagnostics.endpoint ?? pluginId}");

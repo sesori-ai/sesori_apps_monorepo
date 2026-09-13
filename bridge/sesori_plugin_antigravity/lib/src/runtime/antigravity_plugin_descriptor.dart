@@ -8,6 +8,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 
 import "../api/antigravity_acp_api.dart";
+import "../builders/antigravity_environment_builder.dart";
 import "../builders/antigravity_launch_spec_builder.dart";
 import "../foundation/antigravity_authentication_budget.dart";
 import "../foundation/antigravity_identity.dart";
@@ -17,7 +18,9 @@ import "../models/antigravity_runtime_resolution.dart";
 import "../repositories/antigravity_profile_inspection_repository.dart";
 import "../repositories/antigravity_profile_repository.dart";
 import "../repositories/antigravity_runtime_repository.dart";
+import "../repositories/antigravity_runtime_version_repository.dart";
 import "../repositories/mappers/antigravity_stderr_mapper.dart";
+import "../services/antigravity_managed_runtime_path_authority.dart";
 import "../services/antigravity_profile_inspection_service.dart";
 import "../services/antigravity_profile_service.dart";
 import "../services/antigravity_runtime_service.dart";
@@ -83,11 +86,22 @@ class const AntigravityPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!_supportsManagedInstall(config: config)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: AntigravityRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    final selectedTarget = _target();
+    return await ManagedRuntimeUpgradeService(
+      pathAuthority: _pathAuthority(
+        processes: processes,
+        environment: environment,
+        target: selectedTarget,
+      ),
+      inventory: const ManagedRuntimeInventory(manifest: AntigravityRuntimeManifest()),
+    ).shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   String? _explicitServerPath({required PluginConfig config}) {
@@ -125,22 +139,47 @@ class const AntigravityPluginDescriptor({
     );
   }
 
-  AntigravityRuntimeService _runtime({
+  AntigravityAcpApi _api({
     required HostProcessService processes,
     required Map<String, String> environment,
   }) {
     const stderrMapper = AntigravityStderrMapper();
-    return AntigravityRuntimeService(
-      runtimeRepository: AntigravityRuntimeRepository(
-        runtimeStorage: const AntigravityRuntimeStorage(),
-        acpApi: AntigravityAcpApi(
-          processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
-          stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
-        ),
-        launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
+    return AntigravityAcpApi(
+      processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
+      stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
+      commands: HostProcessCommandExecutor(
+        processes: processes,
+        runInShell: false,
+        includeParentEnvironment: false,
+        maxCapturedOutputCharactersPerStream: 4096,
       ),
     );
   }
+
+  AntigravityRuntimeRepository _runtimeRepository({
+    required HostProcessService processes,
+    required Map<String, String> environment,
+  }) => AntigravityRuntimeRepository(
+    runtimeStorage: const AntigravityRuntimeStorage(),
+    acpApi: _api(processes: processes, environment: environment),
+    launchSpecBuilder: const AntigravityLaunchSpecBuilder(),
+  );
+
+  AntigravityRuntimeService _runtime({
+    required HostProcessService processes,
+    required Map<String, String> environment,
+  }) => AntigravityRuntimeService(
+    runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
+  );
+
+  AntigravityManagedRuntimePathAuthority _pathAuthority({
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required PlatformTarget target,
+  }) => AntigravityManagedRuntimePathAuthority(
+    runtimeRepository: _runtimeRepository(processes: processes, environment: environment),
+    target: target,
+  );
 
   AntigravityProfileService _profile({
     required HostProcessService processes,
@@ -213,6 +252,11 @@ class const AntigravityPluginDescriptor({
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
         candidateValidator: AntigravityRuntimeVersionValidator(runtimeService: runtimeService),
+        pathAuthority: _pathAuthority(
+          processes: processes,
+          environment: environment,
+          target: _target(),
+        ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* installer.install(
@@ -256,8 +300,12 @@ class const AntigravityPluginDescriptor({
     required String stateDirectory,
   }) async {
     final selectedTarget = _target();
-    return AntigravitySetupService(
+    final geminiHome = _geminiHome(stateDirectory: stateDirectory);
+    return await AntigravitySetupService(
       runtime: _runtime(processes: processes, environment: environment),
+      runtimeVersions: AntigravityRuntimeVersionRepository(
+        api: _api(processes: processes, environment: environment),
+      ),
       profile: AntigravityProfileInspectionService(
         repository: AntigravityProfileInspectionRepository(
           storage: const AntigravityProfileInspectionStorage(),
@@ -266,10 +314,16 @@ class const AntigravityPluginDescriptor({
     ).inspect(
       explicitServerPath: _explicitServerPath(config: config),
       managedServerPath: _managedServerPath(stateDirectory: stateDirectory, target: selectedTarget),
-      environment: environment,
+      pathEnvironment: environment,
+      probeEnvironment: const AntigravityEnvironmentBuilder().build(
+        hostEnvironment: environment,
+        geminiHome: geminiHome,
+        additions: const {},
+      ),
       target: selectedTarget,
-      geminiHome: _geminiHome(stateDirectory: stateDirectory),
+      geminiHome: geminiHome,
       managedInstallAvailable: _supportsManagedInstall(config: config),
+      timeout: operationTimeout,
     );
   }
 

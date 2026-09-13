@@ -57,13 +57,20 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String snapshotToken,
   }) = SesoriPluginManagementChanged;
 
-  /// Progress of a phone-triggered managed runtime install for one plugin.
-  /// [percent] is only meaningful while [PluginInstallPhase.downloading] with a
-  /// known total; [message] carries a sanitized failure description only on
-  /// [PluginInstallPhase.failed].
+  /// Progress of a phone-triggered runtime mutation for one plugin. The legacy
+  /// event name is retained so released clients continue receiving managed
+  /// install progress. [percent] is only meaningful while
+  /// [PluginInstallPhase.downloading] with a known total; [message] carries a
+  /// sanitized failure description only on [PluginInstallPhase.failed].
   @FreezedUnionValue("plugin.install.progress")
   const factory pluginInstallProgress({
     required String pluginId,
+    // COMPATIBILITY 2026-09-12 (v1.8.4): Older bridges omit operation because
+    // this event previously represented managed installs only. Remove the
+    // default when those bridges are unsupported.
+    @JsonKey(unknownEnumValue: PluginRuntimeProvisionKind.unknown)
+    @Default(PluginRuntimeProvisionKind.managedInstall)
+    PluginRuntimeProvisionKind operation,
     @JsonKey(unknownEnumValue: PluginInstallPhase.unknown) required PluginInstallPhase phase,
     required int? percent,
     required String? message,

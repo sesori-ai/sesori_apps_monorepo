@@ -22,36 +22,42 @@ void main() {
       Directory("${stateDir.path}/${const CopilotRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("declines without a superseded managed runtime", () async {
       installedVersion(const CopilotRuntimeManifest().bundledVersion.raw);
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          processes: _Processes(),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isFalse,
       );
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("1.0.79");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "copilot"}),
+          processes: _Processes(),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isTrue,
       );
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("1.0.79");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),
+          processes: _Processes(),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -64,6 +70,10 @@ void main() {
   test("offers managed install only for automatic runtime selection", () {
     final descriptor = CopilotPluginDescriptor.production();
     expect(descriptor.managementCapabilities(config: defaultConfig), contains(PluginControlCapability.install));
+    expect(
+      descriptor.managementCapabilities(config: defaultConfig),
+      isNot(contains(PluginControlCapability.runtimeUpdate)),
+    );
     expect(
       descriptor.managementCapabilities(
         config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),
@@ -83,6 +93,22 @@ void main() {
     );
 
     expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
+  });
+
+  test("reports an outdated PATH runtime without falling back to managed", () async {
+    final processes = _Processes(
+      outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.77.\n", exitCode: 0)],
+    );
+    final result = await CopilotPluginDescriptor.production().inspectSetup(
+      config: defaultConfig,
+      processes: processes,
+      environment: const {},
+      stateDirectory: "/state",
+    );
+
+    expect(result, isA<PluginSetupRuntimeOutdated>());
+    expect(result.runtimeVersion, "1.0.77");
+    expect(processes.executables, ["copilot"]);
   });
 
   test("classifies an unrelated explicit runtime as unrecognized", () async {
@@ -133,6 +159,7 @@ class const _Output({required final String stdout, required final int exitCode})
 
 class _Processes({final List<_Output> outputs = const []}) implements HostProcessService {
   int _index = 0;
+  final executables = <String>[];
 
   @override
   Future<SpawnedProcess> spawn({
@@ -143,6 +170,7 @@ class _Processes({final List<_Output> outputs = const []}) implements HostProces
     required bool runInShell,
     required bool includeParentEnvironment,
   }) async {
+    executables.add(executable);
     if (_index >= outputs.length) throw ProcessException(executable, arguments, "missing", 2);
     return _ProbeProcess(output: outputs[_index++]);
   }

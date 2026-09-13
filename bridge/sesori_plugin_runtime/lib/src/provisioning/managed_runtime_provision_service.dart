@@ -4,7 +4,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginHost,
         PluginStartAbortedException,
         ProvisionFailed,
-        ProvisionNotice,
         ProvisionReady,
         ProvisionResolving,
         RuntimeProvisionProgress;
@@ -14,11 +13,10 @@ import "runtime_manifest.dart";
 
 /// Resolves an already-installed runtime without downloading or mutating it.
 ///
-/// Precedence is a sufficiently recent PATH runtime, then the first
-/// sufficiently recent fallback executable candidate (e.g. a CLI bundled by a
-/// backend's desktop app, enumerated by the owning plugin), then the newest
-/// installed managed runtime that is still at or above the minimum, preferring
-/// the pinned version.
+/// PATH is authoritative whenever its command exists. A supported PATH runtime
+/// is selected; an outdated or otherwise unusable PATH runtime blocks startup.
+/// Only when PATH is absent does selection continue to fallback candidates and
+/// then the newest supported managed runtime, preferring the pinned version.
 class ManagedRuntimeProvisionService({
   required final RuntimeManifest _manifest,
   required final ManagedRuntimeSelectionService _selectionService,
@@ -37,7 +35,6 @@ class ManagedRuntimeProvisionService({
 
     final id = _manifest.runtimeId;
     final name = _manifest.displayName;
-    final minimum = _manifest.minPathVersion;
     final selection = await _selectionService.select(
       explicitExecutablePath: explicitExecutablePath,
       fallbackExecutableCandidates: _fallbackExecutableCandidates,
@@ -50,13 +47,6 @@ class ManagedRuntimeProvisionService({
       :final source,
       :final version,
     )) {
-      if (selection case ManagedRuntimeManagedSelected(:final rejectedPathVersion) when rejectedPathVersion != null) {
-        yield ProvisionNotice(
-          message:
-              "Installed $name ${rejectedPathVersion.toString()} is older than the minimum supported ${minimum.toString()}; "
-              "using the existing managed $name ${version.toString()} instead.",
-        );
-      }
       Log.i("[$id] using ${source.name} $name ${version.toString()}");
       yield ProvisionReady(binaryPath: binaryPath);
       return;

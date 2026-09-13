@@ -23,36 +23,42 @@ void main() {
       Directory("${stateDir.path}/${const DeepSeekRuntimeManifest().runtimeId}/$version").createSync(recursive: true);
     }
 
-    test("declines without a superseded managed runtime", () {
+    test("declines without a superseded managed runtime", () async {
       installedVersion(const DeepSeekRuntimeManifest().bundledVersion.raw);
 
       expect(
-        const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
+        await const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: DeepSeekBinary.defaultBinary}),
+          processes: _ProcessService(spawnError: const ProcessException("deepseek", ["--version"], "missing", 2)),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isFalse,
       );
     });
 
-    test("asks for an upgrade when the preceding managed version is installed", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("0.1.5");
 
       expect(
-        const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
+        await const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: DeepSeekBinary.defaultBinary}),
+          processes: _ProcessService(spawnError: const ProcessException("deepseek", ["--version"], "missing", 2)),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isTrue,
       );
     });
 
-    test("declines with an explicit binary override", () {
+    test("declines with an explicit binary override", () async {
       installedVersion("0.1.5");
 
       expect(
-        const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
+        await const DeepSeekPluginDescriptor().needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {DeepSeekPluginDescriptor.binOption: "/custom/deepseek"}),
+          processes: _ProcessService(spawnError: const ProcessException("deepseek", ["--version"], "missing", 2)),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -70,6 +76,7 @@ void main() {
     expect(descriptor.supportsPromptAttachments, isTrue);
     expect(descriptor.options.map((option) => option.name), [DeepSeekPluginDescriptor.binOption]);
     expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.install));
+    expect(descriptor.managementCapabilities(config: config), isNot(contains(PluginControlCapability.runtimeUpdate)));
   });
 
   test("ensureRuntime accepts a supported explicit adapter", () async {
@@ -200,6 +207,26 @@ void main() {
       ),
       isA<PluginSetupUnavailable>(),
     );
+    final pathOutdated = _ProcessService(
+      probes: [
+        _ProbeProcess(
+          pid: 2,
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.4 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stderrBytes: const [],
+          exitCodeValue: 0,
+        ),
+      ],
+    );
+    expect(
+      await const DeepSeekPluginDescriptor().inspectSetup(
+        config: config,
+        processes: pathOutdated,
+        environment: const {},
+        stateDirectory: "/state",
+      ),
+      isA<PluginSetupRuntimeOutdated>(),
+    );
+    expect(pathOutdated.spawnedExecutables, [DeepSeekBinary.defaultBinary]);
 
     final unknown = _ProcessService(
       probes: [
@@ -222,20 +249,12 @@ void main() {
     );
   });
 
-  test("ensureRuntime replaces an outdated PATH adapter with the exact managed release", () async {
+  test("ensureRuntime blocks instead of replacing an outdated PATH adapter", () async {
     final processes = _ProcessService(
       probes: [
         _ProbeProcess(
           pid: 1,
           stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.4 deepseek-harness/0.1.1-rc.2 acp/1\n"),
-          stderrBytes: const [],
-          exitCodeValue: 0,
-        ),
-        _ProbeProcess(
-          pid: 2,
-          stdoutBytes: utf8.encode(
-            "sesori-deepseek-acp/${DeepSeekPluginDescriptor.targetVersion} deepseek-harness/0.1.1-rc.2 acp/1\n",
-          ),
           stderrBytes: const [],
           exitCodeValue: 0,
         ),
@@ -248,11 +267,8 @@ void main() {
         )
         .toList();
 
-    expect(
-      (events.last as ProvisionReady).binaryPath,
-      contains("/state/deepseek/${DeepSeekPluginDescriptor.targetVersion}/sesori-deepseek-acp"),
-    );
-    expect(processes.spawnedExecutables.first, DeepSeekBinary.defaultBinary);
+    expect(events.last, isA<ProvisionFailed>());
+    expect(processes.spawnedExecutables, [DeepSeekBinary.defaultBinary]);
   });
 
   test("production composition exposes options and rename then recovers after a crash", () async {

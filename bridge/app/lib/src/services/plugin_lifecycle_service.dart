@@ -44,6 +44,7 @@ typedef PluginStartupPolicy = ({
 /// One producer-coalesced install progress update, ready for wire mapping.
 typedef PluginInstallProgressUpdate = ({
   String pluginId,
+  PluginRuntimeProvisionKind operation,
   PluginInstallPhase phase,
   int? percent,
   String? message,
@@ -280,18 +281,22 @@ class PluginLifecycleService({
         PluginLifecycleRestartRequest() => PluginControlCapability.lifecycle,
         PluginLifecycleRefreshRequest() => PluginControlCapability.setupRefresh,
         PluginLifecycleInstallRequest() => PluginControlCapability.install,
+        PluginLifecycleUpdateRuntimeRequest() => PluginControlCapability.runtimeUpdate,
       },
     );
     final active = _activePluginCommands[pluginId];
     if (active != null) {
       if (active.request == request) {
-        // A joined install returns the accepted snapshot immediately; the
-        // in-flight install keeps streaming progress and owns the slot.
+        // A joined runtime mutation returns the accepted snapshot immediately;
+        // the in-flight operation keeps streaming progress and owns the slot.
         if (request is PluginLifecycleInstallRequest) {
           // The in-flight install may be a startup upgrade, which deliberately
           // does not start the harness. An explicit Install carries the user's
           // intent to enable and start it, so it takes over the completion.
           active.installCompletion = InstallCompletion.enableAndStart;
+          return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
+        }
+        if (request is PluginLifecycleUpdateRuntimeRequest) {
           return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
         }
         return active.completer.future;
@@ -313,13 +318,17 @@ class PluginLifecycleService({
         ),
       );
     }
+    _requireRuntimeProvisionState(pluginId: pluginId, request: request);
 
-    if (request is PluginLifecycleInstallRequest) {
-      // Accepted-immediately: a download can run for minutes, far beyond any
-      // relay request budget. The HTTP response is the current snapshot;
-      // progress streams via SSE and the terminal outcome invalidates the
-      // management snapshot. The slot stays occupied until the install ends.
-      _admitInstall(pluginId: pluginId, request: request, completion: InstallCompletion.enableAndStart);
+    if (request is PluginLifecycleInstallRequest || request is PluginLifecycleUpdateRuntimeRequest) {
+      // Accepted-immediately: a download or harness-owned updater can outlive a
+      // relay request budget. Progress streams via SSE while the slot stays
+      // occupied until the mutation and terminal re-inspection settle.
+      _admitRuntimeProvision(
+        pluginId: pluginId,
+        request: request,
+        completion: InstallCompletion.enableAndStart,
+      );
       return Future<PluginManagementResponse>.value(_managementSnapshotAfterMutation);
     }
     final command = _ActivePluginCommand(request: request);
@@ -328,19 +337,17 @@ class PluginLifecycleService({
     return command.completer.future;
   }
 
-  /// Occupies [pluginId]'s command slot with an install and starts it.
-  ///
-  /// Shared by the explicit Install command and the startup upgrade so both
-  /// join, conflict, and release the slot identically. Returns as soon as the
-  /// install is admitted; the download runs on its own.
-  void _admitInstall({
+  /// Occupies [pluginId]'s command slot with a managed install or global
+  /// updater. Shared admission keeps joining, conflicts, progress, and release
+  /// semantics identical. Returns as soon as the mutation is admitted.
+  void _admitRuntimeProvision({
     required String pluginId,
-    required PluginLifecycleInstallRequest request,
+    required PluginLifecycleCommandRequest request,
     required InstallCompletion completion,
   }) {
     final command = _ActivePluginCommand(request: request, installCompletion: completion);
     _activePluginCommands[pluginId] = command;
-    unawaited(_executeInstall(pluginId: pluginId, command: command));
+    unawaited(_executeRuntimeProvision(pluginId: pluginId, command: command));
   }
 
   /// Installs the pinned managed runtime for every eligible plugin that still
@@ -348,17 +355,35 @@ class PluginLifecycleService({
   ///
   /// Called once per bridge start, after single-live-bridge ownership is settled
   /// so no other bridge is using this machine's managed runtime directories.
-  /// Returns immediately: startup never waits on a download, and a harness
-  /// already running an older supported version keeps serving until its next
-  /// generation. A plugin with a command already in flight is skipped; that
-  /// command owns the slot.
-  void upgradeManagedRuntimes() {
-    for (final pluginId in _requireEligiblePluginIds()) {
-      if (_activePluginCommands.containsKey(pluginId)) continue;
-      if (!_lifecycleRepository.needsManagedRuntimeUpgrade(pluginId: pluginId)) continue;
-      Log.i('Plugin "$pluginId" has a superseded managed runtime; installing the current one in the background.');
-      _admitInstall(
-        pluginId: pluginId,
+  /// Startup awaits only bounded PATH-presence checks, never a download. A
+  /// managed refresh is admitted only when PATH is absent. A plugin with a
+  /// command already in flight is skipped; that command owns the slot.
+  Future<void> upgradeManagedRuntimes() async {
+    final pluginIds = [
+      for (final pluginId in _requireEligiblePluginIds())
+        if (!_activePluginCommands.containsKey(pluginId)) pluginId,
+    ];
+    final decisions = await Future.wait(
+      pluginIds.map((pluginId) async {
+        try {
+          return (
+            pluginId: pluginId,
+            shouldUpgrade: await _lifecycleRepository.needsManagedRuntimeUpgrade(pluginId: pluginId),
+          );
+        } on Object catch (error, stackTrace) {
+          Log.w('Plugin "$pluginId" managed runtime upgrade eligibility failed', error, stackTrace);
+          return (pluginId: pluginId, shouldUpgrade: false);
+        }
+      }),
+    );
+    for (final decision in decisions) {
+      if (!decision.shouldUpgrade || _activePluginCommands.containsKey(decision.pluginId)) continue;
+      Log.i(
+        'Plugin "${decision.pluginId}" has a superseded managed runtime and no PATH install; '
+        "updating it in the background.",
+      );
+      _admitRuntimeProvision(
+        pluginId: decision.pluginId,
         request: const PluginLifecycleInstallRequest(),
         completion: InstallCompletion.reinspectOnly,
       );
@@ -610,20 +635,30 @@ class PluginLifecycleService({
     return setup;
   }
 
-  Future<void> _executeInstall({
+  Future<void> _executeRuntimeProvision({
     required String pluginId,
     required _ActivePluginCommand command,
   }) async {
+    final operation = switch (command.request) {
+      PluginLifecycleInstallRequest() => PluginRuntimeProvisionKind.managedInstall,
+      PluginLifecycleUpdateRuntimeRequest() => PluginRuntimeProvisionKind.globalUpdate,
+      _ => throw StateError("Only runtime provision requests use this executor."),
+    };
     try {
+      final events = switch (operation) {
+        PluginRuntimeProvisionKind.managedInstall => _lifecycleRepository.installRuntime(pluginId: pluginId),
+        PluginRuntimeProvisionKind.globalUpdate => _lifecycleRepository.updateRuntime(pluginId: pluginId),
+        PluginRuntimeProvisionKind.unknown => throw StateError("Unknown runtime provision operation."),
+      };
       RuntimeProvisionProgress? terminal;
-      // Stop at the terminal event instead of draining the stream: the install
-      // service still sweeps superseded versions after yielding ProvisionReady,
-      // and the phone should not wait on that housekeeping.
-      await for (final event in _lifecycleRepository.installRuntime(pluginId: pluginId)) {
+      // Stop at the terminal event instead of draining the stream. Managed
+      // installers complete required cleanup before yielding ProvisionReady.
+      await for (final event in events) {
         switch (event) {
           case ProvisionDownloading(:final receivedBytes, :final totalBytes):
             _emitInstallProgress(
               pluginId: pluginId,
+              operation: operation,
               phase: PluginInstallPhase.downloading,
               percent: (totalBytes != null && totalBytes > 0)
                   ? (receivedBytes * 100 ~/ totalBytes).clamp(0, 100)
@@ -631,39 +666,56 @@ class PluginLifecycleService({
               message: null,
             );
           case ProvisionVerifying():
-            _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.verifying, percent: null, message: null);
+            _emitInstallProgress(
+              pluginId: pluginId,
+              operation: operation,
+              phase: PluginInstallPhase.verifying,
+              percent: null,
+              message: null,
+            );
           case ProvisionExtracting():
             _emitInstallProgress(
               pluginId: pluginId,
+              operation: operation,
               phase: PluginInstallPhase.extracting,
               percent: null,
               message: null,
             );
-          case ProvisionResolving() || ProvisionNotice():
+          case ProvisionResolving():
+            if (operation == PluginRuntimeProvisionKind.globalUpdate) {
+              _emitInstallProgress(
+                pluginId: pluginId,
+                operation: operation,
+                phase: PluginInstallPhase.updating,
+                percent: null,
+                message: null,
+              );
+            }
+          case ProvisionNotice():
             break;
           case ProvisionReady() || ProvisionFailed():
             terminal = event;
         }
-        // The install service still sweeps superseded versions after yielding
-        // its terminal event; the phone must not wait on that housekeeping.
         if (terminal != null) break;
       }
       switch (terminal) {
         case ProvisionReady():
-          _emitInstallProgress(pluginId: pluginId, phase: PluginInstallPhase.finalizing, percent: null, message: null);
+          _emitInstallProgress(
+            pluginId: pluginId,
+            operation: operation,
+            phase: PluginInstallPhase.finalizing,
+            percent: null,
+            message: null,
+          );
           // Read now, not at admission: an explicit Install may have joined a
           // startup upgrade while it was downloading.
           switch (command.installCompletion) {
             case InstallCompletion.enableAndStart:
               await _enable(pluginId: pluginId, command: command);
             case InstallCompletion.reinspectOnly:
-              // A startup upgrade nobody asked for must not spawn a process.
-              // Re-inspection is what flips a runtime-missing harness to ready
-              // and routable; a running harness keeps its current generation.
+              // A startup managed upgrade nobody asked for must not spawn a
+              // process. Re-inspection makes the new runtime selectable.
               final setup = await _inspectForCommand(pluginId: pluginId, command: command);
-              // An explicit Install can still join during that inspection — it
-              // owns the same slot until this command releases it — so honour a
-              // promotion that arrived too late for the branch above.
               if (command.installCompletion == InstallCompletion.enableAndStart && setup is PluginSetupReady) {
                 _handleRuntimeCommandResult(
                   pluginId: pluginId,
@@ -671,61 +723,74 @@ class PluginLifecycleService({
                 );
               }
           }
-          // Authentication is a separate setup step, not an installation
-          // failure. Keep the login-required card blocked without telling the
-          // client to reinstall a runtime that was successfully provisioned.
           final setup = _requireSetupById()[pluginId];
-          final installed = setup is PluginSetupReady || setup is PluginSetupAuthenticationRequired;
+          final compatible = setup is PluginSetupReady || setup is PluginSetupAuthenticationRequired;
           _emitInstallProgress(
             pluginId: pluginId,
-            phase: installed ? PluginInstallPhase.completed : PluginInstallPhase.failed,
+            operation: operation,
+            phase: compatible ? PluginInstallPhase.completed : PluginInstallPhase.failed,
             percent: null,
-            message: installed ? null : "The runtime installed, but the harness still needs setup. Check its status.",
+            message: compatible
+                ? null
+                : operation == PluginRuntimeProvisionKind.globalUpdate
+                ? "The updater finished, but the harness is still incompatible. Check its status."
+                : "The runtime installed, but the harness still needs setup. Check its status.",
           );
         case ProvisionFailed():
-          // Descriptor failure text is not a trusted wire payload; the phone
-          // gets a fixed message and the detail stays in the bridge log.
-          Log.w('Plugin "$pluginId" managed runtime install failed: ${terminal.message}');
+          // Descriptor failure text remains local; the phone gets fixed copy.
+          Log.w('Plugin "$pluginId" ${operation.name} failed: ${terminal.message}');
+          // Provisioning can fail because setup changed after admission (for
+          // example, a PATH runtime appeared before managed mutation). Refresh
+          // canonical setup so clients do not keep offering the stale action.
+          try {
+            await _inspectForCommand(pluginId: pluginId, command: command);
+          } on PluginStartAbortedException {
+            rethrow;
+          } on Object catch (error, stackTrace) {
+            Log.w('Plugin "$pluginId" setup re-inspection after ${operation.name} failure failed', error, stackTrace);
+          }
           _emitInstallProgress(
             pluginId: pluginId,
+            operation: operation,
             phase: PluginInstallPhase.failed,
             percent: null,
-            message: "The runtime could not be installed. Check the bridge logs for details.",
+            message: operation == PluginRuntimeProvisionKind.globalUpdate
+                ? "The harness could not be updated automatically. Check the bridge logs for details."
+                : "The runtime could not be installed. Check the bridge logs for details.",
           );
         case _:
           _emitInstallProgress(
             pluginId: pluginId,
+            operation: operation,
             phase: PluginInstallPhase.failed,
             percent: null,
-            message: "The install ended without a result.",
+            message: "The runtime operation ended without a result.",
           );
       }
     } on PluginStartAbortedException {
-      // Shutdown aborted the install; the next attempt redoes it cleanly.
       _emitInstallProgress(
         pluginId: pluginId,
+        operation: operation,
         phase: PluginInstallPhase.failed,
         percent: null,
-        message: "The install was interrupted by a bridge shutdown.",
+        message: "The runtime operation was interrupted by a bridge shutdown.",
       );
     } on Object catch (error, stackTrace) {
-      // The wire message stays generic; the local log keeps the diagnostic
-      // detail (post-install enable/start errors may contain paths).
-      Log.w('Plugin "$pluginId" managed runtime install failed', error, stackTrace);
+      Log.w('Plugin "$pluginId" ${operation.name} failed', error, stackTrace);
       _emitInstallProgress(
         pluginId: pluginId,
+        operation: operation,
         phase: PluginInstallPhase.failed,
         percent: null,
-        message: "The runtime installed state could not be completed. Check the bridge logs.",
+        message: "The runtime operation could not be completed. Check the bridge logs.",
       );
     } finally {
       if (identical(_activePluginCommands[pluginId], command)) {
         _activePluginCommands.remove(pluginId);
       }
       _publishManagementIfChanged();
-      // The install completer is never awaited (the HTTP response returned at
-      // acceptance; a joined duplicate also returns immediately), so it is
-      // deliberately left unsettled.
+      // Accepted runtime-operation responses return immediately, so this
+      // completer is deliberately left unsettled.
     }
   }
 
@@ -733,6 +798,7 @@ class PluginLifecycleService({
 
   void _emitInstallProgress({
     required String pluginId,
+    required PluginRuntimeProvisionKind operation,
     required PluginInstallPhase phase,
     required int? percent,
     required String? message,
@@ -748,7 +814,13 @@ class PluginLifecycleService({
     } else {
       _lastInstallDownloadEmit.remove(pluginId);
     }
-    _installProgressController.add((pluginId: pluginId, phase: phase, percent: percent, message: message));
+    _installProgressController.add((
+      pluginId: pluginId,
+      operation: operation,
+      phase: phase,
+      percent: percent,
+      message: message,
+    ));
   }
 
   Future<PluginManagementResponse> updateIdleTimeout({required PluginIdleTimeoutUpdateRequest request}) {
@@ -822,8 +894,8 @@ class PluginLifecycleService({
           await _restart(pluginId: pluginId, mode: mode, command: command);
         case PluginLifecycleRefreshRequest():
           await _refresh(pluginId: pluginId, command: command);
-        case PluginLifecycleInstallRequest():
-          throw StateError("install commands are dispatched through _executeInstall");
+        case PluginLifecycleInstallRequest() || PluginLifecycleUpdateRuntimeRequest():
+          throw StateError("runtime provision commands are dispatched through _executeRuntimeProvision");
       }
     } on Object catch (error, stackTrace) {
       failure = error;
@@ -1177,6 +1249,7 @@ class PluginLifecycleService({
         PluginSetupNotInspected() => PluginSetupState.notInspected,
         PluginSetupReady() => PluginSetupState.ready,
         PluginSetupRuntimeMissing() => PluginSetupState.runtimeMissing,
+        PluginSetupRuntimeOutdated() => PluginSetupState.runtimeOutdated,
         PluginSetupAuthenticationRequired() => PluginSetupState.authenticationRequired,
         PluginSetupUnavailable() => PluginSetupState.unavailable,
         PluginSetupUnknown() => PluginSetupState.unknown,
@@ -1188,7 +1261,8 @@ class PluginLifecycleService({
 
   PluginManagementMetadata _managementRow({required RegisteredPluginMetadata plugin}) {
     final snapshot = _lifecycleRepository.snapshot.singleWhere((entry) => entry.pluginId == plugin.id);
-    final setup = _mapSetupMetadata(plugin: plugin, setup: _setupById![plugin.id]!);
+    final setupStatus = _setupById![plugin.id]!;
+    final setup = _mapSetupMetadata(plugin: plugin, setup: setupStatus);
     final settings = _bridgeSettingsRepository.currentSettings;
     return PluginManagementMetadata(
       setup: setup,
@@ -1201,7 +1275,9 @@ class PluginLifecycleService({
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       managementCapabilities: {
         for (final capability in _managementCapabilitiesForPluginId(pluginId: plugin.id))
-          _mapManagementCapability(capability: capability),
+          if ((capability != PluginControlCapability.install || setupStatus is! PluginSetupRuntimeOutdated) &&
+              (capability != PluginControlCapability.runtimeUpdate || setupStatus is PluginSetupRuntimeOutdated))
+            _mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
@@ -1213,6 +1289,7 @@ class PluginLifecycleService({
         PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
         PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
         PluginControlCapability.install => PluginManagementCapability.install,
+        PluginControlCapability.runtimeUpdate => PluginManagementCapability.runtimeUpdate,
         PluginControlCapability.authentication => PluginManagementCapability.authentication,
       };
 
@@ -1232,6 +1309,26 @@ class PluginLifecycleService({
 
   Set<PluginControlCapability> _managementCapabilitiesForPluginId({required String pluginId}) {
     return _managementCapabilitiesById[pluginId] ?? (throw StateError('Plugin "$pluginId" is not registered.'));
+  }
+
+  void _requireRuntimeProvisionState({
+    required String pluginId,
+    required PluginLifecycleCommandRequest request,
+  }) {
+    final setup = _requireSetupById()[pluginId]!;
+    final unsupported = switch (request) {
+      PluginLifecycleInstallRequest() => setup is! PluginSetupRuntimeMissing && setup is! PluginSetupUnavailable,
+      PluginLifecycleUpdateRuntimeRequest() => setup is! PluginSetupRuntimeOutdated,
+      _ => false,
+    };
+    if (!unsupported) return;
+    throw PluginManagementConflictException(
+      PluginLifecycleConflict(
+        pluginId: pluginId,
+        reasons: const [PluginLifecycleConflictReason.unsupported],
+        current: _managementRowForPluginId(pluginId),
+      ),
+    );
   }
 
   void _requireManagementCapability({required String pluginId, required PluginControlCapability capability}) {

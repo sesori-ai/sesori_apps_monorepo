@@ -21,6 +21,15 @@ void main() {
       expect(descriptor.options.single.name, "bin");
       expect(ClaudePluginDescriptor.minVersion, "2.1.221");
       expect(ClaudePluginDescriptor.targetVersion, "2.1.269");
+      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
+      expect(descriptor.runtimeUpdateSpec(config: config)?.executable, "claude");
+      expect(descriptor.runtimeUpdateSpec(config: config)?.arguments, const ["update"]);
+      const explicit = PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"});
+      expect(
+        descriptor.managementCapabilities(config: explicit),
+        isNot(contains(PluginControlCapability.runtimeUpdate)),
+      );
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("reports ready after ordered version and typed auth probes", () async {
@@ -67,7 +76,45 @@ void main() {
       _expectNonReady<PluginSetupRuntimeMissing>(status);
     });
 
-    test("reports unavailable and skips auth for an outdated runtime", () async {
+    test("recognizes only the probed Windows shell command as missing", () async {
+      final missing = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          _ProbeProcess(
+            stdoutText: "'claude' is not recognized as an internal or external command\n",
+            exitCode: Future.value(1),
+          ),
+        ]),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+      final ambiguous = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          _ProbeProcess(stdoutText: "dependency: command not found\n", exitCode: Future.value(1)),
+        ]),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      _expectNonReady<PluginSetupRuntimeMissing>(missing);
+      _expectNonReady<PluginSetupUnknown>(ambiguous);
+    });
+
+    test("reports an ambiguous spawn failure as unknown rather than missing", () async {
+      final status = await const ClaudePluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProcessService([
+          const ProcessException("claude", ["--version"], "permission denied", 13),
+        ]),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      _expectNonReady<PluginSetupUnknown>(status);
+    });
+
+    test("reports a PATH runtime outdated and skips auth", () async {
       final processes = _ProcessService([
         _ProbeProcess(stdoutText: "2.1.220 (Claude Code)\n", exitCode: Future.value(0)),
       ]);
@@ -79,10 +126,24 @@ void main() {
         stateDirectory: "/state",
       );
 
-      _expectNonReady<PluginSetupUnavailable>(status);
+      _expectNonReady<PluginSetupRuntimeOutdated>(status);
+      expect(status.runtimeVersion, "2.1.220");
       expect(processes.arguments, [
         const ["--version"],
       ]);
+    });
+
+    test("keeps an outdated explicit binary unavailable without offering the global updater", () async {
+      final status = await const ClaudePluginDescriptor().inspectSetup(
+        config: const PluginConfig(values: {ClaudePluginDescriptor.binOption: "/custom/claude"}),
+        processes: _ProcessService([
+          _ProbeProcess(stdoutText: "2.1.220 (Claude Code)\n", exitCode: Future.value(0)),
+        ]),
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      _expectNonReady<PluginSetupUnavailable>(status);
     });
 
     test("reports authentication required from loggedIn false only", () async {

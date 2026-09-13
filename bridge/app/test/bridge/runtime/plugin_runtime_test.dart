@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime_server_exception.dart";
@@ -98,6 +99,57 @@ void main() {
     await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
   });
 
+  test("updateRuntime runs the descriptor-owned command and reports sanitized progress", () async {
+    final processes = _UpdaterProcessService(exitCode: 0);
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: const _FakeDescriptor(
+        updateSpec: PluginRuntimeUpdateSpec(
+          executable: "one",
+          arguments: ["update", "--yes"],
+          timeout: Duration(minutes: 2),
+        ),
+      ),
+      setupProcesses: processes,
+    );
+    addTearDown(runtime.dispose);
+
+    final events = await runtime.updateRuntime(pluginId: "one").toList();
+
+    expect(events, [
+      isA<ProvisionResolving>(),
+      isA<ProvisionReady>().having((event) => event.binaryPath, "path", "one"),
+    ]);
+    expect(processes.executables, ["one"]);
+    expect(processes.arguments, [
+      const ["update", "--yes"],
+    ]);
+    expect(processes.environments, [const <String, String>{}]);
+  });
+
+  test("updateRuntime force-stops the updater on shutdown", () async {
+    final processes = _UpdaterProcessService(exitCode: null);
+    final runtime = _runtime(
+      factory: _FakeGenerationFactory(startGate: Future<void>.value()),
+      descriptor: const _FakeDescriptor(
+        updateSpec: PluginRuntimeUpdateSpec(
+          executable: "one",
+          arguments: ["update"],
+          timeout: Duration(minutes: 2),
+        ),
+      ),
+      setupProcesses: processes,
+    );
+    addTearDown(runtime.dispose);
+
+    final done = runtime.updateRuntime(pluginId: "one").drain<void>();
+    await _waitUntil(() => processes.executables.isNotEmpty);
+    runtime.beginShutdown();
+
+    await expectLater(done, throwsA(isA<PluginStartAbortedException>()));
+    expect(processes.forceSignals, [42]);
+  });
+
   test("installRuntime reports a live generation to the descriptor", () async {
     final installGate = Completer<void>();
     final inUseReadings = <bool>[];
@@ -124,28 +176,32 @@ void main() {
     expect(inUseReadings, [false, true], reason: "the signal is read live, not captured at install start");
   });
 
-  test("needsManagedRuntimeUpgrade asks the descriptor with the slot's registration", () {
-    final queries = <({PluginConfig config, String stateDirectory})>[];
+  test("needsManagedRuntimeUpgrade asks the descriptor with the slot's registration", () async {
+    final queries =
+        <
+          ({PluginConfig config, Map<String, String> environment, HostProcessService processes, String stateDirectory})
+        >[];
     final runtime = _runtime(
       factory: _FakeGenerationFactory(startGate: Future<void>.value()),
       descriptor: _FakeDescriptor(
-        upgradeNeeded: ({required config, required stateDirectory}) {
-          queries.add((config: config, stateDirectory: stateDirectory));
+        upgradeNeeded: ({required config, required processes, required environment, required stateDirectory}) {
+          queries.add((config: config, processes: processes, environment: environment, stateDirectory: stateDirectory));
           return true;
         },
       ),
     );
     addTearDown(runtime.dispose);
 
-    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isTrue);
+    expect(await runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isTrue);
     expect(queries.single.stateDirectory, ".");
+    expect(queries.single.environment, isEmpty);
   });
 
-  test("needsManagedRuntimeUpgrade declines for a descriptor without a managed runtime", () {
+  test("needsManagedRuntimeUpgrade declines for a descriptor without a managed runtime", () async {
     final runtime = _runtime(factory: _FakeGenerationFactory(startGate: Future<void>.value()));
     addTearDown(runtime.dispose);
 
-    expect(runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isFalse);
+    expect(await runtime.needsManagedRuntimeUpgrade(pluginId: "one"), isFalse);
   });
 
   test("installRuntime fails immediately while shutting down", () async {
@@ -2154,6 +2210,7 @@ enum _TestOperation() {
 PluginRuntime _runtime({
   required _FakeGenerationFactory factory,
   BridgePluginDescriptor descriptor = const _FakeDescriptor(),
+  HostProcessService setupProcesses = const _UnusedHostProcessService(),
   Duration shutdownBudget = const Duration(seconds: 1),
 }) {
   final runtime = PluginRuntime(
@@ -2166,7 +2223,7 @@ PluginRuntime _runtime({
       ),
     ],
     generationFactory: factory,
-    setupProcesses: const _UnusedHostProcessService(),
+    setupProcesses: setupProcesses,
     environment: const {},
     clock: const ServerClock(),
     shutdownBudget: shutdownBudget,
@@ -2228,16 +2285,26 @@ class const _NeverCancelled() implements PluginCatalogCancellationSignal {
 
 class const _FakeDescriptor({
   final Future<PluginSetupStatus> Function()? inspect,
+  final PluginRuntimeUpdateSpec? updateSpec,
   final Future<PluginCatalogSnapshotResult> Function()? catalogSnapshot,
   final Stream<RuntimeProvisionProgress> Function(StartAbortSignal startAborted, RuntimeInUseSignal runtimeInUse)?
   install,
-  final bool Function({required PluginConfig config, required String stateDirectory})? upgradeNeeded,
+  final FutureOr<bool> Function({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  })?
+  upgradeNeeded,
 }) extends BridgePluginDescriptor {
   @override
   String get id => "one";
 
   @override
   String get displayName => "One";
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) => updateSpec;
 
   @override
   PluginProjectOwnership get projectOwnership => PluginProjectOwnership.native;
@@ -2291,12 +2358,27 @@ class const _FakeDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     final handler = upgradeNeeded;
     if (handler == null) {
-      return super.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDirectory);
+      return await super.needsManagedRuntimeUpgrade(
+        config: config,
+        processes: processes,
+        environment: environment,
+        stateDirectory: stateDirectory,
+      );
     }
-    return handler(config: config, stateDirectory: stateDirectory);
+    return await handler(
+      config: config,
+      processes: processes,
+      environment: environment,
+      stateDirectory: stateDirectory,
+    );
   }
 
   @override
@@ -2431,6 +2513,74 @@ class _FakeApi({
     required String projectId,
     required PluginSessionOptionsDiscoveryMode discoveryMode,
   }) => throw UnimplementedError();
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UpdaterProcessService({required final int? exitCode}) implements HostProcessService {
+  final executables = <String>[];
+  final arguments = <List<String>>[];
+  final environments = <Map<String, String>?>[];
+  final forceSignals = <int>[];
+  _UpdaterProcess? spawnedProcess;
+
+  @override
+  Future<SpawnedProcess> spawn({
+    required String executable,
+    required List<String> arguments,
+    required Map<String, String>? environment,
+    required String? workingDirectory,
+    required bool runInShell,
+    required bool includeParentEnvironment,
+  }) async {
+    executables.add(executable);
+    this.arguments.add(arguments);
+    environments.add(environment);
+    expect(workingDirectory, isNull);
+    expect(includeParentEnvironment, isTrue);
+    return spawnedProcess = _UpdaterProcess(exitCode: exitCode);
+  }
+
+  @override
+  Future<SignalResult> signalForce({required int pid}) async {
+    forceSignals.add(pid);
+    spawnedProcess?.completeExit(-9);
+    return SignalResult(
+      pid: pid,
+      requestedSignal: ShutdownSignal.force,
+      deliveredSignal: ProcessSignal.sigkill,
+      wasRequested: true,
+      attemptedAt: DateTime.now(),
+    );
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UpdaterProcess({required int? exitCode}) implements SpawnedProcess {
+  final Completer<int> _exit = Completer<int>();
+
+  this {
+    if (exitCode case final value?) _exit.complete(value);
+  }
+
+  void completeExit(int exitCode) {
+    if (!_exit.isCompleted) _exit.complete(exitCode);
+  }
+
+  @override
+  Future<int> get exitCode => _exit.future;
+
+  @override
+  int get pid => 42;
+
+  @override
+  Stream<List<int>> get stderr => const Stream.empty();
+
+  @override
+  Stream<List<int>> get stdout => const Stream.empty();
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -30,6 +30,27 @@ void main() {
     }
   }
 
+  test("an outdated PATH runtime has its own blocked reason", () {
+    final state = calculator.calculate(
+      pluginId: "harness",
+      managementResult: managementFixture(
+        setup: PluginSetupState.runtimeOutdated,
+        runtime: PluginRuntimeState.blocked,
+      ),
+      connectionStatus: connected,
+      previous: null,
+    );
+
+    expect(
+      state,
+      isA<SessionInteractionBlocked>().having(
+        (blocked) => blocked.reason,
+        "reason",
+        SessionInteractionBlockedReason.runtimeOutdated,
+      ),
+    );
+  });
+
   test("missing harness never falls back to another ready entry", () {
     expect(
       calculator.calculate(

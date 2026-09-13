@@ -107,6 +107,13 @@ void main() {
           runtimeVersion: "1.18.11",
           actionHint: null,
         ),
+        PluginSetupMetadata(
+          id: "pi",
+          displayName: "Pi",
+          state: PluginSetupState.runtimeOutdated,
+          runtimeVersion: "0.84.0",
+          actionHint: "Update Pi.",
+        ),
       ],
     );
 

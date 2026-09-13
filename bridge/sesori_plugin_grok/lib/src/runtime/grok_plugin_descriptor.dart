@@ -59,6 +59,22 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
   @override
   List<PluginOption> get options => cliOptions;
 
+  @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
+    ...super.managementCapabilities(config: config),
+    if (_explicitBin(config: config) == null) PluginControlCapability.runtimeUpdate,
+  };
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config: config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "grok",
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
+  }
+
   String? _explicitBin({required PluginConfig config}) {
     final value = config.value(binOption)?.trim();
     if (value == null || value.isEmpty || value == GrokBinary.defaultBinary) return null;
@@ -123,11 +139,15 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
               ? "Install Grok Build with xAI's official installer, then restart the bridge."
               : "Fix the configured Grok Build binary path, then restart the bridge.",
         );
-      case _GrokRuntimeOutdated():
-        return PluginSetupUnavailable(
-          actionHint: explicitBin == null
-              ? "Update Grok Build with xAI's official installer, then restart the bridge."
-              : "Update the configured Grok Build binary or fix `--grok-bin`, then restart the bridge.",
+      case _GrokRuntimeOutdated(:final version):
+        if (explicitBin == null) {
+          return PluginSetupRuntimeOutdated(
+            actionHint: "Update the global Grok Build installation to ${_minimumVersion.toString()} or newer.",
+            runtimeVersion: version,
+          );
+        }
+        return const PluginSetupUnavailable(
+          actionHint: "Update the configured Grok Build binary or fix `--grok-bin`, then restart the bridge.",
         );
       case _GrokRuntimeUnknown() || _GrokRuntimeUnrecognized():
         return const PluginSetupUnknown(
@@ -200,7 +220,7 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
       );
       return const _GrokRuntimeUnknown();
     } on io.ProcessException catch (error, stackTrace) {
-      if (error.errorCode == 2) return const _GrokRuntimeMissing();
+      if (error.errorCode == 2 || error.errorCode == 3) return const _GrokRuntimeMissing();
       Log.w("[grok] version probe could not launch '$executablePath --version'", error, stackTrace);
       return const _GrokRuntimeUnknown();
     } on Object catch (error, stackTrace) {
@@ -209,8 +229,9 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
     }
 
     if (result.exitCode != 0) {
-      final stderr = result.stderr.toLowerCase();
-      if (_isShellCommandNotFound(stderr: stderr)) return const _GrokRuntimeMissing();
+      if (_isShellCommandNotFound(executable: executablePath, result: result)) {
+        return const _GrokRuntimeMissing();
+      }
       Log.w("[grok] version probe '$executablePath --version' exited with code ${result.exitCode}");
       return const _GrokRuntimeUnknown();
     }
@@ -221,15 +242,17 @@ class const GrokPluginDescriptor() extends BridgePluginDescriptor {
       Log.w(
         "[grok] Grok Build ${parsed.toString()} is below the supported minimum ${_minimumVersion.toString()}",
       );
-      return const _GrokRuntimeOutdated();
+      return _GrokRuntimeOutdated(version: parsed.toString());
     }
     return _GrokRuntimeReady(version: parsed.toString());
   }
 
-  bool _isShellCommandNotFound({required String stderr}) =>
-      stderr.contains("is not recognized as an internal or external command") ||
-      stderr.contains("is not recognized as the name of a cmdlet") ||
-      stderr.contains("command not found");
+  bool _isShellCommandNotFound({required String executable, required CommandResult result}) {
+    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
+    final command = executable.toLowerCase();
+    return output.contains("'$command' is not recognized as an internal or external command") ||
+        output.contains("the term '$command' is not recognized as the name of a cmdlet");
+  }
 
   SemanticVersion? _tryParseVersion({required String output}) {
     final sanitized = stripAnsi(value: output);
@@ -272,7 +295,7 @@ final class const _GrokRuntimeReady({required final String version}) extends _Gr
 
 final class const _GrokRuntimeMissing() extends _GrokRuntimeProbe;
 
-final class const _GrokRuntimeOutdated() extends _GrokRuntimeProbe;
+final class const _GrokRuntimeOutdated({required final String version}) extends _GrokRuntimeProbe;
 
 final class const _GrokRuntimeUnknown() extends _GrokRuntimeProbe;
 

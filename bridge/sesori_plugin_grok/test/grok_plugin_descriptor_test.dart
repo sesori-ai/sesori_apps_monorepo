@@ -29,6 +29,15 @@ void main() {
         isNot(contains(PluginControlCapability.install)),
         reason: "Grok owns its installer and update lifecycle",
       );
+      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
+      expect(descriptor.runtimeUpdateSpec(config: config)?.executable, "grok");
+      expect(descriptor.runtimeUpdateSpec(config: config)?.arguments, const ["update"]);
+      const explicit = PluginConfig(values: {GrokPluginDescriptor.binOption: "/custom/grok"});
+      expect(
+        descriptor.managementCapabilities(config: explicit),
+        isNot(contains(PluginControlCapability.runtimeUpdate)),
+      );
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("reports a current PATH runtime and its sanitized version", () async {
@@ -201,7 +210,48 @@ void main() {
 
       expect(missing, isA<PluginSetupRuntimeMissing>());
       expect(malformed, isA<PluginSetupUnknown>());
-      expect(outdated, isA<PluginSetupUnavailable>());
+      expect(outdated, isA<PluginSetupRuntimeOutdated>());
+      expect(outdated.runtimeVersion, "1.0.4");
+    });
+
+    test("recognizes only the probed Windows shell command as missing", () async {
+      final missing = await const GrokPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess.completed(
+              pid: 4,
+              stdoutBytes: const [],
+              stderrBytes: utf8.encode("'grok' is not recognized as an internal or external command\n"),
+              resultCode: 1,
+            ),
+          ],
+          servesHeadlessAcp: false,
+        ),
+        environment: const {},
+        stateDirectory: stateDirectory,
+      );
+      final ambiguous = await const GrokPluginDescriptor().inspectSetup(
+        config: config,
+        processes: _ProbeProcessService(
+          spawnError: null,
+          processSequence: [
+            _ProbeProcess.completed(
+              pid: 5,
+              stdoutBytes: const [],
+              stderrBytes: utf8.encode("dependency: command not found\n"),
+              resultCode: 1,
+            ),
+          ],
+          servesHeadlessAcp: false,
+        ),
+        environment: const {},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(missing, isA<PluginSetupRuntimeMissing>());
+      expect(ambiguous, isA<PluginSetupUnknown>());
     });
 
     test("the explicit binary is authoritative for inspection and provisioning", () async {

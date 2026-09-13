@@ -82,11 +82,20 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: DeepSeekRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = DeepSeekRuntimeManifest();
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: _versionValidator(processes: processes),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -115,13 +124,18 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
   }) async* {
     const manifest = DeepSeekRuntimeManifest();
     final commandExecutor = _executor(processes);
+    final versionValidator = _versionValidator(processes: processes);
     final httpClient = http.Client();
     try {
       final service = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        candidateValidator: _versionValidator(processes: processes),
+        candidateValidator: versionValidator,
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: versionValidator,
+        ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
       yield* service.install(
@@ -180,6 +194,17 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
             actionHint: "The DeepSeek adapter version could not be verified. Check the configured installation.",
+          ),
+        };
+      case ManagedRuntimePathNotSelected(:final primaryRejection):
+        return switch (primaryRejection) {
+          ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+            actionHint:
+                "Update the global Sesori DeepSeek adapter to ${manifest.minPathVersion.raw} or newer using its installation method.",
+            runtimeVersion: version.raw,
+          ),
+          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+            actionHint: "The global Sesori DeepSeek adapter could not be verified. Check it locally and retry.",
           ),
         };
       case ManagedRuntimeAutomaticNotSelected(:final primaryRejection, :final managedRejection):

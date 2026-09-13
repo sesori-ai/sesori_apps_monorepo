@@ -66,6 +66,7 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Sesori-managed runtime installed on request | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
 | Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Outdated PATH runtime updated globally from Sesori | ✅ | ✅ | 🚫 | ✅ | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ |
 
 Antigravity can explicitly download Google's proprietary official runtime pair directly from `dl.google.com`. Before
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
@@ -79,18 +80,30 @@ Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
 The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual setup, remote personal login and
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
 
-Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
-user-installed CLI from PATH or an explicit binary option, so there is nothing
-for Sesori to install or upgrade. The upgrade follows the install capability
-exactly — a harness configured with an explicit binary override, running on a
-platform with no pinned asset, or attached to an externally managed server
-(`--opencode-no-auto-start`) advertises neither.
+Claude, Hermes, and Grok have no Sesori-managed runtime: they resolve a
+user-installed CLI from PATH or an explicit binary option. Their ordinary PATH
+commands can still expose descriptor-owned global updates. OpenCode, Codex,
+Cursor, Pi, and OMP expose both managed installation and global PATH update.
+Copilot, DeepSeek, and Antigravity have no verified safe non-interactive updater,
+so an outdated PATH runtime remains blocked with manual guidance.
 
-The upgrade only replaces a runtime Sesori already manages. A machine with no
-managed version directory keeps the explicit Install action; it never downloads
-a runtime the user has not asked for.
+PATH is authoritative for every harness with a managed fallback. Compatible,
+outdated, malformed, failed, timed-out, partial-pair, and permission-denied PATH
+evidence all prevent managed selection, startup upgrade, and cleanup. Only a
+genuinely missing PATH command permits managed fallback. The managed installer
+revalidates this authority at its mutation boundary, including Antigravity's
+pair-aware lookup. Existing managed copies remain untouched while PATH is present. Explicit binary overrides and OpenCode
+attach mode expose neither managed installation nor global update.
 
-### Harness settings contract limitations (verified 2026-09-07)
+A startup managed upgrade only replaces a runtime Sesori already manages and
+only when PATH is absent. A machine with no managed version directory keeps the
+explicit Install action; it never downloads a runtime the user has not asked for.
+Global PATH updates run only after a user action and use `opencode upgrade`,
+`codex update`, `cursor-agent update`, `omp update`,
+`pi update --self --no-approve`, `claude update`, `hermes update --yes`, or
+`grok update` according to the owning descriptor.
+
+### Harness settings contract limitations (verified 2026-09-12)
 
 These gaps apply to every registered harness through the current management wire seam
 (`shared/sesori_shared/lib/src/models/sesori/plugin_management.dart` and install-progress SSE).
@@ -98,12 +111,12 @@ They do not claim that a harness's native CLI could never implement an equivalen
 
 | Capability through the current management seam | Status |
 |---|---|
-| Client-controlled automatic-update preference | 🚫 Not supported: no preference or command; existing bridge-start managed upgrades are unchanged. |
-| Pause/stop/cancel a managed installation | 🚫 Not supported: no command or stopped outcome; these UI controls remain hidden. |
-| Distinct update-required setup status | 🚫 Not supported: unavailable is broader and cannot truthfully be relabelled update-required. |
+| Client-controlled automatic-update preference | 🚫 Not supported: global PATH updates are explicit actions; bridge-start managed upgrades have no client preference. |
+| Pause/stop/cancel runtime provisioning | 🚫 Not supported: no command or stopped outcome; these UI controls remain hidden. Bridge shutdown aborts the owned process. |
+| Distinct update-required setup status | ✅ `runtimeOutdated` is separate from missing, unavailable, and unknown. |
 | Enabled preference when runtime is unknown | 🚫 Not supported: unknown does not prove disabled; clients omit the switch. |
-| Overall installation percentage or active-session count | 🚫 Not supported: only optional download percentage and idle/busy/unknown work state are reported. |
-| Replay a failed installation observed by this client within the connection | ✅ Implemented for every harness advertising installation; memory only, not cross-device history. |
+| Overall provisioning percentage or active-session count | 🚫 Not supported: only optional managed-download percentage and idle/busy/unknown work state are reported. |
+| Replay a failed provisioning operation observed by this client within the connection | ✅ Operation-scoped managed-install and global-update failures are retained in memory, not cross-device history. |
 
 ## Pre-start catalog import
 

@@ -72,6 +72,22 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   @override
   List<PluginOption> get options => cliOptions;
 
+  @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
+    ...super.managementCapabilities(config: config),
+    if (_explicitBin(config: config) == null) PluginControlCapability.runtimeUpdate,
+  };
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config: config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "hermes",
+      arguments: ["update", "--yes"],
+      timeout: Duration(minutes: 10),
+    );
+  }
+
   /// The explicit `--hermes-bin` override, or null when unset, empty, or left
   /// at the bare default (which means "resolve on PATH").
   String? _explicitBin({required PluginConfig config}) {
@@ -134,15 +150,24 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
               : "Install Hermes Agent locally, then retry setup detection.",
         );
       case _HermesRuntimePreAcpInstall():
-        return const PluginSetupRuntimeMissing(
-          actionHint:
-              "The installed Hermes does not expose the `acp` subcommand. Update Hermes, then retry setup detection.",
+        if (explicitBin == null) {
+          return const PluginSetupRuntimeOutdated(
+            actionHint: "Update the global Hermes Agent installation to a release with ACP support.",
+            runtimeVersion: null,
+          );
+        }
+        return const PluginSetupUnavailable(
+          actionHint: "Update the configured Hermes CLI to a release with ACP support, then restart the bridge.",
         );
-      case _HermesRuntimeOutdated():
-        return PluginSetupUnavailable(
-          actionHint: explicitBin != null
-              ? "The configured Hermes CLI path points to an unsupported version. Update that install or fix `--hermes-bin`."
-              : "The installed Hermes Agent version is too old. Update Hermes and restart the bridge.",
+      case _HermesRuntimeOutdated(:final version):
+        if (explicitBin == null) {
+          return PluginSetupRuntimeOutdated(
+            actionHint: "Update the global Hermes Agent installation to ${_minHermesVersion.toString()} or newer.",
+            runtimeVersion: version,
+          );
+        }
+        return const PluginSetupUnavailable(
+          actionHint: "The configured Hermes CLI path points to an unsupported version. Update that install or fix `--hermes-bin`.",
         );
       case _HermesRuntimeUnrecognized() || _HermesRuntimeUnknown():
         return const PluginSetupUnknown(
@@ -246,7 +271,7 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
     } on io.ProcessException catch (error, stackTrace) {
       // The host process seam reports spawn failures as ProcessException;
       // ENOENT (errorCode 2) means not installed / not on PATH.
-      if (error.errorCode == 2) return const _HermesRuntimeMissing();
+      if (error.errorCode == 2 || error.errorCode == 3) return const _HermesRuntimeMissing();
       Log.w("[hermes] availability probe could not launch '$executablePath acp --version'", error, stackTrace);
       return const _HermesRuntimeUnknown();
     } on Object catch (error, stackTrace) {
@@ -258,11 +283,11 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
 
     if (result.exitCode != 0) {
       Log.d("[hermes] availability probe '$executablePath acp --version' exited with code ${result.exitCode}");
-      // A pre-ACP install answers `--version` but rejects the `acp` subcommand
-      // with a nonzero exit; surface that as missing with an update hint, not
-      // as an unknown failure.
+      // A pre-ACP install rejects the `acp` subcommand with a recognizable
+      // parser error. That positively identifies an outdated installation;
+      // unrelated nonzero failures remain unknown.
       final stderr = result.stderr.toLowerCase();
-      if (_isShellCommandNotFound(stderr: stderr)) {
+      if (_isShellCommandNotFound(executable: executablePath, result: result)) {
         return const _HermesRuntimeMissing();
       }
       if (stderr.contains("acp") && stderr.contains("invalid choice")) {
@@ -279,17 +304,19 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
       Log.w(
         "[hermes] Hermes Agent ${parsed.toString()} is below the supported minimum ${_minHermesVersion.toString()}",
       );
-      return const _HermesRuntimeOutdated();
+      return _HermesRuntimeOutdated(version: parsed.toString());
     }
     final version = parsed.toString();
     Log.d("[hermes] available: '$executablePath acp --version' -> $version");
     return _HermesRuntimeReady(version: version);
   }
 
-  bool _isShellCommandNotFound({required String stderr}) =>
-      stderr.contains("is not recognized as an internal or external command") ||
-      stderr.contains("is not recognized as the name of a cmdlet") ||
-      stderr.contains("command not found");
+  bool _isShellCommandNotFound({required String executable, required CommandResult result}) {
+    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
+    final command = executable.toLowerCase();
+    return output.contains("'$command' is not recognized as an internal or external command") ||
+        output.contains("the term '$command' is not recognized as the name of a cmdlet");
+  }
 
   SemanticVersion? _tryParseVersion({required String value}) {
     for (final rawToken in value.split(RegExp(r"\s+"))) {
@@ -423,9 +450,8 @@ class const HermesPluginDescriptor() extends BridgePluginDescriptor {
   }
 }
 
-/// Outcome of the Hermes availability probe. Only [_HermesRuntimeReady]
-/// carries the selected runtime version, so a version can never accompany a
-/// rejected or unresolved runtime.
+/// Outcome of the Hermes availability probe. Ready and outdated variants carry
+/// the parsed version; unresolved variants cannot claim one.
 sealed class const _HermesRuntimeProbe();
 
 final class const _HermesRuntimeReady({required final String version}) extends _HermesRuntimeProbe;
@@ -434,7 +460,7 @@ final class const _HermesRuntimeMissing() extends _HermesRuntimeProbe;
 
 final class const _HermesRuntimePreAcpInstall() extends _HermesRuntimeProbe;
 
-final class const _HermesRuntimeOutdated() extends _HermesRuntimeProbe;
+final class const _HermesRuntimeOutdated({required final String version}) extends _HermesRuntimeProbe;
 
 final class const _HermesRuntimeUnknown() extends _HermesRuntimeProbe;
 

@@ -262,6 +262,14 @@ class const _HarnessOverviewRow({
               icon: const Icon(TablerRegular.download),
               onPressed: state.harnessControlsBlocked(pluginId: plugin.setup.id) ? null : onOpen,
             )
+          else if (_canUpdateRuntime(plugin: plugin))
+            IconButton(
+              key: Key("harness_management_update_${plugin.setup.id}"),
+              constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+              tooltip: context.loc.harnessesUpdateTitle(plugin.setup.displayName),
+              icon: const Icon(TablerRegular.refresh),
+              onPressed: state.harnessControlsBlocked(pluginId: plugin.setup.id) ? null : onOpen,
+            )
           else
             const SizedBox(width: 44, height: 44, child: Icon(TablerRegular.chevron_right)),
         ],

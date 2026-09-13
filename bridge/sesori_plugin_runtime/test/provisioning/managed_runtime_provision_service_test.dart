@@ -186,14 +186,14 @@ void main() {
     expect(events.whereType<ProvisionNotice>(), isEmpty);
   });
 
-  test("explains fallback from an outdated PATH runtime", () async {
+  test("blocks instead of falling back from an outdated PATH runtime", () async {
     final events = await resolve(
       pathVersion: SemanticRuntimeVersion.parse(value: "0.9.0"),
       managedVersion: SemanticRuntimeVersion.parse(value: "1.17.9"),
     );
 
-    expect(events.whereType<ProvisionNotice>(), hasLength(1));
-    expect((events.last as ProvisionReady).binaryPath, managedBinaryPathFor("1.17.9"));
+    expect(events.whereType<ProvisionNotice>(), isEmpty);
+    expect(events.last, isA<ProvisionFailed>());
   });
 
   test("uses a sufficiently recent fallback candidate when PATH is absent", () async {
@@ -234,7 +234,7 @@ void main() {
     expect((events.last as ProvisionFailed).message, contains("Install OpenCode locally"));
   });
 
-  test("names the selected managed version when falling back from an outdated PATH runtime", () async {
+  test("does not select a supported superseded managed runtime over PATH", () async {
     installedVersionDir("1.5.0");
     final events = await resolve(
       pathVersion: SemanticRuntimeVersion.parse(value: "0.9.0"),
@@ -242,10 +242,8 @@ void main() {
       candidateVersions: {managedBinaryPathFor("1.17.9"): null},
     );
 
-    expect((events.last as ProvisionReady).binaryPath, managedBinaryPathFor("1.5.0"));
-    final notice = events.whereType<ProvisionNotice>().single;
-    expect(notice.message, contains("managed OpenCode 1.5.0"));
-    expect(notice.message, isNot(contains("1.17.9")));
+    expect(events.last, isA<ProvisionFailed>());
+    expect(events.whereType<ProvisionReady>(), isEmpty);
   });
 
   test("never installs when no existing runtime is usable", () async {

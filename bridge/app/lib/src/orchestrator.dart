@@ -920,6 +920,7 @@ class OrchestratorSession._({
           _enqueueWireEvent(
             SesoriSseEvent.pluginInstallProgress(
               pluginId: update.pluginId,
+              operation: update.operation,
               phase: update.phase,
               percent: update.percent,
               message: update.message,

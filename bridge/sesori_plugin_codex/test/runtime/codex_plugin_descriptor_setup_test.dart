@@ -26,28 +26,54 @@ void main() {
       Directory(p.join(stateDir.path, const CodexRuntimeManifest().runtimeId, version)).createSync(recursive: true);
     }
 
-    test("declines without any managed runtime on disk", () {
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+    test("declines without any managed runtime on disk", () async {
+      expect(
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: config,
+          processes: _ProbeProcessService(spawnError: const ProcessException("codex", ["--version"], "missing", 2)),
+          environment: const {},
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
     });
 
-    test("declines when only the pinned version is installed", () {
+    test("declines when only the pinned version is installed", () async {
       installedVersion(const CodexRuntimeManifest().bundledVersion.raw);
 
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isFalse);
+      expect(
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: config,
+          processes: _ProbeProcessService(spawnError: const ProcessException("codex", ["--version"], "missing", 2)),
+          environment: const {},
+          stateDirectory: stateDir.path,
+        ),
+        isFalse,
+      );
     });
 
-    test("asks for an upgrade when a superseded version is installed", () {
-      installedVersion("0.140.0");
-
-      expect(descriptor.needsManagedRuntimeUpgrade(config: config, stateDirectory: stateDir.path), isTrue);
-    });
-
-    test("declines with an explicit binary override", () {
+    test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
       installedVersion("0.140.0");
 
       expect(
-        descriptor.needsManagedRuntimeUpgrade(
+        await descriptor.needsManagedRuntimeUpgrade(
+          config: config,
+          processes: _ProbeProcessService(spawnError: const ProcessException("codex", ["--version"], "missing", 2)),
+          environment: const {},
+          stateDirectory: stateDir.path,
+        ),
+        isTrue,
+      );
+    });
+
+    test("declines with an explicit binary override", () async {
+      installedVersion("0.140.0");
+
+      expect(
+        await descriptor.needsManagedRuntimeUpgrade(
           config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
+          processes: _ProbeProcessService(spawnError: const ProcessException("codex", ["--version"], "missing", 2)),
+          environment: const {},
           stateDirectory: stateDir.path,
         ),
         isFalse,
@@ -82,8 +108,16 @@ void main() {
           PluginControlCapability.idleTimeout,
           PluginControlCapability.authentication,
           PluginControlCapability.install,
+          PluginControlCapability.runtimeUpdate,
         },
       );
+    });
+
+    test("owns the non-interactive PATH updater", () {
+      final update = descriptor.runtimeUpdateSpec(config: config);
+
+      expect(update?.executable, "codex");
+      expect(update?.arguments, const ["update"]);
     });
 
     test("does not advertise install with an explicit binary override", () {
@@ -315,22 +349,15 @@ void main() {
       expect(processes.spawnedExecutables, ["codex", appCli, managedBinaryPath]);
     });
 
-    test("keeps an indeterminate PATH probe when desktop fallbacks are absent", () async {
-      const manifest = CodexRuntimeManifest();
-      final managedBinaryPath = manifest.managedBinaryPath(
-        stateDirectory: stateDirectory,
-        version: manifest.bundledVersion,
-      );
+    test("blocks on an indeterminate PATH probe without trying fallbacks", () async {
       const appCli = "/Applications/ChatGPT.app/Contents/Resources/codex";
       final processes = _ProbeProcessService(
-        spawnOutcomes: [
+        processSequence: [
           _ProbeProcess(
             pid: 6,
             stdoutBytes: const [],
             exitCode: Future<int>.value(7),
           ),
-          const ProcessException(appCli, ["--version"], "missing", 2),
-          ProcessException(managedBinaryPath, const ["--version"], "missing", 2),
         ],
       );
 
@@ -345,6 +372,30 @@ void main() {
           );
 
       expect(result, isA<PluginSetupUnknown>());
+      expect(processes.spawnedExecutables, ["codex"]);
+    });
+
+    test("blocks an outdated PATH runtime without trying a managed copy", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 7,
+            stdoutBytes: utf8.encode("codex-cli 0.100.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.100.0");
+      expect(processes.spawnedExecutables, ["codex"]);
     });
 
     test("skips an outdated desktop-app CLI in favor of the managed runtime", () async {

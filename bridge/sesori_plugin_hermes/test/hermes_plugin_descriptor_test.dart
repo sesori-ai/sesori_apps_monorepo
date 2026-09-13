@@ -28,6 +28,12 @@ void main() {
       );
       expect(HermesPluginDescriptor.minVersion, "0.20.0");
       expect(HermesPluginDescriptor.targetVersion, "0.20.4");
+      expect(
+        const HermesPluginDescriptor().managementCapabilities(config: config),
+        contains(PluginControlCapability.runtimeUpdate),
+      );
+      expect(const HermesPluginDescriptor().runtimeUpdateSpec(config: config)?.executable, "hermes");
+      expect(const HermesPluginDescriptor().runtimeUpdateSpec(config: config)?.arguments, const ["update", "--yes"]);
     });
 
     test("declares only the binary option and no install capability", () {
@@ -39,6 +45,12 @@ void main() {
         isNot(contains(PluginControlCapability.install)),
         reason: "Hermes installs itself; the bridge never manages its runtime",
       );
+      const explicit = PluginConfig(values: {HermesPluginDescriptor.binOption: "/custom/hermes"});
+      expect(
+        descriptor.managementCapabilities(config: explicit),
+        isNot(contains(PluginControlCapability.runtimeUpdate)),
+      );
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("ensureRuntime resolves a supported PATH adapter", () async {
@@ -214,7 +226,7 @@ void main() {
       );
     });
 
-    test("reports runtime missing with an update hint for a pre-ACP install", () async {
+    test("reports a PATH runtime outdated with an update hint for a pre-ACP install", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -235,10 +247,10 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupRuntimeMissing>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
       expect(
-        (result as PluginSetupRuntimeMissing).actionHint,
-        contains("Update Hermes"),
+        (result as PluginSetupRuntimeOutdated).actionHint,
+        contains("Update the global Hermes Agent"),
         reason: "the binary exists but predates the acp subcommand",
       );
     });
@@ -250,7 +262,7 @@ void main() {
           _ProbeProcess(
             pid: 1,
             stdoutBytes: const [],
-            stderrBytes: utf8.encode("ACP initialization error: configuration unavailable\n"),
+            stderrBytes: utf8.encode("ACP dependency: command not found\n"),
             exitCode: Future<int>.value(1),
           ),
         ],
@@ -267,7 +279,7 @@ void main() {
       expect(result, isA<PluginSetupUnknown>());
     });
 
-    test("reports unavailable when Hermes Agent is below the supported floor", () async {
+    test("reports a PATH runtime outdated when Hermes Agent is below the supported floor", () async {
       final processes = _ProbeProcessService(
         spawnError: null,
         processSequence: [
@@ -288,7 +300,8 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupUnavailable>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.19.0");
     });
 
     test("an outdated explicit binary points back to the configured path", () async {

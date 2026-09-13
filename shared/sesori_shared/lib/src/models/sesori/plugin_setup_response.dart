@@ -7,6 +7,7 @@ enum PluginSetupState() {
   notInspected,
   ready,
   runtimeMissing,
+  runtimeOutdated,
   authenticationRequired,
   unavailable,
   unknown,

@@ -29,9 +29,9 @@ final class RuntimeProbeFailed({required final Object innerError, required final
 
 /// Probes a candidate runtime binary's version by running `<bin> --version`.
 ///
-/// Used to decide whether a pre-installed (PATH) runtime is recent enough to use
-/// as-is, or whether the bridge should fall back to the managed runtime, and to
-/// confirm a freshly-installed managed binary actually runs and reports the
+/// Used to decide whether a pre-installed PATH runtime is recent enough to use
+/// as-is, whether the PATH command is genuinely absent so managed fallback is
+/// allowed, and whether a freshly installed managed binary runs and reports the
 /// expected version.
 class RuntimeVersionValidator({
   required final CommandExecutor _commandExecutor,
@@ -59,7 +59,15 @@ class RuntimeVersionValidator({
         timeout: _probeTimeout,
       );
     } on ProcessException catch (error, stackTrace) {
-      return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
+      if (_isMissingProcessError(error: error)) {
+        return RuntimeProbeMissing(innerError: error, stackTrace: stackTrace);
+      }
+      Log.w(
+        "[${_manifest.runtimeId}] runtime version probe could not launch '$executable --version'",
+        error,
+        stackTrace,
+      );
+      return RuntimeProbeFailed(innerError: error, stackTrace: stackTrace);
     } on TimeoutException catch (error, stackTrace) {
       Log.w("[${_manifest.runtimeId}] runtime version probe timed out for '$executable --version'", error, stackTrace);
       return RuntimeProbeTimedOut(innerError: error, stackTrace: stackTrace);
@@ -69,6 +77,17 @@ class RuntimeVersionValidator({
     }
 
     if (result.exitCode != 0) {
+      if (_isWindowsShellCommandMissing(executable: executable, result: result)) {
+        return RuntimeProbeMissing(
+          innerError: ProcessException(
+            executable,
+            const ["--version"],
+            "${result.stdout}\n${result.stderr}".trim(),
+            result.exitCode,
+          ),
+          stackTrace: StackTrace.empty,
+        );
+      }
       Log.d("[${_manifest.runtimeId}] runtime version probe '$executable --version' exited ${result.exitCode}");
       return RuntimeProbeNonZeroExit(exitCode: result.exitCode);
     }
@@ -141,6 +160,21 @@ class RuntimeVersionValidator({
       }
     }
     return null;
+  }
+
+  bool _isMissingProcessError({required ProcessException error}) {
+    // POSIX ENOENT and Windows ERROR_FILE_NOT_FOUND / ERROR_PATH_NOT_FOUND.
+    return error.errorCode == 2 || error.errorCode == 3;
+  }
+
+  bool _isWindowsShellCommandMissing({
+    required String executable,
+    required CommandResult result,
+  }) {
+    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
+    final command = executable.toLowerCase();
+    return output.contains("'$command' is not recognized as an internal or external command") ||
+        output.contains("the term '$command' is not recognized as the name of a cmdlet");
   }
 
   void _throwIfAborted({required RuntimeCandidateValidationContext context}) {

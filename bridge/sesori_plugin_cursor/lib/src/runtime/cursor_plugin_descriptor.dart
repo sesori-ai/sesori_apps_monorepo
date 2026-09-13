@@ -131,7 +131,18 @@ class const CursorPluginDescriptor({
     return {
       ...super.managementCapabilities(config: config),
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
     };
+  }
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "cursor-agent",
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
   }
 
   /// Whether the pinned managed Cursor CLI can be installed on request: no
@@ -179,11 +190,23 @@ class const CursorPluginDescriptor({
   }
 
   @override
-  bool needsManagedRuntimeUpgrade({required PluginConfig config, required String stateDirectory}) {
+  Future<bool> needsManagedRuntimeUpgrade({
+    required PluginConfig config,
+    required HostProcessService processes,
+    required Map<String, String> environment,
+    required String stateDirectory,
+  }) async {
     if (!managementCapabilities(config: config).contains(PluginControlCapability.install)) return false;
-    return const ManagedRuntimeInventory(
-      manifest: CursorRuntimeManifest(),
-    ).hasSupersededVersion(stateDirectory: stateDirectory);
+    const manifest = CursorRuntimeManifest();
+    return await const ManagedRuntimeComposition()
+        .createUpgradeService(
+          manifest: manifest,
+          versionValidator: _versionValidatorFor(
+            processes: processes,
+            maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+          ),
+        )
+        .shouldUpgrade(environment: environment, stateDirectory: stateDirectory);
   }
 
   @override
@@ -202,15 +225,24 @@ class const CursorPluginDescriptor({
       runInShell: io.Platform.isWindows,
       maxCapturedOutputCharactersPerStream: null,
     );
+    final candidateValidator = _versionValidatorFor(
+      processes: processes,
+      maxCapturedOutputCharactersPerStream: null,
+    );
+    final pathVersionValidator = _versionValidatorFor(
+      processes: processes,
+      maxCapturedOutputCharactersPerStream: _setupProbeOutputLimit,
+    );
     final httpClient = http.Client();
     try {
       final installService = const ManagedRuntimeComposition().createInstaller(
         manifest: manifest,
         commandExecutor: commandExecutor,
         downloadClient: BinaryDownloadClient(httpClient: httpClient),
-        candidateValidator: _versionValidatorFor(
-          processes: processes,
-          maxCapturedOutputCharactersPerStream: null,
+        candidateValidator: candidateValidator,
+        pathAuthority: RuntimeVersionManagedRuntimePathAuthority(
+          manifest: manifest,
+          versionValidator: pathVersionValidator,
         ),
         assetResolver: ({required target}) async => manifest.assetFor(target: target),
       );
@@ -280,6 +312,19 @@ class const CursorPluginDescriptor({
     }
 
     if (selection is ManagedRuntimeNotSelected) {
+      if (selection is ManagedRuntimePathNotSelected) {
+        return switch (selection.primaryRejection) {
+          ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+            actionHint:
+                "Update the global Cursor CLI installation to ${const CursorRuntimeManifest().minPathVersion.raw} or newer.",
+            runtimeVersion: version.raw,
+          ),
+          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+            actionHint:
+                "The global Cursor CLI installation could not be verified. Check it locally and retry setup detection.",
+          ),
+        };
+      }
       if (explicitBin != null) {
         return switch (selection.primaryRejection) {
           ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(

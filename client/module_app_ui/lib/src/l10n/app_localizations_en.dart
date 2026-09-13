@@ -645,6 +645,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesSetupRuntimeMissing => 'Runtime missing';
 
   @override
+  String get harnessesSetupRuntimeOutdated => 'Update required';
+
+  @override
   String get harnessesSetupAuthenticationRequired => 'Authentication required';
 
   @override
@@ -1681,6 +1684,11 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String sessionDetailHarnessRuntimeOutdatedReason(String harnessName) {
+    return '$harnessName must be updated before this session can continue.';
+  }
+
+  @override
   String sessionDetailHarnessUnavailableReason(String harnessName) {
     return '$harnessName is unavailable.';
   }
@@ -2197,6 +2205,27 @@ class AppLocalizationsEn extends AppLocalizations {
   String get harnessesInstallingStatus => 'Installing';
 
   @override
+  String get harnessesUpdatingRuntimeStatus => 'Updating';
+
+  @override
+  String get harnessesRuntimeOperationStatus => 'Runtime change';
+
+  @override
+  String harnessesRuntimeOperationTitle(String name) {
+    return 'Changing $name runtime';
+  }
+
+  @override
+  String get harnessesRuntimeOperationInProgress => 'A newer Sesori bridge is changing this harness runtime…';
+
+  @override
+  String get harnessesRuntimeOperationFailed => 'Runtime change failed';
+
+  @override
+  String get harnessesRuntimeOperationFailedDescription =>
+      'Use the latest Sesori version to inspect or retry this runtime change.';
+
+  @override
   String harnessesInstallTitle(String name) {
     return 'Install $name';
   }
@@ -2220,6 +2249,34 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get harnessesInstallationFailedDescription => 'Start the installation again when you’re ready.';
+
+  @override
+  String harnessesUpdateTitle(String name) {
+    return 'Update $name';
+  }
+
+  @override
+  String get harnessesUpdateDescription =>
+      'Update the harness installed globally on your connected computer. Sesori runs the harness’s built-in updater.';
+
+  @override
+  String get harnessesStartUpdate => 'Update harness';
+
+  @override
+  String get harnessesRetryUpdate => 'Retry update';
+
+  @override
+  String get harnessesUpdateFailed => 'Update failed';
+
+  @override
+  String get harnessesUpdateFailedDescription =>
+      'Retry the update or use the harness’s installation method on the connected computer.';
+
+  @override
+  String get harnessesUpdateInProgress => 'Running the harness updater on your connected computer…';
+
+  @override
+  String get harnessesUpdateFinalizing => 'Checking the updated harness…';
 
   @override
   String harnessesEnabledLabel(String name) {

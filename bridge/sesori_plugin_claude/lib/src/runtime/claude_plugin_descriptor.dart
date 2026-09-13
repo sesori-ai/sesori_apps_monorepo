@@ -103,6 +103,22 @@ final class const ClaudePluginDescriptor({
   List<PluginOption> get options => cliOptions;
 
   @override
+  Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
+    ...super.managementCapabilities(config: config),
+    if (_binary(config) == defaultBinary) PluginControlCapability.runtimeUpdate,
+  };
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_binary(config) != defaultBinary) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: defaultBinary,
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
+  }
+
+  @override
   Future<PluginSetupStatus> inspectSetup({
     required PluginConfig config,
     required HostProcessService processes,
@@ -124,16 +140,29 @@ final class const ClaudePluginDescriptor({
         environment: environment,
         timeout: _probeTimeout,
       );
-    } on io.ProcessException {
-      return const PluginSetupRuntimeMissing(
-        actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
+    } on io.ProcessException catch (error, stackTrace) {
+      if (error.errorCode == 2 || error.errorCode == 3) {
+        return const PluginSetupRuntimeMissing(
+          actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
+        );
+      }
+      Log.w("[claude] version probe could not launch '$executable --version'", error, stackTrace);
+      return const PluginSetupUnknown(
+        actionHint: "Claude Code could not be launched. Verify the local installation and retry.",
       );
-    } on Object {
+    } on Object catch (error, stackTrace) {
+      Log.w("[claude] version probe failed for '$executable --version'", error, stackTrace);
       return const PluginSetupUnknown(
         actionHint: "Claude Code did not answer its version check. Verify the local installation and retry.",
       );
     }
     if (versionResult.exitCode != 0) {
+      if (_isShellCommandNotFound(executable: executable, result: versionResult)) {
+        return const PluginSetupRuntimeMissing(
+          actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
+        );
+      }
+      Log.w("[claude] version probe '$executable --version' exited ${versionResult.exitCode}", versionResult);
       return const PluginSetupUnknown(
         actionHint: "Claude Code did not answer its version check. Verify the local installation and retry.",
       );
@@ -146,8 +175,14 @@ final class const ClaudePluginDescriptor({
     }
     final minimum = SemanticVersion.parse(value: minVersion);
     if (version.compareTo(minimum) < 0) {
+      if (executable == defaultBinary) {
+        return PluginSetupRuntimeOutdated(
+          actionHint: "Update the global Claude Code installation to $minVersion or newer.",
+          runtimeVersion: version.toString(),
+        );
+      }
       return const PluginSetupUnavailable(
-        actionHint: "Update Claude Code to a supported version, then retry setup detection.",
+        actionHint: "Update the configured Claude Code binary, then restart the bridge.",
       );
     }
     final runtimeVersion = version.toString();
@@ -263,6 +298,13 @@ final class const ClaudePluginDescriptor({
   String _binary(PluginConfig config) {
     final configured = config.value(binOption)?.trim();
     return configured == null || configured.isEmpty ? defaultBinary : configured;
+  }
+
+  bool _isShellCommandNotFound({required String executable, required CommandResult result}) {
+    final output = "${result.stdout}\n${result.stderr}".toLowerCase();
+    final command = executable.toLowerCase();
+    return output.contains("'$command' is not recognized as an internal or external command") ||
+        output.contains("the term '$command' is not recognized as the name of a cmdlet");
   }
 
   static SemanticVersion? _parseVersion(String output) {

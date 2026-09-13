@@ -42,6 +42,12 @@ class const AntigravityAuthenticationComposer() {
     final acpApi = AntigravityAcpApi(
       processFactory: hostProcessAcpFactory(processes: processes, environment: environment),
       stderrInterceptor: AcpOutputInterceptor(maxLineBytes: 65536, consumeLine: stderrMapper.consumeLine),
+      commands: HostProcessCommandExecutor(
+        processes: processes,
+        runInShell: false,
+        includeParentEnvironment: false,
+        maxCapturedOutputCharactersPerStream: 4096,
+      ),
     );
     final profile = AntigravityProfileService(
       repository: AntigravityProfileRepository(

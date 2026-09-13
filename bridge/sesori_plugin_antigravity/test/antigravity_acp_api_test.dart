@@ -3,8 +3,14 @@ import "dart:async";
 import "package:acp_plugin/acp_plugin.dart";
 import "package:acp_plugin/acp_testing.dart";
 import "package:antigravity_plugin/antigravity_plugin.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
+
+class const _UnusedCommands() implements CommandExecutor {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
 
 class _AbortAfterInitializeSignal() implements StartAbortSignal {
   int _polls = 0;
@@ -25,6 +31,7 @@ void main() {
     process = FakeAcpProcess();
     launchSpecs = [];
     api = AntigravityAcpApi(
+      commands: const _UnusedCommands(),
       stderrInterceptor: AcpOutputInterceptor(
         maxLineBytes: 65536,
         consumeLine: const AntigravityStderrMapper().consumeLine,
@@ -43,6 +50,7 @@ void main() {
       final spawning = Completer<void>();
       final abort = StartAbortController();
       api = AntigravityAcpApi(
+        commands: const _UnusedCommands(),
         processFactory: (_) {
           spawning.complete();
           return spawn.future;
