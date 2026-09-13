@@ -3,22 +3,24 @@
 ## Status and constraints
 
 - **Plan slug:** `all-harness-runtime-refresh`.
-- **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453)
-  and [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455)
-  merged. Four targets are verified, including the required Pi/Claude lifecycle
-  follow-up accepted after merge. Step 3 verifies and applies Antigravity
-  package `1.1.1` / server `agy_acp_server_1.1.1` on this branch: all five archive
-  records, native install/initialize, actual production validator, teardown and
-  focused checks pass. Cursor remains unchanged because configured
-  load/replay/model/mode gates are blocked; Codex/OMP also remain blocked. See
-  [Step 2 verification](STEP-2-VERIFICATION.md) and
-  [Step 3 verification](STEP-3-VERIFICATION.md).
+- **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453),
+  [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455), and
+  [Step 3 PR #1457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1457)
+  merged. Five targets are verified, including the required Pi/Claude lifecycle
+  follow-up and Antigravity's actual production-validator native gate. Step 4's
+  localized Hermes cleanup fix passes 11 focused tests and the owning analyzer.
+  Candidate `0.21.2` remains blocked: attempted load failed and the native run
+  did not meet the agreed isolation/evidence boundary. The pin stays `0.20.4`.
+  Cursor, Codex and OMP retain their blocked pins. See
+  [Step 2 verification](STEP-2-VERIFICATION.md),
+  [Step 3 verification](STEP-3-VERIFICATION.md), and
+  [Step 4 verification](STEP-4-VERIFICATION.md).
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
   inventory reconciliation only and is explicitly excluded from this series' audit and changes.
-- **Implementation branch:** `all-harness-runtime-refresh-step-3`, based on
-  Step 2 merge `ba3264eab93a1775d4e4c24e7672cab8bebe2d67`. This series preserves
+- **Implementation branch:** `all-harness-runtime-refresh-step-4`, based on
+  Step 3 merge `d55b93c874e0f8f95f9e2aab6941f1f942697991`. This series preserves
   floors, layout/platform policy, launch behavior, and Sesori database/wire
   contracts; unrelated upstream changes are not part of this refresh.
 - **Evidence:** [AUDIT.md](AUDIT.md) preserves the pre-implementation source
@@ -408,7 +410,7 @@ matrix/retirement decision.
 | 1/9 | `🌱 [all-harness-runtime-refresh] docs: publish runtime refresh plan [step 1/9]` | Publish this plan, tracker, audit, and verified reference corrections; no production changes |
 | 2/9 | `🌿 [all-harness-runtime-refresh] runtime: refresh mechanical targets [step 2/9]` | OpenCode, Codex, Copilot, Claude, Pi, and OMP target/assets refreshes with independent release/install/protocol/tests; OMP uses seven existing assets |
 | 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Antigravity exact package/server pair and Cursor exact installer build, content, hashes, layout, and ACP gates |
-| 4/9 | `⚙️ [all-harness-runtime-refresh] runtime(hermes): resolve cleanup and refresh target [step 4/9]` | Narrow empty-session cleanup prerequisite; pin `0.21.2` only after cleanup and target gates |
+| 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | Deliver narrow cleanup fix; hold `0.20.4` because candidate load and accepted isolated verification remain blocked |
 | 5/9 | `🌿 [all-harness-runtime-refresh] runtime(grok): refresh target [step 5/9]` | Stable-channel `1.0.30`, normalized ACP namespace, exact launch/protocol gates; no source-binary gate |
 | 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth executable, manifest/platform tests, native Windows gate, and platform regression/capability docs |
 | 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared array mapper, OMP-only live capability, separate option/custom questions, bridge/client tests, and question regression/capability docs; no generated/new state |
