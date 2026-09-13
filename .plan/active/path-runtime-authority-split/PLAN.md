@@ -248,9 +248,9 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   concrete Foundation locator for missing-error classification instead of copying helpers. Descriptors remain const and
   inert; `PluginRuntimeUpdateSpec` owns data only. Copilot, DeepSeek, and Antigravity declare no automatic updater.
 - **Boundary mapping:** `shared/sesori_shared` adds only `PluginSetupState.runtimeOutdated`; the existing bridge
-  lifecycle mapping transports it while withholding the internal runtime-update capability until Step 7. Client UI maps
-  the new state to its existing non-actionable unavailable label until Step 8 adds dedicated presentation. Do not land
-  operation progress, command admission, or client action code here.
+  lifecycle mapping transports it while withholding the internal runtime-update capability until Step 7. Client core
+  maps it to the existing unavailable interaction reason and client UI uses its existing non-actionable unavailable label
+  until Step 8 adds dedicated presentation. Do not land operation progress, command admission, or client action code.
 - **Dependency/data flow:** Foundation/runtime probe outcome → owning descriptor boundary → backend-neutral
   `PluginSetupStatus` → existing bridge setup repository mapping. Backend identifiers never enter shared/app policy.
 - **Activation:** setup inspection can report an outdated PATH runtime and safe update capability internally/over the

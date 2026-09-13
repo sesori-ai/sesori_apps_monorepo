@@ -194,10 +194,12 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 ## Step 5 Evidence
 
 - Base: Step 4 squash merge `ec6dde9fcd` on updated `main`.
-- Focused interface, shared-contract, lifecycle-mapping, and 10 descriptor-package tests: 285 passed.
-- Strict analysis: all 14 owning/touched Dart packages passed with `--fatal-infos`.
+- Focused interface, shared-contract, lifecycle-mapping, descriptor, and client interaction tests: 353 passed.
+- Downstream `module_desktop_core` regression suite: 264 passed after the shared-enum exhaustiveness fix.
+- Strict analysis: all 15 owning/touched Dart packages passed with `--fatal-infos`.
 - Shared setup-state code generation completed; generated churn is one added JSON enum-map line.
-- Architecture implementation review: APPROVED with no violations.
+- Second/final architecture implementation review after the CI fix: APPROVED with no violations.
 - `git diff --check`: passed; added-line width: zero lines over 120 characters.
-- Final base-to-head size: 822 additions + 175 deletions = 997 changed lines across 35 files; 996 authored and
-  1 generated, below the 1,400-line ceiling.
+- Initial Desktop CI exposed an exhaustive client-core setup-state switch; `runtimeOutdated` now degrades to the
+  existing non-actionable unavailable interaction reason until Step 8 adds dedicated presentation.
+- Final size: 1,001 lines (825 additions, 176 deletions) across 36 files; 1,000 authored, 1 generated (<1,400).

@@ -75,7 +75,7 @@ class const SessionInteractionCalculator() {
       PluginSetupState.ready => null,
       PluginSetupState.authenticationRequired => SessionInteractionBlockedReason.authenticationRequired,
       PluginSetupState.runtimeMissing => SessionInteractionBlockedReason.runtimeMissing,
-      PluginSetupState.unavailable => SessionInteractionBlockedReason.unavailable,
+      PluginSetupState.runtimeOutdated || PluginSetupState.unavailable => SessionInteractionBlockedReason.unavailable,
       PluginSetupState.notInspected => SessionInteractionBlockedReason.notInspected,
       PluginSetupState.unknown => SessionInteractionBlockedReason.unknownStatus,
     };
