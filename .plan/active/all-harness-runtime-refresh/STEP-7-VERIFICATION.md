@@ -94,8 +94,10 @@ The five Dart files total **435 additions plus deletions**: 77 production and
 358 test lines, with no generated churn. Actual implementation complexity is
 **🌿 straightforward**: one existing mapper and a private field variant, with
 existing cross-layer contracts reused. No lifecycle or coordination machinery
-was added. Architecture implementation review is pending for the new private
-encoder; the already-reviewed plan's ownership findings remain applied.
+was added. Architecture implementation review approved commit
+`266babbf85f39e41769d1e316ffdae5d47587702` with no findings, confirming the mapper's
+ownership, immutable encoder, and unchanged cross-layer contracts. This is
+architecture approval, not native or end-to-end verification.
 
 Feature-owned [question regression coverage](../../../docs/regression/questions-and-permissions.md)
 and [capability notes](../../../docs/HARNESS_CAPABILITIES.md) land with this

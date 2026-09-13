@@ -29,7 +29,8 @@
   disabled scratch policy are unchanged. All 75 focused cases and four owning
   analyzers pass; live OMP/client verification remains unrun. The five-file Dart
   diff is 435 changed lines, straightforward (`🌿`), with no new wire/state machinery.
-- **Next:** complete architecture implementation review and publish Step 7.
+- **Next:** publish/review Step 7; architecture implementation review approved
+  `266babbf85` with no findings.
   Group unresolved tests, feature questions and exact user help in Steps 8–9.
   Grok testing is authorized in principle, but credential provisioning need not
   precede its target update. No live credentials may be borrowed, and stopped
@@ -52,7 +53,7 @@
 | [x] | 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | PR #1460 merged as 600d94fb49; cleanup fix, 11 tests and analyzer pass; candidate native verification not accepted; target was unchanged at that merge |
 | [x] | 5/9 | `🌿 [all-harness-runtime-refresh] runtime: finish remaining target updates [step 5/9]` | PR #1465 merged as 79932e1051; five targets, 17 mapped digests, 121 tests, five analyzers; native/configured limits remain final follow-ups |
 | [x] | 6/9 | `🌿 [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | PR #1467 merged as acc970cf84; eighth mapping/hash, 10 focused tests/analyzer and platform docs; native ARM64 remains final follow-up |
-| [ ] | 7/9 | `🌿 [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Implemented separate array/custom questions, 75 focused tests, four analyzers, question/capability docs; architecture review/publication pending; live roundtrip remains final follow-up |
+| [ ] | 7/9 | `🌿 [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Implemented separate array/custom questions, 75 focused tests, four analyzers, question/capability docs; architecture approved, PR review/merge pending; live roundtrip remains final follow-up |
 | [ ] | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Reconcile evidence/docs and prepare one grouped test/question/user-help handoff |
 | [ ] | 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final matrix, remaining tests/issues and user-assisted checks; explicit acceptance before retirement |
 
@@ -223,6 +224,9 @@ verification timing, not the results recorded before it.
   configuration was prepared once from cached dependencies with offline,
   lockfile-enforced pub get; no dependency/generated tracked files changed.
   See [Step 7 verification](STEP-7-VERIFICATION.md).
+- Step 7 architecture implementation review approved `266babbf85` with no
+  findings. It confirmed ACP-layer ownership, immutable choice encoding and
+  unchanged cross-layer boundaries; no code fix or repeated test was needed.
 - Coverage remains limited to each report's actual boundary. In particular,
   Hermes' rejected procedure cannot substantiate absence of inherited inputs.
   No live-profile access is authorized. Configured, multi-select and Windows
