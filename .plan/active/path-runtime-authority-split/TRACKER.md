@@ -202,4 +202,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - `git diff --check`: passed; added-line width: zero lines over 120 characters.
 - Initial Desktop CI exposed an exhaustive client-core setup-state switch; `runtimeOutdated` now degrades to the
   existing non-actionable unavailable interaction reason until Step 8 adds dedicated presentation.
-- Final size: 1,001 lines (825 additions, 176 deletions) across 36 files; 1,000 authored, 1 generated (<1,400).
+- PR review fixes mark updater specs immutable, avoid logging failed Claude probe output, and reconcile capability and
+  Step 7 ownership docs; the two affected suites passed 28 tests and both package analyses passed.
+- Inert descriptor updater metadata remains in Step 5 by the approved series scope; execution remains Step 7.
+- Final size: 1,008 lines (830 additions, 178 deletions) across 36 files; 1,007 authored, 1 generated (<1,400).

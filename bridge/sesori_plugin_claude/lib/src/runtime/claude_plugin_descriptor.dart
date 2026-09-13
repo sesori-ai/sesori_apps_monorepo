@@ -172,7 +172,7 @@ final class const ClaudePluginDescriptor({
           actionHint: "Install Claude Code or fix the configured binary path, then retry setup detection.",
         );
       }
-      Log.w("[claude] version probe '$executable --version' exited ${versionResult.exitCode}", versionResult);
+      Log.w("[claude] version probe '$executable --version' exited ${versionResult.exitCode}");
       return const PluginSetupUnknown(
         actionHint: "Claude Code did not answer its version check. Verify the local installation and retry.",
       );

@@ -19,6 +19,7 @@ import "start_abort_signal.dart";
 
 /// A descriptor-owned non-interactive update command for the harness resolved
 /// from PATH. Running it mutates the user's global harness installation.
+@immutable
 class const PluginRuntimeUpdateSpec({
   required final String executable,
   required final List<String> arguments,
