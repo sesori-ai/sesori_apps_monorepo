@@ -97,6 +97,11 @@ void main() {
       expect(descriptor.sessionOptionsScope, PluginSessionOptionsScope.project);
       expect(descriptor.supportsPromptAttachments, isTrue);
       expect(descriptor.options.single.name, "bin");
+      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
+      final update = descriptor.runtimeUpdateSpec(config: config);
+      expect(update?.executable, "omp");
+      expect(update?.arguments, const ["update"]);
+      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
@@ -216,13 +221,30 @@ void main() {
       expect(result, isA<PluginSetupRuntimeMissing>());
     });
 
-    test("explicit binary override is authoritative and disables install", () async {
+    test("an outdated PATH runtime blocks managed fallback", () async {
+      final processes = _Processes(
+        outputs: const [_Output(stdout: "omp/17.2.12\n", exitCode: 0)],
+      );
+
+      final result = await OmpPluginDescriptor.production().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "17.2.12");
+      expect(processes.executables, ["omp"]);
+    });
+
+    test("explicit binary override is authoritative and disables runtime mutation", () async {
       const explicit = PluginConfig(values: {OmpPluginDescriptor.binOption: "/custom/omp"});
       final descriptor = OmpPluginDescriptor.production();
-      expect(
-        descriptor.managementCapabilities(config: explicit),
-        isNot(contains(PluginControlCapability.install)),
-      );
+      final capabilities = descriptor.managementCapabilities(config: explicit);
+      expect(capabilities, isNot(contains(PluginControlCapability.install)));
+      expect(capabilities, isNot(contains(PluginControlCapability.runtimeUpdate)));
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
       final result = await descriptor.inspectSetup(
         config: explicit,
         processes: _Processes(spawnError: const ProcessException("/custom/omp", ["--version"], "missing", 2)),

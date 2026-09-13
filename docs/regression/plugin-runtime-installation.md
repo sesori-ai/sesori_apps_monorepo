@@ -17,6 +17,10 @@ from the app or management API, or at bridge start when Sesori manages an older 
   malformed, timed-out, nonzero, permission-denied, unlaunchable, or ambiguous evidence—blocks managed fallback and
   mutation without exposing managed Install. Installation revalidates before cleanup, download, scratch preparation,
   validation, activation, and final cleanup, preserving managed copies while PATH is present.
+- A positively identified outdated default PATH runtime reports `runtimeOutdated` with only its sanitized parsed version
+  and descriptor-authored guidance. OpenCode, Codex, Cursor, OMP, Pi, Claude, Hermes, and Grok retain inert metadata for
+  bounded non-interactive self-updaters. Copilot, DeepSeek, Antigravity, explicit overrides, and OpenCode attach mode
+  remain manual. No updater command is exposed or executed at this stage.
 - Antigravity managed install and startup mutation require both a missing PATH server candidate and physical absence.
 - Artifact installation writes the pinned version into the harness's own managed state
   area; placement preserves a published bare executable, an archived executable, or its

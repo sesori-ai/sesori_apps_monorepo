@@ -157,11 +157,13 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupUnknown>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.0.1");
       expect(
         descriptor.managementCapabilities(config: automaticConfig),
-        contains(PluginControlCapability.install),
+        contains(PluginControlCapability.runtimeUpdate),
       );
+      expect(processes.spawnedExecutables, ["opencode"]);
     });
 
     test("a too-old explicit binary is unavailable and never advertises install", () async {

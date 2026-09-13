@@ -84,6 +84,11 @@ void main() {
       );
       expect(descriptor.options.single.name, "bin");
       expect((descriptor.options.single as PluginValueOption).defaultsTo, isNull);
+      expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.runtimeUpdate));
+      final update = descriptor.runtimeUpdateSpec(config: config);
+      expect(update?.executable, "pi");
+      expect(update?.arguments, const ["update", "--self", "--no-approve"]);
+      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("ensureRuntime prefers a supported PATH binary", () async {
@@ -189,10 +194,29 @@ void main() {
       expect(result, isA<PluginSetupUnknown>());
     });
 
+    test("an outdated PATH runtime blocks managed fallback", () async {
+      const config = PluginConfig(values: {PiPluginDescriptor.binOption: null});
+      final processes = _Processes(outputs: const [_Output(stdout: "0.84.0\n", exitCode: 0)]);
+
+      final result = await PiPluginDescriptor.production().inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const {},
+        stateDirectory: "/state",
+      );
+
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.84.0");
+      expect(processes.executables, ["pi"]);
+    });
+
     test("explicit binary is authoritative and classifies setup failures", () async {
       const config = PluginConfig(values: {PiPluginDescriptor.binOption: "/custom/pi"});
       final descriptor = PiPluginDescriptor.production();
-      expect(descriptor.managementCapabilities(config: config), isNot(contains(PluginControlCapability.install)));
+      final capabilities = descriptor.managementCapabilities(config: config);
+      expect(capabilities, isNot(contains(PluginControlCapability.install)));
+      expect(capabilities, isNot(contains(PluginControlCapability.runtimeUpdate)));
+      expect(descriptor.runtimeUpdateSpec(config: config), isNull);
       expect(
         await descriptor
             .ensureRuntime(

@@ -16,6 +16,10 @@ enum PluginControlCapability() {
   /// platform target).
   install,
 
+  /// Run the harness-owned updater against its ordinary PATH installation.
+  /// Never declared for an explicit binary override.
+  runtimeUpdate,
+
   /// Run the descriptor's optional interactive authentication flow.
   authentication,
 }

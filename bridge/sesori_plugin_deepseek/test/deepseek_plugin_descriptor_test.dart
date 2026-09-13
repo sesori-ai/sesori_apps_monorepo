@@ -76,6 +76,8 @@ void main() {
     expect(descriptor.supportsPromptAttachments, isTrue);
     expect(descriptor.options.map((option) => option.name), [DeepSeekPluginDescriptor.binOption]);
     expect(descriptor.managementCapabilities(config: config), contains(PluginControlCapability.install));
+    expect(descriptor.managementCapabilities(config: config), isNot(contains(PluginControlCapability.runtimeUpdate)));
+    expect(descriptor.runtimeUpdateSpec(config: config), isNull);
   });
 
   test("ensureRuntime accepts a supported explicit adapter", () async {
@@ -187,10 +189,30 @@ void main() {
       isA<PluginSetupRuntimeMissing>(),
     );
 
-    final outdated = _ProcessService(
+    final pathOutdated = _ProcessService(
       probes: [
         _ProbeProcess(
           pid: 1,
+          stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.4 deepseek-harness/0.1.1-rc.2 acp/1\n"),
+          stderrBytes: const [],
+          exitCodeValue: 0,
+        ),
+      ],
+    );
+    final pathStatus = await const DeepSeekPluginDescriptor().inspectSetup(
+      config: config,
+      processes: pathOutdated,
+      environment: const {},
+      stateDirectory: "/state",
+    );
+    expect(pathStatus, isA<PluginSetupRuntimeOutdated>());
+    expect(pathStatus.runtimeVersion, "0.1.4");
+    expect(pathOutdated.spawnedExecutables, [DeepSeekBinary.defaultBinary]);
+
+    final outdated = _ProcessService(
+      probes: [
+        _ProbeProcess(
+          pid: 2,
           stdoutBytes: utf8.encode("sesori-deepseek-acp/0.1.4 deepseek-harness/0.1.1-rc.2 acp/1\n"),
           stderrBytes: const [],
           exitCodeValue: 0,

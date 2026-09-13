@@ -76,6 +76,29 @@ final class const PluginSetupRuntimeMissing({@override required final String? ac
   String toString() => "PluginSetupRuntimeMissing(actionHint: $actionHint)";
 }
 
+/// The ordinary PATH runtime exists but is too old for this plugin.
+///
+/// [runtimeVersion] is null only when incompatibility is positively identified
+/// without a displayable scalar version, such as a missing required subcommand.
+final class const PluginSetupRuntimeOutdated({
+  @override required final String? actionHint,
+  @override required final String? runtimeVersion,
+}) extends PluginSetupStatus {
+  this
+    : assert(actionHint != "", "PluginSetupRuntimeOutdated.actionHint must not be empty"),
+      assert(runtimeVersion != "", "PluginSetupRuntimeOutdated.runtimeVersion must not be empty");
+
+  @override
+  bool operator ==(Object other) =>
+      other is PluginSetupRuntimeOutdated && other.actionHint == actionHint && other.runtimeVersion == runtimeVersion;
+
+  @override
+  int get hashCode => Object.hash(actionHint, runtimeVersion);
+
+  @override
+  String toString() => "PluginSetupRuntimeOutdated(actionHint: $actionHint, runtimeVersion: $runtimeVersion)";
+}
+
 /// The runtime exists, but the backend requires authentication.
 base class const PluginSetupAuthenticationRequired({@override required final String? actionHint})
     extends PluginSetupStatus {

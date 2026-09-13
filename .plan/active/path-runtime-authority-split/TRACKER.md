@@ -5,8 +5,8 @@
 - Slug: `path-runtime-authority-split`
 - Base: `main` at `4854865eedf6`
 - Preserved source: PR #1458 at `0caf101b9a`
-- Current step: 4/9 — make PATH authoritative for managed copies
-- Open replacement implementation PRs: Step 4 — #1472
+- Current step: 5/9 — report outdated PATH runtimes and safe updaters
+- Open replacement implementation PRs: none; Step 5 is in local implementation
 - Architecture review: approved 2026-09-13 after exact ownership clarification; Step 8 core edits stay selector-only
 
 ## Steps
@@ -16,8 +16,8 @@
 | 1. Plan replacement sequence | Merged | #1462 | 650 |
 | 2. Centralize executable and command control | Merged | #1463 | 850 |
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
-| 4. Make PATH authoritative for managed copies | In progress | #1472 | 1,850 |
-| 5. Report outdated PATH runtimes and safe updaters | Not started | — | 1,400 |
+| 4. Make PATH authoritative for managed copies | Merged | #1472 | 1,850 |
+| 5. Report outdated PATH runtimes and safe updaters | In progress | — | 1,400 |
 | 6. Inspect Antigravity PATH pairs without side effects | Not started | — | 1,000 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
 | 8. Present runtime updates and reconcile docs | Not started | — | 1,400 |
@@ -52,13 +52,13 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 
 | Comment / report | Target step | Status |
 |---|---:|---|
-| `3999200805` — concrete executable locator | 2 | Planned |
+| `3999200805` — concrete executable locator | 2 | Implemented |
 | `3999200808` — Antigravity repository mapping | 6 | Planned |
 | `3999205383` — Windows first-attempt process tree | 3 | Implemented |
-| `3999205385` — deterministic Codex PATH tests | 5 | Planned |
+| `3999205385` — deterministic Codex PATH tests | 5 | Implemented |
 | `3999205390` — recovery inspection after enable failure | 7 | Planned |
 | `3999205396` — direct Antigravity absence predicate tests | 6 | Planned |
-| `3999205399` — centralized missing-command policy | 2, 5 | Planned |
+| `3999205399` — centralized missing-command policy | 2, 5 | Implemented |
 | `5652131685` — Antigravity lint suppression | 6 | Planned removal |
 
 ## Step 1 Checklist
@@ -170,7 +170,34 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - All churn is authored; generated churn is zero; the total remains below the 1,000-line ceiling.
 
 ## Step 4 Evidence
+
+- PR #1472 merged as `ec6dde9fcd` from accepted head `ac930d1b6f`.
 - Review-expanded ceiling: 1,450 → 1,850 for activation fencing, direct authority tests, and partial-pin repair.
 - Tests: 11/11 initial focused suites, full OpenCode package, and every review-affected suite passed.
 - Analysis/review: 11 strict package analyses passed; second/final architecture review approved with no violations.
-- Review-fix range `2d14f3ca2f..e5d6fa9765`: 1,477 additions + 363 deletions = 1,840 authored; generated zero.
+- Final range `2d14f3ca2f..ac930d1b6f`: 1,477 additions + 363 deletions = 1,840 authored; generated zero.
+
+## Step 5 Checklist
+
+- [x] Advance from merged Step 4 on updated `main`.
+- [x] Add backend-neutral outdated setup and inert updater metadata contracts.
+- [x] Classify outdated default PATH runtimes across every standard harness without managed fallback.
+- [x] Keep Copilot, DeepSeek, Antigravity, explicit overrides, and OpenCode attach mode manual.
+- [x] Reuse concrete Foundation lookup for Claude, Hermes, and Grok missing-command classification.
+- [x] Add minimum setup-state transport mapping without update command execution or client actions.
+- [x] Add focused descriptor, mapping, wire, and host-independent PATH tests.
+- [x] Run focused tests and strict package analysis.
+- [x] Complete architecture-implementation review and apply valid findings.
+- [x] Measure the full Step 5 diff against its 1,400-line ceiling.
+- [ ] Commit, push, open Step 5 PR, and start its monitor.
+
+## Step 5 Evidence
+
+- Base: Step 4 squash merge `ec6dde9fcd` on updated `main`.
+- Focused interface, shared-contract, lifecycle-mapping, and 10 descriptor-package tests: 285 passed.
+- Strict analysis: all 14 owning/touched Dart packages passed with `--fatal-infos`.
+- Shared setup-state code generation completed; generated churn is one added JSON enum-map line.
+- Architecture implementation review: APPROVED with no violations.
+- `git diff --check`: passed; added-line width: zero lines over 120 characters.
+- Final base-to-head size: 822 additions + 175 deletions = 997 changed lines across 35 files; 996 authored and
+  1 generated, below the 1,400-line ceiling.

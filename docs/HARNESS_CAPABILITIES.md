@@ -66,6 +66,7 @@ harnesses without a dedicated skill tool, so the read path is the skill signal.
 |---|---|---|---|---|---|---|---|---|---|---|---|
 | Sesori-managed runtime installed on request | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
 | Superseded managed runtime upgraded automatically on bridge start | 🚫 | ✅ | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ | ✅ | ✅ | 🚫 |
+| Outdated PATH runtime has safe self-updater metadata | ✅ | ✅ | 🚫 | ✅ | 🚫 | ✅ | ✅ | ✅ | ✅ | 🚫 | ✅ |
 
 Antigravity can explicitly download Google's proprietary official runtime pair directly from `dl.google.com`. Before
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
@@ -80,13 +81,14 @@ The [Antigravity operator guide](ANTIGRAVITY.md) covers the exact pair, manual s
 retained-history behavior. Implemented marks here do not claim completed authenticated end-to-end verification.
 
 Claude, Hermes, and Grok have no Sesori-managed runtime at all: they resolve a
-user-installed CLI from PATH or an explicit binary option, so there is nothing
-for Sesori to install or upgrade. The upgrade follows the install capability
-exactly — a harness configured with an explicit binary override, running on a
-platform with no pinned asset, or attached to an externally managed server
-(`--opencode-no-auto-start`) advertises neither.
+user-installed CLI from PATH or an explicit binary option, so the managed
+install and startup-upgrade rows do not apply. Separately, standard descriptors
+can identify an outdated default PATH runtime and retain metadata for a verified
+non-interactive harness-owned updater. This metadata is not yet executable
+through the management API. Copilot, DeepSeek, and Antigravity remain manual,
+as do all explicit binary overrides and OpenCode attach mode.
 
-The upgrade only replaces a runtime Sesori already manages. A machine with no
+The managed startup upgrade only replaces a runtime Sesori already manages. A machine with no
 managed version directory keeps the explicit Install action; it never downloads
 a runtime the user has not asked for.
 

@@ -114,20 +114,26 @@ void main() {
       expect(const CursorRuntimeManifest().bundledVersion.raw, "2026.09.10-fd3934a");
     });
 
-    test("advertises install without an explicit binary override", () {
-      expect(
-        const CursorPluginDescriptor().managementCapabilities(config: config),
-        contains(PluginControlCapability.install),
-      );
+    test("advertises install and global update without an explicit binary override", () {
+      const descriptor = CursorPluginDescriptor();
+      final capabilities = descriptor.managementCapabilities(config: config);
+
+      expect(capabilities, contains(PluginControlCapability.install));
+      expect(capabilities, contains(PluginControlCapability.runtimeUpdate));
+      final update = descriptor.runtimeUpdateSpec(config: config);
+      expect(update?.executable, "cursor-agent");
+      expect(update?.arguments, const ["update"]);
+      expect(update?.timeout, const Duration(minutes: 10));
     });
 
-    test("does not advertise install with an explicit binary override", () {
-      expect(
-        const CursorPluginDescriptor().managementCapabilities(
-          config: const PluginConfig(values: {"bin": "/custom/cursor-agent", "api-endpoint": null}),
-        ),
-        isNot(contains(PluginControlCapability.install)),
-      );
+    test("explicit binary overrides disable install and global update", () {
+      const explicit = PluginConfig(values: {"bin": "/custom/cursor-agent", "api-endpoint": null});
+      const descriptor = CursorPluginDescriptor();
+      final capabilities = descriptor.managementCapabilities(config: explicit);
+
+      expect(capabilities, isNot(contains(PluginControlCapability.install)));
+      expect(capabilities, isNot(contains(PluginControlCapability.runtimeUpdate)));
+      expect(descriptor.runtimeUpdateSpec(config: explicit), isNull);
     });
 
     test("declares plugin-scoped session options", () {
@@ -318,7 +324,8 @@ void main() {
         stateDirectory: stateDirectory,
       );
 
-      expect(result, isA<PluginSetupUnknown>());
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "2025.01.01");
       expect(result.actionHint, isNot(contains("account-secret-output")));
       expect(processes.spawnedArguments, [
         const ["--version"],
