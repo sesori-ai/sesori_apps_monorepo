@@ -100,13 +100,17 @@ class const AntigravityRuntimeStorage() {
       return AntigravityRuntimeTargetUnsupported(target: target);
     }
     final rawPath = _environmentPath(environment: environment, target: target);
-    if (rawPath == null) {
+    if (rawPath == null && target.os != PlatformOs.windows) {
       return const AntigravityRuntimePairMissing(component: AntigravityRuntimeComponent.server);
     }
 
     final context = _pathContext(target: target);
     final separator = target.os == PlatformOs.windows ? ";" : ":";
-    for (final rawDirectory in rawPath.split(separator)) {
+    final directories = [
+      if (target.os == PlatformOs.windows) Directory.current.path,
+      if (rawPath != null) ...rawPath.split(separator),
+    ];
+    for (final rawDirectory in directories) {
       final directory = _pathDirectory(rawDirectory: rawDirectory, target: target);
       final result = inspectPair(
         serverPath: context.join(directory, AntigravityRelease.serverFileName(target: target)),

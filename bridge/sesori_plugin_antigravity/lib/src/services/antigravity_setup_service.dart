@@ -43,7 +43,7 @@ class AntigravitySetupService({
           timeout: timeout,
         );
       case AntigravityRuntimeCandidateMissing(:final source):
-        if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown();
+        if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown(runtimeVersion: null);
         return PluginSetupRuntimeMissing(
           actionHint: source == AntigravityRuntimeSource.explicit
               ? "Fix the configured Antigravity runtime pair, then restart the bridge."
@@ -54,14 +54,14 @@ class AntigravitySetupService({
               : "Provide the official Antigravity ACP runtime pair, then retry setup detection.",
         );
       case AntigravityRuntimeCandidateRejected(:final source):
-        if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown();
+        if (source == AntigravityRuntimeSource.path) return _pathRuntimeUnknown(runtimeVersion: null);
         return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
       case AntigravityRuntimeCandidateStorageFailed(:final source, :final cause, :final stackTrace):
         if (source != AntigravityRuntimeSource.path) {
           Log.w("[antigravity] setup runtime inspection failed", cause, stackTrace);
         }
         return source == AntigravityRuntimeSource.path
-            ? _pathRuntimeUnknown()
+            ? _pathRuntimeUnknown(runtimeVersion: null)
             : const PluginSetupUnknown(
                 actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
               );
@@ -91,7 +91,11 @@ class AntigravitySetupService({
         final supported = AntigravityRuntimeVersion.tryParse(buildLabel: AntigravityRelease.agentVersion);
         if (supported == null) throw StateError("The pinned Antigravity build label is invalid.");
         if (version.buildLabel == supported.buildLabel) {
-          return _inspectProfile(geminiHome: geminiHome, runtimeVersion: version.buildLabel);
+          return _inspectProfile(
+            source: source,
+            geminiHome: geminiHome,
+            runtimeVersion: version.buildLabel,
+          );
         }
         final comparison = version.compareTo(supported);
         if (source == AntigravityRuntimeSource.path) {
@@ -102,18 +106,22 @@ class AntigravitySetupService({
         return _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
       case AntigravityRuntimeVersionProbeRejected():
         return source == AntigravityRuntimeSource.path
-            ? _pathRuntimeUnknown()
+            ? _pathRuntimeUnknown(runtimeVersion: null)
             : _invalidPair(source: source, managedInstallAvailable: managedInstallAvailable);
       case AntigravityRuntimeVersionProbeFailed():
         return source == AntigravityRuntimeSource.path
-            ? _pathRuntimeUnknown()
+            ? _pathRuntimeUnknown(runtimeVersion: null)
             : const PluginSetupUnknown(
                 actionHint: "Antigravity setup could not be determined. Check the local runtime pair and retry.",
               );
     }
   }
 
-  PluginSetupStatus _inspectProfile({required String geminiHome, required String runtimeVersion}) {
+  PluginSetupStatus _inspectProfile({
+    required AntigravityRuntimeSource source,
+    required String geminiHome,
+    required String runtimeVersion,
+  }) {
     try {
       return switch (_profile.inspect(geminiHome: geminiHome)) {
         AntigravityAuthenticationHint.tokenPresent => PluginSetupReady.versioned(runtimeVersion: runtimeVersion),
@@ -125,10 +133,16 @@ class AntigravitySetupService({
       };
     } on Object catch (error, stackTrace) {
       Log.w("[antigravity] setup profile inspection failed", error, stackTrace);
-      return PluginSetupUnknown.versioned(
-        actionHint: "Antigravity setup could not be determined. Check the isolated profile and retry.",
-        runtimeVersion: runtimeVersion,
-      );
+      const actionHint = "Antigravity setup could not be determined. Check the isolated profile and retry.";
+      return source == AntigravityRuntimeSource.path
+          ? PluginSetupAuthoritativeRuntimeUnknown(
+              actionHint: actionHint,
+              runtimeVersion: runtimeVersion,
+            )
+          : PluginSetupUnknown.versioned(
+              actionHint: actionHint,
+              runtimeVersion: runtimeVersion,
+            );
     }
   }
 
@@ -151,17 +165,15 @@ class AntigravitySetupService({
     runtimeVersion: runtimeVersion,
   );
 
-  PluginSetupUnknown _pathRuntimeNewer({required String runtimeVersion}) => PluginSetupUnknown.versioned(
-    actionHint: "The global Antigravity runtime is newer than the supported build. Update Sesori, then retry.",
-    runtimeVersion: runtimeVersion,
-  );
+  PluginSetupAuthoritativeRuntimeUnknown _pathRuntimeNewer({required String runtimeVersion}) =>
+      PluginSetupAuthoritativeRuntimeUnknown(
+        actionHint: "The global Antigravity runtime is newer than the supported build. Update Sesori, then retry.",
+        runtimeVersion: runtimeVersion,
+      );
 
-  PluginSetupUnknown _pathRuntimeUnknown({String? runtimeVersion}) => runtimeVersion == null
-      ? const PluginSetupUnknown(
-          actionHint: "The global Antigravity runtime could not be verified. Check its installation, then retry.",
-        )
-      : PluginSetupUnknown.versioned(
-          actionHint: "The global Antigravity runtime could not be verified. Check its installation, then retry.",
-          runtimeVersion: runtimeVersion,
-        );
+  PluginSetupAuthoritativeRuntimeUnknown _pathRuntimeUnknown({required String? runtimeVersion}) =>
+      PluginSetupAuthoritativeRuntimeUnknown(
+        actionHint: "The global Antigravity runtime could not be verified. Check its installation, then retry.",
+        runtimeVersion: runtimeVersion,
+      );
 }

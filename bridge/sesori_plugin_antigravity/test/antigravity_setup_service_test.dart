@@ -94,7 +94,7 @@ void main() {
           timeout: const Duration(seconds: 1),
         );
 
-    expect(setup, isA<PluginSetupUnknown>());
+    expect(setup, isA<PluginSetupAuthoritativeRuntimeUnknown>());
     expect(setup.runtimeVersion, reportedVersion);
     expect(setup.actionHint, contains("could not be verified"));
   });
@@ -116,7 +116,7 @@ void main() {
           timeout: const Duration(seconds: 1),
         );
 
-    expect(setup, isA<PluginSetupUnknown>());
+    expect(setup, isA<PluginSetupAuthoritativeRuntimeUnknown>());
     expect(setup.runtimeVersion, AntigravityRelease.agentVersion);
   });
 }

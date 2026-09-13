@@ -259,7 +259,9 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 
 ### Step 6 — Antigravity inert pair inspection
 
-- **Package/layer:** `bridge/sesori_plugin_antigravity`; backend-specific behavior remains entirely in this plugin.
+- **Packages/layers:** `bridge/sesori_plugin_antigravity` owns backend-specific behavior;
+  `sesori_plugin_interface` marks an authoritative unknown runtime; `bridge/app` maps that marker to the existing
+  wire unknown state while filtering managed Install.
 - **Production files/classes:**
   - API `api/antigravity_acp_api.dart` and `api/models/antigravity_version_dto.dart` — `AntigravityAcpApi.version`
     performs only bounded `--version`; `AntigravityVersionDto` remains API-local;
@@ -268,6 +270,8 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - models `models/antigravity_runtime_version.dart` — sealed domain variants
     `AntigravityRuntimeVersionProbeSucceeded`, `AntigravityRuntimeVersionProbeRejected`, and
     `AntigravityRuntimeVersionProbeFailed`, carrying no `CommandResult`;
+  - interface `plugin_setup_status.dart` and app `plugin_lifecycle_service.dart` —
+    `PluginSetupAuthoritativeRuntimeUnknown` preserves source-aware install policy without adding a wire state;
   - services `antigravity_runtime_service.dart` and `antigravity_setup_service.dart` —
     `AntigravityRuntimeService` consumes the Step 4 physical-absence predicate for inert selection, while
     `AntigravitySetupService` consumes the resulting pair policy; and
@@ -358,7 +362,7 @@ generated files. These are ceilings, not targets:
 | 3 | 1,000 | Narrow app lifecycle/process implementation and focused tests. |
 | 4 | 1,850 | Review-expanded mutation fencing, completion checks, and non-installable PATH setup. |
 | 5 | 1,400 | Standard descriptor behavior and tests; no Antigravity or app execution flow. |
-| 6 | 1,500 | Review-expanded for pair evidence, exact-label readiness, Windows PATH parity, and failure provenance. |
+| 6 | 1,600 | Review-expanded for pair evidence, source-aware setup, Windows PATH parity, and failure provenance. |
 | 7 | 1,500 | Shared wire, bridge execution, and minimum client-core consumption. |
 | 8 | 1,400 | Client UI/tests and current 354-line documentation change. |
 | 9 | 500 | Verification evidence and plan retirement only. |

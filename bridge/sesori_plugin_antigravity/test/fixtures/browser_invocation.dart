@@ -19,6 +19,7 @@ Future<void> main(List<String> arguments) async {
     final descriptor = AntigravityPluginDescriptor(
       callbackHttpClientFactory: HttpClient.new,
       runtimeDownloadHttpClientFactory: () => throw StateError("No runtime download is allowed"),
+      versionProbeTimeout: const Duration(seconds: 10),
     );
     final operation = descriptor.authenticate(
       config: const PluginConfig(values: {AntigravityPluginDescriptor.binOption: null}),

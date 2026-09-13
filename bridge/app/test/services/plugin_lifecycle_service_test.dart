@@ -59,7 +59,7 @@ void main() {
     newerService.initialize(
       disabledPluginIds: const {},
       setupById: const {
-        "one": PluginSetupUnknown.versioned(
+        "one": PluginSetupAuthoritativeRuntimeUnknown(
           actionHint: "The PATH runtime is newer than this bridge.",
           runtimeVersion: "2.0.0",
         ),
@@ -69,6 +69,23 @@ void main() {
     expect(newerService.managementSnapshot.plugins.single.managementCapabilities, {
       PluginManagementCapability.setupRefresh,
     });
+
+    final managedUnknownService =
+        _commandService(
+          repository: repository,
+          settingsRepository: null,
+          managementCapabilities: const {PluginControlCapability.setupRefresh, PluginControlCapability.install},
+        )..initialize(
+          disabledPluginIds: const {},
+          setupById: const {
+            "one": PluginSetupUnknown.versioned(actionHint: "Retry managed setup.", runtimeVersion: "1.0.0"),
+          },
+        );
+    addTearDown(managedUnknownService.dispose);
+    expect(
+      managedUnknownService.managementSnapshot.plugins.single.managementCapabilities,
+      {PluginManagementCapability.setupRefresh, PluginManagementCapability.install},
+    );
   });
 
   test("authentication joins, publishes state, reinspects, and starts when ready", () async {

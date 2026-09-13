@@ -78,7 +78,7 @@ final class const AntigravityRuntimeVersionProbeRejected({
 
 final class const AntigravityRuntimeVersionProbeFailed({
   required final AntigravityRuntimeSource source,
-  // ignore: no_slop_linter/prefer_specific_type, caught version probe failures remain opaque
+  // ignore: no_slop_linter/prefer_specific_type, Dart permits thrown values with no narrower sound shared type
   required final Object cause,
   required final StackTrace stackTrace,
 }) extends AntigravityRuntimeVersionProbeResult;

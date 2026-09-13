@@ -43,12 +43,13 @@ class const AntigravityPluginDescriptor({
   required final HttpClient Function() callbackHttpClientFactory,
   required final http.Client Function() runtimeDownloadHttpClientFactory,
   final Duration operationTimeout = const Duration(minutes: 2),
-  final Duration versionProbeTimeout = const Duration(seconds: 10),
+  required final Duration versionProbeTimeout,
   final Duration connectBudget = const Duration(seconds: 15),
 }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
   factory production() => const AntigravityPluginDescriptor(
     callbackHttpClientFactory: HttpClient.new,
     runtimeDownloadHttpClientFactory: http.Client.new,
+    versionProbeTimeout: Duration(seconds: 10),
   );
   static const binOption = "bin";
   static const cliOptions = [

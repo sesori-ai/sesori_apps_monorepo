@@ -96,7 +96,7 @@ void main() {
     );
   });
 
-  test("normalizes quoted Windows PATH entries before scanning the runtime pair", () {
+  test("normalizes Windows PATH entries and scans the working directory first", () {
     if (!Platform.isWindows) return;
     final paths = writePair(temporaryDirectory);
 
@@ -106,6 +106,20 @@ void main() {
     ) as AntigravityRuntimePairFound;
 
     expect(result.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
+
+    final originalDirectory = Directory.current;
+    final missingDirectory = Directory.systemTemp.createTempSync("antigravity-missing-path-");
+    Directory.current = temporaryDirectory;
+    try {
+      final fromWorkingDirectory = storage.findOnPath(
+        environment: {"Path": missingDirectory.path},
+        target: target,
+      ) as AntigravityRuntimePairFound;
+      expect(fromWorkingDirectory.pair.serverPath, File(paths.server).resolveSymbolicLinksSync());
+    } finally {
+      Directory.current = originalDirectory;
+      missingDirectory.deleteSync();
+    }
   });
 
   test("rejects wrong resolved names and identical members", () {

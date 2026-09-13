@@ -1222,6 +1222,7 @@ class PluginLifecycleService({
         PluginSetupReady() => PluginSetupState.ready,
         PluginSetupRuntimeMissing() => PluginSetupState.runtimeMissing,
         PluginSetupRuntimeOutdated() => PluginSetupState.runtimeOutdated,
+        PluginSetupAuthoritativeRuntimeUnknown() => PluginSetupState.unknown,
         PluginSetupAuthenticationRequired() => PluginSetupState.authenticationRequired,
         PluginSetupUnavailable() => PluginSetupState.unavailable,
         PluginSetupUnknown() => PluginSetupState.unknown,
@@ -1248,7 +1249,7 @@ class PluginLifecycleService({
       managementCapabilities: {
         for (final capability in _managementCapabilitiesForPluginId(pluginId: plugin.id))
           if (capability != PluginControlCapability.install ||
-              (setupStatus is! PluginSetupRuntimeOutdated && setupStatus is! PluginSetupUnknown))
+              (setupStatus is! PluginSetupRuntimeOutdated && setupStatus is! PluginSetupAuthoritativeRuntimeUnknown))
             ?_mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),

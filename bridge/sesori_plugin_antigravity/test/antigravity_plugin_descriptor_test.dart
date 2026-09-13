@@ -287,7 +287,7 @@ void main() {
   AntigravityPluginDescriptor descriptorWithTimeout({
     required _Http? http,
     required Duration timeout,
-    Duration versionProbeTimeout = const Duration(seconds: 10),
+    required Duration versionProbeTimeout,
   }) => AntigravityPluginDescriptor(
     target: _target,
     browserExecutable: "/synthetic/bridge",
@@ -300,8 +300,11 @@ void main() {
     connectBudget: const Duration(seconds: 2),
   );
 
-  AntigravityPluginDescriptor descriptor({required _Http? http}) =>
-      descriptorWithTimeout(http: http, timeout: const Duration(seconds: 2));
+  AntigravityPluginDescriptor descriptor({required _Http? http}) => descriptorWithTimeout(
+    http: http,
+    timeout: const Duration(seconds: 2),
+    versionProbeTimeout: const Duration(seconds: 10),
+  );
 
   PluginConfig config({required String? server}) =>
       PluginConfig(values: {AntigravityPluginDescriptor.binOption: server});
@@ -351,6 +354,7 @@ void main() {
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
       callbackHttpClientFactory: unexpectedHttpClient,
       runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
+      versionProbeTimeout: const Duration(seconds: 10),
     );
     for (final server in [null, pair.server]) {
       final status = await candidate.inspectSetup(
@@ -436,7 +440,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupUnknown>());
+    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
     expect(status.runtimeVersion, "agy_acp_server_1.2.0");
     expect(status.actionHint, contains("newer"));
     expect(processes.launches.single.executable, pair.server);
@@ -457,7 +461,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupUnknown>());
+    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
     expect(processes.launches, isEmpty);
     expect(processes.agents, isEmpty);
   });
@@ -476,7 +480,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupUnknown>());
+    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
     expect(processes.launches, isEmpty);
     expect(processes.agents, isEmpty);
   });
@@ -500,7 +504,7 @@ void main() {
       stateDirectory: state.path,
     );
 
-    expect(status, isA<PluginSetupUnknown>());
+    expect(status, isA<PluginSetupAuthoritativeRuntimeUnknown>());
     expect(status.runtimeVersion, isNull);
     expect(status.actionHint, isNot(contains("private@example.com")));
     expect(processes.launches.single.executable, pair.server);
@@ -619,6 +623,7 @@ void main() {
       target: const PlatformTarget(os: PlatformOs.macos, arch: PlatformArch.x64),
       callbackHttpClientFactory: unexpectedHttpClient,
       runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
+      versionProbeTimeout: const Duration(seconds: 10),
     );
     expect(
       unsupported.managementCapabilities(config: config(server: null)),
@@ -653,7 +658,7 @@ void main() {
       environment: {"PATH": brokenPath.path},
       stateDirectory: state.path,
     );
-    expect(setup, isA<PluginSetupUnknown>());
+    expect(setup, isA<PluginSetupAuthoritativeRuntimeUnknown>());
     expect(processes.launches, isEmpty);
   });
 
@@ -690,6 +695,7 @@ void main() {
       target: _target,
       callbackHttpClientFactory: unexpectedHttpClient,
       runtimeDownloadHttpClientFactory: () => download,
+      versionProbeTimeout: const Duration(seconds: 10),
     );
 
     final progress = await candidate
@@ -729,6 +735,7 @@ void main() {
       target: _target,
       callbackHttpClientFactory: unexpectedHttpClient,
       runtimeDownloadHttpClientFactory: () => download,
+      versionProbeTimeout: const Duration(seconds: 10),
     );
     final progress = await candidate
         .installRuntime(
@@ -757,6 +764,7 @@ void main() {
         target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
         callbackHttpClientFactory: unexpectedHttpClient,
         runtimeDownloadHttpClientFactory: () => throw StateError("Download must not be created"),
+        versionProbeTimeout: const Duration(seconds: 10),
       );
       final progress = await candidate
           .installRuntime(
@@ -788,6 +796,7 @@ void main() {
         target: const PlatformTarget(os: PlatformOs.linux, arch: PlatformArch.x64),
         callbackHttpClientFactory: unexpectedHttpClient,
         runtimeDownloadHttpClientFactory: () => throw StateError("Download must not be created"),
+        versionProbeTimeout: const Duration(seconds: 10),
       );
       await expectLater(
         candidate
@@ -817,6 +826,7 @@ void main() {
         expect(zip.calls, 1);
         return download;
       },
+      versionProbeTimeout: const Duration(seconds: 10),
     );
     final progress = await candidate
         .installRuntime(
@@ -888,6 +898,7 @@ void main() {
       callbackHttpClientFactory: () => http,
       runtimeDownloadHttpClientFactory: () => throw StateError("Runtime download was not expected"),
       operationTimeout: const Duration(seconds: 2),
+      versionProbeTimeout: const Duration(seconds: 10),
       connectBudget: const Duration(seconds: 2),
     );
     final operation = candidate.authenticate(
@@ -933,6 +944,7 @@ void main() {
         () async => progress = await descriptorWithTimeout(
           http: null,
           timeout: const Duration(milliseconds: 50),
+          versionProbeTimeout: const Duration(seconds: 10),
         ).ensureRuntime(host: host).toList(),
         stderr: () => logs,
       );

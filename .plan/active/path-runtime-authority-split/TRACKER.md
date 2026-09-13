@@ -18,7 +18,7 @@
 | 3. Settle commands and terminate process trees | Merged | #1466 | 1,000 |
 | 4. Make PATH authoritative for managed copies | Merged | #1472 | 1,850 |
 | 5. Report outdated PATH runtimes and safe updaters | Merged | #1473 | 1,400 |
-| 6. Inspect Antigravity PATH pairs without side effects | In progress | #1474 | 1,400 |
+| 6. Inspect Antigravity PATH pairs without side effects | In progress | #1474 | 1,600 |
 | 7. Execute sanitized global runtime updates | Not started | — | 1,500 |
 | 8. Present runtime updates and reconcile docs | Not started | — | 1,400 |
 | 9. Run coverage and retire plan | Not started | — | 500 |
@@ -219,7 +219,7 @@ Exact files, constructor collaborators, dependency flows, compatibility defaults
 - [x] Add focused API, repository, authority, runtime, setup, descriptor, and composition coverage.
 - [x] Run final Antigravity package tests, strict analysis, diagnostics, and diff validation.
 - [x] Complete the final architecture-implementation review after review-driven fixes.
-- [x] Measure the full Step 6 diff against its final review-expanded 1,500-line ceiling.
+- [x] Measure the full Step 6 diff against its final review-expanded 1,600-line ceiling.
 - [x] Commit, push, open Step 6 PR, and start its monitor.
 
 ## Step 6 Evidence

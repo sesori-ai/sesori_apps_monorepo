@@ -15,13 +15,15 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
   token-file presence without reading token contents. It does not create files, initialize ACP, prepare a browser
   command or authenticate.
 - Runtime precedence is authoritative explicit pair, then PATH, then the installed managed-layout location. Empty POSIX
-  PATH entries continue to mean the current directory; Windows pair scans and executable-presence checks both trim and
-  unquote PATH entries. Managed selection requires both a missing PATH server candidate and separate physical-absence
-  evidence mapped through storage and repository layers; harness-only, incomplete, broken, unreadable or invalid PATH
+  PATH entries continue to mean the current directory; Windows pair scans and executable-presence checks both inspect
+  the working directory before PATH and trim/unquote PATH entries. Managed selection requires both a missing PATH
+  server candidate and separate physical-absence evidence mapped through storage and repository layers; harness-only,
+  incomplete, broken, unreadable or invalid PATH
   evidence remains authoritative. The current exact pair is package `1.1.1` / server `agy_acp_server_1.1.1`, ACP 1.
   Only that byte-exact label reports ready; equal-precedence labels remain unknown. Documented pre-semver official
   labels order below that pin, while newer official semantic versions remain incompatible/unknown. Outdated or
-  unknown setup does not advertise managed install, and explicit pairs never fall through to managed.
+  PATH-authoritative unknown setup does not advertise managed install; a managed-source unknown may still be repaired.
+  Explicit pairs never fall through to managed.
 - Missing/rejected/unsupported/boundary outcomes map to honest setup statuses and current-client authentication hints.
   macOS x64 reports unsupported-platform guidance without constructing a managed filename, preparing a profile or
   launching a process, including when an explicit binary option is supplied.
