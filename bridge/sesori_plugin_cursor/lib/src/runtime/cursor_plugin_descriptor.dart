@@ -137,7 +137,18 @@ class const CursorPluginDescriptor({
     return {
       ...super.managementCapabilities(config: config),
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
     };
+  }
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "cursor-agent",
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
   }
 
   /// Whether the pinned managed Cursor CLI can be installed on request: no
@@ -308,6 +319,20 @@ class const CursorPluginDescriptor({
     }
 
     if (selection is ManagedRuntimeNotSelected) {
+      if (selection is ManagedRuntimePathNotSelected) {
+        return switch (selection.primaryRejection) {
+          ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+            actionHint:
+                "Update the global Cursor CLI installation to "
+                "${const CursorRuntimeManifest().minPathVersion.raw} or newer.",
+            runtimeVersion: version.raw,
+          ),
+          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+            actionHint:
+                "The global Cursor CLI installation could not be verified. Check it locally and retry setup detection.",
+          ),
+        };
+      }
       if (explicitBin != null) {
         return switch (selection.primaryRejection) {
           ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
@@ -318,16 +343,6 @@ class const CursorPluginDescriptor({
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
             actionHint: "Cursor setup could not be determined. Verify the local CLI and retry.",
-          ),
-        };
-      }
-      if (selection is ManagedRuntimePathNotSelected) {
-        return switch (selection.primaryRejection) {
-          ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
-            actionHint: "Update the global Cursor CLI, then retry setup detection.",
-          ),
-          ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-            actionHint: "Cursor setup could not be determined. Verify the global CLI and retry.",
           ),
         };
       }

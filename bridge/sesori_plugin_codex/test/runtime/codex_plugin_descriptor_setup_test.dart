@@ -86,8 +86,13 @@ void main() {
           PluginControlCapability.idleTimeout,
           PluginControlCapability.authentication,
           PluginControlCapability.install,
+          PluginControlCapability.runtimeUpdate,
         },
       );
+      final update = descriptor.runtimeUpdateSpec(config: config);
+      expect(update?.executable, "codex");
+      expect(update?.arguments, const ["update"]);
+      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("does not advertise install with an explicit binary override", () {
@@ -101,6 +106,12 @@ void main() {
           PluginControlCapability.idleTimeout,
           PluginControlCapability.authentication,
         },
+      );
+      expect(
+        descriptor.runtimeUpdateSpec(
+          config: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"}),
+        ),
+        isNull,
       );
     });
 
@@ -148,6 +159,29 @@ void main() {
       );
 
       expect(result, isA<PluginSetupRuntimeMissing>());
+    });
+
+    test("reports an outdated PATH runtime without probing managed copies", () async {
+      final processes = _ProbeProcessService(
+        processSequence: [
+          _ProbeProcess(
+            pid: 7,
+            stdoutBytes: utf8.encode("codex-cli 0.100.0\n"),
+            exitCode: Future<int>.value(0),
+          ),
+        ],
+      );
+
+      final result = await descriptor.inspectSetup(
+        config: config,
+        processes: processes,
+        environment: const <String, String>{},
+        stateDirectory: stateDirectory,
+      );
+
+      expect(result, isA<PluginSetupRuntimeOutdated>());
+      expect(result.runtimeVersion, "0.100.0");
+      expect(processes.spawnedExecutables, ["codex"]);
     });
 
     test("recognizes a superseded but still supported managed runtime", () async {

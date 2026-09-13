@@ -15,6 +15,39 @@ import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_helpers.dart";
 
 void main() {
+  test("maps outdated setup while keeping updater metadata dormant", () {
+    final repository = _CommandLifecycleRepository(
+      inspectionResult: const PluginSetupReady(),
+      inspectionGate: null,
+      startFailureMessage: null,
+    );
+    addTearDown(repository.dispose);
+    final service = _commandService(
+      repository: repository,
+      settingsRepository: null,
+      managementCapabilities: const {
+        PluginControlCapability.setupRefresh,
+        PluginControlCapability.install,
+        PluginControlCapability.runtimeUpdate,
+      },
+    );
+    addTearDown(service.dispose);
+    service.initialize(
+      disabledPluginIds: const {},
+      setupById: const {
+        "one": PluginSetupRuntimeOutdated(
+          actionHint: "Update the global runtime.",
+          runtimeVersion: "1.0.0",
+        ),
+      },
+    );
+
+    final plugin = service.managementSnapshot.plugins.single;
+    expect(plugin.setup.state, PluginSetupState.runtimeOutdated);
+    expect(plugin.setup.runtimeVersion, "1.0.0");
+    expect(plugin.managementCapabilities, {PluginManagementCapability.setupRefresh});
+  });
+
   test("authentication joins, publishes state, reinspects, and starts when ready", () async {
     final repository = _CommandLifecycleRepository(
       inspectionResult: const PluginSetupReady(),

@@ -111,11 +111,22 @@ final class const OmpPluginDescriptor({
 
   @override
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) {
-    if (_explicitBin(config) != null) return super.managementCapabilities(config: config);
-    if (_supportsManagedInstall()) {
-      return {...super.managementCapabilities(config: config), PluginControlCapability.install};
-    }
-    return super.managementCapabilities(config: config);
+    final explicitBin = _explicitBin(config);
+    return {
+      ...super.managementCapabilities(config: config),
+      if (explicitBin == null && _supportsManagedInstall()) PluginControlCapability.install,
+      if (explicitBin == null) PluginControlCapability.runtimeUpdate,
+    };
+  }
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "omp",
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
   }
 
   @override
@@ -223,6 +234,18 @@ final class const OmpPluginDescriptor({
       );
     }
     final notSelected = selection as ManagedRuntimeNotSelected;
+    if (notSelected is ManagedRuntimePathNotSelected) {
+      return switch (notSelected.primaryRejection) {
+        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+          actionHint: "Update the global Oh My Pi installation to ${manifest.minPathVersion.raw} or newer.",
+          runtimeVersion: version.raw,
+        ),
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+          actionHint:
+              "The global Oh My Pi installation could not be verified. Check it locally and retry setup detection.",
+        ),
+      };
+    }
     if (explicitBin != null) {
       return switch (notSelected.primaryRejection) {
         ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
@@ -233,16 +256,6 @@ final class const OmpPluginDescriptor({
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
           actionHint: "Oh My Pi setup could not be determined. Verify the configured CLI and retry.",
-        ),
-      };
-    }
-    if (notSelected is ManagedRuntimePathNotSelected) {
-      return switch (notSelected.primaryRejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
-          actionHint: "Update the global Oh My Pi CLI, then retry setup detection.",
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "Oh My Pi setup could not be determined. Verify the global CLI and retry.",
         ),
       };
     }

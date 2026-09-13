@@ -247,9 +247,10 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
 - **Collaborators/ownership:** managed descriptors reuse `RuntimeVersionValidator`; Claude, Hermes, and Grok call the
   concrete Foundation locator for missing-error classification instead of copying helpers. Descriptors remain const and
   inert; `PluginRuntimeUpdateSpec` owns data only. Copilot, DeepSeek, and Antigravity declare no automatic updater.
-- **Boundary mapping:** include the minimum existing bridge/shared setup-state mapping required to represent
-  `runtimeOutdated` without enabling the update command. Do not land operation progress, command admission, or client
-  action code here.
+- **Boundary mapping:** `shared/sesori_shared` adds only `PluginSetupState.runtimeOutdated`; the existing bridge
+  lifecycle mapping transports it while withholding the internal runtime-update capability until Step 7. Client core
+  maps it to existing unavailable interaction policy; client UI uses its existing non-actionable unavailable label until
+  Step 8 adds dedicated presentation. Do not land operation progress, command admission, or client action code.
 - **Dependency/data flow:** Foundation/runtime probe outcome → owning descriptor boundary → backend-neutral
   `PluginSetupStatus` → existing bridge setup repository mapping. Backend identifiers never enter shared/app policy.
 - **Activation:** setup inspection can report an outdated PATH runtime and safe update capability internally/over the
@@ -290,12 +291,12 @@ Never stack all nine branches or force-push #1458 to mimic this sequence.
   - `plugin_management.dart` — `PluginManagementCapability.runtimeUpdate`,
     `PluginRuntimeProvisionKind { managedInstall, globalUpdate, unknown }`, `PluginInstallPhase.updating`, and
     `PluginLifecycleCommandRequest.updateRuntime` / `PluginLifecycleUpdateRuntimeRequest`;
-  - `plugin_setup_response.dart` — `PluginSetupState.runtimeOutdated`; and
   - `sesori_sse_event.dart` — `SesoriPluginInstallProgress.operation`, with generated Freezed/JSON files regenerated.
 - **Bridge production files/classes:** `plugin_runtime.dart` adds `PluginRuntime.updateRuntime` using the descriptor
   spec, injected `_setupProcesses`, immutable `_environment`, `HostProcessCommandExecutor`, and Step 3
-  `plugin_lifecycle_repository.dart` forwards it; `plugin_lifecycle_service.dart` admits
-  `PluginLifecycleUpdateRuntimeRequest` into `_ActiveRuntimeProvisionCommand` and executes both operations through
+  `plugin_lifecycle_repository.dart` forwards it; `plugin_lifecycle_service.dart` maps
+  `PluginControlCapability.runtimeUpdate` to `PluginManagementCapability.runtimeUpdate`, admits
+  `PluginLifecycleUpdateRuntimeRequest` into `_ActiveRuntimeProvisionCommand`, and executes both operations through
   `_executeRuntimeProvision`; `orchestrator.dart` wires existing dependencies. The service re-inspects through
   `_inspectForCommand` after yielded or thrown failure and marks inspection only after it succeeds.
 - **Client-core files/classes:** `services/models/plugin_install_state.dart` adds operation to `PluginInstallState` and

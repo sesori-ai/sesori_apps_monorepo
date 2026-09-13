@@ -71,6 +71,11 @@ void main() {
     final descriptor = CopilotPluginDescriptor.production();
     expect(descriptor.managementCapabilities(config: defaultConfig), contains(PluginControlCapability.install));
     expect(
+      descriptor.managementCapabilities(config: defaultConfig),
+      isNot(contains(PluginControlCapability.runtimeUpdate)),
+    );
+    expect(descriptor.runtimeUpdateSpec(config: defaultConfig), isNull);
+    expect(
       descriptor.managementCapabilities(
         config: const PluginConfig(values: {CopilotPluginDescriptor.binOption: "/custom/copilot"}),
       ),
@@ -91,16 +96,20 @@ void main() {
     expect(result, const PluginSetupReady.versioned(runtimeVersion: "1.0.80"));
   });
 
-  test("keeps an outdated PATH runtime non-installable until update metadata lands", () async {
+  test("reports an outdated PATH runtime without falling back to managed", () async {
+    final processes = _Processes(
+      outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.77.\n", exitCode: 0)],
+    );
     final result = await CopilotPluginDescriptor.production().inspectSetup(
       config: defaultConfig,
-      processes: _Processes(outputs: const [_Output(stdout: "GitHub Copilot CLI 1.0.77\n", exitCode: 0)]),
+      processes: processes,
       environment: const {},
       stateDirectory: "/state",
     );
 
-    expect(result, isA<PluginSetupUnknown>());
-    expect(result.actionHint, contains("Update the global GitHub Copilot CLI"));
+    expect(result, isA<PluginSetupRuntimeOutdated>());
+    expect(result.runtimeVersion, "1.0.77");
+    expect(processes.executables, ["copilot"]);
   });
 
   test("classifies an unrelated explicit runtime as unrecognized", () async {
@@ -150,6 +159,7 @@ class const _Host({@override required final String? provisionedRuntimePath}) imp
 class const _Output({required final String stdout, required final int exitCode});
 
 class _Processes({final List<_Output> outputs = const []}) implements HostProcessService {
+  final List<String> executables = [];
   int _index = 0;
 
   @override
@@ -161,6 +171,7 @@ class _Processes({final List<_Output> outputs = const []}) implements HostProces
     required bool runInShell,
     required bool includeParentEnvironment,
   }) async {
+    executables.add(executable);
     if (_index >= outputs.length) throw ProcessException(executable, arguments, "missing", 2);
     return _ProbeProcess(output: outputs[_index++]);
   }

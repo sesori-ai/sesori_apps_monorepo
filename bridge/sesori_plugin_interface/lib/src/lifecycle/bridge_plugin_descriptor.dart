@@ -17,6 +17,15 @@ import "runtime_in_use_signal.dart";
 import "runtime_provision_progress.dart";
 import "start_abort_signal.dart";
 
+/// A descriptor-owned non-interactive update command for the harness resolved
+/// from PATH. Running it mutates the user's global harness installation.
+@immutable
+class const PluginRuntimeUpdateSpec({
+  required final String executable,
+  required final List<String> arguments,
+  required final Duration timeout,
+});
+
 /// The registration unit for a bridge plugin.
 ///
 /// Descriptors are const and inert: constructing or registering one has no
@@ -90,6 +99,13 @@ abstract class const BridgePluginDescriptor() {
       PluginControlCapability.idleTimeout,
     };
   }
+
+  /// Verified updater for the ordinary PATH installation.
+  ///
+  /// Returns null for explicit binary overrides and harnesses without a safe
+  /// harness-owned updater. This metadata remains inert until the bridge adds
+  /// an explicit runtime-update command.
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) => null;
 
   /// Inspects whether this plugin's runtime and authentication are already set
   /// up without installing, starting, or initiating a login flow.

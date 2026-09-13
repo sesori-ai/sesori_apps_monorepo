@@ -203,14 +203,10 @@ final class const CopilotPluginDescriptor({
       ManagedRuntimeExplicitNotSelected(:final primaryRejection) => _explicitSetupStatus(
         rejection: primaryRejection,
       ),
-      ManagedRuntimePathNotSelected(:final primaryRejection) => switch (primaryRejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
-          actionHint: "Update the global GitHub Copilot CLI, then retry setup detection.",
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "GitHub Copilot setup could not be determined. Verify the global CLI and retry.",
-        ),
-      },
+      ManagedRuntimePathNotSelected(:final primaryRejection) => _pathSetupStatus(
+        rejection: primaryRejection,
+        minimumVersion: manifest.minPathVersion.raw,
+      ),
       ManagedRuntimeAutomaticNotSelected(:final primaryRejection, :final managedRejection) => _automaticSetupStatus(
         primaryRejection: primaryRejection,
         managedRejection: managedRejection,
@@ -229,6 +225,21 @@ final class const CopilotPluginDescriptor({
       ),
       ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
         actionHint: "GitHub Copilot setup could not be determined. Verify the configured CLI and retry.",
+      ),
+    };
+  }
+
+  PluginSetupStatus _pathSetupStatus({
+    required ManagedRuntimeRejection rejection,
+    required String minimumVersion,
+  }) {
+    return switch (rejection) {
+      ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+        actionHint: "Update the global GitHub Copilot CLI to $minimumVersion or newer using its installation method.",
+        runtimeVersion: version.raw,
+      ),
+      ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+        actionHint: "The global GitHub Copilot CLI could not be verified. Check it locally and retry setup detection.",
       ),
     };
   }

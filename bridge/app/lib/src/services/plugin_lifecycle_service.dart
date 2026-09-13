@@ -1221,6 +1221,7 @@ class PluginLifecycleService({
         PluginSetupNotInspected() => PluginSetupState.notInspected,
         PluginSetupReady() => PluginSetupState.ready,
         PluginSetupRuntimeMissing() => PluginSetupState.runtimeMissing,
+        PluginSetupRuntimeOutdated() => PluginSetupState.runtimeOutdated,
         PluginSetupAuthenticationRequired() => PluginSetupState.authenticationRequired,
         PluginSetupUnavailable() => PluginSetupState.unavailable,
         PluginSetupUnknown() => PluginSetupState.unknown,
@@ -1232,7 +1233,8 @@ class PluginLifecycleService({
 
   PluginManagementMetadata _managementRow({required RegisteredPluginMetadata plugin}) {
     final snapshot = _lifecycleRepository.snapshot.singleWhere((entry) => entry.pluginId == plugin.id);
-    final setup = _mapSetupMetadata(plugin: plugin, setup: _setupById![plugin.id]!);
+    final setupStatus = _setupById![plugin.id]!;
+    final setup = _mapSetupMetadata(plugin: plugin, setup: setupStatus);
     final settings = _bridgeSettingsRepository.currentSettings;
     return PluginManagementMetadata(
       setup: setup,
@@ -1245,18 +1247,22 @@ class PluginLifecycleService({
       hasIdleTimeoutOverride: settings.plugins.settingsByPluginId[plugin.id]?.idleTimeoutMins != null,
       managementCapabilities: {
         for (final capability in _managementCapabilitiesForPluginId(pluginId: plugin.id))
-          _mapManagementCapability(capability: capability),
+          if (capability != PluginControlCapability.install || setupStatus is! PluginSetupRuntimeOutdated)
+            ?_mapManagementCapability(capability: capability),
       },
       actionHint: setup.actionHint ?? _managementActionHint(snapshot.state),
     );
   }
 
-  PluginManagementCapability _mapManagementCapability({required PluginControlCapability capability}) =>
+  PluginManagementCapability? _mapManagementCapability({required PluginControlCapability capability}) =>
       switch (capability) {
         PluginControlCapability.lifecycle => PluginManagementCapability.lifecycle,
         PluginControlCapability.setupRefresh => PluginManagementCapability.setupRefresh,
         PluginControlCapability.idleTimeout => PluginManagementCapability.idleTimeout,
         PluginControlCapability.install => PluginManagementCapability.install,
+        // Descriptor-owned updater metadata stays internal until command
+        // transport and execution support are available.
+        PluginControlCapability.runtimeUpdate => null,
         PluginControlCapability.authentication => PluginManagementCapability.authentication,
       };
 

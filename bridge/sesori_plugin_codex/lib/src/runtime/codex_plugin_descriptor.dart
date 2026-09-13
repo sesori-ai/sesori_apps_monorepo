@@ -250,7 +250,18 @@ class const CodexPluginDescriptor({
       ...super.managementCapabilities(config: config),
       PluginControlCapability.authentication,
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
     };
+  }
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "codex",
+      arguments: ["update"],
+      timeout: Duration(minutes: 10),
+    );
   }
 
   /// Whether the pinned managed codex runtime can be installed on request: no
@@ -380,11 +391,13 @@ class const CodexPluginDescriptor({
       final hasExplicitBinary = _explicitBin(config) != null;
       if (selection is ManagedRuntimePathNotSelected) {
         return switch (primaryRejection) {
-          ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
-            actionHint: "Update the global Codex installation, then retry setup detection.",
+          ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+            actionHint: "Update the global Codex installation to ${manifest.minPathVersion.raw} or newer.",
+            runtimeVersion: version.raw,
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-            actionHint: "The global Codex installation could not be verified. Check it locally and retry.",
+            actionHint:
+                "The global Codex installation could not be verified. Check it locally and retry setup detection.",
           ),
         };
       }

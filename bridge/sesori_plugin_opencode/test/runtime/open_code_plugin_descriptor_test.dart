@@ -123,12 +123,12 @@ void main() {
     });
 
     test("allows only setup refresh in --no-auto-start mode", () {
+      const config = PluginConfig(values: {"no-auto-start": true});
       expect(
-        descriptor.managementCapabilities(
-          config: const PluginConfig(values: {"no-auto-start": true}),
-        ),
+        descriptor.managementCapabilities(config: config),
         const {PluginControlCapability.setupRefresh},
       );
+      expect(descriptor.runtimeUpdateSpec(config: config), isNull);
     });
 
     test("allows every management capability plus install in managed mode", () {
@@ -143,8 +143,15 @@ void main() {
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
           PluginControlCapability.install,
+          PluginControlCapability.runtimeUpdate,
         },
       );
+      final update = descriptor.runtimeUpdateSpec(
+        config: const PluginConfig(values: {"no-auto-start": false, "bin": null}),
+      );
+      expect(update?.executable, "opencode");
+      expect(update?.arguments, const ["upgrade"]);
+      expect(update?.timeout, const Duration(minutes: 10));
     });
 
     test("does not advertise install with an explicit binary override", () {
@@ -157,6 +164,12 @@ void main() {
           PluginControlCapability.setupRefresh,
           PluginControlCapability.idleTimeout,
         },
+      );
+      expect(
+        descriptor.runtimeUpdateSpec(
+          config: const PluginConfig(values: {"no-auto-start": false, "bin": "/usr/local/bin/opencode"}),
+        ),
+        isNull,
       );
     });
 

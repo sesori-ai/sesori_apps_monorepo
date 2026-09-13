@@ -121,7 +121,18 @@ final class const PiPluginDescriptor({
   Set<PluginControlCapability> managementCapabilities({required PluginConfig config}) => {
     ...super.managementCapabilities(config: config),
     if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+    if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
   };
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (_explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "pi",
+      arguments: ["update", "--self", "--no-approve"],
+      timeout: Duration(minutes: 10),
+    );
+  }
 
   bool _supportsManagedInstall({required PluginConfig config}) {
     if (_explicitBin(config) != null) return false;
@@ -234,6 +245,17 @@ final class const PiPluginDescriptor({
       );
     }
     final notSelected = selection as ManagedRuntimeNotSelected;
+    if (notSelected is ManagedRuntimePathNotSelected) {
+      return switch (notSelected.primaryRejection) {
+        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+          actionHint: "Update the global Pi installation to ${manifest.minPathVersion.raw} or newer.",
+          runtimeVersion: version.raw,
+        ),
+        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
+          actionHint: "The global Pi installation could not be verified. Check it locally and retry setup detection.",
+        ),
+      };
+    }
     if (explicitBin != null) {
       return switch (notSelected.primaryRejection) {
         ManagedRuntimeProbeRejected(outcome: RuntimeProbeMissing()) => const PluginSetupRuntimeMissing(
@@ -244,16 +266,6 @@ final class const PiPluginDescriptor({
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
           actionHint: "Pi setup could not be determined. Verify the configured CLI and retry.",
-        ),
-      };
-    }
-    if (notSelected is ManagedRuntimePathNotSelected) {
-      return switch (notSelected.primaryRejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
-          actionHint: "Update the global Pi CLI, then retry setup detection.",
-        ),
-        ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "Pi setup could not be determined. Verify the global CLI and retry.",
         ),
       };
     }

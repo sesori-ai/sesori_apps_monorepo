@@ -198,11 +198,14 @@ class const DeepSeekPluginDescriptor() extends BridgePluginDescriptor {
         };
       case ManagedRuntimePathNotSelected(:final primaryRejection):
         return switch (primaryRejection) {
-          ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
-            actionHint: "Update the global DeepSeek adapter, then retry setup detection.",
+          ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+            actionHint:
+                "Update the global Sesori DeepSeek adapter to ${manifest.minPathVersion.raw} or newer "
+                "using its installation method.",
+            runtimeVersion: version.raw,
           ),
           ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-            actionHint: "The global DeepSeek adapter version could not be verified. Check the local installation.",
+            actionHint: "The global Sesori DeepSeek adapter could not be verified. Check it locally and retry.",
           ),
         };
       case ManagedRuntimeAutomaticNotSelected(:final primaryRejection, :final managedRejection):

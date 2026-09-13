@@ -282,7 +282,18 @@ class const OpenCodePluginDescriptor({
     return {
       ...super.managementCapabilities(config: config),
       if (_supportsManagedInstall(config: config)) PluginControlCapability.install,
+      if (_explicitBin(config) == null) PluginControlCapability.runtimeUpdate,
     };
+  }
+
+  @override
+  PluginRuntimeUpdateSpec? runtimeUpdateSpec({required PluginConfig config}) {
+    if (config.flag(_OpenCodeConfigKey.noAutoStart) || _explicitBin(config) != null) return null;
+    return const PluginRuntimeUpdateSpec(
+      executable: "opencode",
+      arguments: ["upgrade"],
+      timeout: Duration(minutes: 10),
+    );
   }
 
   String? _explicitBin(PluginConfig config) {
@@ -442,11 +453,13 @@ class const OpenCodePluginDescriptor({
     final rejection = (selection as ManagedRuntimeNotSelected).primaryRejection;
     if (selection is ManagedRuntimePathNotSelected) {
       return switch (rejection) {
-        ManagedRuntimeVersionRejected() => const PluginSetupUnknown(
-          actionHint: "Update the global OpenCode installation, then retry setup detection.",
+        ManagedRuntimeVersionRejected(:final version) => PluginSetupRuntimeOutdated(
+          actionHint: "Update the global OpenCode installation to ${manifest.minPathVersion.raw} or newer.",
+          runtimeVersion: version.raw,
         ),
         ManagedRuntimeProbeRejected() => const PluginSetupUnknown(
-          actionHint: "The global OpenCode installation could not be verified. Check it locally and retry.",
+          actionHint:
+              "The global OpenCode installation could not be verified. Check it locally and retry setup detection.",
         ),
       };
     }
