@@ -4,9 +4,22 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
+({String directory, File file}) _createWindowsFile({
+  required Directory temporaryDirectory,
+  required String fileName,
+}) {
+  final directory = Platform.isWindows
+      ? temporaryDirectory.path
+      : "C:\\sesori-${p.basename(temporaryDirectory.path)}.v1";
+  final file = File(p.Context(style: p.Style.windows).join(directory, fileName))..writeAsStringSync("runtime");
+  if (!Platform.isWindows) addTearDown(file.deleteSync);
+  return (directory: directory, file: file);
+}
+
 void main() {
   const posixLocator = IoHostExecutableLocator(platformIsWindows: false);
   const windowsLocator = IoHostExecutableLocator(platformIsWindows: true);
+  final windowsPaths = p.Context(style: p.Style.windows);
   late Directory temporaryDirectory;
 
   setUp(() => temporaryDirectory = Directory.systemTemp.createTempSync("host-executable-locator"));
@@ -134,12 +147,12 @@ void main() {
   });
 
   test("uses case-insensitive Windows environment keys and PATHEXT", () {
-    File(p.join(temporaryDirectory.path, "runtime.CMD")).writeAsStringSync("@echo off");
+    final runtime = _createWindowsFile(temporaryDirectory: temporaryDirectory, fileName: "runtime.CMD");
 
     expect(
       windowsLocator.locate(
         executable: "runtime",
-        environment: {"Path": temporaryDirectory.path, "PathExt": ".CMD;.EXE"},
+        environment: {"Path": runtime.directory, "PathExt": ".CMD;.EXE"},
         workingDirectory: null,
       ),
       HostExecutablePresence.present,
@@ -147,36 +160,32 @@ void main() {
   });
 
   test("applies PATHEXT without excluding exact Windows paths", () {
-    File(p.join(temporaryDirectory.path, "runtime.EXE")).writeAsStringSync("runtime");
-    final exactRuntime = File(p.join(temporaryDirectory.path, "exact-runtime"))..writeAsStringSync("runtime");
+    final runtime = _createWindowsFile(temporaryDirectory: temporaryDirectory, fileName: "runtime.EXE");
+    final exactRuntime = _createWindowsFile(temporaryDirectory: temporaryDirectory, fileName: "exact-runtime");
     const environment = {"PATHEXT": ".EXE"};
 
     expect(
       windowsLocator.locate(
-        executable: p.join(temporaryDirectory.path, "runtime"),
+        executable: windowsPaths.join(runtime.directory, "runtime"),
         environment: environment,
         workingDirectory: null,
       ),
       HostExecutablePresence.present,
     );
     expect(
-      windowsLocator.locate(executable: exactRuntime.path, environment: environment, workingDirectory: null),
+      windowsLocator.locate(executable: exactRuntime.file.path, environment: environment, workingDirectory: null),
       HostExecutablePresence.present,
     );
   });
 
   test("checks the Windows working directory before PATH", () {
-    final pathDirectory = Directory.systemTemp.createTempSync("host-executable-path");
-    addTearDown(() {
-      if (pathDirectory.existsSync()) pathDirectory.deleteSync(recursive: true);
-    });
-    File(p.join(temporaryDirectory.path, "runtime.CMD")).writeAsStringSync("@echo off");
+    final runtime = _createWindowsFile(temporaryDirectory: temporaryDirectory, fileName: "runtime.CMD");
 
     expect(
       windowsLocator.locate(
         executable: "runtime",
-        environment: {"PATH": pathDirectory.path, "PATHEXT": ".CMD;.EXE"},
-        workingDirectory: temporaryDirectory.path,
+        environment: {"PATH": windowsPaths.join(runtime.directory, "missing"), "PATHEXT": ".CMD;.EXE"},
+        workingDirectory: runtime.directory,
       ),
       HostExecutablePresence.present,
     );

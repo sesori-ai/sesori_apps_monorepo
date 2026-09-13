@@ -16,6 +16,7 @@ enum HostExecutablePresence() {
 /// without requiring a one-to-one interface.
 class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
   bool get isWindows => platformIsWindows ?? Platform.isWindows;
+  p.Context get _paths => p.Context(style: isWindows ? p.Style.windows : p.Style.posix);
 
   /// Whether [error] is the host's unambiguous command-not-found result.
   ///
@@ -42,7 +43,7 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
   }) {
     if (executable.isEmpty) return HostExecutablePresence.unknown;
 
-    final extensions = isWindows && p.extension(executable).isEmpty
+    final extensions = isWindows && _paths.extension(executable).isEmpty
         ? (_environmentValue(environment: environment, name: "PATHEXT") ??
                   _environmentValue(environment: Platform.environment, name: "PATHEXT") ??
                   ".COM;.EXE;.BAT;.CMD")
@@ -51,15 +52,15 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
               .toList(growable: false)
         : const [""];
     if (executable.contains("/") || (isWindows && executable.contains(r"\"))) {
-      final resolvedExecutable = p.isAbsolute(executable)
+      final resolvedExecutable = _paths.isAbsolute(executable)
           ? executable
-          : p.join(workingDirectory ?? Directory.current.path, executable);
+          : _paths.join(workingDirectory ?? Directory.current.path, executable);
       final candidates = <String>[];
       _addCandidates(
         candidates: candidates,
-        directory: p.dirname(resolvedExecutable),
-        executable: p.basename(resolvedExecutable),
-        extensions: isWindows && p.extension(resolvedExecutable).isEmpty ? ["", ...extensions] : extensions,
+        directory: _paths.dirname(resolvedExecutable),
+        executable: _paths.basename(resolvedExecutable),
+        extensions: isWindows && _paths.extension(resolvedExecutable).isEmpty ? ["", ...extensions] : extensions,
       );
       return _inspectCandidates(candidates: candidates);
     }
@@ -89,9 +90,9 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
       final directory = isWindows ? _unquote(value: rawDirectory.trim()) : rawDirectory;
       final resolvedDirectory = directory.isEmpty
           ? baseDirectory
-          : p.isAbsolute(directory)
+          : _paths.isAbsolute(directory)
           ? directory
-          : p.join(baseDirectory, directory);
+          : _paths.join(baseDirectory, directory);
       _addCandidates(
         candidates: candidates,
         directory: resolvedDirectory,
@@ -109,7 +110,7 @@ class const IoHostExecutableLocator({required final bool? platformIsWindows}) {
     required List<String> extensions,
   }) {
     for (final extension in extensions) {
-      candidates.add(p.join(directory, "$executable$extension"));
+      candidates.add(_paths.join(directory, "$executable$extension"));
     }
   }
 
