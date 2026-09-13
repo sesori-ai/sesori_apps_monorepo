@@ -337,13 +337,16 @@ void main() {
 
     for (final rescanRequested in [false, true]) {
       test("temporary discovery stays hidden and counted (rescan: $rescanRequested)", () async {
-        const visibility = {
+        final temporaryDirectory = normalizeProjectDirectory(directory: Directory.systemTemp.path);
+        final visibility = {
           "/tmp": true,
           "/tmp/qa": true,
           "/private/tmp": true,
           "/private/tmp/qa": true,
           "/tmp-project": false,
           "/private/tmp-project": false,
+          temporaryDirectory: true,
+          p.join(temporaryDirectory, "sesori-catalog-discovery"): true,
         };
         final plugin = _NativeImportPlugin(
           projects: [

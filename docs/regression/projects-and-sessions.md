@@ -31,8 +31,9 @@ state.
   while a navigated directory loads or reports an access failure. Hiding delists
   without destroying sessions or history. Every catalog scan preserves the stored
   visibility of existing projects. Newly discovered ordinary projects appear
-  immediately; projects at or below `/tmp` or `/private/tmp`, or whose first
-  directory entry below the resolved user home starts with `.`, start hidden.
+  immediately; projects at or below the host's system temporary directory,
+  `/tmp`, or `/private/tmp`, or whose first directory entry below the resolved
+  user home starts with `.`, start hidden.
   Both `~/.tool` and its descendants qualify; a dot directory nested below a
   visible home entry does not. Automatic hydration, Deep Scan/full refresh, and
   scans from harness settings share these defaults. They still import and count
@@ -377,8 +378,9 @@ For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
 For catalog scanning, vary automatic hydration, Deep Scan, and harness-settings
-rescans. Compare a direct home dot directory, its descendants, `/tmp` and
-`/private/tmp` projects, similarly prefixed ordinary paths, a dot directory nested
+rescans. Compare a direct home dot directory, its descendants, the host's system
+temporary directory, `/tmp` and `/private/tmp` projects, similarly prefixed
+ordinary paths, a dot directory nested
 below a visible home entry, and an existing project's stored visibility. Reveal
 a hidden folder through Add/Open Project and confirm rescanning preserves it. Use the mobile component playbook to compare every scan
 row state and meaningful count variant in light/dark themes, iPhone/Android

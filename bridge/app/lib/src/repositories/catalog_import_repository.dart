@@ -1,6 +1,6 @@
 import "dart:async";
 import "dart:collection";
-import "dart:io" show Platform;
+import "dart:io" show Directory, Platform;
 import "dart:math";
 
 import "package:path/path.dart" as p;
@@ -48,6 +48,7 @@ class CatalogImportRepository({
   static final Random _secureRandom = Random.secure();
 
   final String? _normalizedUserHomeDirectory = _resolveNormalizedUserHomeDirectory();
+  final String _normalizedTemporaryDirectory = normalizeProjectDirectory(directory: Directory.systemTemp.path);
   final StreamController<List<SessionBackendActivity>> _backendActivityController =
       StreamController<List<SessionBackendActivity>>.broadcast(sync: true);
 
@@ -743,7 +744,7 @@ class CatalogImportRepository({
 
   bool _shouldHideDiscoveredProject({required String projectPath}) {
     // Scans discover history; only Add/Open Project explicitly reveals these folders.
-    for (final temporaryDirectory in const ["/tmp", "/private/tmp"]) {
+    for (final temporaryDirectory in ["/tmp", "/private/tmp", _normalizedTemporaryDirectory]) {
       if (p.equals(temporaryDirectory, projectPath) || p.isWithin(temporaryDirectory, projectPath)) return true;
     }
     final userHomeDirectory = _normalizedUserHomeDirectory;
