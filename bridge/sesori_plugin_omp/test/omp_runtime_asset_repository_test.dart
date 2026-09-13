@@ -3,6 +3,7 @@ import "dart:io";
 import "package:omp_plugin/src/api/omp_linux_libc_probe_api.dart";
 import "package:omp_plugin/src/repositories/omp_runtime_asset_repository.dart";
 import "package:omp_plugin/src/runtime/omp_runtime_manifest.dart";
+import "package:omp_plugin/src/services/omp_runtime_asset_service.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
@@ -64,6 +65,31 @@ void main() {
     } finally {
       marker.deleteSync();
     }
+  });
+
+  test("resolves Windows arm64 through the asset service without a libc probe", () async {
+    const manifest = OmpRuntimeManifest();
+    final executor = _Executor(
+      result: const CommandResult(exitCode: 1, stdout: "", stderr: "unexpected Linux probe"),
+    );
+    final service = OmpRuntimeAssetService(
+      repository: OmpRuntimeAssetRepository(
+        api: OmpLinuxLibcProbeApi(
+          commandExecutor: executor,
+          alpineMarkerPath: "/path/that/does/not/exist",
+          timeout: const Duration(seconds: 1),
+        ),
+        manifest: manifest,
+      ),
+      manifest: manifest,
+    );
+
+    final asset = await service.resolve(
+      target: const PlatformTarget(os: PlatformOs.windows, arch: PlatformArch.arm64),
+    );
+
+    expect(asset!.assetName, "omp-windows-arm64.exe");
+    expect(executor.executable, isNull);
   });
 
   test("selects glibc from ldd evidence", () async {

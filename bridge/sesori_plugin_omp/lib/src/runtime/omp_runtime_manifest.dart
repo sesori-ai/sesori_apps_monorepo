@@ -26,6 +26,10 @@ class const OmpRuntimeManifest() extends RuntimeManifest {
       ),
     },
     PlatformOs.windows: {
+      PlatformArch.arm64: DirectBinaryRuntimeAsset(
+        assetName: "omp-windows-arm64.exe",
+        sha256: "4a5e90e1f1b85a263862b190860caaff76da6890863bbdbaaf29600a0eb54afb",
+      ),
       PlatformArch.x64: DirectBinaryRuntimeAsset(
         assetName: "omp-windows-x64.exe",
         sha256: "2c3bc145997620db35e7014f2c9dd552b6ce3c9a9a037e66dae5f548312b6aca",

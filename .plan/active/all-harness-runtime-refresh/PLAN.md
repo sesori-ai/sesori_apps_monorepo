@@ -5,28 +5,27 @@
 - **Plan slug:** `all-harness-runtime-refresh`.
 - **Status:** [plan PR #1453](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1453),
   [Step 2 PR #1455](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1455),
-  [Step 3 PR #1457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1457), and
-  [Step 4 PR #1460](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1460)
+  [Step 3 PR #1457](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1457),
+  [Step 4 PR #1460](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1460), and
+  [Step 5 PR #1465](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1465)
   merged. Five targets are verified, including the required Pi/Claude lifecycle
   follow-up and Antigravity's actual production-validator native gate. Step 4
   shipped localized Hermes cleanup, with 11 focused tests and analyzer passing.
   The owner corrected the delivery policy on 2026-09-13: missing verification
-  must not keep harnesses on old targets. Step 5 now updates the five remaining
+  must not keep harnesses on old targets. Step 5 delivered the five remaining
   targets—Codex, Cursor, Hermes, OMP and Grok—with 121 focused cases and five
-  owning analyzers passing. OMP advanced again to the newly published `18.1.19`;
-  Grok's channel reports `1.0.30`. Unresolved checks remain final follow-ups;
-  existing failures and evidence limits are not reclassified as passes. See
-  [Step 2 verification](STEP-2-VERIFICATION.md),
-  [Step 3 verification](STEP-3-VERIFICATION.md), and
-  [Step 4 verification](STEP-4-VERIFICATION.md), and
-  [Step 5 verification](STEP-5-VERIFICATION.md).
+  owning analyzers passing. Step 6 implements OMP's eighth mapping, Windows
+  ARM64, with 10 focused cases/analyzer passing. Native Windows ARM64 remains
+  unverified and in final follow-up. See [Step 2](STEP-2-VERIFICATION.md),
+  [Step 3](STEP-3-VERIFICATION.md), [Step 4](STEP-4-VERIFICATION.md),
+  [Step 5](STEP-5-VERIFICATION.md), and [Step 6](STEP-6-VERIFICATION.md) evidence.
 - **Planning baseline:** branch `update-target-runtime-all-harnesses`, commit
   `8879ea1a62cc52104509c4483fe611c7eb0287bf`.
 - **Scope:** ten registered harnesses. DeepSeek remains registered for
   inventory reconciliation only and is explicitly excluded from this series' audit and changes.
-- **Implementation branch:** `all-harness-runtime-refresh-step-5`, based on
-  Step 4 merge `600d94fb49ed0889b53b73ce21273d18fdb52c5d`. This series preserves
-  floors, layout/platform policy, launch behavior, and Sesori database/wire
+- **Implementation branch:** `all-harness-runtime-refresh-step-6`, based on
+  Step 5 merge `79932e1051cf46267dac8f3937546473ea56cf19`. This series preserves
+  floors, existing layout/selection policy, launch behavior, and Sesori database/wire
   contracts; unrelated upstream changes are not part of this refresh.
 - **Evidence:** [AUDIT.md](AUDIT.md) and Steps 2–4 preserve historical observations
   and decisions. Their former pin-blocking language is superseded by the owner
@@ -95,7 +94,7 @@ verification status. Release links alone are not native verification.
 | Claude Code | `2.1.237` / `2.1.221` | [`v2.1.269`](https://github.com/anthropics/claude-code/releases/tag/v2.1.269); npm `latest` agrees | Direct configured/PATH CLI, zero managed assets; adopted with lifecycle follow-up |
 | Hermes Agent | `0.20.4` / `0.20.0` | [`v2026.9.11`](https://github.com/NousResearch/hermes-agent/releases/tag/v2026.9.11), CLI `0.21.2` | Direct `hermes acp`; cleanup fix merged; Step 5 target update with load/isolation follow-up |
 | Pi | `0.84.4` / `0.84.1` | [`v0.85.1`](https://github.com/earendil-works/pi/releases/tag/v0.85.1); npm package `@earendil-works/pi-coding-agent` | Six package archives; adopted with settlement/compaction follow-up |
-| Oh My Pi (OMP) | `17.3.8` / `17.2.13` | [`v18.1.19`](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.19), published 2026-09-12 | Seven existing assets updated in Step 5; eighth Windows ARM64 binary also hashed for the approved separate platform step |
+| Oh My Pi (OMP) | `17.3.8` / `17.2.13` | [`v18.1.19`](https://github.com/can1357/oh-my-pi/releases/tag/v18.1.19), published 2026-09-12 | Seven existing assets updated in Step 5; Step 6 maps the independently hashed eighth Windows ARM64 binary |
 | Grok Build | `1.0.5` / `1.0.5` | [xAI stable channel](https://x.ai/cli/stable), channel `1.0.30` | Direct official CLI; Step 5 update, authenticated checks in final follow-up |
 | DeepSeek (excluded) | `0.1.5` / `0.1.5` | None assessed | Historical six-asset snapshot; current implementation not assessed |
 
@@ -140,12 +139,12 @@ floor. OMP Windows ARM64 is an approved platform mapping, not a floor change.
 - **Pi:** `0.85.1` and six packages landed with accepted settlement and compaction-
   abort follow-up. Preserve package layout, no-handshake behavior and settlement
   ownership. The npm authority is `@earendil-works/pi-coding-agent`.
-- **OMP:** Step 5 updates to `18.1.19` with seven existing direct-binary assets;
-  eight new binaries were downloaded/hashed, reserving Windows ARM64 for Step 6.
-  Earlier native observations belong to `18.1.18`, not this new target. Native
-  `18.1.19`, configured `authenticate(agent)`, list/new/load and persisted cleanup
-  move to final follow-up. Step 6 adds `omp-windows-arm64.exe`, its hash/mapping/tests
-  and platform docs. Preserve glibc/musl selection and direct layout; no unrelated
+- **OMP:** Step 5 delivered `18.1.19`; Step 6 adds the eighth direct-binary
+  mapping, `omp-windows-arm64.exe`, using the hash already verified in Step 5.
+  Manifest and production asset-service selection tests pass, with platform docs
+  recording native Windows ARM64 coverage as unverified. Earlier native
+  observations belong to `18.1.18`. Native `18.1.19`, configured
+  `authenticate(agent)`, list/new/load and persisted cleanup remain final checks. Preserve glibc/musl selection and direct layout; no unrelated
   sub-agent, plan or shell-command feature is adopted.
 - **Grok Build:** Step 5 updates the direct CLI target to stable `1.0.30`.
   Available public metadata is sufficient to select the target; native identity,
@@ -371,7 +370,7 @@ batch, not the first documentation of features already merged:
 
 | Feature | Minimum sufficient scope/boundary | Evidence still needed | Delivery handling |
 |---|---|---|---|
-| OMP Windows ARM64 | L2 Routine on native Windows ARM64 | Native install/version/ACP smoke | Implement approved mapping; missing runner goes to final user-assisted check |
+| OMP Windows ARM64 | L2 Routine on native Windows ARM64 | Native install/version/ACP smoke | Mapping/tests/docs implemented in Step 6; native runner check remains final follow-up |
 | OMP ACP multi-select | L2 Routine scoped only to OMP ACP forms | Widget automation plus live askDialog/ACP roundtrip: two choices, separate custom text, required/optional omission, unchanged single choice | Implement approved flow; missing live fixture goes to final follow-up |
 
 Recorded coverage is **L2 Routine** plus the named current-host macOS arm64
@@ -424,8 +423,8 @@ acceptance, keep this directory active. DeepSeek remains excluded.
 
 ## Nine-step delivery sequence
 
-The series retains nine top-level steps and the four merged PRs. Step 5 now
-finishes all five remaining targets under the corrected update-first policy;
+The series retains nine top-level steps and the five merged PRs. Step 5
+finished all five remaining targets under the corrected update-first policy;
 Steps 6–7 deliver the already-approved features. Steps 8–9 collect unresolved
 questions, perform available follow-ups, request specific user help together,
 and record final coverage/retirement. This changes delivery timing, not scope.
@@ -437,7 +436,7 @@ and record final coverage/retirement. This changes delivery timing, not scope.
 | 3/9 | `🌿 [all-harness-runtime-refresh] runtime: validate Antigravity and Cursor exact builds [step 3/9]` | Merged Antigravity exact pair; retained Cursor integrity/native evidence for Step 5 |
 | 4/9 | `🌿 [all-harness-runtime-refresh] runtime(hermes): fix ephemeral catalog cleanup [step 4/9]` | Merged narrow cleanup fix and honest native-evidence limits; target update now belongs to Step 5 |
 | 5/9 | `🌿 [all-harness-runtime-refresh] runtime: finish remaining target updates [step 5/9]` | Codex, Cursor, Hermes, OMP and Grok targets; reconcile real existing asset hashes, owning fixtures/checks, corrected skill and final follow-up queue |
-| 6/9 | `⚙️ [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Approved eighth executable, real hash, manifest/platform tests and docs; native Windows evidence separately recorded |
+| 6/9 | `🌿 [all-harness-runtime-refresh] runtime(omp): add Windows arm64 asset [step 6/9]` | Implemented eighth mapping through existing ownership, manifest/asset-service tests and docs; native Windows evidence separately recorded |
 | 7/9 | `⚙️ [all-harness-runtime-refresh] acp: support OMP multi-select questions [step 7/9]` | Shared array mapper, OMP-only live capability, separate option/custom questions, bridge/client tests, and question regression/capability docs; no generated/new state |
 | 8/9 | `🌱 [all-harness-runtime-refresh] docs: reconcile runtime regression coverage [step 8/9]` | Penultimate evidence/docs reconciliation and one grouped follow-up/user-help handoff |
 | 9/9 | `🌿 [all-harness-runtime-refresh] verify: record matrix and retire plan [step 9/9]` | Final L2 and feature checks, remaining issues/help, explicit coverage acceptance and conditional retirement |

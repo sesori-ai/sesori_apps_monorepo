@@ -171,6 +171,17 @@ The marks above cover setup inspection only. A plugin that raises
 `authenticationRequired` and blocks further starts; the ⬜ plugins do not do
 that either.
 
+## Managed runtime platform coverage
+
+| Capability | Harness | Sesori implementation | Native verification |
+|---|---|---|---|
+| Windows ARM64 managed installation | OMP | Implemented: official `omp-windows-arm64.exe`, pinned digest and existing direct-binary install path | Not run for `18.1.19`; install/version/ACP/teardown still needs a native ARM64 host |
+
+OMP's eight mappings retain separate Linux glibc/musl binaries and macOS/Windows
+architecture selection. This implementation status is not a native verification
+claim. See [runtime installation regression coverage](regression/plugin-runtime-installation.md)
+for the platform checks and existing PATH/explicit-binary policy.
+
 ## Login initiation
 
 Login is separate from detecting a logged-out backend or installing its runtime.
