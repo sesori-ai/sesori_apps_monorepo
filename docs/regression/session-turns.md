@@ -8,6 +8,10 @@ defaults and queued client sends coherent.
 
 ## Required Behavior
 
+- Staged slash-command chips use a glass-only entrance/exit transition without
+  changing draft, clearing, voice, or picker behavior. The slot changes instantly
+  under reduced motion; presentation coverage lives in [Glass presentation](glass-presentation.md).
+
 - Existing chats on mobile and desktop become read-only when harness management
   reports their exact harness unusable. The accessible live notice explains the
   reason, opens Harness Settings when setup is relevant, and offers Recheck only

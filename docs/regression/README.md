@@ -161,6 +161,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Design catalog](design-catalog.md)
 - [Desktop bridge supervision](desktop-bridge-supervision.md)
 - [Diffs and source control](diffs-and-source-control.md)
+- [Glass presentation](glass-presentation.md)
 - [Native activity indicators](native-activity-indicators.md)
 - [Navigation transitions](navigation-transitions.md)
 - [Notifications](notifications.md)
