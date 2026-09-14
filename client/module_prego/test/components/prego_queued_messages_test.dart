@@ -5,7 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 void main() {
   for (final brightness in Brightness.values) {
-    testWidgets("queue matches three-row geometry and scrolls in $brightness", (tester) async {
+    testWidgets("queue shows a half-row scroll cue in $brightness", (tester) async {
       var removed = -1;
       Future<void> pump({required int count, required double scale}) => tester.pumpWidget(
         MaterialApp(
@@ -50,14 +50,20 @@ void main() {
       await tester.tap(find.byIcon(TablerRegular.trash).at(1));
       expect(removed, 1);
       await pump(count: 5, scale: 1);
-      expect(tester.getSize(find.byType(PregoQueuedMessageList)).height, 120);
-      expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 80);
+      expect(tester.getSize(find.byType(PregoQueuedMessageList)).height, 140);
+      expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 60);
+      final queueRect = tester.getRect(find.byType(PregoQueuedMessageList));
+      final fourthRowRect = tester.getRect(find.byKey(const ValueKey(3)));
+      expect(queueRect.intersect(fourthRowRect).height, 20);
       await tester.drag(find.byType(PregoQueuedMessageList), const Offset(0, -100));
       await tester.pumpAndSettle();
       await tester.tap(find.descendant(of: find.byKey(const ValueKey(4)), matching: find.byIcon(TablerRegular.trash)));
       expect(removed, 4);
       await pump(count: 3, scale: 2);
       expect(tester.getSize(find.byType(PregoQueuedMessageList)).height, 156);
+      await pump(count: 4, scale: 2);
+      expect(tester.getSize(find.byType(PregoQueuedMessageList)).height, 182);
+      expect(tester.state<ScrollableState>(find.byType(Scrollable)).position.maxScrollExtent, 26);
       expect(tester.takeException(), isNull);
     });
   }

@@ -7,7 +7,7 @@ import "../../theme/prego_theme.dart";
 import "../buttons/prego_buttons_solid.dart";
 
 /// Composer inset from Figma's Queued msg list (4916:2220).
-/// Three rows are visible; additional rows scroll independently of the chat.
+/// Three full rows plus half the next row hint that longer queues scroll.
 class const PregoQueuedMessageList({
   super.key,
   required final List<PregoQueuedMessageRow> rows,
@@ -30,7 +30,7 @@ class const PregoQueuedMessageList({
         child: ColoredBox(
           color: prego.colors.bgSurface2,
           child: SizedBox(
-            height: rowHeight * math.min(rows.length, 3),
+            height: rowHeight * math.min(rows.length, 3.5),
             child: ListView(
               primary: false,
               padding: EdgeInsets.zero,
