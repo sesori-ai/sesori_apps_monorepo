@@ -13,9 +13,9 @@ import "error_message_card.dart";
 import "follow_detach_scrollable.dart";
 import "jump_to_edge_pill.dart";
 import "message_timestamp_reveal.dart";
-import "queued_message_bubble.dart";
 import "retry_error_message_card.dart";
 import "scroll_follow_tracker.dart";
+import "sending_message_bubble.dart";
 import "system_message_card.dart";
 import "user_message_card.dart";
 
@@ -29,14 +29,9 @@ class const SessionDetailMessageList({
   required final String? projectId,
   required final List<MessageWithParts> messages,
   required final QueuedSessionSubmission? sendingSubmission,
-  required final List<QueuedSessionSubmission> queuedMessages,
 
-  /// Accepted sends the bridge has not listed yet — rendered as read-only
-  /// queued bubbles so the prompt never blanks between its acceptance
-  /// response and the bridge's queue event.
-  final List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
-  required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
-  final void Function(String promptId)? onCancelBridgeQueuedPrompt,
+  /// New local sends reattach the reader; queue promotions alone must not.
+  required final Set<String> localSubmissionIds,
   required final Map<String, String> streamingText,
   required final List<Session> children,
   required final Map<String, SessionStatus> childStatuses,
@@ -44,7 +39,6 @@ class const SessionDetailMessageList({
   /// Requests the page of messages before the ones shown, or null when the
   /// start of the transcript is already loaded.
   required final Future<void> Function()? onLoadOlderMessages,
-  required final ValueChanged<int>? onCancelQueuedMessage,
   required final bool isLoadingOlderMessages,
   final String? retryErrorMessage,
 
@@ -75,8 +69,6 @@ typedef _DetachedSnapshot = ({
   Map<String, SessionStatus> childStatuses,
   String? retryErrorMessage,
 });
-
-typedef _TransientSubmission = ({QueuedSessionSubmission submission, bool isSending, bool awaitingBridge});
 
 class _SessionDetailMessageListState() extends State<SessionDetailMessageList> with SingleTickerProviderStateMixin {
   static const _kListViewKey = Key("session-detail-message-list-view");
@@ -180,14 +172,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     // user returned to the newest message.
     if (_follow.following) return;
     final frozen = _snapshot;
-    final transientSubmissionsChanged = !_transientSubmissionsMatch(oldWidget: oldWidget);
-    if (frozen != null && transientSubmissionsChanged) {
-      if (_hasNewTransientSubmission(oldWidget: oldWidget)) {
-        WidgetsBinding.instance.addPostFrameCallback((_) {
-          if (!mounted || _follow.following) return;
-          unawaited(_follow.animateToEdge());
-        });
-      }
+    if (frozen != null && widget.localSubmissionIds.difference(oldWidget.localSubmissionIds).isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (!mounted || _follow.following) return;
+        unawaited(_follow.animateToEdge());
+      });
     }
     if (!olderPageRequestCompleted) return;
     if (frozen == null) return;
@@ -247,44 +236,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     });
   }
 
-  bool _transientSubmissionsMatch({required SessionDetailMessageList oldWidget}) {
-    if (!identical(oldWidget.sendingSubmission, widget.sendingSubmission)) return false;
-    if (oldWidget.queuedMessages.length != widget.queuedMessages.length) return false;
-    for (var i = 0; i < widget.queuedMessages.length; i++) {
-      if (!identical(oldWidget.queuedMessages[i], widget.queuedMessages[i])) return false;
-    }
-    if (oldWidget.bridgeQueuedPrompts.length != widget.bridgeQueuedPrompts.length) return false;
-    for (var i = 0; i < widget.bridgeQueuedPrompts.length; i++) {
-      if (oldWidget.bridgeQueuedPrompts[i] != widget.bridgeQueuedPrompts[i]) return false;
-    }
-    if (oldWidget.awaitingBridgeSubmissions.length != widget.awaitingBridgeSubmissions.length) return false;
-    for (var i = 0; i < widget.awaitingBridgeSubmissions.length; i++) {
-      if (!identical(oldWidget.awaitingBridgeSubmissions[i], widget.awaitingBridgeSubmissions[i])) return false;
-    }
-    return true;
-  }
-
-  bool _hasNewTransientSubmission({required SessionDetailMessageList oldWidget}) {
-    final previousPromptIds = <String>{
-      ?oldWidget.sendingSubmission?.promptId,
-      for (final submission in oldWidget.queuedMessages) submission.promptId,
-      // A fast acceptance can move a send straight to the parked surface
-      // between two builds; it is still the reader's new submission.
-      for (final submission in oldWidget.awaitingBridgeSubmissions) submission.promptId,
-    };
-    return [
-      ?widget.sendingSubmission,
-      ...widget.queuedMessages,
-      ...widget.awaitingBridgeSubmissions,
-    ].any((submission) => !previousPromptIds.contains(submission.promptId));
-  }
-
   List<String> _rowIdsFor({
     required List<MessageWithParts> messages,
     required QueuedSessionSubmission? sendingSubmission,
-    required List<QueuedSessionSubmission> queuedMessages,
-    required List<QueuedSessionPrompt> bridgeQueuedPrompts,
-    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required bool hasRetryError,
   }) {
     final deliveredPromptIds = <String>{
@@ -296,14 +250,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       for (final message in messages)
         if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
       if (hasRetryError) _kRetryErrorRowId,
-      for (final prompt in bridgeQueuedPrompts)
-        if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
-      for (final submission in awaitingBridgeSubmissions)
-        if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
       if (sendingSubmission != null && !deliveredPromptIds.contains(sendingSubmission.promptId))
         "$_kPromptRowPrefix${sendingSubmission.promptId}",
-      for (final submission in queuedMessages)
-        if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
     ];
     final seenIds = <String>{};
     return [
@@ -317,45 +265,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     MessageUser() || MessageAssistant() || MessageError() => info.id,
   };
 
-  static String? _bridgePromptDisplayText(QueuedSessionPrompt prompt) {
-    final command = prompt.command;
-    final text = prompt.text;
-    if (command == null) return text;
-    return text == null ? "/$command" : "/$command $text";
-  }
-
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final snap = _snapshot;
     final messages = snap?.messages ?? widget.messages;
     final sendingSubmission = widget.sendingSubmission;
-    final queuedMessages = widget.queuedMessages;
     final streamingText = snap?.streamingText ?? widget.streamingText;
     final children = snap?.children ?? widget.children;
     final childStatuses = snap?.childStatuses ?? widget.childStatuses;
     final retryErrorMessage = snap?.retryErrorMessage ?? widget.retryErrorMessage;
 
     final indexById = _indexByIdFor(messages: messages);
-    final transientSubmissions = <String, _TransientSubmission>{
-      for (final submission in widget.awaitingBridgeSubmissions)
-        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: true),
-      if (sendingSubmission != null)
-        "$_kPromptRowPrefix${sendingSubmission.promptId}": (
-          submission: sendingSubmission,
-          isSending: true,
-          awaitingBridge: false,
-        ),
-      for (final submission in queuedMessages)
-        "$_kPromptRowPrefix${submission.promptId}": (submission: submission, isSending: false, awaitingBridge: false),
-    };
-
     final rowIds = _rowIdsFor(
       messages: messages,
       sendingSubmission: sendingSubmission,
-      queuedMessages: queuedMessages,
-      bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
-      awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
       hasRetryError: retryErrorMessage != null,
     );
     // Coalesced post-frame pin-to-edge while following. The scheduler
@@ -424,7 +348,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                   entryId: entryId,
                   messages: messages,
                   indexById: indexById,
-                  transientSubmissions: transientSubmissions,
                   streamingText: streamingText,
                   children: children,
                   childStatuses: childStatuses,
@@ -442,7 +365,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required String entryId,
     required List<MessageWithParts> messages,
     required Map<String, int> indexById,
-    required Map<String, _TransientSubmission> transientSubmissions,
     required Map<String, String> streamingText,
     required List<Session> children,
     required Map<String, SessionStatus> childStatuses,
@@ -454,11 +376,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       return _revealable(createdAtMs: null, child: RetryErrorMessageCard(message: retryErrorMessage));
     }
     if (entryId.startsWith(_kPromptRowPrefix)) {
-      // One row serves the prompt's whole lifecycle. Resolve the most settled
-      // state first: the delivered message, else the bridge-queued entry, else
-      // the locally staged submission. A mid-handoff frame (entry updated
-      // before the next widget rebuild, or vice versa) then renders the
-      // previous state instead of collapsing to an empty box.
+      // Delivered content takes precedence over the in-flight submission.
       final index = indexById[entryId];
       if (index != null && index < messages.length && messages[index].hasRenderableUserContent) {
         final message = messages[index];
@@ -467,56 +385,20 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           child: _animatedPromptRow(child: UserMessageCard(message: message)),
         );
       }
-      final promptId = entryId.substring(_kPromptRowPrefix.length);
-      final prompt = widget.bridgeQueuedPrompts.where((candidate) => candidate.id == promptId).firstOrNull;
-      if (prompt != null) {
-        final onCancel = widget.onCancelBridgeQueuedPrompt;
+      final submission = widget.sendingSubmission;
+      if (submission != null && entryId == "$_kPromptRowPrefix${submission.promptId}") {
         return _revealable(
-          createdAtMs: prompt.createdAt,
+          createdAtMs: null,
           child: _animatedPromptRow(
-            child: QueuedMessageBubble(
+            child: SendingMessageBubble(
               key: ValueKey(entryId),
-              displayText: _bridgePromptDisplayText(prompt),
-              isCommand: prompt.command != null,
-              attachmentCount: prompt.attachmentCount,
-              localAttachments: const [],
-              presentation: onCancel == null
-                  ? const QueuedMessageBubblePresentation.pendingReadOnly()
-                  : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
+              displayText: submission.displayText,
+              attachmentCount: submission.attachments.length,
+              localAttachments: submission.attachments,
             ),
           ),
         );
       }
-    }
-    final transientSubmission = transientSubmissions[entryId];
-    if (transientSubmission != null) {
-      final submission = transientSubmission.submission;
-      final onCancelQueuedMessage = widget.onCancelQueuedMessage;
-      return _revealable(
-        createdAtMs: null,
-        child: _animatedPromptRow(
-          child: QueuedMessageBubble(
-            key: ValueKey(entryId),
-            displayText: submission.displayText,
-            isCommand: submission.isCommand,
-            attachmentCount: submission.attachments.length,
-            localAttachments: submission.attachments,
-            presentation: transientSubmission.isSending
-                ? const QueuedMessageBubblePresentation.sending()
-                : submission is UnavailableQueuedCommandSubmission
-                ? QueuedMessageBubblePresentation.commandUnavailable(
-                    onRemove: onCancelQueuedMessage == null
-                        ? null
-                        : () => _cancelQueuedSubmission(submission: submission),
-                  )
-                : transientSubmission.awaitingBridge || onCancelQueuedMessage == null
-                ? const QueuedMessageBubblePresentation.pendingReadOnly()
-                : QueuedMessageBubblePresentation.pending(
-                    onCancel: () => _cancelQueuedSubmission(submission: submission),
-                  ),
-          ),
-        ),
-      );
     }
     final index = indexById[entryId];
     if (index == null || index >= messages.length) return const SizedBox.shrink();
@@ -546,17 +428,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return _revealable(createdAtMs: message.info.time?.created, child: card);
   }
 
-  void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {
-    final onCancelQueuedMessage = widget.onCancelQueuedMessage;
-    if (onCancelQueuedMessage == null) return;
-    final index = widget.queuedMessages.indexWhere((candidate) => identical(candidate, submission));
-    if (index < 0) return;
-    onCancelQueuedMessage(index);
-  }
-
-  /// Eases a prompt row's height as it moves between its sending, queued,
-  /// and sent renderings, whose status rows differ in height — without this
-  /// each hop snaps and reads as a flash in the bottom-pinned list.
+  /// Eases the in-flight bubble into its delivered content.
   Widget _animatedPromptRow({required Widget child}) {
     // No wrapper at all under reduced motion: a zero-duration AnimatedSize
     // re-dirties itself inside its own layout pass.

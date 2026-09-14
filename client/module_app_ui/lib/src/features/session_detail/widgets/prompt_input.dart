@@ -135,6 +135,9 @@ class const PromptInput({
   required final VoidCallback onAbort,
   required final ValueNotifier<PregoComposerSurfaceStyle> surfaceStyleController,
   required final Widget? composerHeader,
+
+  /// Pending prompts embedded above the input inside every composer surface.
+  required final Widget? queuedMessages,
   required final List<CommandInfo> availableCommands,
   required final CommandInfo? stagedCommand,
   required final ValueChanged<CommandInfo> onCommandSelected,
@@ -1312,16 +1315,19 @@ class _PromptInputState() extends State<PromptInput> {
     BuildContext context, {
     required PregoComposerSurfaceStyle surfaceStyle,
     required Widget child,
+    required Widget? queuedMessages,
     bool tightensTrailingWhileRecording = false,
   }) {
     final prego = context.prego;
-    const radius = BorderRadius.all(Radius.circular(PregoRadius.full));
+    final radius = queuedMessages == null
+        ? const BorderRadius.all(Radius.circular(PregoRadius.full))
+        : _queuedComposerRadius;
     final tightenEnd = tightensTrailingWhileRecording && _voicePresentation == _VoicePresentation.recording;
 
     return DecoratedBox(
       decoration: pregoComposerSurfaceDecoration(
         prego: prego,
-        style: surfaceStyle,
+        style: queuedMessages == null ? surfaceStyle : PregoComposerSurfaceStyle.emphasized,
         borderRadius: radius,
       ),
       child: Stack(
@@ -1336,7 +1342,12 @@ class _PromptInputState() extends State<PromptInput> {
               bottom: PregoSpacing.sm,
               end: tightenEnd ? PregoSpacing.xs : PregoSpacing.sm,
             ),
-            child: child,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              spacing: PregoSpacing.md,
+              children: [?queuedMessages, child],
+            ),
           ),
         ],
       ),
@@ -1381,6 +1392,7 @@ class _PromptInputState() extends State<PromptInput> {
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.subtle,
+      queuedMessages: _layout == ComposerSurfaceLayout.typing ? null : widget.queuedMessages,
       tightensTrailingWhileRecording: true,
       child: Row(
         spacing: PregoSpacing.md,
@@ -1419,6 +1431,7 @@ class _PromptInputState() extends State<PromptInput> {
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.emphasized,
+      queuedMessages: widget.queuedMessages,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1450,6 +1463,13 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  static const _queuedComposerRadius = BorderRadius.only(
+    topLeft: Radius.circular(PregoRadius.x5l),
+    topRight: Radius.circular(PregoRadius.x4l),
+    bottomLeft: Radius.circular(PregoRadius.x5l),
+    bottomRight: Radius.circular(PregoRadius.x5l),
+  );
+
   /// The expanded typing container: multiline field with the fullscreen-editor
   /// button in its top-right corner, and the action row below — a voice pill
   /// of its own in voice-first mode, the mic/send row in text-first mode.
@@ -1462,7 +1482,9 @@ class _PromptInputState() extends State<PromptInput> {
     // Voice-first nests the fully-rounded hold pill along the bottom, so the
     // container's bottom corners wrap it: pill radius (22) + padding (6) = 28
     // is well past x3l — the design draws them at x6l.
-    final borderRadius = voiceFirst
+    final borderRadius = widget.queuedMessages != null
+        ? _queuedComposerRadius
+        : voiceFirst
         ? const BorderRadius.vertical(
             top: Radius.circular(PregoRadius.x3l),
             bottom: Radius.circular(PregoRadius.x6l),
@@ -1480,6 +1502,7 @@ class _PromptInputState() extends State<PromptInput> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         spacing: PregoSpacing.md,
         children: [
+          ?widget.queuedMessages,
           if (_attachments.isNotEmpty) _buildAttachmentStrip(context),
           Stack(
             children: [
