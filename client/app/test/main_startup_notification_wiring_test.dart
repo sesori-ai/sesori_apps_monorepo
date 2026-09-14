@@ -1,6 +1,8 @@
 import "dart:async";
 
 import "package:flutter_test/flutter_test.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/analytics_runtime_bootstrap.dart";
@@ -16,11 +18,10 @@ class MockForegroundNotificationDispatcher() extends Mock implements ForegroundN
 
 class MockNotificationOpenDispatcher() extends Mock implements NotificationOpenDispatcher;
 
-class MockConnectionNotificationObservationService() extends Mock
-    implements ConnectionNotificationObservationService;
+class MockConnectionNotificationObservationService() extends Mock implements ConnectionNotificationObservationService;
 
 void main() {
-  test("notification and UI startup do not await the analytics crawl gate", () async {
+  testWidgets("notification and UI startup do not await the analytics crawl gate", (tester) async {
     final events = <String>[];
     final crawlGate = Completer<AnalyticsStoreCrawlGate>();
     final singularGateApplied = Completer<void>();
@@ -67,7 +68,16 @@ void main() {
       return ChatInputMode.voiceFirst;
     }
 
-    void runAppFn(_) => events.add("runApp");
+    void runAppFn(Widget app) {
+      events.add("runApp");
+      final scope = app as GlassAdaptiveScope;
+      expect(scope.minQuality, GlassQuality.minimal);
+      expect(scope.initialQuality, GlassQuality.standard);
+      expect(scope.maxQuality, GlassQuality.standard);
+      expect(scope.allowStepUp, isTrue);
+      expect(scope.targetFrameMs, 8);
+      expect(scope.onQualityChanged, isNotNull);
+    }
 
     await bootstrapSesoriApp(
       shouldInitializeFirebase: true,
@@ -83,6 +93,29 @@ void main() {
       readChatInputModeFn: readChatInputMode,
       runAppFn: runAppFn,
     );
+
+    // The shipped wrapper installs the Material resolver, not the OS fallback.
+    for (final brightness in Brightness.values) {
+      await tester.pumpWidget(
+        MaterialApp(
+          key: ValueKey(brightness),
+          theme: ThemeData(brightness: brightness),
+          home: MediaQuery(
+            data: MediaQueryData(
+              platformBrightness: brightness == Brightness.light ? Brightness.dark : Brightness.light,
+              disableAnimations: true,
+            ),
+            child: Builder(
+              builder: (context) {
+                expect(GlassTheme.brightnessOf(context), brightness);
+                expect(GlassAccessibilityData.of(context).reduceMotion, isTrue);
+                return const SizedBox.shrink();
+              },
+            ),
+          ),
+        ),
+      );
+    }
 
     await startupStarted.future.timeout(const Duration(seconds: 2));
 
@@ -103,7 +136,7 @@ void main() {
     crawlGate.complete(AnalyticsStoreCrawlGate.suspend);
     await singularGateApplied.future.timeout(const Duration(seconds: 2));
     allowStartupFinish.complete();
-    await Future<void>.delayed(Duration.zero);
+    await tester.pump();
 
     expect(
       events,

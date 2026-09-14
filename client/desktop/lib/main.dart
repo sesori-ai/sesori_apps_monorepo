@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -20,6 +21,9 @@ Future<void> main(List<String> arguments) async {
   if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;
   }
+
+  // Only the primary process renders UI; premium remains disabled.
+  await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
 
   final AppearanceMode initialAppearance = await getIt<AppearanceStore>().read();
   final ChatInputMode initialChatInputMode = await getIt<ChatInputModeStore>().read();

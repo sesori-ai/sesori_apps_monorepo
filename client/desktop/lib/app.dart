@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -23,22 +24,35 @@ class const SesoriDesktopApp({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      providers: <BlocProvider<dynamic>>[
-        BlocProvider<AppearanceCubit>(
-          create: (_) => AppearanceCubit(
-            store: getIt<AppearanceStore>(),
-            initialMode: initialAppearance,
+    return LiquidGlassWidgets.wrap(
+      brightnessResolver: Theme.maybeBrightnessOf,
+      adaptiveQuality: true,
+      adaptiveConfig: GlassAdaptiveScopeConfig(
+        minQuality: .minimal,
+        initialQuality: .standard,
+        maxQuality: .standard,
+        allowStepUp: true,
+        onQualityChanged: (oldQuality, newQuality) {
+          logd("Quality changed for liquid glass: ${oldQuality.name} -> ${newQuality.name}");
+        },
+      ),
+      child: MultiBlocProvider(
+        providers: <BlocProvider<dynamic>>[
+          BlocProvider<AppearanceCubit>(
+            create: (_) => AppearanceCubit(
+              store: getIt<AppearanceStore>(),
+              initialMode: initialAppearance,
+            ),
           ),
-        ),
-        BlocProvider<ChatInputModeCubit>(
-          create: (_) => ChatInputModeCubit(
-            store: getIt<ChatInputModeStore>(),
-            initialMode: initialChatInputMode,
+          BlocProvider<ChatInputModeCubit>(
+            create: (_) => ChatInputModeCubit(
+              store: getIt<ChatInputModeStore>(),
+              initialMode: initialChatInputMode,
+            ),
           ),
-        ),
-      ],
-      child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+        ],
+        child: _DesktopAppShell(hiddenLaunch: hiddenLaunch),
+      ),
     );
   }
 }

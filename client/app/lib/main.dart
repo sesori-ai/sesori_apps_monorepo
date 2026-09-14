@@ -51,9 +51,8 @@ void _configureFirebaseSdk({
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-  // Pre-warm the liquid-glass shaders so the frosted top nav / glass buttons
-  // render without a first-frame compile hitch. No-ops on Skia/web.
-  await LiquidGlassWidgets.initialize();
+  // Initialize standard shaders, but do not preload the unused premium tier.
+  await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);
   // The native splash runs in fullscreen, which leaves the status/nav bars
   // hidden on iOS until the engine is told otherwise. Restore them and let
   // content draw behind them so the background image still reaches the edges.
@@ -156,7 +155,7 @@ Future<void> bootstrapSesoriApp({
         minQuality: .minimal,
         initialQuality: .standard,
         maxQuality: .standard,
-        allowStepUp: false,
+        allowStepUp: true,
         onQualityChanged: (oldQuality, newQuality) {
           logd("Quality changed for liquid glass: ${oldQuality.name} -> ${newQuality.name}");
         },
