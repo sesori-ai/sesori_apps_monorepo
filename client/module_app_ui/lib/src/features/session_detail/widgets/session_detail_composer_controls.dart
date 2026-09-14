@@ -10,6 +10,7 @@ import "composer_surface_style.dart";
 import "prompt_input.dart";
 import "session_abort_scope_dialog.dart";
 import "session_detail_loaded_view.dart";
+import "session_detail_prompt_queue.dart";
 
 /// Shared session composer controls injected below the transcript view.
 ///
@@ -103,6 +104,17 @@ class _SessionDetailComposerControlsState() extends State<SessionDetailComposerC
             ),
             surfaceStyleController: _composerSurfaceStyle,
             header: null,
+            queuedMessages:
+                state.queuedMessages.isEmpty &&
+                    state.awaitingBridgeSubmissions.isEmpty &&
+                    state.bridgeQueuedPrompts.isEmpty
+                ? null
+                : SessionDetailPromptQueue(
+                    state: state,
+                    onCancelLocal: context.read<SessionDetailCubit>().cancelQueuedMessage,
+                    onCancelBridge: (promptId) =>
+                        context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
+                  ),
             composerHeader: ValueListenableBuilder<PregoComposerSurfaceStyle>(
               valueListenable: _composerSurfaceStyle,
               builder: (context, surfaceStyle, _) => AgentModelButtons(

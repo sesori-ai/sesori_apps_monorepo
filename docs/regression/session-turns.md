@@ -472,14 +472,13 @@ defaults and queued client sends coherent.
   selection boundary can be cancelled individually; cancellation after dispatch
   is refused as benign because the prompt is then governed by Stop. Aborting the
   session clears every remaining plugin-owned entry.
-- One prompt renders as one bubble that transforms in place: sending (staged
-  locally while the POST is in flight) → queued (bridge-owned) → sent (the
-  transcript message). The dispatched message carries the prompt id and
-  replaces the queued entry in the same client state emission, so no frame
-  shows the prompt twice or not at all. Client-staged sends preserve order,
-  survive a transient disconnection while the session-detail cubit is alive,
-  retain the agent, model, and variant selected at submission, and drain with
-  the same prompt id so retries stay idempotent.
+- An in-flight send remains visible in the transcript until acceptance. Accepted
+  or locally queued prompts appear once in the composer queue; acceptance awaiting
+  the bridge snapshot remains visible but read-only. Delivered prompt IDs suppress
+  pending rows so the transcript and queue do not duplicate the same prompt.
+  Client-staged sends preserve order, survive a transient disconnection while the
+  session-detail cubit is alive, retain the agent, model, and variant selected at
+  submission, and drain with the same prompt id so retries stay idempotent.
 - When a plugin rejects a send before acceptance because its agent, model,
   variant, or command is no longer offered, the bridge deletes that
   options-cache row and returns the typed `staleSessionOptions` rejection.
@@ -511,19 +510,26 @@ defaults and queued client sends coherent.
   carries no prompt id and renders as an ordinary transcript message. A harness
   that publishes no user echo at all leaves the client's own copy to be settled
   by the next snapshot instead.
-- Queued and sending text render as the newest rows inside the scrollable
-  transcript, never as controls pinned above the composer. They use the same
-  neutral bubble and Markdown rendering as settled user text; a compact status
-  rail and subtle queued outline carry the transient state, with the outline
-  change animated when reduced motion is not requested. A turn started on one
-  client is visible to every other client of that bridge.
+- Pending prompts sit inside every composer layout above its input/actions,
+  in a neutral bordered list with 20px corners. Each 40px row has a plain,
+  single-line ellipsized preview and a trailing trash action that cancels only
+  that prompt. Newlines flatten to spaces; slash-command names and attachment
+  counts remain visible in the preview instead of Markdown or image thumbnails.
+  Three rows fit before the list scrolls independently of the transcript; larger
+  accessibility text increases row height rather than clipping. Cancelling does
+  not clear the draft or dismiss its keyboard. An unavailable command retains its
+  arguments, a warning icon, and a removal action.
+- Read-only, archived, and harness-blocked views retain the compact pending list
+  even without a composer. Remote cancellation is disabled there; local queued
+  submissions remain removable while blocked, but not on read-only routes.
+  A turn started on one client is visible to every other client of that bridge.
 - Outgoing message bubbles use the neutral raised surface, 12px corners and
   10px padding, aligned right and sized against the available transcript width
   (including desktop split panes). Both user and assistant Markdown use Prego
   14px/20px regular primary text with 1% letter spacing, matching list markers
   and underlined primary-color links in light and dark themes. Streaming and
   settled responses share the same typography; code remains monospace and
-  Markdown emphasis, selection, attachments and queued-state cues stay usable.
+  Markdown emphasis, selection and delivered attachments stay usable.
 - User and assistant message text containing a raw HTML block renders that
   markup as a literal code block, so a pasted page or error body stays visible
   and copyable instead of being swallowed by the Markdown renderer.
@@ -553,7 +559,7 @@ defaults and queued client sends coherent.
   keyboards never reveal a black route or platform background around their edges.
 - Transcript rows render in a plain reversed list with newest content at the
   bottom. Following stays pinned through appends and streaming growth; scrolling
-  away freezes live row content until reattachment. Sending, queued, retry,
+  away freezes live row content until reattachment. Sending, retry,
   streaming, working, and settled rows keep stable identities and transitions.
 - A leftward touch, stylus, or trackpad drag across the transcript reveals all
   message timestamps together without changing vertical scroll or follow state,
@@ -576,7 +582,7 @@ defaults and queued client sends coherent.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated shared presentation and desktop shell coverage: representative selectable transcript content renders through the shared session-detail view, the desktop session route is present, and desktop renders the text-first composer and declared attachment/diff actions without resolving voice capture. A loaded blocked fixture shows its reason in the composer's place with the transcript still rendered, an unavailable-history fixture shows it full-screen, and neither shows pending-input banners; setup-relevant fixtures retain Harness Settings, authentication-required fixtures alone additionally show Recheck, and local queue cancellation remains available. Live plugin, representative: a prompt streams assistant output and returns the session to idle. |
-| L2 Routine | Automated core and shared UI: blocked-state calculation covers every reason; reconnect/loading retains the last decision and composer focus/draft until a new result arrives; blocked cubit coverage refuses send, stop, bridge-owned queued-prompt cancellation, question answers and permission replies without remote dispatch; an already-open response dialog closes; local cancellation remains local; loaded transcript/events survive reload overlap and metadata/content failure; restoration refreshes prerequisites before controls return. Ready dormant/degraded and existing busy queue behavior remain interactive. Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Cursor coverage proves generic Task terminal retirement, initial-terminal foreground correlation, duplicate-id ambiguity rejection, full prior-turn cleanup, cancellation/error ordering before root settlement, prompt-write user/terminal/request ordering through production composition, active-Task process-exit failure before correlation reset, and reset cleanup without a synthetic terminal event. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text, and proves notification-only command settlement, agent-running command synthesis, pre-acceptance failure, post-acceptance process exit, and abort. Automated client queue coverage proves prompt settlement before and after the send response, including resumed FIFO drain. Automated Codex coverage includes native-compaction settlement and holds root idle through a running child, releases it once, rolls child pending input into the root summary, reconciles an already-idle child abort, and proves scoped-stop preflight, named-child isolation, pending-admission fencing, pending-input cancellation, false atomic acknowledgment, and complete attempted fanout on failure. Live Codex plugin coverage exercises side-effect-free confirmation, root-only `keep`, named-child subtree isolation, root full-stop fanout, authoritative terminal evidence plus plugin status, false atomic acknowledgment, and runtime survival. Include pending-input preservation/cancellation when requests are present; plugin-only evidence does not establish client end-to-end coverage. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
+| L2 Routine | Automated core and shared UI: blocked-state calculation covers every reason; reconnect/loading retains the last decision and composer focus/draft until a new result arrives; blocked cubit coverage refuses send, stop, bridge-owned queued-prompt cancellation, question answers and permission replies without remote dispatch; an already-open response dialog closes; local cancellation remains local; loaded transcript/events survive reload overlap and metadata/content failure; restoration refreshes prerequisites before controls return. Ready dormant/degraded and existing busy queue behavior remain interactive. Live plugin, representative: slash command returns on acceptance; prompt defaults update; first and stale transcript replay reconciles prompt defaults before the opening snapshot is applied; abort stops a turn and reports its outcome; finalized messages are immediately readable from history; a recognized stale option returns the typed rejection only after cache invalidation. Automated ACP coverage proves same-session activity extends the prompt inactivity deadline while concurrent-session activity does not. Automated Cursor coverage proves generic Task terminal retirement, initial-terminal foreground correlation, duplicate-id ambiguity rejection, full prior-turn cleanup, cancellation/error ordering before root settlement, prompt-write user/terminal/request ordering through production composition, active-Task process-exit failure before correlation reset, and reset cleanup without a synthetic terminal event. Automated Pi coverage keeps visible custom messages system-attributed across live and replay without changing agent defaults or completion text, and proves notification-only command settlement, agent-running command synthesis, pre-acceptance failure, post-acceptance process exit, and abort. Automated client queue coverage proves prompt settlement before and after the send response, including resumed FIFO drain; composer embedding in both input modes, one-line previews, three-row scrolling, text scaling, correct local/remote cancellation, draft/focus preservation, read-only and blocked visibility, and acceptance/delivery deduplication. Automated Codex coverage includes native-compaction settlement and holds root idle through a running child, releases it once, rolls child pending input into the root summary, reconciles an already-idle child abort, and proves scoped-stop preflight, named-child isolation, pending-admission fencing, pending-input cancellation, false atomic acknowledgment, and complete attempted fanout on failure. Live Codex plugin coverage exercises side-effect-free confirmation, root-only `keep`, named-child subtree isolation, root full-stop fanout, authoritative terminal evidence plus plugin status, false atomic acknowledgment, and runtime survival. Include pending-input preservation/cancellation when requests are present; plugin-only evidence does not establish client end-to-end coverage. Shared/desktop widget coverage proves Enter versus Shift+Enter policy, active-IME candidate confirmation, unchanged mobile modifier-send behavior, safe Escape popup dismissal, and selectable transcript content. |
 | L3 Release | Client end to end on phone: an existing chat blocked by a representative setup/runtime state keeps navigation, selection/copy and rendered history, opens shared Harness Settings, and restores controls only after a successful refresh. Every supporting production plugin: text, reasoning, tool, and status events stream with consistent normalization and the shared output bound; agent, model, and variant apply per send; streaming and queued feedback, text composer, sending, and abort controls render on both surfaces; voice capture remains mobile-only; a stale selection refreshes, warns, and retries once without losing the queued prompt; and a removed command becomes visibly unavailable and removable without being retried or overtaken. Claude: a stop while a background sub-agent runs shows the scope dialog, cancelling it leaves the tile running and its wake-up turn later arrives, confirming cancels it, and a stop with no sub-agents shows no dialog; the session stays busy until the last sub-agent's wake-up turn settles. OpenCode: a stop while a delegated child session runs shows the scope dialog, cancelling it leaves the child running, confirming aborts the root and the child, and a stop with no running child shows no dialog. Codex: exercise `confirm`, `keep`, and `stop` through the client scope dialog, including named-child scope and client fallback; plugin-only QA does not satisfy this boundary. DeepSeek, Copilot, and Grok cover busy stop-and-send. Copilot additionally covers an exact advertised slash command and reasoning only when its selected model emits it. Grok covers exact model/effort application, accepted-send timing, abort, visible failure, and idle completion without claiming image input. A Pi custom message renders as labelled automation rather than agent output. |
 | L4 Extended | Client end to end on macOS desktop and iOS, plus one Android unavailable-to-usable variation against a macOS bridge: cold and live blocks, settings recovery, successful post-recovery send, archive/route-read-only precedence, a second harness remaining usable, and a block triggered from another surface while input or a response dialog is active. Relay integration, every supporting production plugin: a slow or unresponsive plugin leaves other sessions, plugins, and the relay responsive; archived sends and queued-prompt cancels are refused without racing archiving; disconnect and reconnect mid-turn resumes without lost or duplicated parts; bridge-owned prompts survive leaving and reopening in order and appear on a second client; a prompt waiting at a dispatch boundary can be cancelled; a permission reply lands while a command or selection-changing prompt waits behind the running turn; a second client observes the same turn and steering prompt. Two Copilot sessions and two Grok sessions run concurrently while each preserves its own ordering and selection. |
 | L5 Full | Client end to end, every supporting production plugin: retry status surfaces with attempt and timing; concurrent sends across sessions and plugins interleave without ordering damage; background and resume mid-turn recovers live state; an aborted turn triggers no completion notification. |
@@ -654,11 +660,12 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   continuation. A bridge-queued prompt disappears after leaving and reopening
   the session, a
   retried send within the dedupe window becomes a duplicate turn, or the
-  queued bubble and its dispatched message render simultaneously. Submitted text disappears while
-  bridge acceptance or backend startup is still pending, or queued feedback
-  uses a visually unrelated or composer-pinned surface, or renders authored
-  Markdown as literal syntax. Message text that embeds a raw HTML block loses
-  everything from the first block-level tag onward.
+  composer queue entry and its dispatched message render simultaneously. Submitted
+  text disappears while bridge acceptance or backend startup is still pending,
+  the pending list escapes the composer, grows beyond three rows without scrolling,
+  or a trash action cancels another prompt or clears the draft. Delivered message
+  text renders authored Markdown as literal syntax, or text that embeds a raw HTML
+  block loses everything from the first block-level tag onward.
 - A stale-option rejection retains the rejected cache row, waits on an
   unrelated options discovery before answering, remains silent, drops the
   staged prompt, changes FIFO order or prompt identity, refreshes and retries

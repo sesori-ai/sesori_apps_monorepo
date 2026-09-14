@@ -388,6 +388,7 @@ class _NewSessionViewState() extends State<NewSessionView> {
                 onAbort: _dismissScreen,
                 surfaceStyleController: surfaceStyleController,
                 header: _buildErrorBanner(state),
+                queuedMessages: null,
                 composerHeader: _buildComposerHeader(
                   state: state,
                   surfaceStyleController: surfaceStyleController,
