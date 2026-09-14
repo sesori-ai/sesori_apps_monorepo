@@ -35,13 +35,13 @@ class const CommandPickerSheet({
 }
 
 class _CommandPickerSheetState() extends State<CommandPickerSheet> {
-  String _query = "";
+  final TextEditingController _searchController = TextEditingController();
 
   /// Precomputed picker entries; `null` while the background isolate is
   /// still preparing them.
   List<CommandPickerEntry>? _entries;
 
-  /// Entries matching [_query]. Cached so unrelated rebuilds don't re-run
+  /// Entries matching the search text. Cached so unrelated rebuilds don't re-run
   /// the filter pass; only recomputed when the entries arrive or the query
   /// changes. `null` while the entries are still loading.
   List<CommandPickerEntry>? _filtered;
@@ -50,6 +50,12 @@ class _CommandPickerSheetState() extends State<CommandPickerSheet> {
   void initState() {
     super.initState();
     unawaited(_loadEntries());
+  }
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
   }
 
   Future<void> _loadEntries() async {
@@ -77,12 +83,12 @@ class _CommandPickerSheetState() extends State<CommandPickerSheet> {
   /// the sorting and display-string preparation already happened in the
   /// background isolate.
   List<CommandPickerEntry> _filteredEntries(List<CommandPickerEntry> entries) {
-    final query = _query.trim().toLowerCase();
+    final query = _searchController.text.trim().toLowerCase();
     if (query.isEmpty) return entries;
     return entries.where((entry) => entry.searchText.contains(query)).toList();
   }
 
-  String _sourceLabel(CommandSource? source, {required AppLocalizations loc}) => switch (source) {
+  String _sourceLabel({required CommandSource? source, required AppLocalizations loc}) => switch (source) {
     CommandSource.command => loc.commandSourceCommand,
     CommandSource.mcp => loc.commandSourceMcp,
     CommandSource.skill => loc.commandSourceSkill,
@@ -101,34 +107,27 @@ class _CommandPickerSheetState() extends State<CommandPickerSheet> {
       child: Column(
         children: [
           Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
-            child: TextField(
-              decoration: InputDecoration(
-                hintText: loc.sessionDetailCommandSearch,
-                prefixIcon: const Icon(Icons.search, size: 20),
-                isDense: true,
-                contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(24),
-                  borderSide: BorderSide.none,
-                ),
-                filled: true,
-                fillColor: prego.colors.bgSurface1,
-              ),
-              onChanged: (value) => setState(() {
-                _query = value;
+            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.xs),
+            child: PregoInputField(
+              controller: _searchController,
+              label: loc.sessionDetailCommandSearch,
+              hintText: loc.sessionDetailCommandSearchHint,
+              autocorrect: false,
+              textInputAction: TextInputAction.search,
+              trailing: Icon(TablerRegular.search, size: 20, color: prego.colors.textTertiary),
+              onChanged: (_) => setState(() {
                 final entries = _entries;
                 if (entries != null) _filtered = _filteredEntries(entries);
               }),
             ),
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: PregoSpacing.md),
           Expanded(
             child: switch (_filtered) {
               null => const Center(child: PregoActivityIndicator(color: null)),
               final filtered when filtered.isEmpty => Center(
                 child: Padding(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.all(PregoSpacing.x3l),
                   child: Text(
                     loc.sessionDetailNoCommands,
                     textAlign: TextAlign.center,
@@ -143,57 +142,71 @@ class _CommandPickerSheetState() extends State<CommandPickerSheet> {
                 // handleBottomSafeArea: false the sheet no longer pads for it, so
                 // the bottom inset is added as scroll padding here (mirroring the
                 // model picker) instead of clipping the last command above it.
-                padding: EdgeInsetsDirectional.fromSTEB(8, 4, 8, 4 + MediaQuery.paddingOf(context).bottom),
-                itemCount: filtered.length,
-                separatorBuilder: (_, _) => Divider(
-                  height: 1,
-                  color: prego.colors.borderPrimary,
+                padding: EdgeInsetsDirectional.fromSTEB(
+                  PregoSpacing.xl,
+                  PregoSpacing.xs,
+                  PregoSpacing.xl,
+                  PregoSpacing.xl + MediaQuery.paddingOf(context).bottom,
                 ),
+                itemCount: filtered.length,
+                separatorBuilder: (_, _) => const SizedBox(height: PregoSpacing.md),
                 itemBuilder: (context, index) {
                   final entry = filtered[index];
                   final description = entry.displayDescription;
                   final hints = entry.displayHints;
-                  return ListTile(
-                    title: Text("/${entry.command.name}"),
-                    subtitle: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        if (description != null)
-                          Text(
-                            description,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                          ),
-                        if (hints != null)
-                          Padding(
-                            padding: const EdgeInsetsDirectional.only(top: 4),
-                            child: Text(
-                              hints,
+                  // Keep cards lazy: catalogs can contain hundreds of commands.
+                  return PregoGroupedRows(
+                    children: [
+                      PregoGroupedRow(
+                        title: Wrap(
+                          spacing: PregoSpacing.md,
+                          runSpacing: PregoSpacing.xs,
+                          crossAxisAlignment: WrapCrossAlignment.center,
+                          children: [
+                            Text(
+                              "/${entry.command.name}",
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
-                              style: prego.textTheme.textXs.regular.copyWith(
-                                color: prego.colors.textSecondary,
-                              ),
+                              style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textPrimary),
                             ),
-                          ),
-                      ],
-                    ),
-                    trailing: Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                      decoration: BoxDecoration(
-                        color: prego.colors.bgBrandPrimary,
-                        borderRadius: BorderRadius.circular(12),
-                      ),
-                      child: Text(
-                        _sourceLabel(entry.command.source, loc: loc),
-                        style: prego.textTheme.textXs.medium.copyWith(
-                          color: prego.colors.textBrandPrimary,
-                          fontWeight: FontWeight.w600,
+                            PregoTag(
+                              label: _sourceLabel(source: entry.command.source, loc: loc),
+                            ),
+                          ],
                         ),
+                        subtitle: description != null || hints != null
+                            ? Padding(
+                                padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs),
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  mainAxisSize: MainAxisSize.min,
+                                  spacing: PregoSpacing.xs,
+                                  children: [
+                                    if (description != null)
+                                      Text(
+                                        description,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: prego.textTheme.textSm.regular.copyWith(
+                                          color: prego.colors.textSecondary,
+                                        ),
+                                      ),
+                                    if (hints != null)
+                                      Text(
+                                        hints,
+                                        maxLines: 2,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: prego.textTheme.textXs.regular.copyWith(
+                                          color: prego.colors.textTertiary,
+                                        ),
+                                      ),
+                                  ],
+                                ),
+                              )
+                            : null,
+                        onTap: () => context.pop(entry.command),
                       ),
-                    ),
-                    onTap: () => context.pop(entry.command),
+                    ],
                   );
                 },
               ),
