@@ -1754,46 +1754,68 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).queuedMessages, isEmpty);
     });
 
-    test("cancel removes the entry on success and on not-found, keeps it on transport failure", () async {
-      when(
-        () => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"),
-      ).thenAnswer((_) async => ApiResponse.success(null));
-      var cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+    test("confirmed cancellation removes the entry without a failure notice", () async {
+      when(() => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"))
+          .thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+      final notices = <SessionDetailNotice>[];
+      final subscription = cubit.noticeStream.listen(notices.add);
+      addTearDown(subscription.cancel);
+      await cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, isEmpty);
+      expect(notices, isEmpty);
+      verifyNever(() => mockSessionRepository.getQueuedPrompts(sessionId: _sessionId));
+    });
+
+    test("refused cancellation retains the row until authoritative dispatch reconciliation", () async {
+      final refresh = Completer<ApiResponse<QueuedPromptResponse>>();
+      when(() => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"))
+          .thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+      when(() => mockSessionRepository.getQueuedPrompts(sessionId: _sessionId)).thenAnswer((_) => refresh.future);
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+      final notices = <SessionDetailNotice>[];
+      final subscription = cubit.noticeStream.listen(notices.add);
+      addTearDown(subscription.cancel);
+      final cancellation = cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
+      await Future<void>.delayed(Duration.zero);
+      expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, const [_queuedPrompt]);
+      expect(notices.single, isA<SessionDetailQueueCancellationFailed>());
+      final dispatched = _queuedPrompt.copyWith(dispatchState: QueuedPromptDispatchState.dispatched);
+      refresh.complete(ApiResponse.success(QueuedPromptResponse(data: [dispatched])));
+      await cancellation;
+      expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, [dispatched]);
+    });
+
+    test("refused cancellation can reconcile an entry removed by another client", () async {
+      when(() => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"))
+          .thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+      when(() => mockSessionRepository.getQueuedPrompts(sessionId: _sessionId))
+          .thenAnswer((_) async => ApiResponse.success(const QueuedPromptResponse(data: [])));
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
       await cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
       expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, isEmpty);
+    });
 
-      when(
-        () => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
-      cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
-      await cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
-      expect(
-        (cubit.state as SessionDetailLoaded).bridgeQueuedPrompts,
-        isEmpty,
-        reason: "not-found means it already dispatched or was removed elsewhere",
-      );
-
-      when(
-        () => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.dartHttpClient(Exception("offline"))));
-      cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
-      await cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
-      expect(
-        (cubit.state as SessionDetailLoaded).bridgeQueuedPrompts,
-        const [_queuedPrompt],
-        reason: "an unreachable bridge proves nothing about the entry",
-      );
-
-      when(
-        () => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)));
-      cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
-      await cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
-      expect(
-        (cubit.state as SessionDetailLoaded).bridgeQueuedPrompts,
-        const [_queuedPrompt],
-        reason: "a server rejection other than not-found must not hide a still-live entry",
-      );
+    test("failed cancellation or reconciliation preserves the row and reports failure", () async {
+      for (final error in [
+        ApiError.dartHttpClient(Exception("offline")),
+        ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null),
+        ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null),
+      ]) {
+        when(() => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"))
+            .thenAnswer((_) async => ApiResponse.error(error));
+        when(() => mockSessionRepository.getQueuedPrompts(sessionId: _sessionId))
+            .thenAnswer((_) async => ApiResponse.error(ApiError.dartHttpClient(Exception("offline"))));
+        final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+        final notices = <SessionDetailNotice>[];
+        final subscription = cubit.noticeStream.listen(notices.add);
+        addTearDown(subscription.cancel);
+        await cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, const [_queuedPrompt]);
+        expect(notices.single, isA<SessionDetailQueueCancellationFailed>());
+      }
     });
 
     test("a snapshot listing an accepted prompt drops its staged local copy", () async {

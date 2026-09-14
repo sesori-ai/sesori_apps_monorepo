@@ -66,6 +66,12 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> {
   void _showNotice(SessionDetailNotice notice) {
     if (!_isCurrentPage) return;
     final (title, message, variant, duration) = switch (notice) {
+      SessionDetailQueueCancellationFailed() => (
+        context.loc.sessionDetailQueueCancellationFailed,
+        null,
+        PregoPopupAlertsNotificationsVariant.warning,
+        const Duration(seconds: 3),
+      ),
       SessionDetailPromptOptionsUpdated() => (
         context.loc.sessionDetailPromptOptionsUpdated,
         null,

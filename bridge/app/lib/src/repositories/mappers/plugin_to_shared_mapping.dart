@@ -203,6 +203,10 @@ extension PluginMessagePartMapping on PluginMessagePart {
 extension PluginQueuedPromptMapping on PluginQueuedPrompt {
   QueuedSessionPrompt toSharedQueuedPrompt() => QueuedSessionPrompt(
     id: id,
+    dispatchState: switch (dispatchState) {
+      PluginQueuedPromptDispatchState.queued => QueuedPromptDispatchState.queued,
+      PluginQueuedPromptDispatchState.dispatched => QueuedPromptDispatchState.dispatched,
+    },
     text: text,
     command: command,
     attachmentCount: attachmentCount,

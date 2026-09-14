@@ -1,6 +1,9 @@
 /// One-shot outcomes the session-detail shell should surface to the user.
 sealed class const SessionDetailNotice();
 
+/// Cancellation was refused or could not be confirmed by the bridge.
+final class const SessionDetailQueueCancellationFailed() extends SessionDetailNotice;
+
 /// A send used stale agent/model/variant data; fresh options were applied and
 /// the queued submission is being retried automatically.
 final class const SessionDetailPromptOptionsUpdated() extends SessionDetailNotice;

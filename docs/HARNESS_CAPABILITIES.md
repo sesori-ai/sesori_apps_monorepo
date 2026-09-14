@@ -18,6 +18,25 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Individual queued-prompt cancellation
+
+| Harness / boundary | Status |
+|---|---|
+| Pi and Claude, still bridge-pending | ✅ Implemented before dispatch; successful cancellation prevents backend submission. |
+| Pi and Claude, already dispatched and awaiting user echo | 🚫 Individual cancellation is not supported through the driven seam; retained rows show Sending without trash. Immediate steering remains enabled. |
+| ACP adapters, including OMP, before prompt-frame writing | ✅ Implemented; a cancelled pending entry never writes its prompt. Once writing starts, cancellation is refused and the row reports Sending until the user-message projection arrives. |
+| OpenCode and Codex | No retained queue entries through this API; this does not claim a native per-item cancellation capability. |
+
+Pi's installed 0.85.1 RPC `clear_queue` clears **all** steering/follow-up work,
+including extension-owned input, and carries no Sesori prompt IDs. It cannot
+safely implement deletion of one row; Sesori does not clear/replay that native
+queue. This limit is verified from installed native source. Dispatch-state and
+cancellation evidence is synthetic plugin/bridge/core/widget coverage, not a new
+live authenticated run. Older bridge payloads without dispatch ownership are
+explicitly unknown; modern clients do not offer cancellation based on that guess.
+A late cancellation refusal is not success: the client reports it and reconciles
+authoritative state instead of hiding still-live input.
+
 ## Explicit shell-command presentation
 
 Ordinary tools retain name, bounded title, status and attachments; only

@@ -147,6 +147,9 @@ final class ClaudeSessionService({
       for (final entry in state.queue)
         PluginQueuedPrompt(
           id: entry.id,
+          dispatchState: entry.dispatched
+              ? PluginQueuedPromptDispatchState.dispatched
+              : PluginQueuedPromptDispatchState.queued,
           text: entry.displayText,
           command: entry.command,
           attachmentCount: entry.attachmentCount,
@@ -360,6 +363,7 @@ final class ClaudeSessionService({
           if (!acceptance.isCompleted) acceptance.complete();
         case _QueuedTurnMode(:final entry):
           entry.dispatched = true;
+          _emitQueueUpdate(sessionId: sessionId, state: state);
           _recordDispatched(state: state, promptId: entry.id);
           if (!_dispatches.isClosed) {
             _dispatches.add(

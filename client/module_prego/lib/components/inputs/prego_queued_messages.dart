@@ -4,7 +4,6 @@ import "package:material_ui/material_ui.dart";
 
 import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
-import "../buttons/prego_buttons_solid.dart";
 
 /// Composer inset from Figma's Queued msg list (4916:2220).
 /// Three full rows plus half the next row hint that longer queues scroll.
@@ -50,8 +49,7 @@ class const PregoQueuedMessageRow({
   required final String preview,
   required final String statusLabel,
   required final String? warning,
-  required final String removeLabel,
-  required final VoidCallback? onRemove,
+  required final Widget trailing,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -87,18 +85,7 @@ class const PregoQueuedMessageRow({
                   semanticLabel: warning,
                 ),
               ),
-            if (onRemove != null)
-              Tooltip(
-                message: removeLabel,
-                child: PregoButtonsSolid.iconOnly(
-                  leadingIcon: TablerRegular.trash,
-                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                  size: PregoButtonsSolidSize.sm,
-                  onPressed: onRemove,
-                ),
-              )
-            else
-              const SizedBox.square(dimension: 36),
+            trailing,
           ],
         ),
       ),

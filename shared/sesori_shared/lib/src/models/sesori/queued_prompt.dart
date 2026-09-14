@@ -4,19 +4,28 @@ part "queued_prompt.freezed.dart";
 
 part "queued_prompt.g.dart";
 
-/// One prompt the bridge has accepted for a session but not yet dispatched to
-/// the backend.
-///
-/// The bridge owns this state: clients render it, cancel it, and drop their
-/// local copy once it appears. When the prompt dispatches, the transcript's
-/// user message carries the same [id] as its `promptId` so clients can
-/// transform the queued bubble into the sent message without a remove/re-add.
+/// Dispatch ownership of an accepted prompt awaiting its visible user echo.
+/// Unknown peers cannot establish whether cancellation is still possible.
+enum QueuedPromptDispatchState() {
+  unknown,
+  queued,
+  dispatched,
+}
+
+/// An accepted prompt retained until its user message becomes visible.
+/// Only [QueuedPromptDispatchState.queued] still permits cancellation.
 @Freezed(fromJson: true, toJson: true)
 sealed class QueuedSessionPrompt with _$QueuedSessionPrompt {
   const factory({
     /// The prompt id: client-supplied `SendPromptRequest.promptId`, or a
     /// bridge-generated fallback for clients that predate it.
     required String id,
+
+    // COMPATIBILITY 2026-09-14 (v1.8.4): Older bridges omit dispatch ownership.
+    // Retire unknown when all supported production bridges report this field.
+    @JsonKey(unknownEnumValue: QueuedPromptDispatchState.unknown)
+    @Default(QueuedPromptDispatchState.unknown)
+    QueuedPromptDispatchState dispatchState,
 
     /// User-visible prompt text. Null for an attachment-only prompt — never
     /// an empty string.

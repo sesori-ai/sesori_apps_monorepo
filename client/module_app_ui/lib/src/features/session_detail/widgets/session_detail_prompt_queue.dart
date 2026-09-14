@@ -1,6 +1,7 @@
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
@@ -30,18 +31,38 @@ class const SessionDetailPromptQueue({
       required int attachmentCount,
       required bool isCommand,
       required bool unavailable,
+      required ({String label, Widget indicator})? deliveryStatus,
       required VoidCallback? onRemove,
     }) => PregoQueuedMessageRow(
       key: ValueKey("session-detail-queued-$id"),
       preview: preview(text: text, attachmentCount: attachmentCount),
-      statusLabel: unavailable
-          ? loc.sessionDetailUnavailableCommand
-          : isCommand
-          ? loc.sessionDetailQueuedCommand
-          : loc.sessionDetailQueuedMessage,
+      statusLabel:
+          deliveryStatus?.label ??
+          (unavailable
+              ? loc.sessionDetailUnavailableCommand
+              : isCommand
+              ? loc.sessionDetailQueuedCommand
+              : loc.sessionDetailQueuedMessage),
       warning: unavailable ? loc.sessionDetailUnavailableCommand : null,
-      removeLabel: unavailable ? loc.sessionDetailRemoveQueued : loc.sessionDetailCancelQueued,
-      onRemove: onRemove,
+      trailing: deliveryStatus != null
+          ? Tooltip(
+              message: deliveryStatus.label,
+              child: SizedBox.square(
+                dimension: 36,
+                child: Center(child: deliveryStatus.indicator),
+              ),
+            )
+          : onRemove != null
+          ? Tooltip(
+              message: unavailable ? loc.sessionDetailRemoveQueued : loc.sessionDetailCancelQueued,
+              child: PregoButtonsSolid.iconOnly(
+                leadingIcon: TablerRegular.trash,
+                hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                size: PregoButtonsSolidSize.sm,
+                onPressed: onRemove,
+              ),
+            )
+          : const SizedBox.square(dimension: 36),
     );
     return PregoQueuedMessageList(
       rows: [
@@ -53,7 +74,20 @@ class const SessionDetailPromptQueue({
               attachmentCount: prompt.attachmentCount,
               isCommand: prompt.command != null,
               unavailable: false,
-              onRemove: onCancelBridge == null ? null : () => onCancelBridge?.call(prompt.id),
+              deliveryStatus: switch (prompt.dispatchState) {
+                QueuedPromptDispatchState.queued => null,
+                QueuedPromptDispatchState.dispatched => (
+                  label: loc.sessionDetailSendingMessage,
+                  indicator: const SizedBox.square(dimension: 14, child: PregoActivityIndicator(color: null)),
+                ),
+                QueuedPromptDispatchState.unknown => (
+                  label: loc.sessionDetailQueueCancellationUnavailable,
+                  indicator: Icon(TablerRegular.info_circle, size: 20, color: context.prego.colors.textTertiary),
+                ),
+              },
+              onRemove: prompt.dispatchState == QueuedPromptDispatchState.queued && onCancelBridge != null
+                  ? () => onCancelBridge?.call(prompt.id)
+                  : null,
             ),
         for (final submission in state.awaitingBridgeSubmissions)
           if (seen.add(submission.promptId))
@@ -63,6 +97,7 @@ class const SessionDetailPromptQueue({
               attachmentCount: submission.attachments.length,
               isCommand: submission.isCommand,
               unavailable: false,
+              deliveryStatus: null,
               onRemove: null,
             ),
         for (final (index, submission) in state.queuedMessages.indexed)
@@ -73,6 +108,7 @@ class const SessionDetailPromptQueue({
               attachmentCount: submission.attachments.length,
               isCommand: submission.isCommand,
               unavailable: submission is UnavailableQueuedCommandSubmission,
+              deliveryStatus: null,
               onRemove: onCancelLocal == null ? null : () => onCancelLocal?.call(index),
             ),
       ],

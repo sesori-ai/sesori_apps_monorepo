@@ -54,8 +54,22 @@ void main() {
 
     test("maps plugin entries to the shared wire model in order", () async {
       plugin.queuedPrompts.addAll(const [
-        PluginQueuedPrompt(id: "prm_1", text: "first", command: null, attachmentCount: 0, createdAt: 10),
-        PluginQueuedPrompt(id: "prm_2", text: null, command: "review", attachmentCount: 2, createdAt: 20),
+        PluginQueuedPrompt(
+          dispatchState: PluginQueuedPromptDispatchState.queued,
+          id: "prm_1",
+          text: "first",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 10,
+        ),
+        PluginQueuedPrompt(
+          dispatchState: PluginQueuedPromptDispatchState.dispatched,
+          id: "prm_2",
+          text: null,
+          command: "review",
+          attachmentCount: 2,
+          createdAt: 20,
+        ),
       ]);
 
       final response = await handler.handle(
@@ -64,8 +78,22 @@ void main() {
       );
 
       expect(response.data, const [
-        QueuedSessionPrompt(id: "prm_1", text: "first", command: null, attachmentCount: 0, createdAt: 10),
-        QueuedSessionPrompt(id: "prm_2", text: null, command: "review", attachmentCount: 2, createdAt: 20),
+        QueuedSessionPrompt(
+          dispatchState: QueuedPromptDispatchState.queued,
+          id: "prm_1",
+          text: "first",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 10,
+        ),
+        QueuedSessionPrompt(
+          dispatchState: QueuedPromptDispatchState.dispatched,
+          id: "prm_2",
+          text: null,
+          command: "review",
+          attachmentCount: 2,
+          createdAt: 20,
+        ),
       ]);
     });
 

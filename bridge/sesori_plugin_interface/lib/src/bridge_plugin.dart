@@ -172,18 +172,16 @@ sealed class BridgePluginApi() {
     required ({String providerID, String modelID})? model,
   });
 
-  /// Returns the prompts accepted for [sessionId] but not yet dispatched to
-  /// the backend, in dispatch order.
-  ///
-  /// The default is an empty list: a plugin that hands every prompt to its
-  /// backend immediately has nothing queued to expose.
+  /// Returns accepted prompts retained until their user messages are visible,
+  /// in dispatch order. Each entry reports its current dispatch ownership.
+  /// The default is empty for plugins without retained prompt presentation.
   Future<List<PluginQueuedPrompt>> getQueuedPrompts({required String sessionId}) async => const [];
 
   /// Cancels the queued prompt [promptId] on [sessionId] before dispatch.
   ///
   /// Returns whether an entry was removed. The default is `false`: a plugin
-  /// without a queue has nothing to cancel — including an entry that already
-  /// dispatched, which callers treat as benign (the prompt became a turn).
+  /// without a queue has nothing to cancel. False does not confirm cancellation:
+  /// an already-dispatched entry is still governed by the running turn.
   Future<bool> cancelQueuedPrompt({required String sessionId, required String promptId}) async => false;
 
   /// Stops the session's in-progress work. [subAgents] scopes the stop for

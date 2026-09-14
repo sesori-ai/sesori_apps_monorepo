@@ -26,8 +26,8 @@ class CancelQueuedPromptHandler({required final SessionPromptService _sessionPro
       sessionId: body.sessionId,
       promptId: body.promptId,
     );
-    // Clients treat this as benign: the entry already dispatched (became a
-    // turn) or was removed by another client.
+    // A refusal is not successful cancellation: dispatch may already have
+    // transferred ownership, or another client may have removed the prompt.
     if (!removed) {
       throw buildErrorResponse(request, 404, "queued prompt not found");
     }

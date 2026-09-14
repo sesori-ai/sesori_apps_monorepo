@@ -1495,16 +1495,26 @@ class SessionDetailCubit(
     );
   }
 
-  /// Cancels a bridge-queued prompt. The entry leaves the state on the
-  /// bridge's confirmation — including not-found, which means it already
-  /// dispatched or was removed elsewhere; only a transport failure keeps it.
+  /// Removes a prompt only after confirmed cancellation. A refusal can mean
+  /// dispatch already transferred ownership; reconcile without claiming success.
   Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
     if (_refuseWhenInteractionBlocked(action: "cancel a bridge-queued prompt")) return;
     final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
-    // Only not-found means the entry is gone (dispatched or removed
-    // elsewhere); any other failure proves nothing about the bridge queue.
+    if (isClosed) return;
     if (result case ErrorResponse(:final error)) {
-      if (error is! NonSuccessCodeError || error.errorCode != 404) return;
+      logw("Queued prompt cancellation was not confirmed for $_sessionId/$promptId", error);
+      _noticeStream.add(const SessionDetailQueueCancellationFailed());
+      if (error is NonSuccessCodeError && error.errorCode == 404) {
+        final refreshed = await _sessionRepository.getQueuedPrompts(sessionId: _sessionId);
+        if (isClosed) return;
+        switch (refreshed) {
+          case SuccessResponse(:final data):
+            _onBridgeQueueUpdated(data.data);
+          case ErrorResponse(:final error):
+            logw("Failed to reconcile queued prompts after cancellation for $_sessionId/$promptId", error);
+        }
+      }
+      return;
     }
     _promptQueue.removeByPromptId(promptId);
     final current = state;

@@ -192,7 +192,12 @@ final class PiSessionService({
     if (state == null) return const [];
     return [
       for (final turn in state.turns)
-        if (turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible) turn.presentation,
+        if (turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible)
+          turn.presentation.copyWith(
+            dispatchState: turn.promptDispatched
+                ? PluginQueuedPromptDispatchState.dispatched
+                : PluginQueuedPromptDispatchState.queued,
+          ),
     ];
   }
 
@@ -328,6 +333,7 @@ final class PiSessionService({
         variant: variant,
         userVisibleText: userVisibleText,
         presentation: PluginQueuedPrompt(
+          dispatchState: PluginQueuedPromptDispatchState.queued,
           id: promptId,
           text: visibleText == null || visibleText.isEmpty ? null : visibleText,
           command: null,
@@ -548,6 +554,7 @@ final class PiSessionService({
       turn
         ..promptDispatched = true
         ..agentStarted = state.agentRunning;
+      if (turn is _PiQueuedPromptTurn) _emitQueueUpdate(sessionId: sessionId, state: state);
       if (turn case _PiCompactionTurn(:final customInstructions)) {
         await _processes.dispatchCompaction(
           connection: connection,

@@ -4,18 +4,22 @@ part "plugin_queued_prompt.freezed.dart";
 
 part "plugin_queued_prompt.g.dart";
 
-/// One prompt a plugin has accepted for a session but not yet dispatched to
-/// its backend.
-///
-/// Plugins that queue (accept at enqueue and dispatch later) expose these via
-/// [BridgePluginApi.getQueuedPrompts] and announce changes with
-/// `BridgeSseQueuedPromptsUpdated`. Plugins that hand prompts to their backend
-/// immediately never surface any.
+/// Whether an accepted prompt can still be cancelled before backend dispatch.
+enum PluginQueuedPromptDispatchState() {
+  queued,
+  dispatched,
+}
+
+/// An accepted prompt retained until its user message becomes visible.
+/// Plugins project dispatch ownership through [dispatchState] and announce
+/// changes with `BridgeSseQueuedPromptsUpdated`.
 @freezed
 sealed class PluginQueuedPrompt with _$PluginQueuedPrompt {
   const factory({
     /// The prompt id handed to `sendPrompt`/`sendCommand`.
     required String id,
+
+    required PluginQueuedPromptDispatchState dispatchState,
 
     /// User-visible prompt text. Null for an attachment-only prompt — never
     /// an empty string.
