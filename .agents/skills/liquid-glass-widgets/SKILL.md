@@ -26,4 +26,5 @@ blanket substitution rules and performance claims:
 `skills/liquid-glass-widgets/SKILL.md` from the published pub.dev
 `liquid_glass_widgets` 1.5.0 archive:
 `https://pub.dev/api/archives/liquid_glass_widgets-1.5.0.tar.gz`.
+The upstream MIT notice is retained in `references/LICENSE`.
 SHA-256: `211e46b46d93b9e97d977be14f86a4ec2e173e279df64b0c84261a164b6103a5`.

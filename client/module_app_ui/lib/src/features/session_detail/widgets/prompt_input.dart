@@ -1204,11 +1204,23 @@ class _PromptInputState() extends State<PromptInput> {
       );
     }
 
+    if (prefersReducedMotion(context)) return child;
     return AnimatedSize(
       duration: _morphDuration,
       curve: _morphCurve,
       alignment: Alignment.bottomCenter,
-      child: AnimatedSwitcher(duration: _morphDuration, child: child),
+      child: AnimatedSwitcher(
+        duration: _morphDuration,
+        transitionBuilder: (transitionChild, animation) {
+          // Only the staged chip bears glass. Picker/voice/retry content keeps
+          // its ordinary fade, including while the outgoing chip dematerializes.
+          if (transitionChild.key == const ValueKey("staged-command")) {
+            return GlassMaterializeTransition(animation: animation, child: transitionChild);
+          }
+          return AnimatedSwitcher.defaultTransitionBuilder(transitionChild, animation);
+        },
+        child: child,
+      ),
     );
   }
 
