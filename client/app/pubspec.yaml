@@ -33,7 +33,7 @@ dependencies:
   material_ui: ^1.2.0
   cupertino_ui: ^1.0.2
 
-  liquid_glass_widgets: ^1.4.4
+  liquid_glass_widgets: 1.5.0
   http: ^1.6.0
   freezed_annotation: ^3.1.0
   rxdart: ^0.28.0
