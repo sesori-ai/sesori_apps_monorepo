@@ -34,8 +34,11 @@ and keep native close/quit behavior safe.
   with `--hidden`; disabling it removes the registration rather than merely
   flipping an in-app flag. Development builds resolve the repository helper
   from the desktop executable path when a login service supplies `/` as the
-  working directory; packaged-layout resolution remains a distribution-plan
-  concern. The supervised helper receives a login-shell-derived executable
+  working directory. Before spawning, the development resolver verifies the
+  helper exists: a missing repository bundle reports `cd bridge/app && make
+  build-host`, while a missing explicit override identifies
+  `SESORI_DESKTOP_BRIDGE_PATH`. Packaged-layout resolution remains a
+  distribution-plan concern. The supervised helper receives a login-shell-derived executable
   search path, so harnesses installed outside launchd's default PATH remain
   discoverable after autostart. Only PATH is derived for the helper; shell
   variables are not imported or persisted. If the login-shell probe fails, the
@@ -171,8 +174,10 @@ the status and bounded recent output.
   missing when local or relay ownership is lost.
 - Repeated launch-at-login enables create duplicate registrations, disabling
   leaves a stale login item, a login-launched development build cannot find its
-  repository helper or its PATH-installed harnesses, `--hidden` startup hides
-  the app without a usable tray,
+  repository helper or its PATH-installed harnesses, an unbuilt repository
+  helper falls through to an opaque `ProcessException` without the build
+  command, a missing explicit helper override omits the responsible variable,
+  `--hidden` startup hides the app without a usable tray,
   the macOS window flashes or remains visible during hidden startup, or a normal
   manual launch unexpectedly starts hidden.
 - Close hides the only surface when no tray host exists, ignores a close during
@@ -250,6 +255,7 @@ the status and bounded recent output.
 - `client/module_desktop_core/lib/src/cubits/bridge_control/`
 - `client/module_desktop_core/lib/src/foundation/platform/bridge_process_environment.dart`
 - `client/desktop/lib/core/platform/io_bridge_process_environment.dart`
+- `client/desktop/lib/core/platform/desktop_bridge_executable_path_resolver.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_bridge_takeover_orchestrator.dart`
 - `client/module_desktop_core/lib/src/orchestration/desktop_logout_orchestrator.dart`
 - `client/module_desktop_core/lib/src/services/window_bounds_service.dart`

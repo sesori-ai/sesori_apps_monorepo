@@ -5,10 +5,32 @@ import "package:injectable/injectable.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
+@visibleForTesting
+typedef DesktopBridgeExecutableExists = bool Function({required String executablePath});
+
+/// Raised when the desktop's resolved bridge helper has not been built or the
+/// explicit helper override points to a missing file.
+final class const DesktopBridgeExecutableNotFoundException({
+  required final String executablePath,
+  required final bool usesConfiguredPath,
+}) implements Exception {
+  @override
+  String toString() {
+    if (usesConfiguredPath) {
+      return "DesktopBridgeExecutableNotFoundException: "
+          "${DesktopBridgeExecutablePathResolver.environmentVariable} points to a missing desktop bridge "
+          'executable at "$executablePath". Update it to an existing helper before starting the desktop app.';
+    }
+    return "DesktopBridgeExecutableNotFoundException: development desktop bridge has not been built at "
+        '"$executablePath". From the repository root, run `cd bridge/app && make build-host`, then restart the '
+        "desktop app.";
+  }
+}
+
 /// Development bridge-path policy for the desktop shell.
 ///
 /// An explicit `SESORI_DESKTOP_BRIDGE_PATH` wins. Otherwise the repository
-/// host bundle produced by `bridge/app/make build-host` is resolved from the
+/// host bundle produced by `cd bridge/app && make build-host` is resolved from the
 /// desktop package location. The executable location is used as a fallback
 /// because launchd starts a LaunchAgent with `/` as its working directory.
 /// Packaged-layout resolution belongs to the distribution plan and will
@@ -19,6 +41,7 @@ class DesktopBridgeExecutablePathResolver.forTesting({
   required final String _workingDirectory,
   required final String _resolvedExecutable,
   required final bool _isWindows,
+  required final DesktopBridgeExecutableExists _executableExists,
 }) implements BridgeExecutablePathResolver {
   new()
     : this.forTesting(
@@ -26,6 +49,7 @@ class DesktopBridgeExecutablePathResolver.forTesting({
         workingDirectory: Directory.current.path,
         resolvedExecutable: Platform.resolvedExecutable,
         isWindows: Platform.isWindows,
+        executableExists: ({required String executablePath}) => File(executablePath).existsSync(),
       );
 
   @visibleForTesting
@@ -36,17 +60,29 @@ class DesktopBridgeExecutablePathResolver.forTesting({
   @override
   String resolve() {
     final String? configuredPath = _environment[environmentVariable]?.trim();
+    final bool usesConfiguredPath;
+    final String executablePath;
     if (configuredPath != null && configuredPath.isNotEmpty) {
-      return path.normalize(
+      usesConfiguredPath = true;
+      executablePath = path.normalize(
         path.isAbsolute(configuredPath) ? configuredPath : path.join(_workingDirectory, configuredPath),
+      );
+    } else {
+      usesConfiguredPath = false;
+      final String? desktopPackageDirectory = _findDesktopPackageDirectory(startPath: _workingDirectory);
+      final String? executablePackageDirectory = _findDesktopPackageDirectory(startPath: _resolvedExecutable);
+      executablePath = _bridgePath(
+        desktopPackageDirectory: desktopPackageDirectory ?? executablePackageDirectory ?? _workingDirectory,
       );
     }
 
-    final String? desktopPackageDirectory = _findDesktopPackageDirectory(startPath: _workingDirectory);
-    final String? executablePackageDirectory = _findDesktopPackageDirectory(startPath: _resolvedExecutable);
-    return _bridgePath(
-      desktopPackageDirectory: desktopPackageDirectory ?? executablePackageDirectory ?? _workingDirectory,
-    );
+    if (!_executableExists(executablePath: executablePath)) {
+      throw DesktopBridgeExecutableNotFoundException(
+        executablePath: executablePath,
+        usesConfiguredPath: usesConfiguredPath,
+      );
+    }
+    return executablePath;
   }
 
   String _bridgePath({required String desktopPackageDirectory}) {
