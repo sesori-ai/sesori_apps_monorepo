@@ -183,7 +183,8 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    expect(find.byIcon(TablerRegular.photo), findsOneWidget);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byTooltip("More actions"), findsNothing);
   });
 
   testWidgets("defers surface-style synchronization while dependencies rebuild", (tester) async {

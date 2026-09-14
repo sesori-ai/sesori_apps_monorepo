@@ -8,6 +8,12 @@ content the transcript renders live and after reload.
 
 ## Required Behavior
 
+- The shared composer actions pill opens from its chevron to show the supported
+  image-attachment action as a plus and the slash-command picker. Open actions
+  replace the chevron, without a manual collapse control, and choosing either
+  action automatically collapses the pill. Both themes use the flat bordered
+  44pt surface; command-only harnesses retain a single centred action. Recording
+  and transcription still disable the revealed actions.
 - The shared composer offers image staging only for a backend declaring prompt
   attachment support and only when its product shell supplies a real picker.
   Mobile opens its gallery adapter; desktop opens a filtered native file dialog.
