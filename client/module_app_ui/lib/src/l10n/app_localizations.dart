@@ -1858,8 +1858,14 @@ abstract class AppLocalizations {
   /// No description provided for @sessionDetailCommandSearch.
   ///
   /// In en, this message translates to:
-  /// **'Search commands...'**
+  /// **'Search commands'**
   String get sessionDetailCommandSearch;
+
+  /// Placeholder describing the searchable fields in the slash-command picker.
+  ///
+  /// In en, this message translates to:
+  /// **'Name, description, or arguments'**
+  String get sessionDetailCommandSearchHint;
 
   /// No description provided for @sessionDetailNoCommands.
   ///

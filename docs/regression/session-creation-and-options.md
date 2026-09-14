@@ -202,6 +202,13 @@ variant, and worktree mode, and creating the session with its first input.
   local-only Git projects can create dedicated worktrees without a fetch warning.
   A configured origin that cannot be fetched still logs the failure and uses
   existing refs.
+- The shared slash-command picker uses the Prego labelled input, rounded command
+  rows, and source tags in both themes. Long names and tags wrap within narrow
+  layouts, descriptions and argument hints remain readable, and large catalogs
+  stay lazy. Search matches names, descriptions, and hints, including a query
+  entered during loading; clearing it restores the catalog. Selecting a row
+  returns that exact command, with the last row reachable above the keyboard
+  and home indicator.
 - Prompt and slash-command starts are exclusive; only user-authored text is
   user-visible, and attachments appear only where declared. The session keys on
   the stable project identifier and carries title, defaults, and worktree facts.
@@ -299,6 +306,9 @@ For composer effort pickers, vary full-height and small/keyboard-constrained
 viewports, a selected low effort, and reopening after scrolling: the strongest
 options start visible at the bottom, the lowest remain reachable above, and
 selection still dispatches the exact variant that was tapped.
+For the command picker, vary light/dark mode, narrow widths, large text, long
+command names, every source label, missing descriptions/hints, empty/no-match
+results, and scrolling a large catalog with the keyboard open.
 
 ## Failure Signals
 
@@ -313,6 +323,8 @@ selection still dispatches the exact variant that was tapped.
 - An effort popup puts the strongest levels at the top, opens with them hidden
   below the fold, makes the lowest levels unreachable by scrolling toward the
   top, or selects a different level from the tapped row.
+- Command rows overflow at larger text sizes, source tags disappear, search
+  loses an early query, or the last command cannot be selected above the keyboard.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a
