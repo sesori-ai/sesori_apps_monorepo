@@ -223,7 +223,8 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    expect(find.byIcon(TablerRegular.photo), findsOneWidget);
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(find.byTooltip("More actions"), findsNothing);
 
     await tester.tap(find.text("1 pending question"));
     await tester.pumpAndSettle();
