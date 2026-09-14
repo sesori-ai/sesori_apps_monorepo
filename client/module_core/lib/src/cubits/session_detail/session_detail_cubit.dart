@@ -1505,11 +1505,22 @@ class SessionDetailCubit(
       logw("Queued prompt cancellation was not confirmed for $_sessionId/$promptId", error);
       _noticeStream.add(const SessionDetailQueueCancellationFailed());
       if (error is NonSuccessCodeError && error.errorCode == 404) {
+        final beforeRefresh = state;
+        if (beforeRefresh is! SessionDetailLoaded) return;
         final refreshed = await _sessionRepository.getQueuedPrompts(sessionId: _sessionId);
         if (isClosed) return;
         switch (refreshed) {
           case SuccessResponse(:final data):
-            _onBridgeQueueUpdated(data.data);
+            final latest = state;
+            // Live queue changes during this read take precedence over its
+            // snapshot; unrelated transcript updates do not invalidate it.
+            if (latest is SessionDetailLoaded &&
+                const ListEquality<QueuedSessionPrompt>().equals(
+                  beforeRefresh.bridgeQueuedPrompts,
+                  latest.bridgeQueuedPrompts,
+                )) {
+              _onBridgeQueueUpdated(data.data);
+            }
           case ErrorResponse(:final error):
             logw("Failed to reconcile queued prompts after cancellation for $_sessionId/$promptId", error);
         }

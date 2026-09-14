@@ -1787,6 +1787,35 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, [dispatched]);
     });
 
+    for (final removed in [false, true]) {
+      test("refused cancellation keeps a newer ${removed ? 'removal' : 'dispatch'} queue event", () async {
+        final refresh = Completer<ApiResponse<QueuedPromptResponse>>();
+        final refreshStarted = Completer<void>();
+        when(() => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"))
+            .thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));
+        when(() => mockSessionRepository.getQueuedPrompts(sessionId: _sessionId)).thenAnswer((_) {
+          refreshStarted.complete();
+          return refresh.future;
+        });
+        final queued = _queuedPrompt.copyWith(dispatchState: QueuedPromptDispatchState.queued);
+        final cubit = await createLoadedCubit(snapshotQueue: [queued]);
+        final cancellation = cubit.cancelBridgeQueuedPrompt(promptId: "prm_1");
+        await refreshStarted.future;
+        final latestPrompts = [
+          if (!removed) queued.copyWith(dispatchState: QueuedPromptDispatchState.dispatched),
+        ];
+        sessionEvents.add(
+          SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: latestPrompts) as SesoriSessionEvent,
+        );
+        await Future<void>.delayed(Duration.zero);
+        expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, latestPrompts);
+
+        refresh.complete(ApiResponse.success(QueuedPromptResponse(data: [queued])));
+        await cancellation;
+        expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, latestPrompts);
+      });
+    }
+
     test("refused cancellation can reconcile an entry removed by another client", () async {
       when(() => mockSessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: "prm_1"))
           .thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)));

@@ -47,6 +47,7 @@ class const SessionDetailPromptQueue({
       trailing: deliveryStatus != null
           ? Tooltip(
               message: deliveryStatus.label,
+              excludeFromSemantics: true,
               child: SizedBox.square(
                 dimension: 36,
                 child: Center(child: deliveryStatus.indicator),

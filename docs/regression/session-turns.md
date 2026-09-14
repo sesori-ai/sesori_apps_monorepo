@@ -474,8 +474,10 @@ defaults and queued client sends coherent.
   remain visible with a Sending indicator, not a trash action. Older bridges
   without dispatch ownership show an explicit cancellation-unavailable hint.
   A refused/not-found cancellation surfaces a notice and reconciles the bridge
-  snapshot; only success removes a row as cancelled. Transport or refresh failure
-  retains the row rather than implying cancellation. Aborting the session clears
+  snapshot; only success removes a row as cancelled. Live queue changes during
+  that refresh take precedence over its snapshot, so a delayed read cannot undo
+  a dispatch or removal event. Transport or refresh failure retains the row
+  rather than implying cancellation. Aborting the session clears
   every remaining plugin-owned entry.
 - An in-flight send remains visible in the transcript until acceptance. Accepted
   or locally queued prompts appear once in the composer queue; acceptance awaiting

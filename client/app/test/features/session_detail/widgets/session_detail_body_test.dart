@@ -3435,8 +3435,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(PregoQueuedMessageRow), findsNWidgets(3));
     expect(find.byIcon(TablerRegular.trash), findsOneWidget);
-    expect(find.byTooltip("Sending"), findsOneWidget);
-    expect(find.byTooltip("This bridge has not reported whether cancellation is available."), findsOneWidget);
+    for (final label in ["Sending", "This bridge has not reported whether cancellation is available."]) {
+      final tooltip = find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == label);
+      expect(tooltip, findsOneWidget);
+      expect(tester.widget<Tooltip>(tooltip).excludeFromSemantics, isTrue);
+      expect(find.byTooltip(label), findsNothing);
+    }
+    expect(
+      tester.widget<PregoQueuedMessageRow>(find.byKey(const ValueKey("session-detail-queued-dispatched"))).statusLabel,
+      "Sending",
+    );
     expect(
       find.descendant(
         of: find.byKey(const ValueKey("session-detail-queued-dispatched")),
