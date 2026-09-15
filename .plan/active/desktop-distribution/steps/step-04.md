@@ -144,12 +144,17 @@ and bridge remain untouched.
 - Merged source plus startup breadcrumbs: **one** cold-start widget smoke case and
   desktop analyzer passed (`startup-app-smoke.log`, `startup-analyze.log`). These
   mocks do not exercise the native initialization wait.
+- PR #1499's strict Dart analyzer rejected the fixture's legacy Material import.
+  It now uses the existing `material_ui` package. `dart analyze --fatal-infos`
+  passes on that focused correction based on `05ef975`; log:
+  `pr1499-dart-analyze-material-import.log`. This is not another native fixture run.
 - Commands run from `client/desktop` unless Python/tooling requires repository root:
 
 ```bash
 flutter test test/core/platform/desktop_packaged_bridge_path_test.dart test/tool/stage_desktop_bundle_test.dart --reporter expanded
 flutter test test/app_smoke_test.dart --reporter expanded
 flutter analyze --no-pub --fatal-infos
+dart analyze --fatal-infos
 python3 -m unittest discover -s .github/scripts -p test_package_desktop_macos.py -v
 python3 -m unittest discover -s .github/scripts -p test_probe_desktop_macos.py -v
 xcrun swiftc -typecheck .github/scripts/inspect_desktop_macos_window.swift
