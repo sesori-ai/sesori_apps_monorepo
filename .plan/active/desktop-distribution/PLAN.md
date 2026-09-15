@@ -4,7 +4,10 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Planning; implementation and publication have not started.
+- **Status:** Implementation authorized; waiting for the plan PR to merge.
+- **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
+  plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
+  and at most one successor step local. Preserve explicit decision and release gates.
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Delivery:** 12 planned PRs; exact titles below. Keep one current series total.
 - **Architecture review:** reviewed 2026-09-15; ownership/DI/identity findings applied

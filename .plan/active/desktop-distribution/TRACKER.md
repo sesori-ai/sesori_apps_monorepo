@@ -29,9 +29,13 @@ Exact PR titles, dependencies, expected behavior, and the 12-step total live in
 The user chose macOS-first delivery, Windows direct download, DEB/RPM for Linux,
 installation on normal application quit for app-managed updates, all six native
 OS/CPU targets, and GitHub installer downloads plus static GCS feeds/repositories.
-This request delivers the plan only. Merging its PR does not authorize automatically
-starting steps 2–12; wait for an explicit implementation request. No signing operation,
-infrastructure provisioning, or product publication has been performed.
+The user subsequently authorized automatic implementation after the plan PR merges.
+Start step 2 on the merge notification using `sesori-plan-worker`; thereafter keep
+one series PR open and at most one successor step local. This supersedes the earlier
+plan-only hold. Material scope/security decisions, missing credentials/infrastructure,
+and the recorded public-release prerequisites remain gates; do not silently waive
+or bypass them. No signing, infrastructure provisioning, or product publication has
+yet been performed.
 
 The parent [desktop-app tracker](../desktop-app/TRACKER.md) still records Gate C
 and steps 21–22 as pending. This plan starts early at the user's request; those
