@@ -78,7 +78,10 @@ Final fresh-context architecture review **APPROVED** exact range
 `b69a4857289d30106bbd06af963437cdfa4699e7..c9a04e3dafc585abca55755ea3fb1cf767d512ec`,
 with no findings. Run `96ac46a1-5d5b-435f-8d71-0b5a73a51ba1`; full report:
 `/tmp/rose-elephant-popover-architecture-final.md`. The subsequent focused
-canonical-route correction is verified at `44ea4b3`; later changes are docs only.
+canonical-route correction is verified at `44ea4b3`. CI then identified one
+stale smoke assertion (`/splash` versus `/projects`), after both login assertions
+passed. Only that route expectation changes; its production-DI smoke execution
+is left to isolated CI, not run against local account/preferences.
 Native lifecycle, registration and OS log-launch checks remain in the final
 user testing handoff, not merge gates. The running bridge was never stopped,
 restarted or taken over. Earlier native platform-view/profile-build limits remain.
@@ -89,4 +92,4 @@ git diff --numstat b69a4857289d30106bbd06af963437cdfa4699e7 \
   44ea4b3f4f65a9e47f38910369b7a945ffc01126
 ```
 **1,467 = 713 additions + 754 deletions**, 26 files, 27 generated / 1,440 authored.
-Later documentation-only reconciliation is included in the final PR-body count.
+Later smoke-assertion/documentation reconciliation is included in the final PR-body count.
