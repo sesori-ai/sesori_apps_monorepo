@@ -38,7 +38,7 @@ void main() {
     );
   });
 
-  tearDown(() => getIt.reset());
+  tearDown(getIt.reset);
 
   Future<void> pumpHome({required WidgetTester tester, required ProjectListState state}) async {
     whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
