@@ -1,6 +1,7 @@
 # Step 3 — Identity-Bound Desktop Bundles
 
-Status: **in progress** — implemented and locally verified; PR/native CI pending.
+Status: **in progress** — [PR #1492](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1492);
+initial native staging CI passes both macOS/Linux rows, with Windows blocked.
 
 ## Implementation
 
@@ -52,7 +53,15 @@ from machine-readable status, and post-build diffs are retained. The qualificati
 PUB_CACHE was moved outside the checkout in `44cf646`: dependency downloads are
 untracked build inputs, not source changes to commit.
 
-Current-head native CI remains pending. This evidence does not claim actual GUI/
-account operation, minimum-OS execution, signed installers, real upgrades, or public
-release readiness. No signing credentials, user application data, or publication
-infrastructure were used. Parent and platform release gates remain open.
+[Run 34973336652](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34973336652),
+on PR head `ca0bbf9`, passed native staging, inventory and isolated relocated-helper
+E2E on both macOS and Linux CPUs. Both Windows jobs refused to stage because locked
+Flutter dependency resolution changed 14 tracked generated plugin registrant files.
+This is real status output, not stderr warnings; the contents/cause of those changes
+are not yet established. Failure-time source diffs and line-ending diagnostics were
+added for the next run without relaxing the clean-source guard.
+
+No actual GUI/account operation, minimum-OS execution, signed installers, real
+upgrades or public release readiness is claimed. No signing credentials, user
+application data, or publication infrastructure were used. Parent and platform
+release gates remain open.

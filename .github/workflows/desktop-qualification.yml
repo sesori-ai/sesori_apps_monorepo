@@ -141,6 +141,18 @@ jobs:
           (cd bridge/app && dart test test/integration/supervised_e2e_test.dart --reporter expanded) \
             2>&1 | tee build/desktop-qualification/supervised-e2e.log
 
+      - name: Preserve source diagnostics when qualification fails
+        if: failure()
+        run: |
+          mkdir -p build/desktop-qualification
+          git diff HEAD > build/desktop-qualification/failed-source-changes.patch
+          {
+            git status --short
+            git diff --ignore-cr-at-eol --stat HEAD
+            git ls-files --eol '*generated_plugin_registrant.*' '*generated_plugins.cmake' '*GeneratedPluginRegistrant.*'
+            git config --show-origin --get core.autocrlf || echo 'core.autocrlf unset'
+          } > build/desktop-qualification/failed-source-status.log
+
       - name: Upload qualification evidence, including partial failures
         if: always()
         uses: actions/upload-artifact@v4
@@ -149,6 +161,7 @@ jobs:
           path: |
             build/desktop-qualification/*.json
             build/desktop-qualification/*.log
+            build/desktop-qualification/*.patch
             build/desktop-qualification/supervised-e2e/
             build/desktop-qualification/staged/build-source-changes.patch
             build/desktop-qualification/staged/**/desktop-bundle.json

@@ -67,7 +67,8 @@ Step 3 started automatically in the same worktree on
 `desktop-distribution-bundle-identity`. The existing reviewed identity boundary is
 unchanged; no new lifecycle owner, mutable state, database or wire contract was added.
 Implementation, local native evidence and the approved architecture review are
-recorded in [steps/step-03.md](steps/step-03.md); six-target staging CI is pending.
+recorded in [steps/step-03.md](steps/step-03.md). PR #1492 staging CI passes macOS
+and Linux on both CPUs; Windows is blocked on pre-build generated source changes.
 
 ## Qualification and ship gates
 
