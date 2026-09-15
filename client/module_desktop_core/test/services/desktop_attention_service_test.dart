@@ -952,6 +952,7 @@ void main() {
         const AppRoute.projects().buildPath(),
         const AppRoute.sessions(projectId: "project-1", projectName: null).buildPath(),
         const AppRoute.sessionDetail(
+          bridgeId: null,
           projectId: "project-1",
           projectName: null,
           sessionId: "session-root",

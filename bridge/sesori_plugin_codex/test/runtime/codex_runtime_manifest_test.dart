@@ -18,7 +18,7 @@ void main() {
     test("pinned versions", () {
       expect(CodexRuntimeManifest.targetVersion, "0.154.0");
       expect(manifest.bundledVersion.toString(), CodexRuntimeManifest.targetVersion);
-      expect(manifest.minPathVersion.toString(), "0.139.0");
+      expect(manifest.minPathVersion.toString(), "0.148.0");
       expect(manifest.runtimeId, const CodexPluginDescriptor().id);
       expect(manifest.pathExecutableName, "codex");
       expect(manifest.binaryFileName, Platform.isWindows ? r"bin\codex.exe" : "bin/codex");

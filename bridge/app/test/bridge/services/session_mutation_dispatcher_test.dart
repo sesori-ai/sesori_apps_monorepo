@@ -175,6 +175,7 @@ void main() {
       await dispatcher.deleteSession(
         sessionId: "s1",
         cleanup: () async => CleanupSuccess(),
+        beforePersistedDelete: ({required sessionIds}) async {},
         onDeleted: (_) async {},
       );
       final mutations = <LocalSessionMutation>[];
@@ -202,6 +203,7 @@ void main() {
           await cleanupGate.future;
           throw StateError("cleanup failed");
         },
+        beforePersistedDelete: ({required sessionIds}) async {},
         onDeleted: (_) async {},
       );
       await cleanupStarted.future;
@@ -229,6 +231,7 @@ void main() {
       final deletion = gatedDispatcher.deleteSession(
         sessionId: "s1",
         cleanup: () => throw StateError("cleanup failed"),
+        beforePersistedDelete: ({required sessionIds}) async {},
         onDeleted: (_) async {},
       );
       await gatedRepository.lookupStarted.future;
@@ -369,6 +372,7 @@ void main() {
       await dispatcher.deleteSession(
         sessionId: "s1",
         cleanup: () async => CleanupSuccess(),
+        beforePersistedDelete: ({required sessionIds}) async {},
         onDeleted: (_) async {},
       );
       await dispatcher.dispose();
@@ -379,6 +383,7 @@ void main() {
         () => dispatcher.deleteSession(
           sessionId: "after-dispose",
           cleanup: () async => CleanupSuccess(),
+          beforePersistedDelete: ({required sessionIds}) async {},
           onDeleted: (_) async {},
         ),
         throwsStateError,

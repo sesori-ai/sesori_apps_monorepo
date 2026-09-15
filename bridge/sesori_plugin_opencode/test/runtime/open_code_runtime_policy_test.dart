@@ -7,6 +7,7 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/src/runtime/open_code_ownership_record.dart";
 import "package:opencode_plugin/src/runtime/open_code_runtime_policy.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_plugin_runtime/sesori_plugin_runtime.dart";
 import "package:test/test.dart";
@@ -278,6 +279,7 @@ void main() {
         port: 51000,
         password: "secret",
         bindHost: "127.0.0.1",
+        environmentOverrides: const <String, String>{},
       );
 
       expect(spawned.pid, equals(4242));
@@ -299,6 +301,7 @@ void main() {
         port: 51000,
         password: "secret",
         bindHost: "0.0.0.0",
+        environmentOverrides: const <String, String>{},
       );
 
       expect(recording.arguments, equals(<String>["serve", "--port", "51000", "--hostname", "0.0.0.0"]));
@@ -317,6 +320,7 @@ void main() {
         port: 51000,
         password: null,
         bindHost: "127.0.0.1",
+        environmentOverrides: const <String, String>{},
       );
 
       expect(recording.environment, isNotNull);
@@ -341,6 +345,7 @@ void main() {
         port: 51000,
         password: "",
         bindHost: "127.0.0.1",
+        environmentOverrides: const <String, String>{},
       );
 
       expect(recording.environment, isNotNull);
@@ -348,6 +353,42 @@ void main() {
       expect(recording.environment!.containsKey("opencode_server_password"), isFalse);
       expect(recording.environment!.containsKey("OPENCODE_SERVER_PASSWORD"), isFalse);
       expect(recording.environment!["PATH"], equals("/usr/bin"));
+    });
+
+    test("materializes only explicitly scoped Device Canvas capabilities", () async {
+      final directory = await Directory.systemTemp.createTemp("opencode-bootstrap-");
+      addTearDown(() => directory.delete(recursive: true));
+      final bootstrapFile = File("${directory.path}/bootstrap");
+      final recording = _RecordingHostProcessService();
+      final host = _SpawnFakeHost(
+        processes: recording,
+        environment: const <String, String>{
+          deviceCanvasAgentToolBootstrapFileEnvironment: "/unscoped/bootstrap",
+          deviceCanvasAgentToolBootstrapSecretEnvironment: "unscoped-bootstrap",
+          deviceCanvasAgentToolRendezvousEnvironment: "/unscoped/rendezvous",
+          deviceCanvasAgentToolReadyFileEnvironment: "/unscoped/ready",
+        },
+      );
+
+      await spawnOpenCodeProcess(
+        host: host,
+        executablePath: "/bin/opencode",
+        port: 51000,
+        password: "secret",
+        bindHost: "127.0.0.1",
+        environmentOverrides: <String, String>{
+          deviceCanvasAgentToolBootstrapFileEnvironment: bootstrapFile.path,
+          deviceCanvasAgentToolBootstrapSecretEnvironment: "scoped-bootstrap",
+          deviceCanvasAgentToolRendezvousEnvironment: "/scoped/rendezvous",
+        },
+      );
+
+      expect(recording.environment, isNot(contains(deviceCanvasAgentToolBootstrapSecretEnvironment)));
+      expect(recording.environment, containsPair(deviceCanvasAgentToolBootstrapFileEnvironment, bootstrapFile.path));
+      expect(recording.environment, containsPair(deviceCanvasAgentToolRendezvousEnvironment, "/scoped/rendezvous"));
+      expect(recording.environment, isNot(contains(deviceCanvasAgentToolReadyFileEnvironment)));
+      expect(bootstrapFile.readAsStringSync(), "scoped-bootstrap");
+      if (!Platform.isWindows) expect(bootstrapFile.statSync().mode & 0x1ff, 0x180);
     });
   });
 
@@ -361,6 +402,7 @@ void main() {
         probeClientFactory: () => MockClient((request) async => http.Response("", 200)),
         bindHost: "127.0.0.1",
         connectHost: "127.0.0.1",
+        environmentOverrides: const <String, String>{},
       );
 
       expect(spec.healthPolicy.deadline, equals(const Duration(seconds: 30)));
@@ -380,12 +422,45 @@ void main() {
         }),
         bindHost: "0.0.0.0",
         connectHost: "127.0.0.1",
+        environmentOverrides: const <String, String>{},
       );
 
       final probe = await spec.probeHealth(port: 4096);
 
       expect(probe.healthy, isTrue);
       expect(captured.url.toString(), equals("http://127.0.0.1:4096/global/health"));
+    });
+
+    test("does not report a configured runtime healthy until native tools register", () async {
+      final directory = await Directory.systemTemp.createTemp("opencode-tool-ready-");
+      addTearDown(() => directory.delete(recursive: true));
+      final readyFile = File("${directory.path}/device-canvas.ready");
+      var registerTools = false;
+      Uri? initializationUri;
+      final spec = buildOpenCodeManagedRuntimeSpec(
+        host: _SpawnFakeHost(processes: _RecordingHostProcessService(), environment: const <String, String>{}),
+        executablePath: "/bin/opencode",
+        password: "secret",
+        portPolicy: const ExplicitPortPolicy(port: 4096),
+        probeClientFactory: () => MockClient((request) async {
+          if (request.url.path == "/experimental/tool/ids") {
+            initializationUri = request.url;
+            if (registerTools) readyFile.writeAsStringSync("ready");
+          }
+          return http.Response("", 200);
+        }),
+        bindHost: "127.0.0.1",
+        connectHost: "127.0.0.1",
+        environmentOverrides: <String, String>{
+          deviceCanvasAgentToolReadyFileEnvironment: readyFile.path,
+        },
+      );
+
+      expect((await spec.probeHealth(port: 4096)).healthy, isFalse);
+      registerTools = true;
+      expect((await spec.probeHealth(port: 4096)).healthy, isTrue);
+      expect(initializationUri?.path, "/experimental/tool/ids");
+      expect(initializationUri?.queryParameters["directory"], "/runtime");
     });
   });
 
@@ -500,6 +575,9 @@ ProcessIdentity _identity({required int pid, required String? executablePath, re
 
 class _SpawnFakeHost({required final HostProcessService _processes, required final Map<String, String> _environment})
     implements PluginHost {
+  @override
+  String get stateDirectory => "/runtime";
+
   @override
   HostProcessService get processes => _processes;
 

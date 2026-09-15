@@ -97,6 +97,7 @@ void main() {
           sessionId: "s1",
           sessionTitle: null,
           readOnly: true,
+          bridgeId: null,
         ).buildPath(),
       ),
     );
@@ -152,6 +153,7 @@ void main() {
       AppRouteDef.splash: "/splash",
       AppRouteDef.login: "/login",
       AppRouteDef.projects: "/projects",
+      AppRouteDef.deviceCanvasSession: "/sessions/s1",
       AppRouteDef.settings: "/settings",
       AppRouteDef.settingsDefaultInput: "/settings/default-input",
       AppRouteDef.settingsNotifications: "/settings/notifications",

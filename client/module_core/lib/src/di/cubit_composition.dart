@@ -14,6 +14,7 @@ import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/catalog_rescan_service.dart";
+import "../services/device_canvas_service.dart";
 import "../services/loaded_state_analytics_reporter.dart";
 import "../services/models/session_list_filter.dart";
 import "../services/new_session_options_service.dart";
@@ -40,6 +41,7 @@ import "../services/sse_event_tracker.dart";
 /// collaborator list lives here, so the two shells cannot drift apart.
 
 SessionDetailCubit createSessionDetailCubit({
+  required DeviceCanvasSessionStatusResponse? initialDeviceCanvasStatus,
   required bool claimProjectView,
   required GetIt locator,
   required String sessionId,
@@ -48,6 +50,8 @@ SessionDetailCubit createSessionDetailCubit({
   return SessionDetailCubit(
     locator<ConnectionService>(),
     claimProjectView: claimProjectView,
+    deviceCanvasService: locator<DeviceCanvasService>(),
+    initialDeviceCanvasStatus: initialDeviceCanvasStatus,
     loadService: locator<SessionDetailLoadService>(),
     pluginManagementService: locator<PluginManagementService>(),
     interactionCalculator: locator<SessionInteractionCalculator>(),

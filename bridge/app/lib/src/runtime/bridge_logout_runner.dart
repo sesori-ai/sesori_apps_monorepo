@@ -24,19 +24,20 @@ enum BridgeLogoutStatus() {
 }
 
 class const BridgeLogoutResult({
-    required final BridgeLogoutStatus status,
-    final int runningBridgeCount = 0,
-    final Object? error,
-  });
+  required final BridgeLogoutStatus status,
+  final int runningBridgeCount = 0,
+  final Object? error,
+});
 
 class BridgeLogoutRunner({
-    required final BridgeInstanceRepository _bridgeInstanceRepository,
-    required final BridgeInstanceService _bridgeInstanceService,
-    required final TerminalPromptRepository _terminalPromptRepository,
-    required final Future<void> Function() _unregisterBridge,
-    required final AppOnboardingStateRepository _appOnboardingStateRepository,
-    required final Future<void> Function() _clearTokens,
-  }) {
+  required final BridgeInstanceRepository _bridgeInstanceRepository,
+  required final BridgeInstanceService _bridgeInstanceService,
+  required final TerminalPromptRepository _terminalPromptRepository,
+  required final Future<void> Function() _unregisterBridge,
+  required final Future<void> Function() _cleanupBridgeClaims,
+  required final AppOnboardingStateRepository _appOnboardingStateRepository,
+  required final Future<void> Function() _clearTokens,
+}) {
   Future<BridgeLogoutResult> logout({
     required int currentPid,
     required bool manageRunningBridges,
@@ -74,6 +75,12 @@ class BridgeLogoutRunner({
         runningBridgeCount: runningBridgeCount,
         error: error,
       );
+    }
+
+    try {
+      await _cleanupBridgeClaims();
+    } on Object catch (error, stackTrace) {
+      Log.w('Failed to remove local Device Canvas claims during logout (ignored)', error, stackTrace);
     }
 
     // Best-effort: remove this bridge's registration on the auth server while

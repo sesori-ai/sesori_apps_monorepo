@@ -9,6 +9,7 @@ import "../server/host/bridge_host_info_impl.dart";
 import "../server/host/bridge_host_port_service.dart";
 import "../server/host/bridge_host_process_service.dart";
 import "../server/host/bridge_plugin_host_impl.dart";
+import "../server/host/bridge_plugin_private_file_service.dart";
 import "../server/host/plugin_state_directory.dart";
 import "../server/repositories/process_repository.dart";
 import "../server/repositories/startup_mutex_repository.dart";
@@ -53,7 +54,9 @@ class PluginGenerationFactory({
   required final ProcessRepository _processRepository,
   required final ServerClock _clock,
   required Map<String, String> environment,
+  required Map<String, Map<String, String>> environmentOverridesByPluginId,
   required final ProcessUser? _currentUser,
+  final PluginAgentToolHost? Function({required String pluginId})? _agentToolsForPlugin,
 
   /// Resolves the currently configured idle timeout for a plugin, in minutes.
   /// Read live at each [PluginHost.pluginIdleTimeout] access so runtime
@@ -62,6 +65,10 @@ class PluginGenerationFactory({
   required final Stream<Object?> _settingsChanges,
 }) {
   final Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
+  final Map<String, Map<String, String>> _environmentOverridesByPluginId = {
+    for (final entry in environmentOverridesByPluginId.entries)
+      entry.key: Map<String, String>.unmodifiable(entry.value),
+  };
   final List<_GenerationStartRequest> _pending = <_GenerationStartRequest>[];
   bool _drainScheduled = false;
   bool _draining = false;
@@ -115,6 +122,10 @@ class PluginGenerationFactory({
       },
     );
     return controller.stream;
+  }
+
+  void setEnvironmentOverrides({required String pluginId, required Map<String, String> overrides}) {
+    _environmentOverridesByPluginId[pluginId] = Map<String, String>.unmodifiable(overrides);
   }
 
   void _scheduleDrain() {
@@ -215,19 +226,25 @@ class PluginGenerationFactory({
     required _GenerationStartRequest request,
     required BridgeInstanceResolution resolution,
   }) async {
+    BridgePluginHostImpl? host;
     try {
-      final host = await _buildHost(request: request, resolution: resolution);
+      host = await _buildHost(request: request, resolution: resolution);
       await for (final event in request.registration.descriptor.ensureRuntime(host: host)) {
         request.controller.add(PluginGenerationProvisionProgress(event: event));
         if (event case ProvisionReady(:final binaryPath)) {
           host.provisionedRuntimePath = binaryPath;
         }
       }
+      host.addEnvironmentOverrides(
+        _environmentOverridesByPluginId[request.registration.descriptor.id] ?? const <String, String>{},
+      );
       final plugin = await request.registration.descriptor.start(host);
       request.controller.add(PluginGenerationStarted(plugin: plugin));
     } on PluginStartAbortedException catch (error, stackTrace) {
+      await _disposeAgentTools(host);
       _addError(request: request, error: error, stackTrace: stackTrace);
     } on Object catch (error, stackTrace) {
+      await _disposeAgentTools(host);
       _addError(
         request: request,
         error: PluginGenerationStartFailedException(
@@ -255,6 +272,14 @@ class PluginGenerationFactory({
     return request.controller.close();
   }
 
+  Future<void> _disposeAgentTools(BridgePluginHostImpl? host) async {
+    try {
+      await host?.agentToolServices?.tools.dispose();
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to dispose agent-tool host after plugin generation startup failure", error, stackTrace);
+    }
+  }
+
   Future<BridgePluginHostImpl> _buildHost({
     required _GenerationStartRequest request,
     required BridgeInstanceResolution resolution,
@@ -270,6 +295,7 @@ class PluginGenerationFactory({
       throw StateError('Plugin "${descriptor.id}" registration has an unexpected state directory.');
     }
     await io.Directory(stateDirectory).create(recursive: true);
+    final agentTools = _agentToolsForPlugin?.call(pluginId: descriptor.id);
     return BridgePluginHostImpl(
       config: request.registration.config,
       stateDirectory: stateDirectory,
@@ -300,6 +326,12 @@ class PluginGenerationFactory({
         pluginId: descriptor.id,
         residency: request.residency,
       ),
+      agentToolServices: agentTools == null
+          ? null
+          : BridgePluginAgentToolServices(
+              tools: agentTools,
+              privateFiles: BridgePluginPrivateFileService(stateDirectory: stateDirectory),
+            ),
     );
   }
 }

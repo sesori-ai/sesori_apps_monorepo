@@ -14,7 +14,12 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
         DownloadProgress,
         OsVersionFormatter,
         PlatformOs,
-        sesoriAttachmentsDirectory;
+        deviceCanvasAgentToolBootstrapFileEnvironment,
+        deviceCanvasAgentToolBootstrapSecretEnvironment,
+        deviceCanvasAgentToolReadyFileEnvironment,
+        deviceCanvasAgentToolRendezvousEnvironment,
+        sesoriAttachmentsDirectory,
+        writeRestrictedFile;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Console,
@@ -50,6 +55,8 @@ import "../auth/login_oauth_service.dart";
 import "../auth/token.dart";
 import "../auth/token_refresher.dart";
 import "../auth/token_service.dart";
+import "../bridge/device_canvas/agent_tool_rendezvous_repository.dart";
+import "../bridge/device_canvas/agent_tool_server.dart";
 import "../control/bridge_control_message_dispatcher.dart";
 import "../control/control_channel_loss_listener.dart";
 import "../control/control_status_notifier.dart";
@@ -57,7 +64,6 @@ import "../foundation/abortable_request.dart";
 import "../foundation/app_connection_wait_indicator.dart";
 import "../foundation/app_onboarding_formatter.dart";
 import "../foundation/control_channel_client.dart";
-import "../foundation/data_directory_hardening.dart";
 import "../foundation/filesystem_cleaner.dart";
 import "../foundation/log_failure_reporter.dart";
 import "../foundation/process_runner.dart";
@@ -95,6 +101,9 @@ import "../services/connection_notification_policy_service.dart";
 import "../services/control_channel_token_service.dart";
 import "../services/control_prompt_service.dart";
 import "../services/control_unregister_service.dart";
+import "../services/device_canvas_remote_turn_credential_issuer.dart";
+import "../services/device_canvas_turn_credential_builder.dart";
+import "../services/device_canvas_turn_credential_issuer.dart";
 import "../services/plugin_lifecycle_service.dart";
 import "../sse/sse_manager.dart";
 import "../updater/api/checksum_manifest_api.dart";
@@ -132,6 +141,75 @@ import "plugin_generation_factory.dart";
 import "plugin_registry.dart";
 import "plugin_runtime.dart";
 import "runtime_provision_formatter.dart";
+
+@visibleForTesting
+DeviceCanvasTurnCredentialBuilder? buildDeviceCanvasDevelopmentTurnCredentialBuilder({
+  required BridgeCliOptions options,
+}) {
+  final localConfigured =
+      options.deviceCanvasLocalTurnUrls.isNotEmpty || options.deviceCanvasLocalTurnSecretFile != null;
+  final externalConfigured =
+      options.deviceCanvasExternalTurnTestEnabled ||
+      options.deviceCanvasExternalTurnUrls.isNotEmpty ||
+      options.deviceCanvasExternalTurnSecretFile != null;
+  if (localConfigured && externalConfigured) {
+    throw StateError("Device Canvas local and external test TURN modes are mutually exclusive");
+  }
+  if (!localConfigured && !externalConfigured) return null;
+
+  final urls = externalConfigured ? options.deviceCanvasExternalTurnUrls : options.deviceCanvasLocalTurnUrls;
+  final secretFile = externalConfigured
+      ? options.deviceCanvasExternalTurnSecretFile
+      : options.deviceCanvasLocalTurnSecretFile;
+  if (urls.isEmpty || secretFile == null || (externalConfigured && !options.deviceCanvasExternalTurnTestEnabled)) {
+    throw StateError("Device Canvas development TURN options are incomplete");
+  }
+  return DeviceCanvasTurnCredentialBuilder(
+    urls: urls,
+    sharedSecret: readDeviceCanvasTurnSharedSecret(filePath: secretFile),
+  );
+}
+
+List<int> readDeviceCanvasTurnSharedSecret({required String filePath}) {
+  if (io.Platform.isWindows) {
+    throw const FormatException("Device Canvas development TURN requires POSIX file permissions");
+  }
+  if (io.FileSystemEntity.typeSync(filePath, followLinks: false) != io.FileSystemEntityType.file) {
+    throw const FormatException("Device Canvas TURN secret must be a regular, non-symlink file");
+  }
+  final String resolvedPath;
+  try {
+    resolvedPath = io.File(filePath).resolveSymbolicLinksSync();
+  } on io.FileSystemException {
+    throw const FormatException("Device Canvas TURN secret path cannot be resolved safely");
+  }
+  final file = io.File(resolvedPath);
+  final parentStat = file.parent.statSync();
+  if (parentStat.type != io.FileSystemEntityType.directory || parentStat.mode & 0x3f != 0) {
+    throw const FormatException("Device Canvas TURN secret directory must not be accessible by other users");
+  }
+  final stat = file.statSync();
+  if (stat.mode & 0x100 == 0 || stat.mode & 0x3f != 0) {
+    throw const FormatException("Device Canvas TURN secret must be readable only by its owner");
+  }
+  if (stat.size < DeviceCanvasTurnCredentialBuilder.minimumSharedSecretBytes || stat.size > 1024) {
+    throw const FormatException("Device Canvas TURN secret has an invalid size");
+  }
+  final secret = file.readAsBytesSync();
+  final afterRead = file.statSync();
+  if (secret.length != stat.size ||
+      afterRead.type != stat.type ||
+      afterRead.mode != stat.mode ||
+      afterRead.size != stat.size ||
+      afterRead.modified != stat.modified ||
+      afterRead.changed != stat.changed) {
+    throw const FormatException("Device Canvas TURN secret changed while it was being read");
+  }
+  if (secret.any((byte) => byte < 33 || byte > 126)) {
+    throw const FormatException("Device Canvas TURN secret must contain one printable ASCII token");
+  }
+  return List<int>.unmodifiable(secret);
+}
 
 enum _PhoneConnectionWaitOutcome() {
   connected,
@@ -276,6 +354,11 @@ class const BridgeRuntimeRunner._() {
     final pluginStoresByStateDirectory = <String, HostJsonStore>{
       runtimeDirectory: BridgeHostJsonStore(fileApi: runtimeFileApi),
     };
+    final pluginEnvironment = sanitizePluginEnvironment(environment);
+    final deviceCanvasAgentToolBootstrapSecret = generateDeviceCanvasAgentToolSecret();
+    final deviceCanvasAgentToolRendezvous = deviceCanvasAgentToolRendezvousPath(
+      dataDirectory: options.dataDirectory,
+    );
     final systemProcessApi = SystemProcessApi(
       processRunner: processRunner,
       clock: serverClock,
@@ -350,6 +433,7 @@ class const BridgeRuntimeRunner._() {
     );
 
     try {
+      final deviceCanvasTurnCredentialBuilder = buildDeviceCanvasDevelopmentTurnCredentialBuilder(options: options);
       // Supervised mode (desktop GUI): bring up the loopback control channel
       // before anything else so the GUI sees the helper connect promptly. Every
       // step here is gated by `--control-url`; standalone startup is unchanged.
@@ -586,6 +670,18 @@ class const BridgeRuntimeRunner._() {
         );
         shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
       }
+      if (deviceCanvasTurnCredentialBuilder != null && options.deviceCanvasProductionTurnEnabled) {
+        throw StateError("Production and development Device Canvas TURN modes are mutually exclusive");
+      }
+      final DeviceCanvasTurnCredentialIssuer? deviceCanvasTurnCredentialIssuer =
+          deviceCanvasTurnCredentialBuilder ??
+          (options.deviceCanvasProductionTurnEnabled
+              ? DeviceCanvasRemoteTurnCredentialIssuer(
+                  requestCredentials: authApi.issueDeviceCanvasTurnCredentials,
+                  tokenRefresher: tokenRefresher,
+                  bridgeIdProvider: bridgeRegistrationService,
+                )
+              : null);
 
       final currentBridgeIdentity = await _resolveCurrentBridgeIdentity(
         processRepository: processRepository,
@@ -595,6 +691,7 @@ class const BridgeRuntimeRunner._() {
         isWindows: io.Platform.isWindows,
       );
       final ownerSessionId = _buildOwnerSessionId(currentBridgeIdentity: currentBridgeIdentity);
+      DeviceCanvasAgentToolServer? agentToolServer;
 
       final hostProcessService = BridgeHostProcessService(
         processStarter: io.Process.start,
@@ -634,8 +731,10 @@ class const BridgeRuntimeRunner._() {
         bridgeInstanceService: bridgeInstanceService,
         processRepository: processRepository,
         clock: serverClock,
-        environment: environment,
+        environment: pluginEnvironment,
+        environmentOverridesByPluginId: const <String, Map<String, String>>{},
         currentUser: currentUser,
+        agentToolsForPlugin: ({required pluginId}) => agentToolServer?.pluginHost(pluginId: pluginId),
         resolveIdleTimeoutMins: ({required pluginId}) =>
             bridgeSettingsRepository.currentSettings.plugins.idleTimeoutMinsFor(pluginId: pluginId),
         settingsChanges: bridgeSettingsRepository.settingsChanges,
@@ -644,7 +743,7 @@ class const BridgeRuntimeRunner._() {
         registrations: pluginRuntimeRegistrations,
         generationFactory: generationFactory,
         setupProcesses: hostProcessService,
-        environment: environment,
+        environment: pluginEnvironment,
         clock: serverClock,
         shutdownBudget: _pluginShutdownBudget,
       );
@@ -854,6 +953,7 @@ class const BridgeRuntimeRunner._() {
         failureReporter: failureReporter,
         restartService: restartService,
         filesystemAccessOk: filesystemAccessOk,
+        deviceCanvasTurnCredentialIssuer: deviceCanvasTurnCredentialIssuer,
         statusNotifier: controlStatusNotifier,
         reconnectBackoff: ReconnectBackoffPolicy.standard,
         startupRetryService: startupRetryService,
@@ -865,6 +965,57 @@ class const BridgeRuntimeRunner._() {
         composition: composition,
       );
       final activeRuntime = runtime;
+
+      final previousBridgeId = await bridgeIdStorage.read();
+      await bridgeRegistrationService.ensureRegistered();
+      final currentBridgeId = bridgeRegistrationService.bridgeId;
+      if (currentBridgeId == null) {
+        throw StateError("Bridge registration completed without an assigned bridge id");
+      }
+      if (previousBridgeId != null && previousBridgeId != currentBridgeId) {
+        await composition.deviceCanvasClaimService.cleanupBridgeIdentity(bridgeId: previousBridgeId);
+      }
+      await activeRuntime.cleanupDeviceCanvasClaimsOnStartup(bridgeId: currentBridgeId);
+      try {
+        final server = DeviceCanvasAgentToolServer(
+          service: composition.deviceCanvasAgentToolService,
+          rendezvousRepository: DeviceCanvasAgentToolRendezvousRepository(
+            filePath: deviceCanvasAgentToolRendezvous,
+          ),
+          pluginId: openCodePluginId,
+          bootstrapSecret: deviceCanvasAgentToolBootstrapSecret,
+        );
+        await server.start();
+        agentToolServer = server;
+        generationFactory.setEnvironmentOverrides(
+          pluginId: openCodePluginId,
+          overrides: <String, String>{
+            deviceCanvasAgentToolBootstrapSecretEnvironment: deviceCanvasAgentToolBootstrapSecret,
+            deviceCanvasAgentToolRendezvousEnvironment: deviceCanvasAgentToolRendezvous,
+          },
+        );
+        shutdownCoordinator
+          ..addPhase(
+            phase: BridgeShutdownPhase.signal,
+            action: server.beginShutdown,
+          )
+          ..addPhase(
+            phase: BridgeShutdownPhase.drain,
+            action: server.drain,
+          );
+      } on Object catch (error, stackTrace) {
+        Log.w("failed to start Device Canvas agent-tool server", error, stackTrace);
+      }
+      try {
+        await activeRuntime.startDeviceCanvasIpcServer(
+          dataDirectory: options.dataDirectory,
+          bridgeId: currentBridgeId,
+          processGeneration: "${io.pid}:${DateTime.now().microsecondsSinceEpoch}",
+          bridgeRegistrations: bridgeRegistrationService.registrations,
+        );
+      } on Object catch (error, stackTrace) {
+        Log.w("failed to start Device Canvas IPC server", error, stackTrace);
+      }
 
       // Run before imports, debug routes, or relay traffic can load a session
       // into a backend process and retain handles to its persisted storage.
@@ -1023,6 +1174,14 @@ class const BridgeRuntimeRunner._() {
     required bool isSupervised,
     required bool isInteractive,
   }) => !isSupervised && isInteractive;
+
+  @visibleForTesting
+  static Map<String, String> sanitizePluginEnvironment(Map<String, String> environment) =>
+      <String, String>{...environment}
+        ..remove(deviceCanvasAgentToolBootstrapFileEnvironment)
+        ..remove(deviceCanvasAgentToolBootstrapSecretEnvironment)
+        ..remove(deviceCanvasAgentToolRendezvousEnvironment)
+        ..remove(deviceCanvasAgentToolReadyFileEnvironment);
 
   static void _presentAppOnboardingPrompt({required Map<String, String> environment}) {
     Console.message("");

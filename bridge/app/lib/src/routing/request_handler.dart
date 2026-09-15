@@ -85,6 +85,25 @@ abstract class BodyRequestHandler<REQ, RES extends Object>(
   });
 }
 
+abstract class ContextBodyRequestHandler<REQ, RES extends Object>(
+  super.method,
+  super.path, {
+  required super.fromJson,
+}) extends _BodyRequestHandlerBase<REQ, RES> {
+  @override
+  Future<RES> handleParsed(
+    RelayRequest request, {
+    required REQ body,
+    required RequestTargetParams targetParams,
+  }) => handle(request, body: body, context: targetParams.context);
+
+  Future<RES> handle(
+    RelayRequest request, {
+    required REQ body,
+    required RoutedRequestContext context,
+  });
+}
+
 abstract class TargetBodyRequestHandler<REQ, RES extends Object>(
   super.method,
   super.path, {
@@ -108,7 +127,11 @@ abstract class TargetBodyRequestHandler<REQ, RES extends Object>(
   });
 }
 
-typedef RequestTargetParams = ({Map<String, String> pathParams, Map<String, String> queryParams});
+typedef RequestTargetParams = ({
+  Map<String, String> pathParams,
+  Map<String, String> queryParams,
+  RoutedRequestContext context,
+});
 
 /// A single interceptor in the request routing chain.
 ///
@@ -145,15 +168,14 @@ abstract class const RequestHandlerBase(
   }
 
   /// Extracts route values from the target parsed once by [RequestRouter].
-  ({
-    Map<String, String> pathParams,
-    Map<String, String> queryParams,
-  })
-  extractTargetParams({required Uri target}) {
+  RequestTargetParams extractTargetParams({
+    required Uri target,
+    RoutedRequestContext context = const LocalRoutedRequestContext(),
+  }) {
     final uri = target;
     final pathParams = path == "*" ? <String, String>{} : (_matchPathParams(uri.path, path) ?? {});
     final queryParams = Map<String, String>.from(uri.queryParameters);
-    return (pathParams: pathParams, queryParams: queryParams);
+    return (pathParams: pathParams, queryParams: queryParams, context: context);
   }
 
   // ── Handler contract ────────────────────────────────────────────────────────

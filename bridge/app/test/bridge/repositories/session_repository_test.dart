@@ -152,7 +152,10 @@ void main() {
       );
       expect(await repository.isSessionTombstoned(sessionId: "sess-tomb"), isFalse);
 
-      final deleted = await repository.deleteSession(sessionId: "sess-tomb");
+      final deleted = await repository.deleteSession(
+        sessionId: "sess-tomb",
+        beforePersistedDelete: ({required sessionIds}) async {},
+      );
 
       expect(deleted.session.pluginId, equals(plugin.id));
       expect(deleted.sessionIds, contains("sess-tomb"));
@@ -168,7 +171,10 @@ void main() {
       );
 
       await expectLater(
-        repository.deleteSession(sessionId: "sess-tomb"),
+        repository.deleteSession(
+          sessionId: "sess-tomb",
+          beforePersistedDelete: ({required sessionIds}) async {},
+        ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
     });
@@ -2512,7 +2518,10 @@ void main() {
       );
 
       await expectLater(
-        repository.deleteSession(sessionId: "rowless"),
+        repository.deleteSession(
+          sessionId: "rowless",
+          beforePersistedDelete: ({required sessionIds}) async {},
+        ),
         throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "statusCode", 404)),
       );
       expect(plugin.deleteCalls, isZero);
@@ -2545,7 +2554,10 @@ void main() {
         agent: null,
         agentModel: null,
       );
-      await repository.deleteSession(sessionId: "sesori-id");
+      await repository.deleteSession(
+        sessionId: "sesori-id",
+        beforePersistedDelete: ({required sessionIds}) async {},
+      );
 
       expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "backend-id", pluginId: plugin.id), isTrue);
       expect(await db.sessionDao.isSessionTombstoned(backendSessionId: "sesori-id", pluginId: plugin.id), isFalse);

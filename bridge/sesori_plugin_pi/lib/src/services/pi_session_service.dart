@@ -194,6 +194,7 @@ final class PiSessionService({
   final PluginWorkStateController _workState = PluginWorkStateController(initial: PluginWorkState.idle);
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _disposeFuture;
+  bool _disposeComplete = false;
   bool _disposed = false;
 
   Stream<BridgeSseEvent> get events => _events.stream;
@@ -1307,8 +1308,17 @@ final class PiSessionService({
   }
 
   /// [shutdownBudget] `null` means no deadline.
-  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) =>
-      _disposeFuture ??= _dispose(shutdownBudget: shutdownBudget);
+  Future<void> dispose({Duration? shutdownBudget = const Duration(seconds: 15)}) {
+    if (_disposeComplete) return Future.value();
+    final active = _disposeFuture;
+    if (active != null) return active;
+    late final Future<void> disposal;
+    disposal = _dispose(shutdownBudget: shutdownBudget).then<void>((_) => _disposeComplete = true).whenComplete(() {
+      if (identical(_disposeFuture, disposal)) _disposeFuture = null;
+    });
+    _disposeFuture = disposal;
+    return disposal;
+  }
 
   Future<void> _dispose({required Duration? shutdownBudget}) async {
     _disposed = true;

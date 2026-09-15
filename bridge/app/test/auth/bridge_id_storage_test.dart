@@ -1,7 +1,7 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/auth/bridge_id_storage.dart";
-import "package:sesori_bridge/src/foundation/data_directory_hardening.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show writeRestrictedFile;
 import "package:test/test.dart";
 
 void main() {

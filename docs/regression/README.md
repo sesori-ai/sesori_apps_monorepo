@@ -159,6 +159,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Bridge connectivity](bridge-connectivity.md)
 - [Bridge installation and updates](bridge-installation-and-updates.md)
 - [Design catalog](design-catalog.md)
+- [Device Canvas ownership](device-canvas-ownership.md)
 - [Desktop bridge supervision](desktop-bridge-supervision.md)
 - [Desktop cockpit shell](desktop-cockpit-shell.md)
 - [Diffs and source control](diffs-and-source-control.md)

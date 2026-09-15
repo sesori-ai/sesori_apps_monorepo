@@ -198,6 +198,7 @@ void main() {
     }
 
     try {
+      expect(plugin.permitsDeviceCanvasHttpMcp, isFalse);
       expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       final connecting = plugin.ensureConnected();
       final initialize = await waitForFrame(method: AcpMethods.initialize);

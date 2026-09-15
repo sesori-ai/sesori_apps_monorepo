@@ -259,6 +259,11 @@ state.
   before `turn/started` is interrupted when its turn id arrives, while in-flight
   or delayed spawn activity cannot re-announce the deleted subtree during that
   app-server connection.
+- Device Canvas ownership is scoped by bridge and canonical session ID, never by
+  a project path or backend session ID. Its links carry only bridge and session
+  identity; the client verifies the account, bridge, and session before deriving
+  the canonical project or rendering session content. Archive and deletion
+  release any claim owned by the affected session family.
 - Pi import discovers persisted JSONL sessions from its inherited environment,
   configured storage, default per-project storage, and bridge-known directories.
   Enumeration is metadata-only and bounded: it reads session headers and
@@ -560,6 +565,8 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/desktop/test/core/routing/desktop_router_test.dart`,
   `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`, and
   `client/desktop/test/features/projects/desktop_project_list_screen_test.dart`
+- Device Canvas ownership and projectless navigation:
+  `docs/regression/device-canvas-ownership.md`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,

@@ -278,6 +278,16 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - Codex session metadata uses the top-level `model` and `model_provider` values from
   `~/.codex/config.toml` when durable rollout metadata omits them; rollout metadata
   remains authoritative when present.
+- When the local agent-tool server and secure configuration injection succeed,
+  managed OpenCode receives exactly three native Device Canvas tools at process
+  generation: list, claim, and release. Its capability bootstrap is owner-only
+  and one-time, invocation identity supplies the canonical backend session, and
+  model input cannot select another session, bridge, or force path. Failed
+  bootstrap/configuration and external OpenCode attachments receive no
+  capability. Reserved variables are removed from inherited plugin environments.
+  Because OpenCode's native registry is process-static, a Device Canvas
+  disconnect keeps definitions visible but every operation fails closed with a
+  typed unavailable result.
 - Interactive authentication is optional per descriptor. A capable harness owns its
   backend process and credentials, exposes only a safe challenge and sanitized terminal
   state, cancels cooperatively, and settles process cleanup before the operation ends.
@@ -570,3 +580,5 @@ owned-process exit; and restart.
   acknowledgment/publication ordering and identity fencing through fake repository and
   connection streams; `client/module_core/test/repositories/plugin_repository_test.dart`
   proves timeout, response-loss, 503 and malformed-response uncertainty mapping.
+- `bridge/sesori_plugin_opencode/lib/src/runtime/open_code_device_canvas_tools.dart`,
+  runtime generation/policy tests, and `docs/regression/device-canvas-ownership.md`

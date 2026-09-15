@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "chat_history_service.dart";
+import "device_canvas_claim_service.dart";
 import "session_cleanup_result.dart";
 import "session_lifecycle_service.dart";
 import "session_mutation_dispatcher.dart";
@@ -10,12 +11,14 @@ class SessionDeletionService({
   required final SessionLifecycleService _sessionLifecycleService,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final ChatHistoryService _chatHistoryService,
+  required final DeviceCanvasClaimService _deviceCanvasClaimService,
 }) {
   Future<CleanupResult> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
   }) {
+    List<DeviceCanvasClaimRemoved> capturedClaimRemovals = const [];
     // The two stores are coordinated here rather than inside
     // SessionRepository, which owns no history dependency.
     return _sessionMutationDispatcher.deleteSession(
@@ -25,8 +28,22 @@ class SessionDeletionService({
         deleteWorktree: deleteWorktree,
         force: force,
       ),
-      onDeleted: _purgeHistory,
+      beforePersistedDelete: ({required List<String> sessionIds}) async {
+        capturedClaimRemovals = await _deviceCanvasClaimService.snapshotRemovalsForSessions(sessionIds: sessionIds);
+      },
+      onDeleted: (sessionIds) => _cleanupDeletedSessions(
+        sessionIds: sessionIds,
+        claimRemovals: capturedClaimRemovals,
+      ),
     );
+  }
+
+  Future<void> _cleanupDeletedSessions({
+    required List<String> sessionIds,
+    required List<DeviceCanvasClaimRemoved> claimRemovals,
+  }) async {
+    _deviceCanvasClaimService.publishRemovals(claimRemovals);
+    await _purgeHistory(sessionIds);
   }
 
   /// Best-effort: the session rows are already gone, so a failure here leaves

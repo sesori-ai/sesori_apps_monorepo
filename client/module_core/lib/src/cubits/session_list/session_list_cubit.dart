@@ -139,6 +139,7 @@ class SessionListCubit({
             SesoriCommandExecuted() ||
             SesoriTodoUpdated() ||
             SesoriSessionPromptDefaultsChanged() ||
+            SesoriDeviceCanvasChanged() ||
             SesoriSessionQueuedPrompts() ||
             SesoriProjectsSummary() ||
             SesoriProjectUpdated() ||

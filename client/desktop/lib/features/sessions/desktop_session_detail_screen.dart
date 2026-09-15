@@ -23,8 +23,13 @@ class const DesktopSessionDetailScreen({
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) =>
-          createSessionDetailCubit(claimProjectView: true, locator: getIt, sessionId: sessionId, projectId: projectId),
+      create: (_) => createSessionDetailCubit(
+        initialDeviceCanvasStatus: null,
+        claimProjectView: true,
+        locator: getIt,
+        sessionId: sessionId,
+        projectId: projectId,
+      ),
       child: DesktopComposerPresentationScope(
         child: SessionDetailActivityOwner(
           routeSource: getIt<RouteSource>(),

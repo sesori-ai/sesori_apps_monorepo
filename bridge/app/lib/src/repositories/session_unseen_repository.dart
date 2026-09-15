@@ -74,8 +74,24 @@ class SessionUnseenRepository({
   /// Removes the persisted session row (used when a session is deleted live so
   /// a stale unseen row can't keep its project's aggregate bold). No-op if the
   /// row doesn't exist.
-  Future<void> deleteSession({required String sessionId}) {
-    return _sessionDao.deleteSession(sessionId: sessionId);
+  Future<List<String>> deleteSession({
+    required String sessionId,
+    required Future<void> Function(List<String> sessionIds) beforeDelete,
+  }) {
+    return _sessionDao.transaction(() async {
+      final root = await _sessionDao.getSession(sessionId: sessionId);
+      if (root == null) return const [];
+      final sessionIds = <String>[root.sessionId];
+      var parentIds = <String>[root.sessionId];
+      while (parentIds.isNotEmpty) {
+        final children = await _sessionDao.getSessionsByParentIds(parentSessionIds: parentIds);
+        parentIds = [for (final child in children) child.sessionId];
+        sessionIds.addAll(parentIds);
+      }
+      await beforeDelete(sessionIds);
+      await _sessionDao.deleteSession(sessionId: sessionId);
+      return sessionIds;
+    });
   }
 
   /// Whether [sessionId] currently has unseen changes.

@@ -1,8 +1,11 @@
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -18,6 +21,57 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("adaptive session route matrix", () {
+    for (final openDiffs in [false, true]) {
+      testWidgets("verified mobile bridge scope survives ${openDiffs ? 'diff' : 'child'} navigation", (tester) async {
+        final harness = AdaptiveSessionRouterTestHarness();
+        await tester.binding.setSurfaceSize(const Size(390, 800));
+        addTearDown(() => tester.binding.setSurfaceSize(null));
+        addTearDown(harness.tearDown);
+        await harness.setUp(
+          initialLocation: "/projects/p1/sessions/session-1?bridgeId=bridge-1",
+          currentRouteDef: AppRouteDef.sessionDetail,
+          sessionsByProject: {
+            "p1": [
+              adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One"),
+              adaptiveTestSession(projectId: "p1", id: "child-1", title: "Child One"),
+            ],
+          },
+        );
+        when(() => harness.deviceCanvasService.getSessionStatus(sessionId: any(named: "sessionId"))).thenAnswer(
+          (invocation) async => DeviceCanvasStatusSupported(
+            status: DeviceCanvasSessionStatusResponse(
+              bridgeId: "bridge-1",
+              sessionId: invocation.namedArguments[#sessionId] as String,
+              sessionAvailable: true,
+              projectId: "p1",
+              connection: DeviceCanvasClientConnectionStatus.connected,
+            ),
+          ),
+        );
+        await tester.pumpWidget(harness.buildApp());
+        await tester.pumpAndSettle();
+        expect(find.text("Device Canvas"), findsOneWidget);
+        if (openDiffs) {
+          await tester.tap(find.byIcon(TablerRegular.git_compare));
+        } else {
+          SessionDetailPresentationScope.read(tester.element(find.byType(SessionDetailBody))).openSession(
+            projectId: "p1",
+            sessionId: "child-1",
+            sessionTitle: "Child One",
+            readOnly: true,
+          );
+        }
+        await tester.pumpAndSettle();
+        final uri = GoRouterState.of(
+          tester.element(find.byType(openDiffs ? SessionDiffsView : SessionDetailBody).last),
+        ).uri;
+        expect(uri.queryParameters["bridgeId"], "bridge-1");
+        expect(uri.path, openDiffs ? "/projects/p1/sessions/session-1/diffs" : "/projects/p1/sessions/child-1");
+        if (!openDiffs) expect(uri.queryParameters["readOnly"], "true");
+        expect(tester.takeException(), isNull);
+      });
+    }
+
     testWidgets("/projects/:projectId/sessions renders correctly at 390px and 1024px", (tester) async {
       const location = "/projects/p1/sessions";
       final sessions = {
@@ -177,6 +231,7 @@ void main() {
     testWidgets("detail toolbar back returns path-like project IDs to their sessions route", (tester) async {
       const projectId = "/Users/example/workspace/project";
       final detailLocation = const AppRoute.sessionDetail(
+        bridgeId: null,
         projectId: projectId,
         projectName: "Project One",
         sessionId: "session-1",

@@ -902,6 +902,180 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailRecheck => 'Recheck';
 
   @override
+  String get deviceCanvasLinkWaiting => 'Waiting for the expected Sesori bridge...';
+
+  @override
+  String get deviceCanvasLinkUnavailable =>
+      'This Device Canvas session is not available from the connected Sesori bridge or account.';
+
+  @override
+  String get deviceCanvasTitle => 'Device Canvas';
+
+  @override
+  String get deviceCanvasLoading => 'Loading Device Canvas status';
+
+  @override
+  String deviceCanvasBannerLabel(String status) {
+    return 'Device Canvas. $status';
+  }
+
+  @override
+  String get deviceCanvasOpenDetailsHint => 'Open Device Canvas details';
+
+  @override
+  String get deviceCanvasRetryHint => 'Retry Device Canvas status';
+
+  @override
+  String get deviceCanvasDisconnected => 'Device Canvas is disconnected';
+
+  @override
+  String get deviceCanvasUnavailable => 'Device Canvas status is unavailable';
+
+  @override
+  String get deviceCanvasNoDevices => 'No devices available';
+
+  @override
+  String deviceCanvasSummary(int available, int assigned) {
+    return '$available available, $assigned assigned here';
+  }
+
+  @override
+  String get deviceCanvasInventoryTruncated => 'Additional devices are not shown';
+
+  @override
+  String get deviceCanvasDevicePresent => 'Available';
+
+  @override
+  String get deviceCanvasDeviceMissing => 'Not currently available';
+
+  @override
+  String get deviceCanvasUnknownDevice => 'Unnamed device';
+
+  @override
+  String get deviceCanvasUnknownSession => 'another session';
+
+  @override
+  String get deviceCanvasDeviceUnclaimed => 'Unclaimed';
+
+  @override
+  String get deviceCanvasDeviceClaimedHere => 'Assigned to this session';
+
+  @override
+  String deviceCanvasDeviceClaimedElsewhere(String sessionTitle) {
+    return 'Assigned to $sessionTitle';
+  }
+
+  @override
+  String get deviceCanvasClaim => 'Assign';
+
+  @override
+  String get deviceCanvasReassign => 'Reassign';
+
+  @override
+  String get deviceCanvasRelease => 'Release';
+
+  @override
+  String deviceCanvasClaimDevice(String deviceName) {
+    return 'Assign $deviceName';
+  }
+
+  @override
+  String deviceCanvasReassignDevice(String deviceName) {
+    return 'Reassign $deviceName';
+  }
+
+  @override
+  String deviceCanvasReleaseDevice(String deviceName) {
+    return 'Release $deviceName';
+  }
+
+  @override
+  String deviceCanvasUpdatingDevice(String deviceName) {
+    return 'Updating $deviceName';
+  }
+
+  @override
+  String deviceCanvasReassignTitle(String deviceName) {
+    return 'Reassign $deviceName?';
+  }
+
+  @override
+  String deviceCanvasReassignMessage(String deviceName) {
+    return 'This removes $deviceName from its current session and assigns it here.';
+  }
+
+  @override
+  String get deviceCanvasReadOnly => 'Assignments are read-only in this session.';
+
+  @override
+  String get deviceCanvasCancel => 'Cancel';
+
+  @override
+  String get deviceCanvasMutationFailed => 'The Device Canvas update failed. Try again.';
+
+  @override
+  String get deviceCanvasMutationConflict =>
+      'This device was updated elsewhere. Review its current assignment and try again.';
+
+  @override
+  String get deviceCanvasMutationUnavailable => 'This device or session is no longer available.';
+
+  @override
+  String get deviceCanvasMutationUncertain =>
+      'The request may have completed, but its result could not be confirmed. Status was refreshed.';
+
+  @override
+  String get deviceCanvasVideoOpen => 'Watch';
+
+  @override
+  String deviceCanvasVideoOpenDevice(String deviceName) {
+    return 'Watch $deviceName';
+  }
+
+  @override
+  String get deviceCanvasVideoClose => 'Close preview';
+
+  @override
+  String get deviceCanvasVideoLanPreview => 'LAN video preview';
+
+  @override
+  String get deviceCanvasVideoConnecting => 'Connecting to Device Canvas...';
+
+  @override
+  String get deviceCanvasVideoLive => 'Live';
+
+  @override
+  String get deviceCanvasVideoStopped => 'The video preview stopped. Close it and start a new preview.';
+
+  @override
+  String get deviceCanvasVideoLanHelp => 'Video only. Keep this phone and the Sesori bridge on the same local network.';
+
+  @override
+  String get deviceCanvasVideoUnavailable => 'This device is no longer available.';
+
+  @override
+  String get deviceCanvasVideoUnauthorized => 'This device is no longer assigned to this session.';
+
+  @override
+  String get deviceCanvasVideoUnsupported => 'This bridge or device does not support video preview.';
+
+  @override
+  String get deviceCanvasVideoConflict => 'Another controller is already watching this device.';
+
+  @override
+  String get deviceCanvasVideoConnectionFailed =>
+      'The local video connection failed. Check that both devices are on the same network.';
+
+  @override
+  String get deviceCanvasVideoSignalingFailed => 'Device Canvas could not start the video preview.';
+
+  @override
+  String get deviceCanvasVideoLanOnly => 'This preview is limited to local-network connections.';
+
+  @override
+  String get deviceCanvasVideoExpired => 'The video preview lease expired. Close it and start a new preview.';
+
+  @override
   String get sessionDetailPromptHint => 'Ask anything...';
 
   @override

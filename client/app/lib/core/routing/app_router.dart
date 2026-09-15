@@ -103,6 +103,13 @@ extension on AppRoute {
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteProjects() => const ProjectListScreen(),
+      AppRouteDeviceCanvasSession(:final sessionId, :final bridgeId, :final readOnly) =>
+        DeviceCanvasSessionDetailScreen(
+          key: ValueKey(("device-canvas-session", bridgeId, sessionId)),
+          sessionId: sessionId,
+          readOnly: readOnly,
+          bridgeId: bridgeId,
+        ),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsDefaultInput() => const DefaultInputSettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
@@ -123,6 +130,7 @@ extension on AppRoute {
         :final sessionId,
         :final sessionTitle,
         :final readOnly,
+        :final bridgeId,
       ) =>
         SessionDetailScreen(
           auditView: false,
@@ -133,10 +141,12 @@ extension on AppRoute {
           sessionId: sessionId,
           sessionTitle: sessionTitle,
           readOnly: readOnly,
+          bridgeId: bridgeId,
         ),
-      AppRouteSessionDiffs(:final projectId, :final sessionId) => SessionDiffsScreen(
+      AppRouteSessionDiffs(:final projectId, :final sessionId, :final bridgeId) => SessionDiffsScreen(
         projectId: projectId,
         sessionId: sessionId,
+        bridgeId: bridgeId,
       ),
     };
   }
@@ -332,7 +342,7 @@ List<RouteBase> _buildAppRoutes({
                     return buildSessionPaneTransitionPage(
                       context: context,
                       state: state,
-                      pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId)),
+                      pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId, route.bridgeId)),
                       child: SessionDetailScreen(
                         auditView: false,
                         onBack: null,
@@ -343,6 +353,7 @@ List<RouteBase> _buildAppRoutes({
                         sessionId: route.sessionId,
                         sessionTitle: route.sessionTitle,
                         readOnly: route.readOnly,
+                        bridgeId: route.bridgeId,
                       ),
                     );
                   },
@@ -361,11 +372,12 @@ List<RouteBase> _buildAppRoutes({
                         return buildSessionPaneTransitionPage(
                           context: context,
                           state: state,
-                          pageKey: state.pageKey,
+                          pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId, route.bridgeId)),
                           child: SessionDiffsScreen(
                             key: ValueKey("session-diffs-${route.sessionId}"),
                             projectId: route.projectId,
                             sessionId: route.sessionId,
+                            bridgeId: route.bridgeId,
                           ),
                         );
                       },
@@ -380,6 +392,7 @@ List<RouteBase> _buildAppRoutes({
     ),
     buildArchivedSessionsRoute(),
     buildHarnessSettingsRoute(),
+    AppRouteDef.deviceCanvasSession.toGoRoute(),
     AppRouteDef.settings.toGoRoute(
       routes: [
         GoRoute(
@@ -430,6 +443,7 @@ class const _SessionListPane({
               sessionId: session.id,
               sessionTitle: session.title,
               readOnly: false,
+              bridgeId: null,
             ),
           );
         },
@@ -445,8 +459,8 @@ final appRouter = GoRouter(
   initialLocation: AppRouteDef.splash.path,
   onException: (context, state, router) {
     final uri = state.uri;
-    if (uri.scheme == bundleId) return logd("GoRouter ignoring deep link (handled by app_links): $uri");
-    loge("GoRouter could not match route: ${uri.toString()}");
+    if (uri.scheme == bundleId) return logd("GoRouter ignoring custom-scheme deep link handled by app_links");
+    loge("GoRouter could not match route");
   },
   routes: buildAppRoutes(),
 );
@@ -580,6 +594,7 @@ ShellRoute buildArchivedSessionsRoute() {
                 queryParams: state.uri.queryParameters,
               );
               return SessionDetailScreen(
+                bridgeId: null,
                 key: ValueKey("archived-detail-${route.sessionId}"),
                 projectId: route.projectId,
                 projectName: route.projectName,

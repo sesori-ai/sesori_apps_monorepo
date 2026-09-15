@@ -8,6 +8,7 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/cubits/session_detail/device_canvas_session_state.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_abort_outcome.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
@@ -17,6 +18,7 @@ import "package:sesori_dart_core/src/foundation/models/product_analytics/product
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/platform/lifecycle_source.dart";
+import "package:sesori_dart_core/src/repositories/models/device_canvas_result.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_management_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_exception.dart";
@@ -25,6 +27,7 @@ import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
+import "package:sesori_dart_core/src/services/device_canvas_service.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
@@ -40,6 +43,8 @@ import "../../services/session_interaction_calculator_test.dart" show management
 class MockPermissionRepository() extends Mock implements PermissionRepository;
 
 class MockPluginRepository() extends Mock implements PluginRepository;
+
+class MockDeviceCanvasService() extends Mock implements DeviceCanvasService;
 
 void main() {
   const sessionId = "session-1";
@@ -138,6 +143,7 @@ void main() {
     /// Only the viewing services and the lifecycle source differ between cases,
     /// so each test names just the seam it exercises.
     SessionDetailCubit buildCubit({
+      DeviceCanvasService? deviceCanvasService,
       bool claimProjectView = true,
       SessionViewingService? sessionViewingService,
       ProjectViewingService? projectViewingService,
@@ -161,6 +167,7 @@ void main() {
       projectId: "project-1",
       notificationCanceller: mockNotificationCanceller,
       failureReporter: mockFailureReporter,
+      deviceCanvasService: deviceCanvasService,
     );
 
     tearDown(() async {
@@ -185,8 +192,7 @@ void main() {
         addTearDown(cubit.close);
         await awaitState(
           cubit: cubit,
-          predicate: (state) =>
-              state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
+          predicate: (state) => state is SessionDetailLoaded && state.interaction.canInteract != initialBlocked,
           description: "initial harness state",
         );
         final before = cubit.state;
@@ -2621,6 +2627,585 @@ void main() {
       },
     );
 
+    group("Device Canvas", () {
+      test("loads status and refreshes on invalidation", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+          requests++;
+          return DeviceCanvasStatusSupported(
+            status: _deviceCanvasStatus(claimSessionId: requests == 1 ? null : sessionId),
+          );
+        });
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+        var ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices.single.claim, isNull);
+
+        globalEvents.add(SseEvent(data: const SesoriSseEvent.deviceCanvasChanged()));
+        await _awaitDeviceCanvas(
+          cubit,
+          (state) => state is DeviceCanvasSessionReady && state.status.devices.single.claim?.sessionId == sessionId,
+        );
+
+        ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices.single.claim?.sessionId, sessionId);
+        expect(requests, 2);
+      });
+
+      test("hides Device Canvas for an older bridge", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        when(
+          () => deviceCanvasService.getSessionStatus(sessionId: sessionId),
+        ).thenAnswer((_) async => const DeviceCanvasStatusUnsupported());
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionHidden);
+
+        expect((cubit.state as SessionDetailLoaded).deviceCanvas, isA<DeviceCanvasSessionHidden>());
+      });
+
+      test("marks status disconnected and recovers after reconnect", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+          requests++;
+          return DeviceCanvasStatusSupported(status: _deviceCanvasStatus());
+        });
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        connectionStatus.add(const ConnectionStatus.disconnected());
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionDisconnected);
+        connectionStatus.add(
+          ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            health: testHealthResponse(),
+          ),
+        );
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        expect(requests, 2);
+      });
+
+      for (final reconnect in [true, false]) {
+        test("refreshes with a blocked harness after ${reconnect ? 'reconnect' : 'resume'}", () async {
+          final deviceCanvasService = MockDeviceCanvasService();
+          var requests = 0;
+          when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+            requests++;
+            return DeviceCanvasStatusSupported(
+              status: _deviceCanvasStatus(claimSessionId: requests == 1 ? null : sessionId),
+            );
+          });
+          final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+            managementFixture(
+              pluginId: "plugin-1",
+              setup: PluginSetupState.authenticationRequired,
+              runtime: PluginRuntimeState.blocked,
+            ),
+          );
+          addTearDown(snapshots.close);
+          final management = MockPluginManagementService();
+          when(() => management.snapshots).thenAnswer((_) => snapshots);
+          when(management.refresh).thenAnswer((_) async {});
+          final connected = ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            health: testHealthResponse(),
+          );
+          connectionStatus.add(connected);
+          when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+          final lifecycle = MockLifecycleSource();
+          final cubit = buildCubit(
+            deviceCanvasService: deviceCanvasService,
+            pluginManagementService: management,
+            lifecycleSource: lifecycle,
+          );
+          addTearDown(cubit.close);
+          await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+          final loaded = cubit.state as SessionDetailLoaded;
+          expect(loaded.interaction.canInteract, isFalse);
+          clearInteractions(mockSessionService);
+          clearInteractions(mockSessionRepository);
+
+          // No harness recovery or Device Canvas invalidation arrives. Bridge
+          // status must recover independently of the blocked transcript refresh.
+          if (reconnect) {
+            connectionStatus.add(const ConnectionStatus.disconnected());
+            await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionDisconnected);
+            connectionStatus.add(connected);
+          } else {
+            lifecycle.emitState(LifecycleState.paused);
+            lifecycle.emitState(LifecycleState.resumed);
+          }
+          await _awaitDeviceCanvas(
+            cubit,
+            (state) => state is DeviceCanvasSessionReady && state.status.devices.single.claim?.sessionId == sessionId,
+          );
+
+          expect(requests, 2);
+          expect((cubit.state as SessionDetailLoaded).interaction.canInteract, isFalse);
+          expect((cubit.state as SessionDetailLoaded).messages, loaded.messages);
+          verifyNever(() => mockSessionRepository.getSession(sessionId: sessionId));
+          verifyNever(
+            () => mockSessionService.getMessages(
+              sessionId: any(named: "sessionId"),
+              limit: any(named: "limit"),
+              before: any(named: "before"),
+              storedOnly: any(named: "storedOnly"),
+            ),
+          );
+        });
+      }
+
+      test("publishes committed claims", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        when(
+          () => deviceCanvasService.getSessionStatus(sessionId: sessionId),
+        ).thenAnswer((_) async => DeviceCanvasStatusSupported(status: _deviceCanvasStatus()));
+        when(
+          () => deviceCanvasService.claim(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            reassign: false,
+            expectedOwnerSessionId: null,
+            expectedClaimRevision: null,
+          ),
+        ).thenAnswer(
+          (_) async => DeviceCanvasMutationCommitted(
+            response: DeviceCanvasMutationResponse(
+              outcome: DeviceCanvasMutationOutcome.claimed,
+              status: _deviceCanvasStatus(claimSessionId: sessionId),
+            ),
+          ),
+        );
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        await cubit.claimDeviceCanvasDevice(deviceKey: "device-1", reassign: false);
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices.single.claim?.sessionId, sessionId);
+        expect(ready.mutation, isA<DeviceCanvasSessionMutationIdle>());
+      });
+
+      test("publishes committed reassignment with the observed CAS token", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        when(
+          () => deviceCanvasService.getSessionStatus(sessionId: sessionId),
+        ).thenAnswer(
+          (_) async => DeviceCanvasStatusSupported(
+            status: _deviceCanvasStatus(claimSessionId: "session-2", claimRevision: 7),
+          ),
+        );
+        when(
+          () => deviceCanvasService.claim(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            reassign: true,
+            expectedOwnerSessionId: "session-2",
+            expectedClaimRevision: 7,
+          ),
+        ).thenAnswer(
+          (_) async => DeviceCanvasMutationCommitted(
+            response: DeviceCanvasMutationResponse(
+              outcome: DeviceCanvasMutationOutcome.reassigned,
+              status: _deviceCanvasStatus(claimSessionId: sessionId, claimRevision: 8),
+            ),
+          ),
+        );
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        await cubit.claimDeviceCanvasDevice(deviceKey: "device-1", reassign: true);
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices.single.claim?.sessionId, sessionId);
+        expect(ready.status.devices.single.claim?.revision, 8);
+        expect(ready.mutation, isA<DeviceCanvasSessionMutationIdle>());
+      });
+
+      test("publishes committed release with the observed CAS token", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        when(
+          () => deviceCanvasService.getSessionStatus(sessionId: sessionId),
+        ).thenAnswer(
+          (_) async => DeviceCanvasStatusSupported(
+            status: _deviceCanvasStatus(claimSessionId: sessionId, claimRevision: 7),
+          ),
+        );
+        when(
+          () => deviceCanvasService.release(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            expectedClaimRevision: 7,
+          ),
+        ).thenAnswer(
+          (_) async => DeviceCanvasMutationCommitted(
+            response: DeviceCanvasMutationResponse(
+              outcome: DeviceCanvasMutationOutcome.released,
+              status: _deviceCanvasStatus(),
+            ),
+          ),
+        );
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        await cubit.releaseDeviceCanvasDevice(deviceKey: "device-1");
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices.single.claim, isNull);
+        expect(ready.mutation, isA<DeviceCanvasSessionMutationIdle>());
+      });
+
+      test("keeps an uncertain release failed when a truncated refresh omits the target", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+          requests++;
+          return DeviceCanvasStatusSupported(
+            status: requests == 1
+                ? _deviceCanvasStatus(claimSessionId: sessionId)
+                : _deviceCanvasStatus(includeDevice: false, inventoryTruncated: true),
+          );
+        });
+        when(
+          () => deviceCanvasService.release(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            expectedClaimRevision: 1,
+          ),
+        ).thenAnswer((_) async => const DeviceCanvasMutationUncertain());
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        await cubit.releaseDeviceCanvasDevice(deviceKey: "device-1");
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices, isEmpty);
+        expect(ready.status.inventoryTruncated, isTrue);
+        expect(
+          ready.mutation,
+          isA<DeviceCanvasSessionMutationFailed>()
+              .having((mutation) => mutation.deviceKey, "deviceKey", "device-1")
+              .having(
+                (mutation) => mutation.reason,
+                "reason",
+                DeviceCanvasSessionMutationFailure.uncertain,
+              ),
+        );
+        expect(requests, 2);
+      });
+
+      test("a queued refresh cannot erase an unconfirmed uncertain release", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        final releaseResult = Completer<DeviceCanvasMutationResult>();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+          requests++;
+          return DeviceCanvasStatusSupported(
+            status: requests == 1
+                ? _deviceCanvasStatus(claimSessionId: sessionId)
+                : _deviceCanvasStatus(includeDevice: false, inventoryTruncated: true),
+          );
+        });
+        when(
+          () => deviceCanvasService.release(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            expectedClaimRevision: 1,
+          ),
+        ).thenAnswer((_) => releaseResult.future);
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        final mutation = cubit.releaseDeviceCanvasDevice(deviceKey: "device-1");
+        globalEvents.add(SseEvent(data: const SesoriSseEvent.deviceCanvasChanged()));
+        await Future<void>.delayed(Duration.zero);
+        releaseResult.complete(const DeviceCanvasMutationUncertain());
+        await mutation;
+        while (requests < 3) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        await Future<void>.delayed(Duration.zero);
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices, isEmpty);
+        expect(ready.status.inventoryTruncated, isTrue);
+        expect(
+          ready.mutation,
+          isA<DeviceCanvasSessionMutationFailed>()
+              .having((mutation) => mutation.action, "action", DeviceCanvasSessionMutationAction.release)
+              .having(
+                (mutation) => mutation.reason,
+                "reason",
+                DeviceCanvasSessionMutationFailure.uncertain,
+              ),
+        );
+      });
+
+      test("refresh failure and truncated recovery preserve an unconfirmed release", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        final releaseResult = Completer<DeviceCanvasMutationResult>();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+          requests++;
+          return switch (requests) {
+            1 => DeviceCanvasStatusSupported(
+              status: _deviceCanvasStatus(claimSessionId: sessionId),
+            ),
+            3 => DeviceCanvasStatusFailure(error: ApiError.generic()),
+            _ => DeviceCanvasStatusSupported(
+              status: _deviceCanvasStatus(includeDevice: false, inventoryTruncated: true),
+            ),
+          };
+        });
+        when(
+          () => deviceCanvasService.release(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            expectedClaimRevision: 1,
+          ),
+        ).thenAnswer((_) => releaseResult.future);
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        final mutation = cubit.releaseDeviceCanvasDevice(deviceKey: "device-1");
+        globalEvents.add(SseEvent(data: const SesoriSseEvent.deviceCanvasChanged()));
+        await Future<void>.delayed(Duration.zero);
+        releaseResult.complete(const DeviceCanvasMutationUncertain());
+        await mutation;
+        while (requests < 3) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        await cubit.refreshDeviceCanvas();
+        while (requests < 4) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        await Future<void>.delayed(Duration.zero);
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices, isEmpty);
+        expect(ready.status.inventoryTruncated, isTrue);
+        expect(
+          ready.mutation,
+          isA<DeviceCanvasSessionMutationFailed>()
+              .having((mutation) => mutation.action, "action", DeviceCanvasSessionMutationAction.release)
+              .having(
+                (mutation) => mutation.reason,
+                "reason",
+                DeviceCanvasSessionMutationFailure.uncertain,
+              ),
+        );
+      });
+
+      test("confirms an uncertain release when a truncated refresh retains the target", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+          requests++;
+          return DeviceCanvasStatusSupported(
+            status: requests == 1
+                ? _deviceCanvasStatus(claimSessionId: sessionId)
+                : _deviceCanvasStatus(inventoryTruncated: true),
+          );
+        });
+        when(
+          () => deviceCanvasService.release(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            expectedClaimRevision: 1,
+          ),
+        ).thenAnswer((_) async => const DeviceCanvasMutationUncertain());
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        await cubit.releaseDeviceCanvasDevice(deviceKey: "device-1");
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices.single.claim, isNull);
+        expect(ready.status.inventoryTruncated, isTrue);
+        expect(ready.mutation, isA<DeviceCanvasSessionMutationIdle>());
+        expect(requests, 2);
+      });
+
+      test("does not let a stale refresh failure overwrite a committed mutation", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        final staleRefresh = Completer<DeviceCanvasStatusResult>();
+        final followUpRefresh = Completer<DeviceCanvasStatusResult>();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) {
+          requests++;
+          return switch (requests) {
+            1 => Future.value(DeviceCanvasStatusSupported(status: _deviceCanvasStatus())),
+            2 => staleRefresh.future,
+            _ => followUpRefresh.future,
+          };
+        });
+        when(
+          () => deviceCanvasService.claim(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            reassign: false,
+            expectedOwnerSessionId: null,
+            expectedClaimRevision: null,
+          ),
+        ).thenAnswer(
+          (_) async => DeviceCanvasMutationCommitted(
+            response: DeviceCanvasMutationResponse(
+              outcome: DeviceCanvasMutationOutcome.claimed,
+              status: _deviceCanvasStatus(claimSessionId: sessionId),
+            ),
+          ),
+        );
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        final refresh = cubit.refreshDeviceCanvas();
+        while (requests < 2) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        await cubit.claimDeviceCanvasDevice(deviceKey: "device-1", reassign: false);
+        staleRefresh.completeError(StateError("stale refresh failed"));
+        await refresh;
+        while (requests < 3) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        final committed = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(committed.status.devices.single.claim?.sessionId, sessionId);
+        expect(committed.mutation, isA<DeviceCanvasSessionMutationIdle>());
+
+        followUpRefresh.complete(
+          DeviceCanvasStatusSupported(status: _deviceCanvasStatus(claimSessionId: sessionId)),
+        );
+        await _awaitDeviceCanvas(
+          cubit,
+          (state) => state is DeviceCanvasSessionReady && state.status.devices.single.claim?.sessionId == sessionId,
+        );
+      });
+
+      test("rejects a committed mutation response from another bridge", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        when(
+          () => deviceCanvasService.getSessionStatus(sessionId: sessionId),
+        ).thenAnswer((_) async => DeviceCanvasStatusSupported(status: _deviceCanvasStatus()));
+        when(
+          () => deviceCanvasService.claim(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            reassign: false,
+            expectedOwnerSessionId: null,
+            expectedClaimRevision: null,
+          ),
+        ).thenAnswer(
+          (_) async => DeviceCanvasMutationCommitted(
+            response: DeviceCanvasMutationResponse(
+              outcome: DeviceCanvasMutationOutcome.claimed,
+              status: _deviceCanvasStatus(bridgeId: "bridge-2", claimSessionId: sessionId),
+            ),
+          ),
+        );
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        await cubit.claimDeviceCanvasDevice(deviceKey: "device-1", reassign: false);
+
+        expect((cubit.state as SessionDetailLoaded).deviceCanvas, isA<DeviceCanvasSessionHidden>());
+      });
+
+      test("reconciles an uncertain mutation before reporting success", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+          requests++;
+          return DeviceCanvasStatusSupported(
+            status: _deviceCanvasStatus(claimSessionId: requests == 1 ? null : sessionId),
+          );
+        });
+        when(
+          () => deviceCanvasService.claim(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            reassign: false,
+            expectedOwnerSessionId: null,
+            expectedClaimRevision: null,
+          ),
+        ).thenAnswer((_) async => const DeviceCanvasMutationUncertain());
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        await cubit.claimDeviceCanvasDevice(deviceKey: "device-1", reassign: false);
+
+        final ready = (cubit.state as SessionDetailLoaded).deviceCanvas as DeviceCanvasSessionReady;
+        expect(ready.status.devices.single.claim?.sessionId, sessionId);
+        expect(ready.mutation, isA<DeviceCanvasSessionMutationIdle>());
+        expect(requests, 2);
+      });
+
+      test("does not publish uncertain reconciliation from a stale connection", () async {
+        final deviceCanvasService = MockDeviceCanvasService();
+        final reconciliation = Completer<DeviceCanvasStatusResult>();
+        var requests = 0;
+        when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) {
+          requests++;
+          return requests == 1
+              ? Future.value(DeviceCanvasStatusSupported(status: _deviceCanvasStatus()))
+              : reconciliation.future;
+        });
+        when(
+          () => deviceCanvasService.claim(
+            expectedBridgeId: "bridge-1",
+            sessionId: sessionId,
+            deviceKey: "device-1",
+            reassign: false,
+            expectedOwnerSessionId: null,
+            expectedClaimRevision: null,
+          ),
+        ).thenAnswer((_) async => const DeviceCanvasMutationUncertain());
+        final cubit = buildCubit(deviceCanvasService: deviceCanvasService);
+        addTearDown(cubit.close);
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+
+        final mutation = cubit.claimDeviceCanvasDevice(deviceKey: "device-1", reassign: false);
+        while (requests < 2) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        connectionStatus.add(const ConnectionStatus.disconnected());
+        await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionDisconnected);
+        reconciliation.complete(
+          DeviceCanvasStatusSupported(status: _deviceCanvasStatus(claimSessionId: sessionId)),
+        );
+        await mutation;
+
+        expect((cubit.state as SessionDetailLoaded).deviceCanvas, isA<DeviceCanvasSessionDisconnected>());
+      });
+    });
+
     group("viewing declaration", () {
       test("audit detail loads without acquiring, readying or releasing a live project claim", () async {
         final projectViewing = stubbedProjectViewingService();
@@ -2869,6 +3454,61 @@ Future<void> _awaitLoaded(SessionDetailCubit cubit) async {
     cubit: cubit,
     predicate: (state) => state is SessionDetailLoaded,
     description: "SessionDetailLoaded",
+  );
+}
+
+Future<void> _awaitDeviceCanvas(
+  SessionDetailCubit cubit,
+  bool Function(DeviceCanvasSessionState state) matches,
+) async {
+  for (var i = 0; i < 100; i++) {
+    final state = cubit.state;
+    if (state is SessionDetailLoaded && matches(state.deviceCanvas)) return;
+    await Future<void>.delayed(const Duration(milliseconds: 1));
+  }
+  fail("Timed out waiting for Device Canvas state; current state: ${cubit.state}");
+}
+
+DeviceCanvasSessionStatusResponse _deviceCanvasStatus({
+  String bridgeId = "bridge-1",
+  String? claimSessionId,
+  int claimRevision = 1,
+  bool includeDevice = true,
+  bool inventoryTruncated = false,
+}) {
+  return DeviceCanvasSessionStatusResponse(
+    bridgeId: bridgeId,
+    sessionId: "session-1",
+    sessionAvailable: true,
+    projectId: "project-1",
+    connection: DeviceCanvasClientConnectionStatus.connected,
+    devices: includeDevice
+        ? [
+            DeviceCanvasDeviceStatus(
+              deviceKey: "device-1",
+              descriptor: const DeviceCanvasClientDescriptor(
+                platform: DeviceCanvasClientPlatform.ios,
+                displayName: "iPhone",
+                runtimeDescription: "iOS 26",
+                modelDescription: "iPhone",
+                dimensions: DeviceCanvasClientDimensions(width: 1179, height: 2556),
+                orientation: DeviceCanvasClientOrientation.portrait,
+                capabilities: DeviceCanvasClientCapabilities(localView: true),
+              ),
+              claim: claimSessionId == null
+                  ? null
+                  : DeviceCanvasClaimStatus(
+                      projectId: "project-1",
+                      sessionId: claimSessionId,
+                      revision: claimRevision,
+                      claimedAt: 1,
+                      displayTitle: "Session",
+                    ),
+            ),
+          ]
+        : const [],
+    inventoryTruncated: inventoryTruncated,
+    supportsReassignment: true,
   );
 }
 

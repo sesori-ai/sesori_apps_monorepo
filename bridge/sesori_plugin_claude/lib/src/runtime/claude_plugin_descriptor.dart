@@ -56,7 +56,7 @@ final class const ClaudePluginDescriptor({
   static const String defaultBinary = "claude";
 
   /// Oldest Claude Code release with the CLI behavior this plugin requires.
-  static const String minVersion = "2.1.221";
+  static const String minVersion = "2.1.251";
 
   /// Latest stable Claude Code release validated against this plugin.
   static const String targetVersion = "2.1.269";
@@ -247,6 +247,7 @@ final class const ClaudePluginDescriptor({
       // The host factory already inherits this environment. Launch specs carry
       // only explicit overrides so they never shadow HOME and break keychain auth.
       environment: const {},
+      agentToolServices: host.agentToolServices,
     );
     final eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
     final approvals = ClaudeApprovalRegistry(

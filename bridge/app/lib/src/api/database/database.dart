@@ -3,18 +3,22 @@ import "dart:io";
 import "package:drift/drift.dart";
 import "package:drift/native.dart";
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show createHardenedDirectory, createHardenedFile;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../foundation/data_directory_hardening.dart";
 import "converters/agent_model_converter.dart";
 import "daos/catalog_hydrations_dao.dart";
+import "daos/device_canvas_claim_dao.dart";
 import "daos/projects_dao.dart";
 import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
 import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
+import "tables/device_canvas_claim_revisions_table.dart";
+import "tables/device_canvas_claims_table.dart";
 import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
 import "tables/pull_requests_table.dart";
@@ -34,15 +38,17 @@ part "database.g.dart";
     PullRequestsTable,
     CatalogHydrationsTable,
     SessionOptionsCacheTable,
+    DeviceCanvasClaimsTable,
+    DeviceCanvasClaimRevisionsTable,
     NewSessionDefaultsTable,
   ],
-  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
+  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao, DeviceCanvasClaimDao],
 )
 class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 16;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -293,6 +299,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
         // without that column, copying every remaining column by name in SQL
         // so the migration never deserializes the removed value.
         await m.alterTable(TableMigration(schema.sessionOptionsCacheTable));
+      },
+      from15To16: (m, schema) async {
+        await m.createTable(schema.deviceCanvasClaimsTable);
+        await m.createTable(schema.deviceCanvasClaimRevisionsTable);
+        await m.createIndex(schema.idxDeviceCanvasClaimsSession);
       },
     ),
     beforeOpen: (details) async {
