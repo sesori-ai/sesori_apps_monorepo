@@ -137,7 +137,12 @@ void main() {
       tester.view.physicalSize = Size(width, 700);
       await tester.pumpWidget(app(state: running));
       await tester.pumpAndSettle();
-      final mainPane = find.byKey(const Key("cockpit-content"));
+      final mainPane = find
+          .ancestor(
+            of: find.byKey(const Key("cockpit-content")),
+            matching: find.byType(Column),
+          )
+          .first;
       final dividerWidth = width < DesktopCockpitShell.autoCollapseBreakpoint ? 1 : 6;
       expect(tester.getSize(mainPane).width, width - tester.getSize(rail).width - dividerWidth);
       expect(find.byType(SessionSplitShell), findsNothing);
