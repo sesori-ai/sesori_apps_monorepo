@@ -65,7 +65,9 @@ Step 2 merged in [PR #1487](https://github.com/sesori-ai/sesori_apps_monorepo/pu
 as `833b989517`, with all six native build/inventory/relocated-helper E2E rows passing.
 Step 3 started automatically in the same worktree on
 `desktop-distribution-bundle-identity`. The existing reviewed identity boundary is
-unchanged; no new lifecycle owner, mutable state, database or wire contract is planned.
+unchanged; no new lifecycle owner, mutable state, database or wire contract was added.
+Implementation, local native evidence and the approved architecture review are
+recorded in [steps/step-03.md](steps/step-03.md); six-target staging CI is pending.
 
 ## Qualification and ship gates
 
