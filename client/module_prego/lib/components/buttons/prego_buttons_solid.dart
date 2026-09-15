@@ -20,7 +20,7 @@ enum PregoButtonsSolidSize() {
   /// Height 40px — text-sm/bold, px=14, py=10, gap=4.
   md,
 
-  /// Height 44px — text-md/bold, px=16, py=12, gap=6.
+  /// Height 44px — text-md/bold, px=16, py=10, gap=6.
   lg,
 
   /// Height 52px — text-md/bold, px=20, py=16, gap=6.
@@ -39,7 +39,7 @@ enum PregoButtonsSolidHierarchy() {
   /// this hierarchy.
   primaryAlt,
 
-  /// Outlined button with secondary border and secondary text.
+  /// Raised surface with secondary border and secondary text.
   secondary,
 
   /// Ghost button — no background, no border. Tertiary text colour.
@@ -310,7 +310,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   Widget _buildLabelContent({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
     final textStyle = _resolveTextStyle(prego: prego, state: state);
-    final iconColor = _resolveIconColor(colors: colors, state: state);
+    final iconColor = _resolveIconColor(colors: colors, state: state, isTrailing: false);
     final padding = _resolvePadding();
     final gap = _resolveGap();
 
@@ -344,7 +344,13 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       children.add(labelWidget);
       if (widget.trailingIcon != null) {
         children.add(SizedBox(width: gap));
-        children.add(Icon(widget.trailingIcon, size: _resolveIconSize(), color: iconColor));
+        children.add(
+          Icon(
+            widget.trailingIcon,
+            size: _resolveIconSize(),
+            color: _resolveIconColor(colors: colors, state: state, isTrailing: true),
+          ),
+        );
       }
     }
 
@@ -364,7 +370,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 
   Widget _buildIconOnlyContent({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
-    final iconColor = _resolveIconColor(colors: colors, state: state);
+    final iconColor = _resolveIconColor(colors: colors, state: state, isTrailing: false);
     final padding = _resolveIconOnlyPadding();
 
     final Widget iconWidget;
@@ -525,11 +531,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       return colors.bgSurface1;
     }
 
-    // Regular secondary: bgSecondary at rest. Hover darkening is handled by
-    // the PregoTappable overlay (bgPrimaryHover = rgba(0,0,0,0.16) composited
-    // on top of bgSecondary).
+    // Regular secondary uses the raised Figma surface in both themes.
+    // Hover and press feedback is composited by PregoTappable.
     if (_isFocused) return colors.bgSurface1;
-    return colors.bgSecondary;
+    return colors.bgSurface4;
   }
 
   Color _tertiaryBgColor({
@@ -713,7 +718,11 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
     };
   }
 
-  Color _resolveIconColor({required PregoColors colors, required Set<WidgetState> state}) {
+  Color _resolveIconColor({
+    required PregoColors colors,
+    required Set<WidgetState> state,
+    required bool isTrailing,
+  }) {
     final isDisabled = state.contains(WidgetState.disabled);
     final isHovered = state.contains(WidgetState.hovered);
     if (isDisabled && !widget.isLoading) {
@@ -743,8 +752,8 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       PregoButtonsSolidHierarchy.primary => colors.textWhite,
       // Primary Alt: icon matches the dark text colour (text-primary_on-white).
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
-      // Secondary and tertiary icon color is static across all active states (no hover change).
-      PregoButtonsSolidHierarchy.secondary => colors.textSecondary,
+      // Canonical secondary: leading/icon-only uses primary text; trailing matches the label.
+      PregoButtonsSolidHierarchy.secondary => isTrailing ? colors.textSecondary : colors.textPrimary,
       PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
       // Link uses text-brand-secondary tokens on default/hover; text-secondary when focused.
       PregoButtonsSolidHierarchy.link =>
@@ -762,9 +771,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       horizontal: _buttonHPaddingMd,
       vertical: _buttonVPaddingMd,
     ),
+    // A 24px line plus 10px on each side gives the Figma 44px text button.
     PregoButtonsSolidSize.lg => const EdgeInsetsDirectional.symmetric(
       horizontal: PregoSpacing.xl,
-      vertical: PregoSpacing.lg,
+      vertical: _buttonVPaddingMd,
     ),
     PregoButtonsSolidSize.xl => const EdgeInsetsDirectional.symmetric(
       horizontal: PregoSpacing.x2l,
@@ -805,10 +815,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 /// In the Secondary focused state, [bottomShadowColor] is set to
 /// `skeuomorphicInnerBorder` so both layers use the same token.
 class const PregoSkeuomorphicOverlay({
-    super.key,
-    required final Color innerBorderColor,
-    required final Color bottomShadowColor,
-  }) extends StatelessWidget {
+  super.key,
+  required final Color innerBorderColor,
+  required final Color bottomShadowColor,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -825,9 +835,9 @@ class const PregoSkeuomorphicOverlay({
 }
 
 class _SkeuomorphicPainter({
-    required final Color innerBorderColor,
-    required final Color bottomShadowColor,
-  }) extends CustomPainter {
+  required final Color innerBorderColor,
+  required final Color bottomShadowColor,
+}) extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);

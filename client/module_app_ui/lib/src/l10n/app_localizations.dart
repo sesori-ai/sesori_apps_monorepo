@@ -3364,25 +3364,25 @@ abstract class AppLocalizations {
   /// No description provided for @diffPermissionRequestTitle.
   ///
   /// In en, this message translates to:
-  /// **'Permission Request'**
+  /// **'Allow this action?'**
   String get diffPermissionRequestTitle;
 
   /// No description provided for @diffPermissionReject.
   ///
   /// In en, this message translates to:
-  /// **'Reject'**
+  /// **'Don’t allow'**
   String get diffPermissionReject;
 
   /// No description provided for @diffPermissionOnce.
   ///
   /// In en, this message translates to:
-  /// **'Once'**
+  /// **'Allow'**
   String get diffPermissionOnce;
 
   /// No description provided for @diffPermissionAlwaysAllow.
   ///
   /// In en, this message translates to:
-  /// **'Always Allow'**
+  /// **'Always approve'**
   String get diffPermissionAlwaysAllow;
 
   /// No description provided for @diffFileChangesTitle.

@@ -1212,7 +1212,7 @@ void main() {
     state = state.copyWith(pendingPermissions: const []);
     states.add(state);
     await tester.pump();
-    await tester.tap(find.text("Once"), warnIfMissed: false);
+    await tester.tap(find.text("Allow"), warnIfMissed: false);
     await tester.pumpAndSettle();
     expect(find.text("write_release_notes"), findsNothing);
     verifyNever(
@@ -1299,7 +1299,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Choose a release channel"), findsNothing);
 
-    await tester.tap(find.text("Once"));
+    await tester.tap(find.text("Allow"));
     await tester.pump(const Duration(milliseconds: 250));
     await tester.pumpAndSettle();
 
