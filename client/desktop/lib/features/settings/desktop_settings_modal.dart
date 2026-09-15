@@ -236,7 +236,7 @@ class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) ex
                       PregoGroupedRow(
                         icon: TablerRegular.file_text,
                         title: Text(loc.desktopBridgeOpenLogs),
-                        onTap: () => unawaited(control.openLogs()),
+                        onTap: control.openLogs,
                       ),
                     ],
                   ),
