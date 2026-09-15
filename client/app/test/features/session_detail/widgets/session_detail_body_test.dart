@@ -90,9 +90,14 @@ Widget _buildApp({
               readOnly: false,
               banner: null,
               onBack: context.pop,
-              onShowDiffs: () => context.push(AppRoute.sessionDiffs(
-                projectId: "project-1", projectName: null, sessionId: "session-1", bridgeId: bridgeId,
-              ).buildPath()),
+              onShowDiffs: () => context.push(
+                AppRoute.sessionDiffs(
+                  projectId: "project-1",
+                  projectName: null,
+                  sessionId: "session-1",
+                  bridgeId: bridgeId,
+                ).buildPath(),
+              ),
               bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
                   MobileSessionDetailComposerControls(
                     projectId: projectId,
