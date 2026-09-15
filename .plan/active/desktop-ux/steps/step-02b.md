@@ -45,10 +45,16 @@ unless implementation materially changes that scope.
 - Simplified Projects header with a separate collapse control; full-width,
   labeled New project action; compact Prego rows and a distinct pinned footer.
 - Shared running/unread sparkles, including avatar badges when compact and
-  status-aware tooltips/accessibility labels. No new data requests.
+  status-aware tooltips/accessibility labels. Explicit state colors select
+  Prego's Flutter painter, avoiding platform views in this moving/clipped
+  hierarchy. No new data requests.
+- Compact Projects remains available even when the list is empty, loading,
+  failed, or disconnected, including when automatic collapse disables expansion.
 - 220 ms eased expansion/collapse; immediate drag feedback; both MediaQuery
   disabled animations and platform Reduce Motion disable the transition.
-- Desktop cockpit widget suite: 16 passed. Prego avatar tests: 2 passed.
+- Desktop cockpit widget suite: 18 passed, including compact overview activation
+  across recovery states and no AppKitView during running/unread transitions
+  under macOS and Linux target settings. Prego avatar tests: 2 passed.
 - Desktop and Prego analyzers: passed. Localization generation: passed.
 - Five font-loaded render probes: light/dark expanded, light/dark compact, and
   minimum 200 px width. These render the production sidebar with fixture state;

@@ -255,6 +255,58 @@ void main() {
     expect(tester.getSize(rail).width, 56);
   });
 
+  testWidgets("compact Projects stays accessible without any project rows", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(700, 600);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+    try {
+      var opens = 0;
+      const states = [
+        ProjectListState.loaded(projects: [], activityById: {}),
+        ProjectListState.loading(),
+        ProjectListState.failed(reason: RemoteFailureReason.networkDown),
+        ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
+        ProjectListState.bridgeDisconnected(hasRegisteredBridges: false),
+      ];
+      for (final state in states) {
+        whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
+        await tester.pumpWidget(
+          app(
+            state: running,
+            child: DesktopCockpitShell(
+              destination: DesktopCockpitDestination.settings,
+              selectedProjectId: null,
+              onOpenProject: _openProject,
+              onOpenBridge: _noOp,
+              onOpenProjects: () => opens++,
+              onOpenSettings: _noOp,
+              child: const SizedBox.shrink(),
+            ),
+          ),
+        );
+        expect(tester.getSize(rail).width, 56);
+        expect(tester.widget<IconButton>(toggle).onPressed, isNull);
+        final overview = find.byKey(const Key("desktop-sidebar-projects"));
+        await tester.tap(overview);
+        final node = tester.getSemantics(
+          find.descendant(
+            of: overview,
+            matching: find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == "Projects"),
+          ),
+        );
+        tester.platformDispatcher.onSemanticsActionEvent!(
+          SemanticsActionEvent(type: SemanticsAction.tap, nodeId: node.id, viewId: tester.view.viewId),
+        );
+      }
+      expect(opens, states.length * 2);
+      await tester.pumpWidget(const SizedBox.shrink());
+    } finally {
+      semantics.dispose();
+    }
+  });
+
   testWidgets("new project is labeled and the pinned footer has its own surface", (tester) async {
     await tester.pumpWidget(app(state: running));
     expect(find.text("Sesori"), findsNothing);
@@ -284,10 +336,13 @@ void main() {
     final runningHint = "Sesori Desktop, ${loc.projectListRunning(2)}, ${loc.projectListNewActivity}";
     expect(find.byTooltip(runningHint), findsOneWidget);
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
+    expect(find.byType(AppKitView), findsNothing);
     expect(tester.getCenter(find.byType(PregoAiLoader)).dx, greaterThan(200));
     await tester.tap(toggle);
     await tester.pump();
-    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(find.byType(AppKitView), findsNothing);
+    await tester.pump(const Duration(milliseconds: 170));
     expect(tester.getSize(rail).width, 56);
     expect(find.byTooltip(runningHint), findsOneWidget);
     expect(tester.getCenter(find.byType(PregoAiLoader)).dx, lessThan(56));
@@ -295,6 +350,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
+    expect(find.byType(AppKitView), findsNothing);
     expect(find.byTooltip("Sesori Desktop, ${loc.projectListNewActivity}"), findsOneWidget);
     await tester.tap(toggle);
     await tester.pump();
@@ -307,7 +363,7 @@ void main() {
     expect(find.byTooltip("Sesori Desktop"), findsOneWidget);
     await tester.pumpWidget(const SizedBox.shrink());
     await updates.close();
-  });
+  }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
   testWidgets("keeps ordinary running supervision out of the content", (tester) async {
     await tester.pumpWidget(app(state: running));

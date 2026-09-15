@@ -47,7 +47,7 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   explicitly approved for this run without changing the repository's 4.2.2 pin.
   Full native appearance/accessibility/relaunch coverage is not claimed.
   See `steps/step-02.md`.
-- Step 2.b: 16 desktop widget tests, 2 avatar tests, both owning analyzers, and
+- Step 2.b: 18 desktop widget tests, 2 avatar tests, both owning analyzers, and
   five font-loaded render probes pass. Light/dark expanded and compact previews
   were shown to the user; the current GUI and bridge were left untouched.
   These previews do not claim native interaction coverage. See `steps/step-02b.md`.

@@ -90,7 +90,8 @@ class const PregoAiLoader({
   final bool animate = true,
   final PregoAiLoaderFillMode fillMode = .keyframed,
 
-  /// Overrides both states, for a caller-owned timeline such as Deep Scan.
+  /// Overrides both states using the Flutter painter, not a platform view.
+  /// Also supports caller-owned timelines such as Deep Scan.
   final Color? color,
 }) extends StatefulWidget {
   @override

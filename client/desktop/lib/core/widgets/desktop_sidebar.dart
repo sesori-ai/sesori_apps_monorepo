@@ -138,6 +138,24 @@ class const DesktopSidebar({
                 ),
               ),
             ),
+            if (expansion < 1)
+              ClipRect(
+                child: Align(
+                  heightFactor: 1 - expansion,
+                  child: Opacity(
+                    opacity: 1 - expansion,
+                    child: _SidebarButton(
+                      key: const Key("desktop-sidebar-projects"),
+                      label: loc.projectListTitle,
+                      icon: const Icon(TablerRegular.folders, size: 20),
+                      expansion: 0,
+                      selected: destination == DesktopCockpitDestination.projects && selectedProjectId == null,
+                      status: null,
+                      onPressed: onOpenProjects,
+                    ),
+                  ),
+                ),
+              ),
             Expanded(
               child: switch (state) {
                 ProjectListLoading() => Center(
@@ -167,7 +185,12 @@ class const DesktopSidebar({
                       selected: project.id == selectedProjectId,
                       status: active > 0 || unseen
                           ? (
-                              icon: PregoAiLoader(size: 18, animate: active > 0),
+                              icon: PregoAiLoader(
+                                size: 18,
+                                animate: active > 0,
+                                // Custom colors keep this clipped/moving hierarchy on Prego's Flutter painter.
+                                color: active > 0 ? prego.colors.textPrimary : prego.colors.textPrimaryOnBrand,
+                              ),
                               label: active > 0
                                   ? unseen
                                         ? "${loc.projectListRunning(active)}, ${loc.projectListNewActivity}"

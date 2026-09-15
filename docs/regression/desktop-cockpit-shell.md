@@ -21,9 +21,11 @@ one signed-in project inventory.
 - Project shortcuts open the existing sessions route. The Projects header opens
   the project overview. The labeled New project button uses the shared folder
   dialog and project-list cubit. Pinned Bridge and Settings retain their routes
-  in a visually separated footer.
+  in a visually separated footer. A compact Projects shortcut remains available
+  in empty/recovery states even when the window is too narrow to expand.
 - Running projects show the shared rotating outline sparkle; unread projects
-  show its static filled state. Compact avatars retain the indicator. Tooltips
+  show its static filled state. The moving sidebar uses the Flutter painter,
+  not native platform views. Compact avatars retain the indicator. Tooltips
   and accessibility descriptions include running counts and unread status;
   live state updates also clear stale unread marks.
 - A selected project follows route identity, not the displayed name. Each
