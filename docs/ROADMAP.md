@@ -3,7 +3,8 @@
 > A **dependency-ordered** suggestion for the order to build toward `VISION.md` —
 > *not* a calendar and *not* a commitment (horizon is ≥ ~1 year, funding/team
 > dependent). The *what / why* lives in `VISION.md`; the *how* (layer rules) in
-> `AGENTS.md`; the active desktop workstream in `.plan/active/desktop-app/PLAN.md`.
+> `AGENTS.md`; desktop implementation in `.plan/active/desktop-app/PLAN.md`
+> and distribution in `.plan/active/desktop-distribution/PLAN.md`.
 >
 > **Use it like this:** pick the earliest stage whose dependencies are met;
 > stages can overlap. Every stage still goes through `architecture-plan-review`
@@ -33,12 +34,14 @@
 - **Outcome:** a desktop app that supervises the headless bridge (tray +
   window) and renders the full client cockpit (shared adaptive UI split into
   `module_app_ui` + per-surface shells). Distribution (packaging, signing,
-  self-update, all platforms) follows in a separate `desktop-distribution`
-  plan once the implementation ships.
-- **Detail:** owned entirely by `.plan/active/desktop-app/PLAN.md`; not
-  duplicated here. The release-readiness UX overhaul (two-pane sidebar
-  cockpit, settings modal, bridge popover, autostart defaults, app log files)
-  is `.plan/active/desktop-ux/PLAN.md`, phase 1 of several.
+  updates, all six native OS/CPU targets) is planned in
+  `.plan/active/desktop-distribution/PLAN.md`, starting with macOS.
+- **Detail:** `.plan/active/desktop-app/PLAN.md` retains its pending implementation
+  closeout; `.plan/active/desktop-distribution/PLAN.md` owns distribution decisions
+  and platform ship gates. Planning began early at the user's request; it does
+  not waive the parent verification. The parallel release-readiness UX overhaul
+  (two-pane sidebar cockpit, settings modal, bridge popover, autostart defaults,
+  app log files) is `.plan/active/desktop-ux/PLAN.md`, phase 1 of several.
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is
@@ -184,6 +187,8 @@
   "one of many" and fully headless).
 - The desktop workstream resumed on 2026-08-28 under
   `.plan/active/desktop-app/` (superseding the earlier `docs/desktop/` plan);
-  distribution ships in a follow-up plan created at its retirement.
+  distribution planning began on 2026-09-15 under
+  `.plan/active/desktop-distribution/`, before parent retirement at the user's
+  request. Public distribution retains the parent closeout prerequisite.
 - Nothing here is approved to build ahead of need — each stage earns its design
   at `architecture-plan-review` time, against the then-current code.

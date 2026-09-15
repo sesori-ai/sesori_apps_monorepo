@@ -34,6 +34,13 @@ record a recommendation, but only the user marks it passed.
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
 
+## Distribution planning — 2026-09-15
+
+The user requested [desktop-distribution planning](../desktop-distribution/PLAN.md)
+before parent retirement. Gate C and steps 21–22 remain pending. The successor
+owns distribution decisions and six-target packaged coverage; it does not mark
+this plan's missing evidence or user gate acceptance as complete.
+
 ## Step 20 replacement series
 
 PR #1265 was closed unmerged on 2026-09-02 because its 5,611-line scope was too
