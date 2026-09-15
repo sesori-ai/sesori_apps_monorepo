@@ -14,7 +14,7 @@ Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
 | [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/13]` | ≤ 1,400 | done |
 | [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | done |
 | [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | done |
-| [ ] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | pending |
+| [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | done |
 | [ ] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | pending |
 | [ ] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | pending |
 | [ ] | 7 | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | pending |
@@ -34,6 +34,7 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 - Step 2.a: [PR #1488](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1488).
 - Step 2.b: [PR #1491](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1491),
   user-requested styling/motion/activity follow-up, not part of #1488.
+- Step 3: [PR #1494](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1494).
 
 ## Accepted reductions
 
@@ -63,3 +64,8 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   Native tree/menu/performance and live-action checks remain pre-shipping
   coverage, not a merge/successor gate. See [step 3 evidence](steps/step-03.md#reproducible-verification-and-size)
   for measured revisions, cwd, commands and size accounting.
+- Step 4: 149 distinct focused desktop/mobile/shared UI/font/avatar cases pass
+  across scoped checkpoints, with affected home/cockpit/avatar tests rerun after
+  small follow-ups. Five font-loaded fixtures and all three owning analyzers pass. Native
+  route/action/performance coverage remains pre-shipping work. Architecture
+  review approved the frozen routing scope; see [step 4 evidence](steps/step-04.md).

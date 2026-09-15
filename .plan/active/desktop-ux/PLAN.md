@@ -2,7 +2,8 @@
 
 ## Status
 
-Planned 2026-09-15; execution has started with step 2 (see `TRACKER.md`).
+Planned 2026-09-15; sidebar and main-pane implementation is complete through
+logical step 4 (see `TRACKER.md` and its linked verification evidence).
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
 are listed at the end as rough intent only and get their own plans when they
@@ -46,7 +47,7 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   the user is controlling the session from the phone. Ask for Full Disk Access
   upfront, and explain clearly that it is needed because of the agents.
 
-## Current Behavior And Findings
+## Initial Behavior And Findings
 
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart` renders a
   Material `NavigationRail` (Bridge, Projects, Settings; extended above
@@ -489,8 +490,8 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 1 | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/13]` | ≤ 900 | This plan, tracker, cross-references in `desktop-app/TRACKER.md` and `docs/ROADMAP.md`. |
 | 2.a | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/13]` | ≤ 1,400 | `DesktopSidebarCubit` + `sidebar-layout` storage/repository methods; `DesktopSidebar` frame (header, resize handle, compact rail, bottom Settings/Bridge rows navigating to today's routes); `ProjectListCubit` hoisted to the shell; project rows with `PregoAvatarInitials`; replace the `NavigationRail`. Main pane untouched. |
 | 2.b | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | Presentation-only follow-up: clear header/actions/footer, Prego typography and surfaces, running/unread project indicators from `ProjectListCubit`, animated expand/collapse with reduced motion and immediate drag resizing. |
-| 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + composition factory, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
-| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; `SessionSplitScope(isSplit: true)` from the shell; ⌘N plumbing point. `/splash` still renders `DesktopHome` until step 6. |
+| 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
+| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; `SessionSplitScope(isSplit: true)` from the shell; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
 | 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
 | 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | Bridge popover (`PregoPopover`) with status, On/Off, Take over, Start at login (re-read on open), Open logs, Bridge settings…, Quit; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
 | 7 | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
@@ -499,6 +500,11 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 11/13]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
 | 11 | `🌿 [desktop-ux] Reconcile regression documentation [step 12/13]` | ≤ 600 | New `docs/regression/desktop-cockpit-shell.md`; updates listed below. |
 | 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 13/13]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
+
+Step 4's render verification also corrected the existing Prego font-family
+constant to match the bundled package name and removed redundant sidebar font
+overrides. This small shared typography fix adds no state or renderer changes;
+mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Steps 5, 8, 9 and 10 are independent of each other and may be reordered if a
 review stalls, provided titles and totals stay in sync. Step 8 must land after

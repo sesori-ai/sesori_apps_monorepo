@@ -167,10 +167,11 @@ state.
   session list opens a typed new-session route with shared plugin/model/command
   and dedicated-workspace options. The desktop shell supplies its native image
   picker and text-first composer policy without constructing voice capture. Its
-  persistent sidebar keeps Bridge, Projects, and Settings reachable; one
-  project-scoped nested route owns the session-list cubit, so wide windows keep
-  the selected inventory beside new-session/detail/diff content while narrow
-  windows retain the one-pane flow.
+  persistent project/recent-session sidebar keeps Bridge, Projects, and Settings
+  reachable. One main pane hosts home, all sessions, new session, detail, or
+  diffs at every desktop width. Only all sessions owns a full session-list
+  cubit; the sidebar never claims project viewing. Archived rows open read-only.
+  Mobile retains its adaptive session split.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are
@@ -559,7 +560,7 @@ leave the surface that started one. Restore harness eligibility afterwards.
   `client/module_app_ui/test/features/session_diffs/`,
   `client/desktop/test/core/routing/desktop_router_test.dart`,
   `client/desktop/test/features/new_session/desktop_new_session_screen_test.dart`, and
-  `client/desktop/test/features/projects/desktop_project_list_screen_test.dart`
+  `client/desktop/test/features/home/desktop_home_pane_test.dart`
 - Client row swipe behavior:
   `client/module_prego/lib/interactions/prego_swipe_actions.dart`
 - Plans (discovery only): `.plan/completed/multi-plugin-release-prep`,
