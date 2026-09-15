@@ -53,4 +53,14 @@ else
   python .github/scripts/package_desktop_macos.py \
     --app build/desktop-bundle/Sesori.app --output build/desktop-macos-packaging \
     --arch "$TARGET_ARCH" --identity "$identity" --keychain "$keychain" --notary-profile "$profile"
+  # The fixture uses the same identity/runtime/entitlements, but is not a notarized product.
+  python - "$identity" "$keychain" "$TARGET_ARCH" <<'PY'
+import sys
+from pathlib import Path
+sys.path.insert(0, '.github/scripts')
+from package_desktop_macos import sign_app
+sign_app(app=Path('build/desktop-platform-probe/Sesori.app').resolve(), arch=sys.argv[3],
+         identity=sys.argv[1], keychain=Path(sys.argv[2]),
+         log=Path('build/desktop-macos-packaging/platform-probe-signing.log'))
+PY
 fi

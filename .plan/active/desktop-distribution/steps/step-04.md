@@ -1,6 +1,6 @@
 # Step 4 — Native macOS Packaging and Notarization
 
-Status: **in progress — manifest correction verified locally; implementation review pending**.
+Status: **in progress — native signed packages verified; installed GUI checks remain**.
 PR ordinal **5/13**.
 Branch: `desktop-distribution-macos-packaging`, in the existing `tan-antelope`
 worktree. Predecessor [3.b](step-03b.md) merged as
@@ -189,14 +189,95 @@ python3 -m unittest discover -s .github/scripts -p test_package_desktop_macos.py
 ```
 
 Logs: `layout-flutter-tests-final.log`, `layout-desktop-analyze-final.log` and
-`layout-python-tests.log` under `build/desktop-macos-packaging-evidence/`. Scoped
-architecture implementation review and repeated native signed packaging remain
-pending. The broader installed GUI, Keychain/TCC/autostart and ship gates remain
-open, not replaced by these probes.
+`layout-python-tests.log` under `build/desktop-macos-packaging-evidence/`.
+
+The correction is commit `b41a1f6500a200acaa2f6bdc6db090bfc359c139`, with 146 authored
+changed lines across 11 paths against `f5348c0`; the whole branch diff at `b41a1f6`
+against `e853838` was 905 authored changed lines across 15 paths, zero generated.
+Scoped architecture implementation review **approved/no findings**, run
+`798cfb06-1fb5-42d4-ae69-0ed731e246c9` (`medium-intelligence-fast`), covering all 11
+changed files and applying B-Client. B-Bridge/B-Shared were outside the change.
+Review output: `reviews/desktop-distribution-step-04-manifest-implementation.md`.
+The review confirmed existing shell responsibilities, immutable identity and
+DI/lifecycle ownership; no new classes, dependencies, registries or compatibility
+paths. It does not certify unrelated tooling or unexecuted native behavior.
+
+[Native packaging run 35006541037](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35006541037)
+**passed** at that immutable correction head. Both source trees had empty recorded
+build patches. Each produced desktop/helper **1.8.4, build 14**, accepted app and DMG
+notarization with no reported issues, valid staples/signatures, three Gatekeeper
+acceptances as Notarized Developer ID (DMG, ZIP app, mounted app), seven native
+binaries with identical ZIP/DMG inventories, helper version execution and passing
+isolated supervised E2E. Default six-target qualification was skipped in this manual
+mode; this is not a new six-platform run.
+
+| Target | Native job | Private packages artifact | Evidence artifact |
+|---|---|---|---|
+| macOS x64 | `104507677779` | `10412257146` | `10412297019` |
+| macOS arm64 | `104507677778` | `10411784657` | `10411784662` |
+
+All four downloaded final payloads matched the recorded SHA256s:
+
+| Payload | SHA256 |
+|---|---|
+| `Sesori-macos-x64.zip` | `8987490f6fa9197eac707d55f3ae282b945b884d424f351afce3aa4c6b84cacf` |
+| `Sesori-macos-x64.dmg` | `79ae859d6720d5bd75d4f93da9d177a9254415be76e4ffd0cf91a08937343fc7` |
+| `Sesori-macos-arm64.zip` | `081031a479a2b340dc67aac80e0448b77066016cb2d0805bb23b3d2f47c20de1` |
+| `Sesori-macos-arm64.dmg` | `516fd1e1041d3e1bf0849b4312c34f5a9df9e7a497a52bec10b4935d60df9032` |
+
+Captured files are under `build/desktop-macos-packaging-evidence/native-b41a1f6/`.
+To retrieve while the private Actions artifacts remain available (14-day retention),
+run from repository root with GitHub access and choose a fresh destination:
+
+```bash
+gh run download 35006541037 --repo sesori-ai/sesori_apps_monorepo \
+  --pattern 'desktop-macos-*' --dir build/desktop-macos-packaging-evidence/retrieved-b41a1f6
+```
+
+Compare the inner ZIP/DMG hashes to `packaging.json`, inspect `desktop-bundle.json`
+for source `b41a1f6500a200acaa2f6bdc6db090bfc359c139`, check both notarization statuses
+and detail reports, the empty build patch and `All tests passed!` in the E2E log.
+Downloads were not locally mounted, installed or launched. The broader installed
+GUI, Keychain/TCC/autostart and ship gates remain open, not replaced by these probes.
+No public release, tag, feed or infrastructure was created.
 
 Local GUI safety preflight also found an existing debug desktop from `rose-elephant`
-(PID 74143) and an existing `/Applications/Sesori.app`. Neither was changed. Ask for
-approval before interrupting/replacing or launching over that user-owned state.
+(PID 74143) and an existing `/Applications/Sesori.app`. Neither was changed. The user
+subsequently selected fresh native CI on both CPUs and directed uninterrupted,
+unattended plan execution: never stop the running bridge; run safe autonomous tests
+and leave human-dependent checks for the final handoff. Do not launch local QA over
+that state or wait for additional user answers.
+
+## Autonomous packaged-platform probes
+
+Add a bounded CI-only probe after private packaging, using first-party Flutter,
+Xcode, `codesign`, CoreGraphics and process tools, with no new production hook.
+A separate release-mode test entrypoint reuses the actual desktop secure-storage
+DI configuration and `IoLaunchAtLogin`: synthetic Keychain write/update, persistence
+across two probe launches, delete, per-user login-registration write/read/remove,
+and owned temporary-file access. It never initializes the bridge/session services.
+Sign that fixture with the same Developer ID/hardened-runtime/entitlement policy;
+do not upload it as a product. Build it separately from the staged real application.
+
+On each fresh native runner, install the real verified app into Applications, check
+Gatekeeper again, launch it as an owned CI process, inspect its native window and
+attempt a screenshot. Test teardown concerns only those owned CI processes and
+copies, never a local bridge or application. Missing screenshot permissions or an
+unavailable GUI host are explicit blocked evidence, not a fabricated visual pass.
+Provider credentials, MFA, interactive TCC decisions, real login/logout and minimum-
+OS hosts are not supplied by these probes and remain in the final verification list.
+
+Expected addition: approximately 250–350 authored test/tooling lines. No application
+classes, DI ownership, lifecycle behavior, transport/storage contract or analytics
+changes; architecture review is not required for this test-only extension.
+
+Implementation is ready for native execution. Three Python safety tests pass,
+along with desktop analysis, native Swift typecheck, actionlint and ShellCheck.
+The first analyzer reported package-import/enum-constructor style infos; the final
+analyzer passed after those fixture-only fixes. Logs are `probe-*.log` under
+`build/desktop-macos-packaging-evidence/`. No local application was launched.
+The fixture is Developer-ID-signed but not notarized; its native Keychain evidence
+must remain separate from authentication/restoration through the actual product.
 
 ## Verification and boundaries
 

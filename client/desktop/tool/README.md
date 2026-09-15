@@ -76,6 +76,14 @@ artifacts retain identity, final digests, receipts, binary inventories and logs,
 including available failure diagnostics. Both expire after 14 days. Failed
 output is not automatically removed/replaced; a fresh job gets a fresh destination.
 
+Fresh CI hosts additionally install the real app into Applications and inspect its
+startup window, with screenshot attempts recorded separately from visual assessment.
+A separately Developer-ID-signed release fixture tests the production Keychain
+configuration across two launches, login-registration writes/removal and owned file
+access. That fixture never starts bridge/session services and is not uploaded as a
+product. Neither probe may run on a local developer host; existing app/bridge/login
+registration state causes refusal rather than takeover.
+
 This pipeline does not publish a release/feed or prove installed GUI authentication,
 Keychain restoration, TCC, autostart, minimum-OS operation, updates or public-release
 readiness. Keep those checks explicit in the distribution plan and

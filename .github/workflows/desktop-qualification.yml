@@ -22,6 +22,10 @@ on:
       - '.github/scripts/test_package_desktop_macos.py'
       - '.github/scripts/macos_signing_ci.sh'
       - '.github/scripts/probe_sparkle.swift'
+      - '.github/scripts/probe_desktop_macos.py'
+      - '.github/scripts/test_probe_desktop_macos.py'
+      - '.github/scripts/inspect_desktop_macos_window.swift'
+      - 'client/desktop/test/native/packaged_platform_probe.dart'
       - '.tool-versions'
       - 'client/desktop/tool/stage_desktop_bundle.dart'
       - 'client/module_desktop_core/lib/src/foundation/models/desktop_bundle_identity.dart'
@@ -83,6 +87,11 @@ jobs:
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
             --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
             2>&1 | tee build/desktop-qualification/bundle-build.log
+          # Separate release fixture: never replace the staged product or upload this as a package.
+          (cd client/desktop && flutter build macos --release --no-pub \
+            --target test/native/packaged_platform_probe.dart) \
+            2>&1 | tee build/desktop-qualification/platform-probe-build.log
+          ditto client/desktop/build/macos/Build/Products/Release/Sesori.app build/desktop-platform-probe/Sesori.app
 
       - name: Use existing credentials for the selected private operation
         env:
@@ -107,6 +116,16 @@ jobs:
           (cd bridge/app && dart test test/integration/supervised_e2e_test.dart --reporter expanded) \
             2>&1 | tee build/desktop-macos-packaging/supervised-e2e.log
 
+      - name: Probe installed GUI and separately signed platform fixture
+        if: inputs.mode == 'macos-packaging'
+        run: |
+          set -euo pipefail
+          python .github/scripts/probe_desktop_macos.py \
+            --app build/desktop-macos-packaging/verified-zip/Sesori.app \
+            --fixture build/desktop-platform-probe/Sesori.app \
+            --output build/desktop-macos-packaging/platform-probe \
+            2>&1 | tee build/desktop-macos-packaging/platform-probe.log
+
       - name: Upload complete private packages only after verification
         if: inputs.mode == 'macos-packaging'
         uses: actions/upload-artifact@v4
@@ -130,6 +149,7 @@ jobs:
             build/desktop-macos-packaging/*.json
             build/desktop-macos-packaging/*.log
             build/desktop-macos-packaging/supervised-e2e/
+            build/desktop-macos-packaging/platform-probe/
           if-no-files-found: warn
           retention-days: 14
 

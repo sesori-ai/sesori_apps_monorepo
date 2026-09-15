@@ -36,7 +36,7 @@ one series PR open and at most one successor step local. This supersedes the ear
 plan-only hold. Material scope/security decisions, missing credentials/infrastructure,
 and the recorded public-release prerequisites remain gates; do not silently waive
 or bypass them. Private signing qualification is underway; no infrastructure was
-provisioned and no product was notarized or published.
+provisioned and no product was published. Private macOS test packages are now notarized.
 
 Subsequent user clarification (2026-09-15): trusted, widely used, simple tooling
 outranks automatic updates. A dedicated manual update button is acceptable.
@@ -53,6 +53,18 @@ unless the user explicitly accepts a changed prerequisite. The merged
 to its step-12 checklist; retain that incoming handoff and its separate ownership of
 UI, autostart defaults and app logs. Distribution remains parallel, not a duplicate
 UX implementation or a claim that its new checklist has passed.
+
+## Unattended execution — user direction, 2026-09-15
+
+Continue the entire implementation series without further questions. Never stop,
+take over or replace the user's running bridge, including indirectly through the
+active local desktop. The user selected fresh native CI for both Mac QA targets.
+Run every safe autonomous check available; record checks requiring human input,
+credentials, unavailable hosts or interactive permissions for the final handoff
+instead of waiting. Deferred/blocked checks are not passes and do not authorize
+public publication or silently waive the parent/release gates. Continue independent
+implementation work when such a gate blocks execution; retain an honest final
+verification handoff before deciding retirement/public release.
 
 ## Execution
 
@@ -98,8 +110,13 @@ rejected the identity JSON in the code-only Helpers subtree. A local ad-hoc layo
 probe proved that Resources placement signs/verifies and still rejects manifest
 tampering. The scoped macOS manifest producer/consumer plan review approved with
 no findings; the implemented correction passes 24 Flutter tests, 8 Python tests
-and desktop analysis. Implementation review/native packaging are next. The complete
-helper bin/lib layout and Windows/Linux placement stay intact.
+and desktop analysis. Scoped implementation review approved commit `b41a1f6` with
+no findings. Native packaging run 35006541037 passed at that head: both Macs produced
+signed/notarized/stapled DMGs and app ZIPs, accepted Gatekeeper assessment, identical
+seven-binary extracted inventories and passing helper E2E. Downloaded hashes match;
+source patches are empty. The complete helper bin/lib layout and Windows/Linux
+placement stay intact. Installed GUI/Keychain/TCC/autostart checks remain open;
+another local debug desktop is active and has not been interrupted.
 
 ## Qualification and ship gates
 
@@ -108,7 +125,7 @@ helper bin/lib layout and Windows/Linux placement stay intact.
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | macOS credential/tool access verified on both CPUs; remaining gates open | Actual signed/notarized desktop payloads and update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
+| Signing and static hosting | Private macOS signed/notarized payloads verified on both CPUs; remaining gates open | Installed GUI/Keychain/TCC/autostart, update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
 | macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads/feed, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending | Both CPUs in DEB/RPM, nominated native distro rows, signed repository install/update/remove and desktop-environment coverage. |
