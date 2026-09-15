@@ -44,9 +44,9 @@ Future<void> showDesktopSettingsModal({
       void close() {
         // Logout can finish after the user has dismissed the dialog.
         if (!dialogContext.mounted) return;
-        final route = ModalRoute.of(dialogContext)!;
-        if (!route.isActive) return;
-        final navigator = route.navigator!;
+        final route = ModalRoute.of(dialogContext);
+        if (route?.isActive != true) return;
+        final navigator = Navigator.of(dialogContext);
         // Owned authentication/setting sheets leave with their dialog.
         navigator.popUntil((candidate) => candidate == route);
         navigator.pop();
@@ -274,35 +274,38 @@ class const _DesktopHarnessSettingsPage({required final VoidCallback onClose}) e
 }
 
 class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPage> {
-  final _navigator = GlobalKey<NavigatorState>();
+  String? _pluginId;
 
   @override
   Widget build(BuildContext context) => DesktopHarnessesSettingsScreen(
     child: Navigator(
-      key: _navigator,
-      onGenerateRoute: (_) => MaterialPageRoute<void>(
-        builder: (_) => HarnessesSettingsView(
-          presentation: HarnessSettingsPresentation.modal,
-          connectionBanner: null,
-          onClose: widget.onClose,
-          onBack: null,
-          onOpenHarness: _openHarness,
+      onDidRemovePage: (page) {
+        if (page.key case ValueKey<String>(:final value) when value == _pluginId) {
+          setState(() => _pluginId = null);
+        }
+      },
+      pages: [
+        MaterialPage<void>(
+          child: HarnessesSettingsView(
+            presentation: HarnessSettingsPresentation.modal,
+            connectionBanner: null,
+            onClose: widget.onClose,
+            onBack: null,
+            onOpenHarness: ({required pluginId}) => setState(() => _pluginId = pluginId),
+          ),
         ),
-      ),
+        if (_pluginId case final pluginId?)
+          MaterialPage<void>(
+            key: ValueKey(pluginId),
+            child: HarnessSettingsDetailView(
+              pluginId: pluginId,
+              presentation: HarnessSettingsPresentation.modal,
+              onBack: () => setState(() => _pluginId = null),
+              onClose: widget.onClose,
+              connectionBanner: null,
+            ),
+          ),
+      ],
     ),
   );
-
-  void _openHarness({required String pluginId}) {
-    _navigator.currentState!.push<void>(
-      MaterialPageRoute<void>(
-        builder: (_) => HarnessSettingsDetailView(
-          pluginId: pluginId,
-          presentation: HarnessSettingsPresentation.modal,
-          onBack: () => _navigator.currentState!.pop(),
-          onClose: widget.onClose,
-          connectionBanner: null,
-        ),
-      ),
-    );
-  }
 }

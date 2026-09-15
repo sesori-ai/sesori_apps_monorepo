@@ -407,7 +407,7 @@ void main() {
     expect(router.state.uri.path, "/session");
     expect(tester.element(find.text("open", skipOffstage: false)), same(opener));
     expect(tester.takeException(), isNull);
-  }, variant: TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.windows}));
+  }, variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.windows}));
 
   testWidgets("harness detail shares its owner; Back stays inside and Close returns to the session", (tester) async {
     final router = await open(tester: tester, tab: DesktopSettingsTab.harnesses);
