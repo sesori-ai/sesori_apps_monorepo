@@ -1,6 +1,6 @@
 # Step 3.b — Packaged Helper Repair Guidance
 
-Status: **implemented; architecture implementation review pending**. PR ordinal
+Status: **implemented and architecture-reviewed; PR CI/review pending**. PR ordinal
 **4/13**, following merged [3.a](step-03.md). Work stays in `tan-antelope` on
 `desktop-distribution-repair-guidance`.
 
@@ -53,8 +53,14 @@ The existing generic failure, cancellation, crash and takeover cases still pass.
 
 The architecture plan was approved without findings in run
 `5df8ad69-ea18-4776-8ddc-2335bdc28609`. The exit-86 observer correction stays in the
-existing lifecycle owner and adds no coordination. Implementation review will use
-this branch against its `575dd34dc322f88289efb68731482efe8885fa4b` base.
+existing lifecycle owner and adds no coordination. Architecture implementation
+review **approved without findings** in run `221a6f88-1e6a-4a7e-8a5b-67004f4d5f7c`:
+commit `bfd3693de3c00217c20b3ab81e40d205aed97d35` against base
+`575dd34dc322f88289efb68731482efe8885fa4b`, 17 paths and 325 authored changed lines.
+It confirmed foundation/shell boundaries, existing lifecycle ownership, immutable
+state and consumer projections, with no new coordination or architectural violation.
+The report is retained as `reviews/desktop-distribution-step-03b-architecture.md`
+in that run's bound subagent output. Only documentation changed after review.
 
 This is focused automated service/widget evidence, not installed native GUI,
 signed installer, real package replacement or interactive six-platform QA. The

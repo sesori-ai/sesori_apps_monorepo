@@ -74,7 +74,8 @@ recorded in [steps/step-03.md](steps/step-03.md). PR #1492 merged as
 helper E2E rows at merge checkout `83e2e58b39732f706964f313ad13fa7d3f0f7f50`, with
 empty canonical source diffs. Windows' stat-only Git false positive is corrected.
 Step 3.b started in the same worktree on `desktop-distribution-repair-guidance`;
-its focused implementation and evidence live in [steps/step-03b.md](steps/step-03b.md).
+its focused implementation, approved architecture review and evidence live in
+[steps/step-03b.md](steps/step-03b.md).
 The existing service/state/presentation path retains user-facing repair guidance
 before any installers. No public gate is waived by the split.
 
