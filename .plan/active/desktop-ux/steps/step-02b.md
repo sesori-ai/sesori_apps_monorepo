@@ -80,8 +80,10 @@ unless implementation materially changes that scope.
 
 ## Status
 
-Native rendering is restored and focused tests pass. PR #1491 remains draft
-until native verification can run after the user unlocks macOS. The isolated
-probe and logs are retained outside the diff; the standard app build target was
-restored. Previews do not establish native coverage or user approval. This work
-remains separate from #1488 and does not advance recent sessions.
+Implementation and focused verification are complete. Native rendering remains
+enabled. Per the user's direction, PR #1491 follows normal non-draft review,
+auto-merge, and successor execution; unavailable local QA does not suspend that
+workflow. Complete the outstanding native hierarchy/steady-frame checks before
+shipping or retiring the plan; previews do not establish native coverage or user
+approval. The isolated probe/logs remain outside the diff, and the standard app
+build target is restored. Recent sessions remain the next logical step.
