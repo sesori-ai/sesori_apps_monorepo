@@ -20,7 +20,7 @@ enum PregoButtonsSolidSize() {
   /// Height 40px — text-sm/bold, px=14, py=10, gap=4.
   md,
 
-  /// Height 44px — text-md/bold, px=16, py=12, gap=6.
+  /// Height 44px — text-md/bold, px=16, py=10, gap=6.
   lg,
 
   /// Height 52px — text-md/bold, px=20, py=16, gap=6.
@@ -39,10 +39,10 @@ enum PregoButtonsSolidHierarchy() {
   /// this hierarchy.
   primaryAlt,
 
-  /// Outlined button with secondary border and secondary text.
+  /// Raised surface with secondary border and primary text.
   secondary,
 
-  /// Ghost button — no background, no border. Tertiary text colour.
+  /// Ghost button — no background, no border. Secondary text colour.
   tertiary,
 
   /// Inline link style — no background, no border, no padding. Brand-secondary text colour.
@@ -525,11 +525,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       return colors.bgSurface1;
     }
 
-    // Regular secondary: bgSecondary at rest. Hover darkening is handled by
-    // the PregoTappable overlay (bgPrimaryHover = rgba(0,0,0,0.16) composited
-    // on top of bgSecondary).
+    // Regular secondary uses the raised Figma surface in both themes.
+    // Hover and press feedback is composited by PregoTappable.
     if (_isFocused) return colors.bgSurface1;
-    return colors.bgSecondary;
+    return colors.bgSurface4;
   }
 
   Color _tertiaryBgColor({
@@ -707,8 +706,8 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       // No hover change — overlay handles the hover/press feedback.
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
       // Secondary text colour does not change on hover (only background does).
-      PregoButtonsSolidHierarchy.secondary => colors.textSecondary,
-      PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
+      PregoButtonsSolidHierarchy.secondary => colors.textPrimary,
+      PregoButtonsSolidHierarchy.tertiary => colors.textSecondary,
       PregoButtonsSolidHierarchy.link => isHovered ? colors.textBrandSecondaryHover : colors.textBrandSecondary,
     };
   }
@@ -744,8 +743,8 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       // Primary Alt: icon matches the dark text colour (text-primary_on-white).
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
       // Secondary and tertiary icon color is static across all active states (no hover change).
-      PregoButtonsSolidHierarchy.secondary => colors.textSecondary,
-      PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
+      PregoButtonsSolidHierarchy.secondary => colors.textPrimary,
+      PregoButtonsSolidHierarchy.tertiary => colors.textSecondary,
       // Link uses text-brand-secondary tokens on default/hover; text-secondary when focused.
       PregoButtonsSolidHierarchy.link =>
         _isFocused ? colors.textSecondary : (isHovered ? colors.textBrandSecondaryHover : colors.textBrandSecondary),
@@ -762,9 +761,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       horizontal: _buttonHPaddingMd,
       vertical: _buttonVPaddingMd,
     ),
+    // A 24px line plus 10px on each side gives the Figma 44px text button.
     PregoButtonsSolidSize.lg => const EdgeInsetsDirectional.symmetric(
       horizontal: PregoSpacing.xl,
-      vertical: PregoSpacing.lg,
+      vertical: _buttonVPaddingMd,
     ),
     PregoButtonsSolidSize.xl => const EdgeInsetsDirectional.symmetric(
       horizontal: PregoSpacing.x2l,
@@ -805,10 +805,10 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 /// In the Secondary focused state, [bottomShadowColor] is set to
 /// `skeuomorphicInnerBorder` so both layers use the same token.
 class const PregoSkeuomorphicOverlay({
-    super.key,
-    required final Color innerBorderColor,
-    required final Color bottomShadowColor,
-  }) extends StatelessWidget {
+  super.key,
+  required final Color innerBorderColor,
+  required final Color bottomShadowColor,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Positioned.fill(
@@ -825,9 +825,9 @@ class const PregoSkeuomorphicOverlay({
 }
 
 class _SkeuomorphicPainter({
-    required final Color innerBorderColor,
-    required final Color bottomShadowColor,
-  }) extends CustomPainter {
+  required final Color innerBorderColor,
+  required final Color bottomShadowColor,
+}) extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final rect = Rect.fromLTWH(0, 0, size.width, size.height);

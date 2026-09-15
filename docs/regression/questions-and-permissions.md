@@ -36,6 +36,13 @@ reaches the backend so the turn continues.
   must never appear as ordinary plain-text input.
 - Allow once, allow always, and reject each reach the backend with the meaning
   the user chose. Once is never escalated to a broader grant.
+- Permission dialogs use the shared floating Prego action sheet in both themes:
+  a generic action heading, the complete backend tool label and selectable,
+  copyable Markdown description, then full-width stacked **Allow**, optional
+  **Always approve**, and **Don’t allow** actions. **Allow** means once only.
+  Long details scroll while the actions remain visible; safe-area insets keep
+  the floating surface and actions clear of system UI. Scrim/swipe dismissal
+  leaves the request pending; external settlement closes it without a reply.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns
   typed content under the backend's original property keys. An array whose
@@ -230,6 +237,9 @@ the prompt write is held, proving cancellation does not remove the later request
   pending after that writing turn was aborted.
 - An answer does not reach the backend, arrives with a different scope than the
   user chose, or leaves the turn blocked.
+- A permission dialog clips request details, makes decision actions unreachable
+  on a small screen or with enlarged text, offers Always when unavailable, or
+  treats a passive dismissal as approval/rejection.
 - An ACP form answer changes scalar type, uses a display label instead of the
   backend value, reaches the wrong session, or remains pending after abort.
 - An ACP array form loses a selected value, encodes only the first selection,

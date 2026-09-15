@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -5,14 +7,15 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 const _command = "dart run build_runner build --delete-conflicting-outputs";
 
 const _permission = SesoriPermissionAsked(
   requestID: "permission-1",
-  sessionID: "session-1",
-  displaySessionId: null,
+  sessionID: "child-session-1",
+  displaySessionId: "root-session-1",
   tool: "bash",
   description: _command,
   allowAlways: true,
@@ -24,6 +27,8 @@ class _ReplyCapture() {
   String? requestId;
   String? sessionId;
   PermissionReply? reply;
+  bool isPending = true;
+  final pending = StreamController<bool>();
 
   void onReply({
     required String requestId,
@@ -41,7 +46,8 @@ GoRouter _createRouter({
   required _ReplyCapture capture,
   ExternalLinkOpener openExternalLink = _ignoreExternalLink,
 }) {
-  return GoRouter(
+  addTearDown(capture.pending.close);
+  final router = GoRouter(
     routes: [
       GoRoute(
         path: "/",
@@ -55,8 +61,8 @@ GoRouter _createRouter({
                     context,
                     permission: permission,
                     onReply: capture.onReply,
-                    isPendingStream: const Stream<bool>.empty(),
-                    isPending: () => true,
+                    isPendingStream: capture.pending.stream,
+                    isPending: () => capture.isPending,
                     openExternalLink: openExternalLink,
                   );
                 },
@@ -68,6 +74,8 @@ GoRouter _createRouter({
       ),
     ],
   );
+  addTearDown(router.dispose);
+  return router;
 }
 
 Widget _buildApp({required GoRouter router}) {
@@ -86,53 +94,67 @@ Future<void> _openPermissionModal(WidgetTester tester) async {
 }
 
 void main() {
-  testWidgets("groups the tool and highlighted request detail in one card", (tester) async {
-    final capture = _ReplyCapture();
-    final router = _createRouter(permission: _permission, capture: capture);
-    addTearDown(router.dispose);
-
+  testWidgets("uses the floating Prego sheet and preserves complete request details", (tester) async {
+    final router = _createRouter(permission: _permission, capture: _ReplyCapture());
     await tester.pumpWidget(_buildApp(router: router));
     await _openPermissionModal(tester);
 
+    expect(find.byType(PregoActionSheet), findsOneWidget);
+    expect(find.byType(PregoTopNavigationSheets), findsNothing);
+    expect(find.text("Allow this action?"), findsOneWidget);
     expect(find.text("bash"), findsOneWidget);
     expect(find.text(_command), findsOneWidget);
-    expect(find.byIcon(TablerRegular.terminal), findsOneWidget);
+    expect(find.byIcon(TablerRegular.terminal), findsNothing);
 
     final colors = PregoDesignSystem.light.colors;
-    final card = tester.widget<Container>(find.byKey(const Key("permission-detail-card")));
-    final cardDecoration = card.decoration! as BoxDecoration;
-    expect(cardDecoration.color, colors.bgSurface1);
-    expect((cardDecoration.border! as Border).top.color, colors.borderSecondary);
-
     final detail = tester.widget<Container>(find.byKey(const Key("permission-request-detail")));
-    final detailDecoration = detail.decoration! as BoxDecoration;
-    expect(detailDecoration.color, colors.bgQuaternary);
+    final decoration = detail.decoration! as BoxDecoration;
+    expect(decoration.color, colors.bgSurface2);
+    expect((decoration.border! as Border).top.color, colors.borderPrimary);
+    expect(decoration.borderRadius, BorderRadius.circular(PregoRadius.xl));
 
     final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
     expect(markdown.data, _command);
     expect(markdown.selectable, isTrue);
+    expect(markdown.styleSheet!.p!.fontSize, 12);
     final codeBlockDecoration = markdown.styleSheet!.codeblockDecoration! as BoxDecoration;
-    expect(codeBlockDecoration.color, isNot(detailDecoration.color));
-    expect((codeBlockDecoration.border! as Border).top.color, colors.borderSecondary);
-
+    expect(codeBlockDecoration.color, isNot(decoration.color));
     expect(find.byType(PregoCopyIconButton), findsOneWidget);
+    expect(find.byType(TextField), findsNothing);
+  });
+
+  testWidgets("stacks full-width Allow, Always approve and Don't allow in Figma order", (tester) async {
+    final router = _createRouter(permission: _permission, capture: _ReplyCapture());
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+
+    final buttons = tester.widgetList<PregoButtonsSolid>(find.byType(PregoButtonsSolid)).toList();
+    expect(buttons.map((button) => button.label), ["Allow", "Always approve", "Don’t allow"]);
+    expect(buttons.map((button) => button.hierarchy), [
+      PregoButtonsSolidHierarchy.primaryAlt,
+      PregoButtonsSolidHierarchy.secondary,
+      PregoButtonsSolidHierarchy.tertiary,
+    ]);
+    expect(buttons.every((button) => button.fullWidth && button.size == PregoButtonsSolidSize.lg), isTrue);
+    final rects = List.generate(3, (index) => tester.getRect(find.byType(PregoButtonsSolid).at(index)));
+    expect(rects[1].top - rects[0].bottom, PregoSpacing.xl);
+    expect(rects[2].top - rects[1].bottom, PregoSpacing.xl);
+    expect(rects.map((rect) => rect.width).toSet(), hasLength(1));
+    expect(rects.map((rect) => rect.height).toSet(), {44.0});
   });
 
   testWidgets("uses the presenting route's link opener inside the bottom sheet", (tester) async {
-    final capture = _ReplyCapture();
     Uri? openedUrl;
     UrlLaunchMode? openedMode;
     final router = _createRouter(
       permission: _permission.copyWith(description: "Read [the docs](https://example.com/docs)"),
-      capture: capture,
+      capture: _ReplyCapture(),
       openExternalLink: ({required url, required mode}) async {
         openedUrl = url;
         openedMode = mode;
         return true;
       },
     );
-    addTearDown(router.dispose);
-
     await tester.pumpWidget(_buildApp(router: router));
     await _openPermissionModal(tester);
     final markdown = tester.widget<MarkdownBody>(find.byType(MarkdownBody));
@@ -145,15 +167,13 @@ void main() {
   });
 
   for (final replyCase in const [
-    (label: "Reject", reply: PermissionReply.reject),
-    (label: "Once", reply: PermissionReply.once),
-    (label: "Always Allow", reply: PermissionReply.always),
+    (label: "Don’t allow", reply: PermissionReply.reject),
+    (label: "Allow", reply: PermissionReply.once),
+    (label: "Always approve", reply: PermissionReply.always),
   ]) {
-    testWidgets("forwards the ${replyCase.label.toLowerCase()} reply", (tester) async {
+    testWidgets("forwards ${replyCase.label} to the owning child without changing scope", (tester) async {
       final capture = _ReplyCapture();
       final router = _createRouter(permission: _permission, capture: capture);
-      addTearDown(router.dispose);
-
       await tester.pumpWidget(_buildApp(router: router));
       await _openPermissionModal(tester);
       await tester.tap(find.text(replyCase.label));
@@ -162,39 +182,71 @@ void main() {
       expect(capture.requestId, _permission.requestID);
       expect(capture.sessionId, _permission.sessionID);
       expect(capture.reply, replyCase.reply);
+      expect(find.byType(PermissionModal), findsNothing);
     });
   }
 
-  testWidgets("keeps actions visible for a long request detail", (tester) async {
-    final capture = _ReplyCapture();
-    final permission = _permission.copyWith(
-      description: List.filled(80, "echo a long permission request").join("\n"),
-    );
-    final router = _createRouter(permission: permission, capture: capture);
-    addTearDown(router.dispose);
-
-    await tester.pumpWidget(_buildApp(router: router));
-    await _openPermissionModal(tester);
-
-    expect(find.text("Reject"), findsOneWidget);
-    expect(find.text("Once"), findsOneWidget);
-    expect(find.text("Always Allow"), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
-  testWidgets("hides always allow when the backend forbids it", (tester) async {
+  testWidgets("keeps actions tappable while long Markdown scrolls", (tester) async {
+    tester.view.physicalSize = const Size(402, 874);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
     final capture = _ReplyCapture();
     final router = _createRouter(
-      permission: _permission.copyWith(allowAlways: false),
+      permission: _permission.copyWith(description: "${List.filled(80, 'Request detail\n').join()}\nLast detail"),
       capture: capture,
     );
-    addTearDown(router.dispose);
-
     await tester.pumpWidget(_buildApp(router: router));
     await _openPermissionModal(tester);
 
-    expect(find.text("Reject"), findsOneWidget);
-    expect(find.text("Once"), findsOneWidget);
-    expect(find.text("Always Allow"), findsNothing);
+    final rejectBefore = tester.getRect(find.text("Don’t allow"));
+    await tester.drag(find.byType(SingleChildScrollView).first, const Offset(0, -5000));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(find.text("Don’t allow")), rejectBefore);
+    expect(find.text("Don’t allow").hitTestable(), findsOneWidget);
+    expect(find.text("Allow").hitTestable(), findsOneWidget);
+    expect(find.text("Always approve").hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+    await tester.tap(find.text("Don’t allow"));
+    await tester.pumpAndSettle();
+    expect(capture.reply, PermissionReply.reject);
+  });
+
+  testWidgets("hides always approve when the backend forbids it", (tester) async {
+    final router = _createRouter(permission: _permission.copyWith(allowAlways: false), capture: _ReplyCapture());
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+    expect(find.text("Don’t allow"), findsOneWidget);
+    expect(find.text("Allow"), findsOneWidget);
+    expect(find.text("Always approve"), findsNothing);
+  });
+
+  for (final dismissBySwipe in [false, true]) {
+    testWidgets("${dismissBySwipe ? 'swipe' : 'scrim'} dismissal does not answer the request", (tester) async {
+      final capture = _ReplyCapture();
+      final router = _createRouter(permission: _permission, capture: capture);
+      await tester.pumpWidget(_buildApp(router: router));
+      await _openPermissionModal(tester);
+      if (dismissBySwipe) {
+        await tester.drag(find.text("Allow this action?"), const Offset(0, 600));
+      } else {
+        await tester.tapAt(const Offset(10, 10));
+      }
+      await tester.pumpAndSettle();
+      expect(find.byType(PermissionModal), findsNothing);
+      expect(capture.reply, isNull);
+    });
+  }
+
+  testWidgets("external settlement dismisses without replying again", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(permission: _permission, capture: capture);
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openPermissionModal(tester);
+    capture.isPending = false;
+    capture.pending.add(false);
+    await tester.pumpAndSettle();
+    expect(find.byType(PermissionModal), findsNothing);
+    expect(capture.reply, isNull);
   });
 }
