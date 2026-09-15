@@ -29,6 +29,17 @@ content the transcript renders live and after reload.
   the availability gate does not retain staged bytes. The owning plugin normalizes
   backend-produced images into a client-safe attachment; host paths never cross
   that boundary.
+- Selected images use the shared Prego preview: 52px square center crops, 10px
+  corners, a subtle border, and a 14px close badge with a 44px touch target in
+  both themes. New-session and existing-session composers keep one 52px-high
+  horizontal row with 8px gaps. Overflow scrolls, with edge fades indicating
+  hidden images in either direction. The leading fade appears after scrolling
+  and clears on returning to the start; the trailing fade clears at the end.
+  Each endpoint image and remove action is then fully visible, and both fades
+  disappear when the remaining images fit.
+  Removing one image preserves the remaining image identities and send bytes;
+  removing all images removes the strip. This is image-only staging, not a
+  generic file picker.
 - Antigravity's descriptor advertises prompt attachments and the shared ACP mapper sends bounded inline image parts.
   Provider-generated image content uses the same shared collection limits after Antigravity removes redundant raw image
   copies; a provider-local image path remains bounded metadata and is never opened or sent to a client.
@@ -130,7 +141,7 @@ content the transcript renders live and after reload.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved. |
+| L1 Smoke | Automated, no plugin: the attachment contract decodes, enforces its size bound, and rejects unknown variants; composer picks and clipboard bytes share signature/size validation; a stored thumbnail renders with its aspect ratio preserved; staged previews retain Figma geometry and theme tokens, scroll without wrapping, expose accessible removal, and submit the untouched remaining bytes. |
 | L2 Routine | Live plugin, one representative plugin: a backend-produced image survives the plugin boundary as a bounded client-safe attachment, live and after a cold history read. Automated, no plugin: typed stored-rendition requests coalesce per scope and time out; capable-client history and SSE requests opt into stored references while shared defaults preserve old clients; maximum-size creation serialization yields across every encoding layer while preserving exact wire bytes; attachment collections keep center-cropped square layouts and chronology; stored viewers morph that crop toward the contained thumbnail's fitted bounds, fade in the decoded original, preserve viewer state, and gate original actions. The desktop picker filters to supported raster extensions and preflights oversized files, and desktop adapter coverage verifies file-pick and file-save success and cancellation, pasteboard writes, and system-share file lifecycle. |
 | L3 Release | Client end to end on mobile and desktop for new-session and existing-session composer input, and on every release-target session-detail surface for transcript output, every supporting production plugin: staged composer images are sent and echoed per attachment-capable plugin; a failed current-route mobile creation restores exact attachment identities with the rest of the draft while background failure does not; generated and tool-output images display, text/image/text order is preserved live and after reload, and viewer copy/share/save works. Copilot includes one vision-capable selected model and keeps model/account rejection visible despite its unconditional descriptor capability. |
 | L4 Extended | Client end to end on mobile and desktop: change availability from another surface while an existing-session picker is open or an attachment is staged; no blocked send lands, transcript images remain usable, and recovery presents a fresh composer. Live plugin for budget-exceeding or mixed collections, malformed types, attachment remote-URL rejection, abort, and plugin restart; relay integration for a second client loading the same transcript. Every supporting production plugin. Automated, no plugin: sensitive-response redaction, persistent thumbnail cache corruption recovery, bounded pruning, auth cleanup, viewer decode and load retry, and original eviction and release on close. |
@@ -177,6 +188,9 @@ account-level rejection without changing the descriptor's capability claim.
   crop beyond the full image's fitted bounds during the Hero flight, jumps when
   the original appears, resets zoom or drag, enables actions before original
   decode succeeds, or retains original bytes/provider cache entries after closing.
+- Staged previews wrap, grow the composer with the image count, hide the final
+  remove action behind the fade, remove a different image after scrolling, or
+  change the original bytes sent to the backend.
 - The composer offers or sends attachments to an unsupporting backend, retains
   staged images after switching to one, or the viewer acts on the wrong image.
 - Antigravity reads or sends a provider-local image path, retains duplicate raw image bytes, drops a supported standard

@@ -18,7 +18,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
-import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../helpers/test_helpers.dart";
@@ -2929,11 +2928,10 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
     expect(composerFocus(tester).hasFocus, isFalse);
 
-    final removeButton = find.descendant(
-      of: find.byTooltip("Remove attachment"),
-      matching: find.byType(PregoTappable),
-    );
-    tester.widget<PregoTappable>(removeButton).onTap!.call();
+    expect(tester.getSize(find.byType(PregoImageAttachmentPreview)), const Size(52, 52));
+    final removeButton = semanticsWithLabel("Remove attachment");
+    expect(tester.getSize(removeButton), const Size(44, 44));
+    await tester.tap(removeButton);
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("screenshot.png"), findsNothing);
     // Nothing left to show: the composer collapses back to its resting pill.

@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
@@ -28,6 +29,89 @@ class _NoOpImageClipboard() implements ImageClipboard {
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
 void main() {
+  testWidgets("staged previews scroll, remove the selected image, and send original remaining bytes", (tester) async {
+    final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
+    addTearDown(surfaceStyle.dispose);
+    final dispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
+    final clipboard = _NoOpImageClipboard();
+    final images = [
+      for (var i = 0; i < 8; i++)
+        ComposerAttachment(
+          mime: "image/png",
+          bytes: base64Decode(
+            "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAAAAAA6fptVAAAACklEQVR4nGNgAAAAAgABSK+kcQAAAABJRU5ErkJggg==",
+          ),
+          filename: "Photo $i.png",
+        ),
+    ];
+    List<ComposerAttachment>? sent;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: ComposerPresentationScope(
+          voiceSupport: ComposerVoiceSupport.unsupported,
+          inputMode: ChatInputMode.textFirst,
+          isKeyboardVisible: false,
+          sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
+          attachmentDispatcher: () => dispatcher,
+          imageClipboard: () => clipboard,
+          child: Scaffold(
+            body: Center(
+              child: SizedBox(
+                width: 320,
+                child: PromptInput(
+                  isBusy: false,
+                  hasMessages: false,
+                  onSend: ({required draft, required command, required attachments}) => sent = attachments,
+                  onVoiceTranscriptionCompleted: null,
+                  onDraftChanged: (_) {},
+                  onDraftCleared: () {},
+                  onAbort: () {},
+                  surfaceStyleController: surfaceStyle,
+                  queuedMessages: null,
+                  composerHeader: null,
+                  availableCommands: const [],
+                  stagedCommand: null,
+                  onCommandSelected: (_) {},
+                  onCommandCleared: () {},
+                  attachmentsSupported: true,
+                  draftIdentity: "preview-session",
+                  restorationKey: null,
+                  initialDraft: ComposerDraft.typed(text: ""),
+                  initialAttachments: images,
+                  onInitialAttachmentsConsumed: () {},
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final strip = find.byType(PregoImageAttachmentStrip);
+    expect(tester.getSize(strip).height, 52);
+    expect(find.byType(PregoImageAttachmentPreview), findsNWidgets(8));
+    final firstImage = tester.widget<Image>(find.descendant(of: strip, matching: find.byType(Image)).first);
+    expect(firstImage.fit, BoxFit.cover);
+    expect((firstImage.image as ResizeImage).width, 156);
+    await tester.drag(strip, const Offset(-500, 0));
+    await tester.pumpAndSettle();
+    await tester.tap(find.descendant(of: find.byKey(ObjectKey(images.last)), matching: find.byIcon(TablerRegular.x)));
+    await tester.pumpAndSettle();
+    expect(find.byKey(ObjectKey(images.last)), findsNothing);
+    expect(find.byType(PregoImageAttachmentPreview), findsNWidgets(7));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pumpAndSettle();
+    expect(sent, orderedEquals(images.take(7)));
+    for (var i = 0; i < sent!.length; i++) {
+      expect(identical(sent![i].bytes, images[i].bytes), isTrue);
+    }
+    expect(strip, findsNothing);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("only the staged chip materializes; clear, voice, and retry preserve the draft", (tester) async {
     final command = ValueNotifier<CommandInfo?>(null);
     final voiceStates = StreamController<VoiceInputState>();
