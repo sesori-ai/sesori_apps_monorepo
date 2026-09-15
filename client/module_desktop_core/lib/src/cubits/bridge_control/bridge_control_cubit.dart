@@ -320,6 +320,26 @@ class BridgeControlCubit._create({
     }
   }
 
+  /// Refreshes native preferences when bridge controls open, using the existing
+  /// activity owner so a quick toggle cannot race a stale native read.
+  Future<void> refreshLaunchAtLogin() async {
+    if (_controlsLocked) return;
+    _activity = BridgeControlActivity.configuringLaunchAtLogin;
+    _rebuildMenu();
+    try {
+      await _loadLaunchAtLoginState();
+    } finally {
+      if (!isClosed) {
+        _activity = BridgeControlActivity.idle;
+        _rebuildMenu();
+        if (_quitAfterActivity) {
+          _quitAfterActivity = false;
+          _onWindowEvent(event: WindowHostEvent.closeRequested);
+        }
+      }
+    }
+  }
+
   Future<void> toggleLaunchAtLogin() async {
     if (_controlsLocked) {
       return;

@@ -223,6 +223,36 @@ abstract class AppLocalizations {
   /// **'Open Logs'**
   String get desktopBridgeOpenLogs;
 
+  /// Popover switch for starting Sesori when the user logs in.
+  ///
+  /// In en, this message translates to:
+  /// **'Start at login'**
+  String get desktopBridgeLaunchAtLogin;
+
+  /// Popover action opening settings for bridge configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge settings…'**
+  String get desktopBridgeSettings;
+
+  /// Popover action performing the normal supervised app shutdown.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit Sesori'**
+  String get desktopBridgeQuit;
+
+  /// Popover status when the desktop relay-to-bridge chain is connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Client connected'**
+  String get desktopBridgeClientConnected;
+
+  /// Popover status when the desktop relay client is not connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Client disconnected'**
+  String get desktopBridgeClientDisconnected;
+
   /// Label of the pinned desktop navigation entry for local bridge controls.
   ///
   /// In en, this message translates to:

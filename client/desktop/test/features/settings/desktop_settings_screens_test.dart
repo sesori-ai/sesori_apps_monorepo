@@ -354,7 +354,7 @@ void main() {
                 ),
               ),
               GoRoute(
-                path: AppRouteDef.projects.path,
+                path: AppRouteDef.splash.path,
                 builder: (_, _) => const Scaffold(body: Text("home")),
               ),
               harnessRoute,

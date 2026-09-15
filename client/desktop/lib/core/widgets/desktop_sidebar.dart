@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
+import "desktop_bridge_popover.dart";
 import "desktop_bridge_recovery_card.dart";
 
 typedef SidebarSessionOpenedCallback = void Function({
@@ -20,7 +21,6 @@ typedef SidebarSessionOpenedCallback = void Function({
 
 /// Current top-level route; project detail routes also select their project row.
 enum DesktopCockpitDestination() {
-  bridge,
   projects,
   settings,
 }
@@ -40,7 +40,7 @@ class const DesktopSidebar({
   required final VoidCallback onOpenProjects,
   required final VoidCallback onAddProject,
   required final ProjectOpenedCallback onOpenProject,
-  required final VoidCallback onOpenBridge,
+  required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   @override
@@ -250,13 +250,20 @@ class const DesktopSidebar({
               child: Column(
                 children: [
                   DesktopBridgeRecoveryCard(expansion: expansion),
-                  _SidebarButton(
-                    label: loc.desktopBridgeTitle,
-                    icon: const Icon(TablerRegular.server, size: 20),
-                    expansion: expansion,
-                    selected: destination == DesktopCockpitDestination.bridge,
-                    status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
-                    onPressed: onOpenBridge,
+                  PregoPopover(
+                    popoverWidth: 300,
+                    triggerBuilder: (context, toggle) => _SidebarButton(
+                      label: loc.desktopBridgeTitle,
+                      icon: const Icon(TablerRegular.server, size: 20),
+                      expansion: expansion,
+                      selected: false,
+                      status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
+                      onPressed: toggle,
+                    ),
+                    contentBuilder: (context, close) => DesktopBridgePopover(
+                      close: close,
+                      onOpenSettings: onOpenBridgeSettings,
+                    ),
                   ),
                   _SidebarButton(
                     label: loc.settingsTitle,

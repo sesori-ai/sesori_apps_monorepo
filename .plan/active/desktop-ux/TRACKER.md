@@ -16,7 +16,7 @@ Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
 | [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | done |
 | [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | done |
 | [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | done |
-| [ ] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | pending |
+| [ ] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | in-progress |
 | [ ] | 7 | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | pending |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | pending |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 10/13]` | ≤ 700 | pending |
@@ -36,6 +36,16 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   user-requested styling/motion/activity follow-up, not part of #1488.
 - Step 3: [PR #1494](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1494).
 - Step 4: [PR #1496](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1496).
+
+- Step 5: [PR #1497](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1497).
+
+## Unattended execution
+
+The user reaffirmed autonomous completion on 2026-09-15: do not stop/restart
+or take over the running bridge. Continue every implementation, review and
+merge step without questions. Record checks that cannot be performed safely
+for the final testing decision; this does not claim unexecuted coverage passed
+or waive shipping qualification.
 
 ## Accepted reductions
 

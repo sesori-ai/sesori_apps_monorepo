@@ -4,7 +4,6 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
-import "package:sesori_desktop/features/home/desktop_home.dart";
 import "package:sesori_desktop/features/home/desktop_home_pane.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
@@ -94,12 +93,8 @@ void main() {
     expect(scaffold.onOpenArchived, isNotNull);
     expect(scaffold.connectionBanner, isNull);
     expect(
-      _routeWithPath(AppRouteDef.projects.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
-      isA<DesktopHomePane>(),
-    );
-    expect(
       _routeWithPath(AppRouteDef.splash.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
-      isA<DesktopHome>(),
+      isA<DesktopHomePane>(),
     );
   });
 

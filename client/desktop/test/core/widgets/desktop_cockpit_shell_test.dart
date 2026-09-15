@@ -43,6 +43,7 @@ void main() {
       initialState: const <String, RecentSessionsEntry>{},
     );
     when(() => recent.ensureLoaded(projectId: any(named: "projectId"))).thenAnswer((_) async {});
+    when(() => bridgeControlCubit.refreshLaunchAtLogin()).thenAnswer((_) async {});
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
@@ -80,7 +81,7 @@ void main() {
               onNewSession: _openProject,
               sessionActions: _sessionActions,
               onOpenProject: _openProject,
-              onOpenBridge: _noOp,
+              onOpenBridgeSettings: _noOp,
               onOpenProjects: _noOp,
               onOpenSettings: _noOp,
               child: GestureDetector(
@@ -115,7 +116,7 @@ void main() {
               onNewSession: _openProject,
               sessionActions: _sessionActions,
               onOpenProject: _openProject,
-              onOpenBridge: () => opens++,
+              onOpenBridgeSettings: () => opens++,
               onOpenProjects: () => opens++,
               onOpenSettings: () => opens++,
               child: const SizedBox.shrink(),
@@ -123,7 +124,6 @@ void main() {
           ),
         );
         for (final entry in {
-          DesktopCockpitDestination.bridge: "Bridge, Bridge status",
           DesktopCockpitDestination.projects: "Projects",
           DesktopCockpitDestination.settings: "Settings",
         }.entries) {
@@ -139,7 +139,7 @@ void main() {
           }
         }
       }
-      expect(opens, 3);
+      expect(opens, 2);
     } finally {
       semantics.dispose();
     }
@@ -215,7 +215,7 @@ void main() {
           onNewSession: _openProject,
           sessionActions: _sessionActions,
           onOpenProject: ({required context, required project, required displayName}) => openedProject = project.id,
-          onOpenBridge: () => bridgeOpens++,
+          onOpenBridgeSettings: () => bridgeOpens++,
           onOpenProjects: () => projectOpens++,
           onOpenSettings: () => settingsOpens++,
           child: const SizedBox.shrink(),
@@ -225,6 +225,11 @@ void main() {
     expect(find.byType(NavigationRail), findsNothing);
     expect(tester.getSize(rail).width, 260);
     await tester.tap(find.text("Bridge"));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
+    expect(bridgeOpens, 0);
+    await tester.tap(find.text("Bridge settings…"));
+    await tester.pumpAndSettle();
     await tester.tap(find.text("Projects"));
     await tester.tap(find.text("Settings"));
     await tester.tap(find.text("Sesori Desktop"));
@@ -260,7 +265,7 @@ void main() {
               openedSession = session.id,
           onNewSession: ({required context, required project, required displayName}) => newSessions++,
           onOpenProject: ({required context, required project, required displayName}) => allSessions++,
-          onOpenBridge: _noOp,
+          onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
           child: const SizedBox.shrink(),
@@ -413,7 +418,7 @@ void main() {
               onNewSession: _openProject,
               sessionActions: _sessionActions,
               onOpenProject: _openProject,
-              onOpenBridge: _noOp,
+              onOpenBridgeSettings: _noOp,
               onOpenProjects: () => opens++,
               onOpenSettings: _noOp,
               child: const SizedBox.shrink(),

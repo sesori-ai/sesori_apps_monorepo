@@ -175,6 +175,43 @@ void main() {
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.takeOver).label, "Take Over");
     });
 
+    test("refresh reads native changes and serializes a quick toggle", () async {
+      await cubit.initialize();
+      final read = launchAtLogin.readGate = Completer<bool>();
+      final refresh = cubit.refreshLaunchAtLogin();
+      expect(cubit.state.activity, BridgeControlActivity.configuringLaunchAtLogin);
+      await cubit.toggleLaunchAtLogin();
+      expect(launchAtLogin.enableCalls, 0);
+      read.complete(true);
+      await refresh;
+      expect(cubit.state.launchAtLoginEnabled, isTrue);
+      expect(cubit.state.activity, BridgeControlActivity.idle);
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleLaunchAtLogin).label,
+        "Disable Launch at Login",
+      );
+    });
+
+    test("failed refresh releases commands and preserves the known value", () async {
+      await cubit.initialize();
+      launchAtLogin.readGate = Completer<bool>();
+      final refresh = cubit.refreshLaunchAtLogin();
+      launchAtLogin.readGate!.completeError(StateError("native read failed"));
+      await refresh;
+      expect(cubit.state.launchAtLoginEnabled, isFalse);
+      expect(cubit.state.activity, BridgeControlActivity.idle);
+    });
+
+    test("late native refresh completion does not emit after disposal", () async {
+      await cubit.initialize();
+      launchAtLogin.readGate = Completer<bool>();
+      final refresh = cubit.refreshLaunchAtLogin();
+      await cubit.close();
+      launchAtLogin.readGate!.complete(true);
+      await refresh;
+      expect(cubit.isClosed, isTrue);
+    });
+
     test("toggle launch-at-login updates the menu only after registration succeeds", () async {
       await cubit.initialize();
 
@@ -887,9 +924,10 @@ class _FakeLaunchAtLogin() implements LaunchAtLogin {
   int disableCalls = 0;
   Object? enableError;
   Object? disableError;
+  Completer<bool>? readGate;
 
   @override
-  Future<bool> isEnabled() async => enabled;
+  Future<bool> isEnabled() => readGate?.future ?? Future<bool>.value(enabled);
 
   @override
   Future<void> enable() async {
