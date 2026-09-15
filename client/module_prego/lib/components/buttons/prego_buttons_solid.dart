@@ -39,10 +39,10 @@ enum PregoButtonsSolidHierarchy() {
   /// this hierarchy.
   primaryAlt,
 
-  /// Raised surface with secondary border and primary text.
+  /// Raised surface with secondary border and secondary text.
   secondary,
 
-  /// Ghost button — no background, no border. Secondary text colour.
+  /// Ghost button — no background, no border. Tertiary text colour.
   tertiary,
 
   /// Inline link style — no background, no border, no padding. Brand-secondary text colour.
@@ -310,7 +310,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
   Widget _buildLabelContent({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
     final textStyle = _resolveTextStyle(prego: prego, state: state);
-    final iconColor = _resolveIconColor(colors: colors, state: state);
+    final iconColor = _resolveIconColor(colors: colors, state: state, isTrailing: false);
     final padding = _resolvePadding();
     final gap = _resolveGap();
 
@@ -344,7 +344,13 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       children.add(labelWidget);
       if (widget.trailingIcon != null) {
         children.add(SizedBox(width: gap));
-        children.add(Icon(widget.trailingIcon, size: _resolveIconSize(), color: iconColor));
+        children.add(
+          Icon(
+            widget.trailingIcon,
+            size: _resolveIconSize(),
+            color: _resolveIconColor(colors: colors, state: state, isTrailing: true),
+          ),
+        );
       }
     }
 
@@ -364,7 +370,7 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
 
   Widget _buildIconOnlyContent({required PregoDesignSystem prego, required Set<WidgetState> state}) {
     final colors = prego.colors;
-    final iconColor = _resolveIconColor(colors: colors, state: state);
+    final iconColor = _resolveIconColor(colors: colors, state: state, isTrailing: false);
     final padding = _resolveIconOnlyPadding();
 
     final Widget iconWidget;
@@ -706,13 +712,17 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       // No hover change — overlay handles the hover/press feedback.
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
       // Secondary text colour does not change on hover (only background does).
-      PregoButtonsSolidHierarchy.secondary => colors.textPrimary,
-      PregoButtonsSolidHierarchy.tertiary => colors.textSecondary,
+      PregoButtonsSolidHierarchy.secondary => colors.textSecondary,
+      PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
       PregoButtonsSolidHierarchy.link => isHovered ? colors.textBrandSecondaryHover : colors.textBrandSecondary,
     };
   }
 
-  Color _resolveIconColor({required PregoColors colors, required Set<WidgetState> state}) {
+  Color _resolveIconColor({
+    required PregoColors colors,
+    required Set<WidgetState> state,
+    required bool isTrailing,
+  }) {
     final isDisabled = state.contains(WidgetState.disabled);
     final isHovered = state.contains(WidgetState.hovered);
     if (isDisabled && !widget.isLoading) {
@@ -742,9 +752,9 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
       PregoButtonsSolidHierarchy.primary => colors.textWhite,
       // Primary Alt: icon matches the dark text colour (text-primary_on-white).
       PregoButtonsSolidHierarchy.primaryAlt => colors.textPrimaryOnWhite,
-      // Secondary and tertiary icon color is static across all active states (no hover change).
-      PregoButtonsSolidHierarchy.secondary => colors.textPrimary,
-      PregoButtonsSolidHierarchy.tertiary => colors.textSecondary,
+      // Canonical secondary: leading/icon-only uses primary text; trailing matches the label.
+      PregoButtonsSolidHierarchy.secondary => isTrailing ? colors.textSecondary : colors.textPrimary,
+      PregoButtonsSolidHierarchy.tertiary => colors.textTertiary,
       // Link uses text-brand-secondary tokens on default/hover; text-secondary when focused.
       PregoButtonsSolidHierarchy.link =>
         _isFocused ? colors.textSecondary : (isHovered ? colors.textBrandSecondaryHover : colors.textBrandSecondary),
