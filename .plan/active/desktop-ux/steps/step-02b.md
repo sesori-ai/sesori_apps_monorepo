@@ -17,6 +17,9 @@ The user requested a separate follow-up within step 2 on 2026-09-15:
 - Animate expand/collapse smoothly, keep dragging immediate, and respect
   reduced-motion settings.
 - Show the revised screen before calling the visual work complete.
+- Preserve native macOS/iOS indicator implementations for CPU/battery efficiency;
+  do not substitute Flutter drawing to avoid native QA. This step changes only
+  the desktop sidebar.
 
 ## Boundaries
 
@@ -37,6 +40,9 @@ unless implementation materially changes that scope.
 - Analyze the desktop package.
 - Review expanded/compact and light/dark renderings, including narrow widths.
 - Keep screenshot/render-preview evidence distinct from native interaction QA.
+- Exercise native macOS indicators through scrolling, clipping, repeated
+  insertion/removal, collapse/expand, and composited content; check steady-state
+  Flutter frame scheduling separately from finite layout transitions.
 - Do not restart, stop, take over, or launch another bridge. Do not relaunch the
   current GUI during this QA pass or request another secure-storage password.
 
@@ -45,25 +51,37 @@ unless implementation materially changes that scope.
 - Simplified Projects header with a separate collapse control; full-width,
   labeled New project action; compact Prego rows and a distinct pinned footer.
 - Shared running/unread sparkles, including avatar badges when compact and
-  status-aware tooltips/accessibility labels. Explicit state colors select
-  Prego's Flutter painter, avoiding platform views in this moving/clipped
-  hierarchy. No new data requests.
+  status-aware tooltips/accessibility labels. Keep Prego's native AppKitView
+  path on macOS; iOS callers are unchanged. No new data requests.
 - Compact Projects remains available even when the list is empty, loading,
   failed, or disconnected, including when automatic collapse disables expansion.
 - 220 ms eased expansion/collapse; immediate drag feedback; both MediaQuery
   disabled animations and platform Reduce Motion disable the transition.
 - Desktop cockpit widget suite: 18 passed, including compact overview activation
-  across recovery states and no AppKitView during running/unread transitions
-  under macOS and Linux target settings. Prego avatar tests: 2 passed.
+  across recovery states and native AppKitView selection throughout macOS
+  running/unread transitions. Linux retains its Flutter path. Prego avatar
+  tests: 2 passed.
 - Desktop and Prego analyzers: passed. Localization generation: passed.
 - Five font-loaded render probes: light/dark expanded, light/dark compact, and
   minimum 200 px width. These render the production sidebar with fixture state;
   they are visual previews, not native macOS or live-bridge E2E evidence.
 - The existing GUI and standalone bridge were not relaunched or altered.
+- An isolated, auth-free debug probe built, passed deep/strict signature
+  verification, and started with Impeller MetalSDF. It uses the production
+  cockpit/sidebar, synthetic cubits, in-memory layout persistence, a distinct
+  bundle ID, and a separate derived-data output. Only that probe was stopped.
+- Native visual/lifecycle checks are blocked: Peekaboo reported the macOS GUI
+  session is locked. No unlock was attempted; no native rendering, steady-frame,
+  CPU, or battery result is claimed.
+- Profile-mode compilation separately failed in the pinned SDK:
+  `Unexpected object (Class with illegal cid, full-aot)` for Flutter's
+  `_window_macos.dart` `_Rect`; the snapshot generator exited with `-6`.
+  This is not evidence of an indicator rendering failure.
 
 ## Status
 
-Implementation and focused verification complete. Production-widget previews
-were shown to the user before publication; this does not claim native macOS
-interaction coverage or user approval. The follow-up remains separate from
-#1488 and does not advance recent sessions.
+Native rendering is restored and focused tests pass. PR #1491 remains draft
+until native verification can run after the user unlocks macOS. The isolated
+probe and logs are retained outside the diff; the standard app build target was
+restored. Previews do not establish native coverage or user approval. This work
+remains separate from #1488 and does not advance recent sessions.

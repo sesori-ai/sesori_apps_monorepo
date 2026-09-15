@@ -471,7 +471,9 @@ PR #1488 and delivering it as a follow-up within step 2. Step 2.b includes a
 clear New project action, simplified header, separated pinned footer, smooth
 expand/collapse with reduced-motion support, and existing running/unread
 project signals in both widths. It adds no backend requests or state ownership.
-Recent-session rows remain step 3. See `steps/step-02b.md`.
+Indicators must retain Prego's native macOS rendering for CPU/battery efficiency;
+Flutter drawing is not a substitute for native verification. Existing iOS callers
+remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 
 | Step | PR title | Target | Scope |
 |---|---|---|---|

@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/semantics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -333,15 +334,16 @@ void main() {
     );
     await tester.pumpWidget(app(state: running));
     final loc = tester.element(rail).loc;
+    final native = defaultTargetPlatform == TargetPlatform.macOS;
     final runningHint = "Sesori Desktop, ${loc.projectListRunning(2)}, ${loc.projectListNewActivity}";
     expect(find.byTooltip(runningHint), findsOneWidget);
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
-    expect(find.byType(AppKitView), findsNothing);
+    expect(find.byType(AppKitView), native ? findsOneWidget : findsNothing);
     expect(tester.getCenter(find.byType(PregoAiLoader)).dx, greaterThan(200));
     await tester.tap(toggle);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
-    expect(find.byType(AppKitView), findsNothing);
+    expect(find.byType(AppKitView), native ? findsNWidgets(2) : findsNothing);
     await tester.pump(const Duration(milliseconds: 170));
     expect(tester.getSize(rail).width, 56);
     expect(find.byTooltip(runningHint), findsOneWidget);
@@ -350,7 +352,7 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 800));
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
-    expect(find.byType(AppKitView), findsNothing);
+    expect(find.byType(AppKitView), native ? findsOneWidget : findsNothing);
     expect(find.byTooltip("Sesori Desktop, ${loc.projectListNewActivity}"), findsOneWidget);
     await tester.tap(toggle);
     await tester.pump();

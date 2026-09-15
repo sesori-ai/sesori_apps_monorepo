@@ -12,7 +12,7 @@ Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
 |---|---|---|---|---|---|
 | [x] | 1 | `desktop-release-plan` | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/13]` | ≤ 900 | done |
 | [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/13]` | ≤ 1,400 | done |
-| [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | done |
+| [ ] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | native QA blocked |
 | [ ] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | pending |
 | [ ] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | pending |
 | [ ] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | pending |
@@ -32,7 +32,8 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 
 - Step 1: [PR #1484](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1484).
 - Step 2.a: [PR #1488](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1488).
-- Step 2.b: user-requested styling/motion/activity follow-up, not part of #1488.
+- Step 2.b: [PR #1491](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1491),
+  user-requested styling/motion/activity follow-up, not part of #1488.
 
 ## Accepted reductions
 
@@ -50,4 +51,8 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 - Step 2.b: 18 desktop widget tests, 2 avatar tests, both owning analyzers, and
   five font-loaded render probes pass. Light/dark expanded and compact previews
   were shown to the user; the current GUI and bridge were left untouched.
-  These previews do not claim native interaction coverage. See `steps/step-02b.md`.
+  Native macOS rendering is retained; 18 tests pass after restoration. An
+  isolated debug probe built and started, but native inspection is blocked by
+  the locked macOS session. Profile mode also hit a pinned-SDK AOT failure.
+  Neither previews nor startup establish native interaction/performance coverage.
+  See `steps/step-02b.md`.

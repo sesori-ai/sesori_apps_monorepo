@@ -185,12 +185,7 @@ class const DesktopSidebar({
                       selected: project.id == selectedProjectId,
                       status: active > 0 || unseen
                           ? (
-                              icon: PregoAiLoader(
-                                size: 18,
-                                animate: active > 0,
-                                // Custom colors keep this clipped/moving hierarchy on Prego's Flutter painter.
-                                color: active > 0 ? prego.colors.textPrimary : prego.colors.textPrimaryOnBrand,
-                              ),
+                              icon: PregoAiLoader(size: 18, animate: active > 0),
                               label: active > 0
                                   ? unseen
                                         ? "${loc.projectListRunning(active)}, ${loc.projectListNewActivity}"
