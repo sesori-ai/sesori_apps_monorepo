@@ -297,6 +297,22 @@ trusted package run without rebuilding, re-signing or rerunning unchanged helper
 Keychain checks. It checks the expected publisher and Gatekeeper before launch and
 records the sealed source identity. No signing secrets are supplied to this mode.
 
+GUI replay [35019031550](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35019031550)
+used tooling `055eb71e77ca716ef7c432766b135048f3b3c768` and the unchanged signed
+`8fb5d33` payloads. Both hosts had a screen and Accessibility access; LaunchServices
+launching, publisher verification, window/full-desktop capture and native process
+sampling passed. Both full-desktop images still showed black app content and no
+visible permission prompt, so rendered startup remains unresolved. Evidence artifacts:
+x64 `10416693647`, arm64 `10416369598`; local copies are under
+`build/desktop-macos-packaging-evidence/gui-055eb71/`.
+
+Added seven fixed-text startup breadcrumbs around existing awaits to locate the
+stall without changing initialization order, ownership, permissions or data. A
+normal merge of incoming main (`b69a485`, merge `6a68876722b9c2d15a924091d853144be6ee19fa`)
+preserves the independent desktop-UX work. The cold-start widget smoke (one case)
+and desktop analyzer pass on that merged tree plus the breadcrumbs. These mocks
+do not replace the pending native startup diagnosis.
+
 ## Verification and boundaries
 
 Preflight tooling: actionlint and workflow-route/credential-scope inspection; actual
