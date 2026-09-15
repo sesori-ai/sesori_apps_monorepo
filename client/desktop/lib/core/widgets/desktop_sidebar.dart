@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
+import "desktop_bridge_recovery_card.dart";
 
 typedef SidebarSessionOpenedCallback = void Function({
   required BuildContext context,
@@ -48,6 +49,20 @@ class const DesktopSidebar({
     final collapsedProjects = context.select((DesktopSidebarCubit cubit) => cubit.state.collapsedProjectIds);
     final loc = context.loc;
     final prego = context.prego;
+    final bridge = context.watch<BridgeControlCubit>().state;
+    final bridgeColor = bridge.canTakeOver
+        ? prego.colors.textWarningPrimary
+        : switch (bridge.processState) {
+            BridgeProcessStopped() => prego.colors.textDisabled,
+            BridgeProcessStartFailed() || BridgeProcessCrashGiveUp() => prego.colors.textErrorPrimary,
+            BridgeProcessRunning()
+                when bridge.controlStatus.helperOnline &&
+                    bridge.controlStatus.startup == ControlStartupState.ready &&
+                    bridge.controlStatus.relay == ControlRelayConnectionState.connected &&
+                    bridge.controlStatus.plugin != ControlPluginHealthState.degraded =>
+              prego.colors.textSuccessPrimary,
+            _ => prego.colors.textWarningPrimary,
+          };
     return Material(
       color: prego.colors.bgSecondary,
       child: SafeArea(
@@ -229,12 +244,13 @@ class const DesktopSidebar({
               ),
               child: Column(
                 children: [
+                  DesktopBridgeRecoveryCard(expansion: expansion),
                   _SidebarButton(
                     label: loc.desktopBridgeTitle,
                     icon: const Icon(TablerRegular.server, size: 20),
                     expansion: expansion,
                     selected: destination == DesktopCockpitDestination.bridge,
-                    status: null,
+                    status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
                     onPressed: onOpenBridge,
                   ),
                   _SidebarButton(
