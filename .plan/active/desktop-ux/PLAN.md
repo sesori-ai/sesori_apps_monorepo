@@ -2,8 +2,8 @@
 
 ## Status
 
-Planned 2026-09-15; sidebar and main-pane implementation is complete through
-logical step 4 (see `TRACKER.md` and its linked verification evidence).
+Planned 2026-09-15; sidebar, main-pane and connection presentation are complete
+through logical step 5 (see `TRACKER.md` and its linked verification evidence).
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
 are listed at the end as rough intent only and get their own plans when they
@@ -147,9 +147,10 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
 - **D5 — Connection state floats, never shifts.** Desktop drops the root
   `ConnectionBanner` mount. A Prego-surfaced pill overlays the top of the main
   pane in a `Stack`, driven by `ConnectionOverlayCubit`, fading in and out. It
-  shows `reconnecting`, and `bridgeOffline` only while the supervised bridge is
-  wanted On (an intentional Off is reported by the sidebar's Bridge row and the
-  home pane, not by a nagging pill). That suppression is owned by the desktop
+  shows `reconnecting` and actionable `connectionLost`; `bridgeOffline` appears
+  only while the supervised bridge is wanted On. Off, including its cold-start/
+  default value before any user action, is reported by the sidebar/home. Relay
+  recovery remains available to clients using another bridge. That suppression is owned by the desktop
   pill widget in `client/desktop`, which combines `ConnectionOverlayState` with
   `BridgeControlCubit` state; `ConnectionOverlayCubit` in `module_core` is
   untouched and never learns about desktop supervision. The sidebar Bridge row

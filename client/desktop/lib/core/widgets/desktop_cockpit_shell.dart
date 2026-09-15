@@ -8,6 +8,7 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
+import "desktop_connection_pill.dart";
 import "desktop_sidebar.dart";
 
 export "desktop_sidebar.dart" show DesktopCockpitDestination;
@@ -55,10 +56,16 @@ class const DesktopCockpitShell({
   Widget build(BuildContext context) {
     final layout = context.watch<DesktopSidebarCubit>().state;
     final sidebar = context.read<DesktopSidebarCubit>();
-    final content = Column(
+    final content = Stack(
+      fit: StackFit.expand,
       children: [
-        const DesktopSupervisionNotice(),
-        Expanded(child: child),
+        child,
+        const PositionedDirectional(
+          top: PregoSpacing.lg,
+          start: PregoSpacing.lg,
+          end: PregoSpacing.lg,
+          child: Align(alignment: Alignment.topCenter, child: DesktopConnectionPill()),
+        ),
       ],
     );
     return LayoutBuilder(
@@ -128,106 +135,3 @@ class const DesktopCockpitShell({
     );
   }
 }
-
-/// Exceptional bridge states shown above every cockpit destination.
-class const DesktopSupervisionNotice({super.key}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final state = context.watch<BridgeControlCubit>().state;
-    final controls = context.read<BridgeControlCubit>();
-    final locked = state.activity.locksCommands;
-
-    final _DesktopSupervisionNoticeData? notice;
-    if (state.canTakeOver) {
-      notice = _DesktopSupervisionNoticeData(
-        icon: TablerRegular.arrows_exchange,
-        message: "Another bridge currently owns this account connection.",
-        primaryLabel: "Take Over",
-        onPrimary: locked ? null : () => unawaited(controls.takeOver()),
-        secondaryLabel: null,
-        onSecondary: null,
-        isError: false,
-      );
-    } else {
-      notice = switch (state.processState) {
-        BridgeProcessLoginRequired() => _DesktopSupervisionNoticeData(
-          icon: TablerRegular.user_exclamation,
-          message: "Your Sesori account is required before the local bridge can start.",
-          primaryLabel: "Start Bridge",
-          onPrimary: locked ? null : () => unawaited(controls.recoverConnection()),
-          secondaryLabel: null,
-          onSecondary: null,
-          isError: false,
-        ),
-        BridgeProcessStartFailed(:final message) => _DesktopSupervisionNoticeData(
-          icon: TablerRegular.alert_triangle,
-          message: message,
-          primaryLabel: "Retry",
-          onPrimary: locked ? null : () => unawaited(controls.startBridge()),
-          secondaryLabel: null,
-          onSecondary: null,
-          isError: true,
-        ),
-        BridgeProcessCrashGiveUp() => _DesktopSupervisionNoticeData(
-          icon: TablerRegular.alert_triangle,
-          message: "The local bridge stopped after repeated crashes.",
-          primaryLabel: "Retry",
-          onPrimary: locked ? null : () => unawaited(controls.recoverConnection()),
-          secondaryLabel: "Open Logs",
-          onSecondary: () => unawaited(controls.openLogs()),
-          isError: true,
-        ),
-        BridgeProcessContention() => null,
-        BridgeProcessStopped() ||
-        BridgeProcessStarting() ||
-        BridgeProcessRunning() ||
-        BridgeProcessStopping() ||
-        BridgeProcessCrashRetryScheduled() => null,
-      };
-    }
-    if (notice == null) {
-      return const SizedBox.shrink();
-    }
-
-    final background = notice.isError ? context.prego.colors.bgErrorSecondary : context.prego.colors.bgWarningSecondary;
-    final foreground = notice.isError ? context.prego.colors.textErrorPrimary : context.prego.colors.textWarningPrimary;
-    return ColoredBox(
-      key: const Key("desktop-supervision-notice"),
-      color: background,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl, vertical: PregoSpacing.sm),
-        child: Row(
-          children: [
-            Icon(notice.icon, color: foreground, size: 20),
-            const SizedBox(width: PregoSpacing.sm),
-            Expanded(
-              child: Text(
-                notice.message,
-                style: context.prego.textTheme.textSm.medium.copyWith(color: foreground),
-              ),
-            ),
-            if (notice.secondaryLabel case final label?)
-              TextButton(
-                onPressed: notice.onSecondary,
-                child: Text(label),
-              ),
-            TextButton(
-              onPressed: notice.onPrimary,
-              child: Text(notice.primaryLabel),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class const _DesktopSupervisionNoticeData({
-  required final IconData icon,
-  required final String message,
-  required final String primaryLabel,
-  required final VoidCallback? onPrimary,
-  required final String? secondaryLabel,
-  required final VoidCallback? onSecondary,
-  required final bool isError,
-});

@@ -11,12 +11,15 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
+import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
   late _MockBridgeControlCubit bridgeControlCubit;
+  late _MockConnectionOverlayCubit overlay;
+  late int contentTaps;
   late _MockProjectListCubit projects;
   late _MockRecentSessionsCubit recent;
   late _MockRepository repository;
@@ -25,6 +28,13 @@ void main() {
   setUpAll(() => registerFallbackValue(const DesktopSidebarLayout()));
   setUp(() {
     bridgeControlCubit = _MockBridgeControlCubit();
+    overlay = _MockConnectionOverlayCubit();
+    contentTaps = 0;
+    whenListen(
+      overlay,
+      const Stream<ConnectionOverlayState>.empty(),
+      initialState: const ConnectionOverlayState.hidden(connected: true),
+    );
     projects = _MockProjectListCubit();
     recent = _MockRecentSessionsCubit();
     whenListen(
@@ -51,6 +61,7 @@ void main() {
     return MultiBlocProvider(
       providers: [
         BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
+        BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
         BlocProvider<ProjectListCubit>.value(value: projects),
         BlocProvider<RecentSessionsCubit>.value(value: recent),
         BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
@@ -61,7 +72,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home:
             child ??
-            const DesktopCockpitShell(
+            DesktopCockpitShell(
               destination: DesktopCockpitDestination.projects,
               selectedProjectId: "project-1",
               selectedSessionId: null,
@@ -72,7 +83,12 @@ void main() {
               onOpenBridge: _noOp,
               onOpenProjects: _noOp,
               onOpenSettings: _noOp,
-              child: ColoredBox(key: Key("cockpit-content"), color: Colors.transparent),
+              child: GestureDetector(
+                key: const Key("cockpit-content"),
+                behavior: HitTestBehavior.opaque,
+                onTap: () => contentTaps++,
+                child: const ColoredBox(color: Colors.transparent),
+              ),
             ),
       ),
     );
@@ -107,7 +123,7 @@ void main() {
           ),
         );
         for (final entry in {
-          DesktopCockpitDestination.bridge: "Bridge",
+          DesktopCockpitDestination.bridge: "Bridge, Bridge status",
           DesktopCockpitDestination.projects: "Projects",
           DesktopCockpitDestination.settings: "Settings",
         }.entries) {
@@ -137,12 +153,7 @@ void main() {
       tester.view.physicalSize = Size(width, 700);
       await tester.pumpWidget(app(state: running));
       await tester.pumpAndSettle();
-      final mainPane = find
-          .ancestor(
-            of: find.byKey(const Key("cockpit-content")),
-            matching: find.byType(Column),
-          )
-          .first;
+      final mainPane = find.byKey(const Key("cockpit-content"));
       final dividerWidth = width < DesktopCockpitShell.autoCollapseBreakpoint ? 1 : 6;
       expect(tester.getSize(mainPane).width, width - tester.getSize(rail).width - dividerWidth);
       expect(find.byType(SessionSplitShell), findsNothing);
@@ -346,6 +357,7 @@ void main() {
       tester.platformDispatcher.accessibilityFeaturesTestValue = features;
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       await tester.pumpWidget(app(state: running));
+      expect(tester.widget<AnimatedSwitcher>(find.byType(AnimatedSwitcher)).duration, Duration.zero);
       await tester.tap(toggle);
       await tester.pump();
       expect(tester.getSize(rail).width, 56);
@@ -495,9 +507,101 @@ void main() {
     await updates.close();
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
+  testWidgets("connection transitions overlay unchanged content bounds", (tester) async {
+    final root = app(state: running);
+    final updates = StreamController<ConnectionOverlayState>();
+    addTearDown(updates.close);
+    whenListen(overlay, updates.stream, initialState: const ConnectionOverlayState.hidden(connected: true));
+    await tester.pumpWidget(root);
+    final content = find.byKey(const Key("cockpit-content"));
+    final bounds = tester.getRect(content);
+    for (final state in [
+      const ConnectionOverlayState.reconnecting(),
+      const ConnectionOverlayState.bridgeOffline(),
+      const ConnectionOverlayState.connectionLost(),
+      const ConnectionOverlayState.hidden(connected: true),
+    ]) {
+      updates.add(state);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 90));
+      expect(tester.getRect(content), bounds);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(
+        find.byKey(const Key("desktop-connection-pill")),
+        state is ConnectionOverlayHidden ? findsNothing : findsOneWidget,
+      );
+      expect(tester.getRect(content), bounds);
+    }
+  });
+
+  testWidgets("intentional Off suppresses bridge-offline but retains relay recovery", (tester) async {
+    final root = app(state: _state(processState: const BridgeProcessStopped()));
+    final updates = StreamController<ConnectionOverlayState>();
+    addTearDown(updates.close);
+    whenListen(overlay, updates.stream, initialState: const ConnectionOverlayState.bridgeOffline());
+    await tester.pumpWidget(root);
+    expect(find.byKey(const Key("desktop-connection-pill")), findsNothing);
+    updates.add(const ConnectionOverlayState.connectionLost());
+    await tester.pumpAndSettle();
+    expect(find.text("Reconnect"), findsOneWidget);
+  });
+
+  testWidgets("Retry works and a departing pill lets content receive the click", (tester) async {
+    final root = app(state: running);
+    final updates = StreamController<ConnectionOverlayState>();
+    addTearDown(updates.close);
+    whenListen(overlay, updates.stream, initialState: const ConnectionOverlayState.connectionLost());
+    await tester.pumpWidget(root);
+    final position = tester.getCenter(find.text("Reconnect"));
+    await tester.tapAt(position);
+    verify(overlay.reconnect).called(1);
+    updates.add(const ConnectionOverlayState.hidden(connected: true));
+    await tester.pump();
+    expect(find.byKey(const Key("desktop-connection-pill")), findsOneWidget);
+    final departing = find.ancestor(
+      of: find.byKey(const Key("desktop-connection-pill")),
+      matching: find.byType(ExcludeSemantics),
+    );
+    expect(tester.widget<ExcludeSemantics>(departing).excluding, isTrue);
+    await tester.tapAt(position);
+    verifyNever(overlay.reconnect);
+    expect(contentTaps, 1);
+    await tester.pumpAndSettle();
+    expect(find.byType(DesktopConnectionPill), findsOneWidget);
+    expect(find.byKey(const Key("desktop-connection-pill")), findsNothing);
+  });
+
+  testWidgets("compact recovery stays in the sidebar and respects command locks", (tester) async {
+    when(bridgeControlCubit.takeOver).thenAnswer((_) async {});
+    final base = _state(processState: const BridgeProcessContention());
+    await tester.pumpWidget(app(state: base));
+    final bounds = tester.getRect(find.byKey(const Key("cockpit-content")));
+    final card = find.byKey(const Key("desktop-bridge-recovery"));
+    expect(tester.getRect(card).right, lessThanOrEqualTo(tester.getRect(rail).right));
+    expect(bounds.top, 0);
+    await tester.tap(toggle);
+    await tester.pumpAndSettle();
+    await tester.tap(card);
+    verify(bridgeControlCubit.takeOver).called(1);
+    final locked = BridgeControlState(
+      trayAvailability: base.trayAvailability,
+      activity: BridgeControlActivity.quitting,
+      statusLabel: base.statusLabel,
+      processState: base.processState,
+      desiredState: base.desiredState,
+      toggleTarget: base.toggleTarget,
+      launchAtLoginEnabled: base.launchAtLoginEnabled,
+      controlStatus: base.controlStatus,
+    );
+    await tester.pumpWidget(app(state: locked));
+    expect(tester.widget<IconButton>(card).onPressed, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("keeps ordinary running supervision out of the content", (tester) async {
     await tester.pumpWidget(app(state: running));
-    expect(find.byKey(const Key("desktop-supervision-notice")), findsNothing);
+    expect(find.byKey(const Key("desktop-bridge-recovery")), findsNothing);
   });
 
   testWidgets("renders retained bundle repair guidance with explicit retry but no child log action", (tester) async {
@@ -512,20 +616,21 @@ void main() {
     whenListen(bridgeControlCubit, updates.stream, initialState: failed);
     await tester.pumpWidget(widget);
 
-    expect(find.byKey(const Key("desktop-supervision-notice")), findsOneWidget);
+    expect(find.byKey(const Key("desktop-bridge-recovery")), findsOneWidget);
     expect(find.text(message), findsOneWidget);
     expect(find.byType(AlertDialog), findsNothing);
     verifyNever(bridgeControlCubit.startBridge);
     expect(find.text("Open Logs"), findsNothing);
+    await tester.ensureVisible(find.text("Retry"));
     await tester.tap(find.text("Retry"));
     verify(bridgeControlCubit.startBridge).called(1);
 
     updates.add(running);
     await tester.pump();
-    expect(find.byKey(const Key("desktop-supervision-notice")), findsNothing);
+    expect(find.byKey(const Key("desktop-bridge-recovery")), findsNothing);
   });
 
-  testWidgets("integrates crash recovery and logs above every destination", (tester) async {
+  testWidgets("integrates crash recovery and logs in the sidebar", (tester) async {
     when(bridgeControlCubit.openLogs).thenAnswer((_) async {});
     when(bridgeControlCubit.recoverConnection).thenAnswer((_) async {});
     await tester.pumpWidget(
@@ -587,7 +692,7 @@ BridgeControlState _state({
   activity: BridgeControlActivity.idle,
   statusLabel: "Bridge status",
   processState: processState,
-  desiredState: BridgeProcessDesiredState.on,
+  desiredState: processState is BridgeProcessStopped ? BridgeProcessDesiredState.off : BridgeProcessDesiredState.on,
   toggleTarget: BridgeProcessDesiredState.off,
   launchAtLoginEnabled: false,
   controlStatus: BridgeControlStatus(
@@ -626,6 +731,7 @@ void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
+class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 class _MockRecentSessionsCubit() extends MockCubit<Map<String, RecentSessionsEntry>> implements RecentSessionsCubit;
 class _MockRepository() extends Mock implements DesktopInstanceRepository;
