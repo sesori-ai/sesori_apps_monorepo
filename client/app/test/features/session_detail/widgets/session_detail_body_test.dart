@@ -2929,11 +2929,10 @@ void main() {
     expect(find.byIcon(TablerRegular.arrow_up), findsOneWidget);
     expect(composerFocus(tester).hasFocus, isFalse);
 
-    final removeButton = find.descendant(
-      of: find.byTooltip("Remove attachment"),
-      matching: find.byType(PregoTappable),
-    );
-    tester.widget<PregoTappable>(removeButton).onTap!.call();
+    expect(tester.getSize(find.byType(PregoImageAttachmentPreview)), const Size(52, 52));
+    final removeButton = semanticsWithLabel("Remove attachment");
+    expect(tester.getSize(removeButton), const Size(44, 44));
+    await tester.tap(removeButton);
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("screenshot.png"), findsNothing);
     // Nothing left to show: the composer collapses back to its resting pill.
