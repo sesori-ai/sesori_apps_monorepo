@@ -34,6 +34,13 @@ record a recommendation, but only the user marks it passed.
 | 21 | 🌿 Regression documentation reconciliation | pending |
 | 22 | 🌿 Coverage run, retirement, `desktop-distribution` handoff | pending |
 
+## Distribution planning — 2026-09-15
+
+The user requested [desktop-distribution planning](../desktop-distribution/PLAN.md)
+before parent retirement. Gate C and steps 21–22 remain pending. The successor
+owns distribution decisions and six-target packaged coverage; it does not mark
+this plan's missing evidence or user gate acceptance as complete.
+
 ## Step 20 replacement series
 
 PR #1265 was closed unmerged on 2026-09-02 because its 5,611-line scope was too
@@ -49,6 +56,16 @@ fixed, sequential replacement series; only one PR is opened at a time.
 Slice 1 merged in PR #1267, slice 2 in PR #1269, and slice 3 in PR #1274.
 Step 20 is complete. Slice 3 passed implementation verification, full relevant
 client suites, clean macOS build/codesign, CI, and both architecture reviews.
+
+## Desktop UX overhaul starts before retirement — 2026-09-15
+
+`.plan/active/desktop-ux/` (two-pane sidebar cockpit, settings modal, bridge
+popover, connection pill, autostart defaults, app log files) starts now at the
+user's request, before Gate C runs and before this plan retires. Gate C stays
+pending. Its shell and navigation checks (`MT_GATE_C.md` sections C2/C5) are
+superseded by the `desktop-ux` step-12 checklist; the harness, attention,
+mobile-regression and release-safety sections are unaffected and can run on any
+build after `desktop-ux` step 7. Steps 21–22 here proceed independently.
 
 ## MT Gate C — planned 2026-09-03
 

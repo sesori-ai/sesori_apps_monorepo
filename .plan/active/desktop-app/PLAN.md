@@ -5,6 +5,10 @@
 - **Plan slug:** `desktop-app`
 - **Status:** Active — step 20 complete; MT Gate C planned (MT gate B accepted 2026-09-01)
 - **Plan date:** 2026-08-28
+- **Distribution planning (2026-09-15):** the user requested the
+  [desktop-distribution successor](../desktop-distribution/PLAN.md) now, before
+  this plan's retirement. Gate C and steps 21–22 remain pending; successor
+  planning does not imply their acceptance.
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
 - **Current implementation base:** `main`
 - **Delivery:** 22-step PR series titled
@@ -33,9 +37,10 @@ building in CI.
 
 **Explicitly out of scope (follow-up plan):** distribution — packaging,
 signing, notarization, installers, self-update, release-pipeline legs, store or
-download channels, and all certificate work for every OS. Step 22 retires this
-plan and initiates a `desktop-distribution` follow-up plan; distribution
-decisions are deliberately not discussed until then.
+download channels, and all certificate work for every OS. The user requested
+[desktop-distribution planning](../desktop-distribution/PLAN.md) early on
+2026-09-15. Step 22 still retires this implementation plan and hands off its
+coverage; distribution work does not silently waive the pending gates.
 
 ## Where this plan starts from (verified 2026-08-28)
 
@@ -672,11 +677,13 @@ recorded coverage (below), record results in the tracker, move the plan to
 `.plan/completed/desktop-app/` — **repointing every live reference step 1
 created** (ROADMAP/VISION/client docs/workflow comments: historical links to
 the completed path, active-workstream links to the distribution successor) —
-and initiate the `desktop-distribution`
-follow-up plan (all-platform packaging/signing/updates; its decisions are
-discussed then — inputs: C11, the bundled-layout/runtime-ownership question,
-release-pipeline gating, per-OS signing/update mechanics preserved in git
-history of the superseded `docs/desktop/phase-3-packaging.md`).
+and hand off to the [desktop-distribution successor](../desktop-distribution/PLAN.md),
+whose planning began early at the user's request on 2026-09-15. Carry forward
+actual coverage and open limitations, including C11 and the Windows/Linux
+verification debt. The successor owns bundle layout, runtime ownership,
+release gates, signing, installers, and updates. Historical proposals from the
+removed `docs/desktop/phase-3-packaging.md` are recoverable from Git history
+before commit `586dec5a6d`; they are research input, not locked decisions.
 
 ## Regression coverage for retirement
 
