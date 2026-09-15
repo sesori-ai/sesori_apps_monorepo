@@ -41,7 +41,7 @@ final RegExp _uuidPattern = RegExp(
 /// working directory. The process stays alive for as long as its stdin stays
 /// open; closing stdin is what ends it.
 ///
-/// Verified against Claude CLI 2.1.221 — see
+/// Verified against Claude CLI 2.1.251 — see
 /// `.plan/completed/claude-code-plugin/PROTOCOL.md` section 1.
 class ClaudeLaunchSpec({
   /// The `claude` executable: a `--claude-bin` override or a PATH name.
@@ -64,6 +64,9 @@ class ClaudeLaunchSpec({
   /// Starting permission mode, or null to accept the CLI's own default.
   required final ClaudePermissionMode? permissionMode,
   required List<String> allowedTools,
+
+  /// Owner-only MCP configuration generated for this child, when available.
+  final String? mcpConfigPath,
   Map<String, String> environment = const {},
 }) {
   this {
@@ -121,6 +124,7 @@ class ClaudeLaunchSpec({
     if (model case final model?) ...["--model", model],
     if (effort case final effort?) ...["--effort", effort.wireValue],
     if (allowedTools.isNotEmpty) ...["--allowedTools", ...allowedTools],
+    if (mcpConfigPath case final path?) ...["--mcp-config", path],
     // Single-token `--flag=value`, matching the Agent SDK's own argument builder
     // (`sdk.mjs` emits `--session-id=${id}` and `--resume=${id}`). The CLI
     // accepts both spellings, so this is parity rather than correctness — but

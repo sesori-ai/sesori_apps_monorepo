@@ -21,6 +21,9 @@ class CopilotPlugin._({
   required CopilotSessionOptionsService copilotSessionOptionsService,
   required super.processFactory,
 }) extends AcpPlugin {
+  @override
+  bool get permitsDeviceCanvasHttpMcp => true;
+
   factory({
     required String binaryPath,
     required String launchDirectory,

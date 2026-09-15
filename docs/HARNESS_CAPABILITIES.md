@@ -18,6 +18,26 @@ describe what Sesori can expose through the official ACP seam, not whether the n
 | ⬜ | Not implemented: the harness and the seam Sesori drives can provide it, Sesori does not yet. |
 | 🚫 | Not supported: the harness or the protocol seam Sesori drives cannot provide it. The footnote names the verified version. |
 
+## Device Canvas agent ownership tools
+
+| Harness | Status and trusted invocation boundary |
+|---|---|
+| OpenCode | ✅ Managed native tools bound to trusted `context.sessionID`; attach mode remains unavailable. |
+| Codex | ✅ `thread/start.dynamicTools` and trusted `item/tool/call.threadId`. Existing threads without start-time registration cannot add tools on resume. |
+| Claude | ✅ Per-child owner-only MCP configuration and a session-bound HTTP capability. |
+| Pi | ✅ Per-child owner-only extension and a session-bound HTTP capability. |
+| Cursor, OMP, Copilot | ✅ Concrete opt-in plus negotiated ACP HTTP MCP capability; default deny remains in the shared adapter. |
+| Hermes, Grok | 🚫 No verified HTTP MCP seam in the recorded runtime probes. |
+| DeepSeek | 🚫 Version 0.1.2 explicitly rejects MCP servers. |
+| Antigravity | ⬜ Device Canvas HTTP MCP invocation has not been verified; retains the shared deny default. |
+
+Authority is generation- and backend-session-bound and is re-resolved against the
+canonical database session on every invocation. Missing first-turn persistence,
+revoked authority, failed injection, or disconnected Device Canvas fails closed.
+See [Device Canvas ownership](regression/device-canvas-ownership.md) for recorded
+runtime evidence and the default-off Android video validation boundary. Historical
+protocol fixtures prove only their recorded builds, not the newer managed targets.
+
 ## Individual queued-prompt cancellation
 
 | Harness / boundary | Status |

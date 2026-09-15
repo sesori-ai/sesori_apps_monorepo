@@ -46,7 +46,10 @@ void main() {
         "id": initFrame["id"],
         "result": {
           "protocolVersion": 1,
-          "agentCapabilities": {"loadSession": true},
+          "agentCapabilities": {
+            "loadSession": true,
+            "mcpCapabilities": {"http": true, "sse": true},
+          },
           "authMethods": <Object?>[],
         },
       });
@@ -59,6 +62,7 @@ void main() {
 
       final loadFrame = await waitForFrame("session/load");
       expect((loadFrame["params"] as Map)["sessionId"], sessionId);
+      expect((loadFrame["params"] as Map)["mcpServers"], isEmpty);
       fake.emit({
         "jsonrpc": "2.0",
         "id": loadFrame["id"],

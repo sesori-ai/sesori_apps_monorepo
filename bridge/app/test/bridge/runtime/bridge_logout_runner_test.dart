@@ -49,6 +49,7 @@ void main() {
             throw unregisterBridgeError!;
           }
         },
+        cleanupBridgeClaims: () async => operations.add('device-canvas-claims'),
         appOnboardingStateRepository: appOnboardingStateRepository,
         clearTokens: () async {
           clearTokensCalls += 1;
@@ -174,7 +175,7 @@ void main() {
       expect(appOnboardingStateRepository.clearCalls, equals(1));
       expect(clearTokensCallsAtLastUnregister, equals(0));
       expect(clearTokensCalls, equals(1));
-      expect(operations, equals(['onboarding-state', 'unregister', 'tokens']));
+      expect(operations, equals(['onboarding-state', 'device-canvas-claims', 'unregister', 'tokens']));
     });
 
     test('still clears tokens when unregistering the bridge fails', () async {

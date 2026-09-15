@@ -560,6 +560,7 @@ class DesktopAttentionService({
     }
 
     final sessionDetail = AppRouteSessionDetail(
+      bridgeId: null,
       projectId: request.projectId,
       projectName: null,
       sessionId: request.sessionId,

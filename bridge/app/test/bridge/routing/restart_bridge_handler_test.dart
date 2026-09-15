@@ -67,7 +67,7 @@ void main() {
 
     final outcome = await handler.routeInternal(
       request: makeRequest('POST', '/global/restart'),
-      targetParams: (pathParams: const {}, queryParams: const {}),
+      targetParams: (pathParams: const {}, queryParams: const {}, context: const LocalRoutedRequestContext()),
     );
 
     expect(outcome, isA<RestartAccepted>());
@@ -82,7 +82,7 @@ void main() {
 
     final outcome = await handler.routeInternal(
       request: makeRequest('POST', '/global/restart'),
-      targetParams: (pathParams: const {}, queryParams: const {}),
+      targetParams: (pathParams: const {}, queryParams: const {}, context: const LocalRoutedRequestContext()),
     );
 
     expect(outcome, isA<ResponseOnly>());
@@ -98,7 +98,7 @@ void main() {
 
     final outcome = await handler.routeInternal(
       request: makeRequest('POST', '/global/restart'),
-      targetParams: (pathParams: const {}, queryParams: const {}),
+      targetParams: (pathParams: const {}, queryParams: const {}, context: const LocalRoutedRequestContext()),
     );
 
     expect(outcome, isA<RestartAccepted>());
@@ -111,7 +111,7 @@ void main() {
 
     final outcome = await handler.routeInternal(
       request: makeRequest('POST', '/global/restart'),
-      targetParams: (pathParams: const {}, queryParams: const {}),
+      targetParams: (pathParams: const {}, queryParams: const {}, context: const LocalRoutedRequestContext()),
     );
 
     expect(outcome, isA<ResponseOnly>());

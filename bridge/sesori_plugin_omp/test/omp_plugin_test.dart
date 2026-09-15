@@ -114,6 +114,7 @@ void main() {
     });
 
     test("uses OMP's per-session and fail-closed policies", () {
+      expect(plugin.permitsDeviceCanvasHttpMcp, isTrue);
       expect(plugin.serializesPromptsProcessWide, isFalse);
       expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.failsTurnOnSelectionError, isTrue);

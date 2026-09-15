@@ -2,6 +2,9 @@ import "dart:async";
 
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
+import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/routing/deep_link_service.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -10,91 +13,136 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("DeepLinkService", () {
-    late MockDeepLinkSource mockDeepLinkSource;
-    late StreamController<Uri> controller;
+    late MockDeepLinkSource deepLinkSource;
+    late MockAuthSession authSession;
+    late StreamController<Uri> links;
+    late BehaviorSubject<AuthState> authStates;
+    late _RecordingRouteDispatcher routeDispatcher;
     late DeepLinkService service;
 
     setUp(() {
-      mockDeepLinkSource = MockDeepLinkSource();
-      controller = StreamController<Uri>.broadcast();
+      deepLinkSource = MockDeepLinkSource();
+      authSession = MockAuthSession();
+      links = StreamController<Uri>.broadcast();
+      authStates = BehaviorSubject<AuthState>.seeded(_authenticatedState());
+      routeDispatcher = _RecordingRouteDispatcher();
 
-      when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-
-      service = DeepLinkService(mockDeepLinkSource);
+      when(() => deepLinkSource.linkStream).thenAnswer((_) => links.stream);
+      when(() => authSession.authStateStream).thenAnswer((_) => authStates.stream);
+      when(() => authSession.currentState).thenAnswer((_) => authStates.value);
+      service = DeepLinkService(deepLinkSource, authSession, routeDispatcher);
     });
 
     tearDown(() async {
       service.dispose();
-      await controller.close();
+      await links.close();
+      await authStates.close();
     });
 
-    test("init subscribes to link stream", () async {
-      // given
+    test("init subscribes once", () async {
       var listenCount = 0;
-      await controller.close();
-      controller = StreamController<Uri>.broadcast(onListen: () => listenCount++);
-      when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      service = DeepLinkService(mockDeepLinkSource);
+      await links.close();
+      links = StreamController<Uri>.broadcast(onListen: () => listenCount++);
+      when(() => deepLinkSource.linkStream).thenAnswer((_) => links.stream);
 
-      // when
+      service.init();
       service.init();
       await Future<void>.delayed(Duration.zero);
 
-      // then
       expect(listenCount, 1);
     });
 
-    test("ignores OAuth callback URI without crashing", () async {
-      // given
-      service.init();
-      const uri = "com.sesori.app://auth/callback?code=abc&state=xyz";
-
-      // when
-      controller.add(Uri.parse(uri));
-      await Future<void>.delayed(Duration.zero);
-
-      // then — no crash, no-op
-      expect(true, isTrue);
-    });
-
-    test("ignores URI with wrong scheme", () async {
-      // given
+    test("keeps OAuth callbacks as a no-op", () async {
       service.init();
 
-      // when
-      controller.add(Uri.parse("https://example.com/auth/callback"));
+      links.add(Uri.parse("com.sesori.app://auth/callback?code=abc&state=xyz"));
       await Future<void>.delayed(Duration.zero);
 
-      // then — no crash
-      expect(true, isTrue);
+      expect(routeDispatcher.replacedStacks, isEmpty);
     });
 
-    test("double init is no-op", () async {
-      // given
+    test("parses encoded Device Canvas identifiers without double decoding", () {
+      final route = DeepLinkService.parseDeviceCanvasSessionUri(
+        Uri.parse(
+          "com.sesori.app:///sessions/session%3Fone"
+          "?bridgeId=bridge-1&readOnly=false",
+        ),
+      );
+
+      expect(route, isNotNull);
+      expect(route!.sessionId, "session?one");
+      expect(route.bridgeId, "bridge-1");
+      expect(route.readOnly, isFalse);
+    });
+
+    test("rejects malformed or non-Device Canvas links", () {
+      final links = [
+        "https://example.com/sessions/s?bridgeId=b&readOnly=false",
+        "com.sesori.app:/sessions/s?bridgeId=b&readOnly=false",
+        "com.sesori.app://sessions/s?bridgeId=b&readOnly=false",
+        "com.sesori.app:///sessions/s?readOnly=false",
+        "com.sesori.app:///sessions/s?bridgeId=&readOnly=false",
+        "com.sesori.app:///sessions/s?bridgeId=b&readOnly=true",
+        "com.sesori.app:///sessions/s?bridgeId=b&readOnly=false&extra=1",
+        "com.sesori.app:///sessions/s/extra?bridgeId=b&readOnly=false",
+        "com.sesori.app:///sessions/s?bridgeId=b&readOnly=false#fragment",
+        "com.sesori.app:///projects/%2FUsers%2Fdev%2FPrivate/sessions/s?bridgeId=b&readOnly=false",
+      ];
+
+      for (final link in links) {
+        expect(DeepLinkService.parseDeviceCanvasSessionUri(Uri.parse(link)), isNull, reason: link);
+      }
+    });
+
+    test("dispatches a projectless bridge-scoped session stack", () async {
+      service.init();
+
+      links.add(
+        Uri.parse(
+          "com.sesori.app:///sessions/session-1"
+          "?bridgeId=bridge-1&readOnly=false",
+        ),
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      expect(routeDispatcher.replacedStacks, hasLength(1));
+      final paths = routeDispatcher.replacedStacks.single.paths;
+      expect(paths, hasLength(2));
+      expect(paths.first, const AppRoute.projects().buildPath());
+      final detail = Uri.parse(paths.last);
+      expect(detail.path, "/sessions/session-1");
+      expect(detail.queryParameters[bridgeIdQueryParam], "bridge-1");
+      expect(detail.queryParameters["readOnly"], "false");
+      expect(detail.toString(), isNot(contains("project")));
+    });
+
+    test("queues only the latest link until authentication completes", () async {
+      authStates.add(const AuthState.unauthenticated());
+      service.init();
+      links.add(
+        Uri.parse("com.sesori.app:///sessions/s1?bridgeId=b1&readOnly=false"),
+      );
+      links.add(
+        Uri.parse("com.sesori.app:///sessions/s2?bridgeId=b2&readOnly=false"),
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(routeDispatcher.replacedStacks, isEmpty);
+
+      authStates.add(_authenticatedState());
+      await Future<void>.delayed(Duration.zero);
+
+      expect(routeDispatcher.replacedStacks, hasLength(1));
+      final detail = Uri.parse(routeDispatcher.replacedStacks.single.paths.last);
+      expect(detail.path, "/sessions/s2");
+      expect(detail.queryParameters[bridgeIdQueryParam], "b2");
+    });
+
+    test("dispose allows re-init", () async {
       var listenCount = 0;
-      await controller.close();
-      controller = StreamController<Uri>.broadcast(onListen: () => listenCount++);
-      when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      service = DeepLinkService(mockDeepLinkSource);
+      await links.close();
+      links = StreamController<Uri>.broadcast(onListen: () => listenCount++);
+      when(() => deepLinkSource.linkStream).thenAnswer((_) => links.stream);
 
-      // when
-      service.init();
-      service.init();
-      await Future<void>.delayed(Duration.zero);
-
-      // then
-      expect(listenCount, 1);
-    });
-
-    test("dispose cancels subscription and allows re-init", () async {
-      // given
-      var listenCount = 0;
-      await controller.close();
-      controller = StreamController<Uri>.broadcast(onListen: () => listenCount++);
-      when(() => mockDeepLinkSource.linkStream).thenAnswer((_) => controller.stream);
-      service = DeepLinkService(mockDeepLinkSource);
-
-      // when
       service.init();
       await Future<void>.delayed(Duration.zero);
       service.dispose();
@@ -102,21 +150,23 @@ void main() {
       service.init();
       await Future<void>.delayed(Duration.zero);
 
-      // then
       expect(listenCount, 2);
     });
-
-    test("consecutive deep links are both received", () async {
-      // given
-      service.init();
-
-      // when
-      controller.add(Uri.parse("com.sesori.app://auth/callback?code=first&state=one"));
-      controller.add(Uri.parse("com.sesori.app://auth/callback?code=second&state=two"));
-      await Future<void>.delayed(Duration.zero);
-
-      // then — both handled without crash
-      expect(true, isTrue);
-    });
   });
+}
+
+AuthState _authenticatedState() => const AuthState.authenticated(
+  user: AuthUser(
+    id: "user-1",
+    provider: AuthProvider.email,
+    providerUserId: "user@example.com",
+    providerUsername: "user@example.com",
+  ),
+);
+
+class _RecordingRouteDispatcher() implements RouteDispatcher {
+  final List<RouteStack> replacedStacks = [];
+
+  @override
+  void replaceStack({required RouteStack stack}) => replacedStacks.add(stack);
 }

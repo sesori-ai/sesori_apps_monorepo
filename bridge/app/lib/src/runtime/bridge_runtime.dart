@@ -7,6 +7,9 @@ import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
 
 import "../api/database/database.dart";
 import "../api/database/history/chat_history_database.dart";
+import "../bridge/device_canvas/ipc_server.dart";
+import "../bridge/device_canvas/rendezvous_repository.dart";
+import "../bridge/device_canvas/stream_gateway.dart";
 import "../debug_server.dart";
 import "../foundation/bandwidth_tracker.dart";
 import "../listeners/plugin_catalog_hydration_listener.dart";
@@ -24,7 +27,12 @@ class BridgeRuntime({
 }) {
   final BridgeRestartDispatcher _restartDispatcher = _composition.restartDispatcher;
   final RoutedRequestDispatcher _routedRequestDispatcher = _composition.routedRequestDispatcher;
+  final DeviceCanvasStreamGateway _deviceCanvasStreamGateway = _composition.deviceCanvasStreamGateway;
+  DeviceCanvasIpcServer? _deviceCanvasIpcServer;
+  StreamSubscription<String>? _bridgeRegistrationSubscription;
+  Future<void> _deviceCanvasIpcRotation = Future<void>.value();
   Future<void>? _closeFuture;
+  bool _closing = false;
 
   OrchestratorSession get session => _composition.session;
   CatalogImportService get catalogImportService => _composition.catalogImportService;
@@ -36,6 +44,77 @@ class BridgeRuntime({
 
   Future<void> reconcileChatHistory() {
     return _composition.chatHistoryReconcileService.reconcile();
+  }
+
+  Future<void> cleanupDeviceCanvasClaimsOnStartup({required String bridgeId}) {
+    return _composition.deviceCanvasClaimService.cleanupForStartup(bridgeId: bridgeId);
+  }
+
+  Future<void> startDeviceCanvasIpcServer({
+    required String dataDirectory,
+    required String bridgeId,
+    required String processGeneration,
+    required Stream<String> bridgeRegistrations,
+  }) async {
+    _deviceCanvasIpcServer = await _startDeviceCanvasIpcServer(
+      rendezvousRepository: DeviceCanvasRendezvousRepository(dataDirectory: dataDirectory),
+      bridgeId: bridgeId,
+      processGeneration: processGeneration,
+    );
+    _bridgeRegistrationSubscription = bridgeRegistrations.listen(
+      (nextBridgeId) => _enqueueDeviceCanvasIpcRotation(dataDirectory: dataDirectory, bridgeId: nextBridgeId),
+      onError: (Object error, StackTrace stackTrace) => Log.w(
+        "Device Canvas IPC bridge registration stream failed",
+        error,
+        stackTrace,
+      ),
+    );
+  }
+
+  Future<void> get deviceCanvasIpcLifecycleIdle => _deviceCanvasIpcRotation;
+
+  Future<DeviceCanvasIpcServer> _startDeviceCanvasIpcServer({
+    required DeviceCanvasRendezvousRepository rendezvousRepository,
+    required String bridgeId,
+    required String processGeneration,
+  }) async {
+    final server = DeviceCanvasIpcServer(
+      rendezvousRepository: rendezvousRepository,
+      bridgeId: bridgeId,
+      processGeneration: processGeneration,
+      claimService: _composition.deviceCanvasClaimService,
+      integrationState: _composition.deviceCanvasIntegrationState,
+      streamGateway: _deviceCanvasStreamGateway,
+    );
+    await server.start();
+    return server;
+  }
+
+  void _enqueueDeviceCanvasIpcRotation({required String dataDirectory, required String bridgeId}) {
+    if (_closing) return;
+    _deviceCanvasIpcRotation = _deviceCanvasIpcRotation.then((_) {
+      if (_closing) return Future<void>.value();
+      return _rotateDeviceCanvasIpcServer(dataDirectory: dataDirectory, bridgeId: bridgeId);
+    });
+  }
+
+  Future<void> _rotateDeviceCanvasIpcServer({required String dataDirectory, required String bridgeId}) async {
+    final oldServer = _deviceCanvasIpcServer;
+    _deviceCanvasIpcServer = null;
+    try {
+      await oldServer?.dispose();
+    } on Object catch (error, stackTrace) {
+      Log.w("failed to dispose old Device Canvas IPC server during bridge registration rotation", error, stackTrace);
+    }
+    try {
+      _deviceCanvasIpcServer = await _startDeviceCanvasIpcServer(
+        rendezvousRepository: DeviceCanvasRendezvousRepository(dataDirectory: dataDirectory),
+        bridgeId: bridgeId,
+        processGeneration: "$pid:${DateTime.now().microsecondsSinceEpoch}",
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("failed to rotate Device Canvas IPC server after bridge registration", error, stackTrace);
+    }
   }
 
   BandwidthTracker createBandwidthTracker() {
@@ -55,6 +134,7 @@ class BridgeRuntime({
   Future<void> close() => _closeFuture ??= _close();
 
   Future<void> _close() async {
+    _closing = true;
     Object? firstError;
     StackTrace? firstStackTrace;
 
@@ -68,6 +148,15 @@ class BridgeRuntime({
     }
 
     await step(_restartDispatcher.dispose);
+    await step(() => _bridgeRegistrationSubscription?.cancel() ?? Future<void>.value());
+    _bridgeRegistrationSubscription = null;
+    await step(() => _deviceCanvasIpcRotation);
+    await step(() => _deviceCanvasIpcServer?.dispose() ?? Future<void>.value());
+    _deviceCanvasIpcServer = null;
+    await step(_composition.deviceCanvasStreamService.dispose);
+    await step(_deviceCanvasStreamGateway.dispose);
+    await step(_composition.deviceCanvasIntegrationState.dispose);
+    await step(_composition.deviceCanvasClaimService.dispose);
     await step(_composition.sessionUnseenService.dispose);
     await step(_composition.sessionViewTracker.dispose);
     await step(_composition.projectViewTracker.dispose);

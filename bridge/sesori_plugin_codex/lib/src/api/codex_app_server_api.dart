@@ -1,4 +1,4 @@
-import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, pluginAgentToolDefinitions;
 
 import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
@@ -11,7 +11,10 @@ import "models/codex_turn_dto.dart";
 import "models/codex_turn_input_dto.dart";
 
 /// Layer-1 typed boundary for migrated Codex app-server operations.
-class CodexAppServerApi({required final CodexAppServerTransport _client}) {
+class CodexAppServerApi({
+  required final CodexAppServerTransport _client,
+  final bool registerDynamicTools = false,
+}) {
   Stream<CodexAccountLoginCompletedNotificationDto> get accountLoginCompletions => _client.notifications
       .where((notification) => notification.method == "account/login/completed")
       .map(
@@ -64,6 +67,18 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
       params["model"] = model;
       params["modelProvider"] = modelProvider;
     }
+    if (registerDynamicTools) {
+      params["dynamicTools"] = [
+        for (final definition in pluginAgentToolDefinitions)
+          {
+            "type": "function",
+            "name": definition.tool.wireName,
+            "description": definition.description,
+            "inputSchema": definition.inputSchema,
+            "deferLoading": false,
+          },
+      ];
+    }
     final result = await _client.request(method: "thread/start", params: params);
     return _decodeResponse(result: result, operation: "thread/start");
   }
@@ -71,6 +86,9 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
   Future<CodexThreadEnvelopeDto> resumeThread({
     required String threadId,
   }) async {
+    // Codex persists dynamicTools supplied at thread/start and restores them
+    // on resume. v0.148.0 accepts no dynamicTools override here, so threads
+    // created before registration cannot be retrofitted with Device Canvas.
     final result = await _client.request(
       method: "thread/resume",
       params: {"threadId": threadId},

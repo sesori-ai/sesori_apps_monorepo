@@ -16,7 +16,7 @@ class _MockImageClipboard() extends Mock implements ImageClipboard;
 
 class _MockImageSharer() extends Mock implements ImageSharer;
 
-Widget _presentationScope({required BuildContext context, required Widget child}) {
+Widget _presentationScope({required BuildContext context, required Widget child, required String? bridgeId}) {
   return SessionDetailPresentationScope(
     openHarnessSettings: () {},
     messageImageRepository: _MockMessageImageRepository.new,
@@ -28,6 +28,7 @@ Widget _presentationScope({required BuildContext context, required Widget child}
     openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
         context.pushRoute(
           AppRoute.sessionDetail(
+            bridgeId: bridgeId,
             projectId: projectId,
             projectName: "Project One",
             sessionId: sessionId,
@@ -48,22 +49,24 @@ Widget _buildApp({
     routes: [
       GoRoute(
         path: "/",
-        builder: (context, state) => _presentationScope(context: context, child: child),
+        builder: (context, state) => _presentationScope(context: context, child: child, bridgeId: state.uri.queryParameters["bridgeId"]),
       ),
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId",
         builder: (context, state) {
           if (state.pathParameters["sessionId"] == "session-parent") {
-            return _presentationScope(context: context, child: child);
+            return _presentationScope(context: context, child: child, bridgeId: state.uri.queryParameters["bridgeId"]);
           }
           final readOnly = state.uri.queryParameters["readOnly"];
           final projectName = state.uri.queryParameters["name"];
+          final bridgeId = state.uri.queryParameters["bridgeId"];
           return Scaffold(
             body: Column(
               children: [
                 Text('sessionId=${state.pathParameters["sessionId"]}'),
                 Text('readOnly=$readOnly'),
                 Text('name=$projectName'),
+                Text('bridgeId=$bridgeId'),
                 if (GoRouter.of(context).canPop()) const Text('canPop=true'),
               ],
             ),
@@ -140,13 +143,14 @@ void main() {
       expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
+      expect(find.text("bridgeId=null"), findsOneWidget);
     });
 
     testWidgets("tapping child session pushes route with readOnly=true from split context", (tester) async {
       final child = _childSession(id: "child-1", title: "Child Session");
       await tester.pumpWidget(
         _buildApp(
-          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false",
+          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false&bridgeId=bridge-1",
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,
@@ -169,6 +173,7 @@ void main() {
       expect(find.text("sessionId=child-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
       expect(find.text("name=Project One"), findsOneWidget);
+      expect(find.text("bridgeId=bridge-1"), findsOneWidget);
     });
   });
 
@@ -337,13 +342,14 @@ void main() {
       expect(find.text("canPop=true"), findsOneWidget);
       expect(find.text("sessionId=task-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
+      expect(find.text("bridgeId=null"), findsOneWidget);
     });
 
     testWidgets("tapping task row pushes route with readOnly=true from split context", (tester) async {
       final child = _childSession(id: "task-1", title: "Task One");
       await tester.pumpWidget(
         _buildApp(
-          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false",
+          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false&bridgeId=bridge-1",
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,
@@ -369,6 +375,7 @@ void main() {
       expect(find.text("sessionId=task-1"), findsOneWidget);
       expect(find.text("readOnly=true"), findsOneWidget);
       expect(find.text("name=Project One"), findsOneWidget);
+      expect(find.text("bridgeId=bridge-1"), findsOneWidget);
     });
   });
 }

@@ -130,6 +130,8 @@ abstract class AcpPlugin({
   StreamSubscription<AcpServerRequest>? _serverRequestSubscription;
   AcpPendingRegistry<Object>? _approvalRegistry;
   AcpInitializeResult? _initResult;
+  PluginAgentToolHost? _agentToolHost;
+  final Map<String, PluginAgentToolMcpCapability> _sessionMcpCapabilities = {};
 
   /// Emits after each successful (re)connect — including a lazy reconnect that
   /// follows [resetConnectionAfterExit] — so the lifecycle wrapper can re-arm
@@ -274,6 +276,18 @@ abstract class AcpPlugin({
   /// A concrete plugin delegates to its injected composition factory. The client
   /// remains the pre-log interception and failure-cleanup owner.
   AcpOutputInterceptors createOutputInterceptors() => (stdout: null, stderr: null);
+
+  /// Whether this concrete harness is approved to receive Device Canvas MCP.
+  /// The negotiated HTTP capability remains a second required gate.
+  bool get permitsDeviceCanvasHttpMcp => false;
+
+  /// Attaches the generation-scoped Device Canvas tool authority. The bridge
+  /// wrapper calls this before the first connection so negotiated runtime
+  /// capabilities remain authoritative for every later session activation.
+  void attachAgentToolHost(PluginAgentToolHost? host) {
+    if (_connectFuture != null) throw StateError("Agent tools must be attached before ACP connect");
+    _agentToolHost = host;
+  }
 
   // --- Behavior hooks ---
 
@@ -694,10 +708,14 @@ abstract class AcpPlugin({
     _residentSessions.clear();
     _bareSessionListUnsupported = false;
     _commandTracker.clear();
+    final revokingMcp = _revokeAllSessionMcpCapabilities();
     // Let subclasses drop any process-global state cached against the dead agent
     // (e.g. Cursor's applied model/mode) so it is re-applied on the next turn.
     onConnectionReset();
-    await _teardownConnection();
+    // Calling teardown before the first await clears the dead cached client
+    // synchronously, preserving the reconnect race guarantee above.
+    final tearingDown = _teardownConnection();
+    await Future.wait([revokingMcp, tearingDown]);
   }
 
   /// Detaches and disposes the live connection's collaborators (notification
@@ -1022,25 +1040,40 @@ abstract class AcpPlugin({
     // derives from it; the bridge's stored row folds a worktree session back
     // under the project the user opened.
     final canonicalDirectory = normalizeProjectDirectory(directory: directory);
-    final session = await AcpAgentApi(client: client).newSession(
-      cwd: directory,
-      timeout: AcpAgentApi.defaultRequestTimeout,
-    );
+    final activation = await _newSession(client: client, cwd: directory);
+    final session = activation.result;
     final createdAt = DateTime.now().millisecondsSinceEpoch;
-    _sessionDirectories[session.sessionId] = canonicalDirectory;
-    eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
-    // Seed the snapshot so a title event during the creation race (before the
-    // bridge has a stored row to enrich from) still carries a sane time.
-    eventMapper.setSessionSnapshot(
-      sessionId: session.sessionId,
-      title: null,
-      createdMs: createdAt,
-      updatedMs: createdAt,
-    );
-    // A session/new response is the authoritative source of the backend's
-    // new-session default model/mode.
-    captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
-    await validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
+    final hadPriorSession =
+        _residentSessions.contains(session.sessionId) || _sessionDirectories.containsKey(session.sessionId);
+    try {
+      await validateTurnSelection(operation: "createSession", model: model, variant: variant, agent: agent);
+      _sessionDirectories[session.sessionId] = canonicalDirectory;
+      eventMapper.setSessionProject(session.sessionId, canonicalDirectory);
+      // Seed the snapshot so a title event during the creation race (before the
+      // bridge has a stored row to enrich from) still carries a sane time.
+      eventMapper.setSessionSnapshot(
+        sessionId: session.sessionId,
+        title: null,
+        createdMs: createdAt,
+        updatedMs: createdAt,
+      );
+      // A session/new response is the authoritative source of the backend's
+      // new-session default model/mode.
+      captureSessionConfig(session, sessionId: session.sessionId, fromNewSession: true);
+      if (activation.capability case final capability?) {
+        await _replaceSessionMcpCapability(sessionId: session.sessionId, capability: capability);
+      }
+    } on Object catch (error, stackTrace) {
+      if (activation.capability case final capability?) {
+        await _revokeMcpCapability(capability: capability);
+      }
+      if (!hadPriorSession) {
+        _sessionDirectories.remove(session.sessionId);
+        _sessionOptionsService.forgetSession(sessionId: session.sessionId);
+        eventMapper.forgetSession(session.sessionId);
+      }
+      Error.throwWithStackTrace(error, stackTrace);
+    }
     // session/new leaves the session resident in the agent process.
     _residentSessions.add(session.sessionId);
     _sessionStatuses[session.sessionId] = const PluginSessionStatus.idle();
@@ -1335,7 +1368,9 @@ abstract class AcpPlugin({
     _suppressedSessions.add(sessionId);
     _suppressedReplayCounts.remove(sessionId);
     try {
-      final result = await AcpAgentApi(client: client).loadSession(
+      final result = await _activateResidentSession(
+        client: client,
+        method: AcpMethods.sessionLoad,
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
         timeout: const Duration(minutes: 2),
@@ -1376,7 +1411,9 @@ abstract class AcpPlugin({
   /// failures retry on the next turn.
   Future<void> _resumeResident(AcpStdioClient client, String sessionId) async {
     try {
-      final result = await AcpAgentApi(client: client).resumeSession(
+      final result = await _activateResidentSession(
+        client: client,
+        method: AcpMethods.sessionResume,
         sessionId: sessionId,
         cwd: directoryForSession(sessionId: sessionId),
         timeout: const Duration(minutes: 2),
@@ -2165,14 +2202,15 @@ abstract class AcpPlugin({
 
   @override
   Future<void> deleteSession(String sessionId) async {
-    final state = _turnStates[sessionId];
-    if ((state?.pending ?? 0) > 0) {
-      await _abortSession(sessionId: sessionId, sendSessionCancel: true);
-    }
-    _approvalRegistry?.cancelForSession(sessionId: sessionId);
-    final canClose = _initResult?.agentCapabilities.closeSession ?? false;
-    if (canClose && _residentSessions.contains(sessionId)) {
-      try {
+    final revokingCapability = _revokeSessionMcpCapability(sessionId: sessionId);
+    try {
+      final state = _turnStates[sessionId];
+      if ((state?.pending ?? 0) > 0) {
+        await _abortSession(sessionId: sessionId, sendSessionCancel: true);
+      }
+      _approvalRegistry?.cancelForSession(sessionId: sessionId);
+      final canClose = _initResult?.agentCapabilities.closeSession ?? false;
+      if (canClose && _residentSessions.contains(sessionId)) {
         await state?.activeSettlement?.future.timeout(
           sessionCloseSettlementTimeout,
         );
@@ -2180,16 +2218,20 @@ abstract class AcpPlugin({
           sessionId: sessionId,
           timeout: AcpAgentApi.defaultRequestTimeout,
         );
-      } on Object catch (error, stackTrace) {
-        Error.throwWithStackTrace(
-          PluginOperationException(
-            "deleteSession",
-            message: "ACP session did not settle and close",
-            cause: error,
-          ),
-          stackTrace,
-        );
       }
+      await revokingCapability.timeout(sessionCloseSettlementTimeout);
+    } on Object catch (error, stackTrace) {
+      // The old bearer was revoked before cancellation. Force the next turn
+      // through load/resume so a surviving session receives fresh authority.
+      _residentSessions.remove(sessionId);
+      Error.throwWithStackTrace(
+        PluginOperationException(
+          "deleteSession",
+          message: "ACP session did not settle, close, and revoke",
+          cause: error,
+        ),
+        stackTrace,
+      );
     }
     _turnStates.remove(sessionId);
     _pendingSelections.remove(sessionId);
@@ -2219,6 +2261,7 @@ abstract class AcpPlugin({
   @override
   Future<void> archiveSession({required String sessionId}) async {
     // Best-effort — mobile DB archive state is authoritative.
+    await _revokeSessionMcpCapability(sessionId: sessionId);
   }
 
   @override
@@ -2529,7 +2572,17 @@ abstract class AcpPlugin({
   Future<void> dispose() async {
     // dispose() must not throw — every step below is isolated (see
     // [_teardownConnection]); the stream closes are best-effort too.
-    await _teardownConnection();
+    final revokingMcp = _revokeAllSessionMcpCapabilities();
+    final tearingDown = _teardownConnection();
+    await revokingMcp;
+    final agentToolHost = _agentToolHost;
+    _agentToolHost = null;
+    try {
+      await agentToolHost?.dispose();
+    } on Object {
+      Log.w("[$id] failed to dispose Device Canvas agent tools");
+    }
+    await tearingDown;
     try {
       await _childSessionChanges?.cancel();
     } on Object catch (e, st) {
@@ -2578,6 +2631,118 @@ abstract class AcpPlugin({
         childSessionTracker.hasActiveWork ||
         requiresProcessResidency;
     _workState.set(busy ? PluginWorkState.busy : PluginWorkState.idle);
+  }
+
+  bool get _supportsHttpMcp {
+    final capabilities = _initResult?.agentCapabilities;
+    return permitsDeviceCanvasHttpMcp &&
+        (capabilities?.mcpCapabilities.http ?? false) &&
+        ((capabilities?.loadSession ?? false) || (capabilities?.resumeSession ?? false));
+  }
+
+  Future<({AcpNewSessionResult result, PluginAgentToolMcpCapability? capability})> _newSession({
+    required AcpStdioClient client,
+    required String cwd,
+  }) async {
+    final host = _supportsHttpMcp ? _agentToolHost : null;
+    if (host == null) {
+      return (
+        result: await AcpAgentApi(client: client).newSession(
+          cwd: cwd,
+          timeout: AcpAgentApi.defaultRequestTimeout,
+        ),
+        capability: null,
+      );
+    }
+    final capability = await host.provisionMcp(backendSessionId: null);
+    try {
+      final result = await AcpAgentApi(client: client).newSession(
+        cwd: cwd,
+        timeout: AcpAgentApi.defaultRequestTimeout,
+        mcpServers: [_deviceCanvasMcpServer(capability)],
+      );
+      await host.bindMcp(capability: capability, backendSessionId: result.sessionId);
+      return (result: result, capability: capability);
+    } on Object {
+      await _revokeMcpCapability(capability: capability);
+      rethrow;
+    }
+  }
+
+  Future<AcpNewSessionResult> _activateResidentSession({
+    required AcpStdioClient client,
+    required String method,
+    required String sessionId,
+    required String cwd,
+    required Duration timeout,
+  }) async {
+    final host = _supportsHttpMcp ? _agentToolHost : null;
+    if (host == null) {
+      final api = AcpAgentApi(client: client);
+      return await (method == AcpMethods.sessionLoad
+          ? api.loadSession(sessionId: sessionId, cwd: cwd, timeout: timeout)
+          : api.resumeSession(sessionId: sessionId, cwd: cwd, timeout: timeout));
+    }
+    final capability = await host.provisionMcp(backendSessionId: sessionId);
+    try {
+      final api = AcpAgentApi(client: client);
+      final result = method == AcpMethods.sessionLoad
+          ? await api.loadSession(
+              sessionId: sessionId,
+              cwd: cwd,
+              timeout: timeout,
+              mcpServers: [_deviceCanvasMcpServer(capability)],
+            )
+          : await api.resumeSession(
+              sessionId: sessionId,
+              cwd: cwd,
+              timeout: timeout,
+              mcpServers: [_deviceCanvasMcpServer(capability)],
+            );
+      await _replaceSessionMcpCapability(sessionId: sessionId, capability: capability);
+      return result;
+    } on Object {
+      await _revokeMcpCapability(capability: capability);
+      rethrow;
+    }
+  }
+
+  AcpHttpMcpServer _deviceCanvasMcpServer(PluginAgentToolMcpCapability capability) => AcpHttpMcpServer(
+    name: "Sesori Device Canvas",
+    url: capability.url,
+    headers: [AcpHttpHeader(name: "Authorization", value: "Bearer ${capability.bearerToken}")],
+  );
+
+  Future<void> _replaceSessionMcpCapability({
+    required String sessionId,
+    required PluginAgentToolMcpCapability capability,
+  }) async {
+    final previous = _sessionMcpCapabilities[sessionId];
+    _sessionMcpCapabilities[sessionId] = capability;
+    if (previous != null && previous.id != capability.id) {
+      await _revokeMcpCapability(capability: previous);
+    }
+  }
+
+  Future<void> _revokeSessionMcpCapability({required String sessionId}) async {
+    final capability = _sessionMcpCapabilities.remove(sessionId);
+    if (capability != null) await _revokeMcpCapability(capability: capability);
+  }
+
+  Future<void> _revokeAllSessionMcpCapabilities() async {
+    final capabilities = _sessionMcpCapabilities.values.toList(growable: false);
+    _sessionMcpCapabilities.clear();
+    await Future.wait([
+      for (final capability in capabilities) _revokeMcpCapability(capability: capability),
+    ]);
+  }
+
+  Future<void> _revokeMcpCapability({required PluginAgentToolMcpCapability capability}) async {
+    try {
+      await _agentToolHost?.revokeMcp(capability: capability);
+    } on Object {
+      Log.w("[$id] failed to revoke Device Canvas MCP capability");
+    }
   }
 }
 

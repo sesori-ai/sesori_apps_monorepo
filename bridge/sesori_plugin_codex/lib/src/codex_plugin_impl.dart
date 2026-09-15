@@ -64,6 +64,7 @@ class CodexPlugin._({
   required final CodexFileChangeParser _fileChangeParser,
   required final CodexImageBearingItemParser _imageBearingItemParser,
   required final CodexSubAgentItemParser _subAgentItemParser,
+  required final PluginAgentToolHost? _agentToolHost,
   required final String _projectCwd,
 
   /// Fires once the WebSocket transport has completed its `initialize`
@@ -154,6 +155,7 @@ class CodexPlugin._({
     required CodexFileChangeParser fileChangeParser,
     required CodexImageBearingItemParser imageBearingItemParser,
     required CodexSubAgentItemParser subAgentItemParser,
+    required PluginAgentToolHost? agentToolHost,
     required String projectCwd,
     required void Function()? onConnected,
     required void Function()? onDisconnected,
@@ -172,6 +174,7 @@ class CodexPlugin._({
          fileChangeParser: fileChangeParser,
          imageBearingItemParser: imageBearingItemParser,
          subAgentItemParser: subAgentItemParser,
+         agentToolHost: agentToolHost,
          projectCwd: projectCwd,
          onConnected: onConnected,
          onDisconnected: onDisconnected,
@@ -212,7 +215,10 @@ class CodexPlugin._({
       try {
         await _sessionService.hydratePersistedChildAncestry();
         await client.connect();
-        final appServerApi = CodexAppServerApi(client: client);
+        final appServerApi = CodexAppServerApi(
+          client: client,
+          registerDynamicTools: _agentToolHost != null,
+        );
         _sessionService.attachAppServerRepositories(
           threadRepository: CodexThreadRepository(appServerApi: appServerApi),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
@@ -603,6 +609,7 @@ class CodexPlugin._({
   void _attachApprovalRegistry(CodexAppServerClient client) {
     late final ApprovalRegistry registry;
     registry = ApprovalRegistry(
+      agentToolHost: _agentToolHost,
       emit: (event) => _emitApprovalEvent(registry: registry, event: event),
       respond: (id, result) => client.respondToServerRequest(id: id, result: result),
       respondError: (id, code, message) => client.respondToServerRequestWithError(
@@ -1676,6 +1683,7 @@ class CodexPlugin._({
     _approvalRegistry = null;
     await capture(() => _client?.dispose() ?? Future<void>.value());
     _client = null;
+    await capture(() => _agentToolHost?.dispose() ?? Future<void>.value());
     _sessionService.detachAppServerRepositories();
     _toolLifecycleTracker.clear();
     await capture(_eventBuffer.close);

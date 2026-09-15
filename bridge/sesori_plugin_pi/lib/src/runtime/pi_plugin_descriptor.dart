@@ -28,6 +28,7 @@ typedef PiPluginFactory = PiPlugin Function({
   required Duration? Function() resolveIdleTimeout,
   required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
+  required PluginAgentToolServices? agentToolServices,
 });
 
 PiPlugin _buildPiPlugin({
@@ -45,6 +46,7 @@ PiPlugin _buildPiPlugin({
   required Duration? Function() resolveIdleTimeout,
   required Stream<Duration?> idleTimeoutChanges,
   required Duration editorTimeout,
+  required PluginAgentToolServices? agentToolServices,
 }) => PiPlugin(
   binaryPath: binaryPath,
   storageEnvironment: storageEnvironment,
@@ -60,6 +62,7 @@ PiPlugin _buildPiPlugin({
   resolveIdleTimeout: resolveIdleTimeout,
   idleTimeoutChanges: idleTimeoutChanges,
   editorTimeout: editorTimeout,
+  agentToolServices: agentToolServices,
 );
 
 /// Descriptor and lifecycle composition root for the local Pi CLI plugin.
@@ -379,6 +382,7 @@ final class const PiPluginDescriptor({
         resolveIdleTimeout: () => host.pluginIdleTimeout,
         idleTimeoutChanges: host.pluginIdleTimeoutChanges,
         editorTimeout: const Duration(minutes: 30),
+        agentToolServices: host.agentToolServices,
       );
     } on Object {
       await processFactory.dispose();

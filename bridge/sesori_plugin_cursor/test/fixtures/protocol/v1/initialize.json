@@ -1,0 +1,25 @@
+{
+  "protocolVersion": 1,
+  "agentCapabilities": {
+    "loadSession": true,
+    "mcpCapabilities": {
+      "http": true,
+      "sse": true
+    },
+    "promptCapabilities": {
+      "audio": false,
+      "embeddedContext": false,
+      "image": true
+    },
+    "sessionCapabilities": {
+      "list": {}
+    }
+  },
+  "authMethods": [
+    {
+      "id": "cursor_login",
+      "name": "Cursor Login",
+      "description": "Authenticate using an existing Cursor login"
+    }
+  ]
+}

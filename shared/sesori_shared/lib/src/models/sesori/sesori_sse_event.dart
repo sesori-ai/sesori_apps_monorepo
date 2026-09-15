@@ -89,6 +89,11 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
     required String? projectId,
   }) = SesoriSessionOptionsUpdated;
 
+  /// Invalidates the bounded Device Canvas status projection. Clients reload
+  /// the active session snapshot rather than replaying local IPC deltas.
+  @FreezedUnionValue("device_canvas.changed")
+  const factory deviceCanvasChanged() = SesoriDeviceCanvasChanged;
+
   // ---------------------------------------------------------------------------
   // Session — all implement SesoriSessionEvent
   // ---------------------------------------------------------------------------

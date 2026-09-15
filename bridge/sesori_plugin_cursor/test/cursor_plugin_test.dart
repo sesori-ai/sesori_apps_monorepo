@@ -258,6 +258,7 @@ void main() {
 
     test("id is cursor", () {
       expect(plugin.id, "cursor");
+      expect(plugin.permitsDeviceCanvasHttpMcp, isTrue);
     });
 
     test("the default binary is the stable Cursor CLI executable", () {

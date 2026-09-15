@@ -40,6 +40,7 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriPluginInstallProgress() ||
     SesoriPluginAuthenticationProgress() ||
     SesoriSessionOptionsUpdated() ||
+    SesoriDeviceCanvasChanged() ||
     SesoriPermissionUpdated() ||
     SesoriProjectsSummary() ||
     SesoriProjectUpdated() ||

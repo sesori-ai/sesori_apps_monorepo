@@ -1,4 +1,5 @@
-import "dart:io" show Platform;
+import "dart:convert";
+import "dart:io" show File, Platform;
 
 import "package:omp_plugin/omp_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
@@ -25,6 +26,17 @@ void main() {
     // bare version, so the two parsers are deliberately different.
     expect(manifest.parseInstalledVersion(value: "17.3.8")?.raw, "17.3.8");
     expect(manifest.parseInstalledVersion(value: ".sesori-runtime-staging"), isNull);
+  });
+
+  test("pinned initialize fixture advertises HTTP MCP", () {
+    final fixture = (jsonDecode(File("test/fixtures/protocol/v1/initialize.json").readAsStringSync()) as Map)
+        .cast<String, dynamic>();
+    final capabilities = (fixture["agentCapabilities"] as Map).cast<String, dynamic>();
+    final mcp = (capabilities["mcpCapabilities"] as Map).cast<String, dynamic>();
+
+    // This fixture records a verified protocol floor, not the current managed target.
+    expect((fixture["agentInfo"] as Map)["version"], "17.3.8");
+    expect(mcp, {"http": true, "sse": true});
   });
 
   test("maps all eight official direct binary assets", () {

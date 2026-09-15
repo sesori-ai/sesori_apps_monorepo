@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:claude_plugin/claude_testing.dart";
@@ -45,6 +46,148 @@ void main() {
 
       expect(harness.specs, hasLength(2));
       expect(harness.specs.last.launch, isA<ClaudeResumedSession>());
+    });
+
+    test("preserves launch arguments when optional host services are absent", () async {
+      await _ensure(repository, createNew: true);
+
+      expect(harness.specs.single.arguments, isNot(contains("--mcp-config")));
+      expect(harness.specs.single.arguments, isNot(contains("--strict-mcp-config")));
+    });
+
+    test("writes a bound session MCP config without exposing tokens in argv", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+
+      await Future.wait([
+        _ensure(repository, sessionId: testSessionId, createNew: true),
+        _ensure(repository, sessionId: otherTestSessionId, createNew: true),
+      ]);
+
+      expect(services.tools.backendSessionIds, unorderedEquals([testSessionId, otherTestSessionId]));
+      expect(services.tools.provisioned.map((capability) => capability.id).toSet(), hasLength(2));
+      expect(services.files.writes, hasLength(2));
+      for (var index = 0; index < harness.specs.length; index++) {
+        final capability = services.tools.provisioned[index];
+        final spec = harness.specs[index];
+        final path = spec.arguments[spec.arguments.indexOf("--mcp-config") + 1];
+        final name = path.split("/").last;
+        expect(
+          jsonDecode(services.files.writes[name]!) as Map<String, Object?>,
+          {
+            "mcpServers": {
+              "sesori-device-canvas": {
+                "type": "http",
+                "url": capability.url,
+                "headers": {"Authorization": "Bearer ${capability.bearerToken}"},
+              },
+            },
+          },
+        );
+        expect(spec.arguments.join(" "), isNot(contains(capability.bearerToken)));
+        expect(spec.arguments, isNot(contains("--strict-mcp-config")));
+      }
+    });
+
+    test("does not provision MCP for catalog probe children", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+      final catalog = ClaudeCatalogService(
+        catalog: const ClaudeBackendCatalogRepository(),
+        processes: repository,
+        probeSessionId: otherTestSessionId,
+        discoveryDirectory: "/tmp/claude-state",
+      );
+
+      await catalog.getCatalog(refresh: false);
+
+      expect(services.tools.provisioned, isEmpty);
+      expect(services.files.writes, isEmpty);
+      expect(harness.specs.single.arguments, isNot(contains("--mcp-config")));
+    });
+
+    test("deletes and revokes MCP after a failed connection", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+      harness.spawnError = StateError("spawn failed");
+
+      await expectLater(_ensure(repository, createNew: true), throwsStateError);
+
+      expect(services.files.deletedNames, services.files.writes.keys);
+      expect(services.tools.revoked, services.tools.provisioned);
+    });
+
+    test("retains failed MCP cleanup for a later repository retry", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+      await _ensure(repository, createNew: true);
+      services.tools.revokeFailures = 1;
+      services.files.deleteFailures = 1;
+
+      await expectLater(repository.teardown(sessionId: testSessionId), throwsStateError);
+      expect(services.tools.revoked, isEmpty);
+      expect(services.files.deletedNames, isEmpty);
+
+      await repository.dispose();
+      expect(services.tools.revoked, services.tools.provisioned);
+      expect(services.files.deletedNames, services.files.writes.keys);
+      expect(services.tools.revokeAttempts, 2);
+      expect(services.files.deleteAttempts, 2);
+    });
+
+    test("retains failed attachment-creation rollback for disposal retry", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+      services.files.writeFailures = 1;
+      services.tools.revokeFailures = 1;
+
+      await expectLater(_ensure(repository, createNew: true), throwsStateError);
+      expect(services.tools.revoked, isEmpty);
+
+      await repository.dispose();
+      expect(services.tools.revoked, services.tools.provisioned);
+      expect(services.tools.revokeAttempts, 2);
+    });
+
+    test("deletes and revokes MCP on teardown and replacement", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+      await _ensure(repository, createNew: true, effort: ClaudeEffortLevel.low);
+      final firstCapability = services.tools.provisioned.single;
+      final firstFile = services.files.writes.keys.single;
+
+      await _ensure(repository, createNew: true, effort: ClaudeEffortLevel.high);
+
+      expect(services.tools.revoked, [firstCapability]);
+      expect(services.files.deletedNames, [firstFile]);
+      expect(services.tools.provisioned, hasLength(2));
+
+      await repository.teardown(sessionId: testSessionId);
+      expect(services.tools.revoked, services.tools.provisioned);
+      expect(services.files.deletedNames, unorderedEquals(services.files.writes.keys));
+    });
+
+    test("deletes and revokes MCP when the child exits", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+      await _ensure(repository, createNew: true);
+
+      harness.processes.single.exit(1);
+      await _waitForMcpCleanup(services);
+
+      expect(services.tools.revoked, services.tools.provisioned);
+      expect(services.files.deletedNames, services.files.writes.keys);
+    });
+
+    test("deletes and revokes MCP when the repository is disposed", () async {
+      final services = await _replaceWithAgentToolRepository(repository: repository, harness: harness);
+      repository = services.repository;
+      await _ensure(repository, createNew: true);
+
+      await repository.dispose();
+
+      expect(services.tools.revoked, services.tools.provisioned);
+      expect(services.files.deletedNames, services.files.writes.keys);
     });
 
     test("settles steering input with the result after its replay", () async {
@@ -297,12 +440,17 @@ void main() {
   });
 }
 
-Future<void> _ensure(ClaudeSessionProcessRepository repository, {required bool createNew}) => repository.ensureResident(
-  sessionId: testSessionId,
+Future<void> _ensure(
+  ClaudeSessionProcessRepository repository, {
+  String sessionId = testSessionId,
+  required bool createNew,
+  ClaudeEffortLevel? effort,
+}) => repository.ensureResident(
+  sessionId: sessionId,
   directory: "/tmp/project",
   createNew: createNew,
   model: null,
-  effort: null,
+  effort: effort,
   permissionMode: null,
   allowedTools: const [],
 );
@@ -375,10 +523,12 @@ final class _ProcessHarness() {
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
   Future<void>? beforeInitialize;
+  Object? spawnError;
 
   Future<ClaudeProcessHandle> spawn(ClaudeLaunchSpec spec) async {
-    final process = FakeClaudeProcess();
     specs.add(spec);
+    if (spawnError case final error?) throw error;
+    final process = FakeClaudeProcess();
     processes.add(process);
     unawaited(() async {
       await beforeInitialize;
@@ -392,5 +542,121 @@ final class _ProcessHarness() {
     for (final process in processes) {
       await process.close();
     }
+  }
+}
+
+Future<_AgentToolRepository> _replaceWithAgentToolRepository({
+  required ClaudeSessionProcessRepository repository,
+  required _ProcessHarness harness,
+}) async {
+  await repository.dispose();
+  final services = _AgentToolServices();
+  return (
+    repository: ClaudeSessionProcessRepository(
+      processFactory: harness.spawn,
+      binaryPath: "claude",
+      environment: const {},
+      agentToolServices: services,
+    ),
+    tools: services.tools,
+    files: services.files,
+  );
+}
+
+Future<void> _waitForMcpCleanup(_AgentToolRepository services) async {
+  for (var attempt = 0; attempt < 100; attempt++) {
+    if (services.tools.revoked.isNotEmpty && services.files.deletedNames.isNotEmpty) return;
+    await pump();
+  }
+  throw StateError("MCP attachment was not cleaned up");
+}
+
+typedef _AgentToolRepository = ({
+  ClaudeSessionProcessRepository repository,
+  _AgentToolHost tools,
+  _PrivateFiles files,
+});
+
+final class _AgentToolServices() implements PluginAgentToolServices {
+  @override
+  final _AgentToolHost tools = _AgentToolHost();
+  final _PrivateFiles files = _PrivateFiles();
+
+  @override
+  PluginPrivateFileService get privateFiles => files;
+}
+
+final class _AgentToolHost() implements PluginAgentToolHost {
+  final List<String?> backendSessionIds = [];
+  final List<PluginAgentToolMcpCapability> provisioned = [];
+  final List<PluginAgentToolMcpCapability> revoked = [];
+  int revokeFailures = 0;
+  int revokeAttempts = 0;
+
+  @override
+  Future<PluginAgentToolMcpCapability> provisionMcp({required String? backendSessionId}) async {
+    backendSessionIds.add(backendSessionId);
+    final id = provisioned.length + 1;
+    final capability = PluginAgentToolMcpCapability(
+      id: "capability-$id",
+      url: "http://127.0.0.1:4242/mcp/$id",
+      bearerToken: "private-token-$id",
+    );
+    provisioned.add(capability);
+    return capability;
+  }
+
+  @override
+  Future<void> revokeMcp({required PluginAgentToolMcpCapability capability}) async {
+    revokeAttempts++;
+    if (revokeFailures > 0) {
+      revokeFailures--;
+      throw StateError("revoke failed");
+    }
+    revoked.add(capability);
+  }
+
+  @override
+  Future<void> bindMcp({
+    required PluginAgentToolMcpCapability capability,
+    required String backendSessionId,
+  }) async {}
+
+  @override
+  Future<Map<String, dynamic>> invoke({
+    required String backendSessionId,
+    required PluginAgentTool tool,
+    required Map<String, dynamic> arguments,
+  }) async => const {};
+
+  @override
+  Future<void> dispose() async {}
+}
+
+final class _PrivateFiles() implements PluginPrivateFileService {
+  final Map<String, String> writes = {};
+  final List<String> deletedNames = [];
+  int writeFailures = 0;
+  int deleteFailures = 0;
+  int deleteAttempts = 0;
+
+  @override
+  Future<String> write({required String name, required String contents}) async {
+    if (writeFailures > 0) {
+      writeFailures--;
+      throw StateError("write failed");
+    }
+    writes[name] = contents;
+    return "/bridge-state/$name";
+  }
+
+  @override
+  Future<void> delete({required String name}) async {
+    deleteAttempts++;
+    if (deleteFailures > 0) {
+      deleteFailures--;
+      throw StateError("delete failed");
+    }
+    deletedNames.add(name);
   }
 }

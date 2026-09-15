@@ -13,6 +13,7 @@ import "../message_part_mapper.dart";
 import "../opencode_plugin_impl.dart";
 import "../plugin_model_mapper.dart";
 import "../repositories/open_code_catalog_repository.dart";
+import "open_code_device_canvas_tools.dart";
 import "open_code_managed_api.dart";
 import "open_code_ownership_record.dart";
 import "open_code_record_mapper.dart";
@@ -582,6 +583,9 @@ class const OpenCodePluginDescriptor({
 
     final probeClientFactory = _probeClientFactory ?? http.Client.new;
     const mapper = OpenCodeRecordMapper();
+    final deviceCanvasToolEnvironment = config.flag(_OpenCodeConfigKey.noAutoStart)
+        ? const <String, String>{}
+        : await configureOpenCodeDeviceCanvasTools(host: host);
 
     final service = ManagedProcessService<OpenCodeOwnershipRecord>(
       ownershipRepository: HostJsonRuntimeOwnershipRepository<OpenCodeOwnershipRecord>(
@@ -619,6 +623,7 @@ class const OpenCodePluginDescriptor({
         probeClientFactory: probeClientFactory,
         bindHost: bindHost,
         connectHost: connectHost,
+        environmentOverrides: const <String, String>{},
       );
       try {
         handle = await service.attach(spec: spec, port: attachPort, startAborted: host.startAborted);
@@ -665,6 +670,7 @@ class const OpenCodePluginDescriptor({
           probeClientFactory: probeClientFactory,
           bindHost: bindHost,
           connectHost: connectHost,
+          environmentOverrides: deviceCanvasToolEnvironment,
         );
         handle = null;
       } else {
@@ -693,6 +699,7 @@ class const OpenCodePluginDescriptor({
           probeClientFactory: probeClientFactory,
           bindHost: bindHost,
           connectHost: connectHost,
+          environmentOverrides: deviceCanvasToolEnvironment,
         );
 
         // start() cleans up stale owned runtimes, selects a port, spawns, and

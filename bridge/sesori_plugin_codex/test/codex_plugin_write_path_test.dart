@@ -23,12 +23,14 @@ void main() {
   group("CodexPlugin write path", () {
     late Directory codexHome;
     late _FakeAppServer fake;
+    late _FakeAgentToolHost agentToolHost;
     late CodexPlugin plugin;
     late CodexToolOutcomeRepository toolOutcomeRepository;
 
     setUp(() {
       codexHome = Directory.systemTemp.createTempSync("codex-home-write-");
       fake = _FakeAppServer();
+      agentToolHost = _FakeAgentToolHost();
       toolOutcomeRepository = createMemoryCodexToolOutcomeRepository();
       const serverUrl = "ws://127.0.0.1:0";
       plugin = createInjectedCodexPlugin(
@@ -40,12 +42,14 @@ void main() {
           channelFactory: (_) => fake.channel,
         ),
         keepaliveInterval: const Duration(seconds: 30),
+        agentToolHost: agentToolHost,
         toolOutcomeRepository: toolOutcomeRepository,
       );
     });
 
     tearDown(() async {
       await plugin.dispose();
+      expect(agentToolHost.disposed, isTrue);
       try {
         codexHome.deleteSync(recursive: true);
       } catch (_) {}
@@ -271,6 +275,38 @@ void main() {
         ],
       );
       expect(await plugin.getPendingQuestions(sessionId: "t-question"), isEmpty);
+    });
+
+    test("thread/start registers exactly the native Device Canvas tools", () async {
+      fake.respondInOrder([
+        const _Response(result: _initOk),
+        const _Response(
+          result: {
+            "thread": {"id": "t-tools"},
+          },
+        ),
+      ]);
+
+      await plugin.createSession(
+        directory: "/work/sample",
+        parentSessionId: null,
+        parts: const [],
+        userVisibleText: null,
+        variant: null,
+        agent: null,
+        model: null,
+      );
+
+      expect(fake.sentParamsFor("thread/start")["dynamicTools"], [
+        for (final definition in pluginAgentToolDefinitions)
+          {
+            "type": "function",
+            "name": definition.tool.wireName,
+            "description": definition.description,
+            "inputSchema": definition.inputSchema,
+            "deferLoading": false,
+          },
+      ]);
     });
 
     test("createSession preserves a Default turn when no model resolves", () async {
@@ -778,6 +814,7 @@ void main() {
       expect(methods, equals(["initialize", "thread/resume", "turn/start"]));
       expect(fake.sentParamsFor("thread/resume")["threadId"], equals("t-existing-child"));
       expect(fake.sentParamsFor("turn/start")["threadId"], equals("t-existing-child"));
+      expect(fake.sentParamsFor("thread/resume").containsKey("dynamicTools"), isFalse);
       expect(plugin.currentWorkState, PluginWorkState.busy);
       final statuses = await plugin.getSessionStatuses();
       expect(statuses["t-existing-child"], isA<PluginSessionStatusBusy>());
@@ -4150,6 +4187,34 @@ class _FakeAppServer() {
 }
 
 class _SentFrame({required final String method, required final Map<String, dynamic>? params});
+
+class _FakeAgentToolHost() implements PluginAgentToolHost {
+  bool disposed = false;
+
+  @override
+  Future<Map<String, dynamic>> invoke({
+    required String backendSessionId,
+    required PluginAgentTool tool,
+    required Map<String, dynamic> arguments,
+  }) async => const {"outcome": "internalError"};
+
+  @override
+  Future<PluginAgentToolMcpCapability> provisionMcp({required String? backendSessionId}) => throw UnimplementedError();
+
+  @override
+  Future<void> bindMcp({
+    required PluginAgentToolMcpCapability capability,
+    required String backendSessionId,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<void> revokeMcp({required PluginAgentToolMcpCapability capability}) => throw UnimplementedError();
+
+  @override
+  Future<void> dispose() async {
+    disposed = true;
+  }
+}
 
 class _StubChannel({@override required final Stream<dynamic> stream, @override required final WebSocketSink sink})
     implements WebSocketChannel {
