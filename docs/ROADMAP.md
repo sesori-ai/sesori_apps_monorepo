@@ -36,7 +36,9 @@
   self-update, all platforms) follows in a separate `desktop-distribution`
   plan once the implementation ships.
 - **Detail:** owned entirely by `.plan/active/desktop-app/PLAN.md`; not
-  duplicated here.
+  duplicated here. The release-readiness UX overhaul (two-pane sidebar
+  cockpit, settings modal, bridge popover, autostart defaults, app log files)
+  is `.plan/active/desktop-ux/PLAN.md`, phase 1 of several.
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is
