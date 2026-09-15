@@ -61,4 +61,5 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   all five owning analyzers, four inspected production-widget fixtures, and
   architecture implementation review pass. The GUI and bridge remain untouched.
   Native tree/menu/performance and live-action checks remain pre-shipping
-  coverage, not a merge/successor gate. See `steps/step-03.md`.
+  coverage, not a merge/successor gate. See [step 3 evidence](steps/step-03.md#reproducible-verification-and-size)
+  for measured revisions, cwd, commands and size accounting.
