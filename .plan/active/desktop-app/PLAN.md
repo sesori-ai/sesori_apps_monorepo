@@ -681,8 +681,9 @@ and hand off to the [desktop-distribution successor](../desktop-distribution/PLA
 whose planning began early at the user's request on 2026-09-15. Carry forward
 actual coverage and open limitations, including C11 and the Windows/Linux
 verification debt. The successor owns bundle layout, runtime ownership,
-release gates, signing, installers, and updates; historical proposals in
-`docs/desktop/phase-3-packaging.md` are research input, not locked decisions.
+release gates, signing, installers, and updates. Historical proposals from the
+removed `docs/desktop/phase-3-packaging.md` are recoverable from Git history
+before commit `586dec5a6d`; they are research input, not locked decisions.
 
 ## Regression coverage for retirement
 
