@@ -5,21 +5,21 @@ its completed step; this table tracks implementation, not transient PR reviews.
 
 ## Delivery
 
-| Step | Scope | Status |
-|---|---|---|
-| 1 | Align platform distribution and update plan | done |
-| 2 | Qualify six-target packaging prerequisites | done |
-| 3.a | Bind desktop builds to bundled bridge identity (PR ordinal 3) | in-progress |
-| 3.b | Surface packaged helper repair guidance (PR ordinal 4) | pending |
-| 4 | Package and notarize native macOS builds | pending |
-| 5 | Apply macOS updates through safe application quit | pending |
-| 6 | Publish isolated desktop channels and macOS downloads | pending |
-| 7 | Package signed per-user Windows installers | pending |
-| 8 | Deliver manual Windows updates and winget discovery | pending |
-| 9 | Publish signed native DEB and RPM repositories | pending |
-| 10 | Offer shipped desktop downloads during onboarding | pending |
-| 11 | Reconcile distribution regression coverage | pending |
-| 12 | Verify six-target releases and retire distribution plan | pending |
+| Step | PR ordinal | Scope | Status |
+|---|---|---|---|
+| 1 | 1 | Align platform distribution and update plan | done |
+| 2 | 2 | Qualify six-target packaging prerequisites | done |
+| 3.a | 3 | Bind desktop builds to bundled bridge identity | in-progress |
+| 3.b | 4 | Surface packaged helper repair guidance | pending |
+| 4 | 5 | Package and notarize native macOS builds | pending |
+| 5 | 6 | Apply macOS updates through safe application quit | pending |
+| 6 | 7 | Publish isolated desktop channels and macOS downloads | pending |
+| 7 | 8 | Package signed per-user Windows installers | pending |
+| 8 | 9 | Deliver manual Windows updates and winget discovery | pending |
+| 9 | 10 | Publish signed native DEB and RPM repositories | pending |
+| 10 | 11 | Offer shipped desktop downloads during onboarding | pending |
+| 11 | 12 | Reconcile distribution regression coverage | pending |
+| 12 | 13 | Verify six-target releases and retire distribution plan | pending |
 
 Exact PR titles, dependencies and the 13-PR total live in [PLAN.md](PLAN.md).
 Stable step IDs 1, 2, 3.a, 3.b, 4…12 map to PR ordinals 1…13. Platform ship gates
@@ -124,7 +124,8 @@ orchestrator solely for hypothetical future exit callers is not part of this pla
 ## Planning validation
 
 - Local Markdown links in all six changed/new documents: passed.
-- Current series: 13 PRs, with 3.a/3.b mapped explicitly; synchronize published titles without rewriting commit history.
+- All 13 tracker ordinals match PLAN.md: passed. Published titles #1483/#1487/#1492
+  were synchronized to total 13; commit history was not rewritten.
 - Initial `git diff --check`: passed; final whitespace and diff size are checked again
   after review corrections, before committing/pushing.
 - Initial measured diff: 555 additions + 17 deletions = 572 authored Markdown lines;
