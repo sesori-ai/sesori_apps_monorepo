@@ -1,5 +1,7 @@
 import "dart:async";
 
+import "package:flutter/foundation.dart";
+import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -11,9 +13,7 @@ import "../../features/new_session/desktop_new_session_screen.dart";
 import "../../features/session_diffs/desktop_session_diffs_screen.dart";
 import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/sessions/desktop_session_list_screen.dart";
-import "../../features/settings/desktop_harnesses_settings_screen.dart";
-import "../../features/settings/desktop_profile_screen.dart";
-import "../../features/settings/desktop_settings_screen.dart";
+import "../../features/settings/desktop_settings_modal.dart";
 import "../widgets/desktop_cockpit_shell.dart";
 
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
@@ -51,38 +51,46 @@ final GoRouter desktopRouter = GoRouter(
 List<RouteBase> buildDesktopRoutes() => <RouteBase>[
   ShellRoute(
     builder: (BuildContext context, GoRouterState state, Widget child) => AuthGate(
-      child: DesktopCockpitCubitProvider(
-        child: DesktopCockpitShell(
-          destination: _destinationFor(path: state.uri.path),
-          selectedProjectId: state.pathParameters[projectIdPathParam],
-          selectedSessionId: state.pathParameters[sessionIdPathParam],
-          sessionActions: _desktopSessionActions,
-          onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
-            context: context,
-            route: AppRoute.sessionDetail(
-              projectId: project.id,
-              projectName: displayName,
-              sessionId: session.id,
-              sessionTitle: session.title,
-              readOnly: session.time?.archived != null,
+      child: Builder(
+        // Root overlays must capture AuthGate from inside its provider.
+        builder: (context) => CallbackShortcuts(
+          bindings: {
+            SingleActivator(
+              LogicalKeyboardKey.comma,
+              meta: defaultTargetPlatform == TargetPlatform.macOS,
+              control: defaultTargetPlatform != TargetPlatform.macOS,
+            ): () =>
+                _openSettings(context: context, initialTab: DesktopSettingsTab.general),
+          },
+          child: DesktopCockpitCubitProvider(
+            child: DesktopCockpitShell(
+              selectedProjectId: state.pathParameters[projectIdPathParam],
+              selectedSessionId: state.pathParameters[sessionIdPathParam],
+              sessionActions: _desktopSessionActions,
+              onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
+                context: context,
+                route: AppRoute.sessionDetail(
+                  projectId: project.id,
+                  projectName: displayName,
+                  sessionId: session.id,
+                  sessionTitle: session.title,
+                  readOnly: session.time?.archived != null,
+                ),
+              ),
+              onNewSession: ({required context, required project, required displayName}) => _pushRoute(
+                context: context,
+                route: AppRoute.newSession(projectId: project.id, projectName: displayName),
+              ),
+              onOpenProject: ({required context, required project, required displayName}) => _goRoute(
+                context: context,
+                route: AppRoute.sessions(projectId: project.id, projectName: displayName),
+              ),
+              onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
+              onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
+              onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
+              child: child,
             ),
           ),
-          onNewSession: ({required context, required project, required displayName}) => _pushRoute(
-            context: context,
-            route: AppRoute.newSession(projectId: project.id, projectName: displayName),
-          ),
-          onOpenProject: ({required context, required project, required displayName}) => _goRoute(
-            context: context,
-            route: AppRoute.sessions(projectId: project.id, projectName: displayName),
-          ),
-          onOpenBridgeSettings: () {
-            if (state.uri.path != AppRouteDef.settings.path) {
-              _pushRoute(context: context, route: const AppRoute.settings());
-            }
-          },
-          onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-          onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
-          child: child,
         ),
       ),
     ),
@@ -135,10 +143,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               context: context,
               fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
             ),
-            onOpenHarnessSettings: () => _pushRoute(
-              context: context,
-              route: const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
-            ),
+            onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             onSessionCreated: ({required session}) => _replaceRoute(
               context: context,
               route: AppRoute.sessionDetail(
@@ -172,10 +177,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 sessionId: route.sessionId,
               ),
             ),
-            onOpenHarnessSettings: () => _pushRoute(
-              context: context,
-              route: const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
-            ),
+            onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                 _pushRoute(
                   context: context,
@@ -205,34 +207,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           );
         },
       ),
-      GoRoute(
-        path: AppRouteDef.settings.path,
-        builder: (BuildContext context, GoRouterState state) => DesktopSettingsScreen(
-          onClose: () => _popRoute(context: context),
-          onOpenProfile: () => _pushRoute(context: context, route: const AppRoute.settingsProfile()),
-          onOpenDefaultInput: () => _pushRoute(context: context, route: const AppRoute.settingsDefaultInput()),
-          onOpenHarnesses: () => _pushRoute(
-            context: context,
-            route: const AppRoute.settingsHarnesses(
-              presentation: HarnessSettingsPresentation.pushed,
-            ),
-          ),
-        ),
-      ),
-      GoRoute(
-        path: AppRouteDef.settingsDefaultInput.path,
-        builder: (context, state) => DefaultInputSettingsView(
-          onBack: () => _popRouteOrGo(context: context, fallback: const AppRoute.settings()),
-        ),
-      ),
-      GoRoute(
-        path: AppRouteDef.settingsProfile.path,
-        builder: (BuildContext context, GoRouterState state) => DesktopProfileScreen(
-          onClose: () => _popRoute(context: context),
-          onLogoutCompleted: _goDesktopHome,
-        ),
-      ),
-      buildDesktopHarnessSettingsRoute(),
     ],
   ),
 ];
@@ -281,21 +255,14 @@ AppRouteSessionDiffs _decodeSessionDiffsRoute({required GoRouterState state}) {
   };
 }
 
-DesktopCockpitDestination _destinationFor({required String path}) {
-  if (isDesktopSettingsPath(path: path)) return DesktopCockpitDestination.settings;
-  return DesktopCockpitDestination.projects;
-}
-
-@visibleForTesting
-bool isDesktopSettingsPath({required String path}) {
-  return path == AppRouteDef.settings.path || path.startsWith("${AppRouteDef.settings.path}/");
-}
-
-void _openSettings({required BuildContext context, required String currentPath}) {
-  if (isDesktopSettingsPath(path: currentPath)) {
-    return;
-  }
-  _pushRoute(context: context, route: const AppRoute.settings());
+void _openSettings({required BuildContext context, required DesktopSettingsTab initialTab}) {
+  unawaited(
+    showDesktopSettingsModal(
+      context: context,
+      initialTab: initialTab,
+      onLogoutCompleted: _goDesktopHome,
+    ),
+  );
 }
 
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {
@@ -354,71 +321,4 @@ void _popRoute({required BuildContext context}) {
     return;
   }
   _goDesktopHome();
-}
-
-/// Harness-only navigator and provider shared by overview and URL detail pages.
-@visibleForTesting
-ShellRoute buildDesktopHarnessSettingsRoute() {
-  final navigatorKey = GlobalKey<NavigatorState>();
-  void close({required BuildContext context}) {
-    // The nested Navigator's context belongs to the stable outer flow page.
-    final flowContext = navigatorKey.currentContext ?? (throw StateError("Harness flow is not mounted"));
-    final flowRoute = ModalRoute.of(flowContext) ?? (throw StateError("Harness flow has no owning route"));
-    final outerNavigator = flowRoute.navigator ?? (throw StateError("Harness flow has no navigator"));
-    // Remove owned pageless sheets first, without touching the opener.
-    outerNavigator.popUntil((route) => route == flowRoute);
-    if (flowRoute.isFirst) {
-      _goRoute(context: context, route: const AppRoute.projects());
-    } else {
-      outerNavigator.pop();
-    }
-  }
-
-  return ShellRoute(
-    navigatorKey: navigatorKey,
-    pageBuilder: (context, state, child) {
-      final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters).presentation;
-      final content = DesktopHarnessesSettingsScreen(child: child);
-      return presentation == HarnessSettingsPresentation.modal
-          ? MaterialPage<void>(key: state.pageKey, fullscreenDialog: true, child: content)
-          : MaterialPage<void>(key: state.pageKey, child: content);
-    },
-    routes: [
-      GoRoute(
-        path: AppRouteDef.settingsHarnesses.path,
-        builder: (context, state) {
-          final presentation = AppRouteSettingsHarnesses.fromParams(queryParams: state.uri.queryParameters)
-              .presentation;
-          return HarnessesSettingsView(
-            presentation: presentation,
-            connectionBanner: null,
-            onClose: () => close(context: context),
-            onBack: () => close(context: context),
-            onOpenHarness: ({required pluginId}) => _pushRoute(
-              context: context,
-              route: AppRoute.settingsHarnessDetail(pluginId: pluginId, presentation: presentation),
-            ),
-          );
-        },
-        routes: [
-          GoRoute(
-            path: ":$pluginIdPathParam",
-            builder: (context, state) {
-              final route = AppRouteSettingsHarnessDetail.fromParams(
-                pathParams: state.pathParameters,
-                queryParams: state.uri.queryParameters,
-              );
-              return HarnessSettingsDetailView(
-                pluginId: route.pluginId,
-                presentation: route.presentation,
-                connectionBanner: null,
-                onBack: () => context.pop(),
-                onClose: () => close(context: context),
-              );
-            },
-          ),
-        ],
-      ),
-    ],
-  );
 }

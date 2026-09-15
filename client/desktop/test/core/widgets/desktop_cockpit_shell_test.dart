@@ -73,7 +73,6 @@ void main() {
         home:
             child ??
             DesktopCockpitShell(
-              destination: DesktopCockpitDestination.projects,
               selectedProjectId: "project-1",
               selectedSessionId: null,
               onOpenSession: _openSession,
@@ -99,44 +98,34 @@ void main() {
   final resize = find.byKey(const Key("desktop-sidebar-resize"));
   final toggle = find.byKey(const Key("desktop-sidebar-toggle"));
 
-  testWidgets("section selection and screen-reader activation match the destination", (tester) async {
+  testWidgets("home selection and screen-reader activation distinguish Settings as an action", (tester) async {
     final semantics = tester.ensureSemantics();
     try {
       var opens = 0;
-      for (final destination in DesktopCockpitDestination.values) {
-        await tester.pumpWidget(
-          app(
-            state: running,
-            child: DesktopCockpitShell(
-              destination: destination,
-              selectedProjectId: null,
-              selectedSessionId: null,
-              onOpenSession: _openSession,
-              onNewSession: _openProject,
-              sessionActions: _sessionActions,
-              onOpenProject: _openProject,
-              onOpenBridgeSettings: () => opens++,
-              onOpenProjects: () => opens++,
-              onOpenSettings: () => opens++,
-              child: const SizedBox.shrink(),
-            ),
+      await tester.pumpWidget(
+        app(
+          state: running,
+          child: DesktopCockpitShell(
+            selectedProjectId: null,
+            selectedSessionId: null,
+            onOpenSession: _openSession,
+            onNewSession: _openProject,
+            sessionActions: _sessionActions,
+            onOpenProject: _openProject,
+            onOpenBridgeSettings: () => opens++,
+            onOpenProjects: () => opens++,
+            onOpenSettings: () => opens++,
+            child: const SizedBox.shrink(),
           ),
+        ),
+      );
+      for (final label in ["Projects", "Settings"]) {
+        final finder = find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == label);
+        expect(tester.widget<Semantics>(finder).properties.selected, label == "Projects");
+        final node = tester.getSemantics(finder);
+        tester.platformDispatcher.onSemanticsActionEvent!(
+          SemanticsActionEvent(type: SemanticsAction.tap, nodeId: node.id, viewId: tester.view.viewId),
         );
-        for (final entry in {
-          DesktopCockpitDestination.projects: "Projects",
-          DesktopCockpitDestination.settings: "Settings",
-        }.entries) {
-          final finder = find.byWidgetPredicate(
-            (widget) => widget is Semantics && widget.properties.label == entry.value,
-          );
-          expect(tester.widget<Semantics>(finder).properties.selected, entry.key == destination);
-          if (entry.key == destination) {
-            final node = tester.getSemantics(finder);
-            tester.platformDispatcher.onSemanticsActionEvent!(
-              SemanticsActionEvent(type: SemanticsAction.tap, nodeId: node.id, viewId: tester.view.viewId),
-            );
-          }
-        }
       }
       expect(opens, 2);
     } finally {
@@ -231,7 +220,6 @@ void main() {
       app(
         state: running,
         child: DesktopCockpitShell(
-          destination: DesktopCockpitDestination.projects,
           selectedProjectId: "project-1",
           selectedSessionId: null,
           onOpenSession: _openSession,
@@ -280,7 +268,6 @@ void main() {
       app(
         state: running,
         child: DesktopCockpitShell(
-          destination: DesktopCockpitDestination.projects,
           selectedProjectId: "project-1",
           selectedSessionId: "session-4",
           sessionActions: _sessionActions,
@@ -434,7 +421,6 @@ void main() {
           app(
             state: running,
             child: DesktopCockpitShell(
-              destination: DesktopCockpitDestination.settings,
               selectedProjectId: null,
               selectedSessionId: null,
               onOpenSession: _openSession,

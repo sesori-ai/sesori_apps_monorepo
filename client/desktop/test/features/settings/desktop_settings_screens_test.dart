@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/services.dart" show LogicalKeyboardKey;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -11,39 +12,21 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
-import "package:sesori_desktop/core/routing/desktop_router.dart";
-import "package:sesori_desktop/features/settings/desktop_harnesses_settings_screen.dart";
-import "package:sesori_desktop/features/settings/desktop_profile_screen.dart";
-import "package:sesori_desktop/features/settings/desktop_settings_screen.dart";
+import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
-
-class _StubConnectionOverlayCubit() extends Cubit<ConnectionOverlayState> implements ConnectionOverlayCubit {
-  this : super(const ConnectionOverlayState.hidden(connected: true));
-
-  @override
-  void reconnect() {}
-}
-
+class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockAppearanceStore() extends Mock implements AppearanceStore;
-
 class _MockChatInputModeStore() extends Mock implements ChatInputModeStore;
-
 class _MockBridgeSettingsRepository() extends Mock implements BridgeSettingsRepository;
-
 class _MockConnectionService() extends Mock implements ConnectionService;
-
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
-
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
-
 class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
-
 class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
-
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 
 const AuthUser _user = AuthUser(
@@ -61,10 +44,7 @@ const HealthResponse _health = HealthResponse(
   version: "test",
   filesystemAccessDegraded: false,
 );
-const ConnectionStatus _connected = ConnectionStatus.connected(
-  config: _connectionConfig,
-  health: _health,
-);
+const ConnectionStatus _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 const PluginManagementMetadata _plugin = PluginManagementMetadata(
   setup: PluginSetupMetadata(
     id: "opencode",
@@ -87,6 +67,16 @@ const PluginManagementResponse _pluginResponse = PluginManagementResponse(
   defaultIdleTimeoutMins: 10,
   plugins: [_plugin],
 );
+const _bridgeState = BridgeControlState(
+  trayAvailability: SystemTrayAvailability.available,
+  activity: BridgeControlActivity.idle,
+  statusLabel: "Off",
+  processState: BridgeProcessStopped(),
+  desiredState: BridgeProcessDesiredState.off,
+  toggleTarget: BridgeProcessDesiredState.on,
+  launchAtLoginEnabled: false,
+  controlStatus: BridgeControlStatus.offline,
+);
 
 void main() {
   setUpAll(() {
@@ -96,14 +86,15 @@ void main() {
   });
 
   late _MockAuthGateCubit authGateCubit;
-  late _StubConnectionOverlayCubit connectionOverlayCubit;
+  late _MockBridgeControlCubit bridgeControl;
   late _MockAppearanceStore appearanceStore;
-  late _MockChatInputModeStore chatInputModeStore;
   late AppearanceCubit appearanceCubit;
   late ChatInputModeCubit chatInputModeCubit;
+  late _MockBridgeSettingsRepository repository;
+  late _MockDesktopAttentionService desktopAttentionService;
+  late _MockPluginManagementService pluginService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
   late BehaviorSubject<DesktopAttentionPreference> attentionPreferences;
-  late _MockDesktopAttentionService desktopAttentionService;
   late BehaviorSubject<ProductAnalyticsState> analyticsStates;
   late BehaviorSubject<PluginManagementLoadResult> pluginSnapshots;
   late BehaviorSubject<Map<String, PluginInstallState>> installStates;
@@ -111,6 +102,7 @@ void main() {
   late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late BehaviorSubject<CatalogRescanState> catalogScanStates;
+  late int logoutCompletions;
 
   setUp(() async {
     await getIt.reset();
@@ -121,103 +113,29 @@ void main() {
       buildNumber: "1",
       buildSignature: "",
     );
-
+    logoutCompletions = 0;
     authGateCubit = _MockAuthGateCubit();
     whenListen(
       authGateCubit,
       const Stream<AuthGateState>.empty(),
       initialState: const AuthGateState.signedIn(user: _user),
     );
-    connectionOverlayCubit = _StubConnectionOverlayCubit();
+    bridgeControl = _MockBridgeControlCubit();
+    whenListen(bridgeControl, const Stream<BridgeControlState>.empty(), initialState: _bridgeState);
+    when(bridgeControl.refreshLaunchAtLogin).thenAnswer((_) async {});
+    when(() => bridgeControl.setLaunchAtLogin(enabled: any(named: "enabled"))).thenAnswer((_) async {});
+    when(bridgeControl.openLogs).thenAnswer((_) async {});
     appearanceStore = _MockAppearanceStore();
-    chatInputModeStore = _MockChatInputModeStore();
+    final chatInputModeStore = _MockChatInputModeStore();
     when(() => appearanceStore.write(mode: any(named: "mode"))).thenAnswer((_) async {});
     when(() => chatInputModeStore.write(mode: any(named: "mode"))).thenAnswer((_) async {});
     appearanceCubit = AppearanceCubit(store: appearanceStore, initialMode: AppearanceMode.system);
-    chatInputModeCubit = ChatInputModeCubit(
-      store: chatInputModeStore,
-      initialMode: ChatInputMode.voiceFirst,
-    );
-
-    connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(_connected);
-    attentionPreferences = BehaviorSubject<DesktopAttentionPreference>.seeded(
-      DesktopAttentionPreference.enabled,
-    );
-    desktopAttentionService = _MockDesktopAttentionService();
-    when(() => desktopAttentionService.currentPreference).thenAnswer((_) => attentionPreferences.value);
-    when(() => desktopAttentionService.preference).thenAnswer((_) => attentionPreferences.stream);
-    when(
-      () => desktopAttentionService.setPreference(preference: any(named: "preference")),
-    ).thenAnswer((invocation) async {
-      attentionPreferences.add(
-        invocation.namedArguments[#preference]! as DesktopAttentionPreference,
-      );
-    });
-    getIt.registerSingleton<DesktopAttentionService>(desktopAttentionService);
-    analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(
-      const ProductAnalyticsState(
-        preference: ProductAnalyticsPreferenceKnown(
-          preference: ProductAnalyticsPreference.enabled,
-        ),
-        synchronization: ProductAnalyticsSynchronized(),
-        availability: ProductAnalyticsInactive(
-          reason: ProductAnalyticsInactiveReason.runtimeUnavailable,
-        ),
-      ),
-    );
-    pluginSnapshots = BehaviorSubject<PluginManagementLoadResult>();
-    installStates = BehaviorSubject<Map<String, PluginInstallState>>.seeded(const {});
-    authenticationChallenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded(const {});
-    authenticationBrowserStates = BehaviorSubject<Map<String, PluginAuthenticationBrowserState>>.seeded(const {});
-    authenticationTerminal = StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
-    catalogScanStates = BehaviorSubject<CatalogRescanState>.seeded(const CatalogRescanState.idle());
-  });
-
-  tearDown(() async {
-    await getIt.reset();
-    await connectionOverlayCubit.close();
-    await appearanceCubit.close();
-    await attentionPreferences.close();
-    await chatInputModeCubit.close();
-    await connectionStatuses.close();
-    await analyticsStates.close();
-    await pluginSnapshots.close();
-    await installStates.close();
-    await authenticationChallenges.close();
-    await authenticationBrowserStates.close();
-    await authenticationTerminal.close();
-    await catalogScanStates.close();
-  });
-
-  Widget app({required Widget child}) {
-    return MultiBlocProvider(
-      providers: [
-        BlocProvider<AuthGateCubit>.value(value: authGateCubit),
-        BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlayCubit),
-        BlocProvider<AppearanceCubit>.value(value: appearanceCubit),
-        BlocProvider<ChatInputModeCubit>.value(value: chatInputModeCubit),
-      ],
-      child: MaterialApp(
-        theme: buildPregoThemeData(brightness: Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: child,
-      ),
-    );
-  }
-
-  void useTallSurface({required WidgetTester tester}) {
-    tester.view.physicalSize = const Size(1200, 3000);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-  }
-
-  testWidgets("desktop settings injects local attention without mobile notification routes", (tester) async {
-    useTallSurface(tester: tester);
-    final repository = _MockBridgeSettingsRepository();
+    chatInputModeCubit = ChatInputModeCubit(store: chatInputModeStore, initialMode: ChatInputMode.voiceFirst);
     final connectionService = _MockConnectionService();
+    connectionStatuses = BehaviorSubject<ConnectionStatus>.seeded(_connected);
     when(() => connectionService.currentStatus).thenAnswer((_) => connectionStatuses.value);
     when(() => connectionService.status).thenAnswer((_) => connectionStatuses.stream);
+    repository = _MockBridgeSettingsRepository();
     when(repository.load).thenAnswer(
       (_) async => const BridgeSettingsLoadSupported(
         response: BridgeSettingsResponse(
@@ -229,283 +147,272 @@ void main() {
     );
     getIt.registerSingleton<BridgeSettingsRepository>(repository);
     getIt.registerSingleton<ConnectionService>(connectionService);
-    var profileOpens = 0;
-    var harnessOpens = 0;
-    var defaultInputOpens = 0;
-
-    await tester.pumpWidget(
-      app(
-        child: DesktopSettingsScreen(
-          onClose: () {},
-          onOpenProfile: () => profileOpens++,
-          onOpenHarnesses: () => harnessOpens++,
-          onOpenDefaultInput: () => defaultInputOpens++,
-        ),
+    attentionPreferences = BehaviorSubject<DesktopAttentionPreference>.seeded(DesktopAttentionPreference.enabled);
+    desktopAttentionService = _MockDesktopAttentionService();
+    when(() => desktopAttentionService.currentPreference).thenAnswer((_) => attentionPreferences.value);
+    when(() => desktopAttentionService.preference).thenAnswer((_) => attentionPreferences.stream);
+    when(() => desktopAttentionService.setPreference(preference: any(named: "preference")))
+        .thenAnswer((invocation) async {
+          attentionPreferences.add(invocation.namedArguments[#preference]! as DesktopAttentionPreference);
+        });
+    getIt.registerSingleton<DesktopAttentionService>(desktopAttentionService);
+    analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(
+      const ProductAnalyticsState(
+        preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
+        synchronization: ProductAnalyticsSynchronized(),
+        availability: ProductAnalyticsInactive(reason: ProductAnalyticsInactiveReason.runtimeUnavailable),
       ),
     );
-    await tester.pumpAndSettle();
-
-    expect(tester.widget<PregoGlassScaffold>(find.byType(PregoGlassScaffold)).banner, isNull);
-    expect(find.text("alex"), findsOneWidget);
-    expect(find.text("Notifications"), findsOneWidget);
-    expect(find.text("AI Interactions"), findsOneWidget);
-    expect(find.text("Session Messages"), findsNothing);
-    expect(find.text("Connection Status"), findsNothing);
-    expect(find.text("Harnesses"), findsOneWidget);
-    expect(find.text("Default input"), findsOneWidget);
-    expect(find.text("Voice"), findsOneWidget);
-    expect(find.text("Text"), findsNothing);
-    expect(find.text("Warm harness on session open"), findsOneWidget);
-    expect(find.text("30 seconds"), findsOneWidget);
-    expect(find.text("v0.1.0 (1)"), findsOneWidget);
-
-    await tester.tap(find.text("alex"));
-    await tester.tap(find.text("Harnesses"));
-    await tester.tap(find.text("Default input"));
-    await tester.tap(find.text("Dark"));
-    await tester.pumpAndSettle();
-
-    expect(profileOpens, 1);
-    expect(harnessOpens, 1);
-    expect(defaultInputOpens, 1);
-    expect(appearanceCubit.state, AppearanceMode.dark);
-    verify(() => appearanceStore.write(mode: AppearanceMode.dark)).called(1);
-  });
-
-  testWidgets("desktop profile delegates logout through the auth gate", (tester) async {
-    useTallSurface(tester: tester);
     final analyticsService = _MockProductAnalyticsService();
     when(() => analyticsService.state).thenAnswer((_) => analyticsStates.value);
     when(() => analyticsService.stateStream).thenAnswer((_) => analyticsStates.stream);
     getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
-    when(() => authGateCubit.signOut()).thenAnswer((_) async => DesktopLogoutOutcome.completed);
-    var completed = 0;
-
-    await tester.pumpWidget(
-      app(
-        child: DesktopProfileScreen(
-          onClose: () {},
-          onLogoutCompleted: () => completed++,
-        ),
-      ),
+    pluginSnapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+      const PluginManagementLoadResult.supported(response: _pluginResponse, refreshError: null),
     );
-    await tester.pumpAndSettle();
-    await tester.tap(find.text("Log Out"));
-    await tester.pumpAndSettle();
-
-    verify(() => authGateCubit.signOut()).called(1);
-    expect(completed, 1);
-  });
-
-  void registerHarnessServices() {
-    final service = _MockPluginManagementService();
+    installStates = BehaviorSubject<Map<String, PluginInstallState>>.seeded(const {});
+    authenticationChallenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded(const {});
+    authenticationBrowserStates = BehaviorSubject<Map<String, PluginAuthenticationBrowserState>>.seeded(const {});
+    authenticationTerminal = StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
+    catalogScanStates = BehaviorSubject<CatalogRescanState>.seeded(const CatalogRescanState.idle());
+    pluginService = _MockPluginManagementService();
     final catalogRescanService = _MockCatalogRescanService();
-    final urlLauncher = _MockUrlLauncher();
-    when(() => service.snapshots).thenAnswer((_) => pluginSnapshots.stream);
-    when(() => service.installStates).thenAnswer((_) => installStates.stream);
-    when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
-    when(() => service.authenticationBrowserStates).thenAnswer((_) => authenticationBrowserStates.stream);
-    when(() => service.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
-    when(service.onDispose).thenAnswer((_) async {});
+    when(() => pluginService.snapshots).thenAnswer((_) => pluginSnapshots.stream);
+    when(() => pluginService.installStates).thenAnswer((_) => installStates.stream);
+    when(() => pluginService.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
+    when(() => pluginService.authenticationBrowserStates).thenAnswer((_) => authenticationBrowserStates.stream);
+    when(() => pluginService.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
+    when(pluginService.onDispose).thenAnswer((_) async {});
     when(() => catalogRescanService.state).thenAnswer((_) => catalogScanStates.stream);
     when(catalogRescanService.onDispose).thenAnswer((_) async {});
-    getIt.registerSingleton<PluginManagementService>(service);
+    getIt.registerSingleton<PluginManagementService>(pluginService);
     getIt.registerSingleton<CatalogRescanService>(catalogRescanService);
-    getIt.registerSingleton<UrlLauncher>(urlLauncher);
-  }
+    getIt.registerSingleton<UrlLauncher>(_MockUrlLauncher());
+  });
 
-  for (final throughSettings in [false, true]) {
-    testWidgets("desktop harness Back and modal X preserve their own opener (settings: $throughSettings)", (
-      tester,
-    ) async {
-      registerHarnessServices();
-      final product = buildDesktopRoutes().single as ShellRoute;
-      final harnessRoute = product.routes.whereType<ShellRoute>().singleWhere(
-        (shell) => (shell.routes.first as GoRoute).path == AppRouteDef.settingsHarnesses.path,
-      );
-      final presentation = throughSettings ? HarnessSettingsPresentation.pushed : HarnessSettingsPresentation.modal;
-      final router = GoRouter(
-        initialLocation: "/opener",
-        routes: [
-          ShellRoute(
-            builder: (_, _, child) => child,
-            routes: [
-              GoRoute(
-                path: "/opener",
-                builder: (context, _) => Scaffold(
-                  body: TextButton(
-                    onPressed: () => context.push<void>(
-                      throughSettings
-                          ? const AppRoute.settings().buildPath()
-                          : AppRoute.settingsHarnesses(presentation: presentation).buildPath(),
+  tearDown(() async {
+    await getIt.reset();
+    await appearanceCubit.close();
+    await attentionPreferences.close();
+    await connectionStatuses.close();
+    await chatInputModeCubit.close();
+    await analyticsStates.close();
+    await pluginSnapshots.close();
+    await installStates.close();
+    await authenticationChallenges.close();
+    await authenticationBrowserStates.close();
+    await authenticationTerminal.close();
+    await catalogScanStates.close();
+  });
+
+  Future<GoRouter> open({required WidgetTester tester, required DesktopSettingsTab tab}) async {
+    final router = GoRouter(
+      initialLocation: "/session",
+      routes: [
+        ShellRoute(
+          builder: (_, _, child) => BlocProvider<AuthGateCubit>.value(value: authGateCubit, child: child),
+          routes: [
+            GoRoute(
+              path: "/session",
+              builder: (context, _) => Scaffold(
+                body: TextButton(
+                  onPressed: () => unawaited(
+                    showDesktopSettingsModal(
+                      context: context,
+                      initialTab: tab,
+                      onLogoutCompleted: () => logoutCompletions++,
                     ),
-                    child: const Text("open"),
                   ),
+                  child: const Text("open"),
                 ),
               ),
-              GoRoute(
-                path: AppRouteDef.settings.path,
-                builder: (context, _) => Scaffold(
-                  body: TextButton(
-                    onPressed: () =>
-                        context.push<void>(AppRoute.settingsHarnesses(presentation: presentation).buildPath()),
-                    child: const Text("harnesses"),
-                  ),
-                ),
-              ),
-              GoRoute(
-                path: AppRouteDef.projects.path,
-                builder: (_, _) => const Scaffold(body: Text("home")),
-              ),
-              harnessRoute,
-            ],
-          ),
+            ),
+          ],
+        ),
+      ],
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<BridgeControlCubit>.value(value: bridgeControl),
+          BlocProvider<AppearanceCubit>.value(value: appearanceCubit),
+          BlocProvider<ChatInputModeCubit>.value(value: chatInputModeCubit),
         ],
-      );
-      addTearDown(router.dispose);
-      await tester.pumpWidget(
-        MaterialApp.router(
+        child: MaterialApp.router(
           routerConfig: router,
           theme: buildPregoThemeData(brightness: Brightness.light),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
         ),
-      );
-      pluginSnapshots.add(const PluginManagementLoadResult.supported(response: _pluginResponse, refreshError: null));
-      await tester.pumpAndSettle();
-      final opener = tester.element(find.text("open"));
-      await tester.tap(find.text("open"));
-      await tester.pumpAndSettle();
-      final settings = throughSettings ? tester.element(find.text("harnesses")) : null;
-      if (throughSettings) {
-        await tester.tap(find.text("harnesses"));
-        await tester.pumpAndSettle();
-      }
-      final cubit = tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>();
-      expect(find.bySemanticsLabel("Close settings"), throughSettings ? findsNothing : findsOneWidget);
-      expect(find.bySemanticsLabel("Back"), throughSettings ? findsOneWidget : findsNothing);
-      await tester.tap(find.text("OpenCode"));
-      await tester.pumpAndSettle();
-      expect(find.bySemanticsLabel("Close settings"), throughSettings ? findsNothing : findsOneWidget);
-      expect(tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(), same(cubit));
-      expect(find.byType(HarnessSettingsFlowView), findsOneWidget);
-      await tester.tap(find.bySemanticsLabel("Back"));
-      await tester.pumpAndSettle();
-      expect(find.byType(HarnessesSettingsView), findsOneWidget);
-      expect(tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>(), same(cubit));
-      if (throughSettings) {
-        await tester.tap(find.bySemanticsLabel("Back"));
-        await tester.pumpAndSettle();
-        expect(tester.element(find.text("harnesses")), same(settings));
-        GoRouter.of(settings!).pop();
-      } else {
-        await tester.tap(find.text("OpenCode"));
-        await tester.pumpAndSettle();
-        await tester.tap(find.bySemanticsLabel("Close settings"));
-      }
-      await tester.pumpAndSettle();
-      expect(tester.element(find.text("open")), same(opener));
-      // Stream cancellation completes outside the widget-test clock.
-      await tester.runAsync(() => Future<void>.delayed(Duration.zero));
-      expect(cubit.isClosed, isTrue);
-      expect(pluginSnapshots.hasListener, isFalse);
-      expect(authenticationTerminal.hasListener, isFalse);
-      expect(find.text("home"), findsNothing);
-      if (!throughSettings) {
-        // Overview X has the same outer-flow boundary as detail X.
-        await tester.tap(find.text("open"));
-        await tester.pumpAndSettle();
-        await tester.tap(find.bySemanticsLabel("Close settings"));
-        await tester.pumpAndSettle();
-        expect(tester.element(find.text("open")), same(opener));
-        expect(pluginSnapshots.hasListener, isFalse);
-
-        // Owned pageless authentication UI must leave with the outer flow,
-        // without turning dismissal into an upstream cancellation.
-        final service = getIt<PluginManagementService>();
-        final challenge = PluginAuthenticationDeviceCodeChallenge(
-          verificationUri: Uri.parse("https://auth.example/device"),
-          userCode: "ABCD-EFGH",
-        );
-        when(() => service.startAuthentication(pluginId: "opencode")).thenAnswer((_) async {
-          authenticationChallenges.add({"opencode": challenge});
-          return PluginAuthenticationStartResult.challenge(challenge: challenge);
-        });
-        pluginSnapshots.add(
-          PluginManagementLoadResult.supported(
-            response: _pluginResponse.copyWith(
-              plugins: [
-                _plugin.copyWith(
-                  setup: _plugin.setup.copyWith(state: PluginSetupState.authenticationRequired),
-                  managementCapabilities: {PluginManagementCapability.authentication},
-                ),
-              ],
-            ),
-            refreshError: null,
-          ),
-        );
-        await tester.tap(find.text("open"));
-        await tester.pumpAndSettle();
-        await tester.tap(find.text("OpenCode"));
-        await tester.pumpAndSettle();
-        final detail = tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView));
-        await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
-        await tester.pumpAndSettle();
-        expect(find.byType(PregoBottomSheet), findsOneWidget);
-        detail.onClose();
-        await tester.pumpAndSettle();
-        expect(find.byType(PregoBottomSheet), findsNothing);
-        expect(tester.element(find.text("open")), same(opener));
-        expect(pluginSnapshots.hasListener, isFalse);
-        verifyNever(() => service.cancelAuthentication(pluginId: "opencode"));
-        // End the mocked attempt before exercising independent deep-link navigation.
-        authenticationChallenges.add(const {});
-      }
-      router.go(
-        AppRoute.settingsHarnessDetail(
-          pluginId: "opencode",
-          presentation: presentation,
-        ).buildPath(),
-      );
-      await tester.pumpAndSettle();
-      expect(find.byType(HarnessesSettingsView, skipOffstage: false), findsOneWidget);
-      expect(find.text("harnesses", skipOffstage: false), findsNothing);
-      await tester.tap(find.bySemanticsLabel("Back"));
-      await tester.pumpAndSettle();
-      expect(find.byType(HarnessesSettingsView), findsOneWidget);
-      await tester.tap(find.bySemanticsLabel(throughSettings ? "Back" : "Close settings"));
-      await tester.pumpAndSettle();
-      expect(find.text("home"), findsOneWidget);
-    });
-  }
-
-  testWidgets("desktop harness composition renders a supported bridge snapshot", (tester) async {
-    useTallSurface(tester: tester);
-    registerHarnessServices();
-
-    await tester.pumpWidget(
-      app(
-        child: const DesktopHarnessesSettingsScreen(
-          child: HarnessesSettingsView(
-            presentation: HarnessSettingsPresentation.pushed,
-            connectionBanner: null,
-            onClose: _noOp,
-            onBack: _noOp,
-            onOpenHarness: _noOpenHarness,
-          ),
-        ),
       ),
     );
-    pluginSnapshots.add(const PluginManagementLoadResult.supported(response: _pluginResponse, refreshError: null));
+    await tester.tap(find.text("open"));
     await tester.pumpAndSettle();
+    return router;
+  }
 
-    expect(find.text("Harnesses"), findsOneWidget);
-    expect(find.text("OpenCode"), findsOneWidget);
-    expect(find.text("Running"), findsNothing);
-    expect(find.text("Idle"), findsNothing);
+  Future<void> select({required WidgetTester tester, required DesktopSettingsTab tab}) async {
+    await tester.tap(find.byKey(ValueKey("desktop-settings-tab-${tab.name}")));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets("General composes preferences instead of a mobile navigation menu", (tester) async {
+    final router = await open(tester: tester, tab: DesktopSettingsTab.general);
+    expect(router.state.uri.path, "/session");
+    expect(find.byType(SettingsView), findsNothing);
+    expect(find.byType(AppearancePicker), findsOneWidget);
+    expect(find.byType(ChatInputModePicker), findsOneWidget);
+    expect(find.text("alex"), findsNothing);
+    expect(find.text("Warm harness on session open"), findsNothing);
+    expect(find.text("AI Interactions"), findsNothing);
+    verify(bridgeControl.refreshLaunchAtLogin).called(1);
+    verifyNever(repository.load);
+    await tester.tap(find.text("Dark"));
+    await tester.pumpAndSettle();
+    expect(appearanceCubit.state, AppearanceMode.dark);
+    await tester.ensureVisible(find.text("Launch Sesori at login"));
+    await tester.tap(find.byType(PregoSwitch));
+    verify(() => bridgeControl.setLaunchAtLogin(enabled: true)).called(1);
+    await tester.ensureVisible(find.text("v0.1.0 (1)"));
+    await tester.pump();
+    expect(find.text("v0.1.0 (1)").hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("Bridge distinguishes connected configuration from local diagnostics", (tester) async {
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+    expect(find.text("Connected bridge"), findsOneWidget);
+    expect(find.text("This computer"), findsOneWidget);
+    expect(find.text("Local bridge"), findsOneWidget);
+    expect(find.text("Off"), findsOneWidget);
+    expect(find.text("Warm harness on session open"), findsOneWidget);
+    expect(find.text("Launch Sesori at login"), findsNothing);
+    expect(find.text("Quit Sesori"), findsNothing);
+    await tester.ensureVisible(find.text("Open Logs"));
+    await tester.tap(find.text("Open Logs"));
+    verify(bridgeControl.openLogs).called(1);
+    verifyNever(bridgeControl.refreshLaunchAtLogin);
+  });
+
+  testWidgets("Notifications uses desktop attention and Account retains supervised logout", (tester) async {
+    await open(tester: tester, tab: DesktopSettingsTab.notifications);
+    expect(find.text("AI Interactions"), findsOneWidget);
+    expect(find.text("Session Messages"), findsNothing);
+    expect(find.text("Connection Status"), findsNothing);
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pumpAndSettle();
+    expect(attentionPreferences.value, DesktopAttentionPreference.disabled);
+    when(authGateCubit.signOut).thenAnswer((_) async => DesktopLogoutOutcome.completed);
+    await select(tester: tester, tab: DesktopSettingsTab.account);
+    expect(find.text("alex"), findsOneWidget);
+    await tester.tap(find.text("Log Out"));
+    await tester.pumpAndSettle();
+    verify(authGateCubit.signOut).called(1);
+    expect(logoutCompletions, 1);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+    expect(find.text("open"), findsOneWidget);
+  });
+
+  testWidgets("late logout completion cannot pop the opener after dismissal", (tester) async {
+    final logout = Completer<DesktopLogoutOutcome>();
+    when(authGateCubit.signOut).thenAnswer((_) => logout.future);
+    final router = await open(tester: tester, tab: DesktopSettingsTab.account);
+    await tester.tap(find.text("Log Out"));
+    await tester.pump();
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    logout.complete(DesktopLogoutOutcome.completed);
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, "/session");
+    expect(logoutCompletions, 1);
+    expect(find.text("open"), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("minimum window keeps tabs reachable; Escape and outside preserve the route", (tester) async {
+    tester.view.physicalSize = const Size(560, 480);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final router = await open(tester: tester, tab: DesktopSettingsTab.general);
+    final opener = tester.element(find.text("open", skipOffstage: false));
+    final bounds = tester.getRect(find.byKey(const Key("desktop-settings-modal")));
+    expect(bounds.left, greaterThanOrEqualTo(12));
+    expect(bounds.right, lessThanOrEqualTo(548));
+    expect(bounds.bottom, lessThanOrEqualTo(468));
+    for (final tab in DesktopSettingsTab.values) {
+      expect(find.byKey(ValueKey("desktop-settings-tab-${tab.name}")).hitTestable(), findsOneWidget);
+    }
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, "/session");
+    expect(tester.element(find.text("open")), same(opener));
+    await tester.tap(find.text("open"));
+    await tester.pumpAndSettle();
+    await tester.tapAt(const Offset(2, 2));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+    expect(tester.element(find.text("open")), same(opener));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("harness detail shares its owner; Back stays inside and Close returns to the session", (tester) async {
+    final router = await open(tester: tester, tab: DesktopSettingsTab.harnesses);
+    final opener = tester.element(find.text("open", skipOffstage: false));
+    final cubit = tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>();
+    expect(find.bySemanticsLabel("Back"), findsNothing);
+    await tester.tap(find.text("OpenCode"));
+    await tester.pumpAndSettle();
+    expect(tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(), same(cubit));
+    expect(find.byType(HarnessSettingsFlowView), findsOneWidget);
+    await tester.tap(find.bySemanticsLabel("Back"));
+    await tester.pumpAndSettle();
+    expect(tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>(), same(cubit));
+    await tester.tap(find.text("OpenCode"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel("Close settings"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, "/session");
+    expect(tester.element(find.text("open")), same(opener));
+    await tester.runAsync(() => Future<void>.delayed(Duration.zero));
+    expect(cubit.isClosed, isTrue);
+    expect(pluginSnapshots.hasListener, isFalse);
+    expect(authenticationTerminal.hasListener, isFalse);
+  });
+
+  testWidgets("closing the harness modal also dismisses its authentication sheet without cancellation", (tester) async {
+    final challenge = PluginAuthenticationDeviceCodeChallenge(
+      verificationUri: Uri.parse("https://auth.example/device"),
+      userCode: "ABCD-EFGH",
+    );
+    when(() => pluginService.startAuthentication(pluginId: "opencode")).thenAnswer((_) async {
+      authenticationChallenges.add({"opencode": challenge});
+      return PluginAuthenticationStartResult.challenge(challenge: challenge);
+    });
+    pluginSnapshots.add(
+      PluginManagementLoadResult.supported(
+        response: _pluginResponse.copyWith(
+          plugins: [
+            _plugin.copyWith(
+              setup: _plugin.setup.copyWith(state: PluginSetupState.authenticationRequired),
+              managementCapabilities: {PluginManagementCapability.authentication},
+            ),
+          ],
+        ),
+        refreshError: null,
+      ),
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.harnesses);
+    await tester.tap(find.text("OpenCode"));
+    await tester.pumpAndSettle();
+    final detail = tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView));
+    await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    detail.onClose();
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.text("open"), findsOneWidget);
+    expect(pluginSnapshots.hasListener, isFalse);
+    verifyNever(() => pluginService.cancelAuthentication(pluginId: "opencode"));
   });
 }
-
-void _noOp() {}
-
-void _noOpenHarness({required String pluginId}) {}

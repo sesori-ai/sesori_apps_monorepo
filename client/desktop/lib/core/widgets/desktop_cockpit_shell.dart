@@ -11,8 +11,6 @@ import "../di/injection.dart";
 import "desktop_connection_pill.dart";
 import "desktop_sidebar.dart";
 
-export "desktop_sidebar.dart" show DesktopCockpitDestination;
-
 /// Shared project/recent inventories and one layout owner per signed-in cockpit.
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
   @override
@@ -37,7 +35,6 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
 /// Product-shell navigation and supervision chrome around the desktop cockpit.
 class const DesktopCockpitShell({
   super.key,
-  required final DesktopCockpitDestination destination,
   required final String? selectedProjectId,
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
@@ -85,7 +82,6 @@ class const DesktopCockpitShell({
                   child: DesktopSidebar(
                     expansion: expansion,
                     autoCollapsed: autoCollapsed,
-                    destination: destination,
                     selectedProjectId: selectedProjectId,
                     selectedSessionId: selectedSessionId,
                     onOpenSession: onOpenSession,

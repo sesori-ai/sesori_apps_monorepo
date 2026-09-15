@@ -20,7 +20,7 @@ to ordinals 10–14. Step 2.a retains `steps/step-02.md`; its follow-up uses
 | [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/14]` | ≤ 700 | done |
 | [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/14]` | ≤ 1,500 | done |
 | [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/14]` | ≤ 500 | done |
-| [ ] | 7.b | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,500 | pending |
+| [ ] | 7.b | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,500 | in-progress |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 10/14]` | ≤ 1,000 | pending |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 11/14]` | ≤ 700 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 12/14]` | ≤ 600 | pending |
@@ -42,6 +42,7 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 
 - Step 5: [PR #1497](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1497).
 - Step 6: [PR #1498](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1498).
+- Step 7.a: [PR #1500](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1500).
 
 ## Unattended execution
 
