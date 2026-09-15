@@ -196,6 +196,10 @@ Keep ownership narrow:
   instance, window and tray collaborators, and invokes a typed post-stop operation
   on `DesktopUpdateService` for normal Quit or Install and restart. Update policy
   stays in the service; helper-stop authority stays in `BridgeProcessService`.
+  Tray Quit, no-tray close, and explicit update restart call that same
+  `quit({required DesktopExitAction action})` method, extending the existing tested
+  sequence rather than introducing a second terminal workflow. The cubit remains
+  pure-Dart Layer-4 orchestration, not a Flutter-shell implementation.
   No second stop path, service-to-service dependency, or cubit dependency is added.
 - Native callbacks marshal events onto the supported Flutter/native thread seam,
   through API/repository into `DesktopUpdateService`. They never independently kill
@@ -206,12 +210,30 @@ Keep ownership narrow:
   `configureDesktopCoreDependencies` (phase 4). Keep the current four-phase order;
   the shell's `BlocProvider` constructs the cubit, which is never DI-registered.
 
+**Startup and cleanup owner:** `client/desktop/lib/main.dart` resolves the lazy
+`DesktopUpdateService` only for the primary desktop instance, after DI and successful
+local window/control setup. As with its existing post-frame analytics callback,
+`main` invokes `DesktopUpdateService.start()` in a guarded, unawaited first-frame
+callback. Constructors remain side-effect-free; `start()` subscribes to native
+outcomes before enabling background checks and does not wait for network completion.
+Failures become service failure state and useful local diagnostics, not silent
+unawaited errors. Initial routing/rendering and bridge restore do not wait for updates.
+
+The service owns the native-event subscription for the primary app lifetime.
+Its post-stop terminal operation retires background checking/callbacks as part of
+normal exit or accepted install handoff; cleanup must not cancel an already accepted
+native installer. Register `DesktopUpdateService.dispose()` with Injectable's disposal
+hook for `getIt.reset()`/test teardown; it releases the service subscription and
+native updater resources without applying an update. `BridgeControlCubit.close()`
+cancels only its presentation subscription to the service. Do not make a settings
+screen, incidental lazy lookup, or constructor responsible for starting checks.
+
 The normal path is:
 
-1. After local startup, `DesktopUpdateService` starts the native updater's own
-   background check/preparation and consumes its typed outcomes; no splash network
-   wait or duplicate Dart polling timer. The cubit projects prepared/failed service
-   state without recreating policy or exposing raw errors to remote telemetry.
+1. The named first-frame startup call starts the native updater's own background
+   check/preparation through `DesktopUpdateService`; no splash network wait or
+   duplicate Dart polling timer. The cubit projects prepared/failed service state
+   without recreating policy or exposing raw errors to remote telemetry.
 2. Close-to-tray leaves the application and helper running. A prepared update must
    not turn close-to-tray, logout, Bridge Off, or a helper crash into installation.
    On a host without a tray, close already means safe application Quit and qualifies.

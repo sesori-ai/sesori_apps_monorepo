@@ -76,6 +76,12 @@ No user decision changed and no additional mutable coordination was added. Per t
 repository review rule, fixes were applied without re-review; do not describe the
 corrected draft as reviewer-approved.
 
+PR review follow-up: explicitly named `main`'s guarded first-frame service startup,
+subscription ordering, terminal cleanup, Injectable disposal, and cubit presentation
+subscription cleanup. Kept the existing pure-Dart Layer-4 quit owner: all terminal
+intents enter one tested method, while update policy remains in the service. A new
+orchestrator solely for hypothetical future exit callers is not part of this plan.
+
 ## Planning validation
 
 - Local Markdown links in all six changed/new documents: passed.
