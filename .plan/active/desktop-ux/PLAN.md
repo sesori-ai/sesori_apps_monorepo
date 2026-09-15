@@ -148,9 +148,9 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   `ConnectionBanner` mount. A Prego-surfaced pill overlays the top of the main
   pane in a `Stack`, driven by `ConnectionOverlayCubit`, fading in and out. It
   shows `reconnecting` and actionable `connectionLost`; `bridgeOffline` appears
-  only while the supervised bridge is wanted On. Intentional Off is reported
-  by the sidebar/home, while relay recovery remains available to clients using
-  another bridge. That suppression is owned by the desktop
+  only while the supervised bridge is wanted On. Off, including its cold-start/
+  default value before any user action, is reported by the sidebar/home. Relay
+  recovery remains available to clients using another bridge. That suppression is owned by the desktop
   pill widget in `client/desktop`, which combines `ConnectionOverlayState` with
   `BridgeControlCubit` state; `ConnectionOverlayCubit` in `module_core` is
   untouched and never learns about desktop supervision. The sidebar Bridge row

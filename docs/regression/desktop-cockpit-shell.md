@@ -68,8 +68,9 @@ The main pane hosts one full-width routed page.
   Shared Prego text styles and Material themes resolve the bundled package font.
 - Connection status floats over the main pane without changing its bounds.
   Reconnecting appears after the shared grace period; connection lost retains
-  Reconnect. Intentional local Off suppresses bridge-offline copy, not relay
-  recovery for clients using another bridge. Recovery hides the pill with a
+  Reconnect. Local desired Off, including cold-start/default Off before a user
+  starts the bridge, suppresses bridge-offline copy—not relay recovery for
+  clients using another bridge. Recovery hides the pill with a
   short fade; reduced motion disables it. Departing content neither intercepts
   input nor remains in accessibility announcements.
 - The Bridge row always exposes its supervised status through a dot and an

@@ -14,8 +14,10 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
     final state = overlay.state;
     final title = switch (state) {
       ConnectionOverlayHidden() => null,
+      // Off is quiet regardless of origin, including the cold-start/default value.
       ConnectionOverlayBridgeOffline() when wanted == BridgeProcessDesiredState.off => null,
       ConnectionOverlayBridgeOffline() => context.loc.bridgeDisconnectedTitle,
+      // Relay recovery can still be needed when using another bridge.
       ConnectionOverlayReconnecting() => context.loc.connectionReconnectingTitle,
       ConnectionOverlayConnectionLost() => context.loc.connectionLostTitle,
     };

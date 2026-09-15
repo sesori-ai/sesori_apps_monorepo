@@ -4,8 +4,10 @@
 
 - Connection state floats over the routed main pane without changing its bounds.
   Shared grace/reconnect ownership stays in `ConnectionOverlayCubit`.
-- Local Off suppresses bridge-offline copy. Relay reconnecting/lost presentation
-  and Reconnect remain available when using another bridge.
+- Local desired Off suppresses bridge-offline copy, including cold-start/default
+  Off before any user action. Relay reconnecting/lost presentation and Reconnect
+  remain available when using another bridge. No past-action provenance is inferred
+  from activity/process state. PR feedback clarified this wording, not behavior.
 - Recovery fades away without intercepting clicks or retaining announcements;
   both reduced-motion signals disable the fade.
 - Bridge status remains visible/accessibly described in expanded and compact
