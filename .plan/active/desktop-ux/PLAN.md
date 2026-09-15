@@ -3,7 +3,7 @@
 ## Status
 
 Planned 2026-09-15; sidebar, main-pane and connection presentation are complete
-through logical step 5 (see `TRACKER.md` and its linked verification evidence).
+through logical step 6 (see `TRACKER.md` and its linked verification evidence).
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
 are listed at the end as rough intent only and get their own plans when they
@@ -161,7 +161,8 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   The pinned bottom Bridge row opens a `PregoPopover` with status, On/Off,
   Take over (when applicable), Start at login, Open logs, Bridge settings…,
   and Quit. `DesktopHome` is deleted; `/splash` renders a home pane (empty
-  state, bridge recovery, first-run cards).
+  state, bridge recovery, first-run cards). Between steps 6 and 7, Bridge
+  settings… opens the existing Settings route; step 7 targets the modal's Bridge tab.
 - **D7 — Settings is a modal, not a route.** A root-navigator dialog with a
   blurred/dimmed backdrop (Prego's existing glass gate decides blur versus
   dim), a left tab column (General, Harnesses, Bridge, Notifications, Account)
@@ -461,6 +462,9 @@ Included in the feature PRs (directly caused, small):
   `projects` and settings `GoRoute`s with `isDesktopSettingsPath`/`_openSettings`,
   and the root `ConnectionBanner` `Column` mount in `app.dart`.
 - Delete desktop tests that only exercised the removed compositions.
+- Step 6 removes the dashboard-only recent-log snapshot field, buffer and
+  stream. Bounded pipe draining, queued rotating persistence, and crash
+  exit/count diagnostics remain; Open Logs is the diagnostic surface.
 
 Kept: `DesktopSessionListCubitProvider` and `DesktopSessionListScreen` (they
 already provide the project-scoped `SessionListCubit` and render the shared
@@ -495,13 +499,18 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
 | 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; explicit nullable detail Back callback based on the owning page's poppability; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
 | 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
-| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | Bridge popover (`PregoPopover`) with status, On/Off, Take over, Start at login (re-read on open), Open logs, Bridge settings…, Quit; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
+| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,400 | Bridge popover (`PregoPopover`) with status, On/Off, Take over, Start at login (re-read on open), Open logs, Bridge settings…, Quit; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
 | 7 | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
 | 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
 | 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 10/13]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |
 | 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 11/13]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
 | 11 | `🌿 [desktop-ux] Reconcile regression documentation [step 12/13]` | ≤ 600 | New `docs/regression/desktop-cockpit-shell.md`; updates listed below. |
 | 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 13/13]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
+
+Step 6's target was raised from 900 to 1,400 after measuring the complete
+popover/test replacement and causal log-snapshot cleanup. Much of the diff is
+retired dashboard/test code; it remains one coherent slice below the repository
+soft cap, without an interim dead-state API or logging redesign.
 
 Step 4's render verification also corrected the existing Prego font-family
 constant to match the bundled package name and removed redundant sidebar font
@@ -514,9 +523,9 @@ step 6 (its Settings rows and popover switch), step 7 after step 6 (Bridge
 settings… target).
 
 Every implementation step keeps the app building and the existing desktop and
-mobile test suites green. Steps 2.a, 3, 4 and 7 are architecture-bearing (new
-classes, DI ownership, route ownership) and get the implementation review;
-steps 2.b, 5, 6, 9, 10 do not unless review evidence changes that.
+mobile test suites green. Steps 2.a, 3, 4, 5, 6 and 7 are architecture-bearing (new classes,
+composition or route ownership) and receive implementation review. Reassess
+later slices against the repository's actual-change rule.
 
 ## Per-Step Verification
 

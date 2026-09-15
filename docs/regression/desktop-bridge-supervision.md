@@ -90,17 +90,19 @@ and keep native close/quit behavior safe.
   before lifecycle work begins: a persistence failure leaves the helper and
   session unchanged, while a failed start or stop leaves the next action
   targeted at retrying that failed operation.
-- The signed-in window shows account, process/control status, registration,
-  relay state, plugin health, active-session count, takeover/login-required
-  states, and recent output after crash give-up. Take Over is an explicit tray
-  and window action for local bridge contention or relay displacement; it
+- The signed-in window opens on project/session guidance and recovery. Its
+  pinned Bridge popover presents process/client status and existing controls;
+  account information remains in Settings, and the tray retains active-session
+  counts. Opening the popover refreshes the native launch-at-login flag without
+  racing a user toggle; busy states still permit diagnostics. Take Over is an
+  explicit tray and window action for local contention or relay displacement; it
   persists On, performs one stop-and-respawn, and accepts only replacement
-  prompts from the fresh helper. A persistent desktop sidebar reaches Bridge,
-  Projects, and Settings, while exceptional login-required, crash-give-up, and
+  prompts from the fresh helper. A persistent desktop sidebar reaches bridge
+  controls, projects, and settings, while exceptional login-required, crash-give-up, and
   takeover recovery appears in the sidebar footer across cockpit destinations. Recovery starts or retries the supervised helper or
   opens its logs and never offers mobile CLI-install instructions.
-- The window routes from supervision into shared project/session inventory,
-  settings, profile, and harness-management surfaces without creating another
+- The window routes between shared project/session inventory, settings,
+  profile, and harness-management surfaces without creating another
   auth/session owner. Desktop injects account state, navigation, external-link/
   package metadata, and its coordinated logout workflow; it deliberately omits
   the mobile push-notification preference surface and instead exposes one
@@ -135,7 +137,10 @@ and keep native close/quit behavior safe.
   immediately rather than only the current route.
 - Open Logs prepares the owner-only active log through Layer-1 storage, then
   resolves it through the desktop log repository and delegates it to the system
-  default application, including before the helper emits its first line.
+  default application, including before the helper emits its first line. Both
+  pipes continue draining through byte-bounded lines and a bounded persistence
+  queue; storage warnings are rate-limited and do not stop the drains. Crash
+  recovery preserves exit/count diagnostics and links to rotating logs.
 - Device-local sign-out locks every bridge lifecycle surface, asks the live
   helper to `unregister_and_exit`, waits for that command's expected exit
   without sending a competing shutdown, and independently deletes the GUI's
@@ -157,7 +162,7 @@ and keep native close/quit behavior safe.
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
 | L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
-| L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
+| L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash diagnostics, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
 
 ## Exploration Guidance
@@ -169,7 +174,7 @@ both clean and failed helper teardown before Quit or sign-out. Exercise Take
 Over from local contention and relay displacement, and verify one stop-and-
 respawn rather than a restart war. Quit while desired On, relaunch, and verify
 last-On restoration. Kill the helper at different handshake phases and inspect
-the status and bounded recent output. For packaged helper resolution, vary
+the status and rotating log output. For packaged helper resolution, vary
 installed paths containing spaces, an unrelated cwd and a development override;
 only the installed payload should be used. Install a complete new GUI/helper package
 while the old GUI remains open to test its next-spawn mismatch refusal; restart into
@@ -229,8 +234,8 @@ verify the actual relocated helper, not merely the presence of its binary.
   relay connection, or exposes mobile CLI commands.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
-  a takeover starts a restart war or approves a non-replacement prompt, recent
-  crash output is absent, Open Logs targets a nonexistent/bypassed file, or a
+  a takeover starts a restart war or approves a non-replacement prompt, crash
+  diagnostics are inaccessible, Open Logs targets a nonexistent/bypassed file, or a
   supervised Full Disk Access warning tells the user to authorize only
   Terminal instead of the process running the bridge.
 - The desktop theme lacks Prego colors, typography, or design-system extension;
@@ -295,7 +300,7 @@ verify the actual relocated helper, not merely the presence of its binary.
 - `client/module_core/lib/src/repositories/bridge_repository.dart`
 - `client/desktop/lib/core/platform/flutter_window_host.dart`
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
-- `client/desktop/lib/features/home/desktop_home.dart`
+- `client/desktop/lib/core/widgets/desktop_bridge_popover.dart`
 - `client/desktop/lib/features/home/desktop_home_pane.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
