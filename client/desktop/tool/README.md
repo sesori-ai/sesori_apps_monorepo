@@ -1,4 +1,6 @@
-# Unsigned native desktop bundles
+# Native desktop bundles
+
+## Unsigned staging
 
 Use the repository-pinned Flutter/Dart SDK on the target OS/CPU. The producer resolves
 Flutter beside that SDK's Dart VM, not independently from PATH. Resolve the client
@@ -15,11 +17,12 @@ The output must not already exist. Failed output is retained for diagnosis; retr
 with a new output path rather than automatically deleting or replacing artifacts.
 The producer builds the bridge and release GUI
 from that checkout, enforces dependency locks, checks the helper's reported version,
-and embeds one `DesktopBundleIdentity` in both the GUI and helper manifest.
+and embeds one `DesktopBundleIdentity` in both the GUI and package manifest.
 
 - macOS payload: `<output>/Sesori.app`; complete helper at
-  `Contents/Helpers/bridge/`.
-- Windows/Linux payload: `<output>/bundle`; complete helper at `bridge/`.
+  `Contents/Helpers/bridge/`; identity manifest at `Contents/Resources/desktop-bundle.json`.
+  Helpers is code-only for signing; the JSON is a sealed app resource.
+- Windows/Linux payload: `<output>/bundle`; complete helper and `desktop-bundle.json` at `bridge/`.
 - The helper keeps its generated `bin/` and `lib/` layout. Do not copy its executable
   alone or modify native-asset metadata.
 - `dart-defines.env` is build metadata, not a credential file.
@@ -37,3 +40,69 @@ Release builds require the matching staged helper and compiled identity. For loc
 repository helpers or `SESORI_DESKTOP_BRIDGE_PATH`, use debug/profile builds instead.
 Product semantic-version bumps include desktop through `make bump-version`; desktop
 build numbers and release channels remain independently owned.
+
+## Private notarized macOS packages
+
+A maintainer can select an explicitly trusted committed ref in the existing
+`Desktop Native Qualification` workflow. Default PR and `native-builds` runs
+remain credential-free. For example, after the tooling is merged:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-signing-preflight
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-packaging
+```
+
+The preflight verifies existing Developer ID signing and Apple notarization access.
+Packaging builds both native macOS targets from committed source, signs native
+libraries/frameworks inside-out and the hardened helper/app, notarizes/staples the
+app, then creates the final app ZIP and signed/notarized/stapled DMG. The DMG offers
+an Applications link: install the app into Applications rather than use it from the
+mounted image. Framework symlinks and the complete helper bin/lib layout survive
+both formats. Every extracted native binary, the app and the DMG are verified;
+Gatekeeper assessment and extracted-helper E2E must pass before package upload.
+Signing refuses a nonempty build-recorded source patch; commit those source changes
+and retry from a fresh committed checkout rather than signing a dirty build.
+
+Only the explicit preflight/packaging signing step consumes `MACOS_CERT_P12_BASE64`,
+`MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`,
+`APPLE_APP_SPECIFIC_PASSWORD`, and the `APPLE_TEAM_ID` repository variable. Signing
+uses the established Developer ID publisher. Temporary certificate/Keychain/profile
+files stay outside the checkout and artifact paths and are removed after use.
+Passwords never become Python packager arguments or exception text. These existing
+repository-level secrets assume trusted repository writers; manual dispatch is not
+an access-control boundary against them. Owner-approved migration to protected
+environments, including shared CLI callers and removal of repository-wide copies,
+is a public-publication prerequisite, not an already-enforced qualification guard.
+
+Private artifacts `desktop-macos-packages-{x64,arm64}` contain
+`Sesori-macos-<arch>.dmg` and `.zip`; matching `desktop-macos-evidence-<arch>`
+artifacts retain identity, final digests, receipts, binary inventories and logs,
+including available failure diagnostics. Both expire after 14 days. Failed
+output is not automatically removed/replaced; a fresh job gets a fresh destination.
+
+Fresh CI hosts additionally install the real app into Applications and inspect its
+startup window, with screenshot attempts recorded separately from visual assessment.
+A separately Developer-ID-signed release fixture tests the production Keychain
+configuration across two launches, login-registration writes/removal and owned file
+access. That fixture never starts bridge/session services and is not uploaded as a
+product. Neither probe may run on a local developer host; existing app/bridge/login
+registration state causes refusal rather than takeover. A missing active screen is
+a blocked, nonzero probe result and prevents the verified-package upload.
+
+For GUI-only diagnostics, set `PACKAGING_RUN` to a trusted successful packaging run
+whose private artifacts are still available, then dispatch the credential-free
+replay. It checks the publisher and Gatekeeper, records the sealed source identity,
+and captures window/full-desktop images and a native process sample. It does not
+rebuild, re-sign or rerun unchanged Keychain/helper probes:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-gui-probe -f packaging_run="$PACKAGING_RUN"
+```
+
+This pipeline does not publish a release/feed or prove installed GUI authentication,
+Keychain restoration, TCC, autostart, minimum-OS operation, updates or public-release
+readiness. Keep those checks explicit in the distribution plan and
+[macOS packaging regression](../../../docs/regression/desktop-macos-packaging.md).

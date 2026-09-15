@@ -35,7 +35,10 @@ void main() {
           resolver.resolve(),
           path.join(helperRoot, "bin", os == DesktopBundleOs.windows ? "bridge.exe" : "bridge"),
         );
-        expect(manifestRead, path.join(helperRoot, DesktopBundleIdentity.manifestName));
+        final String manifestDirectory = os == DesktopBundleOs.macos
+            ? path.absolute("Installed App", "Contents", "Resources")
+            : helperRoot;
+        expect(manifestRead, path.join(manifestDirectory, DesktopBundleIdentity.manifestName));
       });
     }
   }

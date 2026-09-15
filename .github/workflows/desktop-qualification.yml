@@ -1,17 +1,34 @@
 name: Desktop Native Qualification
 
-# Build evidence only. No release tags, signing credentials, publication or GUI launch.
+# Default qualification: no signing credentials, release tags, publication or GUI launch.
+# Explicit manual macOS modes verify credentials or produce private notarized test artifacts.
 # Targeted SDK/tooling qualification, NOT another full-source PR CI matrix.
 # Product source changes remain covered by desktop-ci.yml and explicit packaged release gates.
 # This intentionally does not gate the independent CLI/mobile release workflows.
 on:
   workflow_dispatch:
+    inputs:
+      mode:
+        description: 'Qualification mode (no product publication)'
+        type: choice
+        options: [native-builds, macos-signing-preflight, macos-packaging, macos-gui-probe]
+        default: native-builds
+      packaging_run:
+        description: 'Successful trusted packaging run to inspect (macos-gui-probe only)'
+        type: string
   pull_request:
     paths:
       - '.github/workflows/desktop-qualification.yml'
       - '.github/scripts/qualify_desktop.py'
       - '.github/scripts/test_qualify_desktop.py'
+      - '.github/scripts/package_desktop_macos.py'
+      - '.github/scripts/test_package_desktop_macos.py'
+      - '.github/scripts/macos_signing_ci.sh'
       - '.github/scripts/probe_sparkle.swift'
+      - '.github/scripts/probe_desktop_macos.py'
+      - '.github/scripts/test_probe_desktop_macos.py'
+      - '.github/scripts/inspect_desktop_macos_window.swift'
+      - 'client/desktop/test/native/packaged_platform_probe.dart'
       - '.tool-versions'
       - 'client/desktop/tool/stage_desktop_bundle.dart'
       - 'client/module_desktop_core/lib/src/foundation/models/desktop_bundle_identity.dart'
@@ -24,6 +41,155 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  macos-distribution:
+    needs: tooling
+    if: >-
+      github.event_name == 'workflow_dispatch' &&
+      (inputs.mode == 'macos-signing-preflight' || inputs.mode == 'macos-packaging' || inputs.mode == 'macos-gui-probe')
+    permissions:
+      contents: read
+      actions: read
+    timeout-minutes: ${{ inputs.mode == 'macos-packaging' && 75 || 10 }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-26-intel
+            arch: x64
+          - runner: macos-26
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.arch }}
+      - name: Select qualified Xcode
+        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
+
+      - name: Bootstrap pinned native SDK and stage committed source
+        if: inputs.mode == 'macos-packaging'
+        env:
+          SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-qualification
+          python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
+            2>&1 | tee build/desktop-qualification/bootstrap.log
+          # GITHUB_PATH additions take effect in the next step; use this SDK explicitly here.
+          export PATH="$SDK_DIR/bin:$PATH"
+          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+          (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
+            --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
+            2>&1 | tee build/desktop-qualification/bundle-build.log
+          if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then
+            echo 'Commit build-generated source changes before signing; see build-source-changes.patch.' >&2
+            exit 1
+          fi
+          # Separate release fixture: never replace the staged product or upload this as a package.
+          (cd client/desktop && flutter build macos --release --no-pub \
+            --target test/native/packaged_platform_probe.dart) \
+            2>&1 | tee build/desktop-qualification/platform-probe-build.log
+          ditto client/desktop/build/macos/Build/Products/Release/Sesori.app build/desktop-platform-probe/Sesori.app
+
+      - name: Validate GUI-only artifact selection
+        if: inputs.mode == 'macos-gui-probe'
+        env:
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+        run: |
+          [[ "$PACKAGING_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Select a trusted successful packaging run'; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        if: inputs.mode == 'macos-gui-probe'
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.packaging_run }}
+          name: desktop-macos-packages-${{ matrix.arch }}
+          path: build/desktop-gui-download
+
+      - name: Re-probe the existing signed GUI without rebuilding or signing
+        if: inputs.mode == 'macos-gui-probe'
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-macos-packaging
+          ditto -xk 'build/desktop-gui-download/Sesori-macos-${{ matrix.arch }}.zip' build/desktop-gui-download/expanded
+          python .github/scripts/probe_desktop_macos.py \
+            --app build/desktop-gui-download/expanded/Sesori.app \
+            --output build/desktop-macos-packaging/platform-probe \
+            2>&1 | tee build/desktop-macos-packaging/platform-probe.log
+
+      - name: Use existing credentials for the selected private operation
+        if: inputs.mode != 'macos-gui-probe'
+        env:
+          MACOS_DISTRIBUTION_MODE: ${{ inputs.mode }}
+          TARGET_ARCH: ${{ matrix.arch }}
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: bash .github/scripts/macos_signing_ci.sh
+
+      - name: Exercise the extracted signed helper with isolated fakes
+        if: inputs.mode == 'macos-packaging'
+        env:
+          SESORI_E2E_REQUIRED: '1'
+          SESORI_DESKTOP_BRIDGE_PATH: ${{ github.workspace }}/build/desktop-macos-packaging/verified-zip/Sesori.app/Contents/Helpers/bridge/bin/bridge
+          SESORI_E2E_ARTIFACT_DIR: ${{ github.workspace }}/build/desktop-macos-packaging/supervised-e2e
+        run: |
+          set -euo pipefail
+          (cd bridge/app && dart test test/integration/supervised_e2e_test.dart --reporter expanded) \
+            2>&1 | tee build/desktop-macos-packaging/supervised-e2e.log
+
+      - name: Probe installed GUI and separately signed platform fixture
+        if: inputs.mode == 'macos-packaging'
+        run: |
+          set -euo pipefail
+          python .github/scripts/probe_desktop_macos.py \
+            --app build/desktop-macos-packaging/verified-zip/Sesori.app \
+            --fixture build/desktop-platform-probe/Sesori.app \
+            --output build/desktop-macos-packaging/platform-probe \
+            2>&1 | tee build/desktop-macos-packaging/platform-probe.log
+
+      - name: Upload complete private packages only after verification
+        if: inputs.mode == 'macos-packaging'
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-packages-${{ matrix.arch }}
+          path: |
+            build/desktop-macos-packaging/Sesori-macos-*.dmg
+            build/desktop-macos-packaging/Sesori-macos-*.zip
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload packaging diagnostics without private signing material
+        if: always() && (inputs.mode == 'macos-packaging' || inputs.mode == 'macos-gui-probe')
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-macos-evidence-${{ matrix.arch }}
+          path: |
+            build/desktop-qualification/*.json
+            build/desktop-qualification/*.log
+            build/desktop-bundle/build-source-changes.patch
+            build/desktop-macos-packaging/*.json
+            build/desktop-macos-packaging/*.log
+            build/desktop-macos-packaging/supervised-e2e/
+            build/desktop-macos-packaging/platform-probe/
+          if-no-files-found: warn
+          retention-days: 14
+
   tooling:
     runs-on: ubuntu-24.04
     steps:
@@ -31,10 +197,11 @@ jobs:
       - uses: actions/setup-python@v6
         with:
           python-version: '3.13'
-      - run: python -m unittest discover -s .github/scripts -p test_qualify_desktop.py
+      - run: python -m unittest discover -s .github/scripts -p 'test_*desktop*.py'
 
   native-build:
     needs: tooling
+    if: github.event_name != 'workflow_dispatch' || inputs.mode == 'native-builds'
     timeout-minutes: 40
     strategy:
       fail-fast: false
