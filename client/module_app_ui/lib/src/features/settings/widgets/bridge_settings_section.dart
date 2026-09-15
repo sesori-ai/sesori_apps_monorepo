@@ -10,12 +10,12 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "settings_section.dart";
 
-class const BridgeSettingsSection({super.key}) extends StatelessWidget {
+class const BridgeSettingsSection({super.key, required final String title}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
     return SettingsSection(
-      title: context.loc.settingsSectionBridge,
+      title: title,
       child: PregoGroupedRows(
         children: [
           const _YoloSettingsRow(),

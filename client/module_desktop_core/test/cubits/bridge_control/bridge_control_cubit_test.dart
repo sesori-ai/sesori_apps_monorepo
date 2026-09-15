@@ -195,6 +195,38 @@ void main() {
       expect(cubit.state.launchAtLoginEnabled, isFalse);
     });
 
+    test("opening General refreshes an externally changed native registration", () async {
+      await cubit.initialize();
+      launchAtLogin.enabled = true;
+      await cubit.refreshLaunchAtLogin();
+      expect(cubit.state.launchAtLoginEnabled, isTrue);
+      expect(cubit.state.activity, BridgeControlActivity.idle);
+      expect(launchAtLogin.enableCalls, 0);
+      expect(launchAtLogin.disableCalls, 0);
+    });
+
+    test("native refresh locks preference writes and releases them after a read failure", () async {
+      await cubit.initialize();
+      final read = Completer<bool>();
+      launchAtLogin.read = read;
+      final refresh = cubit.refreshLaunchAtLogin();
+      expect(cubit.state.activity, BridgeControlActivity.configuringLaunchAtLogin);
+      await cubit.setLaunchAtLogin(enabled: true);
+      expect(launchAtLogin.enableCalls, 0);
+      read.completeError(StateError("native registration unavailable"), StackTrace.current);
+      await refresh;
+      expect(cubit.state.activity, BridgeControlActivity.idle);
+      expect(cubit.state.launchAtLoginEnabled, isFalse);
+    });
+
+    test("a switch setting the same value twice does not invert its intent", () async {
+      await cubit.initialize();
+      await cubit.setLaunchAtLogin(enabled: true);
+      await cubit.setLaunchAtLogin(enabled: true);
+      expect(cubit.state.launchAtLoginEnabled, isTrue);
+      expect(launchAtLogin.disableCalls, 0);
+    });
+
     test("failed launch-at-login registration remains retryable", () async {
       launchAtLogin.enableError = StateError("login item unavailable");
       await cubit.initialize();
@@ -895,9 +927,13 @@ class _FakeLaunchAtLogin() implements LaunchAtLogin {
   int disableCalls = 0;
   Object? enableError;
   Object? disableError;
+  Completer<bool>? read;
 
   @override
-  Future<bool> isEnabled() async => enabled;
+  Future<bool> isEnabled() async {
+    final pending = read;
+    return pending == null ? enabled : await pending.future;
+  }
 
   @override
   Future<void> enable() async {

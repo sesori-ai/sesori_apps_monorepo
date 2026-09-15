@@ -97,7 +97,7 @@ class const SettingsView({
                   ),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
-                const BridgeSettingsSection(),
+                BridgeSettingsSection(title: loc.settingsSectionBridge),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(
                   title: loc.settingsSectionSessions,
@@ -159,55 +159,9 @@ class const SettingsView({
                   child: const AppearancePicker(),
                 ),
                 const SizedBox(height: PregoSpacing.xl),
-                SettingsSection(
-                  title: loc.settingsSectionSupport,
-                  child: PregoGroupedRows(
-                    children: [
-                      _SupportRow(
-                        icon: TablerRegular.mail,
-                        title: loc.settingsSupportEmail,
-                        url: SupportLinks.email,
-                        openSupportLink: openSupportLink,
-                      ),
-                      _SupportRow(
-                        icon: TablerRegular.brand_discord,
-                        title: loc.settingsSupportDiscord,
-                        url: SupportLinks.discord,
-                        openSupportLink: openSupportLink,
-                      ),
-                      _SupportRow(
-                        // Tabler's pinned set ships the legacy bird glyph,
-                        // not the X mark.
-                        icon: TablerRegular.brand_twitter,
-                        title: loc.settingsSupportX,
-                        url: SupportLinks.x,
-                        openSupportLink: openSupportLink,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: PregoSpacing.xl),
-                SettingsSection(
-                  title: loc.settingsSectionLegal,
-                  child: PregoGroupedRows(
-                    children: [
-                      _LegalRow(
-                        icon: TablerRegular.file_text,
-                        title: loc.settingsLegalTerms,
-                        document: LegalDocument.terms,
-                        openLegalDocument: openLegalDocument,
-                      ),
-                      _LegalRow(
-                        icon: TablerRegular.lock,
-                        title: loc.settingsLegalPrivacy,
-                        document: LegalDocument.privacy,
-                        openLegalDocument: openLegalDocument,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: PregoSpacing.x4l),
-                _AppFooter(
+                SettingsAppInfo(
+                  openSupportLink: openSupportLink,
+                  openLegalDocument: openLegalDocument,
                   loadAppVersionInfo: loadAppVersionInfo,
                   logo: footerLogo,
                 ),
@@ -218,6 +172,73 @@ class const SettingsView({
         SliverToBoxAdapter(
           child: SizedBox(height: MediaQuery.paddingOf(context).bottom + PregoSpacing.xl),
         ),
+      ],
+    );
+  }
+}
+
+/// Account-neutral app information reused by full-page and tabbed settings.
+class const SettingsAppInfo({
+  super.key,
+  required final Future<void> Function({required Uri url}) openSupportLink,
+  required final Future<void> Function({required LegalDocument document}) openLegalDocument,
+  required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
+  required final Widget? logo,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        SettingsSection(
+          title: loc.settingsSectionSupport,
+          child: PregoGroupedRows(
+            children: [
+              _SupportRow(
+                icon: TablerRegular.mail,
+                title: loc.settingsSupportEmail,
+                url: SupportLinks.email,
+                openSupportLink: openSupportLink,
+              ),
+              _SupportRow(
+                icon: TablerRegular.brand_discord,
+                title: loc.settingsSupportDiscord,
+                url: SupportLinks.discord,
+                openSupportLink: openSupportLink,
+              ),
+              _SupportRow(
+                // Tabler's pinned set ships the legacy bird glyph, not the X mark.
+                icon: TablerRegular.brand_twitter,
+                title: loc.settingsSupportX,
+                url: SupportLinks.x,
+                openSupportLink: openSupportLink,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: PregoSpacing.xl),
+        SettingsSection(
+          title: loc.settingsSectionLegal,
+          child: PregoGroupedRows(
+            children: [
+              _LegalRow(
+                icon: TablerRegular.file_text,
+                title: loc.settingsLegalTerms,
+                document: LegalDocument.terms,
+                openLegalDocument: openLegalDocument,
+              ),
+              _LegalRow(
+                icon: TablerRegular.lock,
+                title: loc.settingsLegalPrivacy,
+                document: LegalDocument.privacy,
+                openLegalDocument: openLegalDocument,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: PregoSpacing.x4l),
+        _AppFooter(loadAppVersionInfo: loadAppVersionInfo, logo: logo),
       ],
     );
   }
