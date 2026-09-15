@@ -12,6 +12,9 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
+import "package:sesori_desktop/core/routing/desktop_router.dart";
+import "package:sesori_desktop/core/widgets/desktop_escape_dismissal.dart";
+import "package:sesori_desktop/features/auth_gate/auth_gate.dart";
 import "package:sesori_desktop/features/settings/desktop_settings_modal.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -210,7 +213,18 @@ void main() {
       initialLocation: "/session",
       routes: [
         ShellRoute(
-          builder: (_, _, child) => BlocProvider<AuthGateCubit>.value(value: authGateCubit, child: child),
+          builder: (_, state, child) => BlocProvider<AuthGateCubit>.value(
+            value: authGateCubit,
+            child: Builder(
+              builder: (context) {
+                // Exercise registered shortcuts without mounting production DI or the cockpit.
+                final shell = buildDesktopRoutes().single as ShellRoute;
+                final gate = shell.builder!(context, state, child) as AuthGate;
+                final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
+                return CallbackShortcuts(bindings: shortcuts.bindings, child: child);
+              },
+            ),
+          ),
           routes: [
             GoRoute(
               path: "/session",
@@ -244,6 +258,7 @@ void main() {
           theme: buildPregoThemeData(brightness: Brightness.light),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
+          builder: (_, child) => DesktopEscapeDismissal(child: child!),
         ),
       ),
     );
@@ -293,6 +308,20 @@ void main() {
     await tester.tap(find.text("Open Logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
+    final interval = find.byKey(const Key("pull_request_refresh_interval"));
+    await tester.ensureVisible(interval);
+    await tester.tap(interval);
+    await tester.pumpAndSettle();
+    final input = find.byType(EditableText);
+    await tester.showKeyboard(input);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pump();
+    expect(tester.widget<EditableText>(input).focusNode.hasFocus, isFalse);
+    expect(find.byType(PregoBottomSheet), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoBottomSheet), findsNothing);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
   });
 
   testWidgets("Notifications uses desktop attention and Account retains supervised logout", (tester) async {
@@ -313,6 +342,19 @@ void main() {
     expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
     expect(find.text("open"), findsOneWidget);
   });
+
+  for (final failure in DesktopLogoutOutcome.values.where((outcome) => outcome != DesktopLogoutOutcome.completed)) {
+    testWidgets("failed logout ${failure.name} keeps Account open", (tester) async {
+      when(authGateCubit.signOut).thenAnswer((_) async => failure);
+      final router = await open(tester: tester, tab: DesktopSettingsTab.account);
+      await tester.tap(find.text("Log Out"));
+      await tester.pumpAndSettle();
+      expect(logoutCompletions, 0);
+      expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
+      expect(router.state.uri.path, "/session");
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets("late logout completion cannot pop the opener after dismissal", (tester) async {
     final logout = Completer<DesktopLogoutOutcome>();
@@ -352,8 +394,18 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
     expect(tester.element(find.text("open")), same(opener));
+    final modifier = Theme.of(tester.element(find.text("open"))).platform == TargetPlatform.macOS
+        ? LogicalKeyboardKey.metaLeft
+        : LogicalKeyboardKey.controlLeft;
+    await tester.sendKeyDownEvent(modifier);
+    await tester.sendKeyEvent(LogicalKeyboardKey.comma);
+    await tester.sendKeyUpEvent(modifier);
+    await tester.pumpAndSettle();
+    expect(find.byType(AppearancePicker), findsOneWidget);
+    expect(router.state.uri.path, "/session");
+    expect(tester.element(find.text("open", skipOffstage: false)), same(opener));
     expect(tester.takeException(), isNull);
-  });
+  }, variant: TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.windows}));
 
   testWidgets("harness detail shares its owner; Back stays inside and Close returns to the session", (tester) async {
     final router = await open(tester: tester, tab: DesktopSettingsTab.harnesses);
