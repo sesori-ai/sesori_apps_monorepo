@@ -12,13 +12,24 @@ one signed-in project inventory.
   changes width immediately; only drag completion/cancellation, double-click
   reset, and explicit collapse toggles write layout preferences.
 - Collapse uses a 56-pixel rail with deterministic two-grapheme project avatars
-  and full-name tooltips. Expanding restores the user's width.
+  and full-name tooltips. Expanding restores the user's width. Width and label
+  transitions animate together; reduced motion disables the transition without
+  delaying drag feedback.
 - Windows narrower than 760 pixels temporarily collapse the sidebar without
   changing saved preferences. Widening restores the user's expanded/collapsed
   choice. The native minimum window remains 560 × 480.
-- Project shortcuts open the existing sessions route. The brand button opens
-  Projects; pinned Bridge and Settings buttons retain their existing routes.
-  Add project uses the shared folder dialog and project-list cubit.
+- Project shortcuts open the existing sessions route. The Projects header opens
+  the project overview. The labeled New project button uses the shared folder
+  dialog and project-list cubit. Pinned Bridge and Settings retain their routes
+  in a visually separated footer. A compact Projects shortcut remains available
+  in empty/recovery states even when the window is too narrow to expand.
+- Running projects show the shared rotating outline sparkle; unread projects
+  show its static filled state. On macOS, preserve Prego's native platform-view
+  path so spinning does not schedule recurring Flutter frames. Verify its
+  scrolling, clipping, and collapse/expand hierarchy natively. Compact avatars
+  retain the indicator. Tooltips
+  and accessibility descriptions include running counts and unread status;
+  live state updates also clear stale unread marks.
 - A selected project follows route identity, not the displayed name. Each
   signed-in cockpit owns one project-list cubit, including the main project
   screen; leaving the signed-in shell releases it.
@@ -30,7 +41,7 @@ one signed-in project inventory.
 | Level | Boundary / scope | Added checks |
 |---|---|---|
 | L1 | Client end to end; desktop; representative bridge | Sidebar renders; a project opens; Bridge and Settings remain reachable. |
-| L2 | Automated; no plugin | Width clamp, drag-end-only persistence, reset, collapse/expand, temporary narrow-window mode, Unicode initials, JSON round-trip, storage failure fallback. |
+| L2 | Automated; no plugin | Width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
 | L3 | Client end to end; macOS; representative live bridge | Resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, and navigation with the shared project list. |
 | L4 | Client end to end; Windows/Linux | Resize/collapse, native-window size changes, and saved-layout restore. |
 | L5 | No additional coverage | Lower levels still apply. |
@@ -38,8 +49,8 @@ one signed-in project inventory.
 ## Failure Signals And Exploration
 
 Look for overflow at minimum width, drag updates that stall or write per frame,
-automatic collapse overwriting user preferences, duplicate project inventories,
-or lost navigation after switching projects. Vary project-name lengths and
+automatic collapse overwriting user preferences, missing/stale activity marks,
+duplicate project inventories, or lost navigation after switching projects. Vary project-name lengths and
 Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.
 

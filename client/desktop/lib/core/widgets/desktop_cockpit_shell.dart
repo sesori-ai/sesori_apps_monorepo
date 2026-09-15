@@ -42,63 +42,69 @@ class const DesktopCockpitShell({
   Widget build(BuildContext context) {
     final layout = context.watch<DesktopSidebarCubit>().state;
     final sidebar = context.read<DesktopSidebarCubit>();
+    final content = Column(
+      children: [
+        const DesktopSupervisionNotice(),
+        Expanded(child: child),
+      ],
+    );
     return LayoutBuilder(
       builder: (context, constraints) {
         final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
         final collapsed = layout.collapsed || autoCollapsed;
         return Scaffold(
-          body: Row(
-            children: [
-              SizedBox(
-                key: const Key("desktop-cockpit-sidebar"),
-                width: collapsed ? compactWidth : layout.width,
-                child: DesktopSidebar(
-                  collapsed: collapsed,
-                  autoCollapsed: autoCollapsed,
-                  destination: destination,
-                  selectedProjectId: selectedProjectId,
-                  onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
-                  onOpenProjects: onOpenProjects,
-                  onAddProject: () => unawaited(
-                    showAddProjectDialog(
-                      context: context,
-                      cubit: context.read<ProjectListCubit>(),
-                      connectionService: getIt<ConnectionService>(),
+          body: TweenAnimationBuilder<double>(
+            tween: Tween(begin: collapsed ? 0 : 1, end: collapsed ? 0 : 1),
+            duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
+            curve: Curves.easeOutCubic,
+            builder: (context, expansion, _) => Row(
+              children: [
+                SizedBox(
+                  key: const Key("desktop-cockpit-sidebar"),
+                  width: compactWidth + (layout.width - compactWidth) * expansion,
+                  child: DesktopSidebar(
+                    expansion: expansion,
+                    autoCollapsed: autoCollapsed,
+                    destination: destination,
+                    selectedProjectId: selectedProjectId,
+                    onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
+                    onOpenProjects: onOpenProjects,
+                    onAddProject: () => unawaited(
+                      showAddProjectDialog(
+                        context: context,
+                        cubit: context.read<ProjectListCubit>(),
+                        connectionService: getIt<ConnectionService>(),
+                      ),
                     ),
+                    onOpenProject: onOpenProject,
+                    onOpenBridge: onOpenBridge,
+                    onOpenSettings: onOpenSettings,
                   ),
-                  onOpenProject: onOpenProject,
-                  onOpenBridge: onOpenBridge,
-                  onOpenSettings: onOpenSettings,
                 ),
-              ),
-              if (!collapsed)
-                MouseRegion(
-                  cursor: SystemMouseCursors.resizeLeftRight,
-                  child: Tooltip(
-                    message: context.loc.desktopSidebarResize,
-                    child: GestureDetector(
-                      key: const Key("desktop-sidebar-resize"),
-                      behavior: HitTestBehavior.opaque,
-                      onHorizontalDragUpdate: (details) =>
-                          sidebar.resize(width: sidebar.state.width + details.delta.dx),
-                      onHorizontalDragEnd: (_) => unawaited(sidebar.saveLayout()),
-                      onHorizontalDragCancel: () => unawaited(sidebar.saveLayout()),
-                      onDoubleTap: () => unawaited(sidebar.resetWidth()),
-                      child: const SizedBox(width: 6, child: VerticalDivider(width: 1)),
-                    ),
-                  ),
-                )
-              else
-                const VerticalDivider(width: 1),
-              Expanded(
-                child: Column(
-                  children: [
-                    const DesktopSupervisionNotice(),
-                    Expanded(child: child),
-                  ],
+                SizedBox(
+                  width: 1 + 5 * expansion,
+                  child: collapsed
+                      ? VerticalDivider(width: 1, color: context.prego.colors.borderSecondary)
+                      : MouseRegion(
+                          cursor: SystemMouseCursors.resizeLeftRight,
+                          child: Tooltip(
+                            message: context.loc.desktopSidebarResize,
+                            child: GestureDetector(
+                              key: const Key("desktop-sidebar-resize"),
+                              behavior: HitTestBehavior.opaque,
+                              onHorizontalDragUpdate: (details) =>
+                                  sidebar.resize(width: sidebar.state.width + details.delta.dx),
+                              onHorizontalDragEnd: (_) => unawaited(sidebar.saveLayout()),
+                              onHorizontalDragCancel: () => unawaited(sidebar.saveLayout()),
+                              onDoubleTap: () => unawaited(sidebar.resetWidth()),
+                              child: VerticalDivider(width: 1, color: context.prego.colors.borderSecondary),
+                            ),
+                          ),
+                        ),
                 ),
-              ),
-            ],
+                Expanded(child: content),
+              ],
+            ),
           ),
         );
       },

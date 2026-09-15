@@ -7,6 +7,8 @@
   "apiErrorNotAuthenticated": "Not authenticated — check your connection",
   "apiErrorServerRejected": "The server returned an error. Please try again.",
   "apiErrorNetworkDown": "Connection failed — check your network and try again.",
+  "desktopSidebarNewProject": "New project",
+  "@desktopSidebarNewProject": {"description": "Label for the prominent desktop sidebar action that opens the add-project dialog."},
   "desktopSidebarCollapse": "Collapse sidebar",
   "@desktopSidebarCollapse": {"description": "Tooltip for switching desktop navigation to the compact project rail."},
   "desktopSidebarExpand": "Expand sidebar",

@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/foundation.dart";
 import "package:flutter/semantics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -89,7 +90,7 @@ void main() {
         );
         for (final entry in {
           DesktopCockpitDestination.bridge: "Bridge",
-          DesktopCockpitDestination.projects: "Sesori",
+          DesktopCockpitDestination.projects: "Projects",
           DesktopCockpitDestination.settings: "Settings",
         }.entries) {
           final finder = find.byWidgetPredicate(
@@ -170,7 +171,7 @@ void main() {
     expect(find.byType(NavigationRail), findsNothing);
     expect(tester.getSize(rail).width, 260);
     await tester.tap(find.text("Bridge"));
-    await tester.tap(find.text("Sesori"));
+    await tester.tap(find.text("Projects"));
     await tester.tap(find.text("Settings"));
     await tester.tap(find.text("Sesori Desktop"));
     expect((bridgeOpens, projectOpens, settingsOpens, openedProject), (1, 1, 1, "project-1"));
@@ -195,12 +196,15 @@ void main() {
     expect(tester.getSize(rail).width, 260);
   });
 
-  testWidgets("collapse shows initials in a 56px rail and restores user width", (tester) async {
+  testWidgets("collapse animates into a compact rail and expands to the saved width", (tester) async {
     await tester.pumpWidget(app(state: running));
     sidebar.resize(width: 310);
     await tester.pump();
     await tester.tap(toggle);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(tester.getSize(rail).width, inExclusiveRange(56, 310));
+    await tester.pump(const Duration(milliseconds: 220));
     expect(tester.getSize(rail).width, 56);
     expect(find.text("Sesori Desktop"), findsNothing);
     expect(find.text("SD"), findsOneWidget);
@@ -208,9 +212,31 @@ void main() {
     expect(resize, findsNothing);
     await tester.tap(toggle);
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(tester.getSize(rail).width, inExclusiveRange(56, 310));
+    await tester.pump(const Duration(milliseconds: 220));
     expect(tester.getSize(rail).width, 310);
     expect(tester.takeException(), isNull);
   });
+
+  for (final features in [
+    const FakeAccessibilityFeatures(disableAnimations: true),
+    const FakeAccessibilityFeatures(reduceMotion: true),
+  ]) {
+    testWidgets("collapse respects ${features.disableAnimations ? 'disabled animations' : 'platform reduced motion'}", (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await tester.pumpWidget(app(state: running));
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(tester.getSize(rail).width, 56);
+      await tester.tap(toggle);
+      await tester.pump();
+      expect(tester.getSize(rail).width, 260);
+    });
+  }
 
   testWidgets("narrow-window collapse is temporary and never persisted", (tester) async {
     addTearDown(() => tester.view.resetPhysicalSize());
@@ -221,14 +247,125 @@ void main() {
     expect(tester.getSize(rail).width, 56);
     expect(sidebar.state.collapsed, isFalse);
     tester.view.physicalSize = const Size(760, 600);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(tester.getSize(rail).width, 260);
     verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
     unawaited(sidebar.toggleCollapsed());
     tester.view.physicalSize = const Size(1200, 700);
-    await tester.pump();
+    await tester.pumpAndSettle();
     expect(tester.getSize(rail).width, 56);
   });
+
+  testWidgets("compact Projects stays accessible without any project rows", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(700, 600);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    final semantics = tester.ensureSemantics();
+    try {
+      var opens = 0;
+      const states = [
+        ProjectListState.loaded(projects: [], activityById: {}),
+        ProjectListState.loading(),
+        ProjectListState.failed(reason: RemoteFailureReason.networkDown),
+        ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
+        ProjectListState.bridgeDisconnected(hasRegisteredBridges: false),
+      ];
+      for (final state in states) {
+        whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
+        await tester.pumpWidget(
+          app(
+            state: running,
+            child: DesktopCockpitShell(
+              destination: DesktopCockpitDestination.settings,
+              selectedProjectId: null,
+              onOpenProject: _openProject,
+              onOpenBridge: _noOp,
+              onOpenProjects: () => opens++,
+              onOpenSettings: _noOp,
+              child: const SizedBox.shrink(),
+            ),
+          ),
+        );
+        expect(tester.getSize(rail).width, 56);
+        expect(tester.widget<IconButton>(toggle).onPressed, isNull);
+        final overview = find.byKey(const Key("desktop-sidebar-projects"));
+        await tester.tap(overview);
+        final node = tester.getSemantics(
+          find.descendant(
+            of: overview,
+            matching: find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == "Projects"),
+          ),
+        );
+        tester.platformDispatcher.onSemanticsActionEvent!(
+          SemanticsActionEvent(type: SemanticsAction.tap, nodeId: node.id, viewId: tester.view.viewId),
+        );
+      }
+      expect(opens, states.length * 2);
+      await tester.pumpWidget(const SizedBox.shrink());
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets("new project is labeled and the pinned footer has its own surface", (tester) async {
+    await tester.pumpWidget(app(state: running));
+    expect(find.text("Sesori"), findsNothing);
+    expect(find.text("Projects"), findsOneWidget);
+    expect(find.text("New project"), findsOneWidget);
+    expect(tester.widget<FilledButton>(find.byKey(const Key("desktop-sidebar-new-project"))).onPressed, isNotNull);
+    final footer = tester.widget<Container>(find.byKey(const Key("desktop-sidebar-footer")));
+    expect((footer.decoration! as BoxDecoration).border, isNotNull);
+  });
+
+  testWidgets("running and unread project signals update in expanded and compact modes", (tester) async {
+    const project = ProjectSummary(
+      id: "project-1",
+      name: "Sesori Desktop",
+      path: "/work/sesori",
+      time: null,
+      hasUnseenChanges: true,
+    );
+    final updates = StreamController<ProjectListState>();
+    whenListen(
+      projects,
+      updates.stream,
+      initialState: const ProjectListState.loaded(projects: [project], activityById: {"project-1": 2}),
+    );
+    await tester.pumpWidget(app(state: running));
+    final loc = tester.element(rail).loc;
+    final native = defaultTargetPlatform == TargetPlatform.macOS;
+    final runningHint = "Sesori Desktop, ${loc.projectListRunning(2)}, ${loc.projectListNewActivity}";
+    expect(find.byTooltip(runningHint), findsOneWidget);
+    expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
+    expect(find.byType(AppKitView), native ? findsOneWidget : findsNothing);
+    expect(tester.getCenter(find.byType(PregoAiLoader)).dx, greaterThan(200));
+    await tester.tap(toggle);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    expect(find.byType(AppKitView), native ? findsNWidgets(2) : findsNothing);
+    await tester.pump(const Duration(milliseconds: 170));
+    expect(tester.getSize(rail).width, 56);
+    expect(find.byTooltip(runningHint), findsOneWidget);
+    expect(tester.getCenter(find.byType(PregoAiLoader)).dx, lessThan(56));
+    updates.add(const ProjectListState.loaded(projects: [project], activityById: {}));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 800));
+    expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isFalse);
+    expect(find.byType(AppKitView), native ? findsOneWidget : findsNothing);
+    expect(find.byTooltip("Sesori Desktop, ${loc.projectListNewActivity}"), findsOneWidget);
+    await tester.tap(toggle);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 250));
+    updates.add(
+      const ProjectListState.loaded(projects: [project], activityById: {}, unseenByProjectId: {"project-1": false}),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoAiLoader), findsNothing);
+    expect(find.byTooltip("Sesori Desktop"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await updates.close();
+  }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
   testWidgets("keeps ordinary running supervision out of the content", (tester) async {
     await tester.pumpWidget(app(state: running));

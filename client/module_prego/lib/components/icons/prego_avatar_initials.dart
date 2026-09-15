@@ -40,7 +40,7 @@ class const PregoAvatarInitials({
             ? Icon(TablerRegular.folder, size: size / 2, color: color)
             : Text(
                 initials,
-                style: context.prego.textTheme.textXs.medium.copyWith(color: color),
+                style: context.prego.textTheme.textXs.medium.copyWith(color: color, package: "theme_prego"),
                 maxLines: 1,
               ),
       ),
