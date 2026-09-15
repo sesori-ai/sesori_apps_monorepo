@@ -16,15 +16,15 @@ Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
 | [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | done |
 | [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | done |
 | [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | done |
-| [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,400 | done |
+| [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,500 | done |
 | [ ] | 7 | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | pending |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | pending |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 10/13]` | ≤ 700 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 11/13]` | ≤ 600 | pending |
-| [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Reconcile regression documentation [step 12/13]` | ≤ 600 | pending |
+| [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 12/13]` | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | `🌿 [desktop-ux] Run coverage and retire the plan [step 13/13]` | ≤ 300 | pending |
 
-Ordering constraints: 2.a → 2.b → 3 → 4 → 6 → 7; step 8 after 6; steps 5, 9
+Ordering constraints: 2.a → 2.b → 3 → 4 → 6 → 7; step 8 after 7; steps 5, 9
 and 10 may run in any order after 4. Step 11 after every implementation step;
 step 12 last. Only one PR is open; one local successor may be prepared.
 
@@ -87,8 +87,8 @@ or waive shipping qualification.
   review approves the frozen implementation. Native/live coverage remains
   pre-shipping work; the GUI and bridge were untouched.
   See [step 5 evidence](steps/step-05.md).
-- Step 6: 131 distinct focused desktop/control/process/log cases pass across
-  documented checkpoints, including a 26-case cockpit rerun. Three real-font
-  popover fixtures and all three owning analyzers pass. Live lifecycle/native
-  preference mutations remain deferred to the final testing decision; the
-  running GUI and bridge remain untouched. See [step 6 evidence](steps/step-06.md).
+- Step 6: user review prompted a content/label audit, removal of app-scoped
+  popover options and explicit contextual bridge actions. 130 currently relevant
+  cases pass across documented checkpoints, plus three revised real-font renders
+  and all owning analyzers. The running GUI/bridge remain untouched; native work
+  stays in the final testing handoff. See [step 6 evidence](steps/step-06.md).

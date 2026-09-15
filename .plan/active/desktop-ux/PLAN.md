@@ -419,7 +419,7 @@ the modal.
   retry row re-runs `ensureLoaded`. Reconnect (`dataMayBeStale`) refetches
   every loaded project.
 - First-run defaults: a failed `LaunchAtLogin.enable()` leaves the bridge On
-  and logs a warning; the popover shows the real launch-at-login state. If the
+  and logs a warning; General preferences show the real launch-at-login state. If the
   bridge cannot start (login required, contention), the existing process
   states and supervision card apply.
 - FDA probe errors other than EPERM → `unsupported` (no card, status row reads
@@ -518,18 +518,18 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
 | 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; explicit nullable detail Back callback based on the owning page's poppability; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
 | 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
-| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,400 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
+| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,500 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
 | 7 | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
 | 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
 | 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 10/13]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |
 | 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 11/13]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
-| 11 | `🌿 [desktop-ux] Reconcile regression documentation [step 12/13]` | ≤ 600 | Final control-content audit (labels, grouping, scope, redundancy and state-specific actions) plus regression reconciliation listed below. |
+| 11 | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 12/13]` | ≤ 600 | Final control-content audit (labels, grouping, scope, redundancy and state-specific actions) plus regression reconciliation listed below. |
 | 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 13/13]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
 
-Step 6's target was raised from 900 to 1,400 after measuring the complete
-popover/test replacement and causal log-snapshot cleanup. Much of the diff is
-retired dashboard/test code; it remains one coherent slice below the repository
-soft cap, without an interim dead-state API or logging redesign.
+Step 6's target grew from 900 to 1,500 after the complete dashboard/test
+retirement, causal snapshot cleanup and user-requested content audit. More than
+half of the measured diff is deletion; one coherent slice avoids an interim
+dead-state API or logging redesign and stays within the repository soft cap.
 
 Step 4's render verification also corrected the existing Prego font-family
 constant to match the bundled package name and removed redundant sidebar font
@@ -538,8 +538,8 @@ mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Steps 5, 8, 9 and 10 are independent of each other and may be reordered if a
 review stalls, provided titles and totals stay in sync. Step 8 must land after
-step 6 (its Settings rows and popover switch), step 7 after step 6 (Bridge
-settings… target).
+step 7 (General startup preferences and Bridge/FDA settings), and step 7 after
+step 6 (Bridge settings… target).
 
 Every implementation step keeps the app building and the existing desktop and
 mobile test suites green. Steps 2.a, 3, 4, 5, 6 and 7 are architecture-bearing (new classes,

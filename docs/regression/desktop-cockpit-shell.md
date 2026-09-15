@@ -80,12 +80,14 @@ The main pane hosts one full-width routed page.
   Logs is also available in the Bridge popover. Command locks still disable
   recovery mutations, and start failures do not offer nonexistent child logs.
 - Bridge opens a flat, screen-clamped popover in expanded and compact modes
-  without replacing the main pane. It presents process/client status, Bridge
-  On/Off, conditional Take Over, Start at login, Open Logs, Bridge settings…,
-  and Quit Sesori. Switches follow the existing command target and native
-  preference; opening refreshes the latter through the shared command owner.
-  Busy states disable mutations, not diagnostics. Settings and Quit dismiss
-  before delegating; outside click and Escape dismiss without taking an action.
+  without replacing the main pane. A Local bridge heading and process status
+  precede one clear Start/Stop/Retry/Take Over action; logs/configuration are
+  secondary. A crashed helper offers Retry despite retained On intent. A
+  displaced running helper also offers Stop without requiring takeover. Explicit
+  Stop cannot become Start if the helper exits before dispatch. Busy states
+  disable mutations, not diagnostics; Settings dismisses before opening.
+  Outside click and Escape dismiss without an action. App Quit and startup
+  preferences belong to application controls, not local bridge controls.
 - Missing layout uses defaults. Failed reads/writes are logged; unavailable
   storage does not prevent navigation or in-memory layout changes.
 
@@ -97,8 +99,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 | Level | Boundary / scope | Added checks |
 |---|---|---|
 | L1 | Client end to end; desktop; representative bridge | Sidebar renders; a project opens; Bridge and Settings remain reachable. |
-| L2 | Automated; no plugin | Popover actions/locks/live updates, native-preference refresh/failure/disposal, expanded/compact anchoring, outside/Escape dismissal, preserved main pane; connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics, sidebar recovery/actions/locks; flat typed route registration, no-back all-sessions presentation, archived read-only navigation, new-session replacement, diff/direct-entry back, home states, package-font resolution; recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-collapse persistence, shared menu/route callbacks; width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
-| L3 | Client end to end; macOS; representative live bridge | Popover On/Off, Take Over, launch-at-login, logs, Settings and Quit; relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping through the tree and menus. |
+| L2 | Automated; no plugin | Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring, outside/Escape dismissal, preserved main pane; connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics, sidebar recovery/actions/locks; flat typed route registration, no-back all-sessions presentation, archived read-only navigation, new-session replacement, diff/direct-entry back, home states, package-font resolution; recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-collapse persistence, shared menu/route callbacks; width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
+| L3 | Client end to end; macOS; representative live bridge | Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings; relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping through the tree and menus. |
 | L4 | Client end to end; Windows/Linux | Resize/collapse, native-window size changes, and saved-layout restore. |
 | L5 | No additional coverage | Lower levels still apply. |
 

@@ -91,11 +91,12 @@ and keep native close/quit behavior safe.
   session unchanged, while a failed start or stop leaves the next action
   targeted at retrying that failed operation.
 - The signed-in window opens on project/session guidance and recovery. Its
-  pinned Bridge popover presents process/client status and existing controls;
+  pinned Bridge popover presents local process status and relevant controls;
   account information remains in Settings, and the tray retains active-session
-  counts. Opening the popover refreshes the native launch-at-login flag without
-  racing a user toggle; busy states still permit diagnostics. Take Over is an
-  explicit tray and window action for local contention or relay displacement; it
+  counts, application Quit and launch-at-login. Explicit Start/Stop actions
+  preserve their intent even if process state changes before dispatch; failed
+  starts/crashes offer recovery, not a misleading Stop. Busy states still permit
+  diagnostics. Take Over is an explicit action for contention/displacement; it
   persists On, performs one stop-and-respawn, and accepts only replacement
   prompts from the fresh helper. A persistent desktop sidebar reaches bridge
   controls, projects, and settings, while exceptional login-required, crash-give-up, and
