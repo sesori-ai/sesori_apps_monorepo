@@ -358,6 +358,13 @@ mutations, not diagnostics. App preferences and Quit stay outside.
 | Notifications | `DesktopAttentionPreferenceSection` |
 | Account | profile + sign out (closes the modal; `AuthGate` shows login) |
 
+The modal keeps only tab and harness-detail selection as local presentation
+state. One listener to the existing auth gate dismisses the root overlay after
+a definitive refresh-token rejection. The 7.b ceiling is 1,650 lines after
+retaining composer and lifecycle regressions; roughly 650 lines replace the
+route-era settings fixture. Preparation is already separate, and another UI
+split would leave incomplete navigation or duplicate presentation paths.
+
 Escape and click-outside close it. Because the nested `Navigator` makes
 `DesktopEscapeDismissal` see a page route rather than a popup, the modal owns
 its own Escape binding (a closer shortcut wins). There is no desktop
@@ -523,7 +530,7 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/14]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
 | 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/14]` | ≤ 1,500 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` redirects to the canonical `/projects` home pane, preserving notification stacks and inventory return-refresh. |
 | 7.a | `🌿 [desktop-ux] Prepare shared settings composition [step 8/14]` | ≤ 500 | Reusable app-information/support/legal sections and picker exports, connected-bridge title input and desktop copy; native preference refresh/explicit-set methods on the existing control owner, with fake-backed tests. No changed settings navigation or visible controls yet. |
-| 7.b | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,500 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
+| 7.b | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,650 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
 | 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 10/14]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
 | 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 11/14]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |
 | 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 12/14]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |

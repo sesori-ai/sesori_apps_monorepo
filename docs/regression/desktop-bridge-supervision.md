@@ -126,9 +126,11 @@ and keep native close/quit behavior safe.
   active text editing and otherwise dismisses only popup routes. Transcript and
   diff source text retain native selection/context-menu behavior while
   navigation, file-header, line-number, and prefix chrome stays outside copied
-  diff source. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
-  preference reconciliation is scheduled after the first rendered frame, so a
-  slow server cannot leave the window blank; Profile reflects synchronization
+  diff source. Settings overlays the current pane; harness Back stays within
+  its modal, while Close restores the opener. The analytics service starts
+  before the app, while authenticated preference reconciliation is scheduled
+  after the first rendered frame, so a slow server cannot leave the window
+  blank; Account reflects synchronization
   progress until that bounded operation settles. One desktop connection pill
   overlays the main pane without moving routed content; local Off suppresses
   bridge-offline copy while relay recovery remains available.

@@ -45,8 +45,8 @@ Future<void> showDesktopSettingsModal({
         // Logout can finish after the user has dismissed the dialog.
         if (!dialogContext.mounted) return;
         final route = ModalRoute.of(dialogContext);
-        if (route?.isActive != true) return;
-        final navigator = Navigator.of(dialogContext);
+        final navigator = route?.navigator;
+        if (route?.isActive != true || navigator == null) return;
         // Owned authentication/setting sheets leave with their dialog.
         navigator.popUntil((candidate) => candidate == route);
         navigator.pop();
@@ -54,13 +54,19 @@ Future<void> showDesktopSettingsModal({
 
       return BlocProvider<AuthGateCubit>.value(
         value: authGate,
-        child: _DesktopSettingsModal(
-          initialTab: initialTab,
-          onClose: close,
-          onLogoutCompleted: () {
-            close();
-            onLogoutCompleted();
-          },
+        child: BlocListener<AuthGateCubit, AuthGateState>(
+          // A definitive token-refresh rejection can sign out while this root
+          // overlay is above the gated cockpit; dismiss its owned UI as well.
+          listenWhen: (_, state) => state is AuthGateSignedOut,
+          listener: (_, _) => close(),
+          child: _DesktopSettingsModal(
+            initialTab: initialTab,
+            onClose: close,
+            onLogoutCompleted: () {
+              close();
+              onLogoutCompleted();
+            },
+          ),
         ),
       );
     },

@@ -358,6 +358,18 @@ void main() {
     });
   }
 
+  testWidgets("external auth rejection dismisses Settings without requesting another logout", (tester) async {
+    final auth = StreamController<AuthGateState>();
+    addTearDown(auth.close);
+    whenListen(authGateCubit, auth.stream, initialState: const AuthGateState.signedIn(user: _user));
+    await open(tester: tester, tab: DesktopSettingsTab.general);
+    auth.add(const AuthGateState.signedOut());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+    expect(logoutCompletions, 0);
+    verifyNever(authGateCubit.signOut);
+  });
+
   testWidgets("late logout completion cannot pop the opener after dismissal", (tester) async {
     final logout = Completer<DesktopLogoutOutcome>();
     when(authGateCubit.signOut).thenAnswer((_) => logout.future);
