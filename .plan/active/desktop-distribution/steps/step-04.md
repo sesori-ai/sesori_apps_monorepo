@@ -20,6 +20,23 @@ on both qualified native macOS runners. Default PR/six-target qualification stay
 credential-free. The probe, decoded certificate, temporary keychain and history
 response are job-private and removed; only operation results enter CI logs.
 
+## Credential preflight evidence
+
+Manual [run 34997710034](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34997710034)
+used workflow revision `896378178722b766d74e0167b82e37cd69909d26` (not a PR merge
+checkout). Both native runners imported the configured secret material but failed
+at `codesign`: the expected Developer ID Application identity was not found.
+Notarization authentication had not run. The normal tooling/native qualification
+jobs were skipped, as required by this opt-in mode.
+
+The same exact public publisher identity is valid in the local keychain; no local
+key was exported or used. A bounded diagnostic follow-up lists imported public
+identity names/validity and checks notarization authentication before attempting
+the unchanged publisher-specific signature. No alternative publisher or weakened
+signature gate is accepted. Logs remain under ignored
+`build/desktop-macos-packaging-evidence/`. Initial and diagnostic workflow actionlint
+checks passed; actual signed-desktop behavior is still unverified.
+
 ## Implementation outline
 
 1. Pass the explicit trusted-CI credential preflight before packaging work relies

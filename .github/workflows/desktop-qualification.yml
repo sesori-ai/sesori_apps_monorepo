@@ -79,6 +79,11 @@ jobs:
           security set-keychain-settings -lut 600 "$keychain"
           security import "$certificate" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign >/dev/null
           security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" "$keychain" >/dev/null
+          echo 'Imported public signing identity metadata (certificate names and validity only):'
+          security find-identity -p codesigning "$keychain"
+          xcrun notarytool history --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" --output-format json > "$history"
+          echo 'Notarization authentication verified. No product was submitted or published.'
           printf 'int main(void) { return 0; }\n' > "$probe.c"
           xcrun clang "$probe.c" -o "$probe"
           codesign --sign "Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)" \
@@ -86,9 +91,6 @@ jobs:
           codesign --verify --strict "$probe"
           "$probe"
           echo "Native $(uname -m) Developer ID timestamped/hardened probe signed, verified and executed."
-          xcrun notarytool history --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" \
-            --team-id "$APPLE_TEAM_ID" --output-format json > "$history"
-          echo 'Notarization authentication verified. No product was submitted or published.'
 
   tooling:
     if: github.event_name != 'workflow_dispatch' || !inputs.verify_macos_signing_access
