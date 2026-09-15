@@ -80,7 +80,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               _pushRoute(context: context, route: const AppRoute.settings());
             }
           },
-          onOpenProjects: () => _goRoute(context: context, route: const AppRoute.splash()),
+          onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
           onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
           child: child,
         ),
@@ -89,6 +89,10 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
     routes: <RouteBase>[
       GoRoute(
         path: AppRouteDef.splash.path,
+        redirect: (_, _) => const AppRoute.projects().buildPath(),
+      ),
+      GoRoute(
+        path: AppRouteDef.projects.path,
         builder: (BuildContext context, GoRouterState state) => const DesktopHomePane(),
       ),
       GoRoute(
@@ -316,7 +320,7 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
 
 void _goDesktopHome() {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  desktopRouter.go(const AppRoute.splash().buildPath());
+  desktopRouter.go(const AppRoute.projects().buildPath());
 }
 
 void _goRoute({required BuildContext context, required AppRoute route}) {
@@ -364,7 +368,7 @@ ShellRoute buildDesktopHarnessSettingsRoute() {
     // Remove owned pageless sheets first, without touching the opener.
     outerNavigator.popUntil((route) => route == flowRoute);
     if (flowRoute.isFirst) {
-      _goRoute(context: context, route: const AppRoute.splash());
+      _goRoute(context: context, route: const AppRoute.projects());
     } else {
       outerNavigator.pop();
     }
