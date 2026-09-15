@@ -17,7 +17,10 @@ class RequestRouter({
   final List<RequestHandlerBase> _handlers = List<RequestHandlerBase>.unmodifiable(handlers);
 
   /// Selects a route synchronously and returns its asynchronous completion.
-  PendingRoutedRequest route({required RelayRequest request}) {
+  PendingRoutedRequest route({
+    required RelayRequest request,
+    RoutedRequestContext context = const LocalRoutedRequestContext(),
+  }) {
     final requestMethod = HttpMethod.parseExternal(rawMethod: request.method);
     if (requestMethod == null) {
       return PendingRoutedRequest(
@@ -50,6 +53,7 @@ class RequestRouter({
             target: target,
             handler: handler,
             identity: identity,
+            context: context,
           ),
         );
       }
@@ -66,9 +70,10 @@ class RequestRouter({
     required Uri target,
     required RequestHandlerBase handler,
     required MatchedRoute identity,
+    required RoutedRequestContext context,
   }) async {
     try {
-      final targetParams = handler.extractTargetParams(target: target);
+      final targetParams = handler.extractTargetParams(target: target, context: context);
       return await handler.routeInternal(
         request: request,
         targetParams: targetParams,

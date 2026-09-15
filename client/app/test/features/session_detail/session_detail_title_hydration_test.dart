@@ -29,6 +29,8 @@ class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
 
+class MockDeviceCanvasService() extends Mock implements DeviceCanvasService;
+
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
     providers: [
@@ -49,6 +51,7 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
         projectName: null,
         sessionId: "session-1",
         sessionTitle: sessionTitle,
+        bridgeId: null,
       ),
     ),
   );
@@ -171,6 +174,11 @@ void _registerDependencies({
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
   getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
+  final deviceCanvasService = MockDeviceCanvasService();
+  when(
+    () => deviceCanvasService.getSessionStatus(sessionId: any(named: "sessionId")),
+  ).thenAnswer((_) async => const DeviceCanvasStatusUnsupported());
+  getIt.registerSingleton<DeviceCanvasService>(deviceCanvasService);
 }
 
 void main() {

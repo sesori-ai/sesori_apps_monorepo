@@ -15,8 +15,10 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Bridg
 ///
 /// Descriptors are const and side-effect free. Registration does not imply
 /// setup readiness, eligibility, or a running backend generation.
+final OpenCodePluginDescriptor _openCodePlugin = OpenCodePluginDescriptor.production();
+
 final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
-  OpenCodePluginDescriptor.production(),
+  _openCodePlugin,
   AntigravityPluginDescriptor.production(),
   const CodexPluginDescriptor(),
   CopilotPluginDescriptor.production(),
@@ -29,6 +31,8 @@ final List<BridgePluginDescriptor> knownPlugins = List.unmodifiable([
   const GrokPluginDescriptor(),
 ]);
 
+String get openCodePluginId => _openCodePlugin.id;
+
 /// Product-preferred default when OpenCode is selectable. Lifecycle policy
 /// falls back to the first selectable registration when it is not.
-String get preferredDefaultPluginId => OpenCodePluginDescriptor.production().id;
+String get preferredDefaultPluginId => _openCodePlugin.id;

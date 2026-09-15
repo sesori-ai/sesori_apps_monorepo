@@ -34,6 +34,7 @@ class AcpBridgePlugin({
     required PluginHost host,
     required Duration connectBudget,
   }) async {
+    plugin.attachAgentToolHost(host.agentToolServices?.tools);
     final wrapper = AcpBridgePlugin(plugin: plugin, clock: host.clock);
     // Race the eager connect against the abort signal: an abort that lands
     // while the handshake hangs must start the rollback now, not after the

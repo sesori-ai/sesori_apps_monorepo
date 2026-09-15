@@ -130,6 +130,7 @@ void main() {
       expect(CopilotPluginIdentity.id, "copilot");
       expect(CopilotPluginIdentity.displayName, "GitHub Copilot");
       expect(plugin.id, CopilotPluginIdentity.id);
+      expect(plugin.permitsDeviceCanvasHttpMcp, isTrue);
       expect(plugin.cancelsActiveTurnForQueuedInput, isTrue);
       expect(plugin.launchSpec.command, "/opt/copilot");
       expect(plugin.launchSpec.args, ["--no-auto-update", "--acp"]);

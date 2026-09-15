@@ -2,9 +2,9 @@ import "dart:convert";
 import "dart:io";
 
 import "package:path/path.dart" as path;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show createHardenedDirectory, hardenPath, ownerOnlyDirectoryMode, ownerOnlyFileMode;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-
-import "../foundation/data_directory_hardening.dart";
 
 String archiveDirectoryPath({required String dataDirectory}) => path.join(dataDirectory, "archive");
 

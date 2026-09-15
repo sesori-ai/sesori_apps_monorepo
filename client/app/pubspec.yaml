@@ -39,6 +39,7 @@ dependencies:
   rxdart: ^0.28.0
   flutter_bloc: ^9.1.1
   go_router: ^18.0.1
+  flutter_webrtc: 1.6.0
   get_it: ^9.2.1
   injectable: ^3.0.0
   flutter_markdown_plus: ^1.0.12

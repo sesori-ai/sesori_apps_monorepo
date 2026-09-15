@@ -52,6 +52,7 @@ Widget _buildApp({
   bool startAtPreviousScreen = false,
   VoidCallback? onOpenHarnessSettings,
   VoidCallback? onClose,
+  String? bridgeId,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -89,7 +90,9 @@ Widget _buildApp({
               readOnly: false,
               banner: null,
               onBack: context.pop,
-              onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
+              onShowDiffs: () => context.push(AppRoute.sessionDiffs(
+                projectId: "project-1", projectName: null, sessionId: "session-1", bridgeId: bridgeId,
+              ).buildPath()),
               bottomControlsBuilder: ({required context, required projectId, required sessionId, required state}) =>
                   MobileSessionDetailComposerControls(
                     projectId: projectId,
@@ -102,7 +105,9 @@ Widget _buildApp({
       ),
       GoRoute(
         path: "/projects/:projectId/sessions/:sessionId/diffs",
-        builder: (context, state) => const Scaffold(body: Text("Diffs")),
+        builder: (context, state) => Scaffold(
+          body: Text('Diffs bridgeId=${state.uri.queryParameters["bridgeId"]}'),
+        ),
       ),
     ],
   );
@@ -789,7 +794,7 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.git_compare));
     await tester.pumpAndSettle();
 
-    expect(find.text("Diffs"), findsOneWidget);
+    expect(find.text("Diffs bridgeId=null"), findsOneWidget);
 
     notices.add(const SessionDetailPromptOptionsUpdated());
     await tester.pump();
@@ -799,6 +804,16 @@ void main() {
       find.text("Prompt options changed. Updated settings and retrying your message."),
       findsNothing,
     );
+  });
+
+  testWidgets("diff button preserves bridge scope", (tester) async {
+    await tester.pumpWidget(_buildApp(cubit: cubit, bridgeId: "bridge-1"));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byIcon(TablerRegular.git_compare));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Diffs bridgeId=bridge-1"), findsOneWidget);
   });
 
   testWidgets("hides the diff button for archived sessions", (tester) async {

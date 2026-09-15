@@ -12,6 +12,7 @@ import 'generated/schema.dart';
 import 'generated/schema_v1.dart' as v1;
 import 'generated/schema_v10.dart' as v10;
 import 'generated/schema_v11.dart' as v11;
+import 'generated/schema_v14.dart' as v14;
 import 'generated/schema_v2.dart' as v2;
 import 'generated/schema_v3.dart' as v3;
 import 'generated/schema_v4.dart' as v4;
@@ -1751,6 +1752,166 @@ void main() {
     expect(await db.select(db.pullRequestsTable).get(), isEmpty);
     expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
   });
+
+  test('migration v14 → v15 preserves new-session defaults', () async {
+    final schema = await verifier.schemaAt(14);
+    final oldDb = v14.DatabaseAtV14(schema.newConnection());
+    await oldDb.customStatement(
+      'INSERT INTO new_session_defaults_table (plugin_id, agent, agent_model) '
+      'VALUES (?, ?, ?)',
+      ['opencode', 'build', null],
+    );
+    await oldDb.close();
+
+    final db = AppDatabase(schema.newConnection());
+    await verifier.migrateAndValidate(
+      db,
+      15,
+      options: const ValidationOptions(validateDropped: true),
+    );
+
+    final defaults = await db.select(db.newSessionDefaultsTable).get();
+    expect(defaults, hasLength(1));
+    expect(defaults.single.pluginId, 'opencode');
+    expect(defaults.single.agent, 'build');
+    await db.close();
+  });
+
+  test(
+    'migration v15 → v16 preserves every existing table and adds empty claims',
+    () async {
+      final schema = await verifier.schemaAt(15);
+      schema.rawDatabase.execute(
+        "INSERT INTO projects_table (project_id, path, created_at, updated_at, projection_updated_at) VALUES ('project-1', '/repo', 1, 2, 3)",
+      );
+      schema.rawDatabase.execute(
+        "INSERT INTO sessions_table (session_id, backend_session_id, project_id, directory, is_dedicated, created_at, updated_at, projection_updated_at, plugin_id) "
+        "VALUES ('session-1', 'backend-1', 'project-1', '/repo', 0, 1, 2, 3, 'opencode')",
+      );
+      schema.rawDatabase.execute(
+        "INSERT INTO new_session_defaults_table (plugin_id, agent) VALUES ('opencode', 'build')",
+      );
+      schema.rawDatabase.execute(
+        "INSERT INTO session_options_cache_table (plugin_id, scope, owner_id, revision, captured_at, agents_json, providers_json, commands_json) "
+        "VALUES ('opencode', 'plugin', 'opencode', 3, 100, '{\"agents\":[]}', '{\"items\":[],\"connectedOnly\":true}', '{\"items\":[]}')",
+      );
+      final tables = schema.rawDatabase
+          .select(
+            "SELECT name FROM sqlite_master WHERE type = 'table' AND name NOT LIKE 'sqlite_%' ORDER BY name",
+          )
+          .map((row) => row['name'] as String)
+          .toList();
+      final before = {
+        for (final table in tables)
+          table: schema.rawDatabase
+              .select('SELECT * FROM "$table"')
+              .map(Map<String, Object?>.from)
+              .toList(),
+      };
+      final db = AppDatabase(schema.newConnection());
+      addTearDown(db.close);
+      await verifier.migrateAndValidate(
+        db,
+        16,
+        options: const ValidationOptions(validateDropped: true),
+      );
+      for (final table in tables) {
+        expect(
+          (await db.customSelect('SELECT * FROM "$table"').get())
+              .map((row) => row.data)
+              .toList(),
+          before[table],
+          reason: table,
+        );
+      }
+      expect(await db.select(db.deviceCanvasClaimsTable).get(), isEmpty);
+      expect(
+        await db.select(db.deviceCanvasClaimRevisionsTable).get(),
+        isEmpty,
+      );
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+    },
+  );
+
+  test(
+    'v16 device canvas claims enforce scoped uniqueness and session cascade',
+    () async {
+      final connection = await verifier.startAt(16);
+      final db = AppDatabase(connection);
+
+      await db
+          .into(db.projectsTable)
+          .insert(
+            ProjectsTableCompanion.insert(
+              projectId: 'project-1',
+              path: '/repo',
+              projectionUpdatedAt: 1,
+            ),
+          );
+      await db
+          .into(db.sessionTable)
+          .insert(
+            SessionTableCompanion.insert(
+              sessionId: 'session-1',
+              backendSessionId: 'backend-1',
+              projectId: 'project-1',
+              directory: '/repo',
+              isDedicated: false,
+              createdAt: 1,
+              updatedAt: 1,
+              projectionUpdatedAt: 1,
+              pluginId: 'opencode',
+            ),
+          );
+      await db
+          .into(db.deviceCanvasClaimsTable)
+          .insert(
+            DeviceCanvasClaimsTableCompanion.insert(
+              bridgeId: 'bridge-a',
+              deviceKey: 'ios:booted',
+              sessionId: 'session-1',
+              claimRevision: 1,
+              claimedAt: 10,
+              updatedAt: 10,
+            ),
+          );
+      await db
+          .into(db.deviceCanvasClaimsTable)
+          .insert(
+            DeviceCanvasClaimsTableCompanion.insert(
+              bridgeId: 'bridge-b',
+              deviceKey: 'ios:booted',
+              sessionId: 'session-1',
+              claimRevision: 1,
+              claimedAt: 11,
+              updatedAt: 11,
+            ),
+          );
+
+      await expectLater(
+        db
+            .into(db.deviceCanvasClaimsTable)
+            .insert(
+              DeviceCanvasClaimsTableCompanion.insert(
+                bridgeId: 'bridge-a',
+                deviceKey: 'ios:booted',
+                sessionId: 'session-1',
+                claimRevision: 2,
+                claimedAt: 12,
+                updatedAt: 12,
+              ),
+            ),
+        throwsA(isA<SqliteException>()),
+      );
+
+      await (db.delete(
+        db.sessionTable,
+      )..where((table) => table.sessionId.equals('session-1'))).go();
+      expect(await db.select(db.deviceCanvasClaimsTable).get(), isEmpty);
+      expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
+      await db.close();
+    },
+  );
 }
 
 /// Migrates a v4 database to the current schema, so tests can insert rows with

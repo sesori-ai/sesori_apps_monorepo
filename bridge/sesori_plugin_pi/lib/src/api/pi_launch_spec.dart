@@ -52,10 +52,14 @@ class PiLaunchSpec({
   required final ({String providerID, String modelID})? model,
   required final String? thinkingLevel,
   required Map<String, String> environment,
+  final String? extensionPath,
 }) {
   this {
     if (environment.containsKey("HOME")) {
       throw ArgumentError.value("HOME", "environment", "must not override this key");
+    }
+    if (extensionPath != null && !path.isAbsolute(extensionPath!)) {
+      throw ArgumentError.value(extensionPath, "extensionPath", "must be absolute");
     }
   }
 
@@ -87,6 +91,7 @@ class PiLaunchSpec({
         selectedModel.modelID,
       ],
       if (selectedThinkingLevel != null) ...["--thinking", selectedThinkingLevel],
+      if (extensionPath case final extension?) ...["--extension", extension],
     ];
   }
 }

@@ -7,16 +7,19 @@ import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
 import "archived_session_validator.dart";
 import "chat_history_service.dart";
+import "device_canvas_claim_service.dart";
 import "session_cleanup_result.dart";
 import "session_operation_dispatcher.dart";
 import "worktree_service.dart";
 
-enum SessionCleanupOperation() { removeWorktree }
+enum SessionCleanupOperation() {
+  removeWorktree,
+}
 
 class SessionCleanupFailedException({
-    required final String sessionId,
-    required final SessionCleanupOperation operation,
-  }) implements Exception {
+  required final String sessionId,
+  required final SessionCleanupOperation operation,
+}) implements Exception {
   @override
   String toString() => "session cleanup failed for $sessionId while ${operation.name}";
 }
@@ -26,6 +29,7 @@ class SessionArchiveConflictException({required final SessionCleanupRejection re
 class ArchiveStatusUpdate({
   required final Session session,
   required final bool changed,
+
   /// The stored project id the session row is keyed by. A dedicated-worktree
   /// session can report its worktree directory as the enriched project id.
   required final String projectId,
@@ -34,14 +38,14 @@ class ArchiveStatusUpdate({
 class SessionNotFoundException() implements Exception;
 
 class SessionLifecycleService({
-    required final WorktreeService _worktreeService,
-    required final SessionRepository _sessionRepository,
-    required final FilesystemRepository _filesystemRepository,
-    required final SessionOperationDispatcher _sessionOperationDispatcher,
-    required final ChatHistoryService _chatHistoryService,
-    required final ArchivedSessionValidator _archivedSessionValidator,
-  }) {
-
+  required final WorktreeService _worktreeService,
+  required final SessionRepository _sessionRepository,
+  required final FilesystemRepository _filesystemRepository,
+  required final SessionOperationDispatcher _sessionOperationDispatcher,
+  required final ChatHistoryService _chatHistoryService,
+  required final ArchivedSessionValidator _archivedSessionValidator,
+  required final DeviceCanvasClaimService _deviceCanvasClaimService,
+}) {
   /// Runs cleanup inside a session-family operation already reserved by the
   /// archive or deletion workflow.
   ///
@@ -201,6 +205,7 @@ class SessionLifecycleService({
       sessionId: storedSession.id,
       archivedAt: archivedAt,
     );
+    await _deviceCanvasClaimService.releaseSessionClaims(sessionId: storedSession.id);
     // After the flip: the audit file is durable, so the live rows are now
     // redundant. Shared attachment bytes remain outside this lifecycle. A
     // failure here leaves duplicate rows that startup reconciliation removes.

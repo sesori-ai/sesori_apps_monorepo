@@ -173,6 +173,7 @@ void main() {
       expect(find.text("back"), findsOneWidget);
     }
     const other = AppRoute.sessionDetail(
+      bridgeId: null,
       projectId: "p",
       projectName: null,
       sessionId: "other",
@@ -307,8 +308,9 @@ class _FakeGoRouterState({
 }
 
 const _sessions = AppRoute.sessions(projectId: "p", projectName: "UI / Core");
-const _diffs = AppRoute.sessionDiffs(projectId: "p", projectName: "UI / Core", sessionId: "s");
+const _diffs = AppRoute.sessionDiffs(bridgeId: null, projectId: "p", projectName: "UI / Core", sessionId: "s");
 AppRoute _detail({required bool readOnly}) => AppRoute.sessionDetail(
+  bridgeId: null,
   projectId: "p",
   projectName: "UI / Core",
   sessionId: "s",

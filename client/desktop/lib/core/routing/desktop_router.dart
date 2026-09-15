@@ -70,6 +70,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
                 context: context,
                 route: AppRoute.sessionDetail(
+                  bridgeId: null,
                   projectId: project.id,
                   projectName: displayName,
                   sessionId: session.id,
@@ -120,6 +121,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               onSessionTap: ({required session}) => _goRoute(
                 context: context,
                 route: AppRoute.sessionDetail(
+                  bridgeId: null,
                   projectId: route.projectId,
                   projectName: route.projectName,
                   sessionId: session.id,
@@ -152,6 +154,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             onSessionCreated: ({required session}) => _replaceRoute(
               context: context,
               route: AppRoute.sessionDetail(
+                bridgeId: null,
                 projectId: route.projectId,
                 projectName: route.projectName,
                 sessionId: session.id,
@@ -177,6 +180,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             onShowDiffs: () => _pushRoute(
               context: context,
               route: AppRoute.sessionDiffs(
+                bridgeId: null,
                 projectId: route.projectId,
                 projectName: route.projectName,
                 sessionId: route.sessionId,
@@ -187,6 +191,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 _pushRoute(
                   context: context,
                   route: AppRoute.sessionDetail(
+                    bridgeId: null,
                     projectId: projectId,
                     projectName: route.projectName,
                     sessionId: sessionId,

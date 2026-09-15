@@ -4,6 +4,8 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         HostJsonStore,
         HostPortService,
         HostProcessService,
+        PluginAgentToolServices,
+        PluginAgentToolServicesProvider,
         PluginConfig,
         PluginHost,
         ServerClock,
@@ -26,16 +28,27 @@ import "../api/runtime_file_api.dart";
 class BridgePluginHostImpl({
   @override required final PluginConfig config,
   @override required final String stateDirectory,
-  @override required final Map<String, String> environment,
+  required Map<String, String> environment,
   @override required final ServerClock clock,
   @override required final StartAbortSignal startAborted,
   @override required final BridgeHostInfo bridge,
   @override required final HostProcessService processes,
   @override required final HostPortService ports,
   @override required final HostJsonStore store,
+  @override final PluginAgentToolServices? agentToolServices,
   required final Duration? Function() _resolveIdleTimeout,
   required final Stream<Duration?> _pluginIdleTimeoutChanges,
-}) implements PluginHost {
+}) implements PluginHost, PluginAgentToolServicesProvider {
+  Map<String, String> _environment = Map<String, String>.unmodifiable(environment);
+
+  @override
+  Map<String, String> get environment => _environment;
+
+  void addEnvironmentOverrides(Map<String, String> overrides) {
+    if (overrides.isEmpty) return;
+    _environment = Map<String, String>.unmodifiable({..._environment, ...overrides});
+  }
+
   /// Live view over the bridge's runtime-mutable per-plugin idle timeout, so
   /// a settings change reaches the plugin without a restart.
   @override

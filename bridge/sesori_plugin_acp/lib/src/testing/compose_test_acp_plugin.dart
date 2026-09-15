@@ -12,6 +12,7 @@ TestAcpPlugin composeTestAcpPlugin({
   String agentDisplayName = "ACP",
   AcpLaunchSpec launchSpec = const AcpLaunchSpec(includeParentEnvironment: true, command: "agent", args: ["acp"]),
   String launchDirectory = "/repo",
+  bool permitsDeviceCanvasHttpMcp = false,
 }) {
   final configurationTracker = AcpSessionConfigurationTracker();
   final commandTracker = AcpCommandTracker();
@@ -22,6 +23,7 @@ TestAcpPlugin composeTestAcpPlugin({
     launchSpec: launchSpec,
     launchDirectory: launchDirectory,
     childSessionTracker: childSessionTracker,
+    permitsDeviceCanvasHttpMcp: permitsDeviceCanvasHttpMcp,
     eventMapper: AcpEventMapper(
       launchDirectory: launchDirectory,
       pluginId: id,

@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../foundation/models/session_interaction_state.dart";
+import "device_canvas_session_state.dart";
 import "queued_session_submission.dart";
 
 part "session_detail_state.freezed.dart";
@@ -69,6 +70,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     required CommandInfo? stagedCommand,
     required bool isRefreshing,
     @Default([]) List<SessionVariant> availableVariants,
+    @Default(DeviceCanvasSessionHidden()) DeviceCanvasSessionState deviceCanvas,
   }) = SessionDetailLoaded;
 
   /// The harness is blocked *and* the bridge's store holds nothing for this

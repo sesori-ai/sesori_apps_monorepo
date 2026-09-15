@@ -44,13 +44,13 @@ void main() {
     });
 
     test("asks for an upgrade when a superseded version exists and PATH is absent", () async {
-      installedVersion("0.140.0");
+      installedVersion("0.148.0");
 
       expect(await needsUpgrade(candidateConfig: config), isTrue);
     });
 
     test("declines with an explicit binary override", () async {
-      installedVersion("0.140.0");
+      installedVersion("0.148.0");
 
       expect(
         await needsUpgrade(candidateConfig: const PluginConfig(values: {"port": null, "bin": "/opt/codex/bin/codex"})),
@@ -190,7 +190,7 @@ void main() {
         if (stateDir.existsSync()) await stateDir.delete(recursive: true);
       });
       const manifest = CodexRuntimeManifest();
-      final supersededVersion = SemanticRuntimeVersion.parse(value: "0.140.0");
+      final supersededVersion = SemanticRuntimeVersion.parse(value: "0.148.0");
       Directory(p.join(stateDir.path, manifest.runtimeId, supersededVersion.raw)).createSync(recursive: true);
       final supersededPath = manifest.managedBinaryPath(stateDirectory: stateDir.path, version: supersededVersion);
       final processes = _ProbeProcessService(
@@ -204,7 +204,7 @@ void main() {
           ),
           _ProbeProcess(
             pid: 5,
-            stdoutBytes: utf8.encode("codex 0.140.0\n"),
+            stdoutBytes: utf8.encode("codex 0.148.0\n"),
             exitCode: Future<int>.value(0),
           ),
           _ProbeProcess(
@@ -222,7 +222,7 @@ void main() {
         stateDirectory: stateDir.path,
       );
 
-      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.140.0"));
+      expect(result, const PluginSetupReady.versioned(runtimeVersion: "0.148.0"));
       expect(processes.spawnedExecutables.last, supersededPath);
     });
 

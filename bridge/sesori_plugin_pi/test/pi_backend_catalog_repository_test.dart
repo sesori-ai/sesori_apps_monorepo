@@ -30,6 +30,7 @@ void main() {
     final options = await harness.probe();
 
     expect(harness.specs.single.arguments, ["--mode", "rpc", "--no-session", "--approve"]);
+    expect(harness.specs.single.extensionPath, isNull);
     expect(harness.specs.single.workingDirectory, path.normalize(path.absolute("project/./nested/..")));
     expect(options.completeness, PluginSessionOptionsCompleteness.complete);
     expect(options.agents.single.name, "pi");

@@ -25,6 +25,7 @@ class const NewSessionScreen({
         ),
         onSessionCreated: ({required session}) => context.replaceRoute(
           AppRoute.sessionDetail(
+            bridgeId: null,
             projectId: projectId,
             projectName: projectName,
             sessionId: session.id,

@@ -79,6 +79,8 @@ import 'package:sesori_mobile/core/platform/flutter_voice_capture.dart'
     as _i698;
 import 'package:sesori_mobile/core/platform/flutter_web_auth_client.dart'
     as _i489;
+import 'package:sesori_mobile/core/platform/flutter_webrtc_client.dart'
+    as _i522;
 import 'package:sesori_mobile/core/platform/gal_client.dart' as _i227;
 import 'package:sesori_mobile/core/platform/go_router_route_dispatcher.dart'
     as _i610;
@@ -141,6 +143,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i223.FileSaveClient>(() => _i223.FileSaveClient());
     gh.lazySingleton<_i489.FlutterWebAuthClient>(
       () => _i489.FlutterWebAuthClient(),
+    );
+    gh.lazySingleton<_i522.FlutterWebRtcClient>(
+      () => const _i522.FlutterWebRtcClient(),
     );
     gh.lazySingleton<_i227.GalClient>(() => _i227.GalClient());
     gh.lazySingleton<_i1024.PackageInfoClient>(
@@ -313,7 +318,11 @@ extension GetItInjectableX on _i174.GetIt {
       registerFor: {_firebaseDisabled},
     );
     gh.lazySingleton<_i902.DeepLinkService>(
-      () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
+      () => _i902.DeepLinkService(
+        gh<_i948.DeepLinkSource>(),
+        gh<_i948.AuthSession>(),
+        gh<_i948.RouteDispatcher>(),
+      ),
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i948.AnalyticsReleaseCutoffSource>(

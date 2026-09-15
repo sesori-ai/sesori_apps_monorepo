@@ -57,6 +57,9 @@ void main() {
     Future<BridgePlugin> startPlugin({
       String? stateDirectory,
       List<RuntimeProvisionProgress>? observedProgress,
+      Map<String, Map<String, String>> environmentOverridesByPluginId = const <String, Map<String, String>>{},
+      void Function(PluginGenerationFactory factory)? configureFactory,
+      PluginAgentToolHost? Function(String pluginId)? agentToolsForPlugin,
     }) async {
       final directory = stateDirectory ?? runtimeDirectory.path;
       final managedRuntimePaths = ManagedRuntimePaths(
@@ -81,10 +84,15 @@ void main() {
         processRepository: _FakeProcessRepository(),
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
+        environmentOverridesByPluginId: environmentOverridesByPluginId,
         currentUser: ProcessUser.fromRawUser("alex"),
         resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
         settingsChanges: settingsChanges.stream,
+        agentToolsForPlugin: agentToolsForPlugin == null
+            ? null
+            : ({required pluginId}) => agentToolsForPlugin(pluginId),
       );
+      configureFactory?.call(factory);
       BridgePlugin? startedPlugin;
       await for (final event in factory.start(
         registration: PluginRuntimeRegistration(
@@ -127,6 +135,7 @@ void main() {
         processRepository: _FakeProcessRepository(),
         clock: const ServerClock(),
         environment: const <String, String>{"HOME": "/home/alex"},
+        environmentOverridesByPluginId: const {},
         currentUser: ProcessUser.fromRawUser("alex"),
         resolveIdleTimeoutMins: ({required pluginId}) => idleTimeoutMins,
         settingsChanges: settingsChanges.stream,
@@ -400,6 +409,28 @@ void main() {
       expect(changes, const [null, Duration(minutes: 3), Duration(minutes: 5), Duration(minutes: 45)]);
     });
 
+    test("scopes environment overrides to the matching plugin only", () async {
+      await startPlugin(
+        configureFactory: (factory) {
+          factory
+            ..setEnvironmentOverrides(
+              pluginId: "fake",
+              overrides: const <String, String>{"SCOPED_SECRET": "available"},
+            )
+            ..setEnvironmentOverrides(
+              pluginId: "other",
+              overrides: const <String, String>{"OTHER_SECRET": "hidden"},
+            );
+        },
+      );
+
+      final environment = descriptor.startedHosts.single.environment;
+      expect(environment, containsPair("SCOPED_SECRET", "available"));
+      expect(environment, isNot(contains("OTHER_SECRET")));
+      expect(environment, containsPair("HOME", "/home/alex"));
+      expect(descriptor.provisioningEnvironments.single, isNot(contains("SCOPED_SECRET")));
+    });
+
     test("zero-plugin startup still performs single-live-bridge enforcement", () async {
       final factory = PluginGenerationFactory(
         managedRuntimePaths: ManagedRuntimePaths(
@@ -414,6 +445,7 @@ void main() {
         processRepository: _FakeProcessRepository(),
         clock: const ServerClock(),
         environment: const <String, String>{},
+        environmentOverridesByPluginId: const <String, Map<String, String>>{},
         currentUser: null,
         resolveIdleTimeoutMins: ({required pluginId}) => 10,
         settingsChanges: settingsChanges.stream,
@@ -589,6 +621,18 @@ void main() {
       await expectLater(startPlugin(), throwsA(isA<PluginStartAbortedException>()));
     });
 
+    test("a descriptor start failure disposes its generation-scoped agent tools", () async {
+      final agentTools = _RecordingAgentToolHost();
+      descriptor.startErrors.add(StateError("start failed"));
+
+      await expectLater(
+        startPlugin(agentToolsForPlugin: (_) => agentTools),
+        throwsA(isA<PluginGenerationStartFailedException>()),
+      );
+
+      expect(agentTools.disposeCalls, 1);
+    });
+
     group("runtime-resolution tee", () {
       test("emits each runtime-resolution event in order", () async {
         descriptor.provisionEvents.addAll(const <RuntimeProvisionProgress>[
@@ -742,6 +786,7 @@ void _signal(Completer<void>? signal) {
 // ignore: prefer_const_constructors_in_immutables, mutable test logs prevent a const primary constructor
 class _RecordingDescriptor() extends BridgePluginDescriptor {
   final List<PluginHost> startedHosts = <PluginHost>[];
+  final List<Map<String, String>> provisioningEnvironments = <Map<String, String>>[];
   final List<String> operations = <String>[];
   final _FakeBridgePlugin startedPlugin = _FakeBridgePlugin();
   final List<bool> stateDirectoryExistedAtStartLog = <bool>[];
@@ -769,6 +814,7 @@ class _RecordingDescriptor() extends BridgePluginDescriptor {
 
   @override
   Stream<RuntimeProvisionProgress> ensureRuntime({required PluginHost host}) async* {
+    provisioningEnvironments.add(Map<String, String>.of(host.environment));
     for (final event in provisionEvents) {
       yield event;
     }
@@ -835,6 +881,18 @@ class _FakeBridgePluginApi() extends NativeProjectsPluginApi {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _RecordingAgentToolHost() implements PluginAgentToolHost {
+  int disposeCalls = 0;
+
+  @override
+  Future<void> dispose() async {
+    disposeCalls++;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => throw UnsupportedError("Unexpected call: ${invocation.memberName}");
 }
 
 /// Never invoked in these tests: the host's process service is constructed

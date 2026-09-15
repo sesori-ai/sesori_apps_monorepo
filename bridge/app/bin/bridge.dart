@@ -7,6 +7,7 @@ import 'package:clock/clock.dart';
 import 'package:http/http.dart' as http;
 import 'package:sesori_bridge/src/api/app_onboarding_state_storage.dart';
 import 'package:sesori_bridge/src/api/bridge_settings_api.dart';
+import 'package:sesori_bridge/src/api/database/database.dart';
 import 'package:sesori_bridge/src/api/default_editor_api.dart';
 import 'package:sesori_bridge/src/api/wake_lock_client.dart';
 import 'package:sesori_bridge/src/auth/auth_api.dart';
@@ -17,9 +18,9 @@ import 'package:sesori_bridge/src/auth/bridge_registration_service.dart';
 import 'package:sesori_bridge/src/auth/token.dart';
 import 'package:sesori_bridge/src/auth/token_refresh_exception.dart';
 import 'package:sesori_bridge/src/auth/token_service.dart';
+import 'package:sesori_bridge/src/bridge/device_canvas/integration_state.dart';
 import 'package:sesori_bridge/src/foundation/abortable_request.dart';
 import 'package:sesori_bridge/src/foundation/bridge_startup_banner_formatter.dart';
-import 'package:sesori_bridge/src/foundation/data_directory_hardening.dart';
 import 'package:sesori_bridge/src/foundation/device_type_detector.dart';
 import 'package:sesori_bridge/src/foundation/filesystem_cleaner.dart';
 import 'package:sesori_bridge/src/foundation/process_group_isolation.dart';
@@ -27,6 +28,7 @@ import 'package:sesori_bridge/src/foundation/process_runner.dart';
 import 'package:sesori_bridge/src/foundation/process_runner_command_executor.dart';
 import 'package:sesori_bridge/src/repositories/app_onboarding_state_repository.dart';
 import 'package:sesori_bridge/src/repositories/bridge_settings_repository.dart';
+import 'package:sesori_bridge/src/repositories/device_canvas_claim_repository.dart';
 import 'package:sesori_bridge/src/repositories/wake_lock_repository.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_dispatch.dart';
 import 'package:sesori_bridge/src/runtime/bridge_cli_options.dart';
@@ -43,6 +45,7 @@ import 'package:sesori_bridge/src/server/repositories/terminal_prompt_repository
 import 'package:sesori_bridge/src/server/services/bridge_instance_service.dart';
 import 'package:sesori_bridge/src/server/services/windows_restart_successor_launcher.dart';
 import 'package:sesori_bridge/src/services/bridge_config_service.dart';
+import 'package:sesori_bridge/src/services/device_canvas_claim_service.dart';
 import 'package:sesori_bridge/src/services/sleep_prevention_service.dart';
 import 'package:sesori_bridge/src/updater/api/checksum_manifest_api.dart';
 import 'package:sesori_bridge/src/updater/api/github_releases_api.dart';
@@ -121,6 +124,26 @@ class RunCommand() extends cli.Command<void> {
         defaultsTo: 'info',
         allowed: ['verbose', 'debug', 'info', 'warning', 'error'],
         help: 'Minimum log level',
+      )
+      ..addMultiOption(
+        'device-canvas-local-turn-url',
+        hide: true,
+        help: 'Development only: Device Canvas TURN URL. Repeatable.',
+      )
+      ..addOption(
+        'device-canvas-local-turn-secret-file',
+        hide: true,
+        help: 'Development only: owner-only coturn shared-secret file.',
+      )
+      ..addMultiOption(
+        'device-canvas-external-turn-url',
+        hide: true,
+        help: 'Development only: external Device Canvas TURN URL. Repeatable.',
+      )
+      ..addOption(
+        'device-canvas-external-turn-secret-file',
+        hide: true,
+        help: 'Development only: owner-only external coturn shared-secret file.',
       )
       // Supervised mode: the desktop GUI passes the loopback control-channel
       // URL here. Hidden because it is an internal GUI↔helper contract, not a
@@ -309,6 +332,7 @@ class LogoutCommand() extends cli.Command<void> {
         authBackendUrl: authBackendUrl,
         dataDirectory: dataDirectory,
       ),
+      cleanupBridgeClaims: () => _cleanupDeviceCanvasClaimsForLogout(dataDirectory: dataDirectory),
       appOnboardingStateRepository: AppOnboardingStateRepository(
         storage: AppOnboardingStateStorage(
           directoryPath: appOnboardingStateDirectoryPath(dataDirectory: dataDirectory),
@@ -413,6 +437,32 @@ Future<void> _unregisterBridgeRegistration({
   } finally {
     tokenService.dispose();
     httpClient.close();
+  }
+}
+
+Future<void> _cleanupDeviceCanvasClaimsForLogout({required String dataDirectory}) async {
+  final bridgeIdStorage = BridgeIdStorage(
+    filePath: bridgeIdPath(dataDirectory: dataDirectory),
+    writeRestrictedFile: writeRestrictedFile,
+  );
+  final bridgeId = await bridgeIdStorage.read();
+  if (bridgeId == null) return;
+  final database = AppDatabase.create(dataDirectory: dataDirectory);
+  final integrationState = DeviceCanvasIntegrationState();
+  final claimService = DeviceCanvasClaimService(
+    repository: DeviceCanvasClaimRepository(
+      claimDao: database.deviceCanvasClaimDao,
+      sessionDao: database.sessionDao,
+      now: () => DateTime.now().millisecondsSinceEpoch,
+    ),
+    integrationState: integrationState,
+  );
+  try {
+    await claimService.cleanupBridgeIdentity(bridgeId: bridgeId);
+  } finally {
+    await claimService.dispose();
+    await integrationState.dispose();
+    await database.close();
   }
 }
 

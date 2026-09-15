@@ -116,6 +116,7 @@ CodexManagedApi _defaultBuildApi({
     fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
     subAgentItemParser: const CodexSubAgentItemParser(),
+    agentToolHost: host.agentToolServices?.tools,
     projectCwd: launchDirectory,
     onConnected: onConnected,
     onDisconnected: onDisconnected,

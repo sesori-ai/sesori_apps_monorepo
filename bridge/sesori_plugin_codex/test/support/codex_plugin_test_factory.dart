@@ -23,6 +23,7 @@ CodexPlugin createInjectedCodexPlugin({
   required String projectCwd,
   required CodexAppServerClient Function()? clientFactory,
   required Duration keepaliveInterval,
+  PluginAgentToolHost? agentToolHost,
   CodexToolOutcomeRepository? toolOutcomeRepository,
   Duration rolloutPollInterval = const Duration(milliseconds: 10),
 }) {
@@ -80,6 +81,7 @@ CodexPlugin createInjectedCodexPlugin({
     fileChangeParser: const CodexFileChangeParser(),
     imageBearingItemParser: imageBearingItemParser,
     subAgentItemParser: const CodexSubAgentItemParser(),
+    agentToolHost: agentToolHost,
     projectCwd: projectCwd,
     onConnected: null,
     onDisconnected: null,
