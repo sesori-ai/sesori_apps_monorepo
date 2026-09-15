@@ -93,6 +93,26 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopBridgeSettings => 'Bridge settings…';
 
   @override
+  String get desktopSettingsGeneral => 'General';
+
+  @override
+  String get desktopSettingsLaunchAtLogin => 'Launch Sesori at login';
+
+  @override
+  String get desktopSettingsLaunchAtLoginDescription =>
+      'Start Sesori in the background when you sign in to this computer.';
+
+  @override
+  String get desktopSettingsConnectedBridge => 'Connected bridge';
+
+  @override
+  String get desktopSettingsConnectedBridgeDescription =>
+      'These settings apply to the bridge you\'re connected to, including one on another computer.';
+
+  @override
+  String get desktopSettingsThisComputer => 'This computer';
+
+  @override
   String get desktopBridgeTitle => 'Bridge';
 
   @override

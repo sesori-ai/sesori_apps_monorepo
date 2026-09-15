@@ -121,6 +121,9 @@ class BridgeControlCubit._create({
     _focusRequestSubscription = _instanceService.focusRequests.listen((_) => unawaited(showWindow()));
 
     await _loadLaunchAtLoginState();
+    if (!isClosed) {
+      _rebuildMenu(syncTray: false);
+    }
 
     final SystemTrayAvailability availability;
     try {
@@ -213,14 +216,30 @@ class BridgeControlCubit._create({
 
   bool get _controlsLocked => _activity.locksCommands || _logoutTracker.status.locksBridgeControls;
 
+  /// Reconciles General preferences with the OS without racing a quick toggle.
+  Future<void> refreshLaunchAtLogin() async {
+    if (_controlsLocked) return;
+    _activity = BridgeControlActivity.configuringLaunchAtLogin;
+    _rebuildMenu();
+    try {
+      await _loadLaunchAtLoginState();
+    } finally {
+      if (!isClosed) {
+        _activity = BridgeControlActivity.idle;
+        _rebuildMenu();
+        if (_quitAfterActivity) {
+          _quitAfterActivity = false;
+          _onWindowEvent(event: WindowHostEvent.closeRequested);
+        }
+      }
+    }
+  }
+
   Future<void> _loadLaunchAtLoginState() async {
     try {
       _launchAtLoginEnabled = await _launchAtLogin.isEnabled();
     } on Object catch (error, stackTrace) {
       logw("Failed to read the desktop launch-at-login state", error, stackTrace);
-    }
-    if (!isClosed) {
-      _rebuildMenu(syncTray: false);
     }
   }
 
@@ -323,20 +342,21 @@ class BridgeControlCubit._create({
     }
   }
 
-  Future<void> toggleLaunchAtLogin() async {
+  Future<void> toggleLaunchAtLogin() => setLaunchAtLogin(enabled: !_launchAtLoginEnabled);
+
+  Future<void> setLaunchAtLogin({required bool enabled}) async {
     if (_controlsLocked) {
       return;
     }
     _activity = BridgeControlActivity.configuringLaunchAtLogin;
     _rebuildMenu();
-    final bool target = !_launchAtLoginEnabled;
     try {
-      if (target) {
+      if (enabled) {
         await _launchAtLogin.enable();
       } else {
         await _launchAtLogin.disable();
       }
-      _launchAtLoginEnabled = target;
+      _launchAtLoginEnabled = enabled;
     } on Object catch (error, stackTrace) {
       logw("Launch-at-login command failed", error, stackTrace);
     } finally {

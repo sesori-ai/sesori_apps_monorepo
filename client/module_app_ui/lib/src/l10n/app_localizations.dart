@@ -241,6 +241,42 @@ abstract class AppLocalizations {
   /// **'Bridge settings…'**
   String get desktopBridgeSettings;
 
+  /// Desktop settings tab for app-wide preferences.
+  ///
+  /// In en, this message translates to:
+  /// **'General'**
+  String get desktopSettingsGeneral;
+
+  /// Native login-item switch in desktop General settings.
+  ///
+  /// In en, this message translates to:
+  /// **'Launch Sesori at login'**
+  String get desktopSettingsLaunchAtLogin;
+
+  /// Explains native app startup, not a connected bridge's configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Sesori in the background when you sign in to this computer.'**
+  String get desktopSettingsLaunchAtLoginDescription;
+
+  /// Settings owned by the connected bridge, which may be on another computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected bridge'**
+  String get desktopSettingsConnectedBridge;
+
+  /// Scope explanation above connected-bridge configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'These settings apply to the bridge you\'re connected to, including one on another computer.'**
+  String get desktopSettingsConnectedBridgeDescription;
+
+  /// Separates local supervised-bridge status and diagnostics from connected-bridge settings.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer'**
+  String get desktopSettingsThisComputer;
+
   /// Label of the pinned desktop navigation entry for local bridge controls.
   ///
   /// In en, this message translates to:
