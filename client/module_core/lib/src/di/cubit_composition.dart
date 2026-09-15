@@ -4,7 +4,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
 import "../cubits/project_list/project_list_cubit.dart";
-import "../cubits/recent_sessions/recent_sessions_cubit.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
 import "../cubits/session_list/session_list_cubit.dart";
 import "../cubits/session_list/session_list_mode.dart";
@@ -84,14 +83,6 @@ ProjectListCubit createProjectListCubit({required GetIt locator}) {
     catalogRescanService: locator<CatalogRescanService>(),
   );
 }
-
-RecentSessionsCubit createRecentSessionsCubit({required GetIt locator}) => RecentSessionsCubit(
-  sessionListService: locator<SessionListService>(),
-  connectionService: locator<ConnectionService>(),
-  sseEventTracker: locator<SseEventTracker>(),
-  sessionUnseenTracker: locator<SessionUnseenTracker>(),
-  catalogRescanService: locator<CatalogRescanService>(),
-);
 
 SessionListCubit createSessionListCubit({
   required GetIt locator,

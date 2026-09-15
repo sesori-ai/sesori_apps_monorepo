@@ -77,6 +77,10 @@ void main() {
     expect(loaded().rows(selectedSessionId: "1").map((session) => session.id), ["4", "3", "2", "1"]);
     expect(loaded().rows(selectedSessionId: "4").length, 3);
     expect(loaded().rows(selectedSessionId: "archived").last.id, "archived");
+    expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
+    expect(() => loaded().visibleSessions.clear(), throwsUnsupportedError);
+    expect(() => loaded().activityBySessionId.clear(), throwsUnsupportedError);
+    expect(() => loaded().listStateBySessionId.clear(), throwsUnsupportedError);
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
   });
 
@@ -137,6 +141,28 @@ void main() {
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+  });
+
+  test("lifecycle events during a read coalesce into a fresh snapshot", () async {
+    final old = testSession(id: "deleted");
+    final created = testSession(id: "created");
+    final reply = Completer<ApiResponse<SessionListResponse>>();
+    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+    final pending = cubit.ensureLoaded(projectId: projectId);
+    events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: old)));
+    events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
+    events.add(
+      SseEvent(
+        data: SesoriSseEvent.sessionUpdated(info: created.copyWith(title: "Current")),
+      ),
+    );
+    stubSessions(sessions: [created.copyWith(title: "Current")]);
+    reply.complete(ApiResponse.success(SessionListResponse(items: [old])));
+    await pending;
+    expect(loaded().sourceSessions.single.id, "created");
+    expect(loaded().sourceSessions.single.title, "Current");
+    expect(unseen.seededSessions, hasLength(1));
+    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
   });
 
   test("catalog invalidation replaces in-flight reads; old results cannot seed unseen state", () async {

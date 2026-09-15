@@ -45,14 +45,18 @@ one signed-in project inventory; one shared recent-session cache feeds the tree.
 - Opening the sidebar or its session action menu never claims project viewing.
   The main list/detail routes retain viewing ownership. Session mutations use
   the existing action controller; its context survives removal of a session row.
-- First expansion loads a project's inventory once. Live session/activity/unread
+- Expanded project loads are cached per signed-in shell. Live session/activity/unread
   events update its projection; reconnect/catalog invalidation refreshes known
   projects, including failed reads. A project's retry/loading state does not
-  block its siblings. Closed or superseded reads cannot seed shared unseen state.
+  block its siblings. Lifecycle changes during a read trigger a coalesced fresh
+  snapshot. Closed or superseded reads cannot seed shared unseen state.
 - Missing layout uses defaults. Failed reads/writes are logged; unavailable
   storage does not prevent navigation or in-memory layout changes.
 
 ## Coverage
+
+These levels define required checks, not claims of completed verification.
+Executed checks and outstanding native/live gaps are recorded in the step evidence.
 
 | Level | Boundary / scope | Added checks |
 |---|---|---|

@@ -438,10 +438,13 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                       displayName: widget.name,
                                       session: session,
                                     ),
-                                    menuEntries: () => widget.sessionActions.sessionMenuEntries(
-                                      context: actionContext,
-                                      session: session,
-                                    ),
+                                    menuEntries: () {
+                                      actionContext.read<SessionListCubit>().updateActionSession(session: session);
+                                      return widget.sessionActions.sessionMenuEntries(
+                                        context: actionContext,
+                                        session: session,
+                                      );
+                                    },
                                   ),
                                 Padding(
                                   padding: const EdgeInsetsDirectional.only(start: 44, end: 8),

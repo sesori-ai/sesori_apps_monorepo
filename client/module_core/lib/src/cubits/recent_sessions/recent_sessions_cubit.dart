@@ -28,6 +28,7 @@ class RecentSessionsCubit({
   required CatalogRescanService catalogRescanService,
 }) extends Cubit<Map<String, RecentSessionsEntry>> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
+  final Set<String> _changedDuringRead = {};
 
   this : super(const {}) {
     _subscriptions.add(_connectionService.events.listen((event) => _onEvent(event: event)));
@@ -47,6 +48,7 @@ class RecentSessionsCubit({
   Future<void> _load({required String projectId}) async {
     if (isClosed) return;
     final request = RecentSessionsLoading();
+    _changedDuringRead.remove(projectId);
     _put(projectId: projectId, entry: request);
     try {
       final unseenTick = _sessionUnseenTracker.tick;
@@ -57,6 +59,12 @@ class RecentSessionsCubit({
       // A reconnect/catalog event can request a newer snapshot while this read
       // is in flight. Its result, not this older one, owns the project entry.
       if (isClosed || !identical(state[projectId], request)) return;
+      // A phone/backend mutation may commit after the server took this list's
+      // snapshot. Coalesce those events into one follow-up read before seeding.
+      if (_changedDuringRead.remove(projectId)) {
+        await _load(projectId: projectId);
+        return;
+      }
       switch (response) {
         case SuccessResponse(:final data):
           _sessionUnseenTracker.seedSessions(
@@ -80,6 +88,7 @@ class RecentSessionsCubit({
     } catch (error, stackTrace) {
       loge("Failed to load recent sessions for project $projectId", error, stackTrace);
       if (!isClosed && identical(state[projectId], request)) {
+        _changedDuringRead.remove(projectId);
         _put(
           projectId: projectId,
           entry: const RecentSessionsFailed(reason: RemoteFailureReason.unknown),
@@ -108,7 +117,12 @@ class RecentSessionsCubit({
             SesoriSessionDeleted(:final info)) {
       final projectId = info.projectID;
       final entry = state[projectId];
-      if (info.parentID != null || entry is! RecentSessionsLoaded) return;
+      if (info.parentID != null) return;
+      if (entry is RecentSessionsLoading) {
+        _changedDuringRead.add(projectId);
+        return;
+      }
+      if (entry is! RecentSessionsLoaded) return;
       final existing = entry.sourceSessions.firstWhereOrNull((session) => session.id == info.id);
       final List<Session> sessions;
       if (data is SesoriSessionDeleted) {

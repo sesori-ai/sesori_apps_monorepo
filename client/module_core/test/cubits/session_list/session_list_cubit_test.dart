@@ -135,12 +135,33 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session.copyWith(title: "Renamed")])));
       expect(await cubit.renameSession(sessionId: session.id, title: "Renamed"), isTrue);
       expect((cubit.state as SessionListLoaded).sessions.single.title, "Renamed");
+      // A later successful sidebar retry can discover a row this scope never
+      // received. Refresh only that menu target, preserving the other row.
+      final later = testSession(id: "later-session", title: "Discovered later");
+      cubit.updateActionSession(session: later);
+      expect(
+        (cubit.state as SessionListLoaded).sessions.map((session) => session.id),
+        containsAll([session.id, later.id]),
+      );
+      when(() => mockSessionService.renameSession(sessionId: later.id, title: "Later renamed"))
+          .thenAnswer((_) async => ApiResponse.success(later.copyWith(title: "Later renamed")));
+      when(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [
+              session.copyWith(title: "Renamed"),
+              later.copyWith(title: "Later renamed"),
+            ],
+          ),
+        ),
+      );
+      expect(await cubit.renameSession(sessionId: later.id, title: "Later renamed"), isTrue);
       mockRouteSource.emitRoute(AppRouteDef.sessions);
       await Future<void>.delayed(Duration.zero);
       await cubit.close();
       verifyNever(() => mockProjectViewingService.beginListClaim(projectId: any(named: "projectId")));
       verifyNever(() => mockProjectViewingService.releaseClaim(claim: any(named: "claim")));
-      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
     });
 
     test("archive inventory never acquires or releases the live opener claim", () async {

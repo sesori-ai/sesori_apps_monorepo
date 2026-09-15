@@ -292,8 +292,10 @@ and status presentation, following the existing session-list resolver boundary.
 - Shared session menus use a lazy per-project `SessionListMode.actions` scope,
   seeded from the recent inventory, with no initial read, project-view claim,
   or route-navigation refresh. Normal pages use `SessionListMode.view`;
-  existing mutation/refresh behavior remains shared.
-- Created through `cubit_composition.dart` like the other cubits.
+  existing mutation/refresh behavior remains shared. Each menu synchronizes its
+  named session from the current recent inventory without replacing other rows.
+- Created directly in `DesktopCockpitCubitProvider`, resolving service dependencies
+  inside `BlocProvider(create:)`.
 
 ### Main pane pages
 

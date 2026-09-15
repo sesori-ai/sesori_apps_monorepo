@@ -18,7 +18,15 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
   Widget build(BuildContext context) => MultiBlocProvider(
     providers: [
       BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
-      BlocProvider(create: (_) => createRecentSessionsCubit(locator: getIt)),
+      BlocProvider(
+        create: (_) => RecentSessionsCubit(
+          sessionListService: getIt<SessionListService>(),
+          connectionService: getIt<ConnectionService>(),
+          sseEventTracker: getIt<SseEventTracker>(),
+          sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+          catalogRescanService: getIt<CatalogRescanService>(),
+        ),
+      ),
       BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
     ],
     child: child,

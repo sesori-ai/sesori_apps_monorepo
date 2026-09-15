@@ -104,6 +104,14 @@ class SessionListCubit({
     );
   }
 
+  /// An action scope can outlive a failed refresh. Synchronize the named menu
+  /// target from the consumer's current inventory without replacing other rows
+  /// (which may still have their own mutation in flight).
+  void updateActionSession({required Session session}) {
+    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
+    _emitFiltered();
+  }
+
   String get projectId => _projectId;
 
   SessionCleanupRejection? get lastCleanupRejection => _lastCleanupRejection;
