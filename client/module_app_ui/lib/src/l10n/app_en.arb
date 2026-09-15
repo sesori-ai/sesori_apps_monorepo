@@ -7,6 +7,8 @@
   "apiErrorNotAuthenticated": "Not authenticated — check your connection",
   "apiErrorServerRejected": "The server returned an error. Please try again.",
   "apiErrorNetworkDown": "Connection failed — check your network and try again.",
+  "desktopHomePickSession": "Pick a session from the sidebar to get started.",
+  "@desktopHomePickSession": {"description": "Desktop home guidance when projects are available but no session is open."},
   "desktopSidebarNewProject": "New project",
   "@desktopSidebarNewProject": {"description": "Label for the prominent desktop sidebar action that opens the add-project dialog."},
   "desktopSidebarAllSessions": "All sessions · {count}",

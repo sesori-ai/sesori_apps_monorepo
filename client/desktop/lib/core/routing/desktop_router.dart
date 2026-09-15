@@ -7,20 +7,18 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
 import "../../features/home/desktop_home.dart";
+import "../../features/home/desktop_home_pane.dart";
 import "../../features/new_session/desktop_new_session_screen.dart";
-import "../../features/projects/desktop_project_list_screen.dart";
 import "../../features/session_diffs/desktop_session_diffs_screen.dart";
 import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/sessions/desktop_session_list_screen.dart";
 import "../../features/settings/desktop_harnesses_settings_screen.dart";
 import "../../features/settings/desktop_profile_screen.dart";
 import "../../features/settings/desktop_settings_screen.dart";
-import "../di/injection.dart";
 import "../widgets/desktop_cockpit_shell.dart";
 
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
 final GlobalKey<NavigatorState> desktopRootNavigatorKey = GlobalKey<NavigatorState>();
-final GlobalKey<NavigatorState> _desktopSessionNavigatorKey = GlobalKey<NavigatorState>();
 final Completer<void> _desktopRouterReady = Completer<void>();
 bool _desktopRouterReadyScheduled = false;
 
@@ -39,18 +37,11 @@ void scheduleDesktopRouterReady() {
   });
 }
 
-const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
-const _newSessionRouteSegment = "new";
-const _sessionDetailRouteSegment = ":$sessionIdPathParam";
-const _sessionDiffsRouteSegment = "diffs";
 const _desktopSessionActions = SessionListActionDispatcher(onSessionDeleted: _closeDeletedSessionRoute);
 
-/// Desktop routes delivered through the shared adaptive cockpit slices.
-///
-/// [AuthGate] owns one authenticated session above the product-specific
-/// sidebar, which owns the shared project inventory. A project-scoped nested
-/// shell then owns one session-list cubit and
-/// keeps that inventory mounted while the right pane navigates.
+/// One routed main pane beside the sidebar, under a single authenticated shell.
+/// Only the all-sessions page owns a full session-list view claim; the sidebar's
+/// recent inventory remains mounted independently of main-pane navigation.
 final GoRouter desktopRouter = GoRouter(
   navigatorKey: desktopRootNavigatorKey,
   initialLocation: AppRouteDef.splash.path,
@@ -102,200 +93,119 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
       ),
       GoRoute(
         path: AppRouteDef.projects.path,
-        builder: (BuildContext context, GoRouterState state) => DesktopProjectListScreen(
-          onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
-          onOpenProject: ({required projectId, required projectName}) => _goRoute(
-            context: context,
-            route: AppRoute.sessions(projectId: projectId, projectName: projectName),
-          ),
-        ),
-        routes: <RouteBase>[
-          ShellRoute(
-            navigatorKey: _desktopSessionNavigatorKey,
-            builder: (BuildContext context, GoRouterState state, Widget child) {
-              final projectId = state.pathParameters[projectIdPathParam];
-              if (projectId == null) {
-                throw StateError("A desktop session route is missing its project id");
-              }
-              final projectName = state.uri.queryParameters[projectNameQueryParam];
-              final selectedSessionId = state.pathParameters[sessionIdPathParam];
-
-              return DesktopSessionListCubitProvider(
-                key: ValueKey("desktop-session-list-cubit-$projectId"),
-                projectId: projectId,
-                child: SessionSplitShell(
-                  projectViewingService: getIt<ProjectViewingService>(),
-                  list: DesktopSessionListPane(
-                    projectName: projectName,
-                    selectedSessionId: selectedSessionId,
-                    onBack: () => _goRoute(context: context, route: const AppRoute.projects()),
-                    onSessionTap: ({required session}) => _goRoute(
-                      context: context,
-                      route: AppRoute.sessionDetail(
-                        projectId: projectId,
-                        projectName: projectName,
-                        sessionId: session.id,
-                        sessionTitle: session.title,
-                        readOnly: false,
-                      ),
-                    ),
-                    onNewSession: () => _pushRoute(
-                      context: context,
-                      route: AppRoute.newSession(projectId: projectId, projectName: projectName),
-                    ),
-                    actionDispatcher: _desktopSessionActions,
-                  ),
-                  child: child,
+        builder: (BuildContext context, GoRouterState state) => const DesktopHomePane(),
+      ),
+      GoRoute(
+        path: AppRouteDef.sessions.path,
+        builder: (BuildContext context, GoRouterState state) {
+          final route = _decodeSessionsRoute(state: state);
+          return DesktopSessionListCubitProvider(
+            key: ValueKey("desktop-session-list-cubit-${route.projectId}"),
+            projectId: route.projectId,
+            child: DesktopSessionListScreen(
+              projectName: route.projectName,
+              onSessionTap: ({required session}) => _goRoute(
+                context: context,
+                route: AppRoute.sessionDetail(
+                  projectId: route.projectId,
+                  projectName: route.projectName,
+                  sessionId: session.id,
+                  sessionTitle: session.title,
+                  readOnly: session.time?.archived != null,
                 ),
-              );
-            },
-            routes: <RouteBase>[
-              GoRoute(
-                path: _sessionsRouteSegment,
-                builder: (BuildContext context, GoRouterState state) {
-                  final route = _decodeSessionsRoute(state: state);
-                  return Builder(
-                    builder: (context) => SessionSplitScope.of(context).isSplit
-                        ? const EmptySessionDetailPanel(
-                            background: null,
-                            connectionBanner: null,
-                          )
-                        : DesktopSessionListScreen(
-                            projectName: route.projectName,
-                            onBack: () => _goRoute(context: context, route: const AppRoute.projects()),
-                            onSessionTap: ({required session}) => _goRoute(
-                              context: context,
-                              route: AppRoute.sessionDetail(
-                                projectId: route.projectId,
-                                projectName: route.projectName,
-                                sessionId: session.id,
-                                sessionTitle: session.title,
-                                readOnly: false,
-                              ),
-                            ),
-                            onNewSession: () => _pushRoute(
-                              context: context,
-                              route: AppRoute.newSession(
-                                projectId: route.projectId,
-                                projectName: route.projectName,
-                              ),
-                            ),
-                            actionDispatcher: _desktopSessionActions,
-                          ),
-                  );
-                },
-                routes: <RouteBase>[
-                  GoRoute(
-                    path: _newSessionRouteSegment,
-                    builder: (BuildContext context, GoRouterState state) {
-                      final route = _decodeNewSessionRoute(state: state);
-                      return DesktopNewSessionScreen(
-                        projectId: route.projectId,
-                        projectName: route.projectName,
-                        onBack: () => _popRouteOrGo(
-                          context: context,
-                          fallback: AppRoute.sessions(
-                            projectId: route.projectId,
-                            projectName: route.projectName,
-                          ),
-                        ),
-                        onOpenHarnessSettings: () => _pushRoute(
-                          context: context,
-                          route: const AppRoute.settingsHarnesses(
-                            presentation: HarnessSettingsPresentation.modal,
-                          ),
-                        ),
-                        onSessionCreated: ({required session}) => _replaceRoute(
-                          context: context,
-                          route: AppRoute.sessionDetail(
-                            projectId: route.projectId,
-                            projectName: route.projectName,
-                            sessionId: session.id,
-                            sessionTitle: session.title,
-                            readOnly: false,
-                          ),
-                        ),
-                      );
-                    },
-                  ),
-                  GoRoute(
-                    path: _sessionDetailRouteSegment,
-                    builder: (BuildContext context, GoRouterState state) {
-                      final route = _decodeSessionDetailRoute(state: state);
-                      return DesktopSessionDetailScreen(
-                        key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
-                        projectId: route.projectId,
-                        sessionId: route.sessionId,
-                        sessionTitle: route.sessionTitle,
-                        readOnly: route.readOnly,
-                        onBack: () => _popRouteOrGo(
-                          context: context,
-                          fallback: AppRoute.sessions(
-                            projectId: route.projectId,
-                            projectName: route.projectName,
-                          ),
-                        ),
-                        onShowDiffs: () => _pushRoute(
-                          context: context,
-                          route: AppRoute.sessionDiffs(
-                            projectId: route.projectId,
-                            projectName: route.projectName,
-                            sessionId: route.sessionId,
-                          ),
-                        ),
-                        onOpenHarnessSettings: () => _pushRoute(
-                          context: context,
-                          route: const AppRoute.settingsHarnesses(
-                            presentation: HarnessSettingsPresentation.modal,
-                          ),
-                        ),
-                        onOpenSession:
-                            ({
-                              required projectId,
-                              required sessionId,
-                              required sessionTitle,
-                              required readOnly,
-                            }) => _pushRoute(
-                              context: context,
-                              route: AppRoute.sessionDetail(
-                                projectId: projectId,
-                                projectName: route.projectName,
-                                sessionId: sessionId,
-                                sessionTitle: sessionTitle,
-                                readOnly: readOnly,
-                              ),
-                            ),
-                      );
-                    },
-                    routes: <RouteBase>[
-                      GoRoute(
-                        path: _sessionDiffsRouteSegment,
-                        builder: (BuildContext context, GoRouterState state) {
-                          final route = _decodeSessionDiffsRoute(state: state);
-                          return DesktopSessionDiffsScreen(
-                            key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
-                            projectId: route.projectId,
-                            sessionId: route.sessionId,
-                            onBack: () => _popRouteOrGo(
-                              context: context,
-                              fallback: AppRoute.sessionDetail(
-                                projectId: route.projectId,
-                                projectName: route.projectName,
-                                sessionId: route.sessionId,
-                                sessionTitle: null,
-                                readOnly: false,
-                              ),
-                            ),
-                          );
-                        },
-                      ),
-                    ],
-                  ),
-                ],
               ),
-            ],
-          ),
-        ],
+              onNewSession: () => _pushRoute(
+                context: context,
+                route: AppRoute.newSession(projectId: route.projectId, projectName: route.projectName),
+              ),
+              actionDispatcher: _desktopSessionActions,
+            ),
+          );
+        },
+      ),
+      // Literal /new must precede the dynamic session-id route.
+      GoRoute(
+        path: AppRouteDef.newSession.path,
+        builder: (BuildContext context, GoRouterState state) {
+          final route = _decodeNewSessionRoute(state: state);
+          return DesktopNewSessionScreen(
+            projectId: route.projectId,
+            projectName: route.projectName,
+            onBack: () => _popRouteOrGo(
+              context: context,
+              fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
+            onOpenHarnessSettings: () => _pushRoute(
+              context: context,
+              route: const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
+            ),
+            onSessionCreated: ({required session}) => _replaceRoute(
+              context: context,
+              route: AppRoute.sessionDetail(
+                projectId: route.projectId,
+                projectName: route.projectName,
+                sessionId: session.id,
+                sessionTitle: session.title,
+                readOnly: false,
+              ),
+            ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRouteDef.sessionDetail.path,
+        builder: (BuildContext context, GoRouterState state) {
+          final route = _decodeSessionDetailRoute(state: state);
+          return DesktopSessionDetailScreen(
+            key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
+            projectId: route.projectId,
+            sessionId: route.sessionId,
+            sessionTitle: route.sessionTitle,
+            readOnly: route.readOnly,
+            onBack: () => _popRouteOrGo(
+              context: context,
+              fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
+            onShowDiffs: () => _pushRoute(
+              context: context,
+              route: AppRoute.sessionDiffs(
+                projectId: route.projectId,
+                projectName: route.projectName,
+                sessionId: route.sessionId,
+              ),
+            ),
+            onOpenHarnessSettings: () => _pushRoute(
+              context: context,
+              route: const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),
+            ),
+            onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
+                _pushRoute(
+                  context: context,
+                  route: AppRoute.sessionDetail(
+                    projectId: projectId,
+                    projectName: route.projectName,
+                    sessionId: sessionId,
+                    sessionTitle: sessionTitle,
+                    readOnly: readOnly,
+                  ),
+                ),
+          );
+        },
+      ),
+      GoRoute(
+        path: AppRouteDef.sessionDiffs.path,
+        builder: (BuildContext context, GoRouterState state) {
+          final route = _decodeSessionDiffsRoute(state: state);
+          return DesktopSessionDiffsScreen(
+            key: ValueKey((projectId: route.projectId, sessionId: route.sessionId)),
+            projectId: route.projectId,
+            sessionId: route.sessionId,
+            onBack: () => _popRouteOrGo(
+              context: context,
+              fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+            ),
+          );
+        },
       ),
       GoRoute(
         path: AppRouteDef.settings.path,

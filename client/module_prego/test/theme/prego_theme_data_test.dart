@@ -4,6 +4,17 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
+  test("styles resolve the bundled font without qualifying system fallbacks or overrides", () {
+    expect(PregoTextTheme.fontFamily, "packages/theme_prego/Satoshi Prego");
+    for (final typography in [PregoTextTheme.light, PregoTextTheme.dark]) {
+      for (final style in [typography.textSm.regular, typography.textMd.medium, typography.textLg.bold]) {
+        expect(style.fontFamily, PregoTextTheme.fontFamily);
+        expect(style.fontFamilyFallback, PregoTextTheme.fontFamilyFallback);
+        expect(style.copyWith(fontFamily: "monospace").fontFamily, "monospace");
+      }
+    }
+  });
+
   test("assembles the complete light Prego Material theme", () {
     final ThemeData theme = buildPregoThemeData(brightness: Brightness.light);
 

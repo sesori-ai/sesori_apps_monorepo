@@ -129,6 +129,21 @@ void main() {
     }
   });
 
+  testWidgets("the sidebar is the only navigation pane at every desktop width", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    for (final width in [560.0, 900.0, 1400.0]) {
+      tester.view.physicalSize = Size(width, 700);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+      final mainPane = tester.element(find.byKey(const Key("cockpit-content")));
+      expect(SessionSplitScope.of(mainPane).isSplit, isTrue);
+      expect(find.byType(SessionSplitShell), findsNothing);
+      expect(find.byType(SessionListPanel), findsNothing);
+    }
+  });
+
   testWidgets("retry uses the failure-aware reconnect path", (tester) async {
     whenListen(
       projects,
