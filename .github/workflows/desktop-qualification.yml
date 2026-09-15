@@ -62,7 +62,8 @@ jobs:
     env:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+      # Keep dependency downloads outside the producer's clean source checkout.
+      PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
     defaults:
       run:
         shell: bash
