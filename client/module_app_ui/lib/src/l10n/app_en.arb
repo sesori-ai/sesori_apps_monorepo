@@ -9,6 +9,26 @@
   "apiErrorNetworkDown": "Connection failed — check your network and try again.",
   "desktopSidebarNewProject": "New project",
   "@desktopSidebarNewProject": {"description": "Label for the prominent desktop sidebar action that opens the add-project dialog."},
+  "desktopSidebarAllSessions": "All sessions · {count}",
+  "@desktopSidebarAllSessions": {
+    "description": "Sidebar link to a project's full session list, with its active visible session count.",
+    "placeholders": {"count": {"type": "int"}}
+  },
+  "desktopSidebarNewSession": "New session in {projectName}",
+  "@desktopSidebarNewSession": {
+    "description": "Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.",
+    "placeholders": {"projectName": {"type": "String"}}
+  },
+  "desktopSidebarCollapseProject": "Collapse {projectName}",
+  "@desktopSidebarCollapseProject": {
+    "description": "Tooltip for hiding a project's recent-session rows in the desktop sidebar.",
+    "placeholders": {"projectName": {"type": "String"}}
+  },
+  "desktopSidebarExpandProject": "Expand {projectName}",
+  "@desktopSidebarExpandProject": {
+    "description": "Tooltip for showing a project's recent-session rows in the desktop sidebar.",
+    "placeholders": {"projectName": {"type": "String"}}
+  },
   "desktopSidebarCollapse": "Collapse sidebar",
   "@desktopSidebarCollapse": {"description": "Tooltip for switching desktop navigation to the compact project rail."},
   "desktopSidebarExpand": "Expand sidebar",

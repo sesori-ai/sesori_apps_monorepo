@@ -25,11 +25,11 @@ void main() {
 
   test("restores layout and clamps saved width", () async {
     when(repository.readSidebarLayout).thenAnswer(
-      (_) async => const DesktopSidebarLayout(width: 900, collapsed: true),
+      (_) async => const DesktopSidebarLayout(width: 900, collapsed: true, collapsedProjectIds: {"project-1"}),
     );
     cubit = DesktopSidebarCubit(repository: repository);
     await pumpEventQueue();
-    expect(cubit.state, const DesktopSidebarLayout(width: 420, collapsed: true));
+    expect(cubit.state, const DesktopSidebarLayout(width: 420, collapsed: true, collapsedProjectIds: {"project-1"}));
   });
 
   test("drag clamps in memory and persists only on commit", () async {

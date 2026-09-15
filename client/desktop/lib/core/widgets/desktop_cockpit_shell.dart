@@ -12,12 +12,13 @@ import "desktop_sidebar.dart";
 
 export "desktop_sidebar.dart" show DesktopCockpitDestination;
 
-/// One inventory and one layout owner per signed-in cockpit.
+/// Shared project/recent inventories and one layout owner per signed-in cockpit.
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => MultiBlocProvider(
     providers: [
       BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
+      BlocProvider(create: (_) => createRecentSessionsCubit(locator: getIt)),
       BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
     ],
     child: child,
@@ -29,6 +30,10 @@ class const DesktopCockpitShell({
   super.key,
   required final DesktopCockpitDestination destination,
   required final String? selectedProjectId,
+  required final String? selectedSessionId,
+  required final SidebarSessionOpenedCallback onOpenSession,
+  required final ProjectOpenedCallback onNewSession,
+  required final SessionListActionDispatcher sessionActions,
   required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenBridge,
   required final VoidCallback onOpenProjects,
@@ -67,6 +72,10 @@ class const DesktopCockpitShell({
                     autoCollapsed: autoCollapsed,
                     destination: destination,
                     selectedProjectId: selectedProjectId,
+                    selectedSessionId: selectedSessionId,
+                    onOpenSession: onOpenSession,
+                    onNewSession: onNewSession,
+                    sessionActions: sessionActions,
                     onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                     onOpenProjects: onOpenProjects,
                     onAddProject: () => unawaited(

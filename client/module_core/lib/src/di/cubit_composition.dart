@@ -4,8 +4,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
 import "../cubits/project_list/project_list_cubit.dart";
+import "../cubits/recent_sessions/recent_sessions_cubit.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
 import "../cubits/session_list/session_list_cubit.dart";
+import "../cubits/session_list/session_list_mode.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../platform/route_source.dart";
@@ -15,7 +17,6 @@ import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/loaded_state_analytics_reporter.dart";
-import "../services/models/session_list_filter.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
@@ -84,13 +85,21 @@ ProjectListCubit createProjectListCubit({required GetIt locator}) {
   );
 }
 
+RecentSessionsCubit createRecentSessionsCubit({required GetIt locator}) => RecentSessionsCubit(
+  sessionListService: locator<SessionListService>(),
+  connectionService: locator<ConnectionService>(),
+  sseEventTracker: locator<SseEventTracker>(),
+  sessionUnseenTracker: locator<SessionUnseenTracker>(),
+  catalogRescanService: locator<CatalogRescanService>(),
+);
+
 SessionListCubit createSessionListCubit({
   required GetIt locator,
   required String projectId,
-  required SessionListFilter initialFilter,
+  required SessionListMode mode,
 }) {
   return SessionListCubit(
-    initialFilter: initialFilter,
+    mode: mode,
     sessionRepository: locator<SessionRepository>(),
     sessionListService: locator<SessionListService>(),
     projectRepository: locator<ProjectRepository>(),

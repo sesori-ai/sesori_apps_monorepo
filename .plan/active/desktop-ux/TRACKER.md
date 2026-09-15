@@ -13,7 +13,7 @@ Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
 | [x] | 1 | `desktop-release-plan` | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/13]` | ≤ 900 | done |
 | [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/13]` | ≤ 1,400 | done |
 | [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | done |
-| [ ] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | pending |
+| [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | done |
 | [ ] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | pending |
 | [ ] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | pending |
 | [ ] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | pending |
@@ -57,3 +57,8 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   These native checks remain required plan-level coverage, not a draft/review
   gate. Neither previews nor startup establish native interaction/performance
   coverage. See `steps/step-02b.md`.
+- Step 3: focused cache/list/service, sidebar/storage and cockpit/router checks,
+  all five owning analyzers, four inspected production-widget fixtures, and
+  architecture implementation review pass. The GUI and bridge remain untouched.
+  Native tree/menu/performance and live-action checks remain pre-shipping
+  coverage, not a merge/successor gate. See `steps/step-03.md`.

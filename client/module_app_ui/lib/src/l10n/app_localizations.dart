@@ -139,6 +139,30 @@ abstract class AppLocalizations {
   /// **'New project'**
   String get desktopSidebarNewProject;
 
+  /// Sidebar link to a project's full session list, with its active visible session count.
+  ///
+  /// In en, this message translates to:
+  /// **'All sessions · {count}'**
+  String desktopSidebarAllSessions(int count);
+
+  /// Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.
+  ///
+  /// In en, this message translates to:
+  /// **'New session in {projectName}'**
+  String desktopSidebarNewSession(String projectName);
+
+  /// Tooltip for hiding a project's recent-session rows in the desktop sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse {projectName}'**
+  String desktopSidebarCollapseProject(String projectName);
+
+  /// Tooltip for showing a project's recent-session rows in the desktop sidebar.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand {projectName}'**
+  String desktopSidebarExpandProject(String projectName);
+
   /// Tooltip for switching desktop navigation to the compact project rail.
   ///
   /// In en, this message translates to:

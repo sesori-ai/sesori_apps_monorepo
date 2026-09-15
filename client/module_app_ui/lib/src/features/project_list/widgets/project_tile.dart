@@ -85,7 +85,7 @@ class const ProjectTile({
       // While the menu is open the rest of the list blurs back and this row
       // stays sharp, so which project the actions will hit is unambiguous.
       spotlight: PregoMenuSpotlight.listRow,
-      entriesBuilder: () => _actionEntries(context: context),
+      entriesBuilder: () => menuEntries(context: context, project: project),
       triggerBuilder: (context, openMenu) => _buildRow(context: context, openMenu: openMenu),
     );
   }
@@ -93,7 +93,7 @@ class const ProjectTile({
   /// The long-press actions for this project. [PregoAnchorMenu] dismisses the
   /// menu before running an entry's `onTap`, so both of these act against the
   /// still-mounted tile rather than a popped route.
-  List<PregoMenuEntry> _actionEntries({required BuildContext context}) {
+  static List<PregoMenuEntry> menuEntries({required BuildContext context, required ProjectSummary project}) {
     final loc = context.loc;
     return [
       PregoMenuItem(
@@ -101,19 +101,23 @@ class const ProjectTile({
         title: loc.rename,
         subtitle: null,
         isSelected: false,
-        onTap: () => _rename(context: context),
+        onTap: () => _renameProject(context: context, project: project),
       ),
       PregoMenuItem(
         leadingIcon: TablerRegular.eye_off,
         title: loc.hideProject,
         subtitle: null,
         isSelected: false,
-        onTap: () => unawaited(_hide(context: context)),
+        onTap: () => unawaited(_hideProject(context: context, project: project)),
       ),
     ];
   }
 
-  void _rename({required BuildContext context}) {
+  void _rename({required BuildContext context}) => _renameProject(context: context, project: project);
+
+  Future<void> _hide({required BuildContext context}) => _hideProject(context: context, project: project);
+
+  static void _renameProject({required BuildContext context, required ProjectSummary project}) {
     showRenameProjectDialog(
       context: context,
       project: project,
@@ -124,7 +128,7 @@ class const ProjectTile({
   /// A confirmed hide drops the project from the list, which disposes this
   /// tile — so the presenter and strings are resolved before the cubit call,
   /// not after it.
-  Future<void> _hide({required BuildContext context}) async {
+  static Future<void> _hideProject({required BuildContext context, required ProjectSummary project}) async {
     final popupAlertPresenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
     final hidden = await context.read<ProjectListCubit>().hideProject(project.id);

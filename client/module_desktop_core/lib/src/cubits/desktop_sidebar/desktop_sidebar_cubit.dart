@@ -39,6 +39,13 @@ class DesktopSidebarCubit({required final DesktopInstanceRepository repository})
     return saveLayout();
   }
 
+  Future<void> toggleProject({required String projectId}) {
+    final collapsed = {...state.collapsedProjectIds};
+    if (!collapsed.remove(projectId)) collapsed.add(projectId);
+    emit(state.copyWith(collapsedProjectIds: collapsed));
+    return saveLayout();
+  }
+
   Future<void> resetWidth() {
     resize(width: const DesktopSidebarLayout().width);
     return saveLayout();
