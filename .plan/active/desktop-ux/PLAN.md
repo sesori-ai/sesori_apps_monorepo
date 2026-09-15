@@ -235,7 +235,7 @@ Row
 │   └── bottom: supervision card (only in exceptional states), Bridge row (dot + popover), Settings row
 ├── DesktopSidebarResizeHandle (drag; resizeLeftRight cursor; double-click resets width)
 └── Expanded
-    └── Stack [ SessionSplitScope(isSplit: true, child: routed page), DesktopConnectionPill ]
+    └── Stack [ routed page, DesktopConnectionPill ]
 ```
 
 - Width bounds: 200–420 px, default 260; auto-collapse below 760 px window
@@ -308,9 +308,10 @@ and status presentation, following the existing session-list resolver boundary.
   Prego glass scaffold, FAB) with no back button; this is the "All sessions"
   page. The desktop `projects` route and `DesktopProjectListScreen` are removed.
 - Session detail, new session and diffs routes become direct children of the
-  top ShellRoute. Detail keeps no back arrow (the split scope already hides it).
-  New session and diffs keep their existing "back" callbacks pointed at the
-  project's sessions page.
+  top ShellRoute. Direct/sidebar-opened detail has no back arrow; pushed
+  details retain Back to their opener. Desktop passes this explicitly through
+  the nullable detail callback. New session and diffs retain Back to the opener
+  when pushed, otherwise to the project's sessions page.
 - ⌘N creates a session in the project of the current route; with no project
   context it is a no-op.
 
@@ -491,7 +492,7 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 2.a | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/13]` | ≤ 1,400 | `DesktopSidebarCubit` + `sidebar-layout` storage/repository methods; `DesktopSidebar` frame (header, resize handle, compact rail, bottom Settings/Bridge rows navigating to today's routes); `ProjectListCubit` hoisted to the shell; project rows with `PregoAvatarInitials`; replace the `NavigationRail`. Main pane untouched. |
 | 2.b | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | Presentation-only follow-up: clear header/actions/footer, Prego typography and surfaces, running/unread project indicators from `ProjectListCubit`, animated expand/collapse with reduced motion and immediate drag resizing. |
 | 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
-| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; `SessionSplitScope(isSplit: true)` from the shell; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
+| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; explicit nullable detail Back callback based on the owning page's poppability; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
 | 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
 | 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | Bridge popover (`PregoPopover`) with status, On/Off, Take over, Start at login (re-read on open), Open logs, Bridge settings…, Quit; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
 | 7 | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |

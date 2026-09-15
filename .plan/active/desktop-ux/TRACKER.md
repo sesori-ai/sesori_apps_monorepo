@@ -68,4 +68,6 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   across scoped checkpoints, with affected home/cockpit/avatar tests rerun after
   small follow-ups. Five font-loaded fixtures and all three owning analyzers pass. Native
   route/action/performance coverage remains pre-shipping work. Architecture
-  review approved the frozen routing scope; see [step 4 evidence](steps/step-04.md).
+  review approved the frozen routing scope. PR feedback then corrected explicit
+  detail Back presentation; 34 affected tests, two header fixtures and desktop
+  analysis pass. See [step 4 evidence](steps/step-04.md).

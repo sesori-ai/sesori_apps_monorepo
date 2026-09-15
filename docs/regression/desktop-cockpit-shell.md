@@ -56,8 +56,9 @@ The main pane hosts one full-width routed page.
   All sessions uses the shared full list, archive filter, actions, scan/refresh,
   and New task button without a back arrow. Only that page creates a full list
   owner; recent-session menus remain non-viewing action scopes.
-- Detail uses the available main-pane width without a redundant back arrow.
-  Archived rows open read-only. New-session creation replaces its page with
+- Direct/sidebar-opened detail uses the available main-pane width without a
+  redundant back arrow. Pushed details retain Back to their opener, including
+  child-to-parent navigation. Archived rows open read-only. New-session creation replaces its page with
   detail. New-session/diff Back returns to the opener when pushed, or to the
   project's all-sessions page for direct entry. Deleting the open session
   returns to all sessions.

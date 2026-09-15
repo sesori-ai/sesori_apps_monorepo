@@ -7,8 +7,8 @@ PR ordinal: 5/13. Branch: `desktop-ux/main-pane-routes`.
 - Session list, new session, detail, and diffs are direct sibling routes under
   the authenticated cockpit. Only the all-sessions page mounts the full
   `SessionListCubit` provider; the sidebar's recent inventory remains independent.
-- The cockpit supplies `SessionSplitScope(isSplit: true)` at every width so
-  shared detail presentation does not add redundant back navigation. Mobile's
+- Desktop passes a nullable Back callback explicitly: direct/sidebar-opened
+  details hide Back; pushed details retain navigation to their opener. Mobile's
   adaptive split and viewing-claim owners are unchanged.
 - All sessions renders `SessionListScaffold`, including archive filtering,
   scan/refresh, shared row actions and the New task button, without a back arrow.
@@ -63,19 +63,57 @@ command headers; counts use executed, non-hidden JSON test results.
 
 Logs: `/tmp/rose-elephant-main-pane-{desktop-final,mobile-routing,shared-ui,font-final}.log`.
 
-`404da2ea23b7322f4f8aef78157066cfab843674` only replaces one test teardown
+`404da2ea23b7322f4f8aef78157066cfab843674` (tree
+`1a7749fd66a13d425a1c1a16992c10e53129e7bf`) only replaces one test teardown
 closure with its tearoff. After that cleanup, the six home cases and desktop
 `dart analyze --fatal-infos` pass. The shared UI/Prego analyzers passed at the
 production checkpoint. No unchanged passing suite was rerun for the test-only
 cleanup. Logs: `/tmp/rose-elephant-main-pane-home-final.log` and
 `/tmp/rose-elephant-main-pane-{desktop,module_app_ui,module_prego}-analyze-final.log`.
 Final image inspection caught the avatar's remaining package override.
-`0494cb0d24189ccabe31dad84368eca6792ba1d1` removes that argument and adds an
+`0494cb0d24189ccabe31dad84368eca6792ba1d1` (tree
+`0f051e1638bcb3043d9623f5803f7bafcd236192`) removes that argument and adds an
 assertion. At this head, both avatar tests, all 20 cockpit cases, all five
 render fixtures and the Prego analyzer pass. Those changed-scope logs use
 `{avatar-final,cockpit-final,previews-final,module_prego-analyze-final}` under the
 same `/tmp/rose-elephant-main-pane-` prefix. This adds two distinct cases to the
 147-case baseline, not 22 new cases.
+
+Exact follow-up commands (using the pinned executables above; cwd relative to
+workspace root):
+
+| Checkpoint | Cwd | Command | Result |
+|---|---|---|---|
+| `404da2e` | `client/desktop` | `flutter test --reporter expanded test/features/home/desktop_home_pane_test.dart` | 6 pass |
+| `404da2e` | `client/desktop` | `dart analyze --fatal-infos` | clean |
+| `0494cb0` | `client/module_prego` | `flutter test --reporter expanded test/components/prego_avatar_initials_test.dart` | 2 pass |
+| `0494cb0` | `client/desktop` | `flutter test --reporter expanded test/core/widgets/desktop_cockpit_shell_test.dart` | 20 pass |
+| `0494cb0` | `client/desktop` | `flutter test --reporter expanded .dart_tool/main_pane_preview_test.dart` | 5 fixtures pass |
+| `0494cb0` | `client/module_prego` | `dart analyze --fatal-infos` | clean |
+
+### PR-review correction
+
+Review identified that the desktop did not consume the proposed split scope.
+Removed that inert wrapper and replaced the scope-only assertion with a real
+main-pane width check. Explicit nullable detail callbacks now drive the shared
+view. Tests cover direct entry, sidebar/all-sessions entry, pushed child return,
+and the retained opener after creation. Actual detail widget tests verify Back
+absence/presence; two font-loaded header fixtures were inspected as well.
+
+Measured checkpoint: `17718ef0da6fbed30d0e3acc8eb28e3bdb0ffcc4`.
+Tree: `84dce196314e3b1fa8df6b8b2d29a450c1a6230c`. Cwd: `client/desktop`.
+Commands and results:
+
+- `flutter test --reporter json test/core/routing/desktop_router_test.dart test/core/widgets/desktop_cockpit_shell_test.dart test/features/sessions/desktop_session_detail_screen_test.dart` — 34 pass.
+- `flutter test --reporter expanded .dart_tool/detail_back_preview_test.dart` — 2 fixtures pass.
+- `dart analyze --fatal-infos` — clean.
+
+Logs include full head/tree/cwd/command headers:
+`/tmp/rose-elephant-1496-{back-tests-final,back-previews,back-analyze-final}.log`.
+Earlier unchanged-area runs are baseline evidence, not reruns at this checkpoint.
+The private render harnesses are outside Git; these trees identify their tracked
+production source. Final PR head may additionally contain documentation-only
+changes and is identified in the PR body, not conflated with these checkpoints.
 
 Localization generation (`flutter gen-l10n` in `client/module_app_ui`) and
 format/diff checks pass. CI owns the remaining full suite/analyzer matrix.
@@ -111,8 +149,24 @@ fresh-context reviewer and the architecture skill. No findings. Report:
 font correction and assertion do not change architecture and have the focused
 follow-up evidence above; they were outside that frozen review range.
 
-The implementation/test checkpoint `0494cb0` is 980 changed lines (587 additions
-+ 393 deletions), including nine generated localization lines, against merge base
-`93bc177d60da690692f11a837101a4d76887059d`. Final self-inclusive head/size,
-including this evidence and regression docs, is recorded in the PR body using
-`git diff --numstat <merge-base> <final-head>`; the step target is 1,400 lines.
+Merge base: `93bc177d60da690692f11a837101a4d76887059d`. All counts include
+additions plus deletions, generated output, tests and docs present at that head.
+
+| Measured head | Additions | Deletions | Total | Inclusion |
+|---|---:|---:|---:|---|
+| `0494cb0d24189ccabe31dad84368eca6792ba1d1` | 587 | 393 | 980 | Implementation/test checkpoint; this evidence file not yet committed |
+| `504a2d3a61207e225904732c95bd9aaaf78ce94b` | 754 | 411 | 1,165 | Initial PR head, including this file as it existed at that commit |
+| `17718ef0da6fbed30d0e3acc8eb28e3bdb0ffcc4` | 784 | 413 | 1,197 | Review code checkpoint; includes prior docs, not this follow-up edit |
+
+Reproduce with:
+
+```sh
+base=93bc177d60da690692f11a837101a4d76887059d
+git diff --numstat "$base" 0494cb0d24189ccabe31dad84368eca6792ba1d1
+git diff --numstat "$base" 504a2d3a61207e225904732c95bd9aaaf78ce94b
+git diff --numstat "$base" 17718ef0da6fbed30d0e3acc8eb28e3bdb0ffcc4
+```
+
+Each range has nine generated lines. The final self-inclusive head/total is
+recorded outside Git in the PR body, avoiding a recursively changing embedded
+commit hash. The step target remains 1,400 lines.
