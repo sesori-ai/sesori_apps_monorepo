@@ -138,11 +138,11 @@ void main() {
     expect(find.widgetWithText(ProjectTile, "my-app"), findsOneWidget);
   });
 
-  // Pinned to iOS because the blur is Apple-only: a full-screen BackdropFilter is
-  // the cost PregoAnchorMenu's flat path exists to keep off Android, so there the
-  // spotlight runs as scrim + cut-out alone. That degrade is PregoAnchorMenu's
-  // contract and is covered in module_prego; what matters here is only that the
-  // project row opts into the spotlight at all.
+  // Pinned to iOS: macOS uses a stronger scrim because hybrid AppKitViews cannot
+  // join Flutter's backdrop sample, while Android avoids the full-screen blur's
+  // cost. Those fallbacks are PregoAnchorMenu's contract and are covered in
+  // module_prego; what matters here is only that the project row opts into the
+  // spotlight at all.
   testWidgets("the open menu blurs the page behind it and releases the blur on dismiss", (tester) async {
     await pumpScreen(tester);
 
