@@ -48,7 +48,8 @@ const _desktopSessionActions = SessionListActionDispatcher(onSessionDeleted: _cl
 /// Desktop routes delivered through the shared adaptive cockpit slices.
 ///
 /// [AuthGate] owns one authenticated session above the product-specific
-/// sidebar. A project-scoped nested shell then owns one session-list cubit and
+/// sidebar, which owns the shared project inventory. A project-scoped nested
+/// shell then owns one session-list cubit and
 /// keeps that inventory mounted while the right pane navigates.
 final GoRouter desktopRouter = GoRouter(
   navigatorKey: desktopRootNavigatorKey,
@@ -60,12 +61,18 @@ final GoRouter desktopRouter = GoRouter(
 List<RouteBase> buildDesktopRoutes() => <RouteBase>[
   ShellRoute(
     builder: (BuildContext context, GoRouterState state, Widget child) => AuthGate(
-      child: DesktopCockpitShell(
-        destination: _destinationFor(path: state.uri.path),
-        onOpenBridge: () => _goRoute(context: context, route: const AppRoute.splash()),
-        onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-        onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
-        child: child,
+      child: DesktopCockpitCubitProvider(
+        child: DesktopCockpitShell(
+          selectedProjectId: state.pathParameters[projectIdPathParam],
+          onOpenProject: ({required context, required project, required displayName}) => _goRoute(
+            context: context,
+            route: AppRoute.sessions(projectId: project.id, projectName: displayName),
+          ),
+          onOpenBridge: () => _goRoute(context: context, route: const AppRoute.splash()),
+          onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
+          onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
+          child: child,
+        ),
       ),
     ),
     routes: <RouteBase>[
@@ -347,16 +354,6 @@ AppRouteSessionDiffs _decodeSessionDiffsRoute({required GoRouterState state}) {
     final AppRouteSessionDiffs route => route,
     final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
   };
-}
-
-DesktopCockpitDestination _destinationFor({required String path}) {
-  if (isDesktopSettingsPath(path: path)) {
-    return DesktopCockpitDestination.settings;
-  }
-  if (path.startsWith(AppRouteDef.projects.path)) {
-    return DesktopCockpitDestination.projects;
-  }
-  return DesktopCockpitDestination.bridge;
 }
 
 @visibleForTesting

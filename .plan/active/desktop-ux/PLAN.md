@@ -2,7 +2,8 @@
 
 ## Status
 
-Planned 2026-09-15. This is phase 1 of the desktop UX work: the changes that
+Planned 2026-09-15; execution has started with step 2 (see `TRACKER.md`).
+This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
 are listed at the end as rough intent only and get their own plans when they
 start.

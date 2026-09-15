@@ -160,6 +160,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Bridge installation and updates](bridge-installation-and-updates.md)
 - [Design catalog](design-catalog.md)
 - [Desktop bridge supervision](desktop-bridge-supervision.md)
+- [Desktop cockpit shell](desktop-cockpit-shell.md)
 - [Diffs and source control](diffs-and-source-control.md)
 - [Glass presentation](glass-presentation.md)
 - [Native activity indicators](native-activity-indicators.md)

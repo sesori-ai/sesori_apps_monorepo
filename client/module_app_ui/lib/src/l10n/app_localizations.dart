@@ -133,6 +133,30 @@ abstract class AppLocalizations {
   /// **'Connection failed — check your network and try again.'**
   String get apiErrorNetworkDown;
 
+  /// No description provided for @desktopSidebarCollapse.
+  ///
+  /// In en, this message translates to:
+  /// **'Collapse sidebar'**
+  String get desktopSidebarCollapse;
+
+  /// No description provided for @desktopSidebarExpand.
+  ///
+  /// In en, this message translates to:
+  /// **'Expand sidebar'**
+  String get desktopSidebarExpand;
+
+  /// No description provided for @desktopSidebarResize.
+  ///
+  /// In en, this message translates to:
+  /// **'Resize sidebar; double-click to reset'**
+  String get desktopSidebarResize;
+
+  /// No description provided for @desktopBridgeTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge'**
+  String get desktopBridgeTitle;
+
   /// No description provided for @projectListTitle.
   ///
   /// In en, this message translates to:

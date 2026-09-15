@@ -7,7 +7,7 @@ this table records state only and never mirrors PR review status.
 | Done | Step | Branch | Exact PR title | Changed-line target | State |
 |---|---|---|---|---|---|
 | [x] | 1 | `desktop-release-plan` | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/12]` | ≤ 900 | done |
-| [ ] | 2 | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/12]` | ≤ 1,200 | pending |
+| [ ] | 2 | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/12]` | ≤ 1,200 | in-progress |
 | [ ] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 3/12]` | ≤ 1,200 | pending |
 | [ ] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 4/12]` | ≤ 1,400 | pending |
 | [ ] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 5/12]` | ≤ 700 | pending |
@@ -30,4 +30,6 @@ last.
 
 ## Verification Log
 
-(empty until steps execute)
+- Step 2: implementation and focused automated checks pass; macOS debug build
+  passes. Native interaction QA is blocked by missing pinned Peekaboo tooling.
+  Architecture implementation review approved. See `steps/step-02.md`.

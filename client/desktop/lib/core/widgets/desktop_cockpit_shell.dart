@@ -2,63 +2,90 @@ import "dart:async";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
+
+import "../di/injection.dart";
+import "desktop_sidebar.dart";
+
+/// One inventory and one layout owner per signed-in cockpit.
+class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => MultiBlocProvider(
+    providers: [
+      BlocProvider(create: (_) => createProjectListCubit(locator: getIt)),
+      BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
+    ],
+    child: child,
+  );
+}
 
 /// Product-shell navigation and supervision chrome around the desktop cockpit.
 class const DesktopCockpitShell({
   super.key,
-  required final DesktopCockpitDestination destination,
+  required final String? selectedProjectId,
+  required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenBridge,
   required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenSettings,
   required final Widget child,
 }) extends StatelessWidget {
-  static const double _extendedBreakpoint = 1120;
-  static const String _bridgeLabel = "Bridge";
-  static const String _projectsLabel = "Projects";
-  static const String _settingsLabel = "Settings";
+  static const double compactWidth = 56;
+  static const double autoCollapseBreakpoint = 760;
 
   @override
   Widget build(BuildContext context) {
+    final layout = context.watch<DesktopSidebarCubit>().state;
+    final sidebar = context.read<DesktopSidebarCubit>();
     return LayoutBuilder(
       builder: (context, constraints) {
-        final extended = constraints.maxWidth >= _extendedBreakpoint;
+        final autoCollapsed = constraints.maxWidth < autoCollapseBreakpoint;
+        final collapsed = layout.collapsed || autoCollapsed;
         return Scaffold(
           body: Row(
             children: [
-              NavigationRail(
+              SizedBox(
                 key: const Key("desktop-cockpit-sidebar"),
-                extended: extended,
-                selectedIndex: destination.index,
-                onDestinationSelected: (index) => switch (DesktopCockpitDestination.values[index]) {
-                  DesktopCockpitDestination.bridge => onOpenBridge(),
-                  DesktopCockpitDestination.projects => onOpenProjects(),
-                  DesktopCockpitDestination.settings => onOpenSettings(),
-                },
-                leading: Padding(
-                  padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-                  child: Semantics(
-                    label: "Sesori",
-                    child: const Icon(TablerRegular.code, size: 28),
+                width: collapsed ? compactWidth : layout.width,
+                child: DesktopSidebar(
+                  collapsed: collapsed,
+                  autoCollapsed: autoCollapsed,
+                  selectedProjectId: selectedProjectId,
+                  onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
+                  onOpenProjects: onOpenProjects,
+                  onAddProject: () => unawaited(
+                    showAddProjectDialog(
+                      context: context,
+                      cubit: context.read<ProjectListCubit>(),
+                      connectionService: getIt<ConnectionService>(),
+                    ),
                   ),
+                  onOpenProject: onOpenProject,
+                  onOpenBridge: onOpenBridge,
+                  onOpenSettings: onOpenSettings,
                 ),
-                destinations: const [
-                  NavigationRailDestination(
-                    icon: Icon(TablerRegular.server),
-                    label: Text(_bridgeLabel),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(TablerRegular.folders),
-                    label: Text(_projectsLabel),
-                  ),
-                  NavigationRailDestination(
-                    icon: Icon(TablerRegular.settings),
-                    label: Text(_settingsLabel),
-                  ),
-                ],
               ),
-              const VerticalDivider(width: 1),
+              if (!collapsed)
+                MouseRegion(
+                  cursor: SystemMouseCursors.resizeLeftRight,
+                  child: Tooltip(
+                    message: context.loc.desktopSidebarResize,
+                    child: GestureDetector(
+                      key: const Key("desktop-sidebar-resize"),
+                      behavior: HitTestBehavior.opaque,
+                      onHorizontalDragUpdate: (details) =>
+                          sidebar.resize(width: sidebar.state.width + details.delta.dx),
+                      onHorizontalDragEnd: (_) => unawaited(sidebar.saveLayout()),
+                      onHorizontalDragCancel: () => unawaited(sidebar.saveLayout()),
+                      onDoubleTap: () => unawaited(sidebar.resetWidth()),
+                      child: const SizedBox(width: 6, child: VerticalDivider(width: 1)),
+                    ),
+                  ),
+                )
+              else
+                const VerticalDivider(width: 1),
               Expanded(
                 child: Column(
                   children: [
@@ -73,13 +100,6 @@ class const DesktopCockpitShell({
       },
     );
   }
-}
-
-/// Stable destinations owned by the desktop shell rather than GoRouter strings.
-enum DesktopCockpitDestination() {
-  bridge,
-  projects,
-  settings,
 }
 
 /// Exceptional bridge states shown above every cockpit destination.
