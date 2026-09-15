@@ -110,6 +110,7 @@ void main() {
     await tester.tap(find.text("open archived"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+    expect(find.text("back"), findsNothing);
     await tester.tap(find.text("delete open session"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _sessions.buildPath());
@@ -125,9 +126,23 @@ void main() {
     await tester.tap(find.text("created"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
-    router.pop();
+    await tester.tap(find.text("back"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _sessions.buildPath());
+  });
+
+  testWidgets("direct detail hides Back but a pushed child can return to its parent", (tester) async {
+    final router = _callbackRouter(initialRoute: _detail(readOnly: true));
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    expect(find.text("back"), findsNothing);
+    await tester.tap(find.text("open child"));
+    await tester.pumpAndSettle();
+    expect(router.state.pathParameters[sessionIdPathParam], "child");
+    await tester.tap(find.text("back"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+    expect(find.text("back"), findsNothing);
   });
 
   testWidgets("diff back preserves the pushed detail including read-only state", (tester) async {
@@ -259,6 +274,16 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                     button(label: "back", action: screen.onBack),
                   ],
                   DesktopSessionDetailScreen() => [
+                    if (screen.onBack case final onBack?) button(label: "back", action: onBack),
+                    button(
+                      label: "open child",
+                      action: () => screen.onOpenSession(
+                        projectId: "p",
+                        sessionId: "child",
+                        sessionTitle: "Child",
+                        readOnly: true,
+                      ),
+                    ),
                     button(label: "diffs", action: screen.onShowDiffs),
                     button(
                       label: "delete open session",

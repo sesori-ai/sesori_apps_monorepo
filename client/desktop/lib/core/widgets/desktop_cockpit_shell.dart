@@ -58,9 +58,7 @@ class const DesktopCockpitShell({
     final content = Column(
       children: [
         const DesktopSupervisionNotice(),
-        // The sidebar is the navigation pane at every width; shared detail
-        // presentation must not add a second navigation/back affordance.
-        Expanded(child: SessionSplitScope(isSplit: true, child: child)),
+        Expanded(child: child),
       ],
     );
     return LayoutBuilder(

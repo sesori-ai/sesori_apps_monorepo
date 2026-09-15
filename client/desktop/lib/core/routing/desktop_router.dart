@@ -162,10 +162,8 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             sessionId: route.sessionId,
             sessionTitle: route.sessionTitle,
             readOnly: route.readOnly,
-            onBack: () => _popRouteOrGo(
-              context: context,
-              fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
-            ),
+            // Direct/sidebar entry has no Back; pushed details retain their opener.
+            onBack: (ModalRoute.canPopOf(context) ?? false) ? () => _popRoute(context: context) : null,
             onShowDiffs: () => _pushRoute(
               context: context,
               route: AppRoute.sessionDiffs(
