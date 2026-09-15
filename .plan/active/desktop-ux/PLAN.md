@@ -329,7 +329,7 @@ and status presentation, following the existing session-list resolver boundary.
   for disconnected states, and the macOS file-access card.
 - `/projects/:id/sessions` → the shared `SessionListScaffold` (mobile styling,
   Prego glass scaffold, FAB) with no back button; this is the "All sessions"
-  page. The desktop `projects` route and `DesktopProjectListScreen` are removed.
+  page. The canonical `projects` home stays; only `DesktopProjectListScreen` is removed.
 - Session detail, new session and diffs routes become direct children of the
   top ShellRoute. Direct/sidebar-opened detail has no back arrow; pushed
   details retain Back to their opener. Desktop passes this explicitly through
@@ -436,7 +436,7 @@ the modal.
 - The `sidebar-layout` file is new; an absent file means defaults. No
   migration of `window-bounds` or `bridge-desired-state`.
 - Internal desktop builds only exist so far; deleting `DesktopHome`, the
-  desktop `projects` route and the desktop settings routes needs no
+  desktop settings routes needs no
   compatibility path.
 
 ## Non-Goals (phase 1)
@@ -479,7 +479,7 @@ Included in the feature PRs (directly caused, small):
   `desktop_session_list_screen.dart` and its back-button wiring,
   `DesktopCockpitDestination`, the `NavigationRail`, `DesktopSupervisionNotice`
   (replaced by the sidebar card), the nested sessions `ShellRoute`, the desktop
-  `projects` and settings `GoRoute`s with `isDesktopSettingsPath`/`_openSettings`,
+  settings `GoRoute`s with `isDesktopSettingsPath`/`_openSettings`,
   and the root `ConnectionBanner` `Column` mount in `app.dart`.
 - Delete desktop tests that only exercised the removed compositions.
 - Step 6 removes the dashboard-only recent-log snapshot field, buffer and
@@ -664,7 +664,7 @@ the sink seam in `module_core` (D10, step 9); the desktop pill owns the
 "wanted On" suppression (D5); every desktop settings route is removed, no
 onboarding exception (D7); `DesktopSessionListCubitProvider`,
 `SessionListPanel` and `EmptySessionDetailPanel` are kept (cleanup); the home
-pane is hosted at the `projects` path between steps 4 and 6 (steps 4, 6).
+pane uses the `projects` path (kept permanently after the step-6 route audit).
 
 ## Relation To Other Plans
 
