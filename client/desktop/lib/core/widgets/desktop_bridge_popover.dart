@@ -18,26 +18,40 @@ class const DesktopBridgePopover({
     final state = context.watch<BridgeControlCubit>().state;
     final controls = context.read<BridgeControlCubit>();
     final loc = context.loc;
-    final ({String label, Future<void> Function() command, PregoButtonsSolidHierarchy hierarchy}) action = switch (state
-        .processState) {
-      BridgeProcessContention() => (label: loc.desktopBridgeTakeOver, command: controls.takeOver, hierarchy: .primary),
-      _ when state.canTakeOver => (label: loc.desktopBridgeTakeOver, command: controls.takeOver, hierarchy: .primary),
-      BridgeProcessStopped() => (label: loc.desktopBridgeStart, command: controls.startBridge, hierarchy: .primary),
-      BridgeProcessStartFailed() => (label: loc.projectListRetry, command: controls.startBridge, hierarchy: .primary),
-      BridgeProcessLoginRequired() || BridgeProcessCrashGiveUp() => (
-        label: loc.projectListRetry,
-        command: controls.recoverConnection,
-        hierarchy: .primary,
-      ),
-      BridgeProcessStarting() ||
-      BridgeProcessRunning() ||
-      BridgeProcessStopping() ||
-      BridgeProcessCrashRetryScheduled() => (
-        label: loc.desktopBridgeStop,
-        command: controls.stopBridge,
-        hierarchy: .secondary,
-      ),
-    };
+    final takeOverAction = (
+      label: loc.desktopBridgeTakeOver,
+      command: controls.takeOver,
+      hierarchy: PregoButtonsSolidHierarchy.primary,
+    );
+    final ({String label, Future<void> Function() command, PregoButtonsSolidHierarchy hierarchy}) action =
+        state.canTakeOver
+        ? takeOverAction
+        : switch (state.processState) {
+            BridgeProcessContention() => takeOverAction,
+            BridgeProcessStopped() => (
+              label: loc.desktopBridgeStart,
+              command: controls.startBridge,
+              hierarchy: .primary,
+            ),
+            BridgeProcessStartFailed() => (
+              label: loc.projectListRetry,
+              command: controls.startBridge,
+              hierarchy: .primary,
+            ),
+            BridgeProcessLoginRequired() || BridgeProcessCrashGiveUp() => (
+              label: loc.projectListRetry,
+              command: controls.recoverConnection,
+              hierarchy: .primary,
+            ),
+            BridgeProcessStarting() ||
+            BridgeProcessRunning() ||
+            BridgeProcessStopping() ||
+            BridgeProcessCrashRetryScheduled() => (
+              label: loc.desktopBridgeStop,
+              command: controls.stopBridge,
+              hierarchy: .secondary,
+            ),
+          };
     return Padding(
       key: const Key("desktop-bridge-popover"),
       padding: const EdgeInsets.all(PregoSpacing.xl),
