@@ -1,0 +1,146 @@
+name: Desktop Native Qualification
+
+# Build evidence only. No release tags, signing credentials, publication or GUI launch.
+# This intentionally does not gate the independent CLI/mobile release workflows.
+on:
+  workflow_dispatch:
+  pull_request:
+    paths:
+      - '.github/workflows/desktop-qualification.yml'
+      - '.github/scripts/qualify_desktop.py'
+      - '.github/scripts/test_qualify_desktop.py'
+      - '.github/scripts/probe_sparkle.swift'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: desktop-qualification-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  tooling:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - run: python -m unittest discover -s .github/scripts -p test_qualify_desktop.py
+
+  native-build:
+    needs: tooling
+    timeout-minutes: 40
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-15-intel
+            target: macos
+            arch: x64
+          - runner: macos-15
+            target: macos
+            arch: arm64
+          - runner: windows-2025
+            target: windows
+            arch: x64
+          - runner: windows-11-arm
+            target: windows
+            arch: arm64
+          - runner: ubuntu-24.04
+            target: linux
+            arch: x64
+          - runner: ubuntu-24.04-arm
+            target: linux
+            arch: arm64
+    runs-on: ${{ matrix.runner }}
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.arch }}
+
+      # Official pinned framework source bootstraps native Dart on all six hosts.
+      # Windows/Linux ARM64 have no prepacked Flutter SDK for the current pin.
+      # A missing native bootstrap or x64 fallback fails, rather than passing via emulation.
+      - name: Bootstrap exact official Flutter revision
+        env:
+          SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-qualification
+          python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
+            2>&1 | tee build/desktop-qualification/bootstrap.log
+
+      - name: Select Xcode with Icon Composer support
+        if: matrix.target == 'macos'
+        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer' >> "$GITHUB_ENV"
+
+      - name: Install Linux native build dependencies
+        if: matrix.target == 'linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libsecret-1-dev libayatana-appindicator3-dev
+
+      - name: Typecheck supported Sparkle lifecycle API
+        if: matrix.target == 'macos'
+        run: |
+          set -euo pipefail
+          cd build/desktop-qualification
+          curl --fail --location --output Sparkle.tar.xz \
+            https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-2.10.0.tar.xz
+          echo 'c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c  Sparkle.tar.xz' | shasum --algorithm 256 --check
+          mkdir sparkle
+          tar -xf Sparkle.tar.xz -C sparkle
+          xcrun swiftc -typecheck -F sparkle ../../.github/scripts/probe_sparkle.swift \
+            2>&1 | tee sparkle-api.log
+          echo 'Sparkle 2.10.0 public API typecheck passed; runtime update behavior remains unverified.' >> sparkle-api.log
+
+      - name: Resolve locked workspaces
+        run: |
+          set -euo pipefail
+          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
+          (cd client && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+
+      - name: Build native helper and actual desktop plugins
+        run: |
+          set -euo pipefail
+          (cd bridge/app && dart build cli -o build/cli) 2>&1 | tee build/desktop-qualification/helper-build.log
+          # Allow Flutter's pub phase to generate the SwiftPM/plugin integration.
+          # dart pub get followed by --no-pub is insufficient on a clean macOS checkout.
+          (cd client/desktop && flutter build '${{ matrix.target }}' --release) 2>&1 | tee build/desktop-qualification/gui-build.log
+          git diff --exit-code -- bridge/pubspec.lock client/pubspec.lock
+
+      - name: Inspect native assets and relocated helper
+        run: python .github/scripts/qualify_desktop.py inspect --arch '${{ matrix.arch }}'
+
+      - name: Exercise relocated helper with isolated local fakes
+        env:
+          SESORI_E2E_REQUIRED: '1'
+          SESORI_E2E_ARTIFACT_DIR: ${{ github.workspace }}/build/desktop-qualification/supervised-e2e
+        run: |
+          set -euo pipefail
+          (cd bridge/app && dart test test/integration/supervised_e2e_test.dart --reporter expanded) \
+            2>&1 | tee build/desktop-qualification/supervised-e2e.log
+
+      - name: Upload qualification evidence, including partial failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-qualification-${{ matrix.target }}-${{ matrix.arch }}
+          path: |
+            build/desktop-qualification/*.json
+            build/desktop-qualification/*.log
+            build/desktop-qualification/supervised-e2e/
+          if-no-files-found: warn
+          retention-days: 14
