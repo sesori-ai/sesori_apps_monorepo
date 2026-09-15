@@ -8,7 +8,8 @@ packaging capability does not imply public downloads or an updater have shipped.
 
 ## Required Behavior
 
-- Build from committed source with the pinned native SDK. Preserve framework
+- Build from committed source with the pinned native SDK. Reject a nonempty
+  build-recorded source patch before supplying signing credentials. Preserve framework
   symlinks, native CPU support and the complete `Contents/Helpers/bridge/bin`–`lib`
   relationship. The packaged identity continues to control helper admission from
   `Contents/Resources/desktop-bundle.json`; keep JSON out of the code-only Helpers

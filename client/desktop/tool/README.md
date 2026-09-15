@@ -62,6 +62,8 @@ an Applications link: install the app into Applications rather than use it from 
 mounted image. Framework symlinks and the complete helper bin/lib layout survive
 both formats. Every extracted native binary, the app and the DMG are verified;
 Gatekeeper assessment and extracted-helper E2E must pass before package upload.
+Signing refuses a nonempty build-recorded source patch; commit those source changes
+and retry from a fresh committed checkout rather than signing a dirty build.
 
 Only the explicit preflight/packaging signing step consumes `MACOS_CERT_P12_BASE64`,
 `MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`,
