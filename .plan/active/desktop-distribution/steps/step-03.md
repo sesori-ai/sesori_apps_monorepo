@@ -1,7 +1,8 @@
 # Step 3 — Identity-Bound Desktop Bundles
 
 Status: **in progress** — [PR #1492](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1492);
-initial native staging CI passes both macOS/Linux rows, with Windows blocked.
+initial native staging CI passes both macOS/Linux rows; the Windows source-guard
+correction is locally verified and awaits native CI.
 
 ## Implementation
 
@@ -55,11 +56,19 @@ untracked build inputs, not source changes to commit.
 
 [Run 34973336652](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34973336652),
 on PR head `ca0bbf9`, passed native staging, inventory and isolated relocated-helper
-E2E on both macOS and Linux CPUs. Both Windows jobs refused to stage because locked
-Flutter dependency resolution changed 14 tracked generated plugin registrant files.
-This is real status output, not stderr warnings; the contents/cause of those changes
-are not yet established. Failure-time source diffs and line-ending diagnostics were
-added for the next run without relaxing the clean-source guard.
+E2E on both macOS and Linux CPUs. Both Windows jobs refused to stage after locked
+Flutter dependency resolution: Git status reported 14 generated registrant files.
+[Diagnostic run 34975281444](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34975281444),
+Windows x64 artifact `10399290759`, established an empty content patch, LF in both
+index/worktree, and `core.autocrlf=true`. These were stat-only reports, not edits.
+
+A real Git fixture reproduced the rejection locally after CRLF checkout followed
+by unchanged LF regeneration. The producer now compares canonical tracked content
+against HEAD and separately checks untracked files; inspection uses the same content
+criterion. The fixture failed before the fix and passes afterward. A second test
+confirms tracked, staged, deleted and untracked edits remain rejected. All six staging
+tests, desktop analysis and 11 Python qualification tests pass; native CI is pending.
+Failure-time diff/status evidence remains available without resetting the checkout.
 
 No actual GUI/account operation, minimum-OS execution, signed installers, real
 upgrades or public release readiness is claimed. No signing credentials, user

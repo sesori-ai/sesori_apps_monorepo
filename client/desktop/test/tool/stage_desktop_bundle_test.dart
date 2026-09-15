@@ -4,13 +4,38 @@ import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
-import "../../tool/stage_desktop_bundle.dart" show stageDesktopBundle;
+import "../../tool/stage_desktop_bundle.dart" show stageDesktopBundle, validateDesktopBundleSource;
 
 void main() {
   late Directory temporary;
   setUp(() async => temporary = await Directory.systemTemp.createTemp("desktop staging "));
   tearDown(() async {
     await temporary.delete(recursive: true);
+  });
+
+  test("accepts unchanged LF source regenerated after an autocrlf checkout", () async {
+    final File source = await _committedSource(root: temporary);
+    await source.writeAsString("");
+    await _git(root: temporary, arguments: ["checkout", "--", "source.dart"]);
+    expect(await source.readAsString(), "committed\r\n");
+    await source.writeAsString("committed\n");
+    await expectLater(validateDesktopBundleSource(root: temporary), completes);
+  });
+
+  test("rejects tracked, staged, deleted and untracked source changes", () async {
+    final File source = await _committedSource(root: temporary);
+    await source.writeAsString("changed\n");
+    await expectLater(validateDesktopBundleSource(root: temporary), throwsStateError);
+    await _git(root: temporary, arguments: ["add", "source.dart"]);
+    await expectLater(validateDesktopBundleSource(root: temporary), throwsStateError);
+    await source.writeAsString("committed\n");
+    await _git(root: temporary, arguments: ["add", "source.dart"]);
+    await source.delete();
+    await expectLater(validateDesktopBundleSource(root: temporary), throwsStateError);
+    await source.writeAsString("committed\n");
+    await expectLater(validateDesktopBundleSource(root: temporary), completes);
+    await _file(root: temporary, name: "untracked.dart", contents: "uncommitted\n");
+    await expectLater(validateDesktopBundleSource(root: temporary), throwsStateError);
   });
 
   for (final DesktopBundleOs os in DesktopBundleOs.values) {
@@ -80,6 +105,31 @@ void main() {
     expect(executable.exitCode, 0);
     expect(executable.stdout, contains("staged-helper"));
   }, skip: Platform.isWindows ? "Unix framework/permission behavior" : false);
+}
+
+Future<File> _committedSource({required Directory root}) async {
+  await _git(root: root, arguments: ["init", "--quiet"]);
+  await _git(root: root, arguments: ["config", "core.autocrlf", "true"]);
+  final File source = File(path.join(root.path, "source.dart"));
+  await source.writeAsString("committed\n");
+  await _git(root: root, arguments: ["add", "source.dart"]);
+  await _git(root: root, arguments: ["commit", "--quiet", "-m", "fixture"]);
+  return source;
+}
+
+Future<void> _git({required Directory root, required List<String> arguments}) async {
+  final ProcessResult result = await Process.run("git", [
+    "-c",
+    "user.name=Fixture",
+    "-c",
+    "user.email=fixture@example.invalid",
+    "-c",
+    "commit.gpgsign=false",
+    "-c",
+    "core.hooksPath=${path.join(root.path, "no-hooks")}",
+    ...arguments,
+  ], workingDirectory: root.path);
+  expect(result.exitCode, 0, reason: result.stderr.toString());
 }
 
 Future<void> _file({required Directory root, required String name, required String contents}) async {

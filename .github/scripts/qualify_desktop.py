@@ -156,8 +156,8 @@ def inspect(*, target_os: str, arch: str, gui: Path) -> None:
                if line.startswith("flutter ")).rsplit("-", 1)[0]
     if version["frameworkVersion"] != pin:
         raise ValueError(f"Expected pinned Flutter {pin}, found {version['frameworkVersion']}")
-    # Keep Git's diagnostics separate: Windows newline warnings are not modified files.
-    source_status = run(command=["git", "status", "--porcelain", "--untracked-files=no"], merge_stderr=False).strip()
+    # Canonical content, not stat-only autocrlf changes or Git's stderr warnings.
+    source_status = run(command=["git", "diff", "--name-status", "HEAD"], merge_stderr=False).strip()
     report = {"sourceSha": run(command=["git", "rev-parse", "HEAD"]).strip(),
               "trackedSourceDirty": bool(source_status), "trackedSourceStatus": source_status,
               "targetOs": target_os, "nativeHostCpu": arch, "hostOs": platform.platform(),

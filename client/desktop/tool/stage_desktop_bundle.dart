@@ -30,14 +30,7 @@ Future<void> main(List<String> arguments) async {
     final Directory desktop = File(Platform.script.toFilePath()).parent.parent;
     final Directory root = desktop.parent.parent;
     final Directory bridge = Directory(path.join(root.path, "bridge", "app"));
-    final String dirty = await _capture(
-      executable: "git",
-      arguments: ["status", "--porcelain", "--untracked-files=normal"],
-      directory: root,
-    );
-    if (dirty.isNotEmpty) {
-      throw StateError("Commit source changes before building a versioned desktop bundle:\n$dirty");
-    }
+    await validateDesktopBundleSource(root: root);
     final String version = _version(pubspec: File(path.join(desktop.path, "pubspec.yaml")));
     if (_version(pubspec: File(path.join(bridge.path, "pubspec.yaml"))) != version) {
       throw StateError("Desktop and bridge versions differ. Run make bump-version VERSION=$version to align them.");
@@ -160,6 +153,26 @@ Future<void> _copyDirectory({required Directory source, required Directory desti
       case File():
         await entity.copy(target);
     }
+  }
+}
+
+/// Requires committed source without mistaking Git checkout metadata for edits.
+Future<void> validateDesktopBundleSource({required Directory root}) async {
+  // With autocrlf, regenerating LF files can leave status reporting stat-only
+  // changes. Compare canonical tracked content without modifying the Git index.
+  final String tracked = await _capture(
+    executable: "git",
+    arguments: ["diff", "--name-only", "HEAD"],
+    directory: root,
+  );
+  final String untracked = await _capture(
+    executable: "git",
+    arguments: ["ls-files", "--others", "--exclude-standard"],
+    directory: root,
+  );
+  final String dirty = [tracked, untracked].where((String files) => files.isNotEmpty).join("\n");
+  if (dirty.isNotEmpty) {
+    throw StateError("Commit source changes before building a versioned desktop bundle:\n$dirty");
   }
 }
 

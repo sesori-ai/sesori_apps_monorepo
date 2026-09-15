@@ -138,7 +138,7 @@ class NativeInventoryTest(unittest.TestCase):
                     return doctor
                 if command[:2] == ["git", "rev-parse"]:
                     return "test-sha\n"
-                if command[:2] == ["git", "status"]:
+                if command == ["git", "diff", "--name-status", "HEAD"]:
                     self.assertFalse(merge_stderr)
                     return ""
                 self.fail(f"Unexpected command: {command}")
@@ -155,7 +155,7 @@ class NativeInventoryTest(unittest.TestCase):
 
     def test_machine_output_can_keep_diagnostics_on_stderr(self) -> None:
         with patch.object(qualification.subprocess, "check_output", return_value="") as command:
-            self.assertEqual(qualification.run(command=["git", "status"], merge_stderr=False), "")
+            self.assertEqual(qualification.run(command=["git", "diff", "--name-status", "HEAD"], merge_stderr=False), "")
         self.assertIsNone(command.call_args.kwargs["stderr"])
 
     def test_bootstrap_cannot_replace_local_sdk(self) -> None:

@@ -68,7 +68,8 @@ Step 3 started automatically in the same worktree on
 unchanged; no new lifecycle owner, mutable state, database or wire contract was added.
 Implementation, local native evidence and the approved architecture review are
 recorded in [steps/step-03.md](steps/step-03.md). PR #1492 staging CI passes macOS
-and Linux on both CPUs; Windows is blocked on pre-build generated source changes.
+and Linux on both CPUs. Windows' stat-only Git false positive is reproduced and
+fixed locally; native CI for the canonical-content guard is pending.
 
 ## Qualification and ship gates
 
