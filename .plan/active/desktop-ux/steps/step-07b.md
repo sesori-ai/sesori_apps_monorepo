@@ -43,8 +43,12 @@ not native/live QA or user approval. No renderer was changed to obtain them.
 
 Read-only architecture review approved the full frozen base-to-`16e878a` scope,
 with no findings (run `9a3fff52-7ec4-46fe-8083-2e5ff5acd29f`, A1–A13 and B-Client).
-Subsequent changes only complete this evidence/tracker; no further code changed.
-Final inclusive diff accounting belongs in the PR body. The modest 1,650-line
+The initial follow-up completed evidence/tracker only. CI at `e045970` then
+found two obsolete routed-input tests; that desktop-only test file was retired.
+General's picker and preserved-route coverage already pass in the modal suite;
+no production change or duplicate local test rerun was needed. Desktop analysis
+passes after retirement; CI owns the full test rerun.
+Final inclusive diff accounting belongs in the PR body. The 1,750-line
 ceiling retains route retirement and roughly 650 lines of settings-test replacement;
 shared preparation was already split into #1500. No generated output changes.
 
