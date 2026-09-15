@@ -37,6 +37,13 @@ signature gate is accepted. Logs remain under ignored
 `build/desktop-macos-packaging-evidence/`. Initial and diagnostic workflow actionlint
 checks passed; actual signed-desktop behavior is still unverified.
 
+Diagnostic [run 34998095733](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34998095733)
+at `93fac44` found the exact expected valid Developer ID identity on both runners,
+and both authenticated successfully to notarization. The signature lookup still
+failed with the isolated keychain, despite `codesign --keychain`. The next attempt
+registers that temporary keychain in the user search list, matching the existing
+CLI signing workflow; no certificate/publisher replacement is being attempted.
+
 ## Implementation outline
 
 1. Pass the explicit trusted-CI credential preflight before packaging work relies

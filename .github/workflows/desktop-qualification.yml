@@ -79,6 +79,8 @@ jobs:
           security set-keychain-settings -lut 600 "$keychain"
           security import "$certificate" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign >/dev/null
           security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" "$keychain" >/dev/null
+          # Register the temporary keychain as in the existing CLI signing workflow.
+          security list-keychains -d user -s "$keychain" login.keychain
           echo 'Imported public signing identity metadata (certificate names and validity only):'
           security find-identity -p codesigning "$keychain"
           xcrun notarytool history --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" \
