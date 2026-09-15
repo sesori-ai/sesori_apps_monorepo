@@ -2,7 +2,8 @@
 
 ## Status
 
-Planned 2026-09-15. This is phase 1 of the desktop UX work: the changes that
+Planned 2026-09-15; execution has started with step 2 (see `TRACKER.md`).
+This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
 are listed at the end as rough intent only and get their own plans when they
 start.
@@ -460,23 +461,33 @@ Deferred: none. No obsolete wire or database artifacts result from this plan.
 
 ## Delivery Plan
 
-Series slug `desktop-ux`, 12 steps, one PR each. Changed-line targets count
-additions plus deletions against the merge base.
+Series slug `desktop-ux`: 12 logical steps, 13 PRs. Step 2 is split into
+`2.a` (functional frame, PR ordinal 2) and `2.b` (visual/motion follow-up,
+PR ordinal 3); original steps 3–12 have PR ordinals 4–13. Changed-line targets
+count additions plus deletions against the merge base.
+
+On 2026-09-15 the user explicitly requested keeping additional styling out of
+PR #1488 and delivering it as a follow-up within step 2. Step 2.b includes a
+clear New project action, simplified header, separated pinned footer, smooth
+expand/collapse with reduced-motion support, and existing running/unread
+project signals in both widths. It adds no backend requests or state ownership.
+Recent-session rows remain step 3. See `steps/step-02b.md`.
 
 | Step | PR title | Target | Scope |
 |---|---|---|---|
-| 1 | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/12]` | ≤ 900 | This plan, tracker, cross-references in `desktop-app/TRACKER.md` and `docs/ROADMAP.md`. |
-| 2 | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/12]` | ≤ 1,200 | `DesktopSidebarCubit` + `sidebar-layout` storage/repository methods; `DesktopSidebar` frame (header, resize handle, compact rail, bottom Settings/Bridge rows navigating to today's routes); `ProjectListCubit` hoisted to the shell; project rows with `PregoAvatarInitials`; replace the `NavigationRail`. Main pane untouched. |
-| 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 3/12]` | ≤ 1,200 | `RecentSessionsCubit` + composition factory, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
-| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 4/12]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar brand mark navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; `SessionSplitScope(isSplit: true)` from the shell; ⌘N plumbing point. `/splash` still renders `DesktopHome` until step 6. |
-| 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 5/12]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
-| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 6/12]` | ≤ 900 | Bridge popover (`PregoPopover`) with status, On/Off, Take over, Start at login (re-read on open), Open logs, Bridge settings…, Quit; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
-| 7 | `⚙️ [desktop-ux] Present settings as a modal [step 7/12]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
-| 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 8/12]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
-| 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 9/12]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |
-| 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 10/12]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
-| 11 | `🌿 [desktop-ux] Reconcile regression documentation [step 11/12]` | ≤ 600 | New `docs/regression/desktop-cockpit-shell.md`; updates listed below. |
-| 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 12/12]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
+| 1 | `🌱 [desktop-ux] Plan the desktop cockpit UX overhaul [step 1/13]` | ≤ 900 | This plan, tracker, cross-references in `desktop-app/TRACKER.md` and `docs/ROADMAP.md`. |
+| 2.a | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/13]` | ≤ 1,400 | `DesktopSidebarCubit` + `sidebar-layout` storage/repository methods; `DesktopSidebar` frame (header, resize handle, compact rail, bottom Settings/Bridge rows navigating to today's routes); `ProjectListCubit` hoisted to the shell; project rows with `PregoAvatarInitials`; replace the `NavigationRail`. Main pane untouched. |
+| 2.b | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | Presentation-only follow-up: clear header/actions/footer, Prego typography and surfaces, running/unread project indicators from `ProjectListCubit`, animated expand/collapse with reduced motion and immediate drag resizing. |
+| 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + composition factory, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
+| 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar brand mark navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; `SessionSplitScope(isSplit: true)` from the shell; ⌘N plumbing point. `/splash` still renders `DesktopHome` until step 6. |
+| 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
+| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | Bridge popover (`PregoPopover`) with status, On/Off, Take over, Start at login (re-read on open), Open logs, Bridge settings…, Quit; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
+| 7 | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
+| 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
+| 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 10/13]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |
+| 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 11/13]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
+| 11 | `🌿 [desktop-ux] Reconcile regression documentation [step 12/13]` | ≤ 600 | New `docs/regression/desktop-cockpit-shell.md`; updates listed below. |
+| 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 13/13]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
 
 Steps 5, 8, 9 and 10 are independent of each other and may be reordered if a
 review stalls, provided titles and totals stay in sync. Step 8 must land after
@@ -486,14 +497,19 @@ settings… target).
 Every implementation step keeps the app building and the existing desktop and
 mobile test suites green. Steps 2, 3, 4 and 7 are architecture-bearing (new
 classes, DI ownership, route ownership) and get the implementation review;
-steps 5, 6, 9, 10 do not unless review evidence changes that.
+steps 2.b, 5, 6, 9, 10 do not unless review evidence changes that.
 
 ## Per-Step Verification
 
-- **Step 2:** `dart test` in `module_desktop_core` (cubit: defaults, clamp,
+- **Step 2.a:** `dart test` in `module_desktop_core` (cubit: defaults, clamp,
   persist on drag end/toggle, read failure → defaults); `flutter test` in
   `client/desktop` (drag changes width, collapse renders the 56 px rail,
   auto-collapse below 760 px); manual macOS run for the resize feel.
+- **Step 2.b:** focused desktop widget tests for intermediate animation frames,
+  reduced motion, immediate drag resizing, and live running/unread signals;
+  desktop analyzer; visual review in expanded/compact and light/dark modes.
+  Preserve the existing standalone bridge and do not relaunch the GUI during
+  the current QA pass; distinguish render previews from native verification.
 - **Step 3:** `dart test` in `module_core` (fetch, patch on created/updated/
   deleted, re-sort, unseen seeding, `dataMayBeStale` refetch, failed entry
   retry); widget tests for the head-plus-open-session rule and the "All

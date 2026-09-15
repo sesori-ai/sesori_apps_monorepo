@@ -29,9 +29,6 @@ class const DesktopProjectListScreen({
     return MultiBlocProvider(
       providers: [
         BlocProvider(
-          create: (_) => createProjectListCubit(locator: getIt),
-        ),
-        BlocProvider(
           create: (_) => BridgeIdentityCubit(
             registeredBridgesService: getIt<RegisteredBridgesService>(),
             connectionService: getIt<ConnectionService>(),
