@@ -57,11 +57,12 @@ untracked files. Failure-time diagnostics remain retained without resetting Git.
 ### Final accepted head
 
 [Run 34987193233](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34987193233)
-passed all six native rows at accepted PR head
+passed all six native rows at its Actions merge checkout
+`83e2e58b39732f706964f313ad13fa7d3f0f7f50`. Separately, the accepted PR revision was
 `1528c16f8f6f3b224331757694ed0d5ddbd573cc`, with all 24 checks passing at acceptance.
-All downloaded manifests/inventories identify Actions merge checkout
-`83e2e58b39732f706964f313ad13fa7d3f0f7f50`, helper `1.8.4`, canonical tracked source
-cleanliness, and passing relocated-helper supervised E2E logs.
+Downloaded manifests/inventories identify that measured merge checkout and helper
+`1.8.4`; the inventories report canonical tracked source cleanliness, and the
+relocated-helper supervised E2E logs record passing tests.
 
 | Target | Evidence artifact |
 |---|---|
@@ -76,6 +77,38 @@ Downloaded inventories and matrix summary are under
 `build/desktop-bundle-evidence/native-ci-1528c16/`. The preceding run's Intel
 framework-download timeout did not require a production code, SDK-pin or timeout
 change. PR head, Actions merge checkout and eventual squash SHA are distinct.
+
+Reproduce the download/assertion procedure from the **repository root** (also the
+original retrieval cwd). These are the same `gh api` ZIP, manifest, inventory and
+E2E-log checks used for the recorded evidence; they do not rebuild or launch a GUI.
+GitHub access and unexpired artifacts are required; CI retains them for 14 days.
+
+```bash
+python3 - <<'PY'
+import io, json, subprocess, zipfile
+base = "repos/sesori-ai/sesori_apps_monorepo"
+source = "83e2e58b39732f706964f313ad13fa7d3f0f7f50"
+def api(endpoint):
+    return subprocess.check_output(["gh", "api", "--allow-escape-sequences", base + endpoint])
+artifacts = json.loads(api("/actions/runs/34987193233/artifacts"))["artifacts"]
+verified = []
+for artifact in artifacts:
+    if not artifact["name"].startswith("desktop-qualification-"):
+        continue
+    with zipfile.ZipFile(io.BytesIO(api(f'/actions/artifacts/{artifact["id"]}/zip'))) as archive:
+        names = archive.namelist()
+        inventory = json.loads(archive.read(next(n for n in names if n.endswith("inventory.json"))))
+        manifests = [json.loads(archive.read(n)) for n in names if n.endswith("desktop-bundle.json")]
+        assert inventory["sourceSha"] == source
+        assert inventory["relocatedHelperVersion"] == "1.8.4"
+        assert not inventory["trackedSourceDirty"]
+        assert manifests and all(m["sourceSha"] == source and m["version"] == "1.8.4" for m in manifests)
+        assert b"All tests passed!" in archive.read(next(n for n in names if n.endswith("supervised-e2e.log")))
+        verified.append(artifact["name"])
+        print(artifact["name"], artifact["id"], source, "helper=1.8.4 clean-source E2E=passed")
+assert len(verified) == 6
+PY
+```
 
 ## Review and remaining gates
 
