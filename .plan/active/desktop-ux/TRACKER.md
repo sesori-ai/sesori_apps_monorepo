@@ -20,7 +20,7 @@ to ordinals 10–14. Step 2.a retains `steps/step-02.md`; its follow-up uses
 | [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/14]` | ≤ 700 | done |
 | [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/14]` | ≤ 1,500 | done |
 | [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/14]` | ≤ 500 | done |
-| [ ] | 7.b | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,650 | in-progress |
+| [x] | 7.b | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,650 | done |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 10/14]` | ≤ 1,000 | pending |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 11/14]` | ≤ 700 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 12/14]` | ≤ 600 | pending |
@@ -101,4 +101,8 @@ or waive shipping qualification.
 - Step 7.a: 68 focused cases across native preference commands and existing
   desktop/mobile settings consumers; four analyzers and fresh scoped
   architecture review pass. No visible navigation change or native mutation.
-  See `steps/step-07a.md`; modal delivery remains step 7.b.
+  See `steps/step-07a.md`; modal delivery is recorded separately below.
+- Step 7.b: 87 distinct revision-scoped cases, three owning analyzers, nine
+  inspected real-font fixtures and fresh architecture review pass. The modal
+  retains the route/composer; native/live and relaunch/energy coverage remains
+  in the final testing handoff. See [step 7.b evidence](steps/step-07b.md).
