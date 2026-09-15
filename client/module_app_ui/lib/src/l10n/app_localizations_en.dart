@@ -84,6 +84,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopBridgeOpenLogs => 'Open Logs';
 
   @override
+  String get desktopLocalBridgeTitle => 'Local bridge';
+
+  @override
+  String get desktopBridgeStop => 'Stop Bridge';
+
+  @override
+  String get desktopBridgeSettings => 'Bridge settings…';
+
+  @override
   String get desktopBridgeTitle => 'Bridge';
 
   @override

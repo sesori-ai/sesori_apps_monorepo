@@ -1,7 +1,5 @@
 import "dart:async";
 
-import "../trackers/bridge_process_log_tracker.dart";
-
 /// Lifecycle state published by `BridgeProcessService`.
 sealed class const BridgeProcessState();
 
@@ -37,13 +35,10 @@ final class const BridgeProcessCrashRetryScheduled({
 }) extends BridgeProcessState;
 
 /// The bounded crash budget is exhausted and automatic retries have stopped.
-final class BridgeProcessCrashGiveUp({
+final class const BridgeProcessCrashGiveUp({
   required final int? exitCode,
   required final int crashCount,
-  required List<BridgeProcessLogEntry> recentLogs,
-}) extends BridgeProcessState {
-  final List<BridgeProcessLogEntry> recentLogs = List<BridgeProcessLogEntry>.unmodifiable(recentLogs);
-}
+}) extends BridgeProcessState;
 
 /// The child exited after spawn but before startup could complete.
 final class const BridgeProcessExitedDuringStartException({

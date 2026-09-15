@@ -3,8 +3,8 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_desktop/core/platform/desktop_route_dispatcher.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
-import "package:sesori_desktop/features/home/desktop_home.dart";
 import "package:sesori_desktop/features/home/desktop_home_pane.dart";
 import "package:sesori_desktop/features/new_session/desktop_new_session_screen.dart";
 import "package:sesori_desktop/features/session_diffs/desktop_session_diffs_screen.dart";
@@ -97,10 +97,35 @@ void main() {
       _routeWithPath(AppRouteDef.projects.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
       isA<DesktopHomePane>(),
     );
-    expect(
-      _routeWithPath(AppRouteDef.splash.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
-      isA<DesktopHome>(),
+  });
+
+  testWidgets("startup and notification stacks use the canonical projects home", (tester) async {
+    final router = _callbackRouter(initialRoute: const AppRoute.splash());
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, AppRouteDef.projects.path);
+    final dispatcher = DesktopRouteDispatcher(router: router, routerReady: Future<void>.value());
+    dispatcher.replaceStack(
+      stack: RouteStack(
+        paths: [
+          const AppRoute.projects(),
+          _sessions,
+          _detail(readOnly: false),
+        ].map((route) => route.buildPath()).toList(),
+      ),
     );
+    await dispatcher.flushPendingForTesting();
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
+    await tester.tap(find.text("back"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _sessions.buildPath());
+    router.pop();
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, AppRouteDef.projects.path);
+    expect(find.text("home"), findsOneWidget);
+    expect(tester.takeException(), isNull);
   });
 
   testWidgets("all-sessions opens archived sessions read-only and deletion returns to the list", (tester) async {
@@ -252,6 +277,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
       for (final page in shell.routes.whereType<GoRoute>())
         GoRoute(
           path: page.path,
+          redirect: page.redirect,
           builder: (context, state) {
             final screen = page.builder!(context, state);
             Widget button({required String label, required VoidCallback action}) =>

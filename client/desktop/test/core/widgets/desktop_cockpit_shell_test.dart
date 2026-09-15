@@ -80,7 +80,7 @@ void main() {
               onNewSession: _openProject,
               sessionActions: _sessionActions,
               onOpenProject: _openProject,
-              onOpenBridge: _noOp,
+              onOpenBridgeSettings: _noOp,
               onOpenProjects: _noOp,
               onOpenSettings: _noOp,
               child: GestureDetector(
@@ -115,7 +115,7 @@ void main() {
               onNewSession: _openProject,
               sessionActions: _sessionActions,
               onOpenProject: _openProject,
-              onOpenBridge: () => opens++,
+              onOpenBridgeSettings: () => opens++,
               onOpenProjects: () => opens++,
               onOpenSettings: () => opens++,
               child: const SizedBox.shrink(),
@@ -123,7 +123,6 @@ void main() {
           ),
         );
         for (final entry in {
-          DesktopCockpitDestination.bridge: "Bridge, Bridge status",
           DesktopCockpitDestination.projects: "Projects",
           DesktopCockpitDestination.settings: "Settings",
         }.entries) {
@@ -139,9 +138,33 @@ void main() {
           }
         }
       }
-      expect(opens, 3);
+      expect(opens, 2);
     } finally {
       semantics.dispose();
+    }
+  });
+
+  testWidgets("Bridge opens in expanded and compact mode without replacing the main pane", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    for (final width in [560.0, 1060.0]) {
+      tester.view.physicalSize = Size(width, 480);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+      final page = tester.element(find.byKey(const Key("cockpit-content")));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is Semantics && widget.properties.label == "Bridge, Bridge status",
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
+      expect(tester.element(find.byKey(const Key("cockpit-content"))), same(page));
+      await tester.tapAt(Offset(width - 10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("desktop-bridge-popover")), findsNothing);
+      expect(contentTaps, 0);
     }
   });
 
@@ -215,7 +238,7 @@ void main() {
           onNewSession: _openProject,
           sessionActions: _sessionActions,
           onOpenProject: ({required context, required project, required displayName}) => openedProject = project.id,
-          onOpenBridge: () => bridgeOpens++,
+          onOpenBridgeSettings: () => bridgeOpens++,
           onOpenProjects: () => projectOpens++,
           onOpenSettings: () => settingsOpens++,
           child: const SizedBox.shrink(),
@@ -225,6 +248,11 @@ void main() {
     expect(find.byType(NavigationRail), findsNothing);
     expect(tester.getSize(rail).width, 260);
     await tester.tap(find.text("Bridge"));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
+    expect(bridgeOpens, 0);
+    await tester.tap(find.text("Bridge settings…"));
+    await tester.pumpAndSettle();
     await tester.tap(find.text("Projects"));
     await tester.tap(find.text("Settings"));
     await tester.tap(find.text("Sesori Desktop"));
@@ -260,7 +288,7 @@ void main() {
               openedSession = session.id,
           onNewSession: ({required context, required project, required displayName}) => newSessions++,
           onOpenProject: ({required context, required project, required displayName}) => allSessions++,
-          onOpenBridge: _noOp,
+          onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
           onOpenSettings: _noOp,
           child: const SizedBox.shrink(),
@@ -413,7 +441,7 @@ void main() {
               onNewSession: _openProject,
               sessionActions: _sessionActions,
               onOpenProject: _openProject,
-              onOpenBridge: _noOp,
+              onOpenBridgeSettings: _noOp,
               onOpenProjects: () => opens++,
               onOpenSettings: _noOp,
               child: const SizedBox.shrink(),
@@ -636,11 +664,7 @@ void main() {
     await tester.pumpWidget(
       app(
         state: _state(
-          processState: BridgeProcessCrashGiveUp(
-            exitCode: 1,
-            crashCount: 6,
-            recentLogs: const <BridgeProcessLogEntry>[],
-          ),
+          processState: const BridgeProcessCrashGiveUp(exitCode: 1, crashCount: 6),
         ),
       ),
     );

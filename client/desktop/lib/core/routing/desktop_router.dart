@@ -6,7 +6,6 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../features/auth_gate/auth_gate.dart";
-import "../../features/home/desktop_home.dart";
 import "../../features/home/desktop_home_pane.dart";
 import "../../features/new_session/desktop_new_session_screen.dart";
 import "../../features/session_diffs/desktop_session_diffs_screen.dart";
@@ -76,7 +75,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             context: context,
             route: AppRoute.sessions(projectId: project.id, projectName: displayName),
           ),
-          onOpenBridge: () => _goRoute(context: context, route: const AppRoute.splash()),
+          onOpenBridgeSettings: () {
+            if (state.uri.path != AppRouteDef.settings.path) {
+              _pushRoute(context: context, route: const AppRoute.settings());
+            }
+          },
           onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
           onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
           child: child,
@@ -86,10 +89,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
     routes: <RouteBase>[
       GoRoute(
         path: AppRouteDef.splash.path,
-        builder: (BuildContext context, GoRouterState state) => DesktopHome(
-          onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
-          onOpenSettings: () => _openSettings(context: context, currentPath: state.uri.path),
-        ),
+        redirect: (_, _) => const AppRoute.projects().buildPath(),
       ),
       GoRoute(
         path: AppRouteDef.projects.path,
@@ -283,8 +283,7 @@ AppRouteSessionDiffs _decodeSessionDiffsRoute({required GoRouterState state}) {
 
 DesktopCockpitDestination _destinationFor({required String path}) {
   if (isDesktopSettingsPath(path: path)) return DesktopCockpitDestination.settings;
-  if (path.startsWith(AppRouteDef.projects.path)) return DesktopCockpitDestination.projects;
-  return DesktopCockpitDestination.bridge;
+  return DesktopCockpitDestination.projects;
 }
 
 @visibleForTesting
@@ -321,7 +320,7 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
 
 void _goDesktopHome() {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  desktopRouter.go(const AppRoute.splash().buildPath());
+  desktopRouter.go(const AppRoute.projects().buildPath());
 }
 
 void _goRoute({required BuildContext context, required AppRoute route}) {

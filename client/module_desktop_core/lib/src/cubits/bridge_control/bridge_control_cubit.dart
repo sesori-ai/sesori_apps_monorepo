@@ -245,6 +245,9 @@ class BridgeControlCubit._create({
   /// semantics. Used when only the local helper needs recovery.
   Future<void> startBridge() => _setBridgeDesiredState(target: BridgeProcessDesiredState.on);
 
+  /// An explicit Stop must not become Start if the helper exits before dispatch.
+  Future<void> stopBridge() => _setBridgeDesiredState(target: BridgeProcessDesiredState.off);
+
   /// Recovers both desktop connection owners through their Layer-3 services.
   Future<void> recoverConnection() {
     if (_controlsLocked) {
@@ -453,41 +456,41 @@ class BridgeControlCubit._create({
 
   static String _statusLabel({required BridgeProcessState processState, required BridgeControlStatus status}) {
     return switch (processState) {
-      BridgeProcessStopped() => "Bridge: Off",
-      BridgeProcessLoginRequired() => "Bridge: Login required",
-      BridgeProcessStarting() => "Bridge: Starting",
-      BridgeProcessStartFailed() => "Bridge: Repair required — open Sesori",
+      BridgeProcessStopped() => "Off",
+      BridgeProcessLoginRequired() => "Login required",
+      BridgeProcessStarting() => "Starting",
+      BridgeProcessStartFailed() => "Repair required",
       BridgeProcessRunning() => _runningStatusLabel(status: status),
-      BridgeProcessStopping() => "Bridge: Stopping",
-      BridgeProcessContention() => "Bridge: Another bridge is running",
-      BridgeProcessCrashRetryScheduled(:final delay) => "Bridge: Restarting in ${delay.inSeconds}s",
-      BridgeProcessCrashGiveUp() => "Bridge: Stopped after repeated crashes",
+      BridgeProcessStopping() => "Stopping",
+      BridgeProcessContention() => "Another bridge is running",
+      BridgeProcessCrashRetryScheduled(:final delay) => "Restarting in ${delay.inSeconds}s",
+      BridgeProcessCrashGiveUp() => "Stopped after repeated crashes",
     };
   }
 
   static String _runningStatusLabel({required BridgeControlStatus status}) {
     if (!status.helperOnline) {
-      return "Bridge: Connecting";
+      return "Connecting";
     }
     switch (status.startup) {
       case ControlStartupState.unknown:
-        return "Bridge: Status unknown";
+        return "Status unknown";
       case ControlStartupState.starting:
-        return "Bridge: Starting";
+        return "Starting";
       case ControlStartupState.waitingForServer:
-        return "Bridge: Starting — waiting for server (retrying every minute)";
+        return "Starting — waiting for server (retrying every minute)";
       case ControlStartupState.waitingForAuthentication:
-        return "Bridge: Starting — waiting for desktop authentication (retrying every minute)";
+        return "Starting — waiting for desktop authentication (retrying every minute)";
       case ControlStartupState.ready:
         break;
     }
     return switch (status.relay) {
       ControlRelayConnectionState.connected =>
-        status.plugin == ControlPluginHealthState.degraded ? "Bridge: Degraded" : "Bridge: Connected",
-      ControlRelayConnectionState.connecting => "Bridge: Connecting",
-      ControlRelayConnectionState.disconnected => "Bridge: Reconnecting",
-      ControlRelayConnectionState.takenOver => "Bridge: Relay taken over",
-      ControlRelayConnectionState.unknown => "Bridge: Status unknown",
+        status.plugin == ControlPluginHealthState.degraded ? "Degraded" : "Connected",
+      ControlRelayConnectionState.connecting => "Connecting",
+      ControlRelayConnectionState.disconnected => "Reconnecting",
+      ControlRelayConnectionState.takenOver => "Relay taken over",
+      ControlRelayConnectionState.unknown => "Status unknown",
     };
   }
 

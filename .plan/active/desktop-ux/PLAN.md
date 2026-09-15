@@ -3,7 +3,7 @@
 ## Status
 
 Planned 2026-09-15; sidebar, main-pane and connection presentation are complete
-through logical step 5 (see `TRACKER.md` and its linked verification evidence).
+through logical step 6 (see `TRACKER.md` and its linked verification evidence).
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
 are listed at the end as rough intent only and get their own plans when they
@@ -158,16 +158,19 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   login required, crash give-up) become a compact card in the sidebar bottom
   section instead of a full-width strip.
 - **D6 — Bridge controls live in a popover; the Bridge screen goes away.**
-  The pinned bottom Bridge row opens a `PregoPopover` with status, On/Off,
-  Take over (when applicable), Start at login, Open logs, Bridge settings…,
-  and Quit. `DesktopHome` is deleted; `/splash` renders a home pane (empty
-  state, bridge recovery, first-run cards).
+  The pinned bottom Bridge row opens a `PregoPopover` with local process status,
+  one clear Start/Stop/Retry/Take Over action, and secondary logs/configuration.
+  A displaced running helper also retains Stop without requiring takeover.
+  App Quit and launch-at-login do not belong in this local-bridge control.
+  `DesktopHome` is deleted; `/splash` redirects to the canonical `/projects` home
+  pane (empty state, bridge recovery, first-run cards). Between steps 6 and 7, Bridge
+  settings… opens the existing Settings route; step 7 targets the modal's Bridge tab.
 - **D7 — Settings is a modal, not a route.** A root-navigator dialog with a
   blurred/dimmed backdrop (Prego's existing glass gate decides blur versus
   dim), a left tab column (General, Harnesses, Bridge, Notifications, Account)
-  and a content area with a nested `Navigator` for harness detail pages. The
-  existing shared settings views mount unchanged; only the desktop wrappers
-  change. Every desktop settings `GoRoute` (`settings`, `settingsProfile`,
+  and a content area with a nested `Navigator` for harness detail pages. Existing
+  shared settings sections are reused by purpose, rather than mounting a whole
+  mobile settings page inside a tab and duplicating links or account UI. Every desktop settings `GoRoute` (`settings`, `settingsProfile`,
   `settingsDefaultInput`, `settingsNotifications`, `settingsHarnesses`,
   `settingsHarnessDetail`, i.e. `buildDesktopHarnessSettingsRoute()` and the
   routes around `AppRouteDef.settings`) is removed; both
@@ -183,11 +186,11 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   the write makes the file exist, this runs once per install and never
   overrides a later user Off. Absent-versus-Off is not representable today
   (storage maps a missing file to `off`), so the persisted read becomes
-  nullable end to end. `BridgeControlCubit` gets no new subscription; it only
-  re-reads the launch-at-login flag when the popover opens so the silently
-  enabled default displays correctly. macOS may show its own "items added to
+  nullable end to end. `BridgeControlCubit` gets no new subscription; Settings
+  re-reads native launch-at-login when its app-startup preferences open so the
+  silently enabled default displays correctly. macOS may show its own "items added to
   run in the background" notice; that is acceptable. The user can disable both
-  from the popover or Settings → Bridge.
+  using local bridge controls and Settings → General → Launch Sesori at login.
 - **D9 — Ask for Full Disk Access upfront, explain why, never block.** A new
   Layer-0 `FileAccessPermission` capability (`check()` →
   granted/denied/unsupported, `openSystemSettings()`) with an `io` adapter in
@@ -223,6 +226,25 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   Windows and Linux keep native chrome in phase 1.
 
 ## Design
+
+### Control-content audit (user correction, 2026-09-15)
+
+Review purpose, labels, grouping and visual hierarchy before accepting each
+remaining surface—not merely whether every planned option was implemented.
+Remove irrelevant actions and reuse shared behavior without copying mobile-only
+navigation or repeated settings links. Inspect the actual rendered result.
+
+| Content | Decision and rationale |
+|---|---|
+| Local bridge status | Keep in Bridge popover. Separate the entity heading from its status; do not mix in client connection state, which may describe a different bridge and contradict a local Off label. |
+| Start / Stop / Retry | One prominent action matching the actual process state. A stopped crash needs Retry, not Stop just because desired intent remained On. Use explicit command intents, not a potentially opposite toggle. |
+| Take Over | Replace meaningless Start during local contention. For a running helper displaced from the relay, retain Stop as a quieter alternative to reclaiming ownership. |
+| Bridge logs / configuration | Keep as secondary troubleshooting/configuration actions, visually below the primary control. Configuration opens the Bridge tab once step 7 lands. |
+| Quit Sesori | App-scoped: belongs to application/tray controls and safe native window-close behavior, not a bridge popover or bridge settings section. |
+| Launch Sesori at login | App-startup preference in Settings → General. The precise label describes what the OS launches. Native registration remains accessible through the tray during the step-6/7 transition. |
+| Settings tabs | General: appearance/input/app startup; Harnesses: runtime management; Bridge: distinguish connected-bridge configuration from this computer's supervision; Notifications: desktop attention; Account: identity/sign-out. Avoid duplicating these destinations inside General. |
+| First-run/FDA cards | Explain the agent benefit, scope and consequence. Offer one clear next action plus a quiet dismissal; never imply that access is mandatory or grant it automatically. |
+| Shortcuts and final content pass | Hints must match real bindings. Step 11 audits labels, grouping, conditional availability and redundant options across the completed cockpit—not just documentation. |
 
 ### Cockpit shell
 
@@ -301,13 +323,13 @@ and status presentation, following the existing session-list resolver boundary.
 
 ### Main pane pages
 
-- `/splash` → `DesktopHomePane`: connected empty state ("Pick a session or
+- `/splash` → `/projects` → `DesktopHomePane`: connected empty state ("Pick a session or
   press ⌘N", "Add a project" when the inventory is empty), the existing
   `DesktopBridgeRecoveryView` (moved out of the deleted project-list screen)
   for disconnected states, and the macOS file-access card.
 - `/projects/:id/sessions` → the shared `SessionListScaffold` (mobile styling,
   Prego glass scaffold, FAB) with no back button; this is the "All sessions"
-  page. The desktop `projects` route and `DesktopProjectListScreen` are removed.
+  page. The canonical `projects` home stays; only `DesktopProjectListScreen` is removed.
 - Session detail, new session and diffs routes become direct children of the
   top ShellRoute. Direct/sidebar-opened detail has no back arrow; pushed
   details retain Back to their opener. Desktop passes this explicitly through
@@ -318,12 +340,11 @@ and status presentation, following the existing session-list resolver boundary.
 
 ### Bridge popover
 
-`PregoPopover` anchored to the Bridge row: status header (process state and
-relay link), `PregoSwitch` Bridge On/Off, Take over (only when
-`BridgeControlState.canTakeOver`), `PregoSwitch` Start at login, Open logs,
-Bridge settings… (Settings modal, Bridge tab), Quit Sesori. Every action calls
-the existing `BridgeControlCubit` methods; `activity.locksCommands` disables
-the controls exactly as today.
+`PregoPopover` anchored to Bridge: Local bridge heading, process-status detail,
+one prominent Start/Stop/Retry/Take Over action and quieter logs/configuration.
+A running displaced helper retains Stop alongside Take Over. Explicit intents
+use the existing serialized command owner; `activity.locksCommands` disables
+mutations, not diagnostics. App preferences and Quit stay outside.
 
 ### Settings modal
 
@@ -331,9 +352,9 @@ the controls exactly as today.
 
 | Tab | Content (existing views) |
 |---|---|
-| General | default input, account-neutral preferences currently in `DesktopSettingsScreen` |
+| General | appearance, default input, Launch Sesori at login and account-neutral app preferences |
 | Harnesses | harness list + detail pushed inside the modal's nested `Navigator` |
-| Bridge | shared `BridgeSettingsSection` (YOLO, warm-up, PR interval) + desktop rows: Bridge On/Off, Start at login, Take over, Open logs, File access status |
+| Bridge | connected-bridge `BridgeSettingsSection` (YOLO, warm-up, PR interval), clearly separated local supervision, logs and File access status; no app Quit or launch-at-login |
 | Notifications | `DesktopAttentionPreferenceSection` |
 | Account | profile + sign out (closes the modal; `AuthGate` shows login) |
 
@@ -362,8 +383,8 @@ the modal.
   `BridgeProcessService`. The write makes every later check a no-op; a
   duplicate concurrent trigger is harmless because enable and start are
   idempotent. Errors are logged and never surface as a screen state.
-- `BridgeControlCubit` keeps its shape; the Bridge popover calls its existing
-  launch-at-login read when it opens so the switch shows the enabled default.
+- Settings exposes the existing native launch-at-login read through
+  `BridgeControlCubit` when General opens; no new subscription or preference copy.
 - `FileAccessPermission` in `module_desktop_core/foundation/platform/`;
   `IoFileAccessPermission` in `client/desktop/lib/core/platform/` (macOS
   probe; Windows/Linux → unsupported; settings deep link through the existing
@@ -399,7 +420,7 @@ the modal.
   retry row re-runs `ensureLoaded`. Reconnect (`dataMayBeStale`) refetches
   every loaded project.
 - First-run defaults: a failed `LaunchAtLogin.enable()` leaves the bridge On
-  and logs a warning; the popover shows the real launch-at-login state. If the
+  and logs a warning; General preferences show the real launch-at-login state. If the
   bridge cannot start (login required, contention), the existing process
   states and supervision card apply.
 - FDA probe errors other than EPERM → `unsupported` (no card, status row reads
@@ -415,7 +436,7 @@ the modal.
 - The `sidebar-layout` file is new; an absent file means defaults. No
   migration of `window-bounds` or `bridge-desired-state`.
 - Internal desktop builds only exist so far; deleting `DesktopHome`, the
-  desktop `projects` route and the desktop settings routes needs no
+  desktop settings routes needs no
   compatibility path.
 
 ## Non-Goals (phase 1)
@@ -458,9 +479,12 @@ Included in the feature PRs (directly caused, small):
   `desktop_session_list_screen.dart` and its back-button wiring,
   `DesktopCockpitDestination`, the `NavigationRail`, `DesktopSupervisionNotice`
   (replaced by the sidebar card), the nested sessions `ShellRoute`, the desktop
-  `projects` and settings `GoRoute`s with `isDesktopSettingsPath`/`_openSettings`,
+  settings `GoRoute`s with `isDesktopSettingsPath`/`_openSettings`,
   and the root `ConnectionBanner` `Column` mount in `app.dart`.
 - Delete desktop tests that only exercised the removed compositions.
+- Step 6 removes the dashboard-only recent-log snapshot field, buffer and
+  stream. Bounded pipe draining, queued rotating persistence, and crash
+  exit/count diagnostics remain; Open Logs is the diagnostic surface.
 
 Kept: `DesktopSessionListCubitProvider` and `DesktopSessionListScreen` (they
 already provide the project-scoped `SessionListCubit` and render the shared
@@ -495,13 +519,18 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
 | 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; explicit nullable detail Back callback based on the owning page's poppability; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
 | 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
-| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | Bridge popover (`PregoPopover`) with status, On/Off, Take over, Start at login (re-read on open), Open logs, Bridge settings…, Quit; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
+| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,500 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` redirects to the canonical `/projects` home pane, preserving notification stacks and inventory return-refresh. |
 | 7 | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
 | 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
 | 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 10/13]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |
 | 10 | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 11/13]` | ≤ 600 | ⌘N, ⌘, , ⌘B (toggle sidebar) via `CallbackShortcuts` at the cockpit root; tooltips with shortcut hints; macOS hidden title bar + drag region behind a single switch in `FlutterWindowHost.initialize` (D12 kill switch). |
-| 11 | `🌿 [desktop-ux] Reconcile regression documentation [step 12/13]` | ≤ 600 | New `docs/regression/desktop-cockpit-shell.md`; updates listed below. |
+| 11 | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 12/13]` | ≤ 600 | Final control-content audit (labels, grouping, scope, redundancy and state-specific actions) plus regression reconciliation listed below. |
 | 12 | `🌿 [desktop-ux] Run coverage and retire the plan [step 13/13]` | ≤ 300 | Run the recorded matrix, record results, note the phase-2 handoff, move the plan to `.plan/completed/desktop-ux/`. |
+
+Step 6's target grew from 900 to 1,500 after the complete dashboard/test
+retirement, causal snapshot cleanup and user-requested content audit. More than
+half of the measured diff is deletion; one coherent slice avoids an interim
+dead-state API or logging redesign and stays within the repository soft cap.
 
 Step 4's render verification also corrected the existing Prego font-family
 constant to match the bundled package name and removed redundant sidebar font
@@ -510,13 +539,13 @@ mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
 Steps 5, 8, 9 and 10 are independent of each other and may be reordered if a
 review stalls, provided titles and totals stay in sync. Step 8 must land after
-step 6 (its Settings rows and popover switch), step 7 after step 6 (Bridge
-settings… target).
+step 7 (General startup preferences and Bridge/FDA settings), and step 7 after
+step 6 (Bridge settings… target).
 
 Every implementation step keeps the app building and the existing desktop and
-mobile test suites green. Steps 2.a, 3, 4 and 7 are architecture-bearing (new
-classes, DI ownership, route ownership) and get the implementation review;
-steps 2.b, 5, 6, 9, 10 do not unless review evidence changes that.
+mobile test suites green. Steps 2.a, 3, 4, 5, 6 and 7 are architecture-bearing (new classes,
+composition or route ownership) and receive implementation review. Reassess
+later slices against the repository's actual-change rule.
 
 ## Per-Step Verification
 
@@ -543,19 +572,19 @@ steps 2.b, 5, 6, 9, 10 do not unless review evidence changes that.
   manual: kill the relay link, watch the pill fade in after the grace period
   and out on reconnect; turn the bridge Off, confirm no pill.
 - **Step 6:** widget tests for the popover actions calling the cubit; manual
-  macOS: On/Off, Take over path with a second bridge, Start at login toggle,
-  Open logs, Quit.
+  macOS: Start/Stop, crash Retry, Take Over versus Stop after displacement,
+  logs/configuration, and compact presentation. Preserve existing bridges.
 - **Step 7:** widget tests for tab switching, nested harness detail push/pop,
   Escape and click-outside; manual: every former settings entry point (new
-  session "manage harnesses", sidebar row, ⌘,) opens the right tab; sign out
-  from the Account tab.
+  session "manage harnesses", sidebar row, ⌘,) opens the right tab; launch-at-login is under General, scopes are clear
+  in Bridge, and sign-out belongs to Account.
 - **Step 8:** `dart test` in `module_desktop_core` for the nullable read
   (missing file → null; existing callers still default to Off), the
   orchestrator rule (authenticated + null → On + enable + start; present Off →
   untouched; signed out → nothing; enable failure → warning, bridge still On)
   and `FileAccessCubit` (focus re-check, dismiss for the run); manual macOS on
   a fresh install: sign in, bridge starts, login item appears in System
-  Settings, popover switch shows it on; deny/grant FDA and watch the card and
+  Settings, General's startup preference shows it on; deny/grant FDA and watch the card and
   status row; Windows/Linux smoke: no card, status row reads unsupported.
 - **Step 9:** `dart test` for the desktop writer and `flutter test` for the
   mobile writer (rotation at the threshold, owner-only mode, failure
@@ -564,7 +593,9 @@ steps 2.b, 5, 6, 9, 10 do not unless review evidence changes that.
 - **Step 10:** widget tests for the three shortcuts; manual macOS: hidden
   title bar drag, traffic lights, window restore after relaunch; if the title
   bar is cut, the PR body says so and why.
-- **Step 11:** docs validation only.
+- **Step 11:** audit completed control contents against the table above; inspect
+  relevant renders, fix small presentation issues, and validate docs. Native or
+  user-dependent checks remain in the final testing handoff.
 - **Step 12:** the matrix below, results recorded in `steps/step-12.md`.
 
 ## Regression Documentation And Final Matrix
@@ -633,7 +664,7 @@ the sink seam in `module_core` (D10, step 9); the desktop pill owns the
 "wanted On" suppression (D5); every desktop settings route is removed, no
 onboarding exception (D7); `DesktopSessionListCubitProvider`,
 `SessionListPanel` and `EmptySessionDetailPanel` are kept (cleanup); the home
-pane is hosted at the `projects` path between steps 4 and 6 (steps 4, 6).
+pane uses the `projects` path (kept permanently after the step-6 route audit).
 
 ## Relation To Other Plans
 

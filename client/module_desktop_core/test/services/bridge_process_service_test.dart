@@ -43,7 +43,6 @@ void main() {
         executablePathResolver: executablePathResolver,
         crashBackoffDelays: const <Duration>[Duration(hours: 1)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
         now: () => now,
         reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {
           warnings.add(message);
@@ -54,7 +53,6 @@ void main() {
     Future<void> rebuildService({
       required List<Duration> crashBackoffDelays,
       required Duration stableRuntime,
-      required int recentLogCount,
     }) async {
       await service.dispose();
       repository.stopCalls = 0;
@@ -68,7 +66,6 @@ void main() {
         executablePathResolver: executablePathResolver,
         crashBackoffDelays: crashBackoffDelays,
         stableRuntime: stableRuntime,
-        recentLogCount: recentLogCount,
         now: () => now,
         reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {
           warnings.add(message);
@@ -616,30 +613,12 @@ void main() {
       expect(service.desiredState, BridgeProcessDesiredState.on);
     });
 
-    test("rapid crashes exhaust the bounded budget and surface only recent log lines", () async {
+    test("rapid crashes exhaust the bounded budget and surface the final exit", () async {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration.zero, Duration.zero],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 2,
       );
       authSession.state = _authenticatedState;
-      logTracker.entries = <BridgeProcessLogEntry>[
-        BridgeProcessLogEntry(
-          timestamp: now,
-          source: BridgeProcessLogSource.stdout,
-          message: "old",
-        ),
-        BridgeProcessLogEntry(
-          timestamp: now,
-          source: BridgeProcessLogSource.stderr,
-          message: "recent-1",
-        ),
-        BridgeProcessLogEntry(
-          timestamp: now,
-          source: BridgeProcessLogSource.stdout,
-          message: "recent-2",
-        ),
-      ];
       await service.start();
 
       repository.emitExit(exitCode: 11, expected: false);
@@ -655,12 +634,7 @@ void main() {
         service.state,
         isA<BridgeProcessCrashGiveUp>()
             .having((state) => state.exitCode, "exitCode", 13)
-            .having((state) => state.crashCount, "crashCount", 3)
-            .having(
-              (state) => state.recentLogs.map((entry) => entry.message),
-              "recent logs",
-              <String>["recent-1", "recent-2"],
-            ),
+            .having((state) => state.crashCount, "crashCount", 3),
       );
       await pumpEventQueue();
       expect(repository.spawnCalls, 3);
@@ -670,7 +644,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration.zero, Duration(hours: 1)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -698,7 +671,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration.zero, Duration(hours: 1)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -733,7 +705,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration(milliseconds: 25)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -752,7 +723,6 @@ void main() {
       await rebuildService(
         crashBackoffDelays: const <Duration>[Duration(milliseconds: 25)],
         stableRuntime: const Duration(minutes: 5),
-        recentLogCount: 20,
       );
       authSession.state = _authenticatedState;
       await service.start();
@@ -794,7 +764,6 @@ void main() {
       executablePathResolver: _FakeBridgeExecutablePathResolver(path: "/repo/bridge"),
       crashBackoffDelays: const <Duration>[Duration(hours: 1)],
       stableRuntime: const Duration(minutes: 5),
-      recentLogCount: 20,
       now: DateTime.now,
       reportWarning: ({required String message, required Object error, required StackTrace stackTrace}) {},
     );
@@ -998,14 +967,10 @@ class _FakeBridgeProcessRepository({required final BridgeProcessStreams streams}
 
 class _FakeBridgeProcessLogTracker() implements BridgeProcessLogTracker {
   int attachCalls = 0;
-  List<BridgeProcessLogEntry> entries = <BridgeProcessLogEntry>[];
   Stream<List<int>>? attachedStdout;
   Stream<List<int>>? attachedStderr;
   Object? attachError;
   void Function()? onAttach;
-
-  @override
-  List<BridgeProcessLogEntry> get snapshot => List<BridgeProcessLogEntry>.unmodifiable(entries);
 
   @override
   Future<void> attach({required Stream<List<int>> stdout, required Stream<List<int>> stderr}) async {

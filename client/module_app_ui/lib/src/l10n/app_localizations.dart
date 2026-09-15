@@ -223,6 +223,24 @@ abstract class AppLocalizations {
   /// **'Open Logs'**
   String get desktopBridgeOpenLogs;
 
+  /// Heading for controls of the bridge supervised on this computer, not the desktop relay client.
+  ///
+  /// In en, this message translates to:
+  /// **'Local bridge'**
+  String get desktopLocalBridgeTitle;
+
+  /// Action that turns off the supervised local bridge without quitting Sesori.
+  ///
+  /// In en, this message translates to:
+  /// **'Stop Bridge'**
+  String get desktopBridgeStop;
+
+  /// Secondary popover action opening bridge configuration.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge settings…'**
+  String get desktopBridgeSettings;
+
   /// Label of the pinned desktop navigation entry for local bridge controls.
   ///
   /// In en, this message translates to:

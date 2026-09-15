@@ -79,7 +79,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for server (retrying every minute)");
+      expect(cubit.state.statusLabel, "Starting — waiting for server (retrying every minute)");
       statusTracker.applyStatus(
         status: const ControlStatus(
           startup: ControlStartupState.ready,
@@ -88,7 +88,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Connected");
+      expect(cubit.state.statusLabel, "Connected");
     });
 
     test("a temporary desktop token failure shows an authentication wait", () async {
@@ -103,7 +103,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for desktop authentication (retrying every minute)");
+      expect(cubit.state.statusLabel, "Starting — waiting for desktop authentication (retrying every minute)");
     });
 
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
@@ -264,8 +264,8 @@ void main() {
       await pumpEventQueue();
 
       expect(hiddenCubit.state.processState, isA<BridgeProcessStartFailed>());
-      expect(hiddenCubit.state.statusLabel, "Bridge: Repair required — open Sesori");
-      expect(_textLabels(menu: systemTray.menus.last), contains(hiddenCubit.state.statusLabel));
+      expect(hiddenCubit.state.statusLabel, "Repair required");
+      expect(_textLabels(menu: systemTray.menus.last), contains("Bridge: ${hiddenCubit.state.statusLabel}"));
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge On");
       expect(windowHost.showCalls, 0);
       expect(processService.startCalls, 0);
@@ -423,6 +423,14 @@ void main() {
       expect(processService.startCalls, 1);
       expect(processService.desiredState, BridgeProcessDesiredState.on);
       expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
+    });
+
+    test("explicit Stop persists Off even when the helper has already stopped", () async {
+      await cubit.initialize();
+      await cubit.stopBridge();
+      expect(processService.startCalls, 0);
+      expect(processService.stopCalls, 1);
+      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.off]);
     });
 
     test("connection recovery starts the helper and reconnects the relay", () async {
