@@ -718,6 +718,43 @@ void main() {
       expect(repository.startedPluginIds, isEmpty);
     });
 
+    for (final (label, status) in [
+      ("disconnected", const ConnectionStatus.disconnected()),
+      ("reconnecting", const ConnectionStatus.reconnecting(config: _config)),
+      ("connection lost", const ConnectionStatus.connectionLost(config: _config)),
+      ("bridge offline", const ConnectionStatus.bridgeOffline(config: _config, health: _health)),
+    ]) {
+      test("reports that a bridge connection is required while $label", () async {
+        connection.emitStatus(status);
+        await pumpEventQueue();
+
+        await service.startAll();
+
+        expect(service.state.value, isA<CatalogRescanNotConnected>());
+        expect(management.refreshCalls, 0, reason: "disconnected metadata cannot identify current harnesses");
+        expect(repository.startedPluginIds, isEmpty);
+      });
+    }
+
+    test("connection loss during management refresh does not become no harness", () async {
+      management.emit(const PluginManagementLoadResult.loading());
+      await pumpEventQueue();
+      final releaseRefresh = Completer<void>();
+      management.refreshGate = releaseRefresh.future;
+
+      final start = service.startAll();
+      await pumpEventQueue();
+      expect(management.refreshCalls, 1);
+
+      connection.emitStatus(const ConnectionStatus.reconnecting(config: _config));
+      await pumpEventQueue();
+      releaseRefresh.complete();
+      await start;
+
+      expect(service.state.value, isA<CatalogRescanNotConnected>());
+      expect(repository.startedPluginIds, isEmpty);
+    });
+
     test("a live run outlasts a fan-out that finds no harness", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
       await service.startAll();
@@ -1192,6 +1229,7 @@ class _FakeManagementService(PluginManagementLoadResult initial) implements Plug
   final BehaviorSubject<PluginManagementLoadResult> _snapshots = BehaviorSubject.seeded(initial);
 
   PluginManagementLoadResult? nextRefreshSnapshot;
+  Future<void>? refreshGate;
   int refreshCalls = 0;
 
   @override
@@ -1200,6 +1238,7 @@ class _FakeManagementService(PluginManagementLoadResult initial) implements Plug
   @override
   Future<void> refresh() async {
     refreshCalls++;
+    if (refreshGate case final gate?) await gate;
     if (nextRefreshSnapshot case final snapshot?) emit(snapshot);
   }
 

@@ -189,6 +189,7 @@ void main() {
           (const CatalogRescanState.partlyFailed(succeededCount: 1, failedCount: 1), loc.catalogScanPartlyFailedTitle),
           (const CatalogRescanState.failed(harnessCount: 1), loc.catalogScanFailedTitle),
           (const CatalogRescanState.unsupported(), loc.catalogScanUnsupportedTitle),
+          (const CatalogRescanState.notConnected(), loc.catalogScanNotConnectedTitle),
           (const CatalogRescanState.noHarness(), loc.catalogScanNoHarnessTitle),
         ];
         Rect? initialMark;
@@ -792,6 +793,7 @@ void main() {
           const CatalogRescanState.partlyFailed(succeededCount: 2, failedCount: 1),
           const CatalogRescanState.failed(harnessCount: 3),
           const CatalogRescanState.unsupported(),
+          const CatalogRescanState.notConnected(),
           const CatalogRescanState.noHarness(),
         ];
 
@@ -916,6 +918,15 @@ void main() {
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(find.text(loc.catalogScanUnsupportedTitle), findsOneWidget);
       expect(find.text(loc.catalogScanUnsupportedDetail), findsOneWidget);
+    });
+
+    testWidgets("asks for a bridge connection instead of claiming there is no harness", (tester) async {
+      await pumpRow(tester, const CatalogRescanState.notConnected());
+
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+      expect(find.text(loc.catalogScanNotConnectedTitle), findsOneWidget);
+      expect(find.text(loc.catalogScanNotConnectedDetail), findsOneWidget);
+      expect(find.text(loc.catalogScanNoHarnessTitle), findsNothing);
     });
 
     testWidgets("says there is nothing to scan when no harness is ready", (tester) async {
