@@ -32,8 +32,11 @@ content the transcript renders live and after reload.
 - Selected images use the shared Prego preview: 52px square center crops, 10px
   corners, a subtle border, and a 14px close badge with a 44px touch target in
   both themes. New-session and existing-session composers keep one 52px-high
-  horizontal row with 8px gaps. Overflow scrolls, with a trailing fade that
-  disappears at the end so every image and remove action is fully visible.
+  horizontal row with 8px gaps. Overflow scrolls, with edge fades indicating
+  hidden images in either direction. The leading fade appears after scrolling
+  and clears on returning to the start; the trailing fade clears at the end.
+  Each endpoint image and remove action is then fully visible, and both fades
+  disappear when the remaining images fit.
   Removing one image preserves the remaining image identities and send bytes;
   removing all images removes the strip. This is image-only staging, not a
   generic file picker.

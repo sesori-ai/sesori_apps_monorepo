@@ -1,3 +1,5 @@
+import "dart:ui" as ui;
+
 import "package:flutter/semantics.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -65,6 +67,72 @@ void main() {
       expect(removed, isTrue);
       expect(tester.takeException(), isNull);
       semantics.dispose();
+    });
+  }
+
+  for (final direction in TextDirection.values) {
+    testWidgets("edge fades track both scroll directions and clear after removal in $direction", (tester) async {
+      Future<void> pump({required int count}) => tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Directionality(
+            textDirection: direction,
+            child: Center(
+              child: SizedBox(
+                width: 364,
+                child: PregoImageAttachmentStrip(
+                  children: [
+                    for (var i = 0; i < count; i++)
+                      PregoImageAttachmentPreview(
+                        image: const ColoredBox(color: Colors.red),
+                        imageLabel: "Image $i",
+                        removeLabel: "Remove $i",
+                        onRemove: () {},
+                      ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        ),
+      );
+      Future<List<int>> maskAlphas() async {
+        final mask = tester.widget<ShaderMask>(find.byType(ShaderMask));
+        final alphas = await tester.runAsync(() async {
+          const bounds = Rect.fromLTWH(0, 0, 364, 52);
+          final recorder = ui.PictureRecorder();
+          Canvas(recorder).drawRect(bounds, Paint()..shader = mask.shaderCallback(bounds));
+          final picture = recorder.endRecording();
+          final image = await picture.toImage(364, 52);
+          final pixels = (await image.toByteData(format: ui.ImageByteFormat.rawRgba))!;
+          final result = [
+            for (final x in [6, 182, 357]) pixels.getUint8((26 * 364 + x) * 4 + 3),
+          ];
+          image.dispose();
+          picture.dispose();
+          return direction == TextDirection.ltr ? result : result.reversed.toList();
+        });
+        return alphas!;
+      }
+
+      await pump(count: 12);
+      final position = tester.state<ScrollableState>(find.byType(Scrollable)).position;
+      expect(await maskAlphas(), [255, 255, lessThan(20)]);
+      position.jumpTo(position.maxScrollExtent / 2);
+      await tester.pump();
+      expect(await maskAlphas(), [lessThan(20), 255, lessThan(20)]);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+      expect(await maskAlphas(), [lessThan(20), 255, 255]);
+      position.jumpTo(0);
+      await tester.pump();
+      expect(await maskAlphas(), [255, 255, lessThan(20)]);
+      position.jumpTo(position.maxScrollExtent);
+      await tester.pump();
+      await pump(count: 2);
+      await tester.pumpAndSettle();
+      expect(await maskAlphas(), [255, 255, 255]);
+      expect(tester.takeException(), isNull);
     });
   }
 

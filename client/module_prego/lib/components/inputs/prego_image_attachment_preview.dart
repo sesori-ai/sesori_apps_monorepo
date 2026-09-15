@@ -76,8 +76,8 @@ class const PregoImageAttachmentPreview({
   }
 }
 
-/// One fixed-height row. The trailing fade hints at images still offscreen,
-/// then recedes so the final image and its remove button are fully visible.
+/// One fixed-height row. Edge fades hint at images offscreen in either
+/// direction, clearing at each end so its image and remove button stay visible.
 class const PregoImageAttachmentStrip({
   super.key,
   required final List<PregoImageAttachmentPreview> children,
@@ -107,16 +107,32 @@ class _PregoImageAttachmentStripState() extends State<PregoImageAttachmentStrip>
         builder: (context, constraints) => AnimatedBuilder(
           animation: _scrollController,
           builder: (context, child) {
-            final offset = _scrollController.hasClients ? _scrollController.offset : 0.0;
-            // Figma's 364px mask fades over its final 128.5px.
-            final fadeWidth = math.min(128.5, math.max(0.0, contentWidth - constraints.maxWidth - offset));
+            final scrollExtent = math.max(0.0, contentWidth - constraints.maxWidth);
+            // Removing images can leave the old offset until scroll layout
+            // catches up; derive both fades from the current content bounds.
+            final offset = (_scrollController.hasClients ? _scrollController.offset : 0.0).clamp(0.0, scrollExtent);
+            // Mirror Figma's 128.5px trailing fade at the leading edge. Keep
+            // the two gradient ramps from overlapping in a smaller viewport.
+            final maxFadeWidth = math.min(128.5, constraints.maxWidth / 2);
+            final leadingFadeWidth = math.min(maxFadeWidth, offset);
+            final trailingFadeWidth = math.min(maxFadeWidth, scrollExtent - offset);
             return ShaderMask(
               blendMode: BlendMode.dstIn,
               shaderCallback: (bounds) => LinearGradient(
                 begin: AlignmentDirectional.centerStart,
                 end: AlignmentDirectional.centerEnd,
-                colors: [Colors.white, fadeWidth == 0 ? Colors.white : Colors.transparent],
-                stops: [fadeWidth == 0 ? 0 : (1 - fadeWidth / bounds.width).clamp(0.0, 1.0), 1],
+                colors: [
+                  leadingFadeWidth == 0 ? Colors.white : Colors.transparent,
+                  Colors.white,
+                  Colors.white,
+                  trailingFadeWidth == 0 ? Colors.white : Colors.transparent,
+                ],
+                stops: [
+                  0,
+                  leadingFadeWidth == 0 ? 0 : leadingFadeWidth / bounds.width,
+                  trailingFadeWidth == 0 ? 1 : 1 - trailingFadeWidth / bounds.width,
+                  1,
+                ],
               ).createShader(bounds, textDirection: textDirection),
               child: child,
             );
