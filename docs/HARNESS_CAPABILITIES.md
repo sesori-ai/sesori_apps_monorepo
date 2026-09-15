@@ -32,10 +32,11 @@ including extension-owned input, and carries no Sesori prompt IDs. It cannot
 safely implement deletion of one row; Sesori does not clear/replay that native
 queue. This limit is verified from installed native source. Dispatch-state and
 cancellation evidence is synthetic plugin/bridge/core/widget coverage, not a new
-live authenticated run. Older bridge payloads without dispatch ownership are
-explicitly unknown; modern clients do not offer cancellation based on that guess.
-A late cancellation refusal is not success: the client reports it and reconciles
-authoritative state instead of hiding still-live input.
+live authenticated run. Older public bridge payloads without dispatch ownership
+remain explicitly unknown and retain best-effort cancellation. Only a reported
+dispatched state suppresses trash. A late cancellation refusal is not success:
+the client reports it without hiding still-live input; existing queue events and
+reconnect snapshots keep the displayed state authoritative.
 
 ## Explicit shell-command presentation
 

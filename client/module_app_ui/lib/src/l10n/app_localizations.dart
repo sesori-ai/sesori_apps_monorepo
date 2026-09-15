@@ -2245,12 +2245,6 @@ abstract class AppLocalizations {
   /// **'Cancellation was not confirmed. The message may already have been sent.'**
   String get sessionDetailQueueCancellationFailed;
 
-  /// No description provided for @sessionDetailQueueCancellationUnavailable.
-  ///
-  /// In en, this message translates to:
-  /// **'This bridge has not reported whether cancellation is available.'**
-  String get sessionDetailQueueCancellationUnavailable;
-
   /// No description provided for @sessionDetailSendingMessage.
   ///
   /// In en, this message translates to:

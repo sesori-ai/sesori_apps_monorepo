@@ -76,17 +76,13 @@ class const SessionDetailPromptQueue({
               isCommand: prompt.command != null,
               unavailable: false,
               deliveryStatus: switch (prompt.dispatchState) {
-                QueuedPromptDispatchState.queued => null,
+                QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown => null,
                 QueuedPromptDispatchState.dispatched => (
                   label: loc.sessionDetailSendingMessage,
                   indicator: const SizedBox.square(dimension: 14, child: PregoActivityIndicator(color: null)),
                 ),
-                QueuedPromptDispatchState.unknown => (
-                  label: loc.sessionDetailQueueCancellationUnavailable,
-                  indicator: Icon(TablerRegular.info_circle, size: 20, color: context.prego.colors.textTertiary),
-                ),
               },
-              onRemove: prompt.dispatchState == QueuedPromptDispatchState.queued && onCancelBridge != null
+              onRemove: prompt.dispatchState != QueuedPromptDispatchState.dispatched && onCancelBridge != null
                   ? () => onCancelBridge?.call(prompt.id)
                   : null,
             ),

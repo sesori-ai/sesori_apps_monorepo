@@ -118,6 +118,7 @@ class SessionDetailCubit(
       : null;
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
+  final Set<String> _cancellingBridgePromptIds = {};
   final Set<String> _staleOptionsRecoveryAttemptedPromptIds = {};
   Session? _sessionMetadata;
   SessionInteractionState _interaction = const SessionInteractionState.checking();
@@ -1496,53 +1497,37 @@ class SessionDetailCubit(
   }
 
   /// Removes a prompt only after confirmed cancellation. A refusal can mean
-  /// dispatch already transferred ownership; reconcile without claiming success.
+  /// dispatch already transferred ownership; queue events remain authoritative.
   Future<void> cancelBridgeQueuedPrompt({required String promptId}) async {
     if (_refuseWhenInteractionBlocked(action: "cancel a bridge-queued prompt")) return;
-    final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
-    if (isClosed) return;
-    if (result case ErrorResponse(:final error)) {
-      logw("Queued prompt cancellation was not confirmed for $_sessionId/$promptId", error);
-      _noticeStream.add(const SessionDetailQueueCancellationFailed());
-      if (error is NonSuccessCodeError && error.errorCode == 404) {
-        final beforeRefresh = state;
-        if (beforeRefresh is! SessionDetailLoaded) return;
-        final refreshed = await _sessionRepository.getQueuedPrompts(sessionId: _sessionId);
-        if (isClosed) return;
-        switch (refreshed) {
-          case SuccessResponse(:final data):
-            final latest = state;
-            // Live queue changes during this read take precedence over its
-            // snapshot; unrelated transcript updates do not invalidate it.
-            if (latest is SessionDetailLoaded &&
-                const ListEquality<QueuedSessionPrompt>().equals(
-                  beforeRefresh.bridgeQueuedPrompts,
-                  latest.bridgeQueuedPrompts,
-                )) {
-              _onBridgeQueueUpdated(data.data);
-            }
-          case ErrorResponse(:final error):
-            logw("Failed to reconcile queued prompts after cancellation for $_sessionId/$promptId", error);
-        }
+    if (!_cancellingBridgePromptIds.add(promptId)) return;
+    try {
+      final result = await _sessionRepository.cancelQueuedPrompt(sessionId: _sessionId, promptId: promptId);
+      if (isClosed) return;
+      if (result case ErrorResponse(:final error)) {
+        logw("Queued prompt cancellation was not confirmed for $_sessionId/$promptId", error);
+        _noticeStream.add(const SessionDetailQueueCancellationFailed());
+        return;
       }
-      return;
+      _promptQueue.removeByPromptId(promptId);
+      final current = state;
+      if (current is! SessionDetailLoaded) return;
+      final bridgePrompts = [
+        for (final prompt in current.bridgeQueuedPrompts)
+          if (prompt.id != promptId) prompt,
+      ];
+      final queue = _queueView(bridgePrompts: bridgePrompts);
+      emit(
+        current.copyWith(
+          bridgeQueuedPrompts: bridgePrompts,
+          queuedMessages: queue.queuedMessages,
+          awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
+          sendingSubmission: queue.sendingSubmission,
+        ),
+      );
+    } finally {
+      _cancellingBridgePromptIds.remove(promptId);
     }
-    _promptQueue.removeByPromptId(promptId);
-    final current = state;
-    if (current is! SessionDetailLoaded || isClosed) return;
-    final bridgePrompts = [
-      for (final prompt in current.bridgeQueuedPrompts)
-        if (prompt.id != promptId) prompt,
-    ];
-    final queue = _queueView(bridgePrompts: bridgePrompts);
-    emit(
-      current.copyWith(
-        bridgeQueuedPrompts: bridgePrompts,
-        queuedMessages: queue.queuedMessages,
-        awaitingBridgeSubmissions: queue.awaitingBridgeSubmissions,
-        sendingSubmission: queue.sendingSubmission,
-      ),
-    );
   }
 
   void _onMessageRemoved(String messageId) {

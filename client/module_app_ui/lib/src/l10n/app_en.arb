@@ -701,7 +701,6 @@
   "sessionDetailQueuedCommand": "Queued command",
   "sessionDetailUnavailableCommand": "Command unavailable",
   "sessionDetailQueueCancellationFailed": "Cancellation was not confirmed. The message may already have been sent.",
-  "sessionDetailQueueCancellationUnavailable": "This bridge has not reported whether cancellation is available.",
   "sessionDetailSendingMessage": "Sending",
   "sessionDetailPromptOptionsUpdated": "Prompt options changed. Updated settings and retrying your message.",
   "sessionDetailPromptOptionsRecoveryFailed": "Couldn’t apply updated prompt options. Your message remains queued.",

@@ -117,9 +117,22 @@ final class _PiQueuedPromptTurn({
   required super.model,
   required super.variant,
   required super.userVisibleText,
-  required final PluginQueuedPrompt presentation,
+  required final String? text,
+  required final int attachmentCount,
+  required final int createdAt,
 }) extends _PiTurn {
   _PiQueueState queueState = _PiQueueState.visible;
+
+  PluginQueuedPrompt get presentation => PluginQueuedPrompt(
+    id: promptId,
+    text: text,
+    command: null,
+    attachmentCount: attachmentCount,
+    createdAt: createdAt,
+    dispatchState: promptDispatched
+        ? PluginQueuedPromptDispatchState.dispatched
+        : PluginQueuedPromptDispatchState.queued,
+  );
 }
 
 sealed class _PiCommandTurn({
@@ -192,12 +205,7 @@ final class PiSessionService({
     if (state == null) return const [];
     return [
       for (final turn in state.turns)
-        if (turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible)
-          turn.presentation.copyWith(
-            dispatchState: turn.promptDispatched
-                ? PluginQueuedPromptDispatchState.dispatched
-                : PluginQueuedPromptDispatchState.queued,
-          ),
+        if (turn is _PiQueuedPromptTurn && turn.queueState == _PiQueueState.visible) turn.presentation,
     ];
   }
 
@@ -332,14 +340,9 @@ final class PiSessionService({
         model: model,
         variant: variant,
         userVisibleText: userVisibleText,
-        presentation: PluginQueuedPrompt(
-          dispatchState: PluginQueuedPromptDispatchState.queued,
-          id: promptId,
-          text: visibleText == null || visibleText.isEmpty ? null : visibleText,
-          command: null,
-          attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
-          createdAt: _clock.now().millisecondsSinceEpoch,
-        ),
+        text: visibleText == null || visibleText.isEmpty ? null : visibleText,
+        attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
+        createdAt: _clock.now().millisecondsSinceEpoch,
       ),
     );
     return Future.value();

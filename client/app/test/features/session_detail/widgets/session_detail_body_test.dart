@@ -3415,7 +3415,7 @@ void main() {
     );
   });
 
-  testWidgets("only bridge-pending rows offer cancellation; dispatch and unknown remain visible", (tester) async {
+  testWidgets("queued and legacy rows offer cancellation; dispatched rows remain read-only", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       bridgeQueuedPrompts: [
         for (final dispatchState in QueuedPromptDispatchState.values)
@@ -3431,16 +3431,19 @@ void main() {
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
     when(() => cubit.cancelBridgeQueuedPrompt(promptId: "queued")).thenAnswer((_) async {});
+    when(() => cubit.cancelBridgeQueuedPrompt(promptId: "unknown")).thenAnswer((_) async {});
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pump(const Duration(milliseconds: 400));
     expect(find.byType(PregoQueuedMessageRow), findsNWidgets(3));
-    expect(find.byIcon(TablerRegular.trash), findsOneWidget);
-    for (final label in ["Sending", "This bridge has not reported whether cancellation is available."]) {
-      final tooltip = find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == label);
-      expect(tooltip, findsOneWidget);
-      expect(tester.widget<Tooltip>(tooltip).excludeFromSemantics, isTrue);
-      expect(find.byTooltip(label), findsNothing);
-    }
+    expect(find.byIcon(TablerRegular.trash), findsNWidgets(2));
+    final tooltip = find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Sending");
+    expect(tooltip, findsOneWidget);
+    expect(tester.widget<Tooltip>(tooltip).excludeFromSemantics, isTrue);
+    expect(find.byTooltip("Sending"), findsNothing);
+    expect(
+      tester.widget<PregoQueuedMessageRow>(find.byKey(const ValueKey("session-detail-queued-unknown"))).statusLabel,
+      "Queued",
+    );
     expect(
       tester.widget<PregoQueuedMessageRow>(find.byKey(const ValueKey("session-detail-queued-dispatched"))).statusLabel,
       "Sending",
@@ -3452,10 +3455,16 @@ void main() {
       ),
       findsOneWidget,
     );
-    await tester.tap(find.byIcon(TablerRegular.trash));
-    verify(() => cubit.cancelBridgeQueuedPrompt(promptId: "queued")).called(1);
+    for (final id in ["queued", "unknown"]) {
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(ValueKey("session-detail-queued-$id")),
+          matching: find.byIcon(TablerRegular.trash),
+        ),
+      );
+      verify(() => cubit.cancelBridgeQueuedPrompt(promptId: id)).called(1);
+    }
     verifyNever(() => cubit.cancelBridgeQueuedPrompt(promptId: "dispatched"));
-    verifyNever(() => cubit.cancelBridgeQueuedPrompt(promptId: "unknown"));
   });
 
   for (final inputMode in ChatInputMode.values) {
