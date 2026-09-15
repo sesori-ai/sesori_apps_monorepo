@@ -19,7 +19,7 @@ to ordinals 10–14. Step 2.a retains `steps/step-02.md`; its follow-up uses
 | [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/14]` | ≤ 1,400 | done |
 | [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/14]` | ≤ 700 | done |
 | [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/14]` | ≤ 1,500 | done |
-| [ ] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/14]` | ≤ 500 | in-progress |
+| [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/14]` | ≤ 500 | done |
 | [ ] | 7.b | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 9/14]` | ≤ 1,500 | pending |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 10/14]` | ≤ 1,000 | pending |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 11/14]` | ≤ 700 | pending |
@@ -57,6 +57,11 @@ or waive shipping qualification.
   (recorded in `PLAN.md`, "Regression Documentation And Final Matrix").
 
 ## Verification Log
+
+- Step 7.a: 68 focused cases across native preference commands and existing
+  desktop/mobile settings consumers; four analyzers and fresh scoped
+  architecture review pass. No visible navigation change or native mutation.
+  See `steps/step-07a.md`; modal delivery remains step 7.b.
 
 - Step 2.a: focused automated checks, macOS debug build, and architecture
   implementation review pass. Native project navigation observed; user confirms
