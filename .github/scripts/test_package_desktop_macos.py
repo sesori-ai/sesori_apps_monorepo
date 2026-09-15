@@ -132,6 +132,31 @@ class MacPackagingTests(unittest.TestCase):
         self.assertFalse(list(output.glob("Sesori-macos-*")))
         self.assertTrue(all(call.kwargs["command"][0] != "hdiutil" for call in commands.call_args_list))
 
+    def test_divergent_payloads_fail_without_a_verified_report_and_detach_the_dmg(self):
+        output = self.root / "divergent"
+
+        def execute(*, command, log):
+            if command[:3] == ["ditto", "-c", "-k"] or command[:2] == ["hdiutil", "create"]:
+                Path(command[-1]).write_bytes(b"archive")
+            elif command[:3] == ["ditto", "-x", "-k"]:
+                manifest = Path(command[-1]) / "Sesori.app/Contents/Resources/desktop-bundle.json"
+                manifest.parent.mkdir(parents=True)
+                shutil.copyfile(self.manifest, manifest)
+            return ""
+
+        with mock.patch.object(packaging, "execute", side_effect=execute) as commands, \
+                mock.patch.object(packaging, "run", return_value="test-source"), \
+                mock.patch.object(packaging, "sign_app"), mock.patch.object(packaging, "notarize"), \
+                mock.patch.object(packaging, "verify_app", side_effect=[
+                    {"binaries": [{"sha256": "zip"}], "helperVersion": "1.8.4"},
+                    {"binaries": [{"sha256": "dmg"}], "helperVersion": "1.8.4"},
+                ]):
+            with self.assertRaisesRegex(RuntimeError, "ZIP and DMG extracted payload evidence differ"):
+                packaging.package(app=self.app, output=output, arch="arm64", identity="Expected publisher",
+                                  keychain=self.keychain, profile="ci-profile")
+        self.assertEqual(commands.call_args.kwargs["command"][:2], ["hdiutil", "detach"])
+        self.assertFalse((output / "packaging.json").exists())
+
     def test_existing_output_is_never_deleted_or_replaced(self):
         output = self.root / "existing"
         output.mkdir()

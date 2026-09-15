@@ -68,7 +68,11 @@ Only the explicit preflight/packaging signing step consumes `MACOS_CERT_P12_BASE
 `APPLE_APP_SPECIFIC_PASSWORD`, and the `APPLE_TEAM_ID` repository variable. Signing
 uses the established Developer ID publisher. Temporary certificate/Keychain/profile
 files stay outside the checkout and artifact paths and are removed after use.
-Passwords never become Python packager arguments or exception text.
+Passwords never become Python packager arguments or exception text. These existing
+repository-level secrets assume trusted repository writers; manual dispatch is not
+an access-control boundary against them. Owner-approved migration to protected
+environments, including shared CLI callers and removal of repository-wide copies,
+is a public-publication prerequisite, not an already-enforced qualification guard.
 
 Private artifacts `desktop-macos-packages-{x64,arm64}` contain
 `Sesori-macos-<arch>.dmg` and `.zip`; matching `desktop-macos-evidence-<arch>`
@@ -82,7 +86,8 @@ A separately Developer-ID-signed release fixture tests the production Keychain
 configuration across two launches, login-registration writes/removal and owned file
 access. That fixture never starts bridge/session services and is not uploaded as a
 product. Neither probe may run on a local developer host; existing app/bridge/login
-registration state causes refusal rather than takeover.
+registration state causes refusal rather than takeover. A missing active screen is
+a blocked, nonzero probe result and prevents the verified-package upload.
 
 For GUI-only diagnostics, set `PACKAGING_RUN` to a trusted successful packaging run
 whose private artifacts are still available, then dispatch the credential-free

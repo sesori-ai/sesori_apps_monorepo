@@ -4,12 +4,12 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–3.b merged; step 4 macOS signing/notarization access qualification.
+- **Status:** Active — steps 1–3.b merged; step 4.a macOS packaging in review; step 4.b startup repair planned.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
 - **Repository:** `sesori-ai/sesori_apps_monorepo`
-- **Delivery:** 13 planned PRs; original step 3 is split into 3.a/3.b. Exact titles below.
+- **Delivery:** 14 planned PRs; original steps 3 and 4 are split into 3.a/3.b and 4.a/4.b. Exact titles below.
 - **Architecture review:** reviewed 2026-09-15; ownership/DI/identity findings applied
   directly. The corrected revision was not re-reviewed; see `TRACKER.md`.
 
@@ -383,8 +383,13 @@ platform inputs and reusable platform build legs. It must not depend on mobile
 store jobs, move `internal-release-attempt`, or change the existing mobile/CLI
 finalizer's success conditions. PR packaging CI has no signing/publication secrets;
 manual trusted release jobs use protected environments and least-privilege OIDC
-where supported. Preserve source revision versus workflow revision deliberately
-when reusing actions for older refs.
+where supported. Existing private qualification uses the owner's authorized
+repository-level signing secrets; manual dispatch is not isolation from malicious
+repository writers. Before public publication, the owner must approve a protected-
+environment credential migration, including shared CLI callers and removal of
+repository-wide copies. Merely naming an environment does not secure those copies.
+Do not provision protection rules or move credentials without that authorization.
+Preserve source revision versus workflow revision when reusing actions for older refs.
 
 - Artifact identity includes semantic version, build number, source SHA, platform,
   architecture, digest, and signing evidence. Both architectures in a platform leg

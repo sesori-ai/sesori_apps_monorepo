@@ -1,6 +1,6 @@
 # Step 4.a — Native macOS Packaging And Notarization
 
-Status: **implementation ready for review; rendered startup moves to step 4.b**.
+Status: **in review — PR #1499; rendered startup moves to step 4.b**.
 PR ordinal **5/14**. Work remains in the original `tan-antelope` worktree.
 
 ## Scope and safety
@@ -148,6 +148,10 @@ and bridge remain untouched.
   It now uses the existing `material_ui` package. `dart analyze --fatal-infos`
   passes on that focused correction based on `05ef975`; log:
   `pr1499-dart-analyze-material-import.log`. This is not another native fixture run.
+- PR feedback: blocked-screen and divergent-archive regressions failed red, then
+  all **13** packaging/probe tests passed on the correction based on `875c65d`.
+  Logs: `pr1499-review-regressions-{red-final,green}.log`. Both existing `d5a0302`
+  real payload reports satisfy the new equality predicate; no native rerun is implied.
 - Commands run from `client/desktop` unless Python/tooling requires repository root:
 
 ```bash

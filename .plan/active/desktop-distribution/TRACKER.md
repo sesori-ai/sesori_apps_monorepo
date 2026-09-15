@@ -121,7 +121,7 @@ remain untouched. Real account, interactive TCC, OS-login and ship gates stay op
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
+| Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, updater/Windows/Linux keys, GCS access and owner-approved protected-environment migration of shared repository signing secrets before public publication. |
 | macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads/feed, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending | Both CPUs in DEB/RPM, nominated native distro rows, signed repository install/update/remove and desktop-environment coverage. |
@@ -163,8 +163,8 @@ orchestrator solely for hypothetical future exit callers is not part of this pla
 ## Planning validation
 
 - Local Markdown links in all six changed/new documents: passed.
-- All 13 tracker ordinals match PLAN.md: passed. Published titles #1483/#1487/#1492
-  were synchronized to total 13; commit history was not rewritten.
+- All 14 tracker ordinals match PLAN.md: passed after the 4.a/4.b split. Published
+  titles #1483/#1487/#1492/#1495/#1499 use total 14; commit history was not rewritten.
 - Initial `git diff --check`: passed; final whitespace and diff size are checked again
   after review corrections, before committing/pushing.
 - Initial measured diff: 555 additions + 17 deletions = 572 authored Markdown lines;

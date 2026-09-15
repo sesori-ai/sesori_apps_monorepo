@@ -18,12 +18,15 @@ packaging capability does not imply public downloads or an updater have shipped.
   exceptions. Keep the established non-sandboxed classic-Keychain configuration.
 - Notarize/staple the app before creating the final ZIP. Sign/notarize/staple the
   DMG too. Both extracted payloads must retain valid signatures and tickets, pass
-  Gatekeeper assessment and execute the native helper. Offer Applications as the
-  installation destination, not running the GUI from a mounted DMG.
+  Gatekeeper assessment and execute the native helper. Their extracted native
+  inventories and helper versions must match before reporting verified packages.
+  Offer Applications as the installation destination, not a mounted-DMG launch.
 - Use signing credentials only in explicitly selected trusted manual CI, never PR
   qualification. Keep private material out of command reporting/artifacts; clean
   only job-owned credential files. Failed output remains available for diagnosis,
   but incomplete packages are not uploaded as successful package artifacts.
+- Missing native screens must fail the platform-probe step with explicit blocked
+  evidence, not silently skip qualification and continue verified-package upload.
 - Signing, native-header inventory and fake-service helper E2E cannot stand in for
   installed GUI, account, Keychain, filesystem/TCC, autostart, minimum-OS or update
   evidence. Public-release prerequisites stay independent.
@@ -34,7 +37,7 @@ These are required checks, not a record that every level has passed.
 
 | Level | Boundary / scope | Added checks |
 |---|---|---|
-| L1 | Automated; no plugin | Native signing order, correct publisher/runtime/entitlement arguments, architecture refusal, explicit verification of all helper libraries. |
+| L1 | Automated; no plugin | Signing order, publisher/runtime/entitlement arguments, architecture and ZIP/DMG divergence refusal, every helper library's signature, isolated local/active-process/registration guards and blocked-screen failure. |
 | L2 | Packaged/external; macOS x64 + arm64; faithful bridge fakes | Trusted CI signs/notarizes both formats; verify extracted headers, signatures, staples, Gatekeeper and helper E2E. Fresh native hosts exercise a separately signed release fixture's synthetic Keychain persistence/delete, login-registration write/read/remove and owned file access; install the real signed app, observe its window and attempt a screenshot. Retain source/run evidence and explicit blocked outcomes. Default PR runs cannot receive signing credentials. |
 | L3 | Client end to end; installed macOS x64 + arm64; representative production plugin | Download and install the signed app into Applications without a security bypass. Verify actual GUI startup, browser login/return, token write/read/relaunch restoration, helper control, runtime launch and user-approved filesystem/TCC behavior. |
 | L4 | Packaged/client end to end; both Mac CPUs | Exercise paths with spaces, login/autostart and close-to-tray versus Quit. Compare an installed N→N+1 package with stable signing identity; preserve shared CLI credentials, runtimes, history and projects. |

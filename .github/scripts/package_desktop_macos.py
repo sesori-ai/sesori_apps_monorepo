@@ -141,6 +141,8 @@ def package(*, app: Path, output: Path, arch: str, identity: str, keychain: Path
         dmg_evidence = verify_app(app=mount / "Sesori.app", arch=arch, log=log)
     finally:
         execute(command=["hdiutil", "detach", str(mount)], log=log)
+    if dmg_evidence != zip_evidence:
+        raise RuntimeError("ZIP and DMG extracted payload evidence differ")
     shutil.copyfile(extracted / "Sesori.app/Contents/Resources/desktop-bundle.json",
                     output / "desktop-bundle.json")
     digests = {}

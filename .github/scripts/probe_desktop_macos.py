@@ -44,8 +44,7 @@ def probe(*, app: Path, fixture: Path | None, output: Path) -> None:
     host = subprocess.run([str(inspector)], text=True, capture_output=True)
     (output / "host.log").write_text(host.stdout + host.stderr)
     if host.returncode == 2:
-        print("BLOCKED GUI/platform probes: this runner has no active screen")
-        return
+        raise RuntimeError("BLOCKED GUI/platform probes: this runner has no active screen")
     host.check_returncode()
     installed: list[Path] = []
     sources = [(app, Path("/Applications/Sesori.app"))]
@@ -85,7 +84,7 @@ def probe(*, app: Path, fixture: Path | None, output: Path) -> None:
                 window = subprocess.run([str(inspector), str(app_pid)], text=True, capture_output=True)
                 (output / "window.log").write_text(window.stdout + window.stderr)
                 if window.returncode == 2:
-                    print("BLOCKED installed GUI: this runner has no active screen")
+                    raise RuntimeError("BLOCKED installed GUI: this runner has no active screen")
                 elif window.returncode:
                     raise RuntimeError("Installed desktop has no visible main window; see window.log")
                 else:
