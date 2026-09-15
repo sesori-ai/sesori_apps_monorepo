@@ -1,6 +1,7 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 void main() {
   group("DesktopBridgeExecutablePathResolver", () {
@@ -10,7 +11,11 @@ void main() {
         environment: {DesktopBridgeExecutablePathResolver.environmentVariable: configuredPath},
         workingDirectory: path.absolute(path.join("repo", "client", "desktop")),
         resolvedExecutable: path.absolute(path.join("repo", "client", "desktop", "build", "Sesori")),
-        isWindows: false,
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableExists,
       );
 
@@ -23,7 +28,11 @@ void main() {
         environment: const {DesktopBridgeExecutablePathResolver.environmentVariable: "tools/bridge"},
         workingDirectory: workingDirectory,
         resolvedExecutable: path.join(workingDirectory, "build", "Sesori"),
-        isWindows: false,
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableExists,
       );
 
@@ -36,7 +45,11 @@ void main() {
         environment: const {},
         workingDirectory: workingDirectory,
         resolvedExecutable: path.join(workingDirectory, "build", "Sesori"),
-        isWindows: false,
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableExists,
       );
 
@@ -67,7 +80,11 @@ void main() {
           "MacOS",
           "Sesori",
         ),
-        isWindows: false,
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableExists,
       );
 
@@ -86,7 +103,11 @@ void main() {
         environment: const {},
         workingDirectory: workingDirectory,
         resolvedExecutable: path.join(root, "Applications", "Sesori.app", "Contents", "MacOS", "Sesori"),
-        isWindows: false,
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableExists,
       );
 
@@ -107,7 +128,11 @@ void main() {
         environment: const {},
         workingDirectory: workingDirectory,
         resolvedExecutable: path.join(workingDirectory, "build", "Sesori"),
-        isWindows: false,
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableMissing,
       );
 
@@ -128,7 +153,11 @@ void main() {
         environment: {DesktopBridgeExecutablePathResolver.environmentVariable: configuredPath},
         workingDirectory: path.absolute(path.join("repo", "client", "desktop")),
         resolvedExecutable: path.absolute(path.join("repo", "client", "desktop", "build", "Sesori")),
-        isWindows: false,
+        os: DesktopBundleOs.macos,
+        architecture: DesktopBundleArchitecture.arm64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableMissing,
       );
 
@@ -153,7 +182,11 @@ void main() {
         environment: const {},
         workingDirectory: workingDirectory,
         resolvedExecutable: path.join(workingDirectory, "build", "Sesori.exe"),
-        isWindows: true,
+        os: DesktopBundleOs.windows,
+        architecture: DesktopBundleArchitecture.x64,
+        isReleaseMode: false,
+        compiledIdentityJson: null,
+        readManifest: _unexpectedManifestRead,
         executableExists: _executableExists,
       );
 
@@ -161,6 +194,8 @@ void main() {
     });
   });
 }
+
+String _unexpectedManifestRead({required String manifestPath}) => throw StateError("Development read $manifestPath");
 
 bool _executableExists({required String executablePath}) => executablePath.isNotEmpty;
 

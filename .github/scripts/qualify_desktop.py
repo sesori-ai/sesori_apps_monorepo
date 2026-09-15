@@ -19,9 +19,10 @@ CPU_NAMES = {"AMD64": "x64", "x86_64": "x64", "arm64": "arm64", "ARM64": "arm64"
 MACH_CPUS = {0x01000007: "x64", 0x0100000C: "arm64"}
 
 
-def run(*, command: list[str], cwd: Path = ROOT) -> str:
+def run(*, command: list[str], cwd: Path = ROOT, merge_stderr: bool = True) -> str:
     try:
-        return subprocess.check_output(command, cwd=cwd, text=True, encoding="utf-8", stderr=subprocess.STDOUT)
+        return subprocess.check_output(command, cwd=cwd, text=True, encoding="utf-8",
+                                       stderr=subprocess.STDOUT if merge_stderr else None)
     except subprocess.CalledProcessError as error:
         # The exception traceback alone omits the captured compiler/bootstrap diagnostics.
         print(error.output, file=sys.stderr)
@@ -124,12 +125,8 @@ def bootstrap(*, sdk: Path, target_os: str, arch: str) -> None:
     print(f"Bootstrapped official Flutter {release['version']} at {revision}, native Dart {arch}")
 
 
-def inspect(*, target_os: str, arch: str) -> None:
-    products = ROOT / "client/desktop/build"
-    gui = {"macos": products / "macos/Build/Products/Release/Sesori.app",
-           "windows": products / f"windows/{arch}/runner/Release",
-           "linux": products / f"linux/{arch}/release/bundle"}[target_os]
-    helper = ROOT / "bridge/app/build/cli/bundle"
+def inspect(*, target_os: str, arch: str, gui: Path) -> None:
+    helper = gui / ("Contents/Helpers/bridge" if target_os == "macos" else "bridge")
     entry = {"macos": "Contents/MacOS/Sesori", "windows": "sesori_desktop.exe",
              "linux": "sesori_desktop"}[target_os]
     bridge_name = "bridge.exe" if target_os == "windows" else "bridge"
@@ -159,8 +156,10 @@ def inspect(*, target_os: str, arch: str) -> None:
                if line.startswith("flutter ")).rsplit("-", 1)[0]
     if version["frameworkVersion"] != pin:
         raise ValueError(f"Expected pinned Flutter {pin}, found {version['frameworkVersion']}")
+    # Canonical content, not stat-only autocrlf changes or Git's stderr warnings.
+    source_status = run(command=["git", "diff", "--name-status", "HEAD"], merge_stderr=False).strip()
     report = {"sourceSha": run(command=["git", "rev-parse", "HEAD"]).strip(),
-              "trackedSourceDirty": bool(run(command=["git", "status", "--porcelain", "--untracked-files=no"]).strip()),
+              "trackedSourceDirty": bool(source_status), "trackedSourceStatus": source_status,
               "targetOs": target_os, "nativeHostCpu": arch, "hostOs": platform.platform(),
               "runnerImage": {key: os.environ.get(key) for key in ("ImageOS", "ImageVersion", "RUNNER_ARCH")},
               "flutter": version, "binaries": binaries, "relocatedHelperVersion": relocated_version,
@@ -183,7 +182,7 @@ def inspect(*, target_os: str, arch: str) -> None:
             log.write("$ " + " ".join(command) + "\n" + result + "\n")
             if command[0] == "ldd" and "not found" in result:
                 raise ValueError(f"Unresolved shared library: {command[-1]}; see native-toolchain.log")
-    print(f"{target_os}/{arch}: {len(binaries['gui'])} GUI binaries, {len(binaries['helper'])} helper binaries; "
+    print(f"{target_os}/{arch}: {len(binaries['gui'])} packaged binaries (including {len(binaries['helper'])} helper binaries); "
           f"relocated --version={relocated_version}. Build evidence only.")
 
 
@@ -192,6 +191,7 @@ def main() -> None:
     parser.add_argument("operation", choices=("bootstrap", "inspect"))
     parser.add_argument("--arch", choices=("x64", "arm64"), required=True)
     parser.add_argument("--sdk-dir", type=Path)
+    parser.add_argument("--bundle-dir", type=Path)
     args = parser.parse_args()
     target_os = OS_NAMES[sys.platform]
     host_cpu = CPU_NAMES.get(os.environ.get("PROCESSOR_ARCHITEW6432", platform.machine()))
@@ -203,7 +203,9 @@ def main() -> None:
             parser.error("bootstrap requires --sdk-dir")
         bootstrap(sdk=args.sdk_dir, target_os=target_os, arch=args.arch)
     else:
-        inspect(target_os=target_os, arch=args.arch)
+        if args.bundle_dir is None:
+            parser.error("inspect requires --bundle-dir")
+        inspect(target_os=target_os, arch=args.arch, gui=ROOT / args.bundle_dir)
 
 
 if __name__ == "__main__":

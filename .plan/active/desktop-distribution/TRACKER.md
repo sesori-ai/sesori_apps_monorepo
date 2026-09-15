@@ -5,24 +5,25 @@ its completed step; this table tracks implementation, not transient PR reviews.
 
 ## Delivery
 
-| Step | Scope | Status |
-|---|---|---|
-| 1 | Align platform distribution and update plan | done |
-| 2 | Qualify six-target packaging prerequisites | in-progress |
-| 3 | Bind desktop builds to bundled bridge identity | pending |
-| 4 | Package and notarize native macOS builds | pending |
-| 5 | Apply macOS updates through safe application quit | pending |
-| 6 | Publish isolated desktop channels and macOS downloads | pending |
-| 7 | Package signed per-user Windows installers | pending |
-| 8 | Deliver manual Windows updates and winget discovery | pending |
-| 9 | Publish signed native DEB and RPM repositories | pending |
-| 10 | Offer shipped desktop downloads during onboarding | pending |
-| 11 | Reconcile distribution regression coverage | pending |
-| 12 | Verify six-target releases and retire distribution plan | pending |
+| Step | PR ordinal | Scope | Status |
+|---|---|---|---|
+| 1 | 1 | Align platform distribution and update plan | done |
+| 2 | 2 | Qualify six-target packaging prerequisites | done |
+| 3.a | 3 | Bind desktop builds to bundled bridge identity | in-progress |
+| 3.b | 4 | Surface packaged helper repair guidance | pending |
+| 4 | 5 | Package and notarize native macOS builds | pending |
+| 5 | 6 | Apply macOS updates through safe application quit | pending |
+| 6 | 7 | Publish isolated desktop channels and macOS downloads | pending |
+| 7 | 8 | Package signed per-user Windows installers | pending |
+| 8 | 9 | Deliver manual Windows updates and winget discovery | pending |
+| 9 | 10 | Publish signed native DEB and RPM repositories | pending |
+| 10 | 11 | Offer shipped desktop downloads during onboarding | pending |
+| 11 | 12 | Reconcile distribution regression coverage | pending |
+| 12 | 13 | Verify six-target releases and retire distribution plan | pending |
 
-Exact PR titles, dependencies, expected behavior, and the 12-step total live in
-[PLAN.md](PLAN.md). Platform ship gates are evidence checkpoints within steps
-6, 8, and 9, not additional PR ordinals.
+Exact PR titles, dependencies and the 13-PR total live in [PLAN.md](PLAN.md).
+Stable step IDs 1, 2, 3.a, 3.b, 4…12 map to PR ordinals 1…13. Platform ship gates
+remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
 ## Alignment — 2026-09-15
 
@@ -61,11 +62,24 @@ worktree on branch `desktop-distribution-qualification`. Qualification does not
 publish product releases or provision signing/hosting resources. Initial source/SDK
 and signing-metadata evidence is recorded in [steps/step-02.md](steps/step-02.md).
 
+Step 2 merged in [PR #1487](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1487)
+as `833b989517`, with all six native build/inventory/relocated-helper E2E rows passing.
+Step 3.a started automatically in the same worktree on
+`desktop-distribution-bundle-identity`. The existing reviewed identity boundary is
+unchanged; no new lifecycle owner, mutable state, database or wire contract was added.
+Implementation, local native evidence and the approved architecture review are
+recorded in [steps/step-03.md](steps/step-03.md). PR #1492 at `7ff3293` passed all
+24 checks, including six native staging rows in run 34976451046 with empty canonical
+source diffs. Windows' stat-only Git false positive is reproduced and corrected.
+Review identified missing user-visible refusal state; immediate successor 3.b owns
+that small service/state/presentation change before any installers, rather than
+expanding the near-cap foundations PR. No public gate is waived by the split.
+
 ## Qualification and ship gates
 
 | Gate | State | Evidence still required |
 |---|---|---|
-| Native build matrix | Partial: both macOS and both Linux CI rows passed | Windows x64/ARM64 builds and inventories passed; awaiting the full Windows rerun with UTF-8 artifact writes. All interactive/signed release gates remain unverified. |
+| Native build matrix | All six staging rows passed in run 34976451046 | Signed/interactive release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Not provisioned/verified | Developer ID/notarization and update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
@@ -110,10 +124,11 @@ orchestrator solely for hypothetical future exit callers is not part of this pla
 ## Planning validation
 
 - Local Markdown links in all six changed/new documents: passed.
-- Exact series titles and tracker ordinals: 1–12, all using total 12; passed.
+- All 13 tracker ordinals match PLAN.md: passed. Published titles #1483/#1487/#1492
+  were synchronized to total 13; commit history was not rewritten.
 - Initial `git diff --check`: passed; final whitespace and diff size are checked again
   after review corrections, before committing/pushing.
 - Initial measured diff: 555 additions + 17 deletions = 572 authored Markdown lines;
   no generated churn; final measurement belongs in the PR verification evidence.
 - Architecture review completed and findings applied as recorded above.
-- No Dart/Flutter suites are required for this documentation-only PR.
+- No Dart/Flutter suites were required for step 1's documentation-only PR.

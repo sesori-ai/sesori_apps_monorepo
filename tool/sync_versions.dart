@@ -61,6 +61,11 @@ Future<void> main(List<String> args) async {
       'app',
       'pubspec.yaml',
     ]);
+    final desktopPubspecPath = _join(repoRoot, <String>[
+      'client',
+      'desktop',
+      'pubspec.yaml',
+    ]);
     final bridgePubspecPath = _join(repoRoot, <String>[
       'bridge',
       'app',
@@ -75,7 +80,12 @@ Future<void> main(List<String> args) async {
     ]);
 
     final clientVersion = _readClientVersion(
-      await _readFile(path: clientPubspecPath),
+      content: await _readFile(path: clientPubspecPath),
+      pubspecPath: clientPubspecPath,
+    );
+    final desktopVersion = _readClientVersion(
+      content: await _readFile(path: desktopPubspecPath),
+      pubspecPath: desktopPubspecPath,
     );
     final bridgeCurrentVersion = _readBridgeVersion(
       await _readFile(path: bridgePubspecPath),
@@ -83,9 +93,10 @@ Future<void> main(List<String> args) async {
 
     // Only enforce sync guard for automatic bumps; explicit --version can realign.
     if (parsed.version == null &&
-        clientVersion.semver != bridgeCurrentVersion) {
+        (clientVersion.semver != bridgeCurrentVersion ||
+            desktopVersion.semver != bridgeCurrentVersion)) {
       throw _CliError(
-        'Error: Bridge ($bridgeCurrentVersion) and client (${clientVersion.semver}) versions are out of sync. '
+        'Error: Bridge ($bridgeCurrentVersion), client (${clientVersion.semver}), and desktop (${desktopVersion.semver}) versions are out of sync. '
         'Run `make bump-version VERSION=${clientVersion.semver}` to align them before bumping.',
       );
     }
@@ -99,16 +110,22 @@ Future<void> main(List<String> args) async {
         ? '$targetBridgeVersion+${clientVersion.build}'
         : targetBridgeVersion;
 
+    final targetDesktopVersion = desktopVersion.build != null
+        ? '$targetBridgeVersion+${desktopVersion.build}'
+        : targetBridgeVersion;
+
     final plannedPaths = <String>[
       'bridge/app/pubspec.yaml',
       'bridge/app/lib/src/version.dart',
       ..._bridgePackageManifests,
       'client/app/pubspec.yaml',
+      'client/desktop/pubspec.yaml',
     ];
 
     if (parsed.dryRun) {
       stdout.writeln('Target bridge version: $targetBridgeVersion');
       stdout.writeln('Target client version: $targetClientVersion');
+      stdout.writeln('Target desktop version: $targetDesktopVersion');
       stdout.writeln('Planned releaseTag: v$targetBridgeVersion');
       stdout.writeln('Files that would change:');
       for (final relativePath in plannedPaths) {
@@ -138,11 +155,19 @@ Future<void> main(List<String> args) async {
       newVersion: targetClientVersion,
     );
 
+    await _writePubspecVersion(
+      path: desktopPubspecPath,
+      newVersion: targetDesktopVersion,
+    );
+
     stdout.writeln(
       'Synced bridge version: $bridgeCurrentVersion -> $targetBridgeVersion',
     );
     stdout.writeln(
       'Synced client version: ${clientVersion.semver}${clientVersion.build != null ? "+${clientVersion.build}" : ""} -> $targetClientVersion',
+    );
+    stdout.writeln(
+      'Synced desktop version: ${desktopVersion.semver}${desktopVersion.build != null ? "+${desktopVersion.build}" : ""} -> $targetDesktopVersion',
     );
   } on _CliError catch (error) {
     stderr.writeln(error.message);
@@ -259,16 +284,21 @@ Future<String> _readFile({required String path}) => File(path).readAsString();
 Future<void> _writeFile({required String path, required String content}) =>
     File(path).writeAsString(content);
 
-_ClientVersion _readClientVersion(String content) {
+_ClientVersion _readClientVersion({
+  required String content,
+  required String pubspecPath,
+}) {
   final match = _pubspecVersionPattern.firstMatch(content);
   if (match == null) {
-    throw const _CliError('Error: Could not find version in client pubspec');
+    throw _CliError('Error: Could not find version in $pubspecPath');
   }
 
   final rawVersion = match.group(1)!;
   final parsed = _clientVersionPattern.firstMatch(rawVersion);
   if (parsed == null) {
-    throw _CliError('Error: Invalid client version "$rawVersion"');
+    throw _CliError(
+      'Error: Invalid client version "$rawVersion" in $pubspecPath',
+    );
   }
 
   return _ClientVersion(semver: parsed.group(1)!, build: parsed.group(2));

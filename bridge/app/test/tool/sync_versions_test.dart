@@ -27,6 +27,7 @@ Future<void> _writeJsonFile({
 
 class _FixtureApp({required final String rootPath}) {
   String get clientPubspecPath => p.join(rootPath, 'client', 'app', 'pubspec.yaml');
+  String get desktopPubspecPath => p.join(rootPath, 'client', 'desktop', 'pubspec.yaml');
   String get bridgePubspecPath => p.join(rootPath, 'bridge', 'app', 'pubspec.yaml');
   String get bridgeVersionPath => p.join(rootPath, 'bridge', 'app', 'lib', 'src', 'version.dart');
   String get wrapperPackagePath => p.join(rootPath, 'bridge', 'app', 'npm', 'sesori-bridge', 'package.json');
@@ -51,6 +52,7 @@ Future<_FixtureApp> _createFixtureApp({required String clientVersion, String? br
     ['bridge', 'app', 'npm', 'sesori-bridge-win32-arm64'],
     ['bridge', 'app', 'npm', 'sesori-bridge-win32-x64'],
     ['client', 'app'],
+    ['client', 'desktop'],
   ]) {
     await Directory(p.joinAll(<String>[rootPath, ...relativeDir])).create(recursive: true);
   }
@@ -60,6 +62,11 @@ name: sync_versions_fixture
 version: $clientVersion
 environment:
   sdk: ^3.13.0-0
+''');
+
+  await File(p.join(rootPath, 'client', 'desktop', 'pubspec.yaml')).writeAsString('''
+name: sesori_desktop
+version: ${clientVersion.split('+').first}+13
 ''');
 
   await File(p.join(rootPath, 'bridge', 'app', 'pubspec.yaml')).writeAsString('''
@@ -146,15 +153,19 @@ void main() {
       final currentFixture = fixture!;
       final beforeBridgePubspec = await File(currentFixture.bridgePubspecPath).readAsString();
       final beforeClientPubspec = await File(currentFixture.clientPubspecPath).readAsString();
+      final beforeDesktopPubspec = await File(currentFixture.desktopPubspecPath).readAsString();
       final beforeWrapper = await File(currentFixture.wrapperPackagePath).readAsString();
 
       final patchResult = await _runTool(fixture: currentFixture, args: <String>['--dry-run', '--type', 'patch']);
       expect(patchResult.exitCode, equals(0), reason: '${patchResult.stdout}\n${patchResult.stderr}');
       expect(patchResult.stdout, contains('Target bridge version: 1.0.7'));
       expect(patchResult.stdout, contains('Target client version: 1.0.7+8'));
+      expect(patchResult.stdout, contains('Target desktop version: 1.0.7+13'));
       expect(patchResult.stdout, contains('Planned releaseTag: v1.0.7'));
       expect(patchResult.stdout, contains('bridge/app/pubspec.yaml'));
       expect(patchResult.stdout, contains('client/app/pubspec.yaml'));
+      expect(patchResult.stdout, contains('client/desktop/pubspec.yaml'));
+      expect(await File(currentFixture.desktopPubspecPath).readAsString(), equals(beforeDesktopPubspec));
       expect(await File(currentFixture.bridgePubspecPath).readAsString(), equals(beforeBridgePubspec));
       expect(await File(currentFixture.clientPubspecPath).readAsString(), equals(beforeClientPubspec));
       expect(await File(currentFixture.wrapperPackagePath).readAsString(), equals(beforeWrapper));
@@ -181,6 +192,7 @@ void main() {
       ];
 
       for (final testCase in cases) {
+        await File(currentFixture.desktopPubspecPath).writeAsString('name: sesori_desktop\nversion: 1.0.6+13\n');
         await File(currentFixture.bridgePubspecPath).writeAsString('''
 name: sesori_bridge
 version: 1.0.6
@@ -239,6 +251,10 @@ environment:
         expect(bridgePubspec, contains('version: ${testCase.bridgeVersion}'));
         expect(bridgeVersion, equals("const String appVersion = '${testCase.bridgeVersion}';\n"));
         expect(clientPubspec, contains('version: ${testCase.clientVersion}'));
+        expect(
+          await File(currentFixture.desktopPubspecPath).readAsString(),
+          contains('version: ${testCase.bridgeVersion}+13'),
+        );
         expect(wrapperPackage['version'] as String, equals(testCase.bridgeVersion));
         expect(
           (wrapperPackage['sesoriBridge'] as Map<String, dynamic>)['releaseTag'],
@@ -281,6 +297,31 @@ environment:
       expect(result.exitCode, equals(0), reason: '${result.stdout}\n${result.stderr}');
       expect(result.stdout, contains('Target client version: 1.0.7+8'));
       expect(result.stdout, contains('Target bridge version: 1.0.7'));
+    });
+
+    test('rejects desktop divergence and explicit version realigns it without changing its build number', () async {
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      final currentFixture = fixture!;
+      await File(currentFixture.desktopPubspecPath).writeAsString('name: sesori_desktop\nversion: 0.1.0+13\n');
+      final rejected = await _runTool(fixture: currentFixture, args: ['--type', 'patch']);
+      expect(rejected.exitCode, isNot(0));
+      expect(rejected.stderr, contains('desktop (0.1.0)'));
+      final aligned = await _runTool(fixture: currentFixture, args: ['--version', '1.0.6']);
+      expect(aligned.exitCode, 0, reason: '${aligned.stdout}\n${aligned.stderr}');
+      expect(aligned.stdout, contains('Synced desktop version: 0.1.0+13 -> 1.0.6+13'));
+      expect(await File(currentFixture.desktopPubspecPath).readAsString(), contains('version: 1.0.6+13'));
+      expect(await File(currentFixture.clientPubspecPath).readAsString(), contains('version: 1.0.6+8'));
+    });
+
+    test('identifies the desktop pubspec when its version is missing or malformed', () async {
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      final currentFixture = fixture!;
+      for (final content in ['name: desktop\n', 'version: malformed\n']) {
+        await File(currentFixture.desktopPubspecPath).writeAsString(content);
+        final result = await _runTool(fixture: currentFixture, args: ['--type', 'patch']);
+        expect(result.exitCode, isNot(0));
+        expect(result.stderr, contains(currentFixture.desktopPubspecPath));
+      }
     });
 
     test('works without client build number', () async {

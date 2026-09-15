@@ -3,10 +3,8 @@ description: Sesori desktop app — supervises the bundled sesori-bridge from th
 publish_to: none
 resolution: workspace
 
-# Placeholder version: the desktop app ships no artifact before Phase 3, and
-# `make bump-version` learns about this package in PR 3.10. Until then this
-# version is deliberately NOT synced to the product version.
-version: 0.1.0
+# Product semver stays aligned; desktop build numbers and release channels are independent.
+version: 1.8.4
 
 environment:
   sdk: ^3.13.3
@@ -53,6 +51,7 @@ dependencies:
   window_manager: ^0.5.2
 
 dev_dependencies:
+  args: ^2.7.0
   no_slop_linter:
     path: "../../shared/no_slop_linter"
   bloc_test: ^10.0.0

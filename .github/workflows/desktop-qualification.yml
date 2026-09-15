@@ -13,6 +13,8 @@ on:
       - '.github/scripts/test_qualify_desktop.py'
       - '.github/scripts/probe_sparkle.swift'
       - '.tool-versions'
+      - 'client/desktop/tool/stage_desktop_bundle.dart'
+      - 'client/module_desktop_core/lib/src/foundation/models/desktop_bundle_identity.dart'
 
 permissions:
   contents: read
@@ -60,7 +62,8 @@ jobs:
     env:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
-      PUB_CACHE: ${{ github.workspace }}/.pub-cache
+      # Keep dependency downloads outside the producer's clean source checkout.
+      PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
     defaults:
       run:
         shell: bash
@@ -116,17 +119,18 @@ jobs:
           # Fresh source SDKs need Flutter to populate sky_engine before resolving SDK dependencies.
           (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
 
-      - name: Build native helper and actual desktop plugins
+      - name: Build and stage the identity-bound native desktop bundle
         run: |
           set -euo pipefail
-          (cd bridge/app && dart build cli -o build/cli) 2>&1 | tee build/desktop-qualification/helper-build.log
-          # Allow Flutter's pub phase to generate the SwiftPM/plugin integration.
-          # dart pub get followed by --no-pub is insufficient on a clean macOS checkout.
-          (cd client/desktop && flutter build '${{ matrix.target }}' --release) 2>&1 | tee build/desktop-qualification/gui-build.log
-          git diff --exit-code -- bridge/pubspec.lock client/pubspec.lock
+          (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
+            --build-number '${{ github.run_number }}' \
+            --output '${{ github.workspace }}/build/desktop-qualification/staged') \
+            2>&1 | tee build/desktop-qualification/bundle-build.log
 
-      - name: Inspect native assets and relocated helper
-        run: python .github/scripts/qualify_desktop.py inspect --arch '${{ matrix.arch }}'
+      - name: Inspect staged native assets and relocated helper
+        run: |
+          python .github/scripts/qualify_desktop.py inspect --arch '${{ matrix.arch }}' \
+            --bundle-dir 'build/desktop-qualification/staged/${{ matrix.target == 'macos' && 'Sesori.app' || 'bundle' }}'
 
       - name: Exercise relocated helper with isolated local fakes
         env:
@@ -137,6 +141,18 @@ jobs:
           (cd bridge/app && dart test test/integration/supervised_e2e_test.dart --reporter expanded) \
             2>&1 | tee build/desktop-qualification/supervised-e2e.log
 
+      - name: Preserve source diagnostics when qualification fails
+        if: failure()
+        run: |
+          mkdir -p build/desktop-qualification
+          git diff HEAD > build/desktop-qualification/failed-source-changes.patch
+          {
+            git status --short
+            git diff --ignore-cr-at-eol --stat HEAD
+            git ls-files --eol '*generated_plugin_registrant.*' '*generated_plugins.cmake' '*GeneratedPluginRegistrant.*'
+            git config --show-origin --get core.autocrlf || echo 'core.autocrlf unset'
+          } > build/desktop-qualification/failed-source-status.log
+
       - name: Upload qualification evidence, including partial failures
         if: always()
         uses: actions/upload-artifact@v4
@@ -145,6 +161,9 @@ jobs:
           path: |
             build/desktop-qualification/*.json
             build/desktop-qualification/*.log
+            build/desktop-qualification/*.patch
             build/desktop-qualification/supervised-e2e/
+            build/desktop-qualification/staged/build-source-changes.patch
+            build/desktop-qualification/staged/**/desktop-bundle.json
           if-no-files-found: warn
           retention-days: 14

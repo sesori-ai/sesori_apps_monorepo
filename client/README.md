@@ -106,8 +106,9 @@ dart pub get
 
 Desktop development resolves that host bundle by default. Set
 `SESORI_DESKTOP_BRIDGE_PATH` to an absolute path (or a path relative to
-`client/desktop`) to launch a different development bridge. Packaged builds
-will use the distribution plan's bundled-layout resolver instead.
+`client/desktop`) to launch a different development bridge in debug/profile mode.
+Release builds require the identity-bound complete helper bundle; use the
+[desktop staging producer](desktop/tool/README.md), not a development override.
 
 The exact Flutter version is pinned in the repository root `.tool-versions`.
 
