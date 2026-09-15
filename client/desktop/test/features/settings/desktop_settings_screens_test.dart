@@ -335,6 +335,8 @@ void main() {
     when(authGateCubit.signOut).thenAnswer((_) async => DesktopLogoutOutcome.completed);
     await select(tester: tester, tab: DesktopSettingsTab.account);
     expect(find.text("alex"), findsOneWidget);
+    expect(find.bySemanticsLabel("Back"), findsNothing);
+    expect(find.text("Profile"), findsNothing);
     await tester.tap(find.text("Log Out"));
     await tester.pumpAndSettle();
     verify(authGateCubit.signOut).called(1);

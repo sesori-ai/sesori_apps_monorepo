@@ -34,6 +34,8 @@ class const _MobileProfileView() extends StatelessWidget {
     final settingsCubit = context.read<SettingsCubit>();
     return ProfileView(
       account: context.watch<SettingsCubit>().state.account,
+      title: context.loc.settingsProfileTitle,
+      automaticallyImplyLeading: true,
       connectionBanner: ConnectionBanner.maybeFor(context),
       onClose: () => context.goRoute(const AppRoute.projects()),
       logout: () async {
