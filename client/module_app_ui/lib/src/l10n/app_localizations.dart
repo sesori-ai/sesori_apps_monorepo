@@ -133,25 +133,25 @@ abstract class AppLocalizations {
   /// **'Connection failed — check your network and try again.'**
   String get apiErrorNetworkDown;
 
-  /// No description provided for @desktopSidebarCollapse.
+  /// Tooltip for switching desktop navigation to the compact project rail.
   ///
   /// In en, this message translates to:
   /// **'Collapse sidebar'**
   String get desktopSidebarCollapse;
 
-  /// No description provided for @desktopSidebarExpand.
+  /// Tooltip for restoring the expanded desktop navigation sidebar.
   ///
   /// In en, this message translates to:
   /// **'Expand sidebar'**
   String get desktopSidebarExpand;
 
-  /// No description provided for @desktopSidebarResize.
+  /// Tooltip on the expanded desktop sidebar's drag handle.
   ///
   /// In en, this message translates to:
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
 
-  /// No description provided for @desktopBridgeTitle.
+  /// Label of the pinned desktop navigation entry for local bridge controls.
   ///
   /// In en, this message translates to:
   /// **'Bridge'**

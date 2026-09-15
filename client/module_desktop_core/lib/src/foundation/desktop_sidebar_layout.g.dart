@@ -11,11 +11,6 @@ _DesktopSidebarLayout _$DesktopSidebarLayoutFromJson(
 ) => _DesktopSidebarLayout(
   width: (json['width'] as num?)?.toDouble() ?? 260,
   collapsed: json['collapsed'] as bool? ?? false,
-  collapsedProjectIds:
-      (json['collapsedProjectIds'] as List<dynamic>?)
-          ?.map((e) => e as String)
-          .toSet() ??
-      const <String>{},
 );
 
 Map<String, dynamic> _$DesktopSidebarLayoutToJson(
@@ -23,5 +18,4 @@ Map<String, dynamic> _$DesktopSidebarLayoutToJson(
 ) => <String, dynamic>{
   'width': instance.width,
   'collapsed': instance.collapsed,
-  'collapsedProjectIds': instance.collapsedProjectIds.toList(),
 };

@@ -16,7 +16,7 @@ void main() {
   });
   tearDown(() => cubit.close());
 
-  test("defaults are expanded at 260 with no collapsed projects", () async {
+  test("defaults are expanded at 260", () async {
     cubit = DesktopSidebarCubit(repository: repository);
     await pumpEventQueue();
     expect(cubit.state, const DesktopSidebarLayout());
@@ -25,11 +25,11 @@ void main() {
 
   test("restores layout and clamps saved width", () async {
     when(repository.readSidebarLayout).thenAnswer(
-      (_) async => const DesktopSidebarLayout(width: 900, collapsed: true, collapsedProjectIds: {"project-1"}),
+      (_) async => const DesktopSidebarLayout(width: 900, collapsed: true),
     );
     cubit = DesktopSidebarCubit(repository: repository);
     await pumpEventQueue();
-    expect(cubit.state, const DesktopSidebarLayout(width: 420, collapsed: true, collapsedProjectIds: {"project-1"}));
+    expect(cubit.state, const DesktopSidebarLayout(width: 420, collapsed: true));
   });
 
   test("drag clamps in memory and persists only on commit", () async {

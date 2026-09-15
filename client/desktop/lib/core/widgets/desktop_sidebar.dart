@@ -6,11 +6,19 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+/// Current top-level route; project detail routes also select their project row.
+enum DesktopCockpitDestination() {
+  bridge,
+  projects,
+  settings,
+}
+
 /// Desktop navigation frame. Its project inventory is shared with the main pane.
 class const DesktopSidebar({
   super.key,
   required final bool collapsed,
   required final bool autoCollapsed,
+  required final DesktopCockpitDestination destination,
   required final String? selectedProjectId,
   required final VoidCallback onToggleCollapsed,
   required final VoidCallback onOpenProjects,
@@ -33,7 +41,7 @@ class const DesktopSidebar({
               label: "Sesori",
               icon: const Icon(TablerRegular.code, size: 24),
               collapsed: collapsed,
-              selected: false,
+              selected: destination == DesktopCockpitDestination.projects && selectedProjectId == null,
               onPressed: onOpenProjects,
             ),
             Flex(
@@ -67,11 +75,16 @@ class const DesktopSidebar({
                 ProjectListLoaded(:final projects) => ListView.builder(
                   padding: const EdgeInsets.symmetric(vertical: PregoSpacing.sm),
                   itemCount: projects.length,
+                  findChildIndexCallback: (key) {
+                    final index = projects.indexWhere((project) => ValueKey(project.id) == key);
+                    return index < 0 ? null : index;
+                  },
                   itemBuilder: (context, index) {
                     final project = projects[index];
                     final basename = projectDirectoryBasename(project);
                     final name = project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
                     return _SidebarButton(
+                      key: ValueKey(project.id),
                       label: name,
                       icon: PregoAvatarInitials(label: name),
                       collapsed: collapsed,
@@ -85,7 +98,7 @@ class const DesktopSidebar({
                   icon: const Icon(TablerRegular.refresh),
                   collapsed: collapsed,
                   selected: false,
-                  onPressed: () => unawaited(context.read<ProjectListCubit>().refreshProjects()),
+                  onPressed: () => unawaited(context.read<ProjectListCubit>().retryLoadProjects()),
                 ),
                 ProjectListBridgeDisconnected() => const SizedBox.shrink(),
               },
@@ -94,14 +107,14 @@ class const DesktopSidebar({
               label: loc.desktopBridgeTitle,
               icon: const Icon(TablerRegular.server, size: 20),
               collapsed: collapsed,
-              selected: false,
+              selected: destination == DesktopCockpitDestination.bridge,
               onPressed: onOpenBridge,
             ),
             _SidebarButton(
               label: loc.settingsTitle,
               icon: const Icon(TablerRegular.settings, size: 20),
               collapsed: collapsed,
-              selected: false,
+              selected: destination == DesktopCockpitDestination.settings,
               onPressed: onOpenSettings,
             ),
             const SizedBox(height: PregoSpacing.sm),
@@ -113,6 +126,7 @@ class const DesktopSidebar({
 }
 
 class const _SidebarButton({
+  super.key,
   required final String label,
   required final Widget icon,
   required final bool collapsed,
@@ -129,6 +143,7 @@ class const _SidebarButton({
           button: true,
           selected: selected,
           label: label,
+          onTap: onPressed,
           excludeSemantics: true,
           child: InkWell(
             onTap: onPressed,

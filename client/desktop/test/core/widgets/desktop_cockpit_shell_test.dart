@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/semantics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -50,6 +51,7 @@ void main() {
         home:
             child ??
             const DesktopCockpitShell(
+              destination: DesktopCockpitDestination.projects,
               selectedProjectId: "project-1",
               onOpenProject: _openProject,
               onOpenBridge: _noOp,
@@ -66,6 +68,86 @@ void main() {
   final resize = find.byKey(const Key("desktop-sidebar-resize"));
   final toggle = find.byKey(const Key("desktop-sidebar-toggle"));
 
+  testWidgets("section selection and screen-reader activation match the destination", (tester) async {
+    final semantics = tester.ensureSemantics();
+    try {
+      var opens = 0;
+      for (final destination in DesktopCockpitDestination.values) {
+        await tester.pumpWidget(
+          app(
+            state: running,
+            child: DesktopCockpitShell(
+              destination: destination,
+              selectedProjectId: null,
+              onOpenProject: _openProject,
+              onOpenBridge: () => opens++,
+              onOpenProjects: () => opens++,
+              onOpenSettings: () => opens++,
+              child: const SizedBox.shrink(),
+            ),
+          ),
+        );
+        for (final entry in {
+          DesktopCockpitDestination.bridge: "Bridge",
+          DesktopCockpitDestination.projects: "Sesori",
+          DesktopCockpitDestination.settings: "Settings",
+        }.entries) {
+          final finder = find.byWidgetPredicate(
+            (widget) => widget is Semantics && widget.properties.label == entry.value,
+          );
+          expect(tester.widget<Semantics>(finder).properties.selected, entry.key == destination);
+          if (entry.key == destination) {
+            final node = tester.getSemantics(finder);
+            tester.platformDispatcher.onSemanticsActionEvent!(
+              SemanticsActionEvent(type: SemanticsAction.tap, nodeId: node.id, viewId: tester.view.viewId),
+            );
+          }
+        }
+      }
+      expect(opens, 3);
+    } finally {
+      semantics.dispose();
+    }
+  });
+
+  testWidgets("retry uses the failure-aware reconnect path", (tester) async {
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.failed(reason: RemoteFailureReason.networkDown),
+    );
+    when(projects.retryLoadProjects).thenAnswer((_) async {});
+    await tester.pumpWidget(app(state: running));
+    await tester.tap(find.byTooltip("Retry"));
+    verify(projects.retryLoadProjects).called(1);
+    verifyNever(projects.refreshProjects);
+  });
+
+  testWidgets("project row identity follows live reordering and removal", (tester) async {
+    const first = ProjectSummary(id: "one", name: "First project", path: "/work/first", time: null);
+    const second = ProjectSummary(id: "two", name: "Second project", path: "/work/second", time: null);
+    final updates = StreamController<ProjectListState>();
+    whenListen(
+      projects,
+      updates.stream,
+      initialState: const ProjectListState.loaded(projects: [first, second], activityById: {}),
+    );
+    await tester.pumpWidget(app(state: running));
+    final original = tester.element(find.byKey(const ValueKey("one")));
+    updates.add(const ProjectListState.loaded(projects: [second, first], activityById: {}));
+    await tester.pumpAndSettle();
+    expect(tester.element(find.byKey(const ValueKey("one"))), same(original));
+    expect(
+      tester.getTopLeft(find.byKey(const ValueKey("two"))).dy,
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey("one"))).dy),
+    );
+    updates.add(const ProjectListState.loaded(projects: [second], activityById: {}));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey("one")), findsNothing);
+    await tester.pumpWidget(const SizedBox.shrink());
+    await updates.close();
+  });
+
   testWidgets("renders shared projects and dispatches existing route actions", (tester) async {
     var bridgeOpens = 0;
     var projectOpens = 0;
@@ -75,6 +157,7 @@ void main() {
       app(
         state: running,
         child: DesktopCockpitShell(
+          destination: DesktopCockpitDestination.projects,
           selectedProjectId: "project-1",
           onOpenProject: ({required context, required project, required displayName}) => openedProject = project.id,
           onOpenBridge: () => bridgeOpens++,

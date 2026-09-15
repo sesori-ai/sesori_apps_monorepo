@@ -10,7 +10,6 @@ import "../../repositories/desktop_instance_repository.dart";
 class DesktopSidebarCubit({required final DesktopInstanceRepository repository}) extends Cubit<DesktopSidebarLayout> {
   static const double minWidth = 200;
   static const double maxWidth = 420;
-  static const double defaultWidth = 260;
   Future<void> _writes = Future<void>.value();
 
   this : super(const DesktopSidebarLayout()) {
@@ -41,7 +40,7 @@ class DesktopSidebarCubit({required final DesktopInstanceRepository repository})
   }
 
   Future<void> resetWidth() {
-    resize(width: defaultWidth);
+    resize(width: const DesktopSidebarLayout().width);
     return saveLayout();
   }
 

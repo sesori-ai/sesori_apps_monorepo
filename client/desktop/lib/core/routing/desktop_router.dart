@@ -63,6 +63,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
     builder: (BuildContext context, GoRouterState state, Widget child) => AuthGate(
       child: DesktopCockpitCubitProvider(
         child: DesktopCockpitShell(
+          destination: _destinationFor(path: state.uri.path),
           selectedProjectId: state.pathParameters[projectIdPathParam],
           onOpenProject: ({required context, required project, required displayName}) => _goRoute(
             context: context,
@@ -354,6 +355,12 @@ AppRouteSessionDiffs _decodeSessionDiffsRoute({required GoRouterState state}) {
     final AppRouteSessionDiffs route => route,
     final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
   };
+}
+
+DesktopCockpitDestination _destinationFor({required String path}) {
+  if (isDesktopSettingsPath(path: path)) return DesktopCockpitDestination.settings;
+  if (path.startsWith(AppRouteDef.projects.path)) return DesktopCockpitDestination.projects;
+  return DesktopCockpitDestination.bridge;
 }
 
 @visibleForTesting

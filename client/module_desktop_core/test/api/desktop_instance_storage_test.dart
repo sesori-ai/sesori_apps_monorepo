@@ -48,7 +48,7 @@ void main() {
   });
 
   test("sidebar layout round-trips as a typed JSON file", () async {
-    const layout = DesktopSidebarLayout(width: 315, collapsed: true, collapsedProjectIds: {"project-1"});
+    const layout = DesktopSidebarLayout(width: 315, collapsed: true);
     await storage.writeSidebarLayout(layout: layout);
     expect(await storage.readSidebarLayout(), layout);
     expect(File(path.join(root.path, "desktop-instance", "sidebar-layout")).existsSync(), isTrue);

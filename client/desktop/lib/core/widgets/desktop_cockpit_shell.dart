@@ -10,6 +10,8 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_sidebar.dart";
 
+export "desktop_sidebar.dart" show DesktopCockpitDestination;
+
 /// One inventory and one layout owner per signed-in cockpit.
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
   @override
@@ -25,6 +27,7 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
 /// Product-shell navigation and supervision chrome around the desktop cockpit.
 class const DesktopCockpitShell({
   super.key,
+  required final DesktopCockpitDestination destination,
   required final String? selectedProjectId,
   required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenBridge,
@@ -52,6 +55,7 @@ class const DesktopCockpitShell({
                 child: DesktopSidebar(
                   collapsed: collapsed,
                   autoCollapsed: autoCollapsed,
+                  destination: destination,
                   selectedProjectId: selectedProjectId,
                   onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                   onOpenProjects: onOpenProjects,
