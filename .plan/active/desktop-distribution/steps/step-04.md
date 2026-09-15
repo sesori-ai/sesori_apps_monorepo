@@ -145,14 +145,33 @@ and bridge remain untouched.
   desktop analyzer passed (`startup-app-smoke.log`, `startup-analyze.log`). These
   mocks do not exercise the native initialization wait.
 - PR #1499's strict Dart analyzer rejected the fixture's legacy Material import.
-  It now uses the existing `material_ui` package. `dart analyze --fatal-infos`
-  passes on that focused correction based on `05ef975`; log:
+  `dart analyze --fatal-infos` ran from `client/desktop` on the uncommitted import
+  correction subsequently retained unchanged in
+  `875c65d6f817f8a5b346cb8ef09198784e5923db`; log:
   `pr1499-dart-analyze-material-import.log`. This is not another native fixture run.
-- PR feedback: blocked-screen and divergent-archive regressions failed red, then
-  all **13** packaging/probe tests passed on the correction based on `875c65d`.
-  Logs: `pr1499-review-regressions-{red-final,green}.log`. Both existing `d5a0302`
-  real payload reports satisfy the new equality predicate; no native rerun is implied.
-- Commands run from `client/desktop` unless Python/tooling requires repository root:
+- Review green checkpoint: **13** tests passed from repository root with local
+  Python 3.14.7. The measured Python inputs were uncommitted, then retained unchanged
+  in `820ba179105af71d984085e3b1881cfd633c72e8` (`.github/scripts` tree
+  `43da543684cdccbb54685797da88bf76e42ee034`). Later pre-commit edits were Markdown only.
+  Log: `pr1499-review-regressions-green.log`.
+- Red checkpoint: the two new regressions failed against the implementation in
+  `875c65d6f817f8a5b346cb8ef09198784e5923db`. Tests were uncommitted; **no red commit
+  exists**. They were retained in `820ba17`, with a subsequent local mock-variable
+  rename in the archive test, so no byte-identical immutable red tree is claimed.
+  Log: `pr1499-review-regressions-red-final.log`.
+- Exact red and green invocations, respectively, both from repository root:
+
+```bash
+PYTHONPATH="$PWD/.github/scripts" python3 -m unittest \
+  test_probe_desktop_macos.MacProbeSafetyTests.test_missing_screen_fails_before_installation_or_platform_fixture \
+  test_package_desktop_macos.MacPackagingTests.test_divergent_payloads_fail_without_a_verified_report_and_detach_the_dmg -v
+python3 -m unittest discover -s .github/scripts -p 'test_*desktop_macos.py' -v
+```
+
+Both existing `d5a0302` real payload reports satisfy the new equality predicate;
+no native rerun is implied. Earlier commands below ran from `client/desktop` unless
+Python/tooling requires repository root; the combined review run above is distinct:
+
 
 ```bash
 flutter test test/core/platform/desktop_packaged_bridge_path_test.dart test/tool/stage_desktop_bundle_test.dart --reporter expanded
