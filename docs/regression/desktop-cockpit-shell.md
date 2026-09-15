@@ -66,6 +66,18 @@ The main pane hosts one full-width routed page.
   Add/Open Project. Loading is labelled, failures retry the shared inventory,
   and disconnected states offer supervised bridge recovery without CLI setup.
   Shared Prego text styles and Material themes resolve the bundled package font.
+- Connection status floats over the main pane without changing its bounds.
+  Reconnecting appears after the shared grace period; connection lost retains
+  Reconnect. Intentional local Off suppresses bridge-offline copy, not relay
+  recovery for clients using another bridge. Recovery hides the pill with a
+  short fade; reduced motion disables it. Departing content neither intercepts
+  input nor remains in accessibility announcements.
+- The Bridge row always exposes its supervised status through a dot and an
+  accessible description. Takeover, login, start failure and crash-give-up
+  recovery lives in the sidebar footer. Long repair guidance scrolls within a
+  bounded card; compact mode keeps the primary action and full tooltip. Open
+  Logs is also available on the existing Bridge page. Command locks still
+  disable recovery mutations, and start failures do not offer nonexistent child logs.
 - Missing layout uses defaults. Failed reads/writes are logged; unavailable
   storage does not prevent navigation or in-memory layout changes.
 
@@ -77,8 +89,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 | Level | Boundary / scope | Added checks |
 |---|---|---|
 | L1 | Client end to end; desktop; representative bridge | Sidebar renders; a project opens; Bridge and Settings remain reachable. |
-| L2 | Automated; no plugin | Flat typed route registration, no-back all-sessions presentation, archived read-only navigation, new-session replacement, diff/direct-entry back, home states, package-font resolution; recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-collapse persistence, shared menu/route callbacks; width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
-| L3 | Client end to end; macOS; representative live bridge | Resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping through the tree and menus. |
+| L2 | Automated; no plugin | Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics, sidebar recovery/actions/locks; flat typed route registration, no-back all-sessions presentation, archived read-only navigation, new-session replacement, diff/direct-entry back, home states, package-font resolution; recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-collapse persistence, shared menu/route callbacks; width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
+| L3 | Client end to end; macOS; representative live bridge | Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping through the tree and menus. |
 | L4 | Client end to end; Windows/Linux | Resize/collapse, native-window size changes, and saved-layout restore. |
 | L5 | No additional coverage | Lower levels still apply. |
 
@@ -95,6 +107,8 @@ bridge during UI-only checks.
 
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_sidebar.dart`
+- `client/desktop/lib/core/widgets/desktop_connection_pill.dart`
+- `client/desktop/lib/core/widgets/desktop_bridge_recovery_card.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/desktop/lib/features/home/desktop_home_pane.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`

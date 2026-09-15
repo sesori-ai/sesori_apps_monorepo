@@ -15,7 +15,7 @@ Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
 | [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | done |
 | [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | done |
 | [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | done |
-| [ ] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | in-progress |
+| [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | done |
 | [ ] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | pending |
 | [ ] | 7 | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | pending |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | pending |
@@ -72,3 +72,8 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   review approved the frozen routing scope. PR feedback then corrected explicit
   detail Back presentation; 34 affected tests, two header fixtures and desktop
   analysis pass. See [step 4 evidence](steps/step-04.md).
+- Step 5: 25 cockpit and 9 shared grace tests, six inspected font-loaded fixtures,
+  and both owning analyzers pass across documented checkpoints. Architecture
+  review approves the frozen implementation. Native/live coverage remains
+  pre-shipping work; the GUI and bridge were untouched.
+  See [step 5 evidence](steps/step-05.md).
