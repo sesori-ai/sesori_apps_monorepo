@@ -110,7 +110,8 @@ jobs:
         run: |
           set -euo pipefail
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
-          (cd client && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+          # Fresh source SDKs need Flutter to populate sky_engine before resolving SDK dependencies.
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
 
       - name: Build native helper and actual desktop plugins
         run: |

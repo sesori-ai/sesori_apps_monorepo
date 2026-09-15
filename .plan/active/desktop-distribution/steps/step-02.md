@@ -210,7 +210,17 @@ or manual edit to generated files was needed.
 
 Private/local raw evidence lives under gitignored `build/desktop-qualification/`.
 No GUI was launched, no real account was used, and no distribution signing or
-notarization was attempted. The other five native build jobs have not yet run.
+notarization was attempted. The other five native GUI builds remain unverified.
+
+### First native CI attempt
+
+[Run 34960934498](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34960934498)
+confirmed official source bootstrap with native Dart on Windows x64 and Linux
+x64/ARM64. Their first attempt then failed at client dependency resolution, before
+GUI compilation: plain `dart pub get` did not populate the source SDK's `sky_engine`
+cache. The workflow now uses `flutter pub get --enforce-lockfile` for the client
+workspace while retaining Dart-only bridge resolution. Do not label this setup
+failure an unsupported CPU target or bypass locked dependencies to fix it.
 
 ## macOS updater API and selected topology
 
