@@ -197,8 +197,13 @@ void main() {
 
     test("opening General refreshes an externally changed native registration", () async {
       await cubit.initialize();
+      final activities = <BridgeControlActivity>[];
+      final subscription = cubit.stream.map((state) => state.activity).listen(activities.add);
+      addTearDown(subscription.cancel);
       launchAtLogin.enabled = true;
       await cubit.refreshLaunchAtLogin();
+      await pumpEventQueue();
+      expect(activities, [BridgeControlActivity.configuringLaunchAtLogin, BridgeControlActivity.idle]);
       expect(cubit.state.launchAtLoginEnabled, isTrue);
       expect(cubit.state.activity, BridgeControlActivity.idle);
       expect(launchAtLogin.enableCalls, 0);

@@ -121,6 +121,9 @@ class BridgeControlCubit._create({
     _focusRequestSubscription = _instanceService.focusRequests.listen((_) => unawaited(showWindow()));
 
     await _loadLaunchAtLoginState();
+    if (!isClosed) {
+      _rebuildMenu(syncTray: false);
+    }
 
     final SystemTrayAvailability availability;
     try {
@@ -237,9 +240,6 @@ class BridgeControlCubit._create({
       _launchAtLoginEnabled = await _launchAtLogin.isEnabled();
     } on Object catch (error, stackTrace) {
       logw("Failed to read the desktop launch-at-login state", error, stackTrace);
-    }
-    if (!isClosed) {
-      _rebuildMenu(syncTray: false);
     }
   }
 

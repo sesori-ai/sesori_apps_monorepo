@@ -58,11 +58,6 @@ or waive shipping qualification.
 
 ## Verification Log
 
-- Step 7.a: 68 focused cases across native preference commands and existing
-  desktop/mobile settings consumers; four analyzers and fresh scoped
-  architecture review pass. No visible navigation change or native mutation.
-  See `steps/step-07a.md`; modal delivery remains step 7.b.
-
 - Step 2.a: focused automated checks, macOS debug build, and architecture
   implementation review pass. Native project navigation observed; user confirms
   dragging, automatic collapse, and double-click reset. Peekaboo 4.4.0 was
@@ -102,3 +97,7 @@ or waive shipping qualification.
   routing; plus three revised real-font renders
   and all owning analyzers. The running GUI/bridge remain untouched; native work
   stays in the final testing handoff. See [step 6 evidence](steps/step-06.md).
+- Step 7.a: 68 focused cases across native preference commands and existing
+  desktop/mobile settings consumers; four analyzers and fresh scoped
+  architecture review pass. No visible navigation change or native mutation.
+  See `steps/step-07a.md`; modal delivery remains step 7.b.
