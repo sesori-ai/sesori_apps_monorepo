@@ -2692,6 +2692,76 @@ void main() {
         expect(requests, 2);
       });
 
+      for (final reconnect in [true, false]) {
+        test("refreshes with a blocked harness after ${reconnect ? 'reconnect' : 'resume'}", () async {
+          final deviceCanvasService = MockDeviceCanvasService();
+          var requests = 0;
+          when(() => deviceCanvasService.getSessionStatus(sessionId: sessionId)).thenAnswer((_) async {
+            requests++;
+            return DeviceCanvasStatusSupported(
+              status: _deviceCanvasStatus(claimSessionId: requests == 1 ? null : sessionId),
+            );
+          });
+          final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+            managementFixture(
+              pluginId: "plugin-1",
+              setup: PluginSetupState.authenticationRequired,
+              runtime: PluginRuntimeState.blocked,
+            ),
+          );
+          addTearDown(snapshots.close);
+          final management = MockPluginManagementService();
+          when(() => management.snapshots).thenAnswer((_) => snapshots);
+          when(management.refresh).thenAnswer((_) async {});
+          final connected = ConnectionStatus.connected(
+            config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+            health: testHealthResponse(),
+          );
+          connectionStatus.add(connected);
+          when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
+          final lifecycle = MockLifecycleSource();
+          final cubit = buildCubit(
+            deviceCanvasService: deviceCanvasService,
+            pluginManagementService: management,
+            lifecycleSource: lifecycle,
+          );
+          addTearDown(cubit.close);
+          await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionReady);
+          final loaded = cubit.state as SessionDetailLoaded;
+          expect(loaded.interaction.canInteract, isFalse);
+          clearInteractions(mockSessionService);
+          clearInteractions(mockSessionRepository);
+
+          // No harness recovery or Device Canvas invalidation arrives. Bridge
+          // status must recover independently of the blocked transcript refresh.
+          if (reconnect) {
+            connectionStatus.add(const ConnectionStatus.disconnected());
+            await _awaitDeviceCanvas(cubit, (state) => state is DeviceCanvasSessionDisconnected);
+            connectionStatus.add(connected);
+          } else {
+            lifecycle.emitState(LifecycleState.paused);
+            lifecycle.emitState(LifecycleState.resumed);
+          }
+          await _awaitDeviceCanvas(
+            cubit,
+            (state) => state is DeviceCanvasSessionReady && state.status.devices.single.claim?.sessionId == sessionId,
+          );
+
+          expect(requests, 2);
+          expect((cubit.state as SessionDetailLoaded).interaction.canInteract, isFalse);
+          expect((cubit.state as SessionDetailLoaded).messages, loaded.messages);
+          verifyNever(() => mockSessionRepository.getSession(sessionId: sessionId));
+          verifyNever(
+            () => mockSessionService.getMessages(
+              sessionId: any(named: "sessionId"),
+              limit: any(named: "limit"),
+              before: any(named: "before"),
+              storedOnly: any(named: "storedOnly"),
+            ),
+          );
+        });
+      }
+
       test("publishes committed claims", () async {
         final deviceCanvasService = MockDeviceCanvasService();
         when(

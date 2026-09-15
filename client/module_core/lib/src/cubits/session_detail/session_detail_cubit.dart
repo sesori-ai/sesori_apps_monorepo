@@ -573,6 +573,9 @@ class SessionDetailCubit(
       _logRefresh(action: _SessionRefreshAction.ignored, trigger: trigger);
       return;
     }
+    // Bridge-owned status recovers independently of a blocked or in-flight
+    // harness-backed transcript refresh, including on reconnect and resume.
+    unawaited(refreshDeviceCanvas());
     final active = _activeRefresh;
     if (active != null) {
       _logRefresh(action: _SessionRefreshAction.coalesced, trigger: trigger);
@@ -908,7 +911,6 @@ class SessionDetailCubit(
             ),
           );
           if (!optionsSuperseded) _refreshStaleOptions(snapshot: snapshot);
-          unawaited(refreshDeviceCanvas());
           _tryDrainQueue();
           // The refreshed transcript has rendered, so it is safe to re-declare
           // the view (which marks the session seen on the bridge).

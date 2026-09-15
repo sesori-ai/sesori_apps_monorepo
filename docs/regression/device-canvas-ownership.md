@@ -21,7 +21,10 @@ backend-native or MCP list, claim, and release tools.
   Explicit release, session archive or deletion, and bridge-identity replacement
   remove the applicable claims.
 - Client status keeps online presence separate from ownership and degrades when
-  used with an older unsupported bridge. A Device Canvas deep link carries the
+  used with an older unsupported bridge. On relay reconnect or app resume, status
+  refreshes independently of harness availability and transcript refresh; an
+  authentication-blocked or disabled harness must not strand disconnected or
+  stale Device Canvas status. A Device Canvas deep link carries the
   exact bridge and session identity, resolves the canonical project before
   opening session detail, and loads no session content before verification.
 - When the bridge-side agent-tool server starts and secure managed-runtime
