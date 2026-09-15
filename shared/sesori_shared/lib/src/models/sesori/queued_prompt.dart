@@ -13,7 +13,10 @@ enum QueuedPromptDispatchState() {
 }
 
 /// An accepted prompt retained until its user message becomes visible.
-/// Only [QueuedPromptDispatchState.queued] still permits cancellation.
+/// [QueuedPromptDispatchState.queued] reports pre-dispatch ownership;
+/// [QueuedPromptDispatchState.unknown] still allows best-effort cancellation
+/// on older peers. [QueuedPromptDispatchState.dispatched] disables that action.
+/// Only a successful cancellation response confirms the prompt was cancelled.
 @Freezed(fromJson: true, toJson: true)
 sealed class QueuedSessionPrompt with _$QueuedSessionPrompt {
   const factory({
