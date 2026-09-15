@@ -1,4 +1,5 @@
 import "package:cue/cue.dart";
+import "package:flutter/foundation.dart";
 import "package:material_ui/material_ui.dart";
 
 import "../../theme/prego_glass.dart";
@@ -12,9 +13,10 @@ import "../../theme/prego_theme.dart";
 /// full contrast and gains a hairline outline, so the row a long-press menu is
 /// about to act on is unmistakable while the rest of the list is pushed away.
 ///
-/// The blur is Apple-only ([glassEffectsEnabled]): a full-screen [BackdropFilter]
-/// is the cost this module's flat path exists to keep off Android. There the
-/// scrim, the cut-out and the outline carry the effect alone.
+/// The blur follows [glassEffectsEnabled] except on macOS: a full-screen
+/// [BackdropFilter] is the cost this module's flat path exists to keep off
+/// Android, while macOS cannot blur hybrid-composed native views consistently.
+/// On both platforms the stronger scrim, cut-out, and outline carry the effect.
 ///
 /// Blur and scrim ramp in with the popup and back out with it: both ride [Actor]s,
 /// which the enclosing `CueDialogRoute`'s scope drives forward on push and in
@@ -57,10 +59,11 @@ class const AnchoredSpotlightBackdrop({
 
     // The Gaussian pass is the expensive half of this backdrop, and a full-screen
     // BackdropFilter is the very cost the flat path exists to keep off Android
-    // (see [glassEffectsEnabled]). Android keeps the scrim, the cut-out and the
-    // outline — the page still recedes and the anchored widget still reads as
-    // lifted — and skips only the blur, taking a deeper scrim in its place.
-    final blurred = glassEffectsEnabled();
+    // (see [glassEffectsEnabled]). macOS AppKitViews are hybrid-composed as
+    // separate NSViews, so Flutter's BackdropFilter cannot sample their pixels;
+    // native activity indicators otherwise stay sharp against blurred rows.
+    // Both platforms keep the cut-out and outline, using a deeper scrim instead.
+    final blurred = glassEffectsEnabled() && (kIsWeb || defaultTargetPlatform != TargetPlatform.macOS);
 
     // The backdrop rides the popup's follower, so the cut-out stays glued to
     // its anchor when the page relayouts under the open menu (a banner dropping

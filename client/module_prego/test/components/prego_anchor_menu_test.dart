@@ -564,7 +564,7 @@ void main() {
       expect(find.byType(AnchoredSpotlightBackdrop), findsNothing);
     });
 
-    testWidgets("blurs the page on Apple platforms", (tester) async {
+    testWidgets("blurs the page on iOS", (tester) async {
       await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
 
       expect(find.byType(BackdropFilter), findsNothing);
@@ -574,6 +574,26 @@ void main() {
 
       expect(find.byType(BackdropFilter), findsOneWidget);
     }, variant: TargetPlatformVariant.only(TargetPlatform.iOS));
+
+    testWidgets("darkens without blurring on macOS because AppKitViews cannot join the Flutter backdrop", (
+      tester,
+    ) async {
+      await tester.pumpWidget(_harness(entries, flat: true, spotlight: spotlight));
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      expect(find.byType(AnchoredSpotlightBackdrop), findsOneWidget);
+      expect(find.byType(BackdropFilter), findsNothing);
+
+      final scrim = tester.widget<ColoredBox>(
+        find.descendant(
+          of: find.byType(AnchoredSpotlightBackdrop),
+          matching: find.byType(ColoredBox),
+        ),
+      );
+      expect(scrim.color.a, closeTo(0.6, 0.001));
+    }, variant: TargetPlatformVariant.only(TargetPlatform.macOS));
 
     testWidgets("spotlights without blurring on Android, where a full-screen BackdropFilter janks", (
       tester,
