@@ -8,6 +8,7 @@ export 'components/buttons/prego_buttons_icon_glass.dart';
 export 'components/buttons/prego_copy_icon_button.dart';
 export 'components/buttons/prego_picker_button.dart';
 export 'components/buttons/prego_switch.dart';
+export 'components/icons/prego_avatar_initials.dart';
 export 'components/icons/prego_avatar_user.dart';
 export 'components/icons/prego_brand_logo.dart';
 export 'components/inputs/prego_image_attachment_preview.dart';
