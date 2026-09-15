@@ -13,8 +13,14 @@ const List<String> _bridgePackageManifests = <String>[
 
 final RegExp _semverPattern = RegExp(r'^(\d+)\.(\d+)\.(\d+)$');
 final RegExp _clientVersionPattern = RegExp(r'^(\d+\.\d+\.\d+)(?:\+(\d+))?$');
-final RegExp _pubspecVersionPattern = RegExp(r'^version:\s*([^#\s]+)\s*$', multiLine: true);
-final RegExp _versionDartPattern = RegExp(r"^const String appVersion = '([^']+)';$", multiLine: true);
+final RegExp _pubspecVersionPattern = RegExp(
+  r'^version:\s*([^#\s]+)\s*$',
+  multiLine: true,
+);
+final RegExp _versionDartPattern = RegExp(
+  r"^const String appVersion = '([^']+)';$",
+  multiLine: true,
+);
 
 class _CliError implements Exception {
   const _CliError(this.message);
@@ -26,7 +32,11 @@ class _CliError implements Exception {
 }
 
 class _ParsedArgs {
-  const _ParsedArgs({required this.dryRun, required this.type, required this.version});
+  const _ParsedArgs({
+    required this.dryRun,
+    required this.type,
+    required this.version,
+  });
 
   final bool dryRun;
   final String? type;
@@ -43,26 +53,57 @@ class _ClientVersion {
 Future<void> main(List<String> args) async {
   try {
     final parsed = _parseArgs(args);
-    final repoRoot = Directory(File(Platform.script.toFilePath()).parent.parent.path).path;
-    final clientPubspecPath = _join(repoRoot, <String>['client', 'app', 'pubspec.yaml']);
-    final desktopPubspecPath = _join(repoRoot, <String>['client', 'desktop', 'pubspec.yaml']);
-    final bridgePubspecPath = _join(repoRoot, <String>['bridge', 'app', 'pubspec.yaml']);
-    final bridgeVersionDartPath = _join(repoRoot, <String>['bridge', 'app', 'lib', 'src', 'version.dart']);
+    final repoRoot = Directory(
+      File(Platform.script.toFilePath()).parent.parent.path,
+    ).path;
+    final clientPubspecPath = _join(repoRoot, <String>[
+      'client',
+      'app',
+      'pubspec.yaml',
+    ]);
+    final desktopPubspecPath = _join(repoRoot, <String>[
+      'client',
+      'desktop',
+      'pubspec.yaml',
+    ]);
+    final bridgePubspecPath = _join(repoRoot, <String>[
+      'bridge',
+      'app',
+      'pubspec.yaml',
+    ]);
+    final bridgeVersionDartPath = _join(repoRoot, <String>[
+      'bridge',
+      'app',
+      'lib',
+      'src',
+      'version.dart',
+    ]);
 
-    final clientVersion = _readClientVersion(await _readFile(path: clientPubspecPath));
-    final desktopVersion = _readClientVersion(await _readFile(path: desktopPubspecPath));
-    final bridgeCurrentVersion = _readBridgeVersion(await _readFile(path: bridgePubspecPath));
+    final clientVersion = _readClientVersion(
+      content: await _readFile(path: clientPubspecPath),
+      pubspecPath: clientPubspecPath,
+    );
+    final desktopVersion = _readClientVersion(
+      content: await _readFile(path: desktopPubspecPath),
+      pubspecPath: desktopPubspecPath,
+    );
+    final bridgeCurrentVersion = _readBridgeVersion(
+      await _readFile(path: bridgePubspecPath),
+    );
 
     // Only enforce sync guard for automatic bumps; explicit --version can realign.
     if (parsed.version == null &&
-        (clientVersion.semver != bridgeCurrentVersion || desktopVersion.semver != bridgeCurrentVersion)) {
+        (clientVersion.semver != bridgeCurrentVersion ||
+            desktopVersion.semver != bridgeCurrentVersion)) {
       throw _CliError(
         'Error: Bridge ($bridgeCurrentVersion), client (${clientVersion.semver}), and desktop (${desktopVersion.semver}) versions are out of sync. '
         'Run `make bump-version VERSION=${clientVersion.semver}` to align them before bumping.',
       );
     }
 
-    final targetBridgeVersion = parsed.version ?? _bumpVersion(baseVersion: clientVersion.semver, type: parsed.type!);
+    final targetBridgeVersion =
+        parsed.version ??
+        _bumpVersion(baseVersion: clientVersion.semver, type: parsed.type!);
     _validateSemver(version: targetBridgeVersion);
 
     final targetClientVersion = clientVersion.build != null
@@ -94,8 +135,14 @@ Future<void> main(List<String> args) async {
       return;
     }
 
-    await _writePubspecVersion(path: bridgePubspecPath, newVersion: targetBridgeVersion);
-    await _writeVersionDart(path: bridgeVersionDartPath, newVersion: targetBridgeVersion);
+    await _writePubspecVersion(
+      path: bridgePubspecPath,
+      newVersion: targetBridgeVersion,
+    );
+    await _writeVersionDart(
+      path: bridgeVersionDartPath,
+      newVersion: targetBridgeVersion,
+    );
     for (final relativePath in _bridgePackageManifests) {
       await _writePackageJson(
         path: _join(repoRoot, relativePath.split('/')),
@@ -103,15 +150,25 @@ Future<void> main(List<String> args) async {
         newVersion: targetBridgeVersion,
       );
     }
-    await _writePubspecVersion(path: clientPubspecPath, newVersion: targetClientVersion);
+    await _writePubspecVersion(
+      path: clientPubspecPath,
+      newVersion: targetClientVersion,
+    );
 
-    await _writePubspecVersion(path: desktopPubspecPath, newVersion: targetDesktopVersion);
+    await _writePubspecVersion(
+      path: desktopPubspecPath,
+      newVersion: targetDesktopVersion,
+    );
 
-    stdout.writeln('Synced bridge version: $bridgeCurrentVersion -> $targetBridgeVersion');
+    stdout.writeln(
+      'Synced bridge version: $bridgeCurrentVersion -> $targetBridgeVersion',
+    );
     stdout.writeln(
       'Synced client version: ${clientVersion.semver}${clientVersion.build != null ? "+${clientVersion.build}" : ""} -> $targetClientVersion',
     );
-    stdout.writeln('Synced desktop version: ${desktopVersion.semver} -> $targetDesktopVersion');
+    stdout.writeln(
+      'Synced desktop version: ${desktopVersion.semver}${desktopVersion.build != null ? "+${desktopVersion.build}" : ""} -> $targetDesktopVersion',
+    );
   } on _CliError catch (error) {
     stderr.writeln(error.message);
     exit(1);
@@ -139,7 +196,12 @@ _ParsedArgs _parseArgs(List<String> args) {
     }
 
     if (arg == '--type') {
-      index = _consumeNextValue(args: args, index: index, flag: '--type', assign: (value) => type = value);
+      index = _consumeNextValue(
+        args: args,
+        index: index,
+        flag: '--type',
+        assign: (value) => type = value,
+      );
       continue;
     }
 
@@ -149,7 +211,12 @@ _ParsedArgs _parseArgs(List<String> args) {
     }
 
     if (arg == '--version') {
-      index = _consumeNextValue(args: args, index: index, flag: '--version', assign: (value) => version = value);
+      index = _consumeNextValue(
+        args: args,
+        index: index,
+        flag: '--version',
+        assign: (value) => version = value,
+      );
       continue;
     }
 
@@ -197,7 +264,9 @@ int _consumeNextValue({
 String _valueFromFlag(String arg, String prefix) {
   final value = arg.substring(prefix.length);
   if (value.isEmpty) {
-    throw _CliError('Error: Missing value for ${prefix.substring(0, prefix.length - 1)}');
+    throw _CliError(
+      'Error: Missing value for ${prefix.substring(0, prefix.length - 1)}',
+    );
   }
   return value;
 }
@@ -212,18 +281,24 @@ String _join(String root, List<String> segments) {
 
 Future<String> _readFile({required String path}) => File(path).readAsString();
 
-Future<void> _writeFile({required String path, required String content}) => File(path).writeAsString(content);
+Future<void> _writeFile({required String path, required String content}) =>
+    File(path).writeAsString(content);
 
-_ClientVersion _readClientVersion(String content) {
+_ClientVersion _readClientVersion({
+  required String content,
+  required String pubspecPath,
+}) {
   final match = _pubspecVersionPattern.firstMatch(content);
   if (match == null) {
-    throw const _CliError('Error: Could not find version in client pubspec');
+    throw _CliError('Error: Could not find version in $pubspecPath');
   }
 
   final rawVersion = match.group(1)!;
   final parsed = _clientVersionPattern.firstMatch(rawVersion);
   if (parsed == null) {
-    throw _CliError('Error: Invalid client version "$rawVersion"');
+    throw _CliError(
+      'Error: Invalid client version "$rawVersion" in $pubspecPath',
+    );
   }
 
   return _ClientVersion(semver: parsed.group(1)!, build: parsed.group(2));
@@ -268,29 +343,45 @@ String _bumpVersion({required String baseVersion, required String type}) {
   }
 }
 
-Future<void> _writePubspecVersion({required String path, required String newVersion}) async {
+Future<void> _writePubspecVersion({
+  required String path,
+  required String newVersion,
+}) async {
   final content = await _readFile(path: path);
   if (!_pubspecVersionPattern.hasMatch(content)) {
     throw _CliError('Error: Could not update pubspec version at $path');
   }
-  final updated = content.replaceFirst(_pubspecVersionPattern, 'version: $newVersion');
+  final updated = content.replaceFirst(
+    _pubspecVersionPattern,
+    'version: $newVersion',
+  );
   if (updated != content) {
     await _writeFile(path: path, content: updated);
   }
 }
 
-Future<void> _writeVersionDart({required String path, required String newVersion}) async {
+Future<void> _writeVersionDart({
+  required String path,
+  required String newVersion,
+}) async {
   final content = await _readFile(path: path);
   if (!_versionDartPattern.hasMatch(content)) {
     throw _CliError('Error: Could not update version.dart at $path');
   }
-  final updated = content.replaceFirst(_versionDartPattern, "const String appVersion = '$newVersion';");
+  final updated = content.replaceFirst(
+    _versionDartPattern,
+    "const String appVersion = '$newVersion';",
+  );
   if (updated != content) {
     await _writeFile(path: path, content: updated);
   }
 }
 
-Future<void> _writePackageJson({required String path, required String oldVersion, required String newVersion}) async {
+Future<void> _writePackageJson({
+  required String path,
+  required String oldVersion,
+  required String newVersion,
+}) async {
   final content = await _readFile(path: path);
   final decoded = jsonDecode(content);
   if (decoded is! Map<String, dynamic>) {
@@ -301,11 +392,14 @@ Future<void> _writePackageJson({required String path, required String oldVersion
 
   final optionalDependencies = decoded['optionalDependencies'];
   if (optionalDependencies is Map<String, dynamic>) {
-    optionalDependencies.updateAll((_, value) => value == oldVersion ? newVersion : value);
+    optionalDependencies.updateAll(
+      (_, value) => value == oldVersion ? newVersion : value,
+    );
   }
 
   final sesoriBridge = decoded['sesoriBridge'];
-  if (sesoriBridge is Map<String, dynamic> && sesoriBridge.containsKey('releaseTag')) {
+  if (sesoriBridge is Map<String, dynamic> &&
+      sesoriBridge.containsKey('releaseTag')) {
     sesoriBridge['releaseTag'] = 'v$newVersion';
   }
 

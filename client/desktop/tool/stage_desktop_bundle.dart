@@ -47,7 +47,11 @@ Future<void> main(List<String> arguments) async {
     // line, especially through flutter.bat on Windows. Values come from the model.
     final File defines = File(path.join(output.path, "dart-defines.env"));
     await defines.writeAsString("${DesktopBundleIdentity.defineName}=${identity.encode()}\n", encoding: utf8);
-    final String flutter = Platform.isWindows ? "flutter.bat" : "flutter";
+    // Use the Flutter SDK that supplied this Dart VM, not a second SDK on PATH.
+    final String flutter = path.join(
+      File(Platform.resolvedExecutable).parent.parent.parent.parent.path,
+      Platform.isWindows ? "flutter.bat" : "flutter",
+    );
     await _build(
       executable: Platform.resolvedExecutable,
       arguments: ["pub", "get", "--enforce-lockfile"],

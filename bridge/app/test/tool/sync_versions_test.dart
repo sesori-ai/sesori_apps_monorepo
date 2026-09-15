@@ -308,8 +308,20 @@ environment:
       expect(rejected.stderr, contains('desktop (0.1.0)'));
       final aligned = await _runTool(fixture: currentFixture, args: ['--version', '1.0.6']);
       expect(aligned.exitCode, 0, reason: '${aligned.stdout}\n${aligned.stderr}');
+      expect(aligned.stdout, contains('Synced desktop version: 0.1.0+13 -> 1.0.6+13'));
       expect(await File(currentFixture.desktopPubspecPath).readAsString(), contains('version: 1.0.6+13'));
       expect(await File(currentFixture.clientPubspecPath).readAsString(), contains('version: 1.0.6+8'));
+    });
+
+    test('identifies the desktop pubspec when its version is missing or malformed', () async {
+      fixture = await _createFixtureApp(clientVersion: '1.0.6+8');
+      final currentFixture = fixture!;
+      for (final content in ['name: desktop\n', 'version: malformed\n']) {
+        await File(currentFixture.desktopPubspecPath).writeAsString(content);
+        final result = await _runTool(fixture: currentFixture, args: ['--type', 'patch']);
+        expect(result.exitCode, isNot(0));
+        expect(result.stderr, contains(currentFixture.desktopPubspecPath));
+      }
     });
 
     test('works without client build number', () async {
