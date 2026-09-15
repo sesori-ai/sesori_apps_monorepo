@@ -1167,6 +1167,7 @@ abstract class AcpPlugin({
         agent: agent,
         queuedPrompt: _QueuedAcpPrompt(
           presentation: PluginQueuedPrompt(
+            dispatchState: PluginQueuedPromptDispatchState.queued,
             id: promptId,
             text: text.isEmpty ? null : text,
             command: null,
@@ -1215,6 +1216,7 @@ abstract class AcpPlugin({
         agent: agent,
         queuedPrompt: _QueuedAcpPrompt(
           presentation: PluginQueuedPrompt(
+            dispatchState: PluginQueuedPromptDispatchState.queued,
             id: promptId,
             text: visibleArguments == null || visibleArguments.isEmpty ? null : visibleArguments,
             command: command,
@@ -1558,6 +1560,7 @@ abstract class AcpPlugin({
     try {
       if (turn case _QueuedAcpTurn(:final queuedPrompt)) {
         queuedPrompt.phase = _QueuedAcpPromptPhase.writing;
+        _emitQueueUpdate(sessionId: sessionId, state: state);
       }
       final meta = outboundPromptMeta(sessionId: sessionId, messageId: turn.messageId);
       final dispatched = await client.dispatchSessionRequest(
@@ -2642,10 +2645,17 @@ final class const _QueuedAcpTurn({
 }) extends _AcpTurn;
 
 class _QueuedAcpPrompt({
-  required final PluginQueuedPrompt presentation,
+  required PluginQueuedPrompt presentation,
   required final List<PluginPromptPart> visibleParts,
 }) {
+  final PluginQueuedPrompt _presentation = presentation;
   _QueuedAcpPromptPhase phase = _QueuedAcpPromptPhase.queued;
+
+  PluginQueuedPrompt get presentation => _presentation.copyWith(
+    dispatchState: phase == _QueuedAcpPromptPhase.queued
+        ? PluginQueuedPromptDispatchState.queued
+        : PluginQueuedPromptDispatchState.dispatched,
+  );
 }
 
 enum _QueuedAcpPromptPhase() {

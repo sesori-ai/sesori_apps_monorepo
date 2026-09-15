@@ -850,6 +850,7 @@ void main() {
           interaction: authRequired,
           bridgeQueuedPrompts: const [
             QueuedSessionPrompt(
+              dispatchState: QueuedPromptDispatchState.queued,
               id: "remote",
               text: "Remote queued prompt",
               command: null,
@@ -1115,6 +1116,18 @@ void main() {
 
     expect(find.text("Provider login required"), findsOneWidget);
     expect(find.text("Authenticate locally, then retry."), findsOneWidget);
+  });
+
+  testWidgets("explains that refused cancellation was not confirmed", (tester) async {
+    final notices = StreamController<SessionDetailNotice>.broadcast();
+    addTearDown(notices.close);
+    when(() => cubit.noticeStream).thenAnswer((_) => notices.stream);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    notices.add(const SessionDetailQueueCancellationFailed());
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(find.text("Cancellation was not confirmed. The message may already have been sent."), findsOneWidget);
   });
 
   testWidgets("explains when a queued command is no longer available", (tester) async {
@@ -3400,11 +3413,64 @@ void main() {
     );
   });
 
+  testWidgets("queued and legacy rows offer cancellation; dispatched rows remain read-only", (tester) async {
+    final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
+      bridgeQueuedPrompts: [
+        for (final dispatchState in QueuedPromptDispatchState.values)
+          QueuedSessionPrompt(
+            id: dispatchState.name,
+            text: dispatchState.name,
+            command: null,
+            createdAt: 1,
+            dispatchState: dispatchState,
+          ),
+      ],
+    );
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    when(() => cubit.cancelBridgeQueuedPrompt(promptId: "queued")).thenAnswer((_) async {});
+    when(() => cubit.cancelBridgeQueuedPrompt(promptId: "unknown")).thenAnswer((_) async {});
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pump(const Duration(milliseconds: 400));
+    expect(find.byType(PregoQueuedMessageRow), findsNWidgets(3));
+    expect(find.byIcon(TablerRegular.trash), findsNWidgets(2));
+    final tooltip = find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Sending");
+    expect(tooltip, findsOneWidget);
+    expect(tester.widget<Tooltip>(tooltip).excludeFromSemantics, isTrue);
+    expect(find.byTooltip("Sending"), findsNothing);
+    expect(
+      tester.widget<PregoQueuedMessageRow>(find.byKey(const ValueKey("session-detail-queued-unknown"))).statusLabel,
+      "Queued",
+    );
+    expect(
+      tester.widget<PregoQueuedMessageRow>(find.byKey(const ValueKey("session-detail-queued-dispatched"))).statusLabel,
+      "Sending",
+    );
+    expect(
+      find.descendant(
+        of: find.byKey(const ValueKey("session-detail-queued-dispatched")),
+        matching: find.byType(PregoActivityIndicator),
+      ),
+      findsOneWidget,
+    );
+    for (final id in ["queued", "unknown"]) {
+      await tester.tap(
+        find.descendant(
+          of: find.byKey(ValueKey("session-detail-queued-$id")),
+          matching: find.byIcon(TablerRegular.trash),
+        ),
+      );
+      verify(() => cubit.cancelBridgeQueuedPrompt(promptId: id)).called(1);
+    }
+    verifyNever(() => cubit.cancelBridgeQueuedPrompt(promptId: "dispatched"));
+  });
+
   for (final inputMode in ChatInputMode.values) {
     testWidgets("queue stays inside $inputMode composer and cancellation preserves draft focus", (tester) async {
       final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
         bridgeQueuedPrompts: const [
           QueuedSessionPrompt(
+            dispatchState: QueuedPromptDispatchState.queued,
             id: "remote",
             text: "One line\nthen another",
             command: "review",
@@ -3465,7 +3531,14 @@ void main() {
     expect(find.byIcon(TablerRegular.trash), findsNothing);
     state = state.copyWith(
       bridgeQueuedPrompts: const [
-        QueuedSessionPrompt(id: "handoff", text: "Follow-up prompt", command: null, attachmentCount: 0, createdAt: 1),
+        QueuedSessionPrompt(
+          dispatchState: QueuedPromptDispatchState.queued,
+          id: "handoff",
+          text: "Follow-up prompt",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 1,
+        ),
       ],
     );
     states.add(state);

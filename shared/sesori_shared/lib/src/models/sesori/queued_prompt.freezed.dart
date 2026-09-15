@@ -18,7 +18,7 @@ mixin _$QueuedSessionPrompt {
 
 /// The prompt id: client-supplied `SendPromptRequest.promptId`, or a
 /// bridge-generated fallback for clients that predate it.
- String get id;/// User-visible prompt text. Null for an attachment-only prompt — never
+ String get id;@JsonKey(unknownEnumValue: QueuedPromptDispatchState.unknown) QueuedPromptDispatchState get dispatchState;/// User-visible prompt text. Null for an attachment-only prompt — never
 /// an empty string.
  String? get text;/// Bare slash-command name for a command send, without the leading `/`.
 /// Null for a plain prompt.
@@ -38,20 +38,20 @@ $QueuedSessionPromptCopyWith<QueuedSessionPrompt> get copyWith => _$QueuedSessio
 @override
 bool operator ==(Object other) {
   final _this = this as QueuedSessionPrompt;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedSessionPrompt&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.attachmentCount, _this.attachmentCount) || other.attachmentCount == _this.attachmentCount)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is QueuedSessionPrompt&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.dispatchState, _this.dispatchState) || other.dispatchState == _this.dispatchState)&&(identical(other.text, _this.text) || other.text == _this.text)&&(identical(other.command, _this.command) || other.command == _this.command)&&(identical(other.attachmentCount, _this.attachmentCount) || other.attachmentCount == _this.attachmentCount)&&(identical(other.createdAt, _this.createdAt) || other.createdAt == _this.createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as QueuedSessionPrompt;
-  return Object.hash(runtimeType,_this.id,_this.text,_this.command,_this.attachmentCount,_this.createdAt);
+  return Object.hash(runtimeType,_this.id,_this.dispatchState,_this.text,_this.command,_this.attachmentCount,_this.createdAt);
 }
 
 @override
 String toString() {
   final _this = this as QueuedSessionPrompt;
-  return 'QueuedSessionPrompt(id: ${_this.id}, text: ${_this.text}, command: ${_this.command}, attachmentCount: ${_this.attachmentCount}, createdAt: ${_this.createdAt})';
+  return 'QueuedSessionPrompt(id: ${_this.id}, dispatchState: ${_this.dispatchState}, text: ${_this.text}, command: ${_this.command}, attachmentCount: ${_this.attachmentCount}, createdAt: ${_this.createdAt})';
 }
 
 
@@ -62,7 +62,7 @@ abstract mixin class $QueuedSessionPromptCopyWith<$Res>  {
   factory $QueuedSessionPromptCopyWith(QueuedSessionPrompt value, $Res Function(QueuedSessionPrompt) _then) = _$QueuedSessionPromptCopyWithImpl;
 @useResult
 $Res call({
- String id, String? text, String? command, int attachmentCount, int createdAt
+ String id,@JsonKey(unknownEnumValue: QueuedPromptDispatchState.unknown) QueuedPromptDispatchState dispatchState, String? text, String? command, int attachmentCount, int createdAt
 });
 
 
@@ -79,10 +79,11 @@ class _$QueuedSessionPromptCopyWithImpl<$Res>
 
 /// Create a copy of QueuedSessionPrompt
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? id = null,Object? dispatchState = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
   return _then(QueuedSessionPrompt(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,dispatchState: null == dispatchState ? _self.dispatchState : dispatchState // ignore: cast_nullable_to_non_nullable
+as QueuedPromptDispatchState,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,attachmentCount: null == attachmentCount ? _self.attachmentCount : attachmentCount // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable
@@ -98,12 +99,13 @@ as int,
 @JsonSerializable()
 
 class _QueuedSessionPrompt implements QueuedSessionPrompt {
-  const _QueuedSessionPrompt({required this.id, required this.text, required this.command, this.attachmentCount = 0, required this.createdAt});
+  const _QueuedSessionPrompt({required this.id, @JsonKey(unknownEnumValue: QueuedPromptDispatchState.unknown) this.dispatchState = QueuedPromptDispatchState.unknown, required this.text, required this.command, this.attachmentCount = 0, required this.createdAt});
   factory _QueuedSessionPrompt.fromJson(Map<String, dynamic> json) => _$QueuedSessionPromptFromJson(json);
 
 /// The prompt id: client-supplied `SendPromptRequest.promptId`, or a
 /// bridge-generated fallback for clients that predate it.
 @override final  String id;
+@override@JsonKey(unknownEnumValue: QueuedPromptDispatchState.unknown) final  QueuedPromptDispatchState dispatchState;
 /// User-visible prompt text. Null for an attachment-only prompt — never
 /// an empty string.
 @override final  String? text;
@@ -128,18 +130,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedSessionPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _QueuedSessionPrompt&&(identical(other.id, id) || other.id == id)&&(identical(other.dispatchState, dispatchState) || other.dispatchState == dispatchState)&&(identical(other.text, text) || other.text == text)&&(identical(other.command, command) || other.command == command)&&(identical(other.attachmentCount, attachmentCount) || other.attachmentCount == attachmentCount)&&(identical(other.createdAt, createdAt) || other.createdAt == createdAt));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,text,command,attachmentCount,createdAt);
+    return Object.hash(runtimeType,id,dispatchState,text,command,attachmentCount,createdAt);
 }
 
 @override
 String toString() {
-    return 'QueuedSessionPrompt(id: $id, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
+    return 'QueuedSessionPrompt(id: $id, dispatchState: $dispatchState, text: $text, command: $command, attachmentCount: $attachmentCount, createdAt: $createdAt)';
 }
 
 
@@ -150,7 +152,7 @@ abstract mixin class _$QueuedSessionPromptCopyWith<$Res> implements $QueuedSessi
   factory _$QueuedSessionPromptCopyWith(_QueuedSessionPrompt value, $Res Function(_QueuedSessionPrompt) _then) = __$QueuedSessionPromptCopyWithImpl;
 @override @useResult
 $Res call({
- String id, String? text, String? command, int attachmentCount, int createdAt
+ String id,@JsonKey(unknownEnumValue: QueuedPromptDispatchState.unknown) QueuedPromptDispatchState dispatchState, String? text, String? command, int attachmentCount, int createdAt
 });
 
 
@@ -167,10 +169,11 @@ class __$QueuedSessionPromptCopyWithImpl<$Res>
 
 /// Create a copy of QueuedSessionPrompt
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? id = null,Object? dispatchState = null,Object? text = freezed,Object? command = freezed,Object? attachmentCount = null,Object? createdAt = null,}) {
   return _then(_QueuedSessionPrompt(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
-as String,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
+as String,dispatchState: null == dispatchState ? _self.dispatchState : dispatchState // ignore: cast_nullable_to_non_nullable
+as QueuedPromptDispatchState,text: freezed == text ? _self.text : text // ignore: cast_nullable_to_non_nullable
 as String?,command: freezed == command ? _self.command : command // ignore: cast_nullable_to_non_nullable
 as String?,attachmentCount: null == attachmentCount ? _self.attachmentCount : attachmentCount // ignore: cast_nullable_to_non_nullable
 as int,createdAt: null == createdAt ? _self.createdAt : createdAt // ignore: cast_nullable_to_non_nullable

@@ -2239,6 +2239,12 @@ abstract class AppLocalizations {
   /// **'Command unavailable'**
   String get sessionDetailUnavailableCommand;
 
+  /// No description provided for @sessionDetailQueueCancellationFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancellation was not confirmed. The message may already have been sent.'**
+  String get sessionDetailQueueCancellationFailed;
+
   /// No description provided for @sessionDetailSendingMessage.
   ///
   /// In en, this message translates to:

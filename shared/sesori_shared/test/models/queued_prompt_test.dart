@@ -6,6 +6,7 @@ void main() {
     test("round-trips all fields through JSON", () {
       const prompt = QueuedSessionPrompt(
         id: "prm_1234",
+        dispatchState: QueuedPromptDispatchState.dispatched,
         text: "fix the tests",
         command: null,
         attachmentCount: 2,
@@ -31,6 +32,17 @@ void main() {
 
       expect(json.containsKey("text"), isFalse, reason: "null text must be omitted, never an empty string");
       expect(decoded, equals(prompt));
+    });
+
+    test("missing and unknown dispatch ownership cannot claim cancellation", () {
+      for (final value in [null, "future-state"]) {
+        final prompt = QueuedSessionPrompt.fromJson({
+          "id": "legacy",
+          "createdAt": 1,
+          "dispatchState": ?value,
+        });
+        expect(prompt.dispatchState, QueuedPromptDispatchState.unknown);
+      }
     });
 
     test("decodes a payload without attachmentCount to zero", () {

@@ -546,6 +546,32 @@ void main() {
     );
   });
 
+  test("a cancelled bridge-pending Pi prompt never reaches native steering", () async {
+    final process = FakePiProcess();
+    final fixture = _Fixture(processes: [process]);
+    addTearDown(fixture.dispose);
+    final service = fixture.service();
+    for (final id in ["first", "cancelled"]) {
+      await service.sendPrompt(
+        sessionId: "session",
+        promptId: id,
+        directory: "/project",
+        parts: [PluginPromptPart.text(text: id)],
+        userVisibleText: id,
+        variant: null,
+        model: null,
+      );
+    }
+    expect(service.queuedPrompts(sessionId: "session").last.dispatchState, PluginQueuedPromptDispatchState.queued);
+    expect(service.cancelQueuedPrompt(sessionId: "session", promptId: "cancelled"), isTrue);
+    await _answerEntries(process);
+    final prompt = await waitForCommand(process: process, type: "prompt");
+    process.emitResponse(id: prompt["id"]! as String, command: "prompt");
+    process.emit(frame: {"type": "agent_settled"});
+    await _waitForIdle(service: service, sessionId: "session");
+    expect(process.written.where((frame) => frame["type"] == "prompt").map((frame) => frame["message"]), ["first"]);
+  });
+
   test("a cancelled undispatched prompt id remains retryable", () async {
     final process = FakePiProcess();
     final fixture = _Fixture(processes: [process]);
@@ -831,6 +857,19 @@ void main() {
     final secondPrompt = await _waitForNthCommand(process: first, type: "prompt", count: 2);
     expect(secondPrompt["message"], "second");
     expect(secondPrompt["streamingBehavior"], "steer");
+    expect(service.queuedPrompts(sessionId: "one").single.dispatchState, PluginQueuedPromptDispatchState.dispatched);
+    expect(service.cancelQueuedPrompt(sessionId: "one", promptId: "prompt-9"), isFalse);
+    expect(service.queuedPrompts(sessionId: "one").single.id, "prompt-9");
+    expect(
+      events
+          .whereType<BridgeSseQueuedPromptsUpdated>()
+          .lastWhere((event) => event.sessionID == "one")
+          .prompts
+          .single
+          .dispatchState,
+      PluginQueuedPromptDispatchState.dispatched,
+    );
+
     expect(
       service.sessionStatuses["one"],
       const PluginSessionStatus.busy(),
@@ -838,6 +877,10 @@ void main() {
     );
 
     first.emitResponse(id: secondPrompt["id"]! as String, command: "prompt");
+    await pump();
+    expect(service.cancelQueuedPrompt(sessionId: "one", promptId: "prompt-9"), isFalse);
+    expect(service.queuedPrompts(sessionId: "one").single.dispatchState, PluginQueuedPromptDispatchState.dispatched);
+
     first.emit(
       frame: {
         "type": "message_end",
