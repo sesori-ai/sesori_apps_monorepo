@@ -134,12 +134,7 @@ class const _DesktopRootEffects({required final Widget child, required final Glo
     return DesktopEscapeDismissal(
       child: SseToastListener(
         navigatorKey: navigatorKey,
-        child: Column(
-          children: <Widget>[
-            ConnectionBanner.maybeFor(context) ?? const SizedBox.shrink(),
-            Expanded(child: child),
-          ],
-        ),
+        child: child,
       ),
     );
   }

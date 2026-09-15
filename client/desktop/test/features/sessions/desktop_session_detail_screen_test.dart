@@ -165,7 +165,7 @@ void main() {
               sessionId: "session-1",
               sessionTitle: "Desktop session",
               readOnly: false,
-              onBack: () {},
+              onBack: null,
               onShowDiffs: () => diffCalls++,
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
               messageImageRepository: () {
@@ -193,6 +193,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("Desktop transcript"), findsOneWidget);
+    expect(find.bySemanticsLabel("Back"), findsNothing);
     expect(find.byType(PregoReadableSelectionArea), findsOneWidget);
     final loadedView = tester.widget<SessionDetailLoadedView>(find.byType(SessionDetailLoadedView));
     expect(loadedView.readOnly, isFalse);

@@ -5,7 +5,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../core/di/injection.dart";
 
-/// Owns one project-scoped session inventory across narrow and split routes.
+/// Owns the full inventory only while the all-sessions page is mounted.
 class const DesktopSessionListCubitProvider({
   super.key,
   required final String projectId,
@@ -24,11 +24,10 @@ class const DesktopSessionListCubitProvider({
   }
 }
 
-/// Narrow desktop composition for the shared session inventory.
+/// Full main-pane composition for the shared session inventory.
 class const DesktopSessionListScreen({
   super.key,
   required final String? projectName,
-  required final VoidCallback onBack,
   required final SessionOpenedCallback onSessionTap,
   required final VoidCallback onNewSession,
   required final SessionListActionDispatcher actionDispatcher,
@@ -42,33 +41,8 @@ class const DesktopSessionListScreen({
       actionDispatcher: actionDispatcher,
       archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
       onNewSession: onNewSession,
-      onBack: onBack,
+      onBack: null,
       connectionBanner: null,
-    );
-  }
-}
-
-/// Persistent left pane used by the wide desktop session split.
-class const DesktopSessionListPane({
-  super.key,
-  required final String? projectName,
-  required final String? selectedSessionId,
-  required final VoidCallback onBack,
-  required final SessionOpenedCallback onSessionTap,
-  required final VoidCallback onNewSession,
-  required final SessionListActionDispatcher actionDispatcher,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    return SessionListPanel(
-      onOpenArchived: () => context.read<SessionListCubit>().toggleArchived(),
-      projectName: projectName,
-      selectedSessionId: selectedSessionId,
-      onSessionTap: onSessionTap,
-      actionDispatcher: actionDispatcher,
-      archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-      onNewSession: onNewSession,
-      onBack: onBack,
     );
   }
 }

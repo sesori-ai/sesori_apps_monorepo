@@ -9,6 +9,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../di/injection.dart";
+import "desktop_bridge_recovery_card.dart";
 
 typedef SidebarSessionOpenedCallback = void Function({
   required BuildContext context,
@@ -48,6 +49,25 @@ class const DesktopSidebar({
     final collapsedProjects = context.select((DesktopSidebarCubit cubit) => cubit.state.collapsedProjectIds);
     final loc = context.loc;
     final prego = context.prego;
+    final bridge = context.watch<BridgeControlCubit>().state;
+    final bridgeColor = bridge.canTakeOver
+        ? prego.colors.textWarningPrimary
+        : switch (bridge.processState) {
+            BridgeProcessStopped() => prego.colors.textDisabled,
+            BridgeProcessStartFailed() || BridgeProcessCrashGiveUp() => prego.colors.textErrorPrimary,
+            BridgeProcessRunning()
+                when bridge.controlStatus.helperOnline &&
+                    bridge.controlStatus.startup == ControlStartupState.ready &&
+                    bridge.controlStatus.relay == ControlRelayConnectionState.connected &&
+                    bridge.controlStatus.plugin != ControlPluginHealthState.degraded =>
+              prego.colors.textSuccessPrimary,
+            BridgeProcessLoginRequired() ||
+            BridgeProcessStarting() ||
+            BridgeProcessRunning() ||
+            BridgeProcessStopping() ||
+            BridgeProcessContention() ||
+            BridgeProcessCrashRetryScheduled() => prego.colors.textWarningPrimary,
+          };
     return Material(
       color: prego.colors.bgSecondary,
       child: SafeArea(
@@ -84,7 +104,7 @@ class const DesktopSidebar({
                                   ),
                                   child: Text(
                                     loc.projectListTitle,
-                                    style: prego.textTheme.textSm.bold.copyWith(package: "theme_prego"),
+                                    style: prego.textTheme.textSm.bold,
                                   ),
                                 ),
                               ),
@@ -143,7 +163,6 @@ class const DesktopSidebar({
                                 overflow: TextOverflow.clip,
                                 style: prego.textTheme.textSm.medium.copyWith(
                                   color: prego.colors.textWhite,
-                                  package: "theme_prego",
                                 ),
                               ),
                             ),
@@ -230,12 +249,13 @@ class const DesktopSidebar({
               ),
               child: Column(
                 children: [
+                  DesktopBridgeRecoveryCard(expansion: expansion),
                   _SidebarButton(
                     label: loc.desktopBridgeTitle,
                     icon: const Icon(TablerRegular.server, size: 20),
                     expansion: expansion,
                     selected: destination == DesktopCockpitDestination.bridge,
-                    status: null,
+                    status: (icon: Icon(Icons.circle, size: 8, color: bridgeColor), label: bridge.statusLabel),
                     onPressed: onOpenBridge,
                   ),
                   _SidebarButton(
@@ -303,7 +323,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
   Widget build(BuildContext context) {
     final entry = context.select((RecentSessionsCubit cubit) => cubit.state[widget.project.id]);
     final loc = context.loc;
-    final detailStyle = context.prego.textTheme.textXs.regular.copyWith(package: "theme_prego");
+    final detailStyle = context.prego.textTheme.textXs.regular;
     // Created only if a session menu reads it. Keep this scope above the rows:
     // a successful delete can remove its row before the route callback runs.
     return BlocProvider<SessionListCubit>(
@@ -551,9 +571,7 @@ class const _SidebarSessionRow({
                           session.title ?? context.loc.sessionListUntitled,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: (unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular).copyWith(
-                            package: "theme_prego",
-                          ),
+                          style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
                         ),
                       ),
                       if (awaiting || running || unseen) const SizedBox(width: PregoSpacing.xs),
@@ -648,7 +666,7 @@ class const _SidebarButton({
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: (emphasized ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular)
-                                .copyWith(color: color, package: "theme_prego"),
+                                .copyWith(color: color),
                           ),
                         ),
                       ),

@@ -17,6 +17,7 @@ void main() {
         ),
       );
       expect(find.text(initials), findsOneWidget);
+      expect(tester.widget<Text>(find.text(initials)).style!.fontFamily, PregoTextTheme.fontFamily);
     }
   });
 

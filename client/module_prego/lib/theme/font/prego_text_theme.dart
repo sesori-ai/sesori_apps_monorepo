@@ -14,7 +14,7 @@ enum _PregoTextThemeVariant() {
 }
 
 class PregoTextTheme {
-  static const fontFamily = "Satoshi Prego";
+  static const fontFamily = "packages/theme_prego/Satoshi Prego";
   static const fontFamilyFallback = [".SF UI Text", ".SF UI Display", "Roboto", "Arial"];
 
   static final dark = PregoTextTheme._(variant: .dark);

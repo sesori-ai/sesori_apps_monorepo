@@ -14,8 +14,8 @@ Step 2.a retains `steps/step-02.md`; its follow-up uses `steps/step-02b.md`.
 | [x] | 2.a | `desktop-ux/sidebar-frame` | `⚙️ [desktop-ux] Add the resizable collapsible sidebar frame [step 2/13]` | ≤ 1,400 | done |
 | [x] | 2.b | `desktop-ux/sidebar-polish` | `🌿 [desktop-ux] Polish sidebar styling, motion, and activity signals [step 3/13]` | ≤ 900 | done |
 | [x] | 3 | `desktop-ux/recent-sessions` | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | done |
-| [ ] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | pending |
-| [ ] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | pending |
+| [x] | 4 | `desktop-ux/main-pane-routes` | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | done |
+| [x] | 5 | `desktop-ux/connection-pill` | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | done |
 | [ ] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 900 | pending |
 | [ ] | 7 | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | pending |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | pending |
@@ -34,6 +34,8 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 - Step 2.a: [PR #1488](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1488).
 - Step 2.b: [PR #1491](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1491),
   user-requested styling/motion/activity follow-up, not part of #1488.
+- Step 3: [PR #1494](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1494).
+- Step 4: [PR #1496](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1496).
 
 ## Accepted reductions
 
@@ -63,3 +65,15 @@ step 12 last. Only one PR is open; one local successor may be prepared.
   Native tree/menu/performance and live-action checks remain pre-shipping
   coverage, not a merge/successor gate. See [step 3 evidence](steps/step-03.md#reproducible-verification-and-size)
   for measured revisions, cwd, commands and size accounting.
+- Step 4: 149 distinct focused desktop/mobile/shared UI/font/avatar cases pass
+  across scoped checkpoints, with affected home/cockpit/avatar tests rerun after
+  small follow-ups. Five font-loaded fixtures and all three owning analyzers pass. Native
+  route/action/performance coverage remains pre-shipping work. Architecture
+  review approved the frozen routing scope. PR feedback then corrected explicit
+  detail Back presentation; 34 affected tests, two header fixtures and desktop
+  analysis pass. See [step 4 evidence](steps/step-04.md).
+- Step 5: 25 cockpit and 9 shared grace tests, six inspected font-loaded fixtures,
+  and both owning analyzers pass across documented checkpoints. Architecture
+  review approves the frozen implementation. Native/live coverage remains
+  pre-shipping work; the GUI and bridge were untouched.
+  See [step 5 evidence](steps/step-05.md).

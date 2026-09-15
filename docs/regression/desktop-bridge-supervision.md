@@ -97,8 +97,7 @@ and keep native close/quit behavior safe.
   persists On, performs one stop-and-respawn, and accepts only replacement
   prompts from the fresh helper. A persistent desktop sidebar reaches Bridge,
   Projects, and Settings, while exceptional login-required, crash-give-up, and
-  takeover recovery appears above every cockpit destination rather than only on
-  the bridge dashboard. Recovery starts or retries the supervised helper or
+  takeover recovery appears in the sidebar footer across cockpit destinations. Recovery starts or retries the supervised helper or
   opens its logs and never offers mobile CLI-install instructions.
 - The window routes from supervision into shared project/session inventory,
   settings, profile, and harness-management surfaces without creating another
@@ -116,9 +115,9 @@ and keep native close/quit behavior safe.
   diff view, and the session list opens shared session creation with plugin,
   model, command, attachment, and dedicated-workspace options. Desktop supplies
   text-first composition and omits voice rather than constructing a dead voice
-  capability. A project-scoped nested route owns one session-list cubit: narrow
-  windows show one destination, while wide windows keep the selectable session
-  inventory beside new-session, transcript, and diff content. Desktop Enter
+  capability. The sidebar supplies recent-session navigation at every width;
+  only All sessions owns the full list cubit. New-session, transcript and diff
+  pages each occupy the full main pane. Desktop Enter
   sends from the inline composer, Shift+Enter inserts a newline, and active IME
   composition retains Enter for candidate confirmation. Escape first releases
   active text editing and otherwise dismisses only popup routes. Transcript and
@@ -127,9 +126,9 @@ and keep native close/quit behavior safe.
   diff source. Profile and Harnesses pop back to Settings when pushed. The analytics service starts before the app, while authenticated
   preference reconciliation is scheduled after the first rendered frame, so a
   slow server cannot leave the window blank; Profile reflects synchronization
-  progress until that bounded operation settles. The desktop's one app-wide
-  connection banner remains the only banner
-  around these routed views.
+  progress until that bounded operation settles. One desktop connection pill
+  overlays the main pane without moving routed content; local Off suppresses
+  bridge-offline copy while relay recovery remains available.
 - Appearance and default-input preferences are read before the first desktop
   frame, provided above the router, and persisted through the same shared
   cubits as mobile. Changing appearance in Settings re-themes the whole window
@@ -236,7 +235,8 @@ verify the actual relocated helper, not merely the presence of its binary.
   Terminal instead of the process running the bridge.
 - The desktop theme lacks Prego colors, typography, or design-system extension;
   a saved appearance flashes the system theme at startup, changing it affects
-  only one route, a routed settings view renders a second connection banner,
+  only one route, connection presentation shifts routed content or duplicates
+  the cockpit pill,
   desktop exposes a dead mobile push-preference surface or registers a push
   token instead of using relay-derived local attention, a pushed settings
   child closes to Home, a standalone child cannot close, startup reconciliation
@@ -296,7 +296,7 @@ verify the actual relocated helper, not merely the presence of its binary.
 - `client/desktop/lib/core/platform/flutter_window_host.dart`
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/features/home/desktop_home.dart`
-- `client/desktop/lib/features/projects/desktop_project_list_screen.dart`
+- `client/desktop/lib/features/home/desktop_home_pane.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
 - `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`

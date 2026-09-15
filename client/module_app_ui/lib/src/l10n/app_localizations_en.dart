@@ -31,6 +31,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiErrorNetworkDown => 'Connection failed — check your network and try again.';
 
   @override
+  String get desktopHomePickSession => 'Pick a session from the sidebar to get started.';
+
+  @override
   String get desktopSidebarNewProject => 'New project';
 
   @override
@@ -61,6 +64,24 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopSidebarResize => 'Resize sidebar; double-click to reset';
+
+  @override
+  String get desktopBridgeTakenOver => 'Another bridge currently owns this account connection.';
+
+  @override
+  String get desktopBridgeTakeOver => 'Take Over';
+
+  @override
+  String get desktopBridgeLoginRequired => 'Your Sesori account is required before the local bridge can start.';
+
+  @override
+  String get desktopBridgeStart => 'Start Bridge';
+
+  @override
+  String get desktopBridgeCrashGiveUp => 'The local bridge stopped after repeated crashes.';
+
+  @override
+  String get desktopBridgeOpenLogs => 'Open Logs';
 
   @override
   String get desktopBridgeTitle => 'Bridge';

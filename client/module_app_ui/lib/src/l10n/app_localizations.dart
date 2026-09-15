@@ -133,6 +133,12 @@ abstract class AppLocalizations {
   /// **'Connection failed — check your network and try again.'**
   String get apiErrorNetworkDown;
 
+  /// Desktop home guidance when projects are available but no session is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a session from the sidebar to get started.'**
+  String get desktopHomePickSession;
+
   /// Label for the prominent desktop sidebar action that opens the add-project dialog.
   ///
   /// In en, this message translates to:
@@ -180,6 +186,42 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Resize sidebar; double-click to reset'**
   String get desktopSidebarResize;
+
+  /// Sidebar recovery notice when bridge ownership can be reclaimed.
+  ///
+  /// In en, this message translates to:
+  /// **'Another bridge currently owns this account connection.'**
+  String get desktopBridgeTakenOver;
+
+  /// Action to reclaim local or relay bridge ownership.
+  ///
+  /// In en, this message translates to:
+  /// **'Take Over'**
+  String get desktopBridgeTakeOver;
+
+  /// Sidebar notice for supervised bridge authentication recovery.
+  ///
+  /// In en, this message translates to:
+  /// **'Your Sesori account is required before the local bridge can start.'**
+  String get desktopBridgeLoginRequired;
+
+  /// Action to recover authentication and start the local bridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Start Bridge'**
+  String get desktopBridgeStart;
+
+  /// Sidebar notice when automatic bridge crash recovery stops.
+  ///
+  /// In en, this message translates to:
+  /// **'The local bridge stopped after repeated crashes.'**
+  String get desktopBridgeCrashGiveUp;
+
+  /// Action to open the local bridge's diagnostic logs.
+  ///
+  /// In en, this message translates to:
+  /// **'Open Logs'**
+  String get desktopBridgeOpenLogs;
 
   /// Label of the pinned desktop navigation entry for local bridge controls.
   ///
