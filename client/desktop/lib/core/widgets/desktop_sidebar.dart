@@ -84,7 +84,7 @@ class const DesktopSidebar({
                                   ),
                                   child: Text(
                                     loc.projectListTitle,
-                                    style: prego.textTheme.textSm.bold.copyWith(package: "theme_prego"),
+                                    style: prego.textTheme.textSm.bold,
                                   ),
                                 ),
                               ),
@@ -143,7 +143,6 @@ class const DesktopSidebar({
                                 overflow: TextOverflow.clip,
                                 style: prego.textTheme.textSm.medium.copyWith(
                                   color: prego.colors.textWhite,
-                                  package: "theme_prego",
                                 ),
                               ),
                             ),
@@ -303,7 +302,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
   Widget build(BuildContext context) {
     final entry = context.select((RecentSessionsCubit cubit) => cubit.state[widget.project.id]);
     final loc = context.loc;
-    final detailStyle = context.prego.textTheme.textXs.regular.copyWith(package: "theme_prego");
+    final detailStyle = context.prego.textTheme.textXs.regular;
     // Created only if a session menu reads it. Keep this scope above the rows:
     // a successful delete can remove its row before the route callback runs.
     return BlocProvider<SessionListCubit>(
@@ -551,9 +550,7 @@ class const _SidebarSessionRow({
                           session.title ?? context.loc.sessionListUntitled,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: (unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular).copyWith(
-                            package: "theme_prego",
-                          ),
+                          style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
                         ),
                       ),
                       if (awaiting || running || unseen) const SizedBox(width: PregoSpacing.xs),
@@ -648,7 +645,7 @@ class const _SidebarButton({
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: (emphasized ? prego.textTheme.textSm.medium : prego.textTheme.textSm.regular)
-                                .copyWith(color: color, package: "theme_prego"),
+                                .copyWith(color: color),
                           ),
                         ),
                       ),

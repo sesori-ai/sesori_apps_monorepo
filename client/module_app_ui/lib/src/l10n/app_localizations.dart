@@ -133,6 +133,12 @@ abstract class AppLocalizations {
   /// **'Connection failed — check your network and try again.'**
   String get apiErrorNetworkDown;
 
+  /// Desktop home guidance when projects are available but no session is open.
+  ///
+  /// In en, this message translates to:
+  /// **'Pick a session from the sidebar to get started.'**
+  String get desktopHomePickSession;
+
   /// Label for the prominent desktop sidebar action that opens the add-project dialog.
   ///
   /// In en, this message translates to:

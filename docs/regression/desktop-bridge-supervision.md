@@ -296,7 +296,7 @@ verify the actual relocated helper, not merely the presence of its binary.
 - `client/desktop/lib/core/platform/flutter_window_host.dart`
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/features/home/desktop_home.dart`
-- `client/desktop/lib/features/projects/desktop_project_list_screen.dart`
+- `client/desktop/lib/features/home/desktop_home_pane.dart`
 - `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
 - `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
