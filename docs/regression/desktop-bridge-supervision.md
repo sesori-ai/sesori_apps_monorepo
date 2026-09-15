@@ -43,7 +43,15 @@ and keep native close/quit behavior safe.
   Every spawn checks its immutable version/build/source/OS/CPU identity against
   the running GUI. Missing or mismatched payloads refuse startup with restart/
   reinstall guidance, including a Linux package replacement while the old GUI
-  remains open. The identity check is not signature verification.
+  remains open. After startup cleanup, the existing process-state stream retains
+  privacy-safe repair guidance without inventing a PID. The cockpit shows it with
+  explicit Retry, and the tray directs the user to Open Sesori. The refusal notice
+  does not offer child logs for a helper that never spawned; detailed failures
+  remain in local application diagnostics. Hidden launch remains non-modal when a
+  tray is available. A later valid Start clears the failure. An automatic restart
+  logs the refusal without replacing repair guidance with crash backoff; ordinary
+  startup errors keep their existing handling. The identity check is not signature
+  verification.
   The supervised helper receives a login-shell-derived executable
   search path, so harnesses installed outside launchd's default PATH remain
   discoverable after autostart. Only PATH is derived for the helper; shell
@@ -148,7 +156,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash give-up output, and default log-file application availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -167,8 +175,12 @@ installed paths containing spaces, an unrelated cwd and a development override;
 only the installed payload should be used. Install a complete new GUI/helper package
 while the old GUI remains open to test its next-spawn mismatch refusal; restart into
 the newly installed GUI to restore the matching identity. Changing only a manifest
-cannot be repaired by restarting the same GUI. Quit before ordinary package upgrades. The staging producer
-must preserve native libraries, executable permissions and framework symlinks;
+cannot be repaired by restarting the same GUI. Check that refused startup leaves
+repair guidance in the cockpit and tray rather than silently reverting to Off;
+hidden startup must not force a modal/window when the tray is usable. Retry after
+restoring a matching payload and verify the notice clears. Quit before ordinary
+package upgrades. The staging producer must preserve native libraries, executable
+permissions and framework symlinks;
 verify the actual relocated helper, not merely the presence of its binary.
 
 ## Failure Signals

@@ -36,6 +36,7 @@ class const DesktopHome({
     final List<BridgeProcessLogEntry> crashLogs = switch (state.processState) {
       BridgeProcessCrashGiveUp(:final recentLogs) => recentLogs,
       BridgeProcessStopped() ||
+      BridgeProcessStartFailed() ||
       BridgeProcessLoginRequired() ||
       BridgeProcessStarting() ||
       BridgeProcessRunning() ||

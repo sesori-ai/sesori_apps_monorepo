@@ -6,3 +6,8 @@
 abstract interface class BridgeExecutablePathResolver() {
   String resolve();
 }
+
+/// An executable refusal with repair guidance safe to render outside local logs.
+abstract interface class BridgeExecutableResolutionException() implements Exception {
+  String get userMessage;
+}

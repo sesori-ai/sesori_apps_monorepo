@@ -372,6 +372,31 @@ void main() {
     expect(find.byKey(const Key("desktop-supervision-notice")), findsNothing);
   });
 
+  testWidgets("renders retained bundle repair guidance with explicit retry but no child log action", (tester) async {
+    when(bridgeControlCubit.startBridge).thenAnswer((_) async {});
+    const message =
+        "The bundled bridge is missing or does not match this app. Restart Sesori after an update. "
+        "If this persists, reinstall the matching desktop download.";
+    final failed = _state(processState: const BridgeProcessStartFailed(message: message));
+    final widget = app(state: failed);
+    final updates = StreamController<BridgeControlState>();
+    addTearDown(updates.close);
+    whenListen(bridgeControlCubit, updates.stream, initialState: failed);
+    await tester.pumpWidget(widget);
+
+    expect(find.byKey(const Key("desktop-supervision-notice")), findsOneWidget);
+    expect(find.text(message), findsOneWidget);
+    expect(find.byType(AlertDialog), findsNothing);
+    verifyNever(bridgeControlCubit.startBridge);
+    expect(find.text("Open Logs"), findsNothing);
+    await tester.tap(find.text("Retry"));
+    verify(bridgeControlCubit.startBridge).called(1);
+
+    updates.add(running);
+    await tester.pump();
+    expect(find.byKey(const Key("desktop-supervision-notice")), findsNothing);
+  });
+
   testWidgets("integrates crash recovery and logs above every destination", (tester) async {
     when(bridgeControlCubit.openLogs).thenAnswer((_) async {});
     when(bridgeControlCubit.recoverConnection).thenAnswer((_) async {});

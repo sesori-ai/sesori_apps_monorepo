@@ -441,7 +441,8 @@ class BridgeControlCubit._create({
     required BridgeProcessState processState,
     required BridgeProcessDesiredState desiredState,
   }) {
-    if (processState is BridgeProcessStopped && desiredState == BridgeProcessDesiredState.on) {
+    if ((processState is BridgeProcessStopped || processState is BridgeProcessStartFailed) &&
+        desiredState == BridgeProcessDesiredState.on) {
       return BridgeProcessDesiredState.on;
     }
     if (processState is BridgeProcessRunning && desiredState == BridgeProcessDesiredState.off) {
@@ -455,6 +456,7 @@ class BridgeControlCubit._create({
       BridgeProcessStopped() => "Bridge: Off",
       BridgeProcessLoginRequired() => "Bridge: Login required",
       BridgeProcessStarting() => "Bridge: Starting",
+      BridgeProcessStartFailed() => "Bridge: Repair required — open Sesori",
       BridgeProcessRunning() => _runningStatusLabel(status: status),
       BridgeProcessStopping() => "Bridge: Stopping",
       BridgeProcessContention() => "Bridge: Another bridge is running",

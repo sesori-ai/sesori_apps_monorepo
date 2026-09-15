@@ -14,6 +14,9 @@ final class const BridgeProcessLoginRequired() extends BridgeProcessState;
 /// The per-spawn control channel and child process are being created.
 final class const BridgeProcessStarting() extends BridgeProcessState;
 
+/// No helper could start because executable resolution requires user repair.
+final class const BridgeProcessStartFailed({required final String message}) extends BridgeProcessState;
+
 /// A supervised helper is currently running.
 final class const BridgeProcessRunning({required final int pid}) extends BridgeProcessState;
 

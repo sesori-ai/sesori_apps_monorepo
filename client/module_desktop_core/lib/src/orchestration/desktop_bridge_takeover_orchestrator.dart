@@ -158,6 +158,7 @@ class DesktopBridgeTakeoverOrchestrator.forTesting({
   static bool _isTerminalBeforeRegistration({required BridgeProcessState state}) {
     return switch (state) {
       BridgeProcessStopped() ||
+      BridgeProcessStartFailed() ||
       BridgeProcessLoginRequired() ||
       BridgeProcessContention() ||
       BridgeProcessCrashGiveUp() => true,
