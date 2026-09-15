@@ -70,7 +70,10 @@ Fixtures are not native/live/energy evidence or user approval.
 Initial architecture review approved only `b69a4857..c1e94b04`, before the user's
 content revision. The full original report/provenance are retained at
 `/tmp/rose-elephant-popover-architecture-initial{.md,-provenance.json}`.
-Final frozen-scope review of the revised composition is in progress.
+Final fresh-context architecture review **APPROVED** exact range
+`b69a4857289d30106bbd06af963437cdfa4699e7..c9a04e3dafc585abca55755ea3fb1cf767d512ec`,
+with no findings. Run `96ac46a1-5d5b-435f-8d71-0b5a73a51ba1`; full report:
+`/tmp/rose-elephant-popover-architecture-final.md`. Later commits only update docs.
 Native lifecycle, registration and OS log-launch checks remain in the final
 user testing handoff, not merge gates. The running bridge was never stopped,
 restarted or taken over. Earlier native platform-view/profile-build limits remain.
