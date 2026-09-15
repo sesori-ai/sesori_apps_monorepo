@@ -794,12 +794,12 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       );
       final startedPart = (started[1] as BridgeSseMessagePartUpdated).part;
       expect(startedPart.tool, "compact");
-      expect(startedPart.state.title, "Compacting context");
+      expect(startedPart.state.title, isNull);
       expect(startedPart.state.status, PluginToolStatus.running);
 
       expect(completed, hasLength(3));
       final completedPart = (completed[1] as BridgeSseMessagePartUpdated).part;
-      expect(completedPart.state.title, "Context compacted");
+      expect(completedPart.state.title, isNull);
       expect(completedPart.state.status, PluginToolStatus.completed);
       expect(
         completed.whereType<BridgeSseSessionCompacted>().single.sessionID,

@@ -263,21 +263,18 @@ final class PiHistoryMapper({
   PluginMessageWithParts mapRunningCompaction({required String sessionId, required String messageId}) => _mapCompaction(
     sessionId: sessionId,
     messageId: messageId,
-    title: "Compacting context",
     status: PluginToolStatus.running,
   );
 
   PluginMessageWithParts mapCompaction({required String sessionId, required String messageId}) => _mapCompaction(
     sessionId: sessionId,
     messageId: messageId,
-    title: "Context compacted",
     status: PluginToolStatus.completed,
   );
 
   PluginMessageWithParts _mapCompaction({
     required String sessionId,
     required String messageId,
-    required String title,
     required PluginToolStatus status,
   }) {
     final draft = _toolMessage(
@@ -285,7 +282,8 @@ final class PiHistoryMapper({
       messageId: messageId,
       timestamp: null,
       tool: "compact",
-      title: title,
+      // Status already conveys progress; compaction has no additional detail.
+      title: null,
       shellCommand: null,
       output: null,
       error: null,

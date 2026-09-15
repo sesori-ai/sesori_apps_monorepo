@@ -1685,7 +1685,7 @@ void main() {
     final runningPart = events.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(runningPart.messageID, runningMessage.info.id);
     expect(runningPart.state.status, PluginToolStatus.running);
-    expect(runningPart.state.title, "Compacting context");
+    expect(runningPart.state.title, isNull);
 
     process.emit(frame: {"type": "compaction_end", "aborted": false, "willRetry": false});
     await pump();
@@ -1694,7 +1694,7 @@ void main() {
     final completedPart = events.whereType<BridgeSseMessagePartUpdated>().last.part;
     expect(completedPart.id, runningPart.id);
     expect(completedPart.state.status, PluginToolStatus.completed);
-    expect(completedPart.state.title, "Context compacted");
+    expect(completedPart.state.title, isNull);
 
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(id: prompt["id"]! as String, command: "prompt");

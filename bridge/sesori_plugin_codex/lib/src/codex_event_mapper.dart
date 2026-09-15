@@ -559,7 +559,8 @@ class CodexEventMapper({
             itemId: itemId,
             tool: "compact",
             shellCommand: null,
-            title: completed ? "Context compacted" : "Compacting context",
+            // Status already conveys progress; compaction has no additional detail.
+            title: null,
             status: completed ? PluginToolStatus.completed : PluginToolStatus.running,
             time: time,
             attachments: const [],

@@ -822,13 +822,14 @@ void main() {
     expect(runningMessage.info.id, "pi:session:compaction:compaction:1");
     final runningPart = compacting.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(runningPart.state.status, PluginToolStatus.running);
-    expect(runningPart.state.title, "Compacting context");
+    expect(runningPart.tool, "compact");
+    expect(runningPart.state.title, isNull);
     expect(compacted.whereType<BridgeSseSessionCompacted>(), hasLength(1));
     expect(compacted.whereType<BridgeSseMessageUpdated>().single.info.id, runningMessage.info.id);
     final completedPart = compacted.whereType<BridgeSseMessagePartUpdated>().single.part;
     expect(completedPart.id, runningPart.id);
     expect(completedPart.state.status, PluginToolStatus.completed);
-    expect(completedPart.state.title, "Context compacted");
+    expect(completedPart.state.title, isNull);
     expect(settled.whereType<BridgeSseSessionIdle>(), hasLength(1));
   });
 
