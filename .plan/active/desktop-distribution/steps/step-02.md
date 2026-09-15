@@ -1,6 +1,6 @@
 # Step 2 — Native Distribution Qualification
 
-Status: **in progress**. This is evidence and qualification output, not a shipping
+Status: **done** — merged in PR #1487 as `833b989517`. This is build qualification, not a shipping
 claim. Source checkout began at `ef6f3d6548` (plan PR #1483), 2026-09-15.
 No product release, distribution signing, or cloud provisioning has been performed.
 Local build-tool ad-hoc signatures are not Developer ID/notarization evidence.
@@ -20,9 +20,9 @@ The official release manifests contain these exact pinned archives:
 |---|---|---|
 | macOS x64 | `stable/macos/flutter_macos_3.47.4-stable.zip` | Native release build, binary inventory, Sparkle API probe and relocated E2E passed in CI. |
 | macOS arm64 | `stable/macos/flutter_macos_arm64_3.47.4-stable.zip` | Native release build, binary inventory and relocated-helper integration passed; see evidence below. |
-| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Native build/inventory and relocated version check passed; awaiting the UTF-8-fixed diagnostic/E2E rerun. |
+| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Native build/inventory, UTF-8 diagnostics and relocated supervised E2E passed in CI. |
 | Linux x64 | `stable/linux/flutter_linux_3.47.4-stable.tar.xz` | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
-| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Native build/inventory and relocated version check passed; awaiting the UTF-8-fixed diagnostic/E2E rerun. |
+| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Native build/inventory, UTF-8 diagnostics and relocated supervised E2E passed in CI. |
 | Linux arm64 | No prepacked Flutter SDK archive in the pinned Linux manifest | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
 
 All listed archives map to the same framework revision and Dart version. A missing
@@ -215,8 +215,7 @@ or manual edit to generated files was needed.
 
 Private/local raw evidence lives under gitignored `build/desktop-qualification/`.
 No GUI was launched, no real account was used, and no distribution signing or
-notarization was attempted. Other native targets are not yet fully qualified;
-passing partial build evidence is recorded below.
+notarization was attempted. Subsequent native CI evidence is recorded below.
 
 ### First native CI attempt
 
@@ -256,8 +255,8 @@ relocated version `1.8.4`), but writing Flutter doctor's Unicode output with the
 Windows cp1252 default failed before E2E. Image identities: x64 `win25-vs2026` /
 `20260907.229.1`; ARM64 `win11-arm64` / `20260906.161.1`. Artifact/environment writes
 now use explicit UTF-8; a regression test reproduced that exact failure before the
-fix and passes afterward. Windows E2E still needs its corrected native rerun. Do not
-promote partial inventory evidence to a fully passed Windows qualification row.
+fix and passes afterward. That run did not reach Windows E2E; its completion is
+recorded in the final matrix below.
 
 The same run also passed **macOS x64** on macOS 26.6.1/Xcode 26.6, image `macos26` /
 `20260824.0517.1`: four GUI native binaries, three x64 helper binaries, Sparkle API
@@ -265,6 +264,23 @@ typecheck and one relocated supervised E2E passed. Both Mac and both Linux build
 qualification rows are complete for that run. The last Mac job was allowed to finish
 before pushing the prepared UTF-8 fix, preserving its native evidence rather than
 cancelling it in another CI wave.
+
+### Final six-target build matrix
+
+[Run 34964679653](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34964679653)
+passed all six native rows at PR head `fce1c467b8e285a6415f62201dee66a12e8d6d99`.
+Every inventory reports merge checkout `185bc348b1a4b376cf05a0042aff6b38a316f57b`;
+every relocated helper reports `1.8.4` and passes the one isolated supervised E2E.
+Both Mac rows also pass the Sparkle public API probe. Windows x64/ARM64 each have
+13 GUI native artifacts and two helper binaries; Windows ARM64 is native Windows
+11 build 26200, while x64 is a Windows Server 2025 build host, not interactive QA.
+
+Windows inventories report `trackedSourceDirty=true`; the original inspector merged
+Git stderr into stdout, so this does not distinguish newline warnings from actual
+changes. Step 3 separates Git diagnostics and captures post-build diffs. Do not use
+that original dirty bit to claim a clean reproducible release. Signing, actual GUI
+operation, minimum-OS execution, real harnesses and downloaded-artifact upgrades
+remain separate unverified release gates.
 
 ## macOS updater API and selected topology
 
@@ -310,10 +326,11 @@ or notary access. No Windows signing, Sparkle update-key, or GCS publication ide
 was established by this inspection. The existing Google Play credential is not a
 GCS publishing credential and must not be repurposed implicitly.
 
-Remaining native Windows/macOS checks, final macOS entitlements, updater signature tests,
+Remaining interactive Windows/macOS checks, final macOS entitlements, updater signature tests,
 GCS permissions and clean-host package/runtime dependency qualification remain
 outstanding. Ubuntu 24.04 and Debian 13 remain nominated DEB baselines; the supported
 Fedora release and CPU/desktop-environment mapping remain a Linux release entry gate.
 A successful build on one runner does not freeze those runtime baselines. The six
 native application targets remain required, with only the approved installer-launcher
-exception. Step 2 stays in progress while the native build matrix is pending.
+exception. The native build qualification is complete; these later release gates
+remain open and do not prevent step 3's unsigned bundle identity work.

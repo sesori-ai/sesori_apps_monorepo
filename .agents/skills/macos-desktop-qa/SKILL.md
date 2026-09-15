@@ -119,8 +119,11 @@ builds resolve this exact host bundle:
 (cd client/desktop && flutter build macos --debug)
 ```
 
-Use `flutter build macos --release` when validating release-mode behavior. A
-successful build is not GUI evidence. Locate and inspect the actual product:
+For release-mode behavior, use the identity-bound staging procedure in
+`client/desktop/tool/README.md`. Raw release builds cannot use a repository helper
+or `SESORI_DESKTOP_BRIDGE_PATH`; debug/profile builds retain those development paths.
+Staging is unsigned, so signed-artifact QA additionally needs platform packaging.
+A successful build is not GUI evidence. The following inspects the debug product:
 
 ```bash
 app="$PWD/client/desktop/build/macos/Build/Products/Debug/Sesori.app"

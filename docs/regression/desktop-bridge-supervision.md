@@ -37,8 +37,14 @@ and keep native close/quit behavior safe.
   working directory. Before spawning, the development resolver verifies the
   helper exists: a missing repository bundle reports `cd bridge/app && make
   build-host`, while a missing explicit override identifies
-  `SESORI_DESKTOP_BRIDGE_PATH`. Packaged-layout resolution remains a
-  distribution-plan concern. The supervised helper receives a login-shell-derived executable
+  `SESORI_DESKTOP_BRIDGE_PATH`. Those overrides apply only to debug/profile
+  builds. Release builds resolve the complete bundled helper from the installed
+  GUI executable, independent of cwd, repository paths and environment overrides.
+  Every spawn checks its immutable version/build/source/OS/CPU identity against
+  the running GUI. Missing or mismatched payloads refuse startup with restart/
+  reinstall guidance, including a Linux package replacement while the old GUI
+  remains open. The identity check is not signature verification.
+  The supervised helper receives a login-shell-derived executable
   search path, so harnesses installed outside launchd's default PATH remain
   discoverable after autostart. Only PATH is derived for the helper; shell
   variables are not imported or persisted. If the login-shell probe fails, the
@@ -156,7 +162,13 @@ both clean and failed helper teardown before Quit or sign-out. Exercise Take
 Over from local contention and relay displacement, and verify one stop-and-
 respawn rather than a restart war. Quit while desired On, relaunch, and verify
 last-On restoration. Kill the helper at different handshake phases and inspect
-the status and bounded recent output.
+the status and bounded recent output. For packaged helper resolution, vary
+installed paths containing spaces, an unrelated cwd and a development override;
+only the installed payload should be used. Replace the helper manifest between
+starts to model a package-manager upgrade, then restart the GUI to use the new
+matching package. Quit before ordinary package upgrades. The staging producer
+must preserve native libraries, executable permissions and framework symlinks;
+verify the actual relocated helper, not merely the presence of its binary.
 
 ## Failure Signals
 
@@ -172,6 +184,9 @@ the status and bounded recent output.
   or bridge restore begins before the control dispatcher owns its event stream.
   Quit while desired On unexpectedly persists Off, or an explicit Take Over is
   missing when local or relay ownership is lost.
+- A release uses an arbitrary development/PATH helper, loses its native assets,
+  accepts mismatched GUI/helper identities, caches a manifest across package
+  replacement, or hides the repair/restart explanation when startup is refused.
 - Repeated launch-at-login enables create duplicate registrations, disabling
   leaves a stale login item, a login-launched development build cannot find its
   repository helper or its PATH-installed harnesses, an unbuilt repository
@@ -247,8 +262,10 @@ the status and bounded recent output.
 - Login registration is owned by the current desktop executable path. A
   development build moved or rebuilt at a different path must be re-enabled;
   the dev resolver can locate the repository helper from an executable inside
-  the checkout even when launchd changes the working directory. Packaged-path
-  migration belongs to the later desktop-distribution plan.
+  the checkout even when launchd changes the working directory. Release helpers
+  live at `Contents/Helpers/bridge/` on macOS and beside the GUI in `bridge/` on
+  Windows/Linux, retaining the CLI `bin/`–`lib/` layout. Signed installation and
+  real GUI/upgrade evidence remain distribution release gates.
 
 ## Sources
 

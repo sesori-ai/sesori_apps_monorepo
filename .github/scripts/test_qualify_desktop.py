@@ -119,8 +119,8 @@ class NativeInventoryTest(unittest.TestCase):
             root = Path(directory)
             output = root / "evidence"
             output.mkdir()
-            gui = root / "client/desktop/build/windows/x64/runner/Release"
-            helper = root / "bridge/app/build/cli/bundle"
+            gui = root / "staged/bundle"
+            helper = gui / "bridge"
             gui.mkdir(parents=True)
             (helper / "bin").mkdir(parents=True)
             (helper / "lib").mkdir()
@@ -129,7 +129,7 @@ class NativeInventoryTest(unittest.TestCase):
             (root / ".tool-versions").write_text("flutter 3.47.4-stable\n", encoding="utf-8")
             doctor = "√ Flutter SDK — diagnostics 雪\n"
 
-            def fake_run(*, command: list[str], cwd: Path = root) -> str:
+            def fake_run(*, command: list[str], cwd: Path = root, merge_stderr: bool = True) -> str:
                 if command[0].endswith("bridge.exe"):
                     return "1.8.4\n"
                 if command == ["flutter", "--version", "--machine"]:
@@ -139,6 +139,7 @@ class NativeInventoryTest(unittest.TestCase):
                 if command[:2] == ["git", "rev-parse"]:
                     return "test-sha\n"
                 if command[:2] == ["git", "status"]:
+                    self.assertFalse(merge_stderr)
                     return ""
                 self.fail(f"Unexpected command: {command}")
 
@@ -148,9 +149,14 @@ class NativeInventoryTest(unittest.TestCase):
                  patch.dict(qualification.os.environ, {"GITHUB_ENV": str(output / "github-env")}), \
                  patch("io.text_encoding", side_effect=lambda encoding, *args: encoding or "cp1252"), \
                  patch.object(qualification.sys, "stdout", new_callable=StringIO):
-                qualification.inspect(target_os="windows", arch="x64")
+                qualification.inspect(target_os="windows", arch="x64", gui=gui)
             self.assertEqual((output / "flutter-doctor.log").read_text(encoding="utf-8"), doctor)
             self.assertIn("SESORI_DESKTOP_BRIDGE_PATH=", (output / "github-env").read_text(encoding="utf-8"))
+
+    def test_machine_output_can_keep_diagnostics_on_stderr(self) -> None:
+        with patch.object(qualification.subprocess, "check_output", return_value="") as command:
+            self.assertEqual(qualification.run(command=["git", "status"], merge_stderr=False), "")
+        self.assertIsNone(command.call_args.kwargs["stderr"])
 
     def test_bootstrap_cannot_replace_local_sdk(self) -> None:
         with patch.dict(qualification.os.environ, {"GITHUB_ACTIONS": "false"}):

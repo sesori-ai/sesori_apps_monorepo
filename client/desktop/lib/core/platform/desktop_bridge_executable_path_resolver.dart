@@ -1,6 +1,7 @@
+import "dart:ffi";
 import "dart:io";
 
-import "package:flutter/foundation.dart" show visibleForTesting;
+import "package:flutter/foundation.dart" show kReleaseMode, visibleForTesting;
 import "package:injectable/injectable.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -27,29 +28,50 @@ final class const DesktopBridgeExecutableNotFoundException({
   }
 }
 
-/// Development bridge-path policy for the desktop shell.
-///
-/// An explicit `SESORI_DESKTOP_BRIDGE_PATH` wins. Otherwise the repository
-/// host bundle produced by `cd bridge/app && make build-host` is resolved from the
-/// desktop package location. The executable location is used as a fallback
-/// because launchd starts a LaunchAgent with `/` as its working directory.
-/// Packaged-layout resolution belongs to the distribution plan and will
-/// replace this repository-relative default.
+/// Failed packaged-helper validation; the original error remains available for
+/// diagnostics without rendering potentially malformed manifest contents.
+final class const DesktopBridgeBundleException({
+  required final String bundlePath,
+  required final Object innerError,
+}) implements Exception {
+  @override
+  String toString() =>
+      "DesktopBridgeBundleException: invalid or mismatched helper bundle at "
+      '"$bundlePath" (${innerError.runtimeType.toString()}). Restart Sesori after an update. '
+      "If this persists, reinstall the matching desktop download.";
+}
+
+@visibleForTesting
+typedef DesktopBridgeManifestReader = String Function({required String manifestPath});
+
+/// Release helpers are bound to the running GUI's immutable build identity.
+/// Debug/profile builds retain the explicit override and repository layout.
+/// Validation happens on every resolve, including after an on-disk Linux upgrade.
 @LazySingleton(as: BridgeExecutablePathResolver)
 class DesktopBridgeExecutablePathResolver.forTesting({
   required final Map<String, String> _environment,
   required final String _workingDirectory,
   required final String _resolvedExecutable,
-  required final bool _isWindows,
+  required final DesktopBundleOs _os,
+  required final DesktopBundleArchitecture _architecture,
+  required final bool _isReleaseMode,
+  required final String? _compiledIdentityJson,
   required final DesktopBridgeExecutableExists _executableExists,
+  required final DesktopBridgeManifestReader _readManifest,
 }) implements BridgeExecutablePathResolver {
   new()
     : this.forTesting(
         environment: Platform.environment,
         workingDirectory: Directory.current.path,
         resolvedExecutable: Platform.resolvedExecutable,
-        isWindows: Platform.isWindows,
+        os: DesktopBundleOs.values.byName(Platform.operatingSystem),
+        architecture: DesktopBundleArchitecture.fromAbi(abi: Abi.current()),
+        isReleaseMode: kReleaseMode,
+        compiledIdentityJson: const bool.hasEnvironment(DesktopBundleIdentity.defineName)
+            ? const String.fromEnvironment(DesktopBundleIdentity.defineName)
+            : null,
         executableExists: ({required String executablePath}) => File(executablePath).existsSync(),
+        readManifest: ({required String manifestPath}) => File(manifestPath).readAsStringSync(),
       );
 
   @visibleForTesting
@@ -58,7 +80,9 @@ class DesktopBridgeExecutablePathResolver.forTesting({
   static const String environmentVariable = "SESORI_DESKTOP_BRIDGE_PATH";
 
   @override
-  String resolve() {
+  String resolve() => _isReleaseMode ? _resolvePackaged() : _resolveDevelopment();
+
+  String _resolveDevelopment() {
     final String? configuredPath = _environment[environmentVariable]?.trim();
     final bool usesConfiguredPath;
     final String executablePath;
@@ -85,6 +109,43 @@ class DesktopBridgeExecutablePathResolver.forTesting({
     return executablePath;
   }
 
+  String _resolvePackaged() {
+    final String executableDirectory = path.dirname(_resolvedExecutable);
+    final String bundlePath = _os == DesktopBundleOs.macos
+        ? path.join(path.dirname(executableDirectory), "Helpers", "bridge")
+        : path.join(executableDirectory, "bridge");
+    try {
+      final String? compiledIdentityJson = _compiledIdentityJson;
+      if (compiledIdentityJson == null) {
+        throw StateError("Release GUI is missing its compiled desktop bundle identity");
+      }
+      final DesktopBundleIdentity expected = DesktopBundleIdentity.decode(encoded: compiledIdentityJson);
+      final DesktopBundleIdentity actual = DesktopBundleIdentity.decode(
+        encoded: _readManifest(manifestPath: path.join(bundlePath, DesktopBundleIdentity.manifestName)),
+      );
+      if (actual != expected || expected.os != _os || expected.architecture != _architecture) {
+        throw StateError(
+          "Desktop bundle identity mismatch: GUI=${expected.encode()}, helper=${actual.encode()}, "
+          "host=${_os.name}/${_architecture.name}",
+        );
+      }
+      final String executablePath = path.join(
+        bundlePath,
+        "bin",
+        _os == DesktopBundleOs.windows ? "bridge.exe" : "bridge",
+      );
+      if (!_executableExists(executablePath: executablePath)) {
+        throw FileSystemException("Packaged bridge executable is missing", executablePath);
+      }
+      return executablePath;
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        DesktopBridgeBundleException(bundlePath: bundlePath, innerError: error),
+        stackTrace,
+      );
+    }
+  }
+
   String _bridgePath({required String desktopPackageDirectory}) {
     return path.normalize(
       path.join(
@@ -97,7 +158,7 @@ class DesktopBridgeExecutablePathResolver.forTesting({
         "cli",
         "bundle",
         "bin",
-        _isWindows ? "bridge.exe" : "bridge",
+        _os == DesktopBundleOs.windows ? "bridge.exe" : "bridge",
       ),
     );
   }

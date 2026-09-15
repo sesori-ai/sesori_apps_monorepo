@@ -4,7 +4,7 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — plan PR #1483 merged; step 2 qualification in progress.
+- **Status:** Active — steps 1–2 merged; step 3 bundle identity in progress.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -77,14 +77,14 @@ changing user intent, adding material infrastructure, or reducing the matrix.
 
 ## Current behavior and code anchors
 
-Verified against the planning checkout, not inferred from the superseded proposal:
+Verified against the implementation checkout, not inferred from the superseded proposal:
 
 - `client/desktop` is the thin Flutter shell; `client/module_desktop_core` owns
   supervision and lifecycle policy. Shared cockpit logic remains in `module_app_ui`
   and `module_core`; desktop never imports bridge-workspace implementation code.
-- `DesktopBridgeExecutablePathResolver` only supports development: an explicit
-  `SESORI_DESKTOP_BRIDGE_PATH` or the repository's `bridge/app/build/cli/bundle/bin`
-  path. Packaged startup is not implemented.
+- `DesktopBridgeExecutablePathResolver` binds release helpers to the GUI's compiled
+  `DesktopBundleIdentity`, resolving only from the installed executable. Debug/profile
+  retains `SESORI_DESKTOP_BRIDGE_PATH` and the repository helper path.
 - `BridgeControlCubit.quit()` already locks controls, cancels pending restore, awaits
   `BridgeProcessService.stop()`, then disposes tray/window state and terminates.
   Failed helper stop leaves the app alive. Quit preserves last-On/Off intent.
@@ -93,10 +93,12 @@ Verified against the planning checkout, not inferred from the superseded proposa
   packaged quit/update behavior therefore require real testing, not just new archives.
 - No desktop updater implementation exists; `AppUpdater` references in module
   instructions describe an intended seam, not delivered code.
-- Desktop pubspec is `0.1.0`; mobile and bridge are `1.8.4`. Version synchronization
-  and release guards currently omit desktop.
-- `desktop-ci.yml` analyzes/tests and builds on three host runners. It does not
-  package, sign, publish, or prove six native desktop targets.
+- Desktop, mobile and bridge product semver is `1.8.4`. `tool/sync_versions.dart`
+  includes desktop while preserving its own build suffix; no desktop publication
+  workflow exists yet.
+- `desktop-ci.yml` remains source CI. The separate targeted/manual qualification
+  workflow passed all six native rows in step 2 and now exercises the unsigned
+  identity-bound staging producer. Neither workflow signs or publishes products.
 - `_reusable-bridge-build.yml` already builds six bridge archives and signs macOS
   executables plus bundled dylibs, including verification after extraction. It does
   not establish hardened-runtime/notarized desktop-bundle correctness. Its Linux
@@ -126,8 +128,12 @@ compile the expected identity into the GUI. The pure-Dart typed model is
 `client/module_desktop_core/lib/src/foundation/models/desktop_bundle_identity.dart`,
 with generated JSON serialization; reuse suitable existing closed OS/CPU types.
 `client/desktop/tool/stage_desktop_bundle.dart` is the build-time producer: it
-serializes that model into `desktop-bundle.json` at the helper bundle root and
-supplies the same identity as Flutter build defines. The existing shell
+builds both components from one committed checkout, serializes that model into
+`desktop-bundle.json` at the helper bundle root, and supplies the same identity through
+an explicit Flutter dotenv build-define file. It enforces dependency locks, preserves
+native assets/symlinks and records host-generated Git changes. No suitable existing
+client OS/CPU set covers these targets; the closed desktop-only enums stay beside
+the model. The existing shell
 `DesktopBridgeExecutablePathResolver` reads and validates the manifest against the
 GUI's compiled identity before returning a helper path to the process API. Its
 existing development branch remains separately testable. Export the model from
