@@ -1,9 +1,11 @@
 import AppKit
+import ApplicationServices
 import CoreGraphics
 
 // Read-only native window evidence for one process launched by the CI driver.
 let screenCount = NSScreen.screens.count
 print("SCREEN_COUNT \(screenCount)")
+print("ACCESSIBILITY_TRUSTED \(AXIsProcessTrusted())")
 guard screenCount > 0 else { exit(2) }
 if CommandLine.arguments.count == 1 { exit(0) }
 let processID = Int32(CommandLine.arguments[1])!

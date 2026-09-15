@@ -279,6 +279,24 @@ analyzer passed after those fixture-only fixes. Logs are `probe-*.log` under
 The fixture is Developer-ID-signed but not notarized; its native Keychain evidence
 must remain separate from authentication/restoration through the actual product.
 
+Run [35014995494](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35014995494)
+at `8fb5d33e4c6ecc0161d31838f0bb0875794c85f6` passed the automated commands on both
+native Macs, producing 1.8.4/build 15 with empty source patches. Notarization,
+staples, seven-binary inventories, downloaded payload hashes and helper E2E still
+passed. Both signed fixtures passed synthetic Keychain write/read/update, a second-
+process persistence check, delete, login registration and owned-file access.
+Both hosts reported one screen and a live 720×620 app window.
+
+**Visual review did not pass:** both captured app windows contained black content.
+Do not equate the successful process/window assertions with a rendered login screen.
+The local-notifications dependency requests Darwin permissions by default, and the
+current app awaits notification initialization before `runApp`; a pending system
+prompt is one hypothesis, not yet a confirmed cause. Add full-desktop/native-stack
+capture and LaunchServices launching. The `macos-gui-probe` mode reuses a selected
+trusted package run without rebuilding, re-signing or rerunning unchanged helper/
+Keychain checks. It checks the expected publisher and Gatekeeper before launch and
+records the sealed source identity. No signing secrets are supplied to this mode.
+
 ## Verification and boundaries
 
 Preflight tooling: actionlint and workflow-route/credential-scope inspection; actual

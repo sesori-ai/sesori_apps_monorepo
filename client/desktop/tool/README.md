@@ -63,7 +63,7 @@ mounted image. Framework symlinks and the complete helper bin/lib layout survive
 both formats. Every extracted native binary, the app and the DMG are verified;
 Gatekeeper assessment and extracted-helper E2E must pass before package upload.
 
-Only the explicit manual Mac job consumes `MACOS_CERT_P12_BASE64`,
+Only the explicit preflight/packaging signing step consumes `MACOS_CERT_P12_BASE64`,
 `MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`,
 `APPLE_APP_SPECIFIC_PASSWORD`, and the `APPLE_TEAM_ID` repository variable. Signing
 uses the established Developer ID publisher. Temporary certificate/Keychain/profile
@@ -83,6 +83,17 @@ configuration across two launches, login-registration writes/removal and owned f
 access. That fixture never starts bridge/session services and is not uploaded as a
 product. Neither probe may run on a local developer host; existing app/bridge/login
 registration state causes refusal rather than takeover.
+
+For GUI-only diagnostics, set `PACKAGING_RUN` to a trusted successful packaging run
+whose private artifacts are still available, then dispatch the credential-free
+replay. It checks the publisher and Gatekeeper, records the sealed source identity,
+and captures window/full-desktop images and a native process sample. It does not
+rebuild, re-sign or rerun unchanged Keychain/helper probes:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-gui-probe -f packaging_run="$PACKAGING_RUN"
+```
 
 This pipeline does not publish a release/feed or prove installed GUI authentication,
 Keychain restoration, TCC, autostart, minimum-OS operation, updates or public-release

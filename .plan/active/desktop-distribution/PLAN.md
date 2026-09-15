@@ -35,6 +35,19 @@ first-run behavior. Follow the parent's updated Gate C routing: shell/navigation
 C2/C5 move to the UX step-12 checklist; the other parent sections remain applicable
 on a build after UX step 7. A merged UX plan is not passing coverage evidence.
 
+### Unattended execution direction — 2026-09-15
+
+The user directed completing the implementation series without further questions:
+never stop the running bridge (including indirectly through the local desktop),
+run every safe autonomous check, and collect checks needing user help for the
+final handoff. Fresh native CI is approved for both Mac QA targets. Do not wait
+for human QA, unavailable signing/hosting access or interactive permission decisions
+before continuing independent approved implementation. Record those limits rather
+than inventing credentials, provisioning infrastructure or claiming unexecuted tests
+passed. Platform ship gates continue to constrain public distribution, not progress
+through the remaining implementation PRs. Public release and plan retirement still
+require the recorded final matrix or an explicit end-of-plan acceptance of its limits.
+
 ## Decisions aligned with the user
 
 | ID | Decision |

@@ -11,8 +11,11 @@ on:
       mode:
         description: 'Qualification mode (no product publication)'
         type: choice
-        options: [native-builds, macos-signing-preflight, macos-packaging]
+        options: [native-builds, macos-signing-preflight, macos-packaging, macos-gui-probe]
         default: native-builds
+      packaging_run:
+        description: 'Successful trusted packaging run to inspect (macos-gui-probe only)'
+        type: string
   pull_request:
     paths:
       - '.github/workflows/desktop-qualification.yml'
@@ -42,7 +45,10 @@ jobs:
     needs: tooling
     if: >-
       github.event_name == 'workflow_dispatch' &&
-      (inputs.mode == 'macos-signing-preflight' || inputs.mode == 'macos-packaging')
+      (inputs.mode == 'macos-signing-preflight' || inputs.mode == 'macos-packaging' || inputs.mode == 'macos-gui-probe')
+    permissions:
+      contents: read
+      actions: read
     timeout-minutes: ${{ inputs.mode == 'macos-packaging' && 75 || 10 }}
     strategy:
       fail-fast: false
@@ -93,7 +99,34 @@ jobs:
             2>&1 | tee build/desktop-qualification/platform-probe-build.log
           ditto client/desktop/build/macos/Build/Products/Release/Sesori.app build/desktop-platform-probe/Sesori.app
 
+      - name: Validate GUI-only artifact selection
+        if: inputs.mode == 'macos-gui-probe'
+        env:
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+        run: |
+          [[ "$PACKAGING_RUN" =~ ^[1-9][0-9]*$ ]] || { echo 'Select a trusted successful packaging run'; exit 1; }
+
+      - uses: actions/download-artifact@v4
+        if: inputs.mode == 'macos-gui-probe'
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.packaging_run }}
+          name: desktop-macos-packages-${{ matrix.arch }}
+          path: build/desktop-gui-download
+
+      - name: Re-probe the existing signed GUI without rebuilding or signing
+        if: inputs.mode == 'macos-gui-probe'
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-macos-packaging
+          ditto -xk 'build/desktop-gui-download/Sesori-macos-${{ matrix.arch }}.zip' build/desktop-gui-download/expanded
+          python .github/scripts/probe_desktop_macos.py \
+            --app build/desktop-gui-download/expanded/Sesori.app \
+            --output build/desktop-macos-packaging/platform-probe \
+            2>&1 | tee build/desktop-macos-packaging/platform-probe.log
+
       - name: Use existing credentials for the selected private operation
+        if: inputs.mode != 'macos-gui-probe'
         env:
           MACOS_DISTRIBUTION_MODE: ${{ inputs.mode }}
           TARGET_ARCH: ${{ matrix.arch }}
@@ -138,7 +171,7 @@ jobs:
           retention-days: 14
 
       - name: Upload packaging diagnostics without private signing material
-        if: always() && inputs.mode == 'macos-packaging'
+        if: always() && (inputs.mode == 'macos-packaging' || inputs.mode == 'macos-gui-probe')
         uses: actions/upload-artifact@v4
         with:
           name: desktop-macos-evidence-${{ matrix.arch }}
