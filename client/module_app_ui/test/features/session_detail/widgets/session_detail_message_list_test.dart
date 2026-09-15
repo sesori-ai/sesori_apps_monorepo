@@ -12,7 +12,8 @@ class const _SessionDetailMessageListHarness({
   super.key,
   required final List<MessageWithParts> initialMessages,
   required final Map<String, String> initialStreamingText,
-  final Set<String> initialLocalSubmissionIds = const {},
+  final List<QueuedSessionSubmission> initialQueuedMessages = const [],
+  final List<QueuedSessionPrompt> initialBridgeQueuedPrompts = const [],
   final String? initialRetryErrorMessage,
   final Future<void> Function()? onLoadOlderMessages,
   final TargetPlatform? platform,
@@ -25,15 +26,21 @@ class const _SessionDetailMessageListHarness({
 class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessageListHarness> {
   late List<MessageWithParts> _messages;
   late Map<String, String> _streamingText;
+  late List<QueuedSessionSubmission> _queuedMessages;
+  late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
   QueuedSessionSubmission? _sendingSubmission;
+  final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
   bool _isLoadingOlderMessages = false;
+  int? lastCancelledQueuedMessageIndex;
 
   @override
   void initState() {
     super.initState();
     _messages = widget.initialMessages;
     _streamingText = widget.initialStreamingText;
+    _queuedMessages = widget.initialQueuedMessages;
+    _bridgeQueuedPrompts = widget.initialBridgeQueuedPrompts;
     _retryErrorMessage = widget.initialRetryErrorMessage;
   }
 
@@ -68,8 +75,28 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
     setState(() => _retryErrorMessage = message);
   }
 
+  void cancelQueuedMessage(int index) {
+    lastCancelledQueuedMessageIndex = index;
+    setState(() => _queuedMessages = [..._queuedMessages]..removeAt(index));
+  }
+
+  void enqueueSubmission(QueuedSessionSubmission submission) {
+    setState(() => _queuedMessages = [..._queuedMessages, submission]);
+  }
+
   void sendDirectly(QueuedSessionSubmission submission) {
     setState(() => _sendingSubmission = submission);
+  }
+
+  void beginSending() {
+    setState(() {
+      _sendingSubmission = _queuedMessages.first;
+      _queuedMessages = _queuedMessages.sublist(1);
+    });
+  }
+
+  void replaceFirstQueuedSubmission(QueuedSessionSubmission submission) {
+    setState(() => _queuedMessages = [submission, ..._queuedMessages.skip(1)]);
   }
 
   /// Mirrors the cubit's atomic queued→sent swap: the delivered user message
@@ -81,6 +108,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   }) {
     setState(() {
       _messages = [..._messages]..insert(insertionIndex, message);
+      _bridgeQueuedPrompts = [..._bridgeQueuedPrompts.where((prompt) => prompt.id != promptId)];
     });
   }
 
@@ -97,16 +125,24 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       supportedLocales: AppLocalizations.supportedLocales,
       home: Scaffold(
         body: SessionDetailMessageList(
+          bridgeQueuedPrompts: _bridgeQueuedPrompts,
+          onCancelBridgeQueuedPrompt: (promptId) {
+            cancelledBridgePromptIds.add(promptId);
+            setState(
+              () => _bridgeQueuedPrompts = [..._bridgeQueuedPrompts.where((prompt) => prompt.id != promptId)],
+            );
+          },
           projectId: null,
           onLoadOlderMessages: widget.onLoadOlderMessages,
           messages: _messages,
           sendingSubmission: _sendingSubmission,
-          localSubmissionIds: {...widget.initialLocalSubmissionIds, ?_sendingSubmission?.promptId},
+          queuedMessages: _queuedMessages,
           isLoadingOlderMessages: _isLoadingOlderMessages,
           streamingText: _streamingText,
           children: const <Session>[],
           childStatuses: const <String, SessionStatus>{},
           retryErrorMessage: _retryErrorMessage,
+          onCancelQueuedMessage: cancelQueuedMessage,
         ),
       ),
     );
@@ -254,6 +290,134 @@ void main() {
     expect(find.text("Future sender"), findsOneWidget);
   });
 
+  testWidgets("renders bridge-queued prompts as cancellable queued bubbles", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 1, createdAt: 100),
+          QueuedSessionPrompt(id: "prm_2", text: "src", command: "review", attachmentCount: 0, createdAt: 200),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.text("1 image"), findsOneWidget);
+    expect(find.text("/review src"), findsOneWidget);
+    expect(find.text("Cancel"), findsNWidgets(2));
+
+    await tester.tap(
+      find.descendant(
+        of: find.ancestor(of: find.text("steer it"), matching: find.byType(QueuedMessageBubble)),
+        matching: find.text("Cancel"),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState?.cancelledBridgePromptIds, ["prm_1"]);
+    expect(find.text("steer it"), findsNothing);
+    expect(find.text("/review src"), findsOneWidget);
+  });
+
+  testWidgets("renders an unavailable local command as removable instead of queued", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: const [],
+        initialStreamingText: const {},
+        initialQueuedMessages: const [
+          QueuedSessionSubmission.unavailableCommand(
+            promptId: "prm_unavailable",
+            text: "src",
+            command: "review",
+            agent: "coder",
+            agentModel: null,
+          ),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text("/review src"), findsOneWidget);
+    expect(find.text("Command unavailable"), findsOneWidget);
+    expect(find.text("Queued command"), findsNothing);
+    expect(find.widgetWithText(TextButton, "Remove"), findsOneWidget);
+
+    await tester.tap(find.widgetWithText(TextButton, "Remove"));
+    await tester.pumpAndSettle();
+
+    expect(harnessKey.currentState?.lastCancelledQueuedMessageIndex, 0);
+    expect(find.text("/review src"), findsNothing);
+  });
+
+  testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [_message(messageId: "assistant-1", role: "assistant", text: "working on it")],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsOneWidget);
+
+    harnessKey.currentState?.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(messageId: "replay-user-1", role: "user", text: "steer it", promptId: "prm_1"),
+      insertionIndex: 1,
+    );
+
+    // The prompt's text must stay on screen through every frame of the
+    // handoff — the row transforms in place, it never blinks out.
+    await tester.pump();
+    expect(find.text("steer it"), findsOneWidget);
+    await tester.pump();
+    expect(find.text("steer it"), findsOneWidget);
+    await tester.pumpAndSettle();
+    expect(find.text("steer it"), findsOneWidget);
+    expect(find.byType(QueuedMessageBubble), findsNothing);
+    expect(find.byType(UserMessageCard), findsOneWidget);
+  });
+
+  testWidgets("a moved delivered prompt keeps its row state", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "assistant-1", role: "assistant", text: "First reply"),
+          _message(messageId: "assistant-2", role: "assistant", text: "Second reply"),
+        ],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 100),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+    final promptRow = find.ancestor(of: find.text("steer it"), matching: find.byType(AnimatedSize));
+    final before = tester.state(promptRow);
+
+    harnessKey.currentState!.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(messageId: "delivered", role: "user", text: "steer it", promptId: "prm_1"),
+      insertionIndex: 1,
+    );
+    await tester.pump();
+
+    expect(tester.state(promptRow), same(before));
+  });
+
   testWidgets("moving a delivered bridge prompt through assistant rows keeps every row unique", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -265,6 +429,9 @@ void main() {
           _message(messageId: "assistant-after-2", role: "assistant", text: "Second reply", createdAtMs: 400),
         ],
         initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "steer it", command: null, attachmentCount: 0, createdAt: 200),
+        ],
       ),
     );
     await tester.pumpAndSettle();
@@ -710,29 +877,158 @@ void main() {
     expect(_position(tester).pixels, 0);
   });
 
-  testWidgets("promoting an existing local submission does not reattach a detached reader", (tester) async {
+  testWidgets("canceling a queued row while detached removes its frozen row", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
+      text: "Queued while reading history",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
         key: harnessKey,
         initialMessages: _userMessages(count: 12),
         initialStreamingText: const {},
-        initialLocalSubmissionIds: const {"prompt-1"},
+        initialQueuedMessages: const [submission],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_listViewKey),
+      delta: const Offset(0, 30),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsOneWidget);
+    await tester.tap(find.widgetWithText(TextButton, "Cancel"));
+    await _pumpListUpdate(tester);
+
+    expect(harnessKey.currentState!.lastCancelledQueuedMessageIndex, 0);
+    expect(find.text("Queued while reading history"), findsNothing);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("submitting while detached returns to latest and shows the inline row", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
+      text: "New prompt from history",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
       ),
     );
     await tester.pumpAndSettle();
     await _detachViewport(tester);
-    harnessKey.currentState!.sendDirectly(
-      const QueuedSessionSubmission.text(
-        promptId: "prompt-1",
-        text: "Previously queued",
-        inputMode: ComposerInputMode.typed,
-        attachments: [],
-        agent: null,
-        agentModel: null,
+
+    harnessKey.currentState!.enqueueSubmission(submission);
+    await tester.pumpAndSettle();
+
+    expect(find.text("New prompt from history"), findsOneWidget);
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+    expect(_position(tester).pixels, 0);
+  });
+
+  testWidgets("promotion to sending stays live without reattaching a detached reader", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const submission = QueuedSessionSubmission.text(
+      promptId: "prompt-1",
+      text: "Queued before reconnect",
+      inputMode: ComposerInputMode.typed,
+      attachments: [],
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        initialQueuedMessages: const [submission],
       ),
     );
+    await tester.pumpAndSettle();
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_listViewKey),
+      delta: const Offset(0, 30),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    harnessKey.currentState!.beginSending();
     await _pumpListUpdate(tester);
+
+    expect(find.text("Sending"), findsOneWidget);
+    // The outgoing status rail cross-fades out; settle it before asserting
+    // the cancel affordance is gone.
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+  });
+
+  testWidgets("an unavailable-command transition does not reattach a detached reader", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(900, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    const queued = QueuedSessionSubmission.command(
+      promptId: "prompt-1",
+      text: "src",
+      command: "review",
+      agent: "coder",
+      agentModel: null,
+    );
+    const unavailable = QueuedSessionSubmission.unavailableCommand(
+      promptId: "prompt-1",
+      text: "src",
+      command: "review",
+      agent: "coder",
+      agentModel: null,
+    );
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: _userMessages(count: 12),
+        initialStreamingText: const {},
+        initialQueuedMessages: const [queued],
+      ),
+    );
+    await tester.pumpAndSettle();
+    await _sendPointerScroll(
+      tester: tester,
+      target: find.byKey(_listViewKey),
+      delta: const Offset(0, 30),
+    );
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    harnessKey.currentState!.replaceFirstQueuedSubmission(unavailable);
+    await _pumpListUpdate(tester);
+
+    expect(find.text("Command unavailable"), findsOneWidget);
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
   });
 

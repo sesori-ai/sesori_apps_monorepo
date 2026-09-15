@@ -341,7 +341,6 @@ void main() {
                 onDraftCleared: () {},
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
-                queuedMessages: null,
                 composerHeader: null,
                 availableCommands: const [],
                 stagedCommand: null,
@@ -887,11 +886,8 @@ void main() {
     final recheckAction = tester.getRect(find.byKey(const Key("session_harness_recheck")));
     expect(find.text("Recheck"), findsOneWidget);
     expect(recheckAction.center.dy, settingsAction.center.dy);
-    expect(find.text("Remote queued prompt"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.trash), findsOneWidget);
-    await tester.tap(find.byIcon(TablerRegular.trash));
+    await tester.tap(find.widgetWithText(TextButton, "Cancel"));
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
-    verifyNever(() => cubit.cancelBridgeQueuedPrompt(promptId: "remote"));
     await tester.tap(find.byKey(const Key("session_harness_recheck")));
     verify(cubit.recheckHarnessAvailability).called(1);
     await tester.tap(find.byKey(const Key("session_harness_settings")));
@@ -1019,8 +1015,12 @@ void main() {
     expect(find.text("1 pending question"), findsNothing);
     expect(find.text("1 permission request pending"), findsNothing);
     expect(find.text("Queued before archive"), findsOneWidget);
-    expect(find.byType(PregoQueuedMessageRow), findsOneWidget);
-    expect(find.byIcon(TablerRegular.trash), findsNothing);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.widgetWithText(TextButton, "Cancel"), findsNothing);
+    expect(
+      tester.widget<UserMessageBubble>(find.byType(UserMessageBubble)).outlined,
+      isTrue,
+    );
   });
 
   for (final (name, interaction) in [
@@ -3432,23 +3432,13 @@ void main() {
     when(() => cubit.cancelBridgeQueuedPrompt(promptId: "unknown")).thenAnswer((_) async {});
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pump(const Duration(milliseconds: 400));
-    expect(find.byType(PregoQueuedMessageRow), findsNWidgets(3));
-    expect(find.byIcon(TablerRegular.trash), findsNWidgets(2));
-    final tooltip = find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Sending");
-    expect(tooltip, findsOneWidget);
-    expect(tester.widget<Tooltip>(tooltip).excludeFromSemantics, isTrue);
-    expect(find.byTooltip("Sending"), findsNothing);
-    expect(
-      tester.widget<PregoQueuedMessageRow>(find.byKey(const ValueKey("session-detail-queued-unknown"))).statusLabel,
-      "Queued",
-    );
-    expect(
-      tester.widget<PregoQueuedMessageRow>(find.byKey(const ValueKey("session-detail-queued-dispatched"))).statusLabel,
-      "Sending",
-    );
+    expect(find.byType(QueuedMessageBubble), findsNWidgets(3));
+    expect(find.text("Cancel"), findsNWidgets(2));
+    expect(find.text("Queued"), findsNWidgets(2));
+    expect(find.text("Sending"), findsOneWidget);
     expect(
       find.descendant(
-        of: find.byKey(const ValueKey("session-detail-queued-dispatched")),
+        of: find.byKey(const ValueKey("session-detail-prompt-dispatched")),
         matching: find.byType(PregoActivityIndicator),
       ),
       findsOneWidget,
@@ -3456,8 +3446,8 @@ void main() {
     for (final id in ["queued", "unknown"]) {
       await tester.tap(
         find.descendant(
-          of: find.byKey(ValueKey("session-detail-queued-$id")),
-          matching: find.byIcon(TablerRegular.trash),
+          of: find.byKey(ValueKey("session-detail-prompt-$id")),
+          matching: find.text("Cancel"),
         ),
       );
       verify(() => cubit.cancelBridgeQueuedPrompt(promptId: id)).called(1);
@@ -3466,7 +3456,7 @@ void main() {
   });
 
   for (final inputMode in ChatInputMode.values) {
-    testWidgets("queue stays inside $inputMode composer and cancellation preserves draft focus", (tester) async {
+    testWidgets("queue stays in transcript for $inputMode and cancellation preserves draft focus", (tester) async {
       final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
         bridgeQueuedPrompts: const [
           QueuedSessionPrompt(
@@ -3484,9 +3474,13 @@ void main() {
       when(() => cubit.cancelBridgeQueuedPrompt(promptId: "remote")).thenAnswer((_) async {});
       await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: inputMode));
       await tester.pumpAndSettle();
-      expect(find.byType(PregoQueuedMessageList), findsOneWidget);
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
       expect(
-        find.descendant(of: find.byType(PromptInput), matching: find.byType(PregoQueuedMessageRow)),
+        find.descendant(of: find.byType(PromptInput), matching: find.byType(QueuedMessageBubble)),
+        findsNothing,
+      );
+      expect(
+        find.descendant(of: find.byType(SessionDetailMessageList), matching: find.byType(QueuedMessageBubble)),
         findsOneWidget,
       );
       if (inputMode == ChatInputMode.voiceFirst) {
@@ -3497,10 +3491,13 @@ void main() {
       await tester.pumpAndSettle();
       await tester.enterText(find.byType(TextField), "Keep my draft");
       await tester.pumpAndSettle();
-      // Voice-first's nested action pill must not repeat the queue.
-      expect(find.byType(PregoQueuedMessageList), findsOneWidget);
-      expect(find.text("/review One line then another · 1 image"), findsOneWidget);
-      await tester.tap(find.byIcon(TablerRegular.trash));
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
+      expect(
+        tester.widget<QueuedMessageBubble>(find.byType(QueuedMessageBubble)).displayText,
+        "/review One line\nthen another",
+      );
+      expect(find.text("1 image"), findsOneWidget);
+      await tester.tap(find.text("Cancel"));
       await tester.pumpAndSettle();
       verify(() => cubit.cancelBridgeQueuedPrompt(promptId: "remote")).called(1);
       final field = tester.widget<TextField>(find.byType(TextField));
@@ -3528,7 +3525,7 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
     expect(find.text("Follow-up prompt"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.trash), findsNothing);
+    expect(find.text("Cancel"), findsNothing);
     state = state.copyWith(
       bridgeQueuedPrompts: const [
         QueuedSessionPrompt(
@@ -3544,7 +3541,7 @@ void main() {
     states.add(state);
     await tester.pumpAndSettle();
     expect(find.text("Follow-up prompt"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.trash), findsOneWidget);
+    expect(find.text("Cancel"), findsOneWidget);
     state = state.copyWith(
       messages: const [
         MessageWithParts(
@@ -3558,7 +3555,7 @@ void main() {
     states.add(state);
     await tester.idle();
     await tester.pump();
-    expect(find.byType(PregoQueuedMessageRow), findsNothing);
+    expect(find.byType(QueuedMessageBubble), findsNothing);
     expect(find.text("Follow-up prompt"), findsOneWidget);
     expect(find.byType(UserMessageCard), findsOneWidget);
   });
@@ -3580,13 +3577,13 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
     expect(find.text("/review src"), findsOneWidget);
-    expect(find.byTooltip("Command unavailable"), findsOneWidget);
-    expect(find.byTooltip("Remove"), findsOneWidget);
-    await tester.tap(find.byIcon(TablerRegular.trash));
+    expect(find.text("Command unavailable"), findsOneWidget);
+    expect(find.text("Remove"), findsOneWidget);
+    await tester.tap(find.text("Remove"));
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
   });
 
-  testWidgets("a queued attachment-only submission shows its image count without thumbnails", (tester) async {
+  testWidgets("a queued attachment-only submission shows its thumbnail and image count", (tester) async {
     final state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
       queuedMessages: [
         QueuedSessionSubmission.text(
@@ -3608,10 +3605,10 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("1 image"), findsOneWidget);
-    expect(find.descendant(of: find.byType(PregoQueuedMessageRow), matching: find.byType(Image)), findsNothing);
+    expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(Image)), findsOneWidget);
   });
 
-  testWidgets("a queued submission renders inside the composer with a trash action", (tester) async {
+  testWidgets("a queued submission renders inline with the transcript", (tester) async {
     final submission = QueuedSessionSubmission.text(
       promptId: "prompt-1",
       text: "Please **review** `main.dart`",
@@ -3632,21 +3629,36 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(
-      find.descendant(of: find.byType(PromptInput), matching: find.byType(PregoQueuedMessageList)),
+      find.descendant(
+        of: find.byType(SessionDetailMessageList),
+        matching: find.byType(QueuedMessageBubble),
+      ),
       findsOneWidget,
     );
     expect(
-      find.descendant(of: find.byType(SessionDetailMessageList), matching: find.byType(PregoQueuedMessageRow)),
-      findsNothing,
+      find.ancestor(
+        of: find.byType(QueuedMessageBubble),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is ListView && widget.reverse,
+        ),
+      ),
+      findsOneWidget,
     );
-    expect(find.text("Please **review** `main.dart` · 1 image"), findsOneWidget);
-    expect(find.descendant(of: find.byType(PregoQueuedMessageRow), matching: find.byType(MarkdownBody)), findsNothing);
-    expect(find.byIcon(TablerRegular.trash), findsOneWidget);
-    await tester.tap(find.byIcon(TablerRegular.trash));
+    final bubble = tester.widget<UserMessageBubble>(
+      find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(UserMessageBubble)),
+    );
+    expect(bubble.outlined, isTrue);
+    expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(MarkdownBody)), findsOneWidget);
+    expect(find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(Image)), findsOneWidget);
+    expect(find.text("Queued"), findsOneWidget);
+    expect(find.text("Cancel"), findsOneWidget);
+    expect(tester.getSize(find.widgetWithText(TextButton, "Cancel")).height, 44);
+
+    await tester.tap(find.text("Cancel"));
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
   });
 
-  testWidgets("a local queue entry moves to sending without duplication", (tester) async {
+  testWidgets("the same inline queued bubble becomes sending in place", (tester) async {
     const submission = QueuedSessionSubmission.text(
       promptId: "prompt-1",
       text: "Cold-start prompt",
@@ -3674,17 +3686,41 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    expect(find.byType(PregoQueuedMessageRow), findsNWidgets(2));
+    final submissionFinder = find.byWidgetPredicate(
+      (widget) => widget is QueuedMessageBubble && widget.key == const ValueKey("session-detail-prompt-prompt-1"),
+    );
+    final before = tester.element(submissionFinder);
+    expect(
+      find.descendant(of: find.byType(SessionDetailMessageList), matching: submissionFinder),
+      findsOneWidget,
+    );
+    expect(
+      tester
+          .widget<UserMessageBubble>(
+            find.descendant(of: submissionFinder, matching: find.byType(UserMessageBubble)),
+          )
+          .outlined,
+      isTrue,
+    );
     state = state.copyWith(queuedMessages: const [followingSubmission], sendingSubmission: submission);
     states.add(state);
     await tester.idle();
     await tester.pump();
 
+    expect(identical(tester.element(submissionFinder), before), isTrue);
+    // The outgoing status rail cross-fades out; settle it before counting.
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(SendingMessageBubble), findsOneWidget);
-    expect(find.byType(PregoQueuedMessageRow), findsOneWidget);
+    expect(
+      tester
+          .widget<UserMessageBubble>(
+            find.descendant(of: submissionFinder, matching: find.byType(UserMessageBubble)),
+          )
+          .outlined,
+      isFalse,
+    );
     expect(find.text("Sending"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.trash), findsOneWidget);
+    expect(find.text("Cancel"), findsOneWidget);
+    expect(find.descendant(of: submissionFinder, matching: find.text("Cancel")), findsNothing);
   });
 
   testWidgets("reduced motion swaps queued feedback immediately", (tester) async {

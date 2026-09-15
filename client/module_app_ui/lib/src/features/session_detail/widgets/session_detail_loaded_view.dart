@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -6,7 +8,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "session_detail_message_list.dart";
-import "session_detail_prompt_queue.dart";
 import "session_detail_scaffold_sections.dart";
 
 typedef SessionDetailBottomControlsBuilder = Widget Function({
@@ -72,28 +73,7 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final state = widget.state;
-    final showStandaloneQueue =
-        (widget.readOnly || !state.interaction.canInteract || widget.bottomControls == null) &&
-        (state.queuedMessages.isNotEmpty ||
-            state.awaitingBridgeSubmissions.isNotEmpty ||
-            state.bridgeQueuedPrompts.isNotEmpty);
-    final bottomControls = showStandaloneQueue
-        ? Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Padding(
-                padding: const EdgeInsets.all(PregoSpacing.xl),
-                child: SessionDetailPromptQueue(
-                  state: state,
-                  onCancelLocal: widget.readOnly ? null : context.read<SessionDetailCubit>().cancelQueuedMessage,
-                  onCancelBridge: null,
-                ),
-              ),
-              ?widget.bottomControls,
-            ],
-          )
-        : widget.bottomControls;
-    final hasBottomControls = bottomControls != null;
+    final hasBottomControls = widget.bottomControls != null;
     final showEmptyState =
         !state.hasRenderableMessages &&
         state.retryErrorMessage == null &&
@@ -125,11 +105,14 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           projectId: widget.projectId,
                           messages: state.messages,
                           sendingSubmission: state.sendingSubmission,
-                          localSubmissionIds: {
-                            ?state.sendingSubmission?.promptId,
-                            for (final submission in [...state.queuedMessages, ...state.awaitingBridgeSubmissions])
-                              submission.promptId,
-                          },
+                          queuedMessages: state.queuedMessages,
+                          bridgeQueuedPrompts: state.bridgeQueuedPrompts,
+                          awaitingBridgeSubmissions: state.awaitingBridgeSubmissions,
+                          onCancelBridgeQueuedPrompt: widget.readOnly || !state.interaction.canInteract
+                              ? null
+                              : (promptId) => unawaited(
+                                  context.read<SessionDetailCubit>().cancelBridgeQueuedPrompt(promptId: promptId),
+                                ),
                           isLoadingOlderMessages: state.isLoadingOlderMessages,
                           streamingText: state.streamingText,
                           children: state.children,
@@ -139,6 +122,9 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
                           onLoadOlderMessages: state.olderMessagesCursor == null
                               ? null
                               : context.read<SessionDetailCubit>().loadOlderMessages,
+                          onCancelQueuedMessage: widget.readOnly
+                              ? null
+                              : context.read<SessionDetailCubit>().cancelQueuedMessage,
                           retryErrorMessage: state.retryErrorMessage,
                           // Pad the oldest-message edge clear of the bar it scrolls
                           // behind, and the newest-message edge clear of the floating
@@ -201,8 +187,8 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
           ),
         ),
         // Floating bottom controls — the background-tasks bar and composer.
-        // Read-only and blocked routes retain a compact queue without a composer.
-        if (bottomControls != null)
+        // Queued submissions are regular rows in the transcript above them.
+        if (widget.bottomControls case final bottomControls?)
           Positioned(
             bottom: 0,
             left: 0,
