@@ -560,10 +560,10 @@ smoke for the log file and the unchanged banner.
 | Android | L2 | Automated | `client/app` suites |
 | Windows, Linux | smoke | Client end to end | Build, sidebar resize/collapse, popover, modal, logs folder, no FDA card |
 
-Proposed reduction (requires explicit user acceptance in this file before step
-12 retires the plan): Windows and Linux run a smoke pass rather than the full
-L3 checklist, carrying over the reduction the user accepted for `desktop-app`.
-Acceptance: _pending_.
+Accepted reduction: Windows and Linux run a smoke pass rather than the full L3
+checklist, carrying over the reduction the user accepted for `desktop-app`.
+The user accepted this on 2026-09-15 when approving the plan; step 12 may
+retire the plan under this matrix.
 
 ## Risks And Accepted Limits
 

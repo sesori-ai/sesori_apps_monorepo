@@ -23,12 +23,10 @@ Ordering constraints: 2 → 3 → 4 → 6 → 7; step 8 after 6; steps 5, 9 and 
 may run in any order after 4. Step 11 after every implementation step; step 12
 last.
 
-## Open acceptance
+## Accepted reductions
 
-- Windows/Linux smoke-only reduction of the final matrix: pending the user's
-  explicit acceptance in `PLAN.md` (see "Regression Documentation And Final
-  Matrix"). Step 12 must not retire the plan under the reduced matrix without
-  it.
+- Windows/Linux smoke-only final matrix: accepted by the user on 2026-09-15
+  (recorded in `PLAN.md`, "Regression Documentation And Final Matrix").
 
 ## Verification Log
 
