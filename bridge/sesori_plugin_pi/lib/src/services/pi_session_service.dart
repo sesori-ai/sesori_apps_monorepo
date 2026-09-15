@@ -117,9 +117,22 @@ final class _PiQueuedPromptTurn({
   required super.model,
   required super.variant,
   required super.userVisibleText,
-  required final PluginQueuedPrompt presentation,
+  required final String? text,
+  required final int attachmentCount,
+  required final int createdAt,
 }) extends _PiTurn {
   _PiQueueState queueState = _PiQueueState.visible;
+
+  PluginQueuedPrompt get presentation => PluginQueuedPrompt(
+    id: promptId,
+    text: text,
+    command: null,
+    attachmentCount: attachmentCount,
+    createdAt: createdAt,
+    dispatchState: promptDispatched
+        ? PluginQueuedPromptDispatchState.dispatched
+        : PluginQueuedPromptDispatchState.queued,
+  );
 }
 
 sealed class _PiCommandTurn({
@@ -327,13 +340,9 @@ final class PiSessionService({
         model: model,
         variant: variant,
         userVisibleText: userVisibleText,
-        presentation: PluginQueuedPrompt(
-          id: promptId,
-          text: visibleText == null || visibleText.isEmpty ? null : visibleText,
-          command: null,
-          attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
-          createdAt: _clock.now().millisecondsSinceEpoch,
-        ),
+        text: visibleText == null || visibleText.isEmpty ? null : visibleText,
+        attachmentCount: parts.where((part) => part is! PluginPromptPartText).length,
+        createdAt: _clock.now().millisecondsSinceEpoch,
       ),
     );
     return Future.value();
@@ -548,6 +557,7 @@ final class PiSessionService({
       turn
         ..promptDispatched = true
         ..agentStarted = state.agentRunning;
+      if (turn is _PiQueuedPromptTurn) _emitQueueUpdate(sessionId: sessionId, state: state);
       if (turn case _PiCompactionTurn(:final customInstructions)) {
         await _processes.dispatchCompaction(
           connection: connection,

@@ -9,6 +9,13 @@ part of 'queued_prompt.dart';
 _QueuedSessionPrompt _$QueuedSessionPromptFromJson(Map json) =>
     _QueuedSessionPrompt(
       id: json['id'] as String,
+      dispatchState:
+          $enumDecodeNullable(
+            _$QueuedPromptDispatchStateEnumMap,
+            json['dispatchState'],
+            unknownValue: QueuedPromptDispatchState.unknown,
+          ) ??
+          QueuedPromptDispatchState.unknown,
       text: json['text'] as String?,
       command: json['command'] as String?,
       attachmentCount: (json['attachmentCount'] as num?)?.toInt() ?? 0,
@@ -19,10 +26,17 @@ Map<String, dynamic> _$QueuedSessionPromptToJson(
   _QueuedSessionPrompt instance,
 ) => <String, dynamic>{
   'id': instance.id,
+  'dispatchState': _$QueuedPromptDispatchStateEnumMap[instance.dispatchState]!,
   'text': ?instance.text,
   'command': ?instance.command,
   'attachmentCount': instance.attachmentCount,
   'createdAt': instance.createdAt,
+};
+
+const _$QueuedPromptDispatchStateEnumMap = {
+  QueuedPromptDispatchState.unknown: 'unknown',
+  QueuedPromptDispatchState.queued: 'queued',
+  QueuedPromptDispatchState.dispatched: 'dispatched',
 };
 
 _QueuedPromptResponse _$QueuedPromptResponseFromJson(Map json) =>

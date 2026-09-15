@@ -39,7 +39,9 @@
 - **Detail:** `.plan/active/desktop-app/PLAN.md` retains its pending implementation
   closeout; `.plan/active/desktop-distribution/PLAN.md` owns distribution decisions
   and platform ship gates. Planning began early at the user's request; it does
-  not waive the parent verification.
+  not waive the parent verification. The parallel release-readiness UX overhaul
+  (two-pane sidebar cockpit, settings modal, bridge popover, autostart defaults,
+  app log files) is `.plan/active/desktop-ux/PLAN.md`, phase 1 of several.
 - **Later consideration (recorded, not planned):** a loopback local data path
   for the desktop cockpit. The cockpit reuses the relay like the phone; a
   bridge-hosted loopback data transport (the `--debug-port` `DebugServer` is

@@ -912,6 +912,15 @@ void main() {
       expect(await plugin.getQueuedPrompts(sessionId: sessionId), isEmpty);
       expect(
         emitted
+            .whereType<BridgeSseQueuedPromptsUpdated>()
+            .expand((event) => event.prompts)
+            .where((prompt) => prompt.id == secondPromptId)
+            .map((prompt) => prompt.dispatchState),
+        [PluginQueuedPromptDispatchState.queued, PluginQueuedPromptDispatchState.dispatched],
+      );
+      expect(await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: secondPromptId), isFalse);
+      expect(
+        emitted
             .whereType<BridgeSseMessageUpdated>()
             .singleWhere(
               (event) => switch (event.info) {
@@ -948,6 +957,10 @@ void main() {
       final firstPrompt = await waitForFrame("session/prompt");
       final queuedPromptId = await sendPrompt(sessionId, "cancel me");
       expect((await plugin.getQueuedPrompts(sessionId: sessionId)).single.id, queuedPromptId);
+      expect(
+        (await plugin.getQueuedPrompts(sessionId: sessionId)).single.dispatchState,
+        PluginQueuedPromptDispatchState.queued,
+      );
 
       expect(
         await plugin.cancelQueuedPrompt(sessionId: sessionId, promptId: queuedPromptId),

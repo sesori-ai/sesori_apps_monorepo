@@ -1,6 +1,7 @@
 import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
@@ -26,8 +27,12 @@ void main() {
                           preview: "Message $i with a very long preview\nand another line of content",
                           statusLabel: "Queued",
                           warning: null,
-                          removeLabel: "Cancel",
-                          onRemove: () => removed = i,
+                          trailing: PregoButtonsSolid.iconOnly(
+                            leadingIcon: TablerRegular.trash,
+                            hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                            size: PregoButtonsSolidSize.sm,
+                            onPressed: () => removed = i,
+                          ),
                         ),
                     ],
                   ),

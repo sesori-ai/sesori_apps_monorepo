@@ -57,6 +57,16 @@ Slice 1 merged in PR #1267, slice 2 in PR #1269, and slice 3 in PR #1274.
 Step 20 is complete. Slice 3 passed implementation verification, full relevant
 client suites, clean macOS build/codesign, CI, and both architecture reviews.
 
+## Desktop UX overhaul starts before retirement — 2026-09-15
+
+`.plan/active/desktop-ux/` (two-pane sidebar cockpit, settings modal, bridge
+popover, connection pill, autostart defaults, app log files) starts now at the
+user's request, before Gate C runs and before this plan retires. Gate C stays
+pending. Its shell and navigation checks (`MT_GATE_C.md` sections C2/C5) are
+superseded by the `desktop-ux` step-12 checklist; the harness, attention,
+mobile-regression and release-safety sections are unaffected and can run on any
+build after `desktop-ux` step 7. Steps 21–22 here proceed independently.
+
 ## MT Gate C — planned 2026-09-03
 
 The user delegated the manual run to the agent for the next working session.

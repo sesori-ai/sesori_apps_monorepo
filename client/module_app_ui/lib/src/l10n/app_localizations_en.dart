@@ -1193,6 +1193,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailUnavailableCommand => 'Command unavailable';
 
   @override
+  String get sessionDetailQueueCancellationFailed =>
+      'Cancellation was not confirmed. The message may already have been sent.';
+
+  @override
   String get sessionDetailSendingMessage => 'Sending';
 
   @override

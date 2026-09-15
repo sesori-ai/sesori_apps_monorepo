@@ -72,7 +72,14 @@ void main() {
 
     test("removes the queued entry via the backend session id", () async {
       plugin.queuedPrompts.add(
-        const PluginQueuedPrompt(id: "prm_1", text: "queued", command: null, attachmentCount: 0, createdAt: 1),
+        const PluginQueuedPrompt(
+          dispatchState: PluginQueuedPromptDispatchState.queued,
+          id: "prm_1",
+          text: "queued",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 1,
+        ),
       );
 
       final response = await handler.handle(
@@ -87,7 +94,14 @@ void main() {
 
     test("refuses to cancel on an archived session without reaching the plugin", () async {
       plugin.queuedPrompts.add(
-        const PluginQueuedPrompt(id: "prm_1", text: "queued", command: null, attachmentCount: 0, createdAt: 1),
+        const PluginQueuedPrompt(
+          dispatchState: PluginQueuedPromptDispatchState.queued,
+          id: "prm_1",
+          text: "queued",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 1,
+        ),
       );
       await db.sessionDao.setArchived(sessionId: "s-1", archivedAt: 5, updatedAt: 5, projectionUpdatedAt: 5);
 

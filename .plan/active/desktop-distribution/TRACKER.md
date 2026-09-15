@@ -40,7 +40,11 @@ yet been performed.
 The parent [desktop-app tracker](../desktop-app/TRACKER.md) still records Gate C
 and steps 21–22 as pending. This plan starts early at the user's request; those
 statuses remain unchanged. Parent closeout is a first-public-release prerequisite
-unless the user explicitly accepts a changed prerequisite.
+unless the user explicitly accepts a changed prerequisite. The merged
+[desktop-ux plan](../desktop-ux/PLAN.md) redirects Gate C's shell/navigation checks
+to its step-12 checklist; retain that incoming handoff and its separate ownership of
+UI, autostart defaults and app logs. Distribution remains parallel, not a duplicate
+UX implementation or a claim that its new checklist has passed.
 
 ## Qualification and ship gates
 
