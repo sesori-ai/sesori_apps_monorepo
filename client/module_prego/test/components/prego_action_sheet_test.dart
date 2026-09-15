@@ -41,9 +41,15 @@ void main() {
     });
   }
 
-  for (final size in [const Size(320, 568), const Size(874, 402)]) {
-    testWidgets("long content and large text keep actions visible at $size", (tester) async {
-      tester.view.physicalSize = size;
+  for (final viewport in [
+    (size: const Size(320, 568), textScale: 2.0, keyboard: 0.0),
+    (size: const Size(874, 402), textScale: 3.0, keyboard: 0.0),
+    (size: const Size(874, 402), textScale: 1.0, keyboard: 216.0),
+    (size: const Size(402, 874), textScale: 2.0, keyboard: 336.0),
+  ]) {
+    testWidgets("all actions remain reachable in constrained viewport $viewport", (tester) async {
+      final pressed = <String>[];
+      tester.view.physicalSize = viewport.size;
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.resetPhysicalSize);
       addTearDown(tester.view.resetDevicePixelRatio);
@@ -51,8 +57,13 @@ void main() {
         MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           home: MediaQuery(
-            data: MediaQueryData(size: size, textScaler: const TextScaler.linear(2)),
+            data: MediaQueryData(
+              size: viewport.size,
+              textScaler: TextScaler.linear(viewport.textScale),
+              viewInsets: EdgeInsets.only(bottom: viewport.keyboard),
+            ),
             child: Scaffold(
+              resizeToAvoidBottomInset: false,
               body: Align(
                 alignment: Alignment.bottomCenter,
                 child: PregoActionSheet(
@@ -68,7 +79,7 @@ void main() {
                           hierarchy: PregoButtonsSolidHierarchy.secondary,
                           size: PregoButtonsSolidSize.lg,
                           fullWidth: true,
-                          onPressed: () {},
+                          onPressed: () => pressed.add(label),
                         ),
                     ],
                   ),
@@ -79,10 +90,48 @@ void main() {
           ),
         ),
       );
-      expect(find.text("Don’t allow").hitTestable(), findsOneWidget);
-      expect(find.text("Allow").hitTestable(), findsOneWidget);
-      expect(find.text("Always approve").hitTestable(), findsOneWidget);
+      expect(find.text("Allow this action?").hitTestable(), findsOneWidget);
       expect(tester.takeException(), isNull);
+      for (final label in ["Allow", "Always approve", "Don’t allow"]) {
+        await tester.ensureVisible(find.text(label));
+        await tester.pumpAndSettle();
+        expect(find.text(label).hitTestable(), findsOneWidget);
+        await tester.tap(find.text(label));
+        await tester.pumpAndSettle();
+        expect(tester.takeException(), isNull);
+      }
+      expect(pressed, ["Allow", "Always approve", "Don’t allow"]);
     });
   }
+
+  testWidgets("a nonzero keyboard inset takes precedence over safe-area padding", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: const MediaQuery(
+          data: MediaQueryData(
+            size: Size(800, 600),
+            padding: EdgeInsets.only(bottom: 26),
+            viewInsets: EdgeInsets.only(bottom: 8),
+          ),
+          child: Scaffold(
+            resizeToAvoidBottomInset: false,
+            body: Align(
+              alignment: Alignment.bottomCenter,
+              child: PregoActionSheet(
+                title: "Allow this action?",
+                topInset: 24,
+                actions: SizedBox(height: 164),
+                child: SizedBox(height: 44),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    final surface = find.descendant(of: find.byType(PregoActionSheet), matching: find.byType(DecoratedBox));
+    final screen = tester.getRect(find.byType(Scaffold));
+    expect(screen.bottom - tester.getRect(surface).bottom, PregoSpacing.xl);
+    expect(tester.takeException(), isNull);
+  });
 }

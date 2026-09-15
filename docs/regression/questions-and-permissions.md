@@ -40,9 +40,11 @@ reaches the backend so the turn continues.
   a generic action heading, the complete backend tool label and selectable,
   copyable Markdown description, then full-width stacked **Allow**, optional
   **Always approve**, and **Don’t allow** actions. **Allow** means once only.
-  Long details scroll while the actions remain visible; safe-area insets keep
-  the floating surface and actions clear of system UI. Scrim/swipe dismissal
-  leaves the request pending; external settlement closes it without a reply.
+  Long details normally scroll above visible actions. In cramped viewports or
+  with enlarged text, the whole sheet scrolls so every decision remains reachable.
+  Keyboard and safe-area insets keep the floating surface clear of system UI.
+  Scrim/swipe dismissal leaves the request pending; external settlement closes
+  it without a reply.
 - A plugin advertising ACP form elicitation maps supported string, string-enum,
   boolean, and finite string-choice array properties to questions and returns
   typed content under the backend's original property keys. An array whose
