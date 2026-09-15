@@ -115,6 +115,7 @@ void main() {
     );
 
     await service.start();
+    await _flushAsync();
 
     expect(service.currentPreference, DesktopAttentionPreference.disabled);
     verify(localNotificationClient.initialize).called(1);
@@ -180,7 +181,7 @@ void main() {
     ).called(1);
   });
 
-  test("captures relay attention while native initialization is pending", () async {
+  test("start returns and captures relay attention while native initialization is pending", () async {
     final initialization = Completer<void>();
     when(localNotificationClient.initialize).thenAnswer((_) => initialization.future);
     when(
@@ -198,11 +199,13 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    final start = service.start();
-    await _flushAsync();
-    connectionEvents.add(_permissionAsked());
-    initialization.complete();
-    await start;
+    try {
+      await service.start().timeout(const Duration(seconds: 1));
+      connectionEvents.add(_permissionAsked());
+      await _flushAsync();
+    } finally {
+      initialization.complete();
+    }
     await pumpEventQueue(times: 20);
 
     verify(
@@ -216,6 +219,57 @@ void main() {
         accountId: "user-1",
       ),
     ).called(1);
+  });
+
+  for (final initializationFails in <bool>[false, true]) {
+    test("late native startup (failure: $initializationFails) consumes but drops opens after disposal", () async {
+      final initialization = Completer<void>();
+      when(localNotificationClient.initialize).thenAnswer((_) => initialization.future);
+      when(localNotificationClient.getInitialNotificationOpen).thenAnswer(
+        (_) async => const NotificationOpenRequest(
+          projectId: "project-1",
+          sessionId: "session-root",
+          sessionTitle: null,
+          accountId: "user-1",
+        ),
+      );
+      final start = service.start();
+      await _flushAsync();
+      await service.dispose().timeout(const Duration(seconds: 1));
+
+      if (initializationFails) {
+        initialization.completeError(StateError("Native initialization unavailable"));
+      } else {
+        initialization.complete();
+      }
+      await start;
+      await _flushAsync();
+
+      verify(localNotificationClient.getInitialNotificationOpen).called(1);
+      verifyNever(() => windowHost.show());
+      verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
+    });
+  }
+
+  test("does not route a startup open after disposal while window focus is pending", () async {
+    final windowFocus = Completer<void>();
+    when(() => windowHost.show()).thenAnswer((_) => windowFocus.future);
+    when(localNotificationClient.getInitialNotificationOpen).thenAnswer(
+      (_) async => const NotificationOpenRequest(
+        projectId: "project-1",
+        sessionId: "session-root",
+        sessionTitle: null,
+        accountId: "user-1",
+      ),
+    );
+    await service.start();
+    await _flushAsync();
+    await service.dispose();
+    windowFocus.complete();
+    await _flushAsync();
+
+    verify(() => windowHost.show()).called(1);
+    verifyNever(() => routeDispatcher.replaceStack(stack: any(named: "stack")));
   });
 
   test("retries transient native initialization on a later attention event", () async {

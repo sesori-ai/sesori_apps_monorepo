@@ -114,6 +114,12 @@ class DesktopAttentionService({
         loge("Desktop attention auth-state stream failed", error, stackTrace);
       },
     );
+    // Native readiness may wait for an OS permission decision. Keep listening
+    // before the UI starts, without making that decision a rendering prerequisite.
+    unawaited(_initializeNotificationHandling());
+  }
+
+  Future<void> _initializeNotificationHandling() async {
     await _ensureNotificationsAvailable();
 
     try {
@@ -512,7 +518,7 @@ class DesktopAttentionService({
   }
 
   void _onNotificationOpen({required NotificationOpenRequest request}) {
-    if (_logoutSuspended || _authCleanupInProgress) {
+    if (_disposed || _logoutSuspended || _authCleanupInProgress) {
       return;
     }
     final authState = _authSession.currentState;
@@ -582,7 +588,7 @@ class DesktopAttentionService({
   }
 
   bool _isNotificationOpenAllowed({required NotificationOpenRequest request}) {
-    if (_logoutSuspended || _authCleanupInProgress) {
+    if (_disposed || _logoutSuspended || _authCleanupInProgress) {
       return false;
     }
     final authState = _authSession.currentState;

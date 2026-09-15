@@ -108,7 +108,11 @@ and keep native close/quit behavior safe.
   package metadata, and its coordinated logout workflow; it deliberately omits
   the mobile push-notification preference surface and instead exposes one
   desktop-owned native attention switch. Desktop derives permission/question
-  alerts from authenticated relay SSE and never registers for push. Project recovery never shows
+  alerts from authenticated relay SSE and never registers for push. Attention
+  installs its listeners before rendering without waiting for native notification
+  readiness or a permission decision. Delivery shares the existing initialization
+  future; initial-open metadata is consumed asynchronously, including after native
+  failure, without reopening or routing a disposed service. Project recovery never shows
   mobile CLI installation guidance: both never-registered and disconnected
   states offer supervised **Start the bridge**, which persists desired On,
   starts or retries rather than applying toggle semantics, and establishes the
@@ -259,7 +263,8 @@ verify the actual relocated helper, not merely the presence of its binary.
   discards its project-scoped inventory. Desktop attention appears while the
   window is focused or its switch is disabled, includes prompt/request content,
   survives resolution/logout/account replacement, loses an initialization retry
-  or Linux launch callback, or opens without focusing and routing to its bound
+  or Linux launch callback, blocks the first frame behind native authorization,
+  reopens/routes after disposal, or opens without focusing and routing to its bound
   display session.
 
 ## Known Limitations

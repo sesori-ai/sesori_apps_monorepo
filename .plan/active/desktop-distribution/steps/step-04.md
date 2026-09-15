@@ -1,6 +1,11 @@
 # Step 4.a — Native macOS Packaging And Notarization
 
-Status: **in review — PR #1499; rendered startup moves to step 4.b**.
+Status: **done — PR #1499 merged; rendered startup belongs to step 4.b**.
+Accepted head `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`; squash
+`cd4c1412359ef8962cb019d97dc7fed73835e1c8`. All **19** checks settled/passed at
+acceptance; Cubic approved without findings. Final unsigned qualification run
+`35036003267` measured `e4aa30f017cf876a1f61f2a6881f1282f013dba1` across all six native
+rows; that does not replace the separate signed-package evidence below.
 PR ordinal **5/14**. Work remains in the original `tan-antelope` worktree.
 
 ## Scope and safety

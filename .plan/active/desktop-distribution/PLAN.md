@@ -4,7 +4,7 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–3.b merged; step 4.a macOS packaging in review; step 4.b startup repair planned.
+- **Status:** Active — steps 1–4.a merged; step 4.b native-attention startup repair in progress.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.

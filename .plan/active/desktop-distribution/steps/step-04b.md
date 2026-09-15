@@ -1,6 +1,7 @@
 # Step 4.b — Nonblocking Desktop Attention Startup
 
-Status: **planned — scoped architecture-plan review approved**.
+Status: **in progress — scoped architecture-plan review approved**.
+Implementation base: `cd4c1412359ef8962cb019d97dc7fed73835e1c8` (step 4.a squash).
 PR ordinal **6/14**, after [step 4.a](step-04.md), before macOS updates.
 
 ## Observed failure and scope
