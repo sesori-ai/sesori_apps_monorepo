@@ -18,11 +18,11 @@ The official release manifests contain these exact pinned archives:
 
 | Host SDK | Published archive | Evidence boundary |
 |---|---|---|
-| macOS x64 | `stable/macos/flutter_macos_3.47.4-stable.zip` | Manifest only; GUI build not run here. |
+| macOS x64 | `stable/macos/flutter_macos_3.47.4-stable.zip` | Native release build, binary inventory, Sparkle API probe and relocated E2E passed in CI. |
 | macOS arm64 | `stable/macos/flutter_macos_arm64_3.47.4-stable.zip` | Native release build, binary inventory and relocated-helper integration passed; see evidence below. |
-| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Native build/inventory and relocated version check passed; diagnostic-write correction and E2E rerun pending. |
+| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Native build/inventory and relocated version check passed; awaiting the UTF-8-fixed diagnostic/E2E rerun. |
 | Linux x64 | `stable/linux/flutter_linux_3.47.4-stable.tar.xz` | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
-| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Native build/inventory and relocated version check passed; diagnostic-write correction and E2E rerun pending. |
+| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Native build/inventory and relocated version check passed; awaiting the UTF-8-fixed diagnostic/E2E rerun. |
 | Linux arm64 | No prepacked Flutter SDK archive in the pinned Linux manifest | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
 
 All listed archives map to the same framework revision and Dart version. A missing
@@ -258,6 +258,13 @@ Windows cp1252 default failed before E2E. Image identities: x64 `win25-vs2026` /
 now use explicit UTF-8; a regression test reproduced that exact failure before the
 fix and passes afterward. Windows E2E still needs its corrected native rerun. Do not
 promote partial inventory evidence to a fully passed Windows qualification row.
+
+The same run also passed **macOS x64** on macOS 26.6.1/Xcode 26.6, image `macos26` /
+`20260824.0517.1`: four GUI native binaries, three x64 helper binaries, Sparkle API
+typecheck and one relocated supervised E2E passed. Both Mac and both Linux build
+qualification rows are complete for that run. The last Mac job was allowed to finish
+before pushing the prepared UTF-8 fix, preserving its native evidence rather than
+cancelling it in another CI wave.
 
 ## macOS updater API and selected topology
 

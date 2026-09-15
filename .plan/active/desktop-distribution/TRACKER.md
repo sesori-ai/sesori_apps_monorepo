@@ -65,7 +65,7 @@ and signing-metadata evidence is recorded in [steps/step-02.md](steps/step-02.md
 
 | Gate | State | Evidence still required |
 |---|---|---|
-| Native build matrix | Partial: macOS ARM64 and both Linux CI rows passed | Windows x64/ARM64 builds and inventories passed; UTF-8 diagnostic-write correction/E2E rerun and macOS x64 completion pending. All interactive/signed release gates remain unverified. |
+| Native build matrix | Partial: both macOS and both Linux CI rows passed | Windows x64/ARM64 builds and inventories passed; awaiting the full Windows rerun with UTF-8 artifact writes. All interactive/signed release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Not provisioned/verified | Developer ID/notarization and update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
