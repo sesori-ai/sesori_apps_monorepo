@@ -69,6 +69,20 @@ class NativeInventoryTest(unittest.TestCase):
             with self.assertRaisesRegex(ValueError, "Wrong native target"):
                 qualification.inventory(root=root, target_os="windows", arch="x64")
 
+    def test_windows_dart_aot_is_elf_but_still_requires_native_cpu(self) -> None:
+        for arch, machine in (("x64", 62), ("arm64", 183)):
+            with self.subTest(arch=arch), tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                (root / "data").mkdir()
+                snapshot = root / "data/app.so"
+                snapshot.write_bytes(elf(machine=machine))
+                report = qualification.inventory(root=root, target_os="windows", arch=arch)
+                self.assertEqual(report[0]["format"], "ELF")
+                self.assertEqual(report[0]["architectures"], [arch])
+                snapshot.write_bytes(elf(machine=183 if arch == "x64" else 62))
+                with self.assertRaisesRegex(ValueError, "Wrong native target"):
+                    qualification.inventory(root=root, target_os="windows", arch=arch)
+
     def test_hashes_binaries_and_ignores_resources(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

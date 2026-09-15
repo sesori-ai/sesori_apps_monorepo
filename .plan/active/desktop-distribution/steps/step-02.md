@@ -20,10 +20,10 @@ The official release manifests contain these exact pinned archives:
 |---|---|---|
 | macOS x64 | `stable/macos/flutter_macos_3.47.4-stable.zip` | Manifest only; GUI build not run here. |
 | macOS arm64 | `stable/macos/flutter_macos_arm64_3.47.4-stable.zip` | Native release build, binary inventory and relocated-helper integration passed; see evidence below. |
-| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Manifest only. |
-| Linux x64 | `stable/linux/flutter_linux_3.47.4-stable.tar.xz` | Manifest only. |
-| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Pinned source bootstrap and ARM64 Dart asset available; native GUI build still required. |
-| Linux arm64 | No prepacked Flutter SDK archive in the pinned Linux manifest | Pinned source bootstrap and ARM64 Dart asset available; native GUI build still required. |
+| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Official source bootstrap and GUI build passed; inventory/E2E await scanner correction. |
+| Linux x64 | `stable/linux/flutter_linux_3.47.4-stable.tar.xz` | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
+| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Official source bootstrap and native GUI build passed; inventory/E2E await scanner correction. |
+| Linux arm64 | No prepacked Flutter SDK archive in the pinned Linux manifest | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
 
 All listed archives map to the same framework revision and Dart version. A missing
 prepacked SDK is not proof that the target is unsupported:
@@ -35,11 +35,9 @@ prepacked SDK is not proof that the target is unsupported:
 - The pinned Windows build source maps `TargetPlatform.windows_arm64` to CMake
   `ARM64`; the Linux build source contains native/cross-target ARM64 support.
 
-Next proof: bootstrap the exact official framework revision on native ARM64 CI
-hosts, build the actual GUI/native plugins and helper, and inspect resulting
-architecture. Do not substitute an emulated x64 app or call these targets qualified
-from manifest/source availability alone. No custom Flutter fork or toolchain upgrade
-is approved or currently indicated by this evidence.
+Actual native build evidence now exists beyond manifest availability; see the CI
+results below. Complete the remaining inventory/E2E rows without substituting an
+emulated x64 application. No custom Flutter fork or toolchain upgrade was needed.
 
 Sources:
 
@@ -145,13 +143,16 @@ References:
 ## Repeatable native qualification tooling
 
 `.github/workflows/desktop-qualification.yml` is a read-only, unsigned PR/manual
-workflow. It never starts the GUI, accesses signing credentials, publishes a product,
-or changes mobile/CLI release gates. Six native runner rows are explicit:
+workflow, triggered by its tooling/SDK pin changes or manual dispatch. It is not a
+second full-source PR CI matrix: `desktop-ci.yml` remains that regression gate, and
+packaged release gates must exercise their actual artifacts. It never starts the GUI,
+accesses signing credentials, publishes a product, or changes mobile/CLI release
+gates. Six native runner rows are explicit:
 
 | Target | Runner label | Build tooling / evidence |
 |---|---|---|
-| macOS x64 | `macos-15-intel` | Xcode 26.3 selected explicitly; Flutter + Sparkle API compile probe. |
-| macOS arm64 | `macos-15` | Same Xcode pin, native arm64 host. |
+| macOS x64 | `macos-26-intel` | Xcode 26.6 selected explicitly; Flutter + Sparkle API compile probe. |
+| macOS arm64 | `macos-26` | Same Xcode pin, native arm64 host. |
 | Windows x64 | `windows-2025` | Image Visual Studio/SDK recorded by Flutter doctor; this is not Windows 11 interactive QA. |
 | Windows arm64 | `windows-11-arm` | Native host and Dart required; x64 fallback fails. |
 | Linux x64 | `ubuntu-24.04` | Native clang/CMake/GTK, libsecret and Ayatana headers. |
@@ -169,7 +170,10 @@ a silent x64 fallback. Local inspection uses the already-installed pinned SDK;
 bootstrap refuses non-CI use. This is qualification tooling, not a new runtime manager.
 
 After normal GUI/helper builds, `inspect` inventories Mach-O/PE/ELF binaries, CPU
-slices and independent SHA256 hashes. A mismatched library fails the target. It
+slices and independent SHA256 hashes. A mismatched library fails the target. Windows
+Flutter's `data/app.so` is an ELF Dart AOT snapshot, not a PE DLL; only that exact
+bundle path accepts ELF, and its native CPU is still required. Other Windows native
+libraries/executables must remain PE. It
 relocates the **complete** helper bundle into the proposed layout (including a path
 with spaces), runs its side-effect-free `--version`, and provides the relocated path
 to the existing isolated supervised E2E fixture. That fixture exercises native SQLite,
@@ -198,7 +202,8 @@ Host: macOS `26.6.2` (`25G83`), arm64. Xcode `26.6` (`17F113`), SDK `26.5`.
 - Existing `supervised_e2e_test.dart` with `SESORI_DESKTOP_BRIDGE_PATH` pointing to
   that relocated helper and `SESORI_E2E_REQUIRED=1`: **1 test passed**. Uses isolated
   local fakes; not real login/relay/harness or GUI proof.
-- Python header/bootstrap/diagnostic tooling tests: **8 passed**.
+- Python header/bootstrap/diagnostic tooling tests: **9 passed**, including Windows
+  AOT snapshot format and wrong-CPU refusal.
 - GUI Mach-O load commands report macOS minimum `12.0`. This matches the Xcode
   project and Sparkle minimum; a run on macOS 12 is still needed before claiming it
   as a tested minimum.
@@ -210,7 +215,8 @@ or manual edit to generated files was needed.
 
 Private/local raw evidence lives under gitignored `build/desktop-qualification/`.
 No GUI was launched, no real account was used, and no distribution signing or
-notarization was attempted. The other five native GUI builds remain unverified.
+notarization was attempted. Other native targets are not yet fully qualified;
+passing partial build evidence is recorded below.
 
 ### First native CI attempt
 
@@ -221,6 +227,25 @@ GUI compilation: plain `dart pub get` did not populate the source SDK's `sky_eng
 cache. The workflow now uses `flutter pub get --enforce-lockfile` for the client
 workspace while retaining Dart-only bridge resolution. Do not label this setup
 failure an unsupported CPU target or bypass locked dependencies to fix it.
+
+[Run 34961313109](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34961313109)
+then built both Windows x64 and ARM64 GUIs successfully. Their inventories failed because the first
+scanner incorrectly required PE for Flutter's legitimate ELF `data/app.so`; the exact
+snapshot format is now handled without weakening CPU/DLL checks. The macOS ARM64
+leg reached Apple's asset compiler but crashed in `AssetCatalogAgent-AssetRuntime`,
+with missing MediaToolbox symbols, on macOS 15/Xcode 26.3. Mac build hosts now use
+macOS 26/Xcode 26.6 (the successful local toolchain family), retaining both CPU rows
+and the actual Icon Composer asset. This changes the build host, not the app's
+minimum-OS support claim. Both corrections await their native CI rerun.
+
+**Both Linux rows passed completely** in that run, including real GUI/plugin/helper
+builds, native inventory, `ldd` closure and the relocated supervised E2E (one test per
+CPU). Actual GitHub merge-checkout SHA: `d0cf358babdcb5cb4b51e49f71748158f4c4d6fb`.
+Each GUI contains 11 native binaries and each helper contains `bridge` plus
+`libsqlite3.so`. Both use glibc 2.39, clang 18.1.3 and CMake 3.31.6. Image identities:
+x64 `ubuntu24` / `20260907.300.1`, ARM64 `ubuntu24-arm64` / `20260907.118.1`.
+This proves the official Linux ARM64 Flutter build route; it does not prove packaged
+DEB/RPM installation, GUI interactions, or a real harness on either target.
 
 ## macOS updater API and selected topology
 
@@ -266,7 +291,7 @@ or notary access. No Windows signing, Sparkle update-key, or GCS publication ide
 was established by this inspection. The existing Google Play credential is not a
 GCS publishing credential and must not be repurposed implicitly.
 
-Native Windows/Linux execution, final macOS entitlements, updater signature tests,
+Remaining native Windows/macOS checks, final macOS entitlements, updater signature tests,
 GCS permissions and clean-host package/runtime dependency qualification remain
 outstanding. Ubuntu 24.04 and Debian 13 remain nominated DEB baselines; the supported
 Fedora release and CPU/desktop-environment mapping remain a Linux release entry gate.

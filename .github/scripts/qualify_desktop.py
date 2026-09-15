@@ -59,7 +59,7 @@ def native_arch(*, path: Path) -> tuple[str, list[str]] | None:
 
 
 def inventory(*, root: Path, target_os: str, arch: str) -> list[dict]:
-    expected_format = {"macos": "Mach-O", "windows": "PE", "linux": "ELF"}[target_os]
+    platform_format = {"macos": "Mach-O", "windows": "PE", "linux": "ELF"}[target_os]
     entries = []
     for path in sorted(root.rglob("*")):
         if not path.is_file() or path.is_symlink():
@@ -70,11 +70,14 @@ def inventory(*, root: Path, target_os: str, arch: str) -> list[dict]:
                 raise ValueError(f"Unrecognized native library/executable: {path}")
             continue
         binary_format, arches = native
+        relative_path = path.relative_to(root).as_posix()
+        # Flutter loads this Dart AOT snapshot as ELF even on Windows; DLLs/EXEs remain PE.
+        expected_format = "ELF" if target_os == "windows" and relative_path == "data/app.so" else platform_format
         if binary_format != expected_format or arch not in arches:
             raise ValueError(f"Wrong native target: {path}: {binary_format} {arches}; expected {target_os}/{arch}")
         with path.open("rb") as stream:
             digest = hashlib.file_digest(stream, "sha256").hexdigest()
-        entries.append({"path": path.relative_to(root).as_posix(), "format": binary_format,
+        entries.append({"path": relative_path, "format": binary_format,
                         "architectures": arches, "sha256": digest, "bytes": path.stat().st_size})
     if not entries:
         raise ValueError(f"No native binaries found in {root}")

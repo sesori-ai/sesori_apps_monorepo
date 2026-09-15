@@ -1,6 +1,8 @@
 name: Desktop Native Qualification
 
 # Build evidence only. No release tags, signing credentials, publication or GUI launch.
+# Targeted SDK/tooling qualification, NOT another full-source PR CI matrix.
+# Product source changes remain covered by desktop-ci.yml and explicit packaged release gates.
 # This intentionally does not gate the independent CLI/mobile release workflows.
 on:
   workflow_dispatch:
@@ -10,6 +12,7 @@ on:
       - '.github/scripts/qualify_desktop.py'
       - '.github/scripts/test_qualify_desktop.py'
       - '.github/scripts/probe_sparkle.swift'
+      - '.tool-versions'
 
 permissions:
   contents: read
@@ -35,10 +38,10 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - runner: macos-15-intel
+          - runner: macos-26-intel
             target: macos
             arch: x64
-          - runner: macos-15
+          - runner: macos-26
             target: macos
             arch: arm64
           - runner: windows-2025
@@ -82,7 +85,7 @@ jobs:
 
       - name: Select Xcode with Icon Composer support
         if: matrix.target == 'macos'
-        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.3.app/Contents/Developer' >> "$GITHUB_ENV"
+        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
 
       - name: Install Linux native build dependencies
         if: matrix.target == 'linux'
