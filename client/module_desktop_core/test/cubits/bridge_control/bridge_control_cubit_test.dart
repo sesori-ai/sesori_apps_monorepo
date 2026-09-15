@@ -79,7 +79,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for server (retrying every minute)");
+      expect(cubit.state.statusLabel, "Starting — waiting for server (retrying every minute)");
       statusTracker.applyStatus(
         status: const ControlStatus(
           startup: ControlStartupState.ready,
@@ -88,7 +88,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Connected");
+      expect(cubit.state.statusLabel, "Connected");
     });
 
     test("a temporary desktop token failure shows an authentication wait", () async {
@@ -103,7 +103,7 @@ void main() {
         ),
       );
       await pumpEventQueue();
-      expect(cubit.state.statusLabel, "Bridge: Starting — waiting for desktop authentication (retrying every minute)");
+      expect(cubit.state.statusLabel, "Starting — waiting for desktop authentication (retrying every minute)");
     });
 
     test("initializes a typed tray menu and reacts to process/status snapshots", () async {
@@ -173,43 +173,6 @@ void main() {
       await cubit.initialize();
 
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.takeOver).label, "Take Over");
-    });
-
-    test("refresh reads native changes and serializes a quick toggle", () async {
-      await cubit.initialize();
-      final read = launchAtLogin.readGate = Completer<bool>();
-      final refresh = cubit.refreshLaunchAtLogin();
-      expect(cubit.state.activity, BridgeControlActivity.configuringLaunchAtLogin);
-      await cubit.toggleLaunchAtLogin();
-      expect(launchAtLogin.enableCalls, 0);
-      read.complete(true);
-      await refresh;
-      expect(cubit.state.launchAtLoginEnabled, isTrue);
-      expect(cubit.state.activity, BridgeControlActivity.idle);
-      expect(
-        _command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleLaunchAtLogin).label,
-        "Disable Launch at Login",
-      );
-    });
-
-    test("failed refresh releases commands and preserves the known value", () async {
-      await cubit.initialize();
-      launchAtLogin.readGate = Completer<bool>();
-      final refresh = cubit.refreshLaunchAtLogin();
-      launchAtLogin.readGate!.completeError(StateError("native read failed"));
-      await refresh;
-      expect(cubit.state.launchAtLoginEnabled, isFalse);
-      expect(cubit.state.activity, BridgeControlActivity.idle);
-    });
-
-    test("late native refresh completion does not emit after disposal", () async {
-      await cubit.initialize();
-      launchAtLogin.readGate = Completer<bool>();
-      final refresh = cubit.refreshLaunchAtLogin();
-      await cubit.close();
-      launchAtLogin.readGate!.complete(true);
-      await refresh;
-      expect(cubit.isClosed, isTrue);
     });
 
     test("toggle launch-at-login updates the menu only after registration succeeds", () async {
@@ -301,8 +264,8 @@ void main() {
       await pumpEventQueue();
 
       expect(hiddenCubit.state.processState, isA<BridgeProcessStartFailed>());
-      expect(hiddenCubit.state.statusLabel, "Bridge: Repair required — open Sesori");
-      expect(_textLabels(menu: systemTray.menus.last), contains(hiddenCubit.state.statusLabel));
+      expect(hiddenCubit.state.statusLabel, "Repair required");
+      expect(_textLabels(menu: systemTray.menus.last), contains("Bridge: ${hiddenCubit.state.statusLabel}"));
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge On");
       expect(windowHost.showCalls, 0);
       expect(processService.startCalls, 0);
@@ -460,6 +423,14 @@ void main() {
       expect(processService.startCalls, 1);
       expect(processService.desiredState, BridgeProcessDesiredState.on);
       expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.on]);
+    });
+
+    test("explicit Stop persists Off even when the helper has already stopped", () async {
+      await cubit.initialize();
+      await cubit.stopBridge();
+      expect(processService.startCalls, 0);
+      expect(processService.stopCalls, 1);
+      expect(instanceService.writes, <BridgeProcessDesiredState>[BridgeProcessDesiredState.off]);
     });
 
     test("connection recovery starts the helper and reconnects the relay", () async {
@@ -924,10 +895,9 @@ class _FakeLaunchAtLogin() implements LaunchAtLogin {
   int disableCalls = 0;
   Object? enableError;
   Object? disableError;
-  Completer<bool>? readGate;
 
   @override
-  Future<bool> isEnabled() => readGate?.future ?? Future<bool>.value(enabled);
+  Future<bool> isEnabled() async => enabled;
 
   @override
   Future<void> enable() async {

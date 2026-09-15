@@ -84,19 +84,13 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopBridgeOpenLogs => 'Open Logs';
 
   @override
-  String get desktopBridgeLaunchAtLogin => 'Start at login';
+  String get desktopLocalBridgeTitle => 'Local bridge';
+
+  @override
+  String get desktopBridgeStop => 'Stop Bridge';
 
   @override
   String get desktopBridgeSettings => 'Bridge settings…';
-
-  @override
-  String get desktopBridgeQuit => 'Quit Sesori';
-
-  @override
-  String get desktopBridgeClientConnected => 'Client connected';
-
-  @override
-  String get desktopBridgeClientDisconnected => 'Client disconnected';
 
   @override
   String get desktopBridgeTitle => 'Bridge';

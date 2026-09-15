@@ -43,7 +43,6 @@ void main() {
       initialState: const <String, RecentSessionsEntry>{},
     );
     when(() => recent.ensureLoaded(projectId: any(named: "projectId"))).thenAnswer((_) async {});
-    when(() => bridgeControlCubit.refreshLaunchAtLogin()).thenAnswer((_) async {});
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
