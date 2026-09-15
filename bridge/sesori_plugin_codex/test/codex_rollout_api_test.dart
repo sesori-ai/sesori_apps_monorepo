@@ -1717,7 +1717,7 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
       expect(messages.single.info.time?.created, 1784818097959);
       final part = messages.single.parts.single;
       expect(part.tool, "compact");
-      expect(part.state.title, "Context compacted");
+      expect(part.state.title, isNull);
       expect(part.state.status, PluginToolStatus.completed);
       expect(part.state.output, isNull);
     });

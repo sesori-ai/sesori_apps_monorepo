@@ -277,9 +277,11 @@ defaults and queued client sends coherent.
   current run settles. Pi may run model-backed automatic compaction before it
   acknowledges a prompt, so that preflight uses a turn-scale deadline instead
   of the shorter history/control RPC deadline. The prompt remains visibly
-  queued alongside a running `Compacting context` tool card while compaction
-  runs, including in snapshots loaded by later viewers. The card updates in
-  place to `Context compacted` when Pi persists the result; aborting or losing
+  queued alongside a running `compact` tool card while compaction
+  runs, including in snapshots loaded by later viewers. Pi and Codex compaction
+  cards show the action once, without a redundant title; status conveys progress
+  in live updates and loaded history. The card updates in
+  place to completed when Pi persists the result; aborting or losing
   the Pi process removes it. An accepted prompt remains bridge-queued
   through startup and selection until Pi echoes its correlated user message,
   including an attachment-only echo; it can be

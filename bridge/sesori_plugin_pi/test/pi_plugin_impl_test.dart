@@ -64,7 +64,7 @@ void main() {
 
       expect(messages, hasLength(1));
       expect(messages.single.parts.single.state.status, PluginToolStatus.running);
-      expect(messages.single.parts.single.state.title, "Compacting context");
+      expect(messages.single.parts.single.state.title, isNull);
     });
 
     test("buffers created before busy when the first turn starts", () async {
