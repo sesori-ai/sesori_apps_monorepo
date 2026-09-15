@@ -1812,16 +1812,16 @@ class AppLocalizationsEn extends AppLocalizations {
   String get prConflicting => 'Has merge conflicts';
 
   @override
-  String get diffPermissionRequestTitle => 'Permission Request';
+  String get diffPermissionRequestTitle => 'Allow this action?';
 
   @override
-  String get diffPermissionReject => 'Reject';
+  String get diffPermissionReject => 'Don’t allow';
 
   @override
-  String get diffPermissionOnce => 'Once';
+  String get diffPermissionOnce => 'Allow';
 
   @override
-  String get diffPermissionAlwaysAllow => 'Always Allow';
+  String get diffPermissionAlwaysAllow => 'Always approve';
 
   @override
   String get diffFileChangesTitle => 'File Changes';
