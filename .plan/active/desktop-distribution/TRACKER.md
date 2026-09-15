@@ -10,8 +10,8 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 1 | 1 | Align platform distribution and update plan | done |
 | 2 | 2 | Qualify six-target packaging prerequisites | done |
 | 3.a | 3 | Bind desktop builds to bundled bridge identity | done |
-| 3.b | 4 | Surface packaged helper repair guidance | in-progress |
-| 4 | 5 | Package and notarize native macOS builds | pending |
+| 3.b | 4 | Surface packaged helper repair guidance | done |
+| 4 | 5 | Package and notarize native macOS builds | in-progress |
 | 5 | 6 | Apply macOS updates through safe application quit | pending |
 | 6 | 7 | Publish isolated desktop channels and macOS downloads | pending |
 | 7 | 8 | Package signed per-user Windows installers | pending |
@@ -78,6 +78,18 @@ its focused implementation, approved architecture review and evidence live in
 [steps/step-03b.md](steps/step-03b.md).
 The existing service/state/presentation path retains user-facing repair guidance
 before any installers. No public gate is waived by the split.
+
+Step 3.b merged in [PR #1495](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1495)
+as `e853838ac29b5d829f13622702c5d47a74eaa829`, accepting PR head `758bc554`.
+Workflow 34994634843 passed its analyzer/test and three desktop build jobs at
+Actions merge checkout `c40323edd60873d0a7d6f498ab05c4c8fd2b798f`. All review
+threads were resolved; the final Cubic review approved with no findings.
+Step 4 began in the same worktree on `desktop-distribution-macos-packaging`.
+The CLI workflow names a Developer ID Application identity, and local metadata
+shows one matching valid identity. No secret values or keys were exported;
+notarization authentication and signed desktop suitability remain unverified.
+The user selected existing GitHub Apple credentials for trusted CI verification.
+The bounded preflight and packaging outline are in [steps/step-04.md](steps/step-04.md).
 
 ## Qualification and ship gates
 

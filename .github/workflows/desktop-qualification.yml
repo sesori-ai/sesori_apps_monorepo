@@ -1,11 +1,17 @@
 name: Desktop Native Qualification
 
-# Build evidence only. No release tags, signing credentials, publication or GUI launch.
+# Default qualification: no signing credentials, release tags, publication or GUI launch.
+# Explicit manual macOS preflight verifies existing signing/notarization access only.
 # Targeted SDK/tooling qualification, NOT another full-source PR CI matrix.
 # Product source changes remain covered by desktop-ci.yml and explicit packaged release gates.
 # This intentionally does not gate the independent CLI/mobile release workflows.
 on:
   workflow_dispatch:
+    inputs:
+      verify_macos_signing_access:
+        description: 'Only verify existing macOS signing/notarization credentials; no product artifacts'
+        type: boolean
+        default: false
   pull_request:
     paths:
       - '.github/workflows/desktop-qualification.yml'
@@ -24,7 +30,68 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  macos-signing-preflight:
+    if: github.event_name == 'workflow_dispatch' && inputs.verify_macos_signing_access
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        runner: [macos-26-intel, macos-26]
+    runs-on: ${{ matrix.runner }}
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - name: Select qualified Xcode
+        run: echo 'DEVELOPER_DIR=/Applications/Xcode_26.6.app/Contents/Developer' >> "$GITHUB_ENV"
+
+      - name: Verify Developer ID signing and notarization access
+        env:
+          MACOS_CERT_P12_BASE64: ${{ secrets.MACOS_CERT_P12_BASE64 }}
+          MACOS_CERT_PASSWORD: ${{ secrets.MACOS_CERT_PASSWORD }}
+          MACOS_KEYCHAIN_PASSWORD: ${{ secrets.MACOS_KEYCHAIN_PASSWORD }}
+          APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_APP_SPECIFIC_PASSWORD: ${{ secrets.APPLE_APP_SPECIFIC_PASSWORD }}
+        run: |
+          set -euo pipefail
+          for name in MACOS_CERT_P12_BASE64 MACOS_CERT_PASSWORD MACOS_KEYCHAIN_PASSWORD \
+            APPLE_TEAM_ID APPLE_ID APPLE_APP_SPECIFIC_PASSWORD; do
+            if [[ -z "${!name}" ]]; then
+              echo "Required signing configuration is missing: $name" >&2
+              exit 1
+            fi
+          done
+          keychain="$RUNNER_TEMP/desktop-signing-preflight.keychain-db"
+          certificate="$RUNNER_TEMP/desktop-signing-preflight.p12"
+          probe="$RUNNER_TEMP/desktop-signing-preflight"
+          history="$RUNNER_TEMP/desktop-notary-history.json"
+          cleanup() {
+            rm -f "$certificate" "$probe" "$probe.c" "$history"
+            if [[ -f "$keychain" ]]; then
+              security delete-keychain "$keychain"
+            fi
+          }
+          trap cleanup EXIT
+          printf '%s' "$MACOS_CERT_P12_BASE64" | base64 --decode -o "$certificate"
+          security create-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$keychain"
+          security unlock-keychain -p "$MACOS_KEYCHAIN_PASSWORD" "$keychain"
+          security set-keychain-settings -lut 600 "$keychain"
+          security import "$certificate" -k "$keychain" -P "$MACOS_CERT_PASSWORD" -T /usr/bin/codesign >/dev/null
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$MACOS_KEYCHAIN_PASSWORD" "$keychain" >/dev/null
+          printf 'int main(void) { return 0; }\n' > "$probe.c"
+          xcrun clang "$probe.c" -o "$probe"
+          codesign --sign "Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)" \
+            --keychain "$keychain" --timestamp --options runtime --force "$probe"
+          codesign --verify --strict "$probe"
+          "$probe"
+          echo "Native $(uname -m) Developer ID timestamped/hardened probe signed, verified and executed."
+          xcrun notarytool history --apple-id "$APPLE_ID" --password "$APPLE_APP_SPECIFIC_PASSWORD" \
+            --team-id "$APPLE_TEAM_ID" --output-format json > "$history"
+          echo 'Notarization authentication verified. No product was submitted or published.'
+
   tooling:
+    if: github.event_name != 'workflow_dispatch' || !inputs.verify_macos_signing_access
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
