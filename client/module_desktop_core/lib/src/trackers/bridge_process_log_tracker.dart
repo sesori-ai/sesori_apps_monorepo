@@ -30,19 +30,17 @@ typedef BridgeProcessLogWarningReporter = void Function({
   required StackTrace stackTrace,
 });
 
-/// Layer-2 owner of the supervised helper's stdout/stderr drain and recent-log
-/// state.
+/// Layer-2 owner of the supervised helper's stdout/stderr drain.
 ///
 /// Both pipes are continuously split under a byte cap and decoded with
 /// malformed-byte tolerance, so a chatty or imperfect helper can never block
-/// on a full OS pipe or grow one unterminated line without bound. Every line is
-/// retained in a last-N in-memory ring and independently offered to rotating
-/// Layer-1 storage; storage failures are rate-limited in local logs and never
+/// on a full OS pipe or grow one unterminated line without bound. Lines are
+/// offered to rotating Layer-1 storage through a bounded queue;
+/// storage failures are rate-limited in local logs and never
 /// cancel either drain subscription.
 @lazySingleton
 class BridgeProcessLogTracker.forTesting({
   required final BridgeProcessLogStorage _storage,
-  required final int _maxEntries,
   required final int _maxLineBytes,
   required final int _maxPendingPersistenceEntries,
   required final Duration _storageWarningInterval,
@@ -52,7 +50,6 @@ class BridgeProcessLogTracker.forTesting({
   new({required BridgeProcessLogStorage storage})
     : this.forTesting(
         storage: storage,
-        maxEntries: defaultMaxEntries,
         maxLineBytes: defaultMaxLineBytes,
         maxPendingPersistenceEntries: defaultMaxPendingPersistenceEntries,
         storageWarningInterval: defaultStorageWarningInterval,
@@ -62,27 +59,18 @@ class BridgeProcessLogTracker.forTesting({
 
   @visibleForTesting
   this
-    : assert(_maxEntries > 0, "maxEntries must be positive"),
-      assert(_maxLineBytes > 0, "maxLineBytes must be positive"),
+    : assert(_maxLineBytes > 0, "maxLineBytes must be positive"),
       assert(_maxPendingPersistenceEntries > 0, "maxPendingPersistenceEntries must be positive");
 
-  static const int defaultMaxEntries = 200;
   static const int defaultMaxLineBytes = 64 * 1024;
   static const int defaultMaxPendingPersistenceEntries = 200;
   static const Duration defaultStorageWarningInterval = Duration(minutes: 1);
 
-  final ListQueue<BridgeProcessLogEntry> _entries = ListQueue<BridgeProcessLogEntry>();
   final ListQueue<BridgeProcessLogEntry> _pendingPersistenceEntries = ListQueue<BridgeProcessLogEntry>();
-  final BehaviorSubject<List<BridgeProcessLogEntry>> _entrySnapshots =
-      BehaviorSubject<List<BridgeProcessLogEntry>>.seeded(const <BridgeProcessLogEntry>[]);
   CompositeSubscription _subscriptions = CompositeSubscription();
   Future<void>? _persistenceDrain;
   DateTime? _nextStorageWarningAt;
   DateTime? _nextQueueWarningAt;
-
-  List<BridgeProcessLogEntry> get snapshot => List<BridgeProcessLogEntry>.unmodifiable(_entries);
-
-  ValueStream<List<BridgeProcessLogEntry>> get snapshots => _entrySnapshots.stream;
 
   /// Replaces the current pipe subscriptions with a new child process's raw
   /// byte streams. Cancelling the old subscriptions is awaited before the new
@@ -165,12 +153,6 @@ class BridgeProcessLogTracker.forTesting({
       source: source,
       message: message,
     );
-    _entries.addLast(entry);
-    while (_entries.length > _maxEntries) {
-      _entries.removeFirst();
-    }
-    _entrySnapshots.add(snapshot);
-
     if (_pendingPersistenceEntries.length >= _maxPendingPersistenceEntries) {
       _pendingPersistenceEntries.removeFirst();
       _reportQueueOverflow();
@@ -252,6 +234,5 @@ class BridgeProcessLogTracker.forTesting({
       }
       await drain;
     }
-    await _entrySnapshots.close();
   }
 }

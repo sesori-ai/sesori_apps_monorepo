@@ -19,7 +19,6 @@ void main() {
       warnings = <String>[];
       tracker = BridgeProcessLogTracker.forTesting(
         storage: storage,
-        maxEntries: 2,
         maxLineBytes: 8,
         maxPendingPersistenceEntries: 3,
         storageWarningInterval: const Duration(minutes: 1),
@@ -42,7 +41,7 @@ void main() {
       await tracker.dispose();
     });
 
-    test("drains fragmented stdout/stderr and retains the last-N snapshot", () async {
+    test("drains fragmented stdout/stderr into rotating storage", () async {
       await tracker.attach(stdout: stdout.stream, stderr: stderr.stream);
 
       stdout.add(utf8.encode("hel"));
@@ -52,14 +51,6 @@ void main() {
       await stderr.close();
       await pumpEventQueue();
 
-      expect(
-        tracker.snapshot.map((entry) => (entry.source, entry.message)),
-        equals(<(BridgeProcessLogSource, String)>[
-          (BridgeProcessLogSource.stdout, "one"),
-          (BridgeProcessLogSource.stderr, "error"),
-        ]),
-      );
-      expect(tracker.snapshots.value, tracker.snapshot);
       expect(storage.logicalLines, hasLength(3));
       expect(storage.logicalLines.first, contains("[stdout] hello"));
       expect(storage.logicalLines.last, contains("[stderr] error"));
@@ -74,7 +65,8 @@ void main() {
       await stdout.close();
       await pumpEventQueue();
 
-      expect(tracker.snapshot.map((entry) => entry.message), containsAll(<String>["�", "after"]));
+      expect(storage.logicalLines.first, endsWith("[stdout] �"));
+      expect(storage.logicalLines.last, endsWith("[stdout] after"));
       expect(storage.logicalLines, hasLength(2));
     });
 
@@ -85,15 +77,13 @@ void main() {
         ..add(utf8.encode("12345678"))
         ..add(utf8.encode("90"));
       await pumpEventQueue();
-      expect(tracker.snapshot, isEmpty);
+      expect(storage.logicalLines, isEmpty);
 
       stdout.add(utf8.encode("\nafter\n"));
       await pumpEventQueue();
 
-      expect(
-        tracker.snapshot.map((entry) => entry.message),
-        ["12345678 [truncated after 8 bytes]", "after"],
-      );
+      expect(storage.logicalLines.first, endsWith("12345678 [truncated after 8 bytes]"));
+      expect(storage.logicalLines.last, endsWith("after"));
       expect(storage.logicalLines, hasLength(2));
     });
 
@@ -106,7 +96,6 @@ void main() {
         ..add(utf8.encode("two\n"));
       await pumpEventQueue();
 
-      expect(tracker.snapshot.map((entry) => entry.message), ["one", "two"]);
       expect(storage.attempts, 2);
       expect(warnings, hasLength(1));
 
@@ -119,7 +108,10 @@ void main() {
       stdout.add(utf8.encode("four\n"));
       await pumpEventQueue();
       expect(warnings, hasLength(2));
-      expect(tracker.snapshot.map((entry) => entry.message), ["three", "four"]);
+      storage.error = null;
+      stdout.add(utf8.encode("restored\n"));
+      await pumpEventQueue();
+      expect(storage.logicalLines.single, endsWith("restored"));
     });
 
     test("bounds queued persistence and batches the newest pending lines", () async {
@@ -133,7 +125,6 @@ void main() {
       await pumpEventQueue();
 
       expect(storage.attempts, 1);
-      expect(tracker.snapshot.map((entry) => entry.message), ["line-8", "line-9"]);
       expect(warnings, hasLength(1));
 
       releaseWrite.complete();
@@ -160,7 +151,7 @@ void main() {
       replacementStdout.add(utf8.encode("current\n"));
       await pumpEventQueue();
 
-      expect(tracker.snapshot.map((entry) => entry.message), ["current"]);
+      expect(storage.logicalLines.single, endsWith("current"));
     });
   });
 }

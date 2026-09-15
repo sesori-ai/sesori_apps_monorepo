@@ -17,7 +17,7 @@ class const DesktopBridgePopover({
   State<DesktopBridgePopover> createState() => _DesktopBridgePopoverState();
 }
 
-class _DesktopBridgePopoverState extends State<DesktopBridgePopover> {
+class _DesktopBridgePopoverState() extends State<DesktopBridgePopover> {
   @override
   void initState() {
     super.initState();

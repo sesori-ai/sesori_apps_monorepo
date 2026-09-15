@@ -145,6 +145,30 @@ void main() {
     }
   });
 
+  testWidgets("Bridge opens in expanded and compact mode without replacing the main pane", (tester) async {
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.resetDevicePixelRatio);
+    addTearDown(tester.view.resetPhysicalSize);
+    for (final width in [560.0, 1060.0]) {
+      tester.view.physicalSize = Size(width, 480);
+      await tester.pumpWidget(app(state: running));
+      await tester.pumpAndSettle();
+      final page = tester.element(find.byKey(const Key("cockpit-content")));
+      await tester.tap(
+        find.byWidgetPredicate(
+          (widget) => widget is Semantics && widget.properties.label == "Bridge, Bridge status",
+        ),
+      );
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("desktop-bridge-popover")), findsOneWidget);
+      expect(tester.element(find.byKey(const Key("cockpit-content"))), same(page));
+      await tester.tapAt(Offset(width - 10, 10));
+      await tester.pumpAndSettle();
+      expect(find.byKey(const Key("desktop-bridge-popover")), findsNothing);
+      expect(contentTaps, 0);
+    }
+  });
+
   testWidgets("the sidebar is the only navigation pane at every desktop width", (tester) async {
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.resetDevicePixelRatio);
@@ -641,11 +665,7 @@ void main() {
     await tester.pumpWidget(
       app(
         state: _state(
-          processState: BridgeProcessCrashGiveUp(
-            exitCode: 1,
-            crashCount: 6,
-            recentLogs: const <BridgeProcessLogEntry>[],
-          ),
+          processState: const BridgeProcessCrashGiveUp(exitCode: 1, crashCount: 6),
         ),
       ),
     );
