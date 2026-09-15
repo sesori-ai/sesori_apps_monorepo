@@ -35,8 +35,8 @@ Start step 2 on the merge notification using `sesori-plan-worker`; thereafter ke
 one series PR open and at most one successor step local. This supersedes the earlier
 plan-only hold. Material scope/security decisions, missing credentials/infrastructure,
 and the recorded public-release prerequisites remain gates; do not silently waive
-or bypass them. No product signing, infrastructure provisioning, or product
-publication has yet been performed; the private CI credential probe is not a product.
+or bypass them. Private signing qualification is underway; no infrastructure was
+provisioned and no product was notarized or published.
 
 Subsequent user clarification (2026-09-15): trusted, widely used, simple tooling
 outranks automatic updates. A dedicated manual update button is acceptable.
@@ -92,6 +92,14 @@ both Macs. Registering the imported temporary keychain in the user search list
 resolved `codesign` lookup failure. No local key was exported, and no product was
 submitted or published. Signed-desktop suitability is still unverified.
 The bounded evidence and packaging outline are in [steps/step-04.md](steps/step-04.md).
+First packaging run 35002549379 at `f5348c07199f24030942036007b854f903c5f930`
+built both native apps and authenticated both notary profiles, but app signing
+rejected the identity JSON in the code-only Helpers subtree. A local ad-hoc layout
+probe proved that Resources placement signs/verifies and still rejects manifest
+tampering. The scoped macOS manifest producer/consumer plan review approved with
+no findings; the implemented correction passes 24 Flutter tests, 8 Python tests
+and desktop analysis. Implementation review/native packaging are next. The complete
+helper bin/lib layout and Windows/Linux placement stay intact.
 
 ## Qualification and ship gates
 

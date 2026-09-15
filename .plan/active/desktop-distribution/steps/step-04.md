@@ -1,6 +1,6 @@
 # Step 4 — Native macOS Packaging and Notarization
 
-Status: **in progress — local packaging tooling checks passed; native CI next**.
+Status: **in progress — manifest correction verified locally; implementation review pending**.
 PR ordinal **5/13**.
 Branch: `desktop-distribution-macos-packaging`, in the existing `tan-antelope`
 worktree. Predecessor [3.b](step-03b.md) merged as
@@ -87,8 +87,9 @@ keep passwords out of Python command/error reporting. The existing workflow will
 use one closed dispatch-mode choice for native qualification, credential preflight
 or private macOS packaging, so mutually exclusive operations cannot both be selected.
 Default PR qualification remains credential-free. No application/Keychain owner or
-restricted entitlement is changing; reassess architecture review only if a concrete
-native failure requires production-boundary changes.
+restricted entitlement was changed by the initial tooling. The concrete native
+failure below now requires a scoped producer/consumer placement change and an
+architecture-plan review before touching those Dart paths.
 Estimated budget: under 1,000 authored changed lines; zero new application mutable
 fields, subscriptions, timers, lifecycle owners, persistence or transport contracts.
 Credential cleanup is scoped to this job's own secret files; failed unsigned build
@@ -119,7 +120,83 @@ git diff --check
 No Dart/Flutter production input changed, so unchanged owning suites were not rerun.
 The current secure-storage owner/options were checked in `register_module.dart`;
 older advice to recreate a native Keychain workaround is not the current design.
-Actual signed-package and profile-based notarization evidence remains pending.
+The first native run below verified profile authentication but failed application
+signing before a product could be submitted for notarization.
+
+## Native finding and proposed manifest-placement correction
+
+[Run 35002549379](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35002549379)
+used `f5348c07199f24030942036007b854f903c5f930`. Tooling passed; both native builds
+completed and both temporary notary profiles authenticated. Jobs `104494308731`
+(x64) and `104494308790` (arm64) signed nested native code, then refused the enclosing
+app with `code object is not signed at all`, naming
+`Contents/Helpers/bridge/desktop-bundle.json` as the subcomponent. No product was
+submitted/notarized or uploaded as a successful package. Local CI logs:
+`build/desktop-macos-packaging-evidence/first-packaging-{x64,arm64}.log`.
+
+A bounded local structural diagnostic copied the earlier real ARM64 `350cb8e`
+staged app and used **ad-hoc signing only**, without GUI execution or private-key
+use. It reproduced the Helpers JSON refusal, moved only that JSON to
+`Contents/Resources/desktop-bundle.json`, then signed and deep/strict verified the
+app. Appending a newline to the relocated manifest made verification fail. This
+proves the placement/resource-seal behavior, not Developer ID, notarization or
+current-head GUI behavior. Script and retained tampered copy/results:
+`build/desktop-macos-packaging-evidence/probe_manifest_layout.py` and
+`build/desktop-macos-packaging-evidence/manifest layout probe/results.json`.
+
+Scoped architecture-plan review **approved**, pre-review gate passed, run
+`1d781b5d-4861-4487-9094-1a00731db885` (`medium-intelligence-fast`). Applied B-Client;
+B-Bridge/B-Shared were outside the proposed change. No findings. Review output:
+`reviews/desktop-distribution-step-04-manifest-plan.md` in that run's artifacts.
+This approves the placement correction, not unrelated tooling or unexecuted QA.
+
+Implemented correction after that approval:
+
+- `client/desktop/tool/stage_desktop_bundle.dart`: `stageDesktopBundle` still copies
+  the entire native helper to `Contents/Helpers/bridge`; on macOS only it writes the
+  unchanged `DesktopBundleIdentity` JSON under `Contents/Resources`. Create that
+  destination directory as part of staging. Windows/Linux keep helper-root JSON.
+- `client/desktop/lib/core/platform/desktop_bridge_executable_path_resolver.dart`:
+  `_resolvePackaged` derives macOS's manifest path from the running executable's
+  `Contents/Resources` directory. Helper resolution remains
+  `Contents/Helpers/bridge/bin/bridge`; Windows/Linux and debug/profile behavior
+  remain unchanged. Continue every-spawn validation and typed repair/error behavior.
+- Existing resolver coverage retains all six OS/CPU combinations; staging tests
+  cover each OS's placement (there is no CPU-specific placement branch). They assert
+  the macOS resource path and absence of JSON in the code-only Helpers subtree.
+  The packager copies the evidence manifest from Resources; its native-signing-order
+  fixture includes that resource and excludes it from executable signing targets.
+- Update current bundle/packaging/regression guidance. Historical step-3.a artifact
+  evidence remains attributed to its original layout; do not rewrite past results.
+- No new production class, layout registry, mutable field, timer, DI registration,
+  database, wire schema or generated code. Reuse the existing manifest filename and
+  immutable model. This unpublished desktop layout needs no old-path fallback or
+  migration. Estimated correction: approximately 100 authored lines in the same PR.
+
+Local correction verification passed: **24 focused Flutter resolver/staging tests**,
+**8 Python packaging tests**, and desktop analysis. The first analyzer found one
+`avoid_slow_async_io` info on the new test assertion; changing it to `existsSync`
+resolved it, and the final 24-test command/analyzer both passed. Python inputs were
+unchanged after their passing run. These checks measured the uncommitted correction
+based on `f5348c07199f24030942036007b854f903c5f930`, subsequently committed for
+implementation review. Commands (Flutter commands from `client/desktop`, Python
+from repository root):
+
+```bash
+flutter test test/core/platform/desktop_packaged_bridge_path_test.dart test/tool/stage_desktop_bundle_test.dart --reporter expanded
+flutter analyze --no-pub --fatal-infos
+python3 -m unittest discover -s .github/scripts -p test_package_desktop_macos.py -v
+```
+
+Logs: `layout-flutter-tests-final.log`, `layout-desktop-analyze-final.log` and
+`layout-python-tests.log` under `build/desktop-macos-packaging-evidence/`. Scoped
+architecture implementation review and repeated native signed packaging remain
+pending. The broader installed GUI, Keychain/TCC/autostart and ship gates remain
+open, not replaced by these probes.
+
+Local GUI safety preflight also found an existing debug desktop from `rose-elephant`
+(PID 74143) and an existing `/Applications/Sesori.app`. Neither was changed. Ask for
+approval before interrupting/replacing or launching over that user-owned state.
 
 ## Verification and boundaries
 

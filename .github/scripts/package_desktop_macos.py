@@ -141,7 +141,7 @@ def package(*, app: Path, output: Path, arch: str, identity: str, keychain: Path
         dmg_evidence = verify_app(app=mount / "Sesori.app", arch=arch, log=log)
     finally:
         execute(command=["hdiutil", "detach", str(mount)], log=log)
-    shutil.copyfile(extracted / "Sesori.app/Contents/Helpers/bridge/desktop-bundle.json",
+    shutil.copyfile(extracted / "Sesori.app/Contents/Resources/desktop-bundle.json",
                     output / "desktop-bundle.json")
     digests = {}
     for artifact in (archive, dmg):

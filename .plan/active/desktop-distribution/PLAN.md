@@ -129,8 +129,10 @@ compile the expected identity into the GUI. The pure-Dart typed model is
 with generated JSON serialization; reuse suitable existing closed OS/CPU types.
 `client/desktop/tool/stage_desktop_bundle.dart` is the build-time producer: it
 builds both components from one committed checkout, serializes that model into
-`desktop-bundle.json` at the helper bundle root, and supplies the same identity through
-an explicit Flutter dotenv build-define file. It enforces dependency locks, preserves
+`desktop-bundle.json` in macOS `Contents/Resources` (the signed app's data location),
+or at the Windows/Linux helper bundle root, and supplies the same identity through
+an explicit Flutter dotenv build-define file. Keep JSON out of macOS's code-only
+Helpers subtree; native signing qualification established this placement. It enforces dependency locks, preserves
 native assets/symlinks and records host-generated Git changes. No suitable existing
 client OS/CPU set covers these targets; the closed desktop-only enums stay beside
 the model. The existing shell

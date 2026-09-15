@@ -21,6 +21,9 @@ class MacPackagingTests(unittest.TestCase):
                           for name in ("libsqlite3.dylib", "macos_power_observer.dylib")]
         self.frameworks = []
         self.write_plist(path=self.app / "Contents/Info.plist", executable="Sesori")
+        self.manifest = self.app / "Contents/Resources/desktop-bundle.json"
+        self.manifest.parent.mkdir()
+        self.manifest.write_text("{}\n")
         for binary in (self.app / "Contents/MacOS/Sesori", self.helper, *self.libraries):
             self.write_binary(path=binary)
         for name in ("App", "FlutterMacOS", "objective_c"):
@@ -51,6 +54,7 @@ class MacPackagingTests(unittest.TestCase):
         self.assertEqual(set(order[3:-1]), set(self.frameworks))
         self.assertEqual(order[-1], self.app)
         self.assertEqual(len(order), 7)
+        self.assertNotIn(self.manifest, order)
         self.assertTrue(all(not path.is_symlink() for path in order))
 
     def test_wrong_native_architecture_refuses_before_any_signing_command(self):

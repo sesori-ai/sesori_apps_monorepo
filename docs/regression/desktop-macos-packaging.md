@@ -10,7 +10,9 @@ packaging capability does not imply public downloads or an updater have shipped.
 
 - Build from committed source with the pinned native SDK. Preserve framework
   symlinks, native CPU support and the complete `Contents/Helpers/bridge/bin`–`lib`
-  relationship. The packaged identity continues to control helper admission.
+  relationship. The packaged identity continues to control helper admission from
+  `Contents/Resources/desktop-bundle.json`; keep JSON out of the code-only Helpers
+  subtree. Changing that resource after signing must invalidate the app's seal.
 - Sign nested native code/frameworks inside-out, including every helper dylib;
   enable hardened runtime for the GUI/helper without adding speculative security
   exceptions. Keep the established non-sandboxed classic-Keychain configuration.

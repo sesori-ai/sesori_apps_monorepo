@@ -17,11 +17,12 @@ The output must not already exist. Failed output is retained for diagnosis; retr
 with a new output path rather than automatically deleting or replacing artifacts.
 The producer builds the bridge and release GUI
 from that checkout, enforces dependency locks, checks the helper's reported version,
-and embeds one `DesktopBundleIdentity` in both the GUI and helper manifest.
+and embeds one `DesktopBundleIdentity` in both the GUI and package manifest.
 
 - macOS payload: `<output>/Sesori.app`; complete helper at
-  `Contents/Helpers/bridge/`.
-- Windows/Linux payload: `<output>/bundle`; complete helper at `bridge/`.
+  `Contents/Helpers/bridge/`; identity manifest at `Contents/Resources/desktop-bundle.json`.
+  Helpers is code-only for signing; the JSON is a sealed app resource.
+- Windows/Linux payload: `<output>/bundle`; complete helper and `desktop-bundle.json` at `bridge/`.
 - The helper keeps its generated `bin/` and `lib/` layout. Do not copy its executable
   alone or modify native-asset metadata.
 - `dart-defines.env` is build metadata, not a credential file.
