@@ -1,6 +1,7 @@
 # Unsigned native desktop bundles
 
-Use the repository-pinned Flutter/Dart SDK on the target OS/CPU. Resolve the client
+Use the repository-pinned Flutter/Dart SDK on the target OS/CPU. The producer resolves
+Flutter beside that SDK's Dart VM, not independently from PATH. Resolve the client
 workspace with `flutter pub get --enforce-lockfile`, and commit source changes before
 building. From `client/desktop`:
 
@@ -10,7 +11,9 @@ dart run tool/stage_desktop_bundle.dart \
   --output ../../build/desktop-bundle-1
 ```
 
-The output must not already exist. The producer builds the bridge and release GUI
+The output must not already exist. Failed output is retained for diagnosis; retry
+with a new output path rather than automatically deleting or replacing artifacts.
+The producer builds the bridge and release GUI
 from that checkout, enforces dependency locks, checks the helper's reported version,
 and embeds one `DesktopBundleIdentity` in both the GUI and helper manifest.
 

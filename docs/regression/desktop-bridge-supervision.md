@@ -164,9 +164,10 @@ respawn rather than a restart war. Quit while desired On, relaunch, and verify
 last-On restoration. Kill the helper at different handshake phases and inspect
 the status and bounded recent output. For packaged helper resolution, vary
 installed paths containing spaces, an unrelated cwd and a development override;
-only the installed payload should be used. Replace the helper manifest between
-starts to model a package-manager upgrade, then restart the GUI to use the new
-matching package. Quit before ordinary package upgrades. The staging producer
+only the installed payload should be used. Install a complete new GUI/helper package
+while the old GUI remains open to test its next-spawn mismatch refusal; restart into
+the newly installed GUI to restore the matching identity. Changing only a manifest
+cannot be repaired by restarting the same GUI. Quit before ordinary package upgrades. The staging producer
 must preserve native libraries, executable permissions and framework symlinks;
 verify the actual relocated helper, not merely the presence of its binary.
 
