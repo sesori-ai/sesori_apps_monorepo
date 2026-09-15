@@ -75,6 +75,7 @@ class const DesktopBridgeRecoveryCard({super.key, required final double expansio
           color: notice.isError ? colors.bgErrorSecondary : colors.bgWarningSecondary,
           borderRadius: BorderRadius.circular(PregoRadius.lg),
         ),
+        // Long bundle-repair guidance stays usable at the 480px window minimum.
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxHeight: 180),
           child: SingleChildScrollView(

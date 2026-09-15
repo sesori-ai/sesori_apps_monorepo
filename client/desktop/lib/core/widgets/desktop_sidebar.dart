@@ -61,7 +61,12 @@ class const DesktopSidebar({
                     bridge.controlStatus.relay == ControlRelayConnectionState.connected &&
                     bridge.controlStatus.plugin != ControlPluginHealthState.degraded =>
               prego.colors.textSuccessPrimary,
-            _ => prego.colors.textWarningPrimary,
+            BridgeProcessLoginRequired() ||
+            BridgeProcessStarting() ||
+            BridgeProcessRunning() ||
+            BridgeProcessStopping() ||
+            BridgeProcessContention() ||
+            BridgeProcessCrashRetryScheduled() => prego.colors.textWarningPrimary,
           };
     return Material(
       color: prego.colors.bgSecondary,
