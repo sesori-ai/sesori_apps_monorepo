@@ -192,6 +192,12 @@ Keep ownership narrow:
 
 - Layer 0 `AppUpdater` exposes typed native capability, progress/state, and prepared
   installation/termination handoff; native adapters live in `client/desktop`.
+  Before steps 5 or 8 proceed, step 2's evidence must record that platform's concrete
+  adapter class/file, native library/wrapper and pinned version, supported CPU builds,
+  and the phase-1 selection/registration that installs exactly one `AppUpdater`.
+  Include Linux's explicit package-manager-owned capability and the selected
+  Windows engine; do not defer topology selection to the implementation PRs or
+  introduce a runtime plugin registry. Update this plan with the qualified graph.
 - Layer 1 `AppUpdateApi` wraps the adapter; Layer 2 `AppUpdateRepository` maps native
   outcomes into sealed desktop-domain states and retains useful typed causes.
 - Layer 3 `DesktopUpdateService`, in
@@ -236,6 +242,19 @@ hook for `getIt.reset()`/test teardown; it releases the service subscription and
 native updater resources without applying an update. `BridgeControlCubit.close()`
 cancels only its presentation subscription to the service. Do not make a settings
 screen, incidental lazy lookup, or constructor responsible for starting checks.
+
+**Explicit restart surface:** step 5 adds the desktop-owned
+`DesktopUpdateSection` in
+`client/desktop/lib/features/settings/desktop_update_section.dart`, mounted in the
+current desktop Settings container (the Bridge tab when the `desktop-ux` modal
+lands). It renders the cubit's projected update state and, only for a prepared
+app-managed update, an **Install and restart Sesori** button. The handler calls
+`BridgeControlCubit.quit(action: DesktopExitAction.installAndRestart)` and obeys
+existing lifecycle command locking; ordinary Quit uses `normalQuit`. No new tray
+command is required. Linux shows package-manager guidance, not a dead install
+button. Step 8 reuses this section rather than adding Windows-specific UI. Focused
+widget/cubit coverage proves prepared-state action reachability, unavailable/not-
+prepared and lifecycle-locked behavior, and normal-Quit versus restart routing.
 
 The normal path is:
 
@@ -292,8 +311,10 @@ when reusing actions for older refs.
 
 - Artifact identity includes semantic version, build number, source SHA, platform,
   architecture, digest, and signing evidence. Both architectures in a platform leg
-  use the same identity. Extend desktop version/bundle checks without making a
-  desktop signing outage block mobile/CLI release.
+  share only the release version/build number/source SHA; each artifact has its own
+  complete identity, architecture, digest and signing evidence. Feeds select and
+  verify that specific artifact. Extend desktop version/bundle checks without making
+  a desktop signing outage block mobile/CLI release.
 - Use separate `desktop-vX.Y.Z-internal.N` / `desktop-vX.Y.Z` tags and explicit desktop
   asset names. Set GitHub releases `--latest=false`; do not move a published tag or
   overwrite a published stable artifact. Verify legacy bridge selectors ignore the
@@ -357,10 +378,10 @@ No generated-churn exception is assumed in advance.
 | Step | Exact PR title | Dependency / scope, risk and expected result |
 |---|---|---|
 | 1 | 🌿 [desktop-distribution] Align platform distribution and update plan [step 1/12] | This plan, tracker, parent handoff, roadmap/vision links. Low risk; docs/link consistency only. No user-visible or database change. |
-| 2 | ⚙️ [desktop-distribution] Qualify six-target packaging prerequisites [step 2/12] | After 1. Bounded native build/plugin/updater probes and repeatable package qualification tooling; freeze bundle layout, updater APIs, OS minimums, runner sources and signer prerequisites. Test Windows delayed install before selecting its engine. Medium risk; no publication or database change. Block affected platform on a failed capability, not the whole research effort. |
+| 2 | ⚙️ [desktop-distribution] Qualify six-target packaging prerequisites [step 2/12] | After 1. Bounded native build/plugin/updater probes and repeatable package qualification tooling; freeze bundle layout, updater APIs and concrete adapter/DI/dependency graph, OS minimums, runner sources and signer prerequisites. Test Windows delayed install before selecting its engine. Medium risk; no publication or database change. Block affected platform on a failed capability, not the whole research effort. |
 | 3 | ⚙️ [desktop-distribution] Bind desktop builds to bundled bridge identity [step 3/12] | After 2's bundle qualification. Packaged resolver, complete helper/native assets, immutable typed build identity, version sync and focused tests. Medium risk at startup/version boundaries. Installed/dev behavior separates cleanly; no database migration or download fallback. |
 | 4 | 🚧 [desktop-distribution] Package and notarize native macOS builds [step 4/12] | After 3 plus signer access. Two DMGs and update archives, nested hardened signing, notarization/stapling, packaged Keychain/TCC/autostart probes. High supply-chain/platform risk. Both Macs install and run without Gatekeeper bypass; no database change. |
-| 5 | 🚧 [desktop-distribution] Apply macOS updates through safe application quit [step 5/12] | After 4. Narrow updater layers, Sparkle adapter, existing Quit owner integration, signed N→N+1 fixtures and failure tests. High lifecycle risk. Background prepare; normal Quit installs without relaunch, explicit restart restores intent. No new database or separate supervisor state machine. |
+| 5 | 🚧 [desktop-distribution] Apply macOS updates through safe application quit [step 5/12] | After 4 and the qualified macOS adapter graph. Narrow updater layers, Sparkle adapter, existing Quit owner integration, Settings update status/restart control, signed N→N+1 fixtures and failure tests. High lifecycle risk. Background prepare; normal Quit installs without relaunch, explicit restart restores intent. No new database or separate supervisor state machine. |
 | 6 | ⚙️ [desktop-distribution] Publish isolated desktop channels and macOS downloads [step 6/12] | After 5 and parent public-release prerequisite. Trusted manual workflow, GitHub desktop tags, GCS feed staging, download index/runbook, release-isolation tests and macOS ship gate. High operational risk but bounded publication logic; no mobile store uploads or database change. macOS public only after both native gates pass. |
 | 7 | 🚧 [desktop-distribution] Package signed per-user Windows installers [step 7/12] | After 3 and Windows qualification; delivered after macOS gate. Native x64/arm64 EXEs, complete helper bundle, timestamped signing, shortcuts/autostart/uninstall and clean-host tests. High installer/trust risk. No elevation for normal use, no shared CLI data deletion, no database change. |
 | 8 | 🚧 [desktop-distribution] Deliver quit-installed Windows updates and winget discovery [step 8/12] | After 6 and 7. One qualified native updater, reuse shared quit policy, signature-verified N→N+1 update, channel publication, winget manifests and Windows ship gate. High lifecycle risk; no installer-before-helper-stop or surprise restart. No database change. |
