@@ -1,6 +1,6 @@
 # Step 4.b — Nonblocking Desktop Attention Startup
 
-Status: **planned — scoped architecture-plan review required**.
+Status: **planned — scoped architecture-plan review approved**.
 PR ordinal **6/14**, after [step 4.a](step-04.md), before macOS updates.
 
 ## Observed failure and scope
@@ -38,6 +38,11 @@ be a prerequisite for rendering the app.
 - Cleanup is the removal of notification readiness from the shell's rendering
   prerequisite, not a refactor of the pre-existing attention service/state machines.
   Existing account/open fences remain authoritative; do not add speculative epochs.
+
+Scoped architecture-plan review **approved**, pre-review gate **PASS**, run
+`af8e6b65-ad28-4dd4-8caf-e40d116c00c9` (`medium-intelligence-fast`). Applied B-Client
+(desktop shell and desktop core); B-Bridge/B-Shared were outside scope. No findings.
+Output: `reviews/desktop-distribution-step-04b-plan.md` in that run's artifacts.
 
 ## Verification and budget
 
