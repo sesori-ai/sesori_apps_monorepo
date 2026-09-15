@@ -31,6 +31,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get apiErrorNetworkDown => 'Connection failed — check your network and try again.';
 
   @override
+  String get desktopSidebarNewProject => 'New project';
+
+  @override
   String get desktopSidebarCollapse => 'Collapse sidebar';
 
   @override

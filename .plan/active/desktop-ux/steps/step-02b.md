@@ -20,7 +20,7 @@ The user requested a separate follow-up within step 2 on 2026-09-15:
 
 ## Boundaries
 
-Consume `ProjectListLoaded.activityById` and `projectUnseenById` directly;
+Consume `ProjectListLoaded.activityById` and `unseenByProjectId` directly;
 reuse Prego's activity/unread visual language. Do not introduce new backend
 requests, services, persisted fields, analytics events, or bridge ownership.
 Main-pane routes stay unchanged. Recent-session rows remain logical step 3;
@@ -40,6 +40,24 @@ unless implementation materially changes that scope.
 - Do not restart, stop, take over, or launch another bridge. Do not relaunch the
   current GUI during this QA pass or request another secure-storage password.
 
+## Implementation And Evidence
+
+- Simplified Projects header with a separate collapse control; full-width,
+  labeled New project action; compact Prego rows and a distinct pinned footer.
+- Shared running/unread sparkles, including avatar badges when compact and
+  status-aware tooltips/accessibility labels. No new data requests.
+- 220 ms eased expansion/collapse; immediate drag feedback; both MediaQuery
+  disabled animations and platform Reduce Motion disable the transition.
+- Desktop cockpit widget suite: 16 passed. Prego avatar tests: 2 passed.
+- Desktop and Prego analyzers: passed. Localization generation: passed.
+- Five font-loaded render probes: light/dark expanded, light/dark compact, and
+  minimum 200 px width. These render the production sidebar with fixture state;
+  they are visual previews, not native macOS or live-bridge E2E evidence.
+- The existing GUI and standalone bridge were not relaunched or altered.
+
 ## Status
 
-Implementation in progress. No visual or motion acceptance claimed yet.
+Implementation and focused verification complete. Production-widget previews
+were shown to the user before publication; this does not claim native macOS
+interaction coverage or user approval. The follow-up remains separate from
+#1488 and does not advance recent sessions.

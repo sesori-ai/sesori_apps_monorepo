@@ -133,6 +133,12 @@ abstract class AppLocalizations {
   /// **'Connection failed — check your network and try again.'**
   String get apiErrorNetworkDown;
 
+  /// Label for the prominent desktop sidebar action that opens the add-project dialog.
+  ///
+  /// In en, this message translates to:
+  /// **'New project'**
+  String get desktopSidebarNewProject;
+
   /// Tooltip for switching desktop navigation to the compact project rail.
   ///
   /// In en, this message translates to:
