@@ -88,7 +88,8 @@ or waive shipping qualification.
   pre-shipping work; the GUI and bridge were untouched.
   See [step 5 evidence](steps/step-05.md).
 - Step 6: user review prompted a content/label audit, removal of app-scoped
-  popover options and explicit contextual bridge actions. 130 currently relevant
-  cases pass across documented checkpoints, plus three revised real-font renders
+  popover options and explicit contextual bridge actions. 133 currently relevant
+  cases pass across documented checkpoints, including canonical-home notification
+  routing; plus three revised real-font renders
   and all owning analyzers. The running GUI/bridge remain untouched; native work
   stays in the final testing handoff. See [step 6 evidence](steps/step-06.md).

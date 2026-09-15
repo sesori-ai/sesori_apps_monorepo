@@ -18,7 +18,8 @@ composition reviews the purpose of each action instead of preserving that list:
 - Opening the flat, screen-clamped popover preserves the main pane. Busy states
   disable mutations, not diagnostics; Settings dismisses before opening. Outside
   click and Escape dismiss without taking an action.
-- `/splash` hosts the home pane; the dashboard/project index are deleted.
+- `/splash` redirects to the canonical `/projects` home pane, preserving shared
+  notification stacks and inventory refresh. The dashboard is deleted.
   Dashboard-only recent-log buffers/streams and crash snapshot fields are removed;
   bounded pipe drains, rotating persistence and crash exit/count diagnostics remain.
 
@@ -44,19 +45,22 @@ subsequently captured unchanged by the listed checkpoint commits.
 | `645ae230b8c9bac320f042cdadffbdb8bb97404b` | `client/desktop` | `flutter test --reporter json .dart_tool/bridge_popover_preview_test.dart` | 3 revised fixtures pass |
 | `645ae230b8c9bac320f042cdadffbdb8bb97404b` | `client/module_desktop_core`, `client/module_app_ui` | `dart analyze --fatal-infos` | clean |
 | `c9a04e3dafc585abca55755ea3fb1cf767d512ec` | `client/desktop` | `dart analyze --fatal-infos` | clean after equivalent exhaustive action matching |
+| `44ea4b3f4f65a9e47f38910369b7a945ffc01126` | `client/desktop` | `flutter test --reporter json test/core/routing/desktop_router_test.dart test/core/platform/desktop_route_dispatcher_test.dart test/features/settings/desktop_settings_screens_test.dart`; `dart analyze --fatal-infos` | 20 pass, analyzer clean |
 
 Trees respectively: `fa7447d2bf1a0c306a3b4cc4610e1a8b48c31599`,
 `5a033c2a43e0429c89fc07679c0aa683f43b2dbe`,
 `cae4ca9105ecb0d2fe007a5ac07febf9ea134a29`,
 `02592d39aa399296774255ddd4b5b673f158deb2`.
 
-**130 currently relevant cases** = 26 + 41 + 33 + 30. Superseded popup/refresh
-cases and repeated cockpit cases are not counted again. The final matching
+**133 currently relevant cases** = 26 + 41 + 33 + 30 + 3. The 20-case review
+rerun repeats 17 and adds coverage from two dispatcher cases and one new actual
+router/dispatcher stack case. Superseded popup/refresh cases are not counted. The final matching
 refactor moves the identical takeover choice outside the exhaustive switch;
 preceding tests/renders are baseline evidence, not claimed reruns at `c9a04e3`.
 Generation, formatting and diff checks pass. Logs:
 `/tmp/rose-elephant-popover-{desktop-first,log-cleanup-tests,focused-ui-final,focused-control,focused-previews}.log`
-and `/tmp/rose-elephant-popover-focused-*-analyze*.log`.
+and `/tmp/rose-elephant-popover-focused-*-analyze*.log`; review-fix logs:
+`/tmp/rose-elephant-1498-routing-review-{tests,analyze}.log`.
 
 Three inspected `/tmp/rose-elephant-qa.mri9JX/bridge-popover-focused-*.png` images
 show light Off, dark connected and minimum-width contention. The ignored harness
@@ -73,8 +77,16 @@ content revision. The full original report/provenance are retained at
 Final fresh-context architecture review **APPROVED** exact range
 `b69a4857289d30106bbd06af963437cdfa4699e7..c9a04e3dafc585abca55755ea3fb1cf767d512ec`,
 with no findings. Run `96ac46a1-5d5b-435f-8d71-0b5a73a51ba1`; full report:
-`/tmp/rose-elephant-popover-architecture-final.md`. Later commits only update docs.
+`/tmp/rose-elephant-popover-architecture-final.md`. The subsequent focused
+canonical-route correction is verified at `44ea4b3`; later changes are docs only.
 Native lifecycle, registration and OS log-launch checks remain in the final
 user testing handoff, not merge gates. The running bridge was never stopped,
 restarted or taken over. Earlier native platform-view/profile-build limits remain.
-Final self-inclusive diff accounting belongs in the PR body.
+
+Pinned review-fix budget (frozen PR merge base and source head):
+```sh
+git diff --numstat b69a4857289d30106bbd06af963437cdfa4699e7 \
+  44ea4b3f4f65a9e47f38910369b7a945ffc01126
+```
+**1,467 = 713 additions + 754 deletions**, 26 files, 27 generated / 1,440 authored.
+Later documentation-only reconciliation is included in the final PR-body count.

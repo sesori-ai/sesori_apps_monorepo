@@ -161,8 +161,9 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   The pinned bottom Bridge row opens a `PregoPopover` with local process status,
   one clear Start/Stop/Retry/Take Over action, and secondary logs/configuration.
   A displaced running helper also retains Stop without requiring takeover.
-  App Quit and launch-at-login do not belong in this local-bridge control. `DesktopHome` is deleted; `/splash` renders a home pane (empty
-  state, bridge recovery, first-run cards). Between steps 6 and 7, Bridge
+  App Quit and launch-at-login do not belong in this local-bridge control.
+  `DesktopHome` is deleted; `/splash` redirects to the canonical `/projects` home
+  pane (empty state, bridge recovery, first-run cards). Between steps 6 and 7, Bridge
   settings… opens the existing Settings route; step 7 targets the modal's Bridge tab.
 - **D7 — Settings is a modal, not a route.** A root-navigator dialog with a
   blurred/dimmed backdrop (Prego's existing glass gate decides blur versus
@@ -322,7 +323,7 @@ and status presentation, following the existing session-list resolver boundary.
 
 ### Main pane pages
 
-- `/splash` → `DesktopHomePane`: connected empty state ("Pick a session or
+- `/splash` → `/projects` → `DesktopHomePane`: connected empty state ("Pick a session or
   press ⌘N", "Add a project" when the inventory is empty), the existing
   `DesktopBridgeRecoveryView` (moved out of the deleted project-list screen)
   for disconnected states, and the macOS file-access card.
@@ -518,7 +519,7 @@ remain unchanged. Recent-session rows remain step 3. See `steps/step-02b.md`.
 | 3 | `⚙️ [desktop-ux] Show recent sessions per project in the sidebar [step 4/13]` | ≤ 1,200 | `RecentSessionsCubit` + provider composition, delegating to `SessionListService.visibleSessions`/`upsertSession`/`applySessionUpdatedEvent`/`removeSession`; session rows, "All sessions · N", per-project "+", collapsed project ids, right-click menus reusing tile action builders, hover states, selection from the route. |
 | 4 | `⚙️ [desktop-ux] Route the main pane through the sidebar [step 5/13]` | ≤ 1,400 | Flatten the desktop router; `DesktopHomePane` (recovery view moved in, connected empty state) served at the desktop `projects` path in place of `DesktopProjectListScreen` (sidebar Projects header navigates there); all-sessions route keeps `DesktopSessionListCubitProvider` + the shared `SessionListScaffold`, minus the back button and the split-pane composition; delete the nested `ShellRoute`; explicit nullable detail Back callback based on the owning page's poppability; route-selected project/New session callbacks retained for step 10. `/splash` still renders `DesktopHome` until step 6. |
 | 5 | `🌿 [desktop-ux] Overlay connection state without layout shift [step 6/13]` | ≤ 700 | Remove the root banner mount; `DesktopConnectionPill` overlay in `client/desktop` (Prego surface, fade; combines overlay state with `BridgeControlCubit` state); Bridge row status dot; supervision states as the sidebar bottom card; delete `DesktopSupervisionNotice`. |
-| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,500 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` renders `DesktopHomePane` and the desktop `projects` route is removed. |
+| 6 | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/13]` | ≤ 1,500 | Bridge popover (`PregoPopover`) with local status, contextual Start/Stop/Retry/Take Over, secondary logs/configuration and no app-scoped options; delete `DesktopHome`; `/splash` redirects to the canonical `/projects` home pane, preserving notification stacks and inventory return-refresh. |
 | 7 | `⚙️ [desktop-ux] Present settings as a modal [step 8/13]` | ≤ 1,300 | `showDesktopSettingsModal` with blurred/dimmed backdrop, tab column, nested `Navigator`; Bridge tab (shared section + desktop rows); remove every desktop settings `GoRoute` incl. `buildDesktopHarnessSettingsRoute()` and the path helpers; rewire every settings/harness-settings callback for both `HarnessSettingsPresentation` variants; ⌘, shortcut; modal-owned Escape. |
 | 8 | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 9/13]` | ≤ 1,000 | Nullable `readBridgeDesiredState` through storage/repository with `off` applied by callers; `DesktopStartupOrchestrator.applyFirstRunBridgeDefaults()` (auth-driven) called from `main.dart`; `FileAccessPermission` capability + `IoFileAccessPermission`; `FileAccessCubit`; home-pane card with the agent explanation; Settings → Bridge status row; focus re-check. |
 | 9 | `🌿 [desktop-ux] Write app logs to rotating files [step 10/13]` | ≤ 700 | `LogSink`/`LogRecord`/`setLogSink`/`StdoutLogSink` in `module_core`; desktop writer in `module_desktop_core` `api/` sharing the bridge-log rotation helper; mobile writer in `client/app/lib/core/platform/`; installation in both `main.dart`s; Open logs opens the folder. |

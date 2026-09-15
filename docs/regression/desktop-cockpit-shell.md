@@ -79,6 +79,9 @@ The main pane hosts one full-width routed page.
   bounded card; compact mode keeps the primary action and full tooltip. Open
   Logs is also available in the Bridge popover. Command locks still disable
   recovery mutations, and start failures do not offer nonexistent child logs.
+- The canonical `/projects` home receives startup via `/splash` redirect and
+  anchors notification route stacks; returning home retains shared inventory
+  refresh. No separate project grid competes with the sidebar.
 - Bridge opens a flat, screen-clamped popover in expanded and compact modes
   without replacing the main pane. A Local bridge heading and process status
   precede one clear Start/Stop/Retry/Take Over action; logs/configuration are
