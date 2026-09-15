@@ -116,8 +116,10 @@ def bootstrap(*, sdk: Path, target_os: str, arch: str) -> None:
     dart = sdk / "bin/cache/dart-sdk/bin" / ("dart.exe" if target_os == "windows" else "dart")
     if version["frameworkRevision"] != revision or native_arch(path=dart)[1] != [arch]:
         raise ValueError("Flutter revision or bootstrapped Dart architecture does not match the native job")
-    (OUTPUT / "sdk.json").write_text(json.dumps({"release": release, "installed": version}, indent=2) + "\n")
-    with Path(os.environ["GITHUB_PATH"]).open("a") as stream:
+    (OUTPUT / "sdk.json").write_text(
+        json.dumps({"release": release, "installed": version}, indent=2) + "\n", encoding="utf-8"
+    )
+    with Path(os.environ["GITHUB_PATH"]).open("a", encoding="utf-8") as stream:
         stream.write(str(sdk / "bin") + "\n")
     print(f"Bootstrapped official Flutter {release['version']} at {revision}, native Dart {arch}")
 
@@ -147,7 +149,7 @@ def inspect(*, target_os: str, arch: str) -> None:
     if not relocated_version:
         raise ValueError("Relocated helper did not report a version")
     if "GITHUB_ENV" in os.environ:
-        with Path(os.environ["GITHUB_ENV"]).open("a") as stream:
+        with Path(os.environ["GITHUB_ENV"]).open("a", encoding="utf-8") as stream:
             stream.write(f"SESORI_DESKTOP_BRIDGE_PATH={staged / 'bin' / bridge_name}\n")
     sdk = shutil.which("flutter")
     if sdk is None:
@@ -163,9 +165,9 @@ def inspect(*, target_os: str, arch: str) -> None:
               "runnerImage": {key: os.environ.get(key) for key in ("ImageOS", "ImageVersion", "RUNNER_ARCH")},
               "flutter": version, "binaries": binaries, "relocatedHelperVersion": relocated_version,
               "proofBoundary": "Unsigned build + native headers + relocated helper --version, not GUI or release QA"}
-    (OUTPUT / "inventory.json").write_text(json.dumps(report, indent=2) + "\n")
+    (OUTPUT / "inventory.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     # Keep raw diagnostics separate from the small inventory; upload no user data or installed-app state.
-    (OUTPUT / "flutter-doctor.log").write_text(run(command=[sdk, "doctor", "-v"]))
+    (OUTPUT / "flutter-doctor.log").write_text(run(command=[sdk, "doctor", "-v"]), encoding="utf-8")
     if target_os == "macos":
         commands = [["xcodebuild", "-version"], ["xcrun", "--show-sdk-version"],
                     ["xcrun", "vtool", "-show-build", str(gui / entry)]]
@@ -175,7 +177,7 @@ def inspect(*, target_os: str, arch: str) -> None:
         commands += [["ldd", str(helper / item["path"])] for item in binaries["helper"]]
     else:
         commands = []  # flutter doctor records the detected Visual Studio version and SDK.
-    with (OUTPUT / "native-toolchain.log").open("w") as log:
+    with (OUTPUT / "native-toolchain.log").open("w", encoding="utf-8") as log:
         for command in commands:
             result = run(command=command)
             log.write("$ " + " ".join(command) + "\n" + result + "\n")

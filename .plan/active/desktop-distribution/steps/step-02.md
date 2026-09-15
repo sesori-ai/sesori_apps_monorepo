@@ -20,9 +20,9 @@ The official release manifests contain these exact pinned archives:
 |---|---|---|
 | macOS x64 | `stable/macos/flutter_macos_3.47.4-stable.zip` | Manifest only; GUI build not run here. |
 | macOS arm64 | `stable/macos/flutter_macos_arm64_3.47.4-stable.zip` | Native release build, binary inventory and relocated-helper integration passed; see evidence below. |
-| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Official source bootstrap and GUI build passed; inventory/E2E await scanner correction. |
+| Windows x64 | `stable/windows/flutter_windows_3.47.4-stable.zip` | Native build/inventory and relocated version check passed; diagnostic-write correction and E2E rerun pending. |
 | Linux x64 | `stable/linux/flutter_linux_3.47.4-stable.tar.xz` | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
-| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Official source bootstrap and native GUI build passed; inventory/E2E await scanner correction. |
+| Windows arm64 | No prepacked Flutter SDK archive in the pinned Windows manifest | Native build/inventory and relocated version check passed; diagnostic-write correction and E2E rerun pending. |
 | Linux arm64 | No prepacked Flutter SDK archive in the pinned Linux manifest | Official source bootstrap, native GUI/helper, inventory and relocated E2E passed in CI. |
 
 All listed archives map to the same framework revision and Dart version. A missing
@@ -202,8 +202,8 @@ Host: macOS `26.6.2` (`25G83`), arm64. Xcode `26.6` (`17F113`), SDK `26.5`.
 - Existing `supervised_e2e_test.dart` with `SESORI_DESKTOP_BRIDGE_PATH` pointing to
   that relocated helper and `SESORI_E2E_REQUIRED=1`: **1 test passed**. Uses isolated
   local fakes; not real login/relay/harness or GUI proof.
-- Python header/bootstrap/diagnostic tooling tests: **9 passed**, including Windows
-  AOT snapshot format and wrong-CPU refusal.
+- Python header/bootstrap/diagnostic tooling tests: **10 passed**, including Windows
+  AOT snapshot format, wrong-CPU refusal and UTF-8 diagnostics with a cp1252 default.
 - GUI Mach-O load commands report macOS minimum `12.0`. This matches the Xcode
   project and Sparkle minimum; a run on macOS 12 is still needed before claiming it
   as a tested minimum.
@@ -236,7 +236,7 @@ leg reached Apple's asset compiler but crashed in `AssetCatalogAgent-AssetRuntim
 with missing MediaToolbox symbols, on macOS 15/Xcode 26.3. Mac build hosts now use
 macOS 26/Xcode 26.6 (the successful local toolchain family), retaining both CPU rows
 and the actual Icon Composer asset. This changes the build host, not the app's
-minimum-OS support claim. Both corrections await their native CI rerun.
+minimum-OS support claim. Their native rerun results are recorded below.
 
 **Both Linux rows passed completely** in that run, including real GUI/plugin/helper
 builds, native inventory, `ldd` closure and the relocated supervised E2E (one test per
@@ -246,6 +246,18 @@ Each GUI contains 11 native binaries and each helper contains `bridge` plus
 x64 `ubuntu24` / `20260907.300.1`, ARM64 `ubuntu24-arm64` / `20260907.118.1`.
 This proves the official Linux ARM64 Flutter build route; it does not prove packaged
 DEB/RPM installation, GUI interactions, or a real harness on either target.
+
+[Run 34962483125](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34962483125)
+passed the complete macOS ARM64 pipeline on macOS 26.6.2/Xcode 26.6, including the
+Sparkle API probe and relocated E2E. Image: `macos26` / `20260907.0351.1`.
+Actual merge-checkout SHA: `b019f30dc3afbf307ec17b3fba6f5886ee113db1`.
+Both Windows inventories now passed (13 GUI native artifacts, two helper binaries,
+relocated version `1.8.4`), but writing Flutter doctor's Unicode output with the
+Windows cp1252 default failed before E2E. Image identities: x64 `win25-vs2026` /
+`20260907.229.1`; ARM64 `win11-arm64` / `20260906.161.1`. Artifact/environment writes
+now use explicit UTF-8; a regression test reproduced that exact failure before the
+fix and passes afterward. Windows E2E still needs its corrected native rerun. Do not
+promote partial inventory evidence to a fully passed Windows qualification row.
 
 ## macOS updater API and selected topology
 
