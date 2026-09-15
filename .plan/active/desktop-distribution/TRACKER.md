@@ -11,18 +11,19 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 2 | 2 | Qualify six-target packaging prerequisites | done |
 | 3.a | 3 | Bind desktop builds to bundled bridge identity | done |
 | 3.b | 4 | Surface packaged helper repair guidance | done |
-| 4 | 5 | Package and notarize native macOS builds | in-progress |
-| 5 | 6 | Apply macOS updates through safe application quit | pending |
-| 6 | 7 | Publish isolated desktop channels and macOS downloads | pending |
-| 7 | 8 | Package signed per-user Windows installers | pending |
-| 8 | 9 | Deliver manual Windows updates and winget discovery | pending |
-| 9 | 10 | Publish signed native DEB and RPM repositories | pending |
-| 10 | 11 | Offer shipped desktop downloads during onboarding | pending |
-| 11 | 12 | Reconcile distribution regression coverage | pending |
-| 12 | 13 | Verify six-target releases and retire distribution plan | pending |
+| 4.a | 5 | Package and notarize native macOS builds | in-progress |
+| 4.b | 6 | Keep desktop startup independent of native notifications | pending |
+| 5 | 7 | Apply macOS updates through safe application quit | pending |
+| 6 | 8 | Publish isolated desktop channels and macOS downloads | pending |
+| 7 | 9 | Package signed per-user Windows installers | pending |
+| 8 | 10 | Deliver manual Windows updates and winget discovery | pending |
+| 9 | 11 | Publish signed native DEB and RPM repositories | pending |
+| 10 | 12 | Offer shipped desktop downloads during onboarding | pending |
+| 11 | 13 | Reconcile distribution regression coverage | pending |
+| 12 | 14 | Verify six-target releases and retire distribution plan | pending |
 
-Exact PR titles, dependencies and the 13-PR total live in [PLAN.md](PLAN.md).
-Stable step IDs 1, 2, 3.a, 3.b, 4…12 map to PR ordinals 1…13. Platform ship gates
+Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
+Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
 ## Alignment — 2026-09-15
@@ -96,27 +97,22 @@ as `e853838ac29b5d829f13622702c5d47a74eaa829`, accepting PR head `758bc554`.
 Workflow 34994634843 passed its analyzer/test and three desktop build jobs at
 Actions merge checkout `c40323edd60873d0a7d6f498ab05c4c8fd2b798f`. All review
 threads were resolved; the final Cubic review approved with no findings.
-Step 4 began in the same worktree on `desktop-distribution-macos-packaging`.
-The user selected existing GitHub Apple credentials for trusted CI verification.
-Run 34998357930 at `d76fcef410055d38f0b24e4e5405d4d7195824a9` authenticated to
-notarization and signed/verified/executed a timestamped hardened native probe on
-both Macs. Registering the imported temporary keychain in the user search list
-resolved `codesign` lookup failure. No local key was exported, and no product was
-submitted or published. Signed-desktop suitability is still unverified.
-The bounded evidence and packaging outline are in [steps/step-04.md](steps/step-04.md).
-First packaging run 35002549379 at `f5348c07199f24030942036007b854f903c5f930`
-built both native apps and authenticated both notary profiles, but app signing
-rejected the identity JSON in the code-only Helpers subtree. A local ad-hoc layout
-probe proved that Resources placement signs/verifies and still rejects manifest
-tampering. The scoped macOS manifest producer/consumer plan review approved with
-no findings; the implemented correction passes 24 Flutter tests, 8 Python tests
-and desktop analysis. Scoped implementation review approved commit `b41a1f6` with
-no findings. Native packaging run 35006541037 passed at that head: both Macs produced
-signed/notarized/stapled DMGs and app ZIPs, accepted Gatekeeper assessment, identical
-seven-binary extracted inventories and passing helper E2E. Downloaded hashes match;
-source patches are empty. The complete helper bin/lib layout and Windows/Linux
-placement stay intact. Installed GUI/Keychain/TCC/autostart checks remain open;
-another local debug desktop is active and has not been interrupted.
+Step 4.a runs in the same worktree on `desktop-distribution-macos-packaging`.
+Existing trusted CI credentials now produce private Developer-ID-signed, notarized
+and stapled packages on both native Macs. The reviewed manifest correction keeps
+JSON in Resources and the complete helper in Helpers. Latest run 35019880379 at
+`d5a03026dbfe7a95af0a262225c9f3ff640c74d1` qualifies 1.8.4/build 17: empty source
+patches, matching downloaded hashes, seven-binary ZIP/DMG inventories, Gatekeeper,
+helper E2E and signed synthetic Keychain/registration/file probes all pass.
+Source/run/artifact attribution and approved manifest reviews are in
+[steps/step-04.md](steps/step-04.md). No public package or local key export occurred.
+
+Native visual review exposed a separate startup wait: both app windows are black,
+and fixed-text breadcrumbs stop at desktop-attention startup before rendering.
+The native notification wait is split into [step 4.b](steps/step-04b.md) so lifecycle
+changes do not grow the package-signing review. The series now has 14 PRs; published
+history is preserved. No visual pass is claimed, and the active local desktop/bridge
+remain untouched. Real account, interactive TCC, OS-login and ship gates stay open.
 
 ## Qualification and ship gates
 
@@ -125,7 +121,7 @@ another local debug desktop is active and has not been interrupted.
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | Private macOS signed/notarized payloads verified on both CPUs; remaining gates open | Installed GUI/Keychain/TCC/autostart, update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
+| Signing and static hosting | Private macOS signed/notarized payloads and synthetic platform probes verified on both CPUs | Rendered GUI/account restoration, interactive TCC/OS-login, update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
 | macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads/feed, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending | Both CPUs in DEB/RPM, nominated native distro rows, signed repository install/update/remove and desktop-environment coverage. |

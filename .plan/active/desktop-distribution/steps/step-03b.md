@@ -1,7 +1,7 @@
 # Step 3.b — Packaged Helper Repair Guidance
 
 Status: **done**, merged in [PR #1495](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1495)
-as `e853838ac29b5d829f13622702c5d47a74eaa829`. PR ordinal **4/13**, following
+as `e853838ac29b5d829f13622702c5d47a74eaa829`. PR ordinal **4/14**, following
 [3.a](step-03.md). Implemented in `tan-antelope` on `desktop-distribution-repair-guidance`.
 
 ## Behavior and ownership
