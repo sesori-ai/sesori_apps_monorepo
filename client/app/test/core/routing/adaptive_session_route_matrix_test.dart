@@ -2,10 +2,10 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -55,7 +55,10 @@ void main() {
           await tester.tap(find.byIcon(TablerRegular.git_compare));
         } else {
           SessionDetailPresentationScope.read(tester.element(find.byType(SessionDetailBody))).openSession(
-            projectId: "p1", sessionId: "child-1", sessionTitle: "Child One", readOnly: true,
+            projectId: "p1",
+            sessionId: "child-1",
+            sessionTitle: "Child One",
+            readOnly: true,
           );
         }
         await tester.pumpAndSettle();

@@ -24,7 +24,7 @@ void main() {
       final mcp = (capabilities["mcpCapabilities"] as Map).cast<String, dynamic>();
 
       // This fixture records a verified protocol floor, not the current managed target.
-    expect((fixture["agentInfo"] as Map)["version"], "1.0.80");
+      expect((fixture["agentInfo"] as Map)["version"], "1.0.80");
       expect(mcp, {"http": true, "sse": true});
     });
 
