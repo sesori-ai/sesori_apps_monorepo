@@ -9,6 +9,7 @@ sealed class DesktopSidebarLayout with _$DesktopSidebarLayout {
   const factory({
     @Default(260) double width,
     @Default(false) bool collapsed,
+    @Default({}) Set<String> collapsedProjectIds,
   }) = _DesktopSidebarLayout;
 
   factory fromJson(Map<String, dynamic> json) => _$DesktopSidebarLayoutFromJson(json);

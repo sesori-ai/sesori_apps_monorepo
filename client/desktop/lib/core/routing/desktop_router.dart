@@ -65,6 +65,22 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         child: DesktopCockpitShell(
           destination: _destinationFor(path: state.uri.path),
           selectedProjectId: state.pathParameters[projectIdPathParam],
+          selectedSessionId: state.pathParameters[sessionIdPathParam],
+          sessionActions: _desktopSessionActions,
+          onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
+            context: context,
+            route: AppRoute.sessionDetail(
+              projectId: project.id,
+              projectName: displayName,
+              sessionId: session.id,
+              sessionTitle: session.title,
+              readOnly: session.time?.archived != null,
+            ),
+          ),
+          onNewSession: ({required context, required project, required displayName}) => _pushRoute(
+            context: context,
+            route: AppRoute.newSession(projectId: project.id, projectName: displayName),
+          ),
           onOpenProject: ({required context, required project, required displayName}) => _goRoute(
             context: context,
             route: AppRoute.sessions(projectId: project.id, projectName: displayName),

@@ -258,7 +258,7 @@ Row
   chevron. Right-click opens the same `PregoAnchorMenu` actions the shared
   `ProjectTile` builds (rename, hide).
 - Session rows: title, status (running/awaiting/unseen) from
-  `RecentSessionsState`, right-click opens the shared `SessionTile` actions
+  `RecentSessionsLoaded` via its resolver extension, right-click opens the shared `SessionTile` actions
   (rename, archive, delete…). Left-click navigates to session detail.
 - "All sessions · N" row navigates to the project's sessions route.
 - Collapsed projects keep their fetched data; expanding a never-fetched project
@@ -267,7 +267,9 @@ Row
 ### `RecentSessionsCubit` (module_core, Layer 4)
 
 State: `Map<String projectId, RecentSessionsEntry>` where the entry is a sealed
-`loading | failed | loaded(sessions, activityBySessionId, unseenBySessionId)`.
+`loading | failed | loaded(sourceSessions, visibleSessions, activityBySessionId, listStateBySessionId)`.
+The state is data-only; `RecentSessionsResolvers` derives the head-plus-open rows
+and status presentation, following the existing session-list resolver boundary.
 
 - `ensureLoaded(projectId:)` fetches via `SessionListService.listSessions(
   projectId:, waitForPrData: false)` and seeds `SessionUnseenTracker` exactly
@@ -281,12 +283,19 @@ State: `Map<String projectId, RecentSessionsEntry>` where the entry is a sealed
   `removeSession` on the entry's stored list, the same calls
   `SessionListCubit` makes), `SseEventTracker.sessionActivity`,
   `SessionUnseenTracker.sessionUnseen`, `ConnectionService.dataMayBeStale`
-  (refetch every loaded project), `CatalogRescanService.catalogChanged`
-  (refetch every loaded project). No ordering, filtering or patching code is
+  (refetch every requested project), `CatalogRescanService.catalogChanged`
+  (refetch every requested project, including failed/in-flight reads). No ordering, filtering or patching code is
   written in the cubit.
 - A failed fetch keeps the entry `failed` with a retry row; it never blocks
-  other projects.
-- Created through `cubit_composition.dart` like the other cubits.
+  other projects. Retry reads through `SessionListService`; transport recovery
+  remains outside this cubit.
+- Shared session menus use a lazy per-project `SessionListMode.actions` scope,
+  seeded from the recent inventory, with no initial read, project-view claim,
+  or route-navigation refresh. Normal pages use `SessionListMode.view`;
+  existing mutation/refresh behavior remains shared. Each menu synchronizes its
+  named session from the current recent inventory without replacing other rows.
+- Created directly in `DesktopCockpitCubitProvider`, resolving service dependencies
+  inside `BlocProvider(create:)`.
 
 ### Main pane pages
 

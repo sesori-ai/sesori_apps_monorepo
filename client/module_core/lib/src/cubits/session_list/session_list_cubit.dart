@@ -26,6 +26,7 @@ import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "../shared/optimistic_rename_tracker.dart";
+import "session_list_mode.dart";
 import "session_list_state.dart";
 
 enum _SessionFetchOutcome() {
@@ -35,7 +36,7 @@ enum _SessionFetchOutcome() {
 }
 
 class SessionListCubit({
-  required SessionListFilter initialFilter,
+  required SessionListMode mode,
   required final SessionRepository _sessionRepository,
   required final SessionListService _sessionListService,
   required final ProjectRepository _projectRepository,
@@ -50,9 +51,9 @@ class SessionListCubit({
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  final ProjectViewClaim? _projectViewClaim = initialFilter == SessionListFilter.archived
-      ? null
-      : _projectViewingService.beginListClaim(projectId: _projectId);
+  final ProjectViewClaim? _projectViewClaim = mode is SessionListViewMode && mode.filter != SessionListFilter.archived
+      ? _projectViewingService.beginListClaim(projectId: _projectId)
+      : null;
   SessionCleanupRejection? _lastCleanupRejection;
 
   /// Cached git context (base branch + remote repository identity), fetched
@@ -61,7 +62,13 @@ class SessionListCubit({
   ProjectGitContext? _gitContext;
 
   this : super(const SessionListState.loading()) {
-    loadSessions();
+    switch (mode) {
+      case SessionListViewMode():
+        loadSessions();
+      case SessionListActionsMode(:final sessions):
+        _allSessions = sessions;
+        _emitFiltered();
+    }
     // The catalog scan, which any surface can start. Its state is only
     // projected onto this list; the operation itself is the service's.
     _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
@@ -71,16 +78,18 @@ class SessionListCubit({
     // 1. Navigate-back refresh: one immediate fetch when the user returns to
     //    the sessions page. pairwise() ensures this doesn't fire on the
     //    initial route emission (needs two values before it emits).
-    _subscriptions.add(
-      _routeSource.currentRouteStream
-          .distinct()
-          .pairwise()
-          .where((pair) => pair.first != AppRouteDef.sessions && pair.last == AppRouteDef.sessions)
-          .listen((_) {
-            if (isClosed) return;
-            unawaited(refreshSessions());
-          }),
-    );
+    if (mode is SessionListViewMode) {
+      _subscriptions.add(
+        _routeSource.currentRouteStream
+            .distinct()
+            .pairwise()
+            .where((pair) => pair.first != AppRouteDef.sessions && pair.last == AppRouteDef.sessions)
+            .listen((_) {
+              if (isClosed) return;
+              unawaited(refreshSessions());
+            }),
+      );
+    }
     // skip(1) ignores the BehaviorSubject replay of the current status —
     // we only want to react to actual transitions (e.g. disconnected → connected).
     _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));
@@ -93,6 +102,14 @@ class SessionListCubit({
     _subscriptions.add(
       _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
     );
+  }
+
+  /// An action scope can outlive a failed refresh. Synchronize the named menu
+  /// target from the consumer's current inventory without replacing other rows
+  /// (which may still have their own mutation in flight).
+  void updateActionSession({required Session session}) {
+    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
+    _emitFiltered();
   }
 
   String get projectId => _projectId;
@@ -560,7 +577,10 @@ class SessionListCubit({
   /// mutation is still pending.
   final Map<String, OptimisticRenameTracker> _renameStateBySessionId = {};
   int _nextRenameToken = 0;
-  SessionListFilter _filter = initialFilter;
+  SessionListFilter _filter = switch (mode) {
+    SessionListViewMode(:final filter) => filter,
+    SessionListActionsMode() => SessionListFilter.active,
+  };
 
   void toggleArchived() {
     if (state is! SessionListLoaded) return;

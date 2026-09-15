@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter/semantics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -17,6 +18,7 @@ import "package:theme_prego/module_prego.dart";
 void main() {
   late _MockBridgeControlCubit bridgeControlCubit;
   late _MockProjectListCubit projects;
+  late _MockRecentSessionsCubit recent;
   late _MockRepository repository;
   late DesktopSidebarCubit sidebar;
 
@@ -24,6 +26,13 @@ void main() {
   setUp(() {
     bridgeControlCubit = _MockBridgeControlCubit();
     projects = _MockProjectListCubit();
+    recent = _MockRecentSessionsCubit();
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: const <String, RecentSessionsEntry>{},
+    );
+    when(() => recent.ensureLoaded(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
@@ -43,6 +52,7 @@ void main() {
       providers: [
         BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
         BlocProvider<ProjectListCubit>.value(value: projects),
+        BlocProvider<RecentSessionsCubit>.value(value: recent),
         BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
       ],
       child: MaterialApp(
@@ -54,6 +64,10 @@ void main() {
             const DesktopCockpitShell(
               destination: DesktopCockpitDestination.projects,
               selectedProjectId: "project-1",
+              selectedSessionId: null,
+              onOpenSession: _openSession,
+              onNewSession: _openProject,
+              sessionActions: _sessionActions,
               onOpenProject: _openProject,
               onOpenBridge: _noOp,
               onOpenProjects: _noOp,
@@ -80,6 +94,10 @@ void main() {
             child: DesktopCockpitShell(
               destination: destination,
               selectedProjectId: null,
+              selectedSessionId: null,
+              onOpenSession: _openSession,
+              onNewSession: _openProject,
+              sessionActions: _sessionActions,
               onOpenProject: _openProject,
               onOpenBridge: () => opens++,
               onOpenProjects: () => opens++,
@@ -160,6 +178,10 @@ void main() {
         child: DesktopCockpitShell(
           destination: DesktopCockpitDestination.projects,
           selectedProjectId: "project-1",
+          selectedSessionId: null,
+          onOpenSession: _openSession,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
           onOpenProject: ({required context, required project, required displayName}) => openedProject = project.id,
           onOpenBridge: () => bridgeOpens++,
           onOpenProjects: () => projectOpens++,
@@ -175,6 +197,80 @@ void main() {
     await tester.tap(find.text("Settings"));
     await tester.tap(find.text("Sesori Desktop"));
     expect((bridgeOpens, projectOpens, settingsOpens, openedProject), (1, 1, 1, "project-1"));
+  });
+
+  testWidgets("recent tree pins selection, keeps route actions, and persists project collapse", (tester) async {
+    final sessions = [for (var index = 1; index <= 4; index++) _session(id: "session-$index")];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {},
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    String? openedSession;
+    var allSessions = 0;
+    var newSessions = 0;
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          destination: DesktopCockpitDestination.projects,
+          selectedProjectId: "project-1",
+          selectedSessionId: "session-4",
+          sessionActions: _sessionActions,
+          onOpenSession: ({required context, required project, required displayName, required session}) =>
+              openedSession = session.id,
+          onNewSession: ({required context, required project, required displayName}) => newSessions++,
+          onOpenProject: ({required context, required project, required displayName}) => allSessions++,
+          onOpenBridge: _noOp,
+          onOpenProjects: _noOp,
+          onOpenSettings: _noOp,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    for (final session in sessions) {
+      expect(find.text(session.title!), findsOneWidget);
+    }
+    final selected = find.byWidgetPredicate((widget) => widget is Semantics && widget.properties.label == "session-4");
+    expect(tester.widget<Semantics>(selected).properties.selected, isTrue);
+    await tester.tap(find.text("session-4"));
+    expect(openedSession, "session-4");
+    final allSessionsLabel = tester.widget<Text>(find.text("All sessions · 4"));
+    expect(allSessionsLabel.maxLines, 1);
+    expect(allSessionsLabel.style!.fontFamily, startsWith("packages/theme_prego/"));
+    await tester.tap(find.text("All sessions · 4"));
+    expect(allSessions, 1);
+    final projectToggle = find.byKey(const ValueKey("sidebar-project-toggle-project-1"));
+    await tester.tap(projectToggle);
+    await tester.pump();
+    expect(find.text("session-4"), findsNothing);
+    expect(sidebar.state.collapsedProjectIds, {"project-1"});
+    verify(() => repository.writeSidebarLayout(layout: const DesktopSidebarLayout(collapsedProjectIds: {"project-1"})))
+        .called(1);
+    await tester.tap(projectToggle);
+    await tester.pump();
+    expect(find.text("session-4"), findsOneWidget);
+    final add = find.byKey(const ValueKey("sidebar-new-session-project-1"));
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    await mouse.addPointer(location: Offset.zero);
+    await mouse.moveTo(tester.getCenter(add));
+    await tester.pump();
+    await mouse.down(tester.getCenter(add));
+    await mouse.up();
+    expect(newSessions, 1);
+    await mouse.removePointer();
+    await tester.tap(find.text("Sesori Desktop"), buttons: kSecondaryMouseButton);
+    await tester.pumpAndSettle();
+    expect(find.text("Rename"), findsOneWidget);
+    expect(find.text("Hide Project"), findsOneWidget);
+    await tester.pumpWidget(const SizedBox.shrink());
   });
 
   testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
@@ -279,6 +375,10 @@ void main() {
             child: DesktopCockpitShell(
               destination: DesktopCockpitDestination.settings,
               selectedProjectId: null,
+              selectedSessionId: null,
+              onOpenSession: _openSession,
+              onNewSession: _openProject,
+              sessionActions: _sessionActions,
               onOpenProject: _openProject,
               onOpenBridge: _noOp,
               onOpenProjects: () => opens++,
@@ -339,7 +439,14 @@ void main() {
     expect(find.byTooltip(runningHint), findsOneWidget);
     expect(tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).animate, isTrue);
     expect(find.byType(AppKitView), native ? findsOneWidget : findsNothing);
-    expect(tester.getCenter(find.byType(PregoAiLoader)).dx, greaterThan(200));
+    expect(
+      tester.getCenter(find.byType(PregoAiLoader)).dx,
+      greaterThan(tester.getCenter(find.text("Sesori Desktop")).dx),
+    );
+    expect(
+      tester.getCenter(find.byType(PregoAiLoader)).dx,
+      lessThan(tester.getTopLeft(find.byKey(const ValueKey("sidebar-new-session-project-1"))).dx),
+    );
     await tester.tap(toggle);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
@@ -447,9 +554,32 @@ BridgeControlState _state({
   ),
 );
 
+Session _session({required String id}) => Session(
+  id: id,
+  title: id,
+  projectID: "project-1",
+  pluginId: "plugin-1",
+  directory: "/work/sesori",
+  parentID: null,
+  branchName: null,
+  pullRequest: null,
+  time: null,
+  promptDefaults: null,
+  lastUserActivityAt: null,
+);
+
+const _sessionActions = SessionListActionDispatcher(onSessionDeleted: _deleted);
+void _deleted({required BuildContext context, required String sessionId}) {}
+void _openSession({
+  required BuildContext context,
+  required ProjectSummary project,
+  required String displayName,
+  required Session session,
+}) {}
 void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+class _MockRecentSessionsCubit() extends MockCubit<Map<String, RecentSessionsEntry>> implements RecentSessionsCubit;
 class _MockRepository() extends Mock implements DesktopInstanceRepository;
