@@ -1,6 +1,7 @@
 # Step 4 — Native macOS Packaging and Notarization
 
-Status: **in progress — credential access qualification**. PR ordinal **5/13**.
+Status: **in progress — local packaging tooling checks passed; native CI next**.
+PR ordinal **5/13**.
 Branch: `desktop-distribution-macos-packaging`, in the existing `tan-antelope`
 worktree. Predecessor [3.b](step-03b.md) merged as
 `e853838ac29b5d829f13622702c5d47a74eaa829`.
@@ -42,7 +43,17 @@ at `93fac44` found the exact expected valid Developer ID identity on both runner
 and both authenticated successfully to notarization. The signature lookup still
 failed with the isolated keychain, despite `codesign --keychain`. The next attempt
 registers that temporary keychain in the user search list, matching the existing
-CLI signing workflow; no certificate/publisher replacement is being attempted.
+CLI signing workflow; no certificate/publisher replacement was attempted.
+
+[Run 34998357930](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34998357930)
+at workflow revision `d76fcef410055d38f0b24e4e5405d4d7195824a9` passed on both native
+Mac runners after that search-list registration. Jobs `104480252199` (x64) and
+`104480252317` (arm64) authenticated to notarization, signed a native probe with
+Developer ID/timestamp/hardened runtime, verified it and executed it. This proves
+credential/tool access, not application notarization, entitlements or GUI behavior.
+No product was submitted or published. Captured metadata/logs are under
+`build/desktop-macos-packaging-evidence/`; they were fetched from repository root
+using `gh api --allow-escape-sequences repos/sesori-ai/sesori_apps_monorepo/actions/jobs/<job-id>/logs`.
 
 ## Implementation outline
 
@@ -55,7 +66,9 @@ CLI signing workflow; no certificate/publisher replacement is being attempted.
 3. Sign nested native code/frameworks inside-out, then the app, with hardened
    runtime. Keep App Sandbox disabled. Audit and retain only demonstrated release
    entitlements; no speculative JIT/library-validation exceptions or provisioning-
-   only Keychain groups. The current classic-Keychain adapter remains the owner.
+   only Keychain groups. Desktop DI retains `FlutterSecureStorage` with
+   `MacOsOptions(accountName: "com.sesori.desktop", usesDataProtectionKeychain: false)`.
+   The resolved Darwin plugin is 0.4.2, which supports this classic mode.
 4. Produce notarized/stapled DMGs and app ZIPs for each native architecture,
    preserving framework symlinks and the complete helper bin/lib layout. Verify
    extracted payloads and collect final identities/digests after signing/stapling.
@@ -65,12 +78,48 @@ CLI signing workflow; no certificate/publisher replacement is being attempted.
    existing desktop/bridge or access real account state without the required QA
    approval. CI build/probe success is not interactive or minimum-OS execution.
 
-The exact packaging implementation and entitlement/probe decisions will be pinned
-after access qualification and code inspection, before architecture-bearing changes.
+Packaging tooling will stay in `.github/scripts/package_desktop_macos.py` with
+focused `test_package_desktop_macos.py` fixtures, reusing `qualify_desktop.inventory`
+rather than creating another native-header scanner. A CI-only shell seam will own
+secret import, temporary Keychain/notary-profile setup and cleanup; the packager
+receives only public identity/profile/path arguments. Apple `notarytool` profiles
+keep passwords out of Python command/error reporting. The existing workflow will
+use one closed dispatch-mode choice for native qualification, credential preflight
+or private macOS packaging, so mutually exclusive operations cannot both be selected.
+Default PR qualification remains credential-free. No application/Keychain owner or
+restricted entitlement is changing; reassess architecture review only if a concrete
+native failure requires production-boundary changes.
 Estimated budget: under 1,000 authored changed lines; zero new application mutable
 fields, subscriptions, timers, lifecycle owners, persistence or transport contracts.
 Credential cleanup is scoped to this job's own secret files; failed unsigned build
 outputs remain diagnosable. No unrelated CLI/mobile release changes are intended.
+
+The first packaging implementation signs native leaves, framework containers and
+then the application, without deep signing. It verifies each native file explicitly
+because the helper bin/lib directory is not a nested application bundle. After app
+acceptance/stapling it produces the final ZIP, creates an Applications-link DMG,
+signs/notarizes/staples the DMG and verifies both extracted payloads. Receipts,
+optional detailed notary logs, final inventory/digests and the unchanged identity
+manifest are retained. Only fully verified packages pass the private-upload step;
+installed GUI/account/minimum-OS/publication claims are explicitly excluded.
+
+Local checks on the uncommitted implementation based on `d76fcef410055d38f0b24e4e5405d4d7195824a9`
+passed: **8 Python packaging tests**, actionlint, Bash syntax, ShellCheck and
+whitespace. Later edits only wrapped long lines and added documentation. Commands,
+from repository root:
+
+```bash
+python3 -m unittest discover -s .github/scripts -p test_package_desktop_macos.py -v
+actionlint .github/workflows/desktop-qualification.yml
+bash -n .github/scripts/macos_signing_ci.sh
+shellcheck .github/scripts/macos_signing_ci.sh
+git diff --check
+```
+
+No Dart/Flutter production input changed, so unchanged owning suites were not rerun.
+The current secure-storage owner/options were checked in `register_module.dart`;
+older advice to recreate a native Keychain workaround is not the current design.
+Actual signed-package and profile-based notarization evidence remains pending.
 
 ## Verification and boundaries
 

@@ -35,8 +35,8 @@ Start step 2 on the merge notification using `sesori-plan-worker`; thereafter ke
 one series PR open and at most one successor step local. This supersedes the earlier
 plan-only hold. Material scope/security decisions, missing credentials/infrastructure,
 and the recorded public-release prerequisites remain gates; do not silently waive
-or bypass them. No signing, infrastructure provisioning, or product publication has
-yet been performed.
+or bypass them. No product signing, infrastructure provisioning, or product
+publication has yet been performed; the private CI credential probe is not a product.
 
 Subsequent user clarification (2026-09-15): trusted, widely used, simple tooling
 outranks automatic updates. A dedicated manual update button is acceptable.
@@ -85,11 +85,13 @@ Workflow 34994634843 passed its analyzer/test and three desktop build jobs at
 Actions merge checkout `c40323edd60873d0a7d6f498ab05c4c8fd2b798f`. All review
 threads were resolved; the final Cubic review approved with no findings.
 Step 4 began in the same worktree on `desktop-distribution-macos-packaging`.
-The CLI workflow names a Developer ID Application identity, and local metadata
-shows one matching valid identity. No secret values or keys were exported;
-notarization authentication and signed desktop suitability remain unverified.
 The user selected existing GitHub Apple credentials for trusted CI verification.
-The bounded preflight and packaging outline are in [steps/step-04.md](steps/step-04.md).
+Run 34998357930 at `d76fcef410055d38f0b24e4e5405d4d7195824a9` authenticated to
+notarization and signed/verified/executed a timestamped hardened native probe on
+both Macs. Registering the imported temporary keychain in the user search list
+resolved `codesign` lookup failure. No local key was exported, and no product was
+submitted or published. Signed-desktop suitability is still unverified.
+The bounded evidence and packaging outline are in [steps/step-04.md](steps/step-04.md).
 
 ## Qualification and ship gates
 
@@ -98,7 +100,7 @@ The bounded preflight and packaging outline are in [steps/step-04.md](steps/step
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | Not provisioned/verified | Developer ID/notarization and update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
+| Signing and static hosting | macOS credential/tool access verified on both CPUs; remaining gates open | Actual signed/notarized desktop payloads and update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |
 | macOS public gate | Pending | Both CPUs, parent prerequisite, actual signed N→N+1 upgrade, quit semantics, downloads/feed, complete platform coverage from PLAN.md. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending | Both CPUs in DEB/RPM, nominated native distro rows, signed repository install/update/remove and desktop-environment coverage. |

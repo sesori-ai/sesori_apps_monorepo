@@ -1,4 +1,6 @@
-# Unsigned native desktop bundles
+# Native desktop bundles
+
+## Unsigned staging
 
 Use the repository-pinned Flutter/Dart SDK on the target OS/CPU. The producer resolves
 Flutter beside that SDK's Dart VM, not independently from PATH. Resolve the client
@@ -37,3 +39,43 @@ Release builds require the matching staged helper and compiled identity. For loc
 repository helpers or `SESORI_DESKTOP_BRIDGE_PATH`, use debug/profile builds instead.
 Product semantic-version bumps include desktop through `make bump-version`; desktop
 build numbers and release channels remain independently owned.
+
+## Private notarized macOS packages
+
+A maintainer can select an explicitly trusted committed ref in the existing
+`Desktop Native Qualification` workflow. Default PR and `native-builds` runs
+remain credential-free. For example, after the tooling is merged:
+
+```bash
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-signing-preflight
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref main -f mode=macos-packaging
+```
+
+The preflight verifies existing Developer ID signing and Apple notarization access.
+Packaging builds both native macOS targets from committed source, signs native
+libraries/frameworks inside-out and the hardened helper/app, notarizes/staples the
+app, then creates the final app ZIP and signed/notarized/stapled DMG. The DMG offers
+an Applications link: install the app into Applications rather than use it from the
+mounted image. Framework symlinks and the complete helper bin/lib layout survive
+both formats. Every extracted native binary, the app and the DMG are verified;
+Gatekeeper assessment and extracted-helper E2E must pass before package upload.
+
+Only the explicit manual Mac job consumes `MACOS_CERT_P12_BASE64`,
+`MACOS_CERT_PASSWORD`, `MACOS_KEYCHAIN_PASSWORD`, `APPLE_ID`,
+`APPLE_APP_SPECIFIC_PASSWORD`, and the `APPLE_TEAM_ID` repository variable. Signing
+uses the established Developer ID publisher. Temporary certificate/Keychain/profile
+files stay outside the checkout and artifact paths and are removed after use.
+Passwords never become Python packager arguments or exception text.
+
+Private artifacts `desktop-macos-packages-{x64,arm64}` contain
+`Sesori-macos-<arch>.dmg` and `.zip`; matching `desktop-macos-evidence-<arch>`
+artifacts retain identity, final digests, receipts, binary inventories and logs,
+including available failure diagnostics. Both expire after 14 days. Failed
+output is not automatically removed/replaced; a fresh job gets a fresh destination.
+
+This pipeline does not publish a release/feed or prove installed GUI authentication,
+Keychain restoration, TCC, autostart, minimum-OS operation, updates or public-release
+readiness. Keep those checks explicit in the distribution plan and
+[macOS packaging regression](../../../docs/regression/desktop-macos-packaging.md).
