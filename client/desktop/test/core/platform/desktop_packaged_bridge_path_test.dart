@@ -127,7 +127,17 @@ void main() {
       throwsA(
         isA<DesktopBridgeBundleException>()
             .having((e) => e.innerError, "cause", isA<FormatException>())
-            .having((e) => e.toString(), "safe presentation", isNot(contains("private contents"))),
+            .having((e) => e.toString(), "local diagnostic", isNot(contains("private contents")))
+            .having(
+              (e) => e.userMessage,
+              "safe repair guidance",
+              allOf(
+                contains("Restart Sesori"),
+                contains("reinstall the matching desktop download"),
+                isNot(contains("private contents")),
+                isNot(contains("Installed App")),
+              ),
+            ),
       ),
     );
   });

@@ -246,6 +246,44 @@ void main() {
       expect(service.state, isA<BridgeProcessRunning>());
     });
 
+    test("bundle refusal cleans up without spawning and retains repair guidance until a valid retry", () async {
+      authSession.state = _authenticatedState;
+      const failure = _BundleRefusal();
+      executablePathResolver.refusal = failure;
+
+      await expectLater(service.start(), throwsA(same(failure)));
+
+      expect(repository.spawnCalls, 0);
+      expect(repository.stopCalls, 0);
+      expect(controlServer.stopCalls, 1);
+      expect(service.desiredState, BridgeProcessDesiredState.on);
+      expect(
+        service.state,
+        isA<BridgeProcessStartFailed>().having((state) => state.message, "repair guidance", failure.userMessage),
+      );
+      expect(await service.states.first, same(service.state));
+
+      executablePathResolver.refusal = null;
+      await service.start();
+
+      expect(controlServer.startCalls, 2);
+      expect(repository.spawnCalls, 1);
+      expect(service.state, isA<BridgeProcessRunning>());
+    });
+
+    test("bundle refusal during automatic restart retains guidance instead of spending the crash budget", () async {
+      authSession.state = _authenticatedState;
+      await service.start();
+      executablePathResolver.refusal = const _BundleRefusal();
+
+      repository.emitExit(exitCode: 86, expected: false);
+      await pumpEventQueue();
+
+      expect(repository.spawnCalls, 1);
+      expect(service.state, isA<BridgeProcessStartFailed>());
+      expect(warnings, isNotEmpty);
+    });
+
     test("spawn failure rolls back the channel, surfaces the original error, and permits retry", () async {
       authSession.state = _authenticatedState;
       final StateError spawnError = StateError("missing helper");
@@ -1051,8 +1089,22 @@ class _FakeAuthSession({required AuthState initialState}) implements AuthSession
 }
 
 class _FakeBridgeExecutablePathResolver({required final String path}) implements BridgeExecutablePathResolver {
+  BridgeExecutableResolutionException? refusal;
+
   @override
-  String resolve() => path;
+  String resolve() {
+    final failure = refusal;
+    if (failure != null) {
+      throw failure;
+    }
+    return path;
+  }
+}
+
+class const _BundleRefusal() implements BridgeExecutableResolutionException {
+  @override
+  String get userMessage =>
+      "Restart Sesori after an update. If this persists, reinstall the matching desktop download.";
 }
 
 class _FakeAuthTokenProvider() implements AuthTokenProvider {

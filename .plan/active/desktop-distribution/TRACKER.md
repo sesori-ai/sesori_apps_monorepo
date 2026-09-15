@@ -9,8 +9,8 @@ its completed step; this table tracks implementation, not transient PR reviews.
 |---|---|---|---|
 | 1 | 1 | Align platform distribution and update plan | done |
 | 2 | 2 | Qualify six-target packaging prerequisites | done |
-| 3.a | 3 | Bind desktop builds to bundled bridge identity | in-progress |
-| 3.b | 4 | Surface packaged helper repair guidance | pending |
+| 3.a | 3 | Bind desktop builds to bundled bridge identity | done |
+| 3.b | 4 | Surface packaged helper repair guidance | in-progress |
 | 4 | 5 | Package and notarize native macOS builds | pending |
 | 5 | 6 | Apply macOS updates through safe application quit | pending |
 | 6 | 7 | Publish isolated desktop channels and macOS downloads | pending |
@@ -68,18 +68,22 @@ Step 3.a started automatically in the same worktree on
 `desktop-distribution-bundle-identity`. The existing reviewed identity boundary is
 unchanged; no new lifecycle owner, mutable state, database or wire contract was added.
 Implementation, local native evidence and the approved architecture review are
-recorded in [steps/step-03.md](steps/step-03.md). PR #1492 at `7ff3293` passed all
-24 checks, including six native staging rows in run 34976451046 with empty canonical
-source diffs. Windows' stat-only Git false positive is reproduced and corrected.
-Review identified missing user-visible refusal state; immediate successor 3.b owns
-that small service/state/presentation change before any installers, rather than
-expanding the near-cap foundations PR. No public gate is waived by the split.
+recorded in [steps/step-03.md](steps/step-03.md). PR #1492 merged as
+`575dd34dc322f88289efb68731482efe8885fa4b` after accepted head `1528c16f8` passed
+24 checks. Final native run 34987193233 passed all six staging/inventory/relocated-
+helper E2E rows at merge checkout `83e2e58b39732f706964f313ad13fa7d3f0f7f50`, with
+empty canonical source diffs. Windows' stat-only Git false positive is corrected.
+Step 3.b started in the same worktree on `desktop-distribution-repair-guidance`;
+its focused implementation, approved architecture review and evidence live in
+[steps/step-03b.md](steps/step-03b.md).
+The existing service/state/presentation path retains user-facing repair guidance
+before any installers. No public gate is waived by the split.
 
 ## Qualification and ship gates
 
 | Gate | State | Evidence still required |
 |---|---|---|
-| Native build matrix | All six staging rows passed in run 34976451046 | Signed/interactive release gates remain unverified. |
+| Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update path | API/typecheck passed; runtime ordering pending | Sparkle 2.10.0 has both native slices; supported quit-install API compiles. Prove AppKit termination after helper stop before adopting automatic behavior. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
 | Signing and static hosting | Not provisioned/verified | Developer ID/notarization and update keys, Windows signer, Linux keys, GCS endpoint and least-privilege publication access. |

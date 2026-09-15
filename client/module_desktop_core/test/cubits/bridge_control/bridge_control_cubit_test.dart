@@ -237,6 +237,47 @@ void main() {
       expect(hiddenCubit.state.trayAvailability, SystemTrayAvailability.unavailable);
     });
 
+    test("hidden bundle refusal stays non-modal, offers tray guidance, and permits explicit retry", () async {
+      await cubit.close();
+      final BridgeControlCubit hiddenCubit = BridgeControlCubit(
+        processService: processService,
+        statusTracker: statusTracker,
+        systemTray: systemTray,
+        windowHost: windowHost,
+        windowBoundsService: windowBoundsService,
+        applicationTerminator: applicationTerminator,
+        logRepository: logRepository,
+        instanceService: instanceService,
+        relayConnectionService: relayConnectionService,
+        takeoverOrchestrator: takeoverOrchestrator,
+        logoutTracker: logoutTracker,
+        urlLauncher: urlLauncher,
+        launchAtLogin: launchAtLogin,
+        hiddenLaunch: true,
+      );
+      addTearDown(hiddenCubit.close);
+      await hiddenCubit.initialize();
+      processService.emit(
+        state: const BridgeProcessStartFailed(message: "Restart Sesori or reinstall the matching desktop download."),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      await pumpEventQueue();
+
+      expect(hiddenCubit.state.processState, isA<BridgeProcessStartFailed>());
+      expect(hiddenCubit.state.statusLabel, "Bridge: Repair required — open Sesori");
+      expect(_textLabels(menu: systemTray.menus.last), contains(hiddenCubit.state.statusLabel));
+      expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge On");
+      expect(windowHost.showCalls, 0);
+      expect(processService.startCalls, 0);
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+
+      expect(processService.startCalls, 1);
+      expect(processService.stopCalls, 0);
+      expect(windowHost.showCalls, 0);
+    });
+
     test("reports window-only fallback when no usable tray host exists", () async {
       systemTray.availability = SystemTrayAvailability.unavailable;
 

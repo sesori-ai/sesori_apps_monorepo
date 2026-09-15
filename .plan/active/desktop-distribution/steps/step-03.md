@@ -1,8 +1,9 @@
 # Step 3 — Identity-Bound Desktop Bundles
 
-Status: **3.a in review** in [PR #1492](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1492).
-Immediate successor **3.b** surfaces retained repair guidance in the window/tray
-before installers. See the 13-PR mapping and ownership in [PLAN.md](../PLAN.md).
+Status: **3.a done**, merged in [PR #1492](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1492)
+as `575dd34dc322f88289efb68731482efe8885fa4b`. Immediate successor
+[3.b](step-03b.md) surfaces retained repair guidance in the window/tray before
+installers. See the 13-PR mapping and ownership in [PLAN.md](../PLAN.md).
 
 ## Foundations
 
@@ -53,19 +54,74 @@ run `34975281444` records the empty patch and LF index/worktree. The real Git fi
 reproduces it; the guard now compares canonical content and separately rejects
 untracked files. Failure-time diagnostics remain retained without resetting Git.
 
+### Final accepted head
+
+[Run 34987193233](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/34987193233)
+passed all six native rows at its Actions merge checkout
+`83e2e58b39732f706964f313ad13fa7d3f0f7f50`. Separately, the accepted PR revision was
+`1528c16f8f6f3b224331757694ed0d5ddbd573cc`, with all 24 checks passing at acceptance.
+Downloaded manifests/inventories identify that measured merge checkout and helper
+`1.8.4`; the inventories report canonical tracked source cleanliness, and the
+relocated-helper supervised E2E logs record passing tests.
+
+| Target | Evidence artifact |
+|---|---|
+| macOS x64 | 10405065795 |
+| macOS arm64 | 10404566144 |
+| Windows x64 | 10404880077 |
+| Windows arm64 | 10403864225 |
+| Linux x64 | 10404022643 |
+| Linux arm64 | 10404152364 |
+
+Downloaded inventories and matrix summary are under
+`build/desktop-bundle-evidence/native-ci-1528c16/`. The preceding run's Intel
+framework-download timeout did not require a production code, SDK-pin or timeout
+change. PR head, Actions merge checkout and eventual squash SHA are distinct.
+
+Reproduce the download/assertion procedure from the **repository root** (also the
+original retrieval cwd). These are the same `gh api` ZIP, manifest, inventory and
+E2E-log checks used for the recorded evidence; they do not rebuild or launch a GUI.
+GitHub access and unexpired artifacts are required; CI retains them for 14 days.
+
+```bash
+python3 - <<'PY'
+import io, json, subprocess, zipfile
+base = "repos/sesori-ai/sesori_apps_monorepo"
+source = "83e2e58b39732f706964f313ad13fa7d3f0f7f50"
+def api(endpoint):
+    return subprocess.check_output(["gh", "api", "--allow-escape-sequences", base + endpoint])
+artifacts = json.loads(api("/actions/runs/34987193233/artifacts"))["artifacts"]
+verified = []
+for artifact in artifacts:
+    if not artifact["name"].startswith("desktop-qualification-"):
+        continue
+    with zipfile.ZipFile(io.BytesIO(api(f'/actions/artifacts/{artifact["id"]}/zip'))) as archive:
+        names = archive.namelist()
+        inventory = json.loads(archive.read(next(n for n in names if n.endswith("inventory.json"))))
+        manifests = [json.loads(archive.read(n)) for n in names if n.endswith("desktop-bundle.json")]
+        assert inventory["sourceSha"] == source
+        assert inventory["relocatedHelperVersion"] == "1.8.4"
+        assert not inventory["trackedSourceDirty"]
+        assert manifests and all(m["sourceSha"] == source and m["version"] == "1.8.4" for m in manifests)
+        assert b"All tests passed!" in archive.read(next(n for n in names if n.endswith("supervised-e2e.log")))
+        verified.append(artifact["name"])
+        print(artifact["name"], artifact["id"], source, "helper=1.8.4 clean-source E2E=passed")
+assert len(verified) == 6
+PY
+```
+
 ## Review and remaining gates
 
 Architecture implementation review of `350cb8e` from `ed9b15ba`, run
 `05d41c7d-dd8d-4372-80a0-3028c92ba058`, approved with no findings. It confirmed model,
 producer, resolver and lifecycle ownership. The separate 3.b presentation plan was
-approved with no findings in run `5df8ad69-ea18-4776-8ddc-2335bdc28609`; implementation
-remains pending, not folded into 3.a.
+approved with no findings in run `5df8ad69-ea18-4776-8ddc-2335bdc28609`; its
+implementation is tracked separately in [step-03b.md](step-03b.md), not folded into 3.a.
 
 SDK pairing and version diagnostics at `4e32d887111ec87ab0d3d3481b5edd235553f5f9`
 passed eight cases via the same version-test command above, `dart analyze --fatal-infos
 tool/sync_versions.dart` from root, and `flutter analyze --no-pub --fatal-infos` from
-`client/desktop`. Current-head native CI is still required after those corrections.
-No actual GUI/
-account flow, minimum-OS execution, signed installer, real upgrade, or public release
+`client/desktop`. The final native run above includes those corrections.
+No actual GUI/account flow, minimum-OS execution, signed installer, real upgrade, or public release
 is claimed. No signing credentials, application data or publication infrastructure
 were used. Parent and platform release gates remain open.

@@ -33,12 +33,16 @@ final class const DesktopBridgeExecutableNotFoundException({
 final class const DesktopBridgeBundleException({
   required final String bundlePath,
   required final Object innerError,
-}) implements Exception {
+}) implements BridgeExecutableResolutionException {
+  @override
+  String get userMessage =>
+      "The bundled bridge is missing or does not match this app. Restart Sesori after an update. "
+      "If this persists, reinstall the matching desktop download.";
+
   @override
   String toString() =>
       "DesktopBridgeBundleException: invalid or mismatched helper bundle at "
-      '"$bundlePath" (${innerError.runtimeType.toString()}). Restart Sesori after an update. '
-      "If this persists, reinstall the matching desktop download.";
+      '"$bundlePath" (${innerError.runtimeType.toString()}). $userMessage';
 }
 
 @visibleForTesting

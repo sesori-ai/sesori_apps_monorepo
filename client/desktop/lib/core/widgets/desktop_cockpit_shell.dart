@@ -159,6 +159,15 @@ class const DesktopSupervisionNotice({super.key}) extends StatelessWidget {
           onSecondary: null,
           isError: false,
         ),
+        BridgeProcessStartFailed(:final message) => _DesktopSupervisionNoticeData(
+          icon: TablerRegular.alert_triangle,
+          message: message,
+          primaryLabel: "Retry",
+          onPrimary: locked ? null : () => unawaited(controls.startBridge()),
+          secondaryLabel: null,
+          onSecondary: null,
+          isError: true,
+        ),
         BridgeProcessCrashGiveUp() => _DesktopSupervisionNoticeData(
           icon: TablerRegular.alert_triangle,
           message: "The local bridge stopped after repeated crashes.",

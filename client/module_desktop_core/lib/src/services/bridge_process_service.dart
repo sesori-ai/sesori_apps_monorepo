@@ -329,7 +329,12 @@ class BridgeProcessService.forTesting({
           innerCause: AsyncError(error, stackTrace),
         );
       }
-      _publish(_stateAfterStartCleanup());
+      final BridgeProcessState cleanupState = _stateAfterStartCleanup();
+      _publish(
+        cleanupState is BridgeProcessStopped && error is BridgeExecutableResolutionException
+            ? BridgeProcessStartFailed(message: error.userMessage)
+            : cleanupState,
+      );
       rethrow;
     }
   }
@@ -683,7 +688,8 @@ class BridgeProcessService.forTesting({
       return;
     } on Object catch (error, stackTrace) {
       _reportWarning(message: context, error: error, stackTrace: stackTrace);
-      if (!_repository.isRunning && _activePid == null) {
+      // Executable repair guidance must not be replaced by crash backoff.
+      if (error is! BridgeExecutableResolutionException && !_repository.isRunning && _activePid == null) {
         _scheduleCrashRetry(
           exitCode: null,
           generation: generation,

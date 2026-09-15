@@ -4,7 +4,7 @@
 
 - **Slug:** `desktop-distribution`
 - **Date:** 2026-09-15
-- **Status:** Active — steps 1–2 merged; step 3.a foundations in review, then 3.b repair presentation.
+- **Status:** Active — steps 1–3.a merged; step 3.b repair presentation in progress.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -149,9 +149,12 @@ Step 3.a supplies the typed refusal and local diagnostics. Immediate successor 3
 - Add immutable `BridgeProcessStartFailed(message)` in the existing process-state
   file. After existing startup cleanup, the process service publishes it only for
   this typed refusal when no helper remains; retain original rethrow/exit ownership.
+  The existing automatic-start observer logs this refusal without replacing its
+  repair state with crash backoff (observed on the helper's exit-86 restart path).
 - Existing cubit/tray and cockpit notice derive repair guidance from that state.
   Update exhaustive consumers and explicit retry behavior. Hidden startup remains
-  non-modal; no forced window. Other startup failures keep their existing behavior.
+  non-modal; no forced window. Do not offer child logs for an unspawned helper in
+  the refusal notice. Other startup failures keep their existing behavior.
 - Test no spawn, cleanup, retained guidance, subsequent valid start, and shared
   tray/window rendering. No new mutable field, tracker, subscription, timer,
   persistence, lifecycle owner, wire contract, or analytics event.
