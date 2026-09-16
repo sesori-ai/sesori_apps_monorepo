@@ -39,22 +39,26 @@ class DesktopStartupOrchestrator._create({
        );
 
   /// Starts observing only after the control dispatcher can serve a helper.
-  Future<void> applyFirstRunBridgeDefaults() async {
+  Future<void> applyFirstRunBridgeDefaults({required Future<void> Function() onLaunchAtLoginChanged}) async {
     _authSubscription ??= _authSession.authStateStream.listen((state) {
-      if (state is AuthAuthenticated) unawaited(_applyFirstRunDefaults());
+      if (state is AuthAuthenticated) {
+        unawaited(_applyFirstRunDefaults(onLaunchAtLoginChanged: onLaunchAtLoginChanged));
+      }
     });
-    await _applyFirstRunDefaults();
+    await _applyFirstRunDefaults(onLaunchAtLoginChanged: onLaunchAtLoginChanged);
   }
 
-  Future<void> _applyFirstRunDefaults() async {
+  Future<void> _applyFirstRunDefaults({required Future<void> Function() onLaunchAtLoginChanged}) async {
     if (_disposed || _authSession.currentState is! AuthAuthenticated) return;
     try {
       if (!await _instanceService.initializeFirstRunBridgeState()) return;
-      if (_disposed || _authSession.currentState is! AuthAuthenticated) return;
-      // Admit start before the native preference await: a later Stop/logout
-      // then owns process intent rather than being followed by a late start.
+      if (_disposed) return;
+      // The process owner keeps admitted On login-required if auth was lost
+      // during persistence; explicit Off/logout already cancels admission.
+      // Admit before native enable so its completion cannot issue a late start.
       unawaited(_startFirstRunBridge());
       await _launchAtLogin.enable();
+      if (!_disposed) await onLaunchAtLoginChanged();
     } on Object catch (error, stackTrace) {
       logw("Failed to apply desktop first-run startup defaults", error, stackTrace);
     }

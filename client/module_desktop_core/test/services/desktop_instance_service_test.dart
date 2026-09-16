@@ -90,6 +90,17 @@ void main() {
     });
   }
 
+  test("failed explicit Off still blocks a later first-run default", () async {
+    when(repository.readBridgeDesiredState).thenAnswer((_) async => null);
+    when(() => repository.writeBridgeDesiredState(state: BridgeProcessDesiredState.off)).thenThrow(StateError("disk"));
+    final off = service.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);
+    final failure = expectLater(off, throwsStateError);
+    expect(await service.initializeFirstRunBridgeState(), isFalse);
+    await failure;
+    expect(await service.initializeFirstRunBridgeState(), isFalse);
+    verifyNever(() => repository.writeBridgeDesiredState(state: BridgeProcessDesiredState.on));
+  });
+
   test("Off during a slow first-run read prevents the default", () async {
     final read = Completer<BridgeProcessDesiredState?>();
     when(repository.readBridgeDesiredState).thenAnswer((_) => read.future);

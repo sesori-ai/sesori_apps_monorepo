@@ -51,6 +51,8 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
   /// Admits the first-run default only while no explicit intent supersedes it.
   /// Reuses the desired-state write queue so a later Off always wins on disk.
   Future<bool> initializeFirstRunBridgeState() {
+    // An explicit intent remains authoritative even when its disk write fails.
+    if (_restoreGeneration != 0) return Future.value(false);
     final operation = _initializeFirstRunBridgeStateAfter(
       previousWrite: _pendingDesiredStateWrite,
       generation: _restoreGeneration,

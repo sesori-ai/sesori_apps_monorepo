@@ -82,12 +82,18 @@ void main() {
       await statusTracker.dispose();
     });
 
-    test("signed-out start enters login-required without starting infrastructure", () async {
+    test("signed-out On waits without infrastructure and resumes after sign-in", () async {
       await service.start();
 
+      expect(service.desiredState, BridgeProcessDesiredState.on);
       expect(service.state, isA<BridgeProcessLoginRequired>());
       expect(controlServer.startCalls, 0);
       expect(repository.spawnCalls, 0);
+      final running = service.states.firstWhere((state) => state is BridgeProcessRunning);
+      authSession.state = _authenticatedState;
+      await running;
+      expect(controlServer.startCalls, 1);
+      expect(repository.spawnCalls, 1);
     });
 
     test("authenticated start creates the channel, spawns, attaches, and sends the secret off argv", () async {

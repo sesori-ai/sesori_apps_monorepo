@@ -105,7 +105,16 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               launchAtLogin: getIt(),
               hiddenLaunch: hiddenLaunch,
             );
-            unawaited(cubit.initialize());
+            final initialized = cubit.initialize();
+            unawaited(initialized);
+            unawaited(
+              getIt<DesktopStartupOrchestrator>().applyFirstRunBridgeDefaults(
+                onLaunchAtLoginChanged: () async {
+                  await initialized;
+                  await cubit.refreshLaunchAtLogin();
+                },
+              ),
+            );
             return cubit;
           },
         ),
