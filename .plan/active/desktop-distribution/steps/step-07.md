@@ -85,3 +85,25 @@ Windows CMake sets `BINARY_NAME=sesori_desktop`; `IoLaunchAtLogin` owns the `Ses
 Run value. Inno 7.1.0 official download and source license checked; AppMutex docs
 explicitly recommend retaining the handle until process termination:
 https://jrsoftware.org/ishelp/topic_setup_appmutex.htm.
+
+
+## Parent review and focused follow-up
+
+Architecture implementation review `8a9a17e2-b885-4100-8963-dee9738799b8` approved
+`266340fab88e3a4deac890eb161e61581087275a` against `e91e1fc`, B-Client only.
+The prior attempt `af5399f3-0c89-4dbf-8fb6-4c15d683b962` failed with `fetch failed`;
+it produced no review decision and was retried through the same runner.
+
+Parent correctness review changed the x64 payload gate to `x64os` (not
+`x64compatible`, which permits ARM64 emulation), explicitly selected an x64 Inno
+launcher, and made PowerShell fail on installed-inventory Python errors.
+At exact `a5f5f46e9929ec81c1e1b777a2795e45467864a4`, tree
+`aa056fbe0d422175b857733ddb5bc642060a7111`, from the repository worktree root:
+
+- `python3 -m unittest discover -s .github/scripts -p 'test_package_desktop_windows.py'`:
+  eight cases passed, exit 0 (synthetic packages and mocked compiler, not Windows execution).
+- `actionlint .github/workflows/desktop-qualification.yml`: exit 0.
+
+Logs: `build/desktop-windows-packaging-evidence/parent-tests.log` and
+`parent-actionlint.log`. Native CI is still required; these checks do not establish
+installer compilation or Windows execution.
