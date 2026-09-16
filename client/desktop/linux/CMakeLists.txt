@@ -74,6 +74,14 @@ set_target_properties(${BINARY_NAME}
 # them to the application.
 include(flutter/generated_plugins.cmake)
 
+# Flutter copies plugin libraries with install(FILES), which does not rewrite
+# their build RUNPATH. Resolve libflutter_linux_gtk.so beside this plugin rather
+# than retaining the build machine's flutter/ephemeral directory.
+set_target_properties(window_manager_plugin PROPERTIES
+  BUILD_WITH_INSTALL_RPATH TRUE
+  INSTALL_RPATH "$ORIGIN"
+)
+
 
 # === Installation ===
 # By default, "installing" just makes a relocatable bundle in the build
