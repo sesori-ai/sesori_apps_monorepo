@@ -284,8 +284,8 @@ jobs:
           $ErrorActionPreference = 'Stop'
           $package = Resolve-Path "build/desktop-windows-packaging/Sesori-windows-${{ matrix.arch }}-$env:SESORI_WINDOWS_VERSION.exe"
           $install = Join-Path $env:RUNNER_TEMP 'Sesori isolated install'
-          $shared = Join-Path $env:APPDATA 'Sesori qualification shared-data sentinel'
-          New-Item -ItemType Directory -Path $shared | Out-Null
+          $shared = Join-Path $env:LOCALAPPDATA 'sesori'
+          New-Item -ItemType Directory -Path $shared -Force | Out-Null
           Set-Content -Path (Join-Path $shared 'keep.txt') -Value 'preserve'
           $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
           New-Item -Path $runKey -Force | Out-Null

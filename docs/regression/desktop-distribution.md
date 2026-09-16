@@ -35,8 +35,9 @@ Installer never starts Sesori, enables login launch, closes/restarts processes, 
 removes unrecorded files. Uninstall additionally removes only existing `Sesori`
 login value; shared credentials, runtimes, databases, history and projects remain.
 
-Pinned Inno Setup 7.1.0 x64 compiler is checksum-verified. Its compiler and installer
-launcher may run under Windows ARM64 emulation; GUI, helper and shipped libraries
+The Inno Setup 7.1.0 x64 acquisition installer is checksum-verified before it
+installs the compiler. Compiler and installer launcher may run under Windows ARM64
+emulation; GUI, helper and shipped libraries
 must match target CPU. Isolated runner probes use per-user global mutex fixtures and
 compare every staged relative file path and SHA-256 with the installed payload; only
 Inno's generated uninstaller files are excluded from the installed extra-file set.
