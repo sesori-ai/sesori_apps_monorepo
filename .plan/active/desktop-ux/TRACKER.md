@@ -3,6 +3,8 @@
 Status values: `pending` / `in-progress` / `done` / `blocked`. Evidence for a
 finished step lives in `steps/step-NN.md` (created when the step executes);
 this table records state only and never mirrors PR review status.
+`done` means the step's implementation and focused verification are complete;
+merge history and outstanding native qualification are recorded separately.
 
 There are 18 PRs across 12 logical steps. Step 2.a/2.b map to ordinals 2/3;
 original 3–6 to 4–7; 7.a/7.b/7.c to 8/9/10; step 8 to 11.
@@ -25,16 +27,21 @@ sidebar follow-ups use `step-09b.md` and `step-09c.md`.
 | [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/18]` | ≤ 1,750 | done |
 | [x] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/18]` | ≤ 1,000 | done |
 | [x] | 9.a.1 | `desktop-ux/logging-foundation` | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,300 | done |
-| [ ] | 9.a.2 | `desktop-ux/app-logs` | `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]` | ≤ 1,300 | in-progress |
-| [ ] | 9.b | `desktop-ux/sidebar-interactions` | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/18]` | ≤ 500 | pending |
+| [x] | 9.a.2 | `desktop-ux/app-logs` | [13/18](#titles-13-and-14) | ≤ 1,300 | done |
+| [x] | 9.b | `desktop-ux/sidebar-interactions` | [14/18](#titles-13-and-14) | ≤ 500 | done |
 | [ ] | 9.c | `desktop-ux/sidebar-activity-controls` | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 15/18]` | ≤ 1,200 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 16/18]` | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 17/18]` | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | `🌿 [desktop-ux] Run coverage and retire the plan [step 18/18]` | ≤ 300 | pending |
 
-Next: 9.a.2 → 9.b → 9.c → 10 → 11 → 12. The sidebar additions implement the
-user's drag/hit-target, priority activity, footer/wording, refresh, animation and
-tooltip feedback. Only one PR is open; one local successor may be prepared.
+Next implementation: 9.c → 10 → 11 → 12. Sidebar activity/controls remain ahead;
+9.b is implemented and verified in #1524, with native qualification still outstanding.
+One PR at a time; prepare at most one local successor and publish it only after #1524 merges.
+
+### Titles 13 and 14
+
+- 13/18: `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]`
+- 14/18: `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/18]`
 
 ## Delivery history
 
@@ -58,6 +65,10 @@ tooltip feedback. Only one PR is open; one local successor may be prepared.
 - Step 9.a.2: [PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509),
   file-output continuation. Forward merge `a882b8dcfe41283a22dc454a02723bf63e7bc5bd`
   retains published `dc1074117b42ad06c268e2d6068a309411d9e3c2` without rewriting history.
+  Merged at accepted head `81dd4c7931b748de5dc3a133331aa0586f44a52e`;
+  squash `23ed67ca38e85894d6c1ef7c91bbc0b95a667f8d`. See its revision-scoped evidence.
+- Step 9.b: [PR #1524](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1524),
+  implementation and focused verification complete; merge pending.
 
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
@@ -148,3 +159,7 @@ or waive shipping qualification.
   Both earlier scoped architecture passes approved; C is localized non-architectural logic.
   See [file-output evidence](steps/step-09a.md).
   Native and sidebar follow-ups remain planned.
+- Step 9.b: 33 cockpit cases, clean desktop analysis, four inspected real-font synthetic renders,
+  and scoped architecture plan/implementation approval. Anchored drags preserve both-bound overshoot;
+  visible scrollbars no longer intercept expanded project toggles. Existing core ownership is unchanged.
+  See [interaction evidence](steps/step-09b.md); native/protected-state qualification remains outstanding.

@@ -192,7 +192,8 @@ class const DesktopSidebar({
                   ),
                 ),
                 ProjectListLoaded(:final projects, :final activityById, :final unseenByProjectId) => ListView.builder(
-                  padding: EdgeInsets.zero,
+                  // Keep trailing controls outside the interactive desktop scrollbar.
+                  padding: EdgeInsetsDirectional.only(end: PregoSpacing.xl * expansion),
                   itemCount: projects.length,
                   findChildIndexCallback: (key) {
                     final index = projects.indexWhere((project) => ValueKey(project.id) == key);

@@ -10,8 +10,13 @@ The main pane hosts one full-width routed page.
 ## Required Behavior
 
 - Expanded width defaults to 260 logical pixels and clamps to 200–420. Dragging
-  changes width immediately; only drag completion/cancellation, double-click
-  reset, and explicit sidebar/project collapse toggles write layout preferences.
+  uses the starting width plus global pointer displacement, preserving overshoot
+  when reversing beyond either bound. Changes are immediate; an admitted drag
+  saves once on completion/cancellation, and double-click reset saves once.
+  Idle gesture cancellation does not write; explicit sidebar/project collapse toggles do.
+- Expanded project controls have a 16-pixel directional scrollbar gutter.
+  Trailing expand/collapse buttons remain clickable while the scrollbar is visible;
+  thumb dragging still scrolls. The gutter shrinks with expansion to zero in the compact rail.
 - Collapse uses a 56-pixel rail with deterministic two-grapheme project avatars
   and full-name tooltips. Expanding restores the user's width. Width and label
   transitions animate together; reduced motion disables the transition without
@@ -130,17 +135,50 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 
 | Level | Boundary / scope | Added checks |
 |---|---|---|
-| L1 | Client end to end; desktop; representative bridge | Sidebar renders; a project opens; Bridge and Settings remain reachable. |
-| L2 | Automated; no plugin | Optional file-access card/dismissal, narrow layout, local Settings statuses and unsupported omission; modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close, text-edit/sheet Escape order, logout failure/late completion/auth rejection, minimum size/large text; root-popup activity visibility across nested navigators; notification popup dismissal, same-page/Back preservation, different-session replacement, readiness and logged-failure ordering; popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring, outside/Escape dismissal, preserved main pane; connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics, sidebar recovery/actions/locks; flat typed route registration, no-back all-sessions presentation, archived read-only navigation, new-session replacement, diff/direct-entry back, home states, package-font resolution; recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal, project-collapse persistence, shared menu/route callbacks; width clamp, drag-end-only persistence, reset, intermediate collapse/expand frames with cramped session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates in both widths, Unicode initials, JSON round-trip, storage failure fallback. |
-| L3 | Client end to end; macOS; representative live bridge | Fresh-account autostart, login-item registration, optional Full Disk Access grant/deny/focus-return and helper inheritance; Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer; popover Start/Stop/Retry, Take Over versus Stop, logs and Settings; relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows, keyboard focus, compact tooltips, relaunch persistence, light/dark appearance, recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping through the tree and menus. |
-| L4 | Client end to end; Windows/Linux | Resize/collapse, native-window size changes, and saved-layout restore. |
+| L1 | Client E2E; desktop; representative bridge | Sidebar, project opening, Bridge/Settings access. |
+| L2 | Automated; no plugin | See [automated checks](#automated-checks-l2). |
+| L3 | Client E2E; macOS; representative live bridge | See [live macOS checks](#live-macos-checks-l3). |
+| L4 | Client E2E; Windows/Linux | Resize/collapse, native-window size changes, saved-layout restore. |
 | L5 | No additional coverage | Lower levels still apply. |
+
+### Automated checks (L2)
+
+- Optional file-access card/dismissal, narrow layout, local Settings statuses and unsupported omission.
+- Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
+  text-edit/sheet Escape order, logout failure/late completion/auth rejection, minimum size/large text.
+- Root-popup activity visibility across nested navigators; notification popup dismissal,
+  same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
+- Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring,
+  outside/Escape dismissal, preserved main pane.
+- Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
+  sidebar recovery/actions/locks.
+- Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
+  new-session replacement, diff/direct-entry Back, home states, package-font resolution.
+- Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
+  project-collapse persistence, shared menu/route callbacks.
+- Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
+  visible-scrollbar edge hit tests and thumb dragging, intermediate collapse/expand frames with cramped
+  session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates
+  in both widths, Unicode initials, JSON round-trip, storage failure fallback.
+
+### Live macOS checks (L3)
+
+- Fresh-account autostart, login-item registration, optional Full Disk Access grant/deny/focus-return
+  and helper inheritance.
+- Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer.
+- Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings.
+- Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
+- Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
+  recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping
+  through the tree and menus.
 
 ## Failure Signals And Exploration
 
 Look for overflow at minimum width, drag updates that stall or write per frame,
+width jumping on reversal beyond a bound, scrollbars intercepting project toggles,
 automatic collapse overwriting user preferences, missing/stale activity marks,
-duplicate project inventories or a second session-list pane, sidebar browsing clearing unread state, stale/missing recent rows,
+duplicate project inventories or a second session-list pane, sidebar browsing clearing unread state,
+stale/missing recent rows,
 covered transcripts marked viewed, notification opens stranded behind a popup,
 wrong session-action targets, or lost navigation after switching projects. Vary project-name lengths and
 Unicode, window sizes, theme, and sidebar width; preserve any already-running

@@ -386,7 +386,7 @@ void main() {
     await tester.pump();
     await gesture.moveBy(const Offset(60, 0));
     await tester.pump();
-    expect(tester.getSize(rail).width, greaterThan(260));
+    expect(tester.getSize(rail).width, 350);
     verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
     await gesture.up();
     await tester.pump();
@@ -396,7 +396,86 @@ void main() {
     await tester.tap(resize);
     await tester.pump(const Duration(milliseconds: 100));
     expect(tester.getSize(rail).width, 260);
+    verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(1);
   });
+
+  for (final (bound, offsets, widths) in [
+    ("maximum", [250.0, 230.0, 150.0], [420.0, 420.0, 410.0]),
+    ("minimum", [-160.0, -140.0, -30.0], [200.0, 200.0, 230.0]),
+  ]) {
+    testWidgets("drag preserves $bound overshoot until the pointer returns inside the bound", (tester) async {
+      await tester.pumpWidget(app(state: running));
+      final origin = tester.getCenter(resize);
+      final gesture = await tester.startGesture(origin, kind: PointerDeviceKind.mouse);
+      await gesture.moveBy(const Offset(20, 0));
+      await tester.pump();
+      for (var index = 0; index < offsets.length; index++) {
+        await gesture.moveTo(origin + Offset(offsets[index], 0));
+        await tester.pump();
+        expect(tester.getSize(rail).width, widths[index]);
+      }
+      verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 100));
+      verify(() => repository.writeSidebarLayout(layout: DesktopSidebarLayout(width: widths.last))).called(1);
+    });
+  }
+
+  testWidgets("an admitted drag commits once on cancellation", (tester) async {
+    await tester.pumpWidget(app(state: running));
+    final gesture = await tester.startGesture(tester.getCenter(resize), kind: PointerDeviceKind.mouse);
+    await gesture.moveBy(const Offset(20, 0));
+    await tester.pump();
+    await gesture.moveBy(const Offset(30, 0));
+    await tester.pump();
+    verifyNever(() => repository.writeSidebarLayout(layout: any(named: "layout")));
+    final layout = sidebar.state;
+    await gesture.cancel();
+    await tester.pump(const Duration(milliseconds: 100));
+    verify(() => repository.writeSidebarLayout(layout: layout)).called(1);
+  });
+
+  testWidgets("project toggle edge and scrollbar thumb remain usable", (tester) async {
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: ProjectListState.loaded(
+        projects: [
+          for (var index = 0; index < 20; index++)
+            ProjectSummary(id: "project-$index", name: "Project $index", path: "/fixture/$index", time: null),
+        ],
+        activityById: const {},
+      ),
+    );
+    await tester.pumpWidget(app(state: running));
+    final list = find.byType(ListView);
+    final scrollable = tester.state<ScrollableState>(find.byType(Scrollable));
+    expect(scrollable.position.maxScrollExtent, greaterThan(0));
+    // Show the automatic desktop scrollbar at the first project's row.
+    scrollable.position.jumpTo(24);
+    await tester.pump(const Duration(milliseconds: 200));
+    scrollable.position.jumpTo(0);
+    await tester.pump(const Duration(milliseconds: 200));
+    final projectToggle = find.byKey(const ValueKey("sidebar-project-toggle-project-0"));
+    final button = tester.getRect(projectToggle);
+    await tester.tapAt(button.centerRight - const Offset(6, 0), kind: PointerDeviceKind.mouse);
+    await tester.pump();
+    expect(sidebar.state.collapsedProjectIds, {"project-0"});
+    expect(tester.getRect(list).right - button.right, greaterThanOrEqualTo(16));
+    final viewport = tester.getRect(list);
+    final thumb = await tester.startGesture(
+      Offset(viewport.right - 6, viewport.top + 20),
+      kind: PointerDeviceKind.mouse,
+    );
+    await thumb.moveBy(const Offset(0, 20));
+    await tester.pump();
+    await thumb.moveBy(const Offset(0, 20));
+    await tester.pump();
+    expect(scrollable.position.pixels, greaterThan(0));
+    await thumb.up();
+    await tester.pumpWidget(const SizedBox.shrink());
+    expect(tester.takeException(), isNull);
+  }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
   testWidgets("collapse animates into a compact rail and expands to the saved width", (tester) async {
     await tester.pumpWidget(app(state: running));
