@@ -24,15 +24,15 @@ sidebar follow-ups use `step-09b.md` and `step-09c.md`.
 | [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/18]` | ≤ 700 | done |
 | [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/18]` | ≤ 1,750 | done |
 | [x] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/18]` | ≤ 1,000 | done |
-| [ ] | 9.a.1 | `desktop-ux/logging-foundation` | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,300 | in-progress |
-| [ ] | 9.a.2 | `desktop-ux/app-logs` | `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]` | ≤ 1,300 | pending |
+| [x] | 9.a.1 | `desktop-ux/logging-foundation` | `⚙️ [desktop-ux] Prepare safe diagnostics and bounded quit flushing [step 12/18]` | ≤ 1,300 | done |
+| [ ] | 9.a.2 | `desktop-ux/app-logs` | `⚙️ [desktop-ux] Write app logs to rotating files [step 13/18]` | ≤ 1,300 | in-progress |
 | [ ] | 9.b | `desktop-ux/sidebar-interactions` | `🌿 [desktop-ux] Fix sidebar resizing and project hit targets [step 14/18]` | ≤ 500 | pending |
 | [ ] | 9.c | `desktop-ux/sidebar-activity-controls` | `⚙️ [desktop-ux] Prioritize sidebar activity and simplify controls [step 15/18]` | ≤ 1,200 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 16/18]` | ≤ 600 | pending |
 | [ ] | 11 | `desktop-ux/regression-docs` | `🌿 [desktop-ux] Audit controls and reconcile regression documentation [step 17/18]` | ≤ 600 | pending |
 | [ ] | 12 | `desktop-ux/coverage-retire` | `🌿 [desktop-ux] Run coverage and retire the plan [step 18/18]` | ≤ 300 | pending |
 
-Next: 9.a.1 → 9.a.2 → 9.b → 9.c → 10 → 11 → 12. The sidebar additions implement the
+Next: 9.a.2 → 9.b → 9.c → 10 → 11 → 12. The sidebar additions implement the
 user's drag/hit-target, priority activity, footer/wording, refresh, animation and
 tooltip feedback. Only one PR is open; one local successor may be prepared.
 
@@ -52,9 +52,12 @@ tooltip feedback. Only one PR is open; one local successor may be prepared.
 - Step 7.c: [PR #1501](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1501),
   merged after #1502's forward integration, preserving published history without force-pushing.
 - Step 8: [PR #1505](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1505).
+- Step 9.a.1: [PR #1514](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1514),
+  merged at accepted head `8f0f12f148b42edbef096244b7b69856fe035df0`;
+  squash `84c034f9eba8ba490109654d8b12384d646f1cd3`, terminal monitor CI passing 13/13.
 - Step 9.a.2: [PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509),
-  temporarily closed, not merged. Preserve published `dc1074117b42ad06c268e2d6068a309411d9e3c2`;
-  after 9.a.1 merges, merge main forward and reopen without rewriting history.
+  file-output continuation. Forward merge `a882b8dcfe41283a22dc454a02723bf63e7bc5bd`
+  retains published `dc1074117b42ad06c268e2d6068a309411d9e3c2` without rewriting history.
 
 - Standalone user-requested sidebar correction:
   [PR #1513](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1513) merged.
@@ -135,6 +138,9 @@ or waive shipping qualification.
   long-error console chunking. Full auth generation retains unrelated outputs.
   Scoped architecture plan/implementation reviews approved. See [prerequisite evidence](steps/step-09a1.md).
   No file sinks, production DI or native work.
-- Step 9.a.2: the original 91-case/five-analyzer evidence remains on preserved #1509,
-  not evidence for its unimplemented review fixes. File completion/recovery warnings and
-  directory copy follow 9.a.1. Remaining sidebar follow-ups are still planned.
+- Step 9.a.2: 65 cases in eight suites pass at the forward-integration checkpoint;
+  desktop-core/mobile/desktop analyzers are clean. Full desktop-core/mobile generation
+  preserves all ten tracked generated files byte-for-byte. Completion, final-record
+  persistence before fake termination, warning recovery and directory copy are implemented.
+  Fresh scoped architecture review approved with no findings. See [file-output evidence](steps/step-09a.md).
+  Native and sidebar follow-ups remain planned.
