@@ -15,9 +15,9 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 4.b | 6 | Keep desktop startup independent of native notifications | done |
 | 5 | 7 | Offer manual macOS updates through official downloads | done |
 | 6 | 8 | Private release preparation merged; macOS publication gated | blocked |
-| 7 | 9 | Prepare per-user Windows installers; signing/publication gated | in-progress |
-| 8 | 10 | Deliver manual Windows updates and winget discovery | pending |
-| 9 | 11 | Publish signed native DEB and RPM repositories | pending |
+| 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
+| 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
+| 9 | 11 | Prepare private native DEB/RPM packages; publication gated | in-progress |
 | 10 | 12 | Offer shipped desktop downloads during onboarding | pending |
 | 11 | 13 | Reconcile distribution regression coverage | pending |
 | 12 | 14 | Verify six-target releases and retire distribution plan | pending |
@@ -43,12 +43,25 @@ Private preparation merged in #1511: accepted
 At acceptance 17/17 checks passed, Cubic approved, and all threads were resolved;
 the merged report subsequently showed 18/18 passing. Public publication remains
 blocked, not completed; see [step-06](steps/step-06.md). Independent private Windows
-installer preparation continues on `desktop-distribution-windows-packaging` in the
+installer preparation ran on `desktop-distribution-windows-packaging` in the
 same worktree. On 2026-09-16, private run 35097548359 at `a36896d051` passed native
 x64/ARM64 compilation and silent install/reinstall/uninstall fixtures. Exact hashes,
 source and proof boundaries are recorded in [step-07](steps/step-07.md); the earlier
 run 35092987496 was cancelled, not passing or still running. This does not authorize shipping Windows
 before the macOS gate.
+
+Private Windows qualification merged in #1515, accepting
+`99cdf2e8fc0e90e3f5cb08a151fd6871ccdcdd3f`, squash
+`cc9c65932791f5dfa15954bdebe898d43324a51c` at 2026-09-16T15:30:55Z.
+At acceptance 21/21 checks passed; the merged report subsequently showed 22/22.
+All 19 feedback threads were resolved; final Cubic summary said all reported issues
+were addressed. Final private native run 35111369170 qualified both CPUs at the
+accepted source, 1.8.4/build43, with downloaded hashes and inventories verified.
+Signing and public Windows release remain blocked. Step 8's download UI already
+exists from step 5; winget manifests must wait for real signed public assets.
+Rather than invent placeholder manifests, continue the next independently executable
+step: private Linux packaging on `desktop-distribution-linux-packaging`. Shipping
+order and uncompleted publication prerequisites are unchanged.
 
 ## Alignment — 2026-09-15
 

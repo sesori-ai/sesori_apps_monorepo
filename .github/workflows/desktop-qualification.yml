@@ -11,7 +11,7 @@ on:
       mode:
         description: 'Qualification mode (no product publication)'
         type: choice
-        options: [native-builds, macos-signing-preflight, macos-packaging, macos-gui-probe, windows-packaging]
+        options: [native-builds, macos-signing-preflight, macos-packaging, macos-gui-probe, windows-packaging, linux-packaging]
         default: native-builds
       channel:
         description: 'Compiled download channel (macos-packaging only)'
@@ -30,7 +30,11 @@ on:
       - '.github/scripts/test_package_desktop_macos.py'
       - '.github/scripts/package_desktop_windows.py'
       - '.github/scripts/test_package_desktop_windows.py'
+      - '.github/scripts/package_desktop_linux.py'
+      - '.github/scripts/qualify_desktop_linux_package.sh'
+      - '.github/scripts/test_package_desktop_linux.py'
       - 'client/desktop/tool/windows_installer.iss'
+      - 'client/app/android/app/src/main/ic_launcher-playstore.png'
       - 'client/desktop/windows/runner/main.cpp'
       - '.github/scripts/macos_signing_ci.sh'
       - '.github/scripts/probe_sparkle.swift'
@@ -374,6 +378,148 @@ jobs:
             build/desktop-bundle/bundle/bridge/desktop-bundle.json
             build/desktop-windows-packaging/*.json
             build/desktop-windows-packaging/*.log
+          if-no-files-found: warn
+          retention-days: 14
+
+  linux-distribution:
+    needs: tooling
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'linux-packaging'
+    timeout-minutes: 65
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            arch: x64
+            machine: x86_64
+          - runner: ubuntu-24.04-arm
+            arch: arm64
+            machine: aarch64
+    runs-on: ${{ matrix.runner }}
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
+      # Fedora 44 was current stable when checked against official releases.json;
+      # digest is official registry's multi-architecture index, not a guessed mirror tag.
+      FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.arch }}
+      - name: Refuse emulated host and install native build dependencies
+        run: |
+          set -euo pipefail
+          [[ "$(uname -m)" == '${{ matrix.machine }}' ]] || { echo 'Native runner architecture mismatch'; exit 1; }
+          sudo apt-get update
+          sudo apt-get install -y \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev \
+            libstdc++-12-dev libsecret-1-dev libayatana-appindicator3-dev dpkg-dev
+      - name: Bootstrap pinned native SDK
+        env:
+          SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
+        run: |
+          set -euo pipefail
+          mkdir -p build/desktop-qualification build/desktop-linux-packaging
+          python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
+            2>&1 | tee build/desktop-qualification/bootstrap.log
+      - name: Build and stage complete native bundle
+        run: |
+          set -euo pipefail
+          (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
+          (cd client && flutter pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/client-pub.log
+          (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
+            --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
+            2>&1 | tee build/desktop-qualification/bundle-build.log
+          if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then
+            echo 'Commit build-generated source changes before package construction.' >&2
+            exit 1
+          fi
+      - name: Build native DEB with generated shared-library dependencies
+        run: |
+          set -euo pipefail
+          python .github/scripts/package_desktop_linux.py package \
+            --bundle build/desktop-bundle/bundle --arch '${{ matrix.arch }}' --format deb \
+            --package-config client/.dart_tool/package_config.json \
+            --output build/desktop-linux-packaging/deb \
+            2>&1 | tee build/desktop-linux-packaging/deb-packaging.log
+      - name: Pull validated official Fedora and build native RPM there
+        run: |
+          set -euo pipefail
+          docker pull "$FEDORA_IMAGE" 2>&1 | tee build/desktop-linux-packaging/fedora-pull.log
+          docker image inspect --format '{{ join .RepoDigests "\n" }}' "$FEDORA_IMAGE" | \
+            grep -Fx "$FEDORA_IMAGE"
+          [[ "$(docker run --rm "$FEDORA_IMAGE" uname -m)" == '${{ matrix.machine }}' ]] || {
+            echo 'Fedora container architecture differs from native host'; exit 1;
+          }
+          docker run --rm \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -v "$PUB_CACHE:$PUB_CACHE:ro" \
+            -w "$GITHUB_WORKSPACE" "$FEDORA_IMAGE" bash -c '
+              set -euo pipefail
+              dnf install -y python3 rpm-build
+              python3 .github/scripts/package_desktop_linux.py package \
+                --bundle build/desktop-bundle/bundle --arch "${{ matrix.arch }}" --format rpm \
+                --package-config client/.dart_tool/package_config.json \
+                --output build/desktop-linux-packaging/rpm
+            ' 2>&1 | tee build/desktop-linux-packaging/rpm-packaging.log
+      - name: Install, same-version reinstall and remove DEB on native Ubuntu and Debian
+        run: |
+          set -euo pipefail
+          package="$(realpath build/desktop-linux-packaging/deb/*.deb)"
+          bundle="$(realpath build/desktop-bundle/bundle)"
+          for fixture in ubuntu:24.04 debian:13; do
+            name="${fixture/:/-}"
+            docker pull "$fixture" 2>&1 | tee "build/desktop-linux-packaging/${name}-pull.log"
+            [[ "$(docker run --rm "$fixture" uname -m)" == '${{ matrix.machine }}' ]] || {
+              echo "$fixture container architecture differs from native host"; exit 1;
+            }
+            docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" "$fixture" bash -c "
+              set -euo pipefail
+              apt-get update && apt-get install -y python3
+              .github/scripts/qualify_desktop_linux_package.sh deb '$package' '$bundle' \
+                '${{ matrix.arch }}' 'build/desktop-linux-packaging/${name}-fixture.json'
+            " 2>&1 | tee "build/desktop-linux-packaging/${name}-fixture.log"
+          done
+      - name: Install, same-version reinstall and remove RPM on native Fedora
+        run: |
+          set -euo pipefail
+          package="$(realpath build/desktop-linux-packaging/rpm/*.rpm)"
+          bundle="$(realpath build/desktop-bundle/bundle)"
+          docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" \
+            "$FEDORA_IMAGE" bash -c "
+              set -euo pipefail
+              dnf install -y python3
+              .github/scripts/qualify_desktop_linux_package.sh rpm '$package' '$bundle' \
+                '${{ matrix.arch }}' 'build/desktop-linux-packaging/fedora-44-fixture.json'
+            " 2>&1 | tee build/desktop-linux-packaging/fedora-44-fixture.log
+      - name: Upload private unsigned packages
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-packages-${{ matrix.arch }}
+          path: |
+            build/desktop-linux-packaging/deb/*.deb
+            build/desktop-linux-packaging/rpm/*.rpm
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload qualification evidence, including partial failures
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-evidence-${{ matrix.arch }}
+          path: |
+            build/desktop-qualification/*.log
+            build/desktop-bundle/build-source-changes.patch
+            build/desktop-bundle/bundle/bridge/desktop-bundle.json
+            build/desktop-linux-packaging/*.json
+            build/desktop-linux-packaging/*.log
+            build/desktop-linux-packaging/*/packaging.json
           if-no-files-found: warn
           retention-days: 14
 

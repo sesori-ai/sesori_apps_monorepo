@@ -45,6 +45,28 @@ They do not start the product and prove silent fixture behavior only. Output rem
 it does not establish publisher trust, SmartScreen reputation, interactive behavior,
 account restoration, upgrades, or release readiness.
 
+## Private Linux package qualification
+
+Manual `linux-packaging` qualification builds unsigned DEB and RPM packages from
+complete native x64 and ARM64 staged bundles. Both formats install the unchanged
+GUI/helper bundle below `/opt/sesori-desktop`, own only the `sesori-desktop`
+launcher, one desktop entry and the existing 512x512 application icon, and leave the standalone
+`sesori-bridge` launcher untouched. Version, build, source, OS and CPU come from the
+staged identity. DEB dependencies come from `dpkg-shlibdeps`; RPM requirements come
+from Fedora's native `rpmbuild` ELF scanning. Current locked Linux plugin sources are
+checked for explicit dynamic loading before packaging; no guessed explicit runtime
+requirement is added when those sources contain none.
+
+Native Ubuntu 24.04 and Debian 13 containers install, same-version reinstall and
+remove the DEB. A Fedora 44 container from the pinned official multi-architecture
+registry digest builds, installs, same-version reinstalls and removes the RPM on the
+matching native host CPU. Fixtures compare installed payload paths/hashes with staging,
+require root ownership, reject maintainer scripts/scriptlets, and preserve realistic
+configuration, credentials, database, runtime, attachment and project sentinels.
+They never launch the GUI or helper. Same-version reinstall is not N→N+1 proof.
+Unsigned private containers do not establish desktop-session behavior, account
+restoration, Secret Service/tray behavior, signing, repository trust or publication.
+
 ## Private release preparation
 
 The manual Desktop Release Preparation workflow consumes both native macOS package
@@ -67,6 +89,9 @@ or permission to ship. Public release and native upgrade gates remain outstandin
   altered payload/evidence, missing packages, deterministic output and no overwrite.
   Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
   compiler arguments, bounded installer directives and no-overwrite diagnostics.
+  Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,
+  source-derived dynamic-loading audit, generated dependency invocation, bounded
+  ownership and absence of package lifecycle scripts.
   Staging parser/default/invalid-channel and exact dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
@@ -89,6 +114,8 @@ unshipped artifact links, a dead Linux/self-update button, raw release-version
 inference, losing attention settings, startup network waits, or a download action
 that stops/restarts the app or helper. Windows setup/uninstall proceeding while GUI
 mutex exists, changing login intent during install, launching the app, forced close/
-restart, wrong-CPU payloads, or broad uninstall cleanup are failures. Manual
-replacement must never delete shared credentials, harness runtimes, databases,
-history or projects.
+restart, wrong-CPU payloads, or broad uninstall cleanup are failures. Linux package ownership of
+`/usr/bin/sesori-bridge`, user homes or autostart entries; guessed runtime dependencies;
+non-native container execution; package scriptlets; altered staged payloads; or calling
+a same-version reinstall an N→N+1 upgrade are failures. Manual replacement must never
+delete shared credentials, harness runtimes, databases, history or projects.
