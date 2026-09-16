@@ -92,8 +92,27 @@ signing wait for human approval.
   wheels are version/hash-locked. A synthetic sealed-box roundtrip runs before
   credential exposure. These pins bound dependency changes, not a claim that
   hashing alone proves third-party code free of vulnerabilities.
-- No signing consumers changed and no repository secrets removed during bootstrap.
-- Step 1 implementation pending review; native verification and cutover remain pending.
+- Bootstrap #1525 merged as `ab9d4eb245434195c6b70fdb70b285e0a7a05bd5`.
+  Manual run `35139046166`, job `104938663518`, passed at that exact source;
+  the synthetic sealed-box roundtrip and encryption completed without plaintext output.
+- The five ciphertext values were imported via GitHub's environment-secret API only
+  after checking the exact source, allowlist, destination environment, public key and
+  key ID. Metadata confirms five destination names. The temporary Actions artifact
+  `10464765058` and local ciphertext file were removed after successful import.
+- Repository copies remain present. Step 2 binds existing consumers to the environment,
+  removes their caller secret passing, and removes the temporary bootstrap workflow.
+  The reusable build's full six-target matrix uses the environment (no approval delay);
+  only its macOS signing steps consume credentials. Private desktop qualification uses
+  the same environment. Both routes now require dispatch from main.
+- `verify-macos-signing.yml` calls the actual reusable CLI build with the committed
+  version and read-only repository permission. It uploads private build artifacts only;
+  no TestFlight, Android, tag, release or installer publication is invoked.
+- Cutover must merge before main-only native proof: dispatch `verify-macos-signing.yml`
+  and `desktop-qualification.yml` with `mode=macos-signing-preflight` from main.
+  Verify successful native x64/ARM64 signing and environment admission without approval.
+  Repository copies must not be deleted before those checks and an active-release check.
+- Live cutover verification and repository-copy removal are still pending. TestFlight
+  and Android workflow files, credentials and release jobs remain unchanged.
 
 Keep this plan active until consumer verification, removal and final metadata checks
 are recorded. Existing desktop distribution release/interactive gates remain separate.

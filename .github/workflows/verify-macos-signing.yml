@@ -1,0 +1,31 @@
+name: Verify automatic macOS signing
+
+# Private consumer probe: real reusable CLI builds, no mobile uploads or publication.
+# Run from main; macos-signing has a main-only policy and no required reviewers.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  version:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      value: ${{ steps.version.outputs.value }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - id: version
+        run: |
+          version="$(awk '/^version:/ {print $2}' bridge/app/pubspec.yaml)"
+          [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]] || { echo 'Invalid committed version'; exit 1; }
+          echo "value=$version" >> "$GITHUB_OUTPUT"
+  bridge:
+    needs: version
+    uses: ./.github/workflows/_reusable-bridge-build.yml
+    with:
+      version: ${{ needs.version.outputs.value }}

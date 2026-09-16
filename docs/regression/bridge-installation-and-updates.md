@@ -108,6 +108,25 @@ after apply. Use a throwaway machine when mutating an install root.
   predecessor-only termination that leaves
   bridge-owned descendants behind.
 
+## Automatic macOS signing boundary
+
+The reusable bridge release build consumes `macos-signing` environment credentials.
+That environment admits only main-branch workflows and has no required reviewer or
+wait timer: scheduled internal and production CLI build jobs must not acquire a new
+manual approval. Existing store submission approvals remain separate and unchanged.
+TestFlight/Android credentials and build-number resolution do not move with these
+macOS credentials. Production release source may still be checked out by the existing
+validated `ref` input; dispatch the owning workflow from main.
+
+The manual `verify-macos-signing.yml` route exercises the actual reusable six-target
+build and both native macOS signing legs without mobile uploads, tags or publication.
+Private desktop credential checks use `desktop-qualification.yml` mode
+`macos-signing-preflight`. Environment admission without approval and successful native
+signing are required cutover evidence; static workflow tests alone do not establish it.
+Desktop publication must retain a separate human approval gate, never one on routine
+CLI signing. Missing environment credentials, unexpected approval waits, or skipped
+macOS signing are material failures.
+
 ## Known Limitations
 
 - Cloud Scheduler delivery and GitHub dispatch acceptance do not report build
