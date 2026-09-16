@@ -1,5 +1,3 @@
-import "desktop_bundle_identity.dart";
-
 /// Build-only release selection, separate from GUI/helper identity.
 enum DesktopReleaseChannel() {
   stable,
@@ -9,20 +7,7 @@ enum DesktopReleaseChannel() {
 }
 
 /// Immutable presentation destination; never persisted or exchanged with peers.
-sealed class const DesktopUpdateDestination() {
-  factory forBundle({required DesktopBundleIdentity? identity, required DesktopReleaseChannel channel}) {
-    if (identity == null) return const DesktopDevelopmentUpdate();
-    if (identity.os == DesktopBundleOs.linux) return const DesktopPackageManagerUpdate();
-    return DesktopManualDownload(
-      uri: Uri(
-        scheme: "https",
-        host: "github.com",
-        path: "/sesori-ai/sesori_apps_monorepo/blob/main/docs/desktop/downloads.md",
-        fragment: "${channel.name}-${identity.os.name}-${identity.architecture.name}",
-      ),
-    );
-  }
-}
+sealed class const DesktopUpdateDestination();
 
 final class const DesktopManualDownload({required final Uri uri}) extends DesktopUpdateDestination;
 

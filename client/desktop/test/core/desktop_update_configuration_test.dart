@@ -1,10 +1,11 @@
+import "package:flutter_test/flutter_test.dart";
+import "package:sesori_desktop/core/desktop_update_configuration.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
-import "package:test/test.dart";
 
 void main() {
   test("source builds have no guessed download destination", () {
     expect(
-      DesktopUpdateDestination.forBundle(identity: null, channel: DesktopReleaseChannel.stable),
+      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable"),
       isA<DesktopDevelopmentUpdate>(),
     );
   });
@@ -12,15 +13,15 @@ void main() {
     for (final architecture in DesktopBundleArchitecture.values) {
       for (final channel in DesktopReleaseChannel.values) {
         test("${channel.name}/${os.name}/${architecture.name} selects its official index section", () {
-          final destination = DesktopUpdateDestination.forBundle(
-            identity: DesktopBundleIdentity(
+          final destination = resolveDesktopUpdateDestination(
+            encodedIdentity: DesktopBundleIdentity(
               version: "1.8.4",
               buildNumber: 24,
               sourceSha: "source",
               os: os,
               architecture: architecture,
-            ),
-            channel: channel,
+            ).encode(),
+            encodedChannel: channel.name,
           );
           if (os == DesktopBundleOs.linux) {
             expect(destination, isA<DesktopPackageManagerUpdate>());
