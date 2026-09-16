@@ -11,8 +11,8 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 2 | 2 | Qualify six-target packaging prerequisites | done |
 | 3.a | 3 | Bind desktop builds to bundled bridge identity | done |
 | 3.b | 4 | Surface packaged helper repair guidance | done |
-| 4.a | 5 | Package and notarize native macOS builds | in-progress |
-| 4.b | 6 | Keep desktop startup independent of native notifications | pending |
+| 4.a | 5 | Package and notarize native macOS builds | done |
+| 4.b | 6 | Keep desktop startup independent of native notifications | in-progress |
 | 5 | 7 | Apply macOS updates through safe application quit | pending |
 | 6 | 8 | Publish isolated desktop channels and macOS downloads | pending |
 | 7 | 9 | Package signed per-user Windows installers | pending |
@@ -97,8 +97,14 @@ as `e853838ac29b5d829f13622702c5d47a74eaa829`, accepting PR head `758bc554`.
 Workflow 34994634843 passed its analyzer/test and three desktop build jobs at
 Actions merge checkout `c40323edd60873d0a7d6f498ab05c4c8fd2b798f`. All review
 threads were resolved; the final Cubic review approved with no findings.
-Step 4.a runs in the same worktree on `desktop-distribution-macos-packaging`.
-Existing trusted CI credentials now produce private Developer-ID-signed, notarized
+Step 4.a merged in [PR #1499](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1499),
+accepting `9f286805514a26cf5e641ab96ee16e79c3bcc7f5`, as squash
+`cd4c1412359ef8962cb019d97dc7fed73835e1c8`. All 19 checks settled/passed at acceptance;
+Cubic approved without findings and the owner-controlled secret migration remains
+an explicit public-release prerequisite. Final unsigned six-target qualification
+run 35036003267 measured merge checkout `e4aa30f017cf876a1f61f2a6881f1282f013dba1`.
+Step 4.b continues in the same worktree on `desktop-distribution-attention-startup`.
+Existing trusted CI credentials produce private Developer-ID-signed, notarized
 and stapled packages on both native Macs. The reviewed manifest correction keeps
 JSON in Resources and the complete helper in Helpers. Latest run 35019880379 at
 `d5a03026dbfe7a95af0a262225c9f3ff640c74d1` qualifies 1.8.4/build 17: empty source
@@ -107,12 +113,24 @@ helper E2E and signed synthetic Keychain/registration/file probes all pass.
 Source/run/artifact attribution and approved manifest reviews are in
 [steps/step-04.md](steps/step-04.md). No public package or local key export occurred.
 
-Native visual review exposed a separate startup wait: both app windows are black,
-and fixed-text breadcrumbs stop at desktop-attention startup before rendering.
-The native notification wait is split into [step 4.b](steps/step-04b.md) so lifecycle
-changes do not grow the package-signing review. The series now has 14 PRs; published
-history is preserved. No visual pass is claimed, and the active local desktop/bridge
-remain untouched. Real account, interactive TCC, OS-login and ship gates stay open.
+Step 4.b fixes the separately demonstrated native-attention startup wait without
+expanding package-signing ownership. At immutable implementation `25dc586`, all
+32 attention cases and both strict client analyzers pass; scoped implementation
+architecture review approved. Native package run `35038153010` measured that exact
+source (**1.8.4/build 23**): both signed installed windows now visibly render the
+login screen, and startup logs reach analytics/rendering. Both package/notary/helper
+and synthetic platform legs pass; downloaded hashes and screenshots were inspected.
+PR #1503 review exposed reachable pending-readiness logout and captured-retry gaps.
+Follow-up `5b6bdb5` keeps readiness outside tracked native writes and replays startup
+failure once: 36 attention + 17 logout cases and both strict analyzers pass; second
+scoped architecture review approved. Signed run `35042335424` at `efefcbc` confirms
+rendered login and package/helper/synthetic-platform checks on both CPUs (build 24).
+Normal merge `eb54590` then preserved incoming desktop-UX popup/focus behavior;
+37 attention + 17 logout cases and both strict analyzers pass on that merge. Native
+artifacts remain attributed to `efefcbc`, not to the later integration commit.
+Details and retrieval are in [step 4.b](steps/step-04b.md). The series has 14 PRs;
+published history is preserved. No local desktop/bridge was disturbed. Real account,
+notification authorization/delivery, interactive TCC, OS-login and ship gates stay open.
 
 ## Qualification and ship gates
 
