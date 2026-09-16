@@ -480,7 +480,9 @@ jobs:
           for fixture in "ubuntu-24.04|$UBUNTU_IMAGE" "debian-13|$DEBIAN_IMAGE"; do
             IFS='|' read -r name image <<<"$fixture"
             docker pull "$image" 2>&1 | tee "build/desktop-linux-packaging/${name}-pull.log"
-            docker image inspect --format '{{ join .RepoDigests "\n" }}' "$image" | grep -Fx "$image"
+            # Pulling by digest enforces content identity; Docker normalizes Hub repository names.
+            docker image inspect --format '{{ join .RepoDigests "\n" }}' "$image" | \
+              tee "build/desktop-linux-packaging/${name}-image.log"
             [[ "$(docker run --rm "$image" uname -m)" == '${{ matrix.machine }}' ]] || {
               echo "$name container architecture differs from native host"; exit 1;
             }
