@@ -78,7 +78,8 @@ No local app, running bridge or installed package may be disturbed.
   identity and parses the channel enum; malformed present values throw rather than
   select any link. No error recovery or silent stable fallback. Missing compile
   identity becomes null using `bool.hasEnvironment`, not an empty-string sentinel.
-  `DesktopSettingsScreen` supplies compile-time values here before composing UI.
+  `_DesktopBridgeSettingsPage` in `desktop_settings_modal.dart` supplies compile-time
+  values here before composing UI.
 - Canonical index: `docs/desktop/downloads.md`, public URI
   `https://github.com/sesori-ai/sesori_apps_monorepo/blob/main/docs/desktop/downloads.md`.
   The foundation destination factory owns that constant and constructs fragments
@@ -104,10 +105,10 @@ No local app, running bridge or installed package may be disturbed.
   development/Linux rows have no action. The manual subtitle explains Quit before
   replacement, manual reopen and published-release availability; index instructions
   name publisher verification. No GetIt, Cubit, service or Quit invocation here.
-- Existing `DesktopSettingsScreen` composes the attention and update sections with
-  a `Column` and explicit spacing inside `SettingsView.additionalSettings`, without
-  changing `module_app_ui` APIs. If the parallel Settings modal lands, preserve this
-  same shell-owned section in its desktop settings composition.
+- `client/desktop/lib/features/settings/desktop_settings_modal.dart` composes the
+  update section in its existing Bridge tab Column with Prego spacing. Attention
+  remains in Notifications. The removed standalone Settings screen stays removed;
+  no `module_app_ui` API changes are needed.
 - Flow: staging options → dotenv defines → shell typed decoding → foundation
   destination factory → immutable widget input → existing external-link seam.
   `BridgeControlCubit.quit` and `IoDesktopApplicationTerminator` are unchanged.
@@ -164,3 +165,24 @@ Fixed scope from `git diff --numstat d1813409e3c0a8e053c3a28068d574e24fb70730 69
 573 additions + 172 deletions = **745 authored lines**, zero generated, including
 this step file at that revision and removal of obsolete Sparkle design details.
 Later evidence text is not retroactively included in that count.
+
+
+## Incoming Settings-modal integration
+
+Normal merge `56e35454fe7ea1451ef0453d67f76937210bd49d` incorporates main
+`77c781faa648bcbe971aca1813abe1a2ba96ccc6`. The removed Settings screen was not
+restored; the update section now lives in the modal Bridge tab. Incoming attention,
+account and harness tabs remain unchanged. Initial test integration failed because
+its old wrapper no longer existed, then exposed a duplicate launcher registration
+and the need to settle scrolls before tapping below the new section. Those fixture
+issues were corrected without changing production behavior or weakening assertions.
+
+Measured uncommitted test corrections were retained unchanged in
+`c35fb1ddffbf57401ab09849edcd2eca15dace15`, tree
+`b40589fd0b9c35becd8c45f96d3c88db07828010`. From `client/desktop`,
+`flutter test test/features/settings/desktop_settings_screens_test.dart --reporter expanded`
+passed 18 cases, and `dart analyze --fatal-infos` reported No issues found (both exit 0).
+Logs: `build/desktop-manual-updates-evidence/merged-settings-tests-green.log` and
+`merged-desktop-analyze-green.log`. This is separate from the original 18-case combined
+Settings/staging result above; unchanged destination/staging tests were not rerun.
+The original architecture review remains scoped to its recorded revision.
