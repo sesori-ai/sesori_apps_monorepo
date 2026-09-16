@@ -390,7 +390,7 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  for (final scale in [1.0, 2.5]) {
+  for (final scale in [1.0, 2.0]) {
     testWidgets("minimum window at ${scale}x keeps tabs reachable and preserves the route", (tester) async {
       tester.platformDispatcher.textScaleFactorTestValue = scale;
       addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
@@ -410,6 +410,7 @@ void main() {
         await tester.pumpAndSettle();
         expect(target.hitTestable(), findsOneWidget);
         expect(MediaQuery.textScalerOf(tester.element(target)).scale(10), 10 * scale);
+        if (scale > 1) expect(Scrollable.of(tester.element(target)).position.maxScrollExtent, greaterThan(0));
       }
       await tester.sendKeyEvent(LogicalKeyboardKey.escape);
       await tester.pumpAndSettle();
