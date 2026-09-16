@@ -451,6 +451,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                     session: session,
                                     entry: entry,
                                     selected: session.id == widget.selectedSessionId,
+                                    expansion: widget.expansion,
                                     onPressed: () => widget.onOpenSession(
                                       context: actionContext,
                                       project: widget.project,
@@ -521,6 +522,7 @@ class const _SidebarSessionRow({
   required final Session session,
   required final RecentSessionsLoaded entry,
   required final bool selected,
+  required final double expansion,
   required final VoidCallback onPressed,
   required final List<PregoMenuEntry> Function() menuEntries,
 }) extends StatelessWidget {
@@ -536,6 +538,13 @@ class const _SidebarSessionRow({
       if (running) context.loc.projectListRunning(1),
       if (unseen) context.loc.projectListNewActivity,
     ].join(", ");
+    const statusIconSize = 14.0;
+    final statusIcons = [
+      if (awaiting) Icon(TablerRegular.message_circle, size: statusIconSize, color: prego.colors.textWarningPrimary),
+      if (running || unseen) PregoAiLoader(size: statusIconSize, animate: running),
+    ];
+    // What the signals need before the rail starts narrowing.
+    final statusWidth = statusIcons.isEmpty ? 0.0 : PregoSpacing.xs + statusIconSize * statusIcons.length;
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(40, 0, 8, 0),
       child: PregoAnchorMenu(
@@ -563,21 +572,37 @@ class const _SidebarSessionRow({
                     color: selected ? prego.colors.textBrandPrimary.withValues(alpha: 0.14) : null,
                     borderRadius: BorderRadius.circular(PregoRadius.md),
                   ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          session.title ?? context.loc.sessionListUntitled,
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
+                  // A collapsing rail can leave less room than a row needs, so the
+                  // signals are measured against the row's own width.
+                  child: LayoutBuilder(
+                    builder: (context, constraints) => Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            session.title ?? context.loc.sessionListUntitled,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
+                          ),
                         ),
-                      ),
-                      if (awaiting || running || unseen) const SizedBox(width: PregoSpacing.xs),
-                      if (awaiting)
-                        Icon(TablerRegular.message_circle, size: 14, color: prego.colors.textWarningPrimary),
-                      if (running || unseen) PregoAiLoader(size: 14, animate: running),
-                    ],
+                        // Reveal the signals with the rail, but only while the row
+                        // is still wide enough to hold them.
+                        if (statusIcons.isNotEmpty && statusWidth * expansion <= constraints.maxWidth)
+                          ClipRect(
+                            child: Align(
+                              alignment: AlignmentDirectional.centerStart,
+                              widthFactor: expansion,
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  const SizedBox(width: PregoSpacing.xs),
+                                  ...statusIcons,
+                                ],
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
