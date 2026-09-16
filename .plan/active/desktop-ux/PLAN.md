@@ -358,11 +358,6 @@ mutations, not diagnostics. App preferences and Quit stay outside.
 | Notifications | `DesktopAttentionPreferenceSection` |
 | Account | profile + sign out (closes the modal; `AuthGate` shows login) |
 
-The modal owns only tab and harness-detail selection. One listener to the
-existing auth gate dismisses the root overlay after definitive sign-out; tab-local
-preference owners reload authoritative state on revisit. The harness overview and
-detail share one controller. Root-popup visibility/dismissal is owned by step 7.b.
-
 Escape and click-outside close it. Because the nested `Navigator` makes
 `DesktopEscapeDismissal` see a page route rather than a popup, the modal owns
 its own Escape binding (a closer shortcut wins). There is no desktop

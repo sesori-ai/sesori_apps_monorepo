@@ -1,59 +1,69 @@
-# Step 7.b — Settings modal
+# Step 7.c — Settings modal
 
 ## Delivered behavior
 
-Root modal with General/Harnesses/Bridge/Notifications/Account; current session,
-route and composer stay mounted. General owns native startup preferences;
-connected-bridge configuration and this-computer diagnostics remain distinct.
-Harness Back is internal; Close dismisses owned sheets without cancelling auth.
-Account retains supervised logout, not a second Back button. A definitive app
-refresh-token rejection closes the root overlay through the existing auth gate.
-Desktop settings routes/wrapper/destination state are retired. Mobile profile
-presentation is explicitly unchanged. No database, wire or harness contract changes.
+General/Harnesses/Bridge/Notifications/Account are root-modal presentation, not product routes.
+The session element/composer remain mounted; the merged [overlay prerequisite](step-07b.md)
+pauses covered-session activity and dismisses popups before notification navigation.
+General owns startup preferences; connected-bridge settings and local diagnostics stay distinct.
+Harness Back stays internal; owned Close does not cancel upstream authentication. Account retains
+supervised logout and auth-rejection dismissal. Mobile profile chrome stays unchanged; no database/wire changes.
 
-## Revision-scoped evidence
+## Combined-branch verification
 
-Base: `ae9b093067810e784ebd41ddd5daa371d009d076`. Flutter 3.47.4/bundled Dart.
-**87 distinct cases**, not sums of reruns:
+Flutter 3.47.4/bundled Dart; cwd `client/desktop`. Checkpoints:
+- A: `266d7b9b3c0c10d9a6e9d855e66812c111a8afd2`, tree `276f9d88e295d567f640972a662b624c708e097a`.
+- B: `e098efac6fbe7003226e19c61534a02e629ddb62`, tree `e795b80d9b65c2e98c8be7c804048037d4f3a7ee`.
 
-| Revision | Retained evidence |
-|---|---|
-| `8e4b42b4469e46264d6c430113b0124e11c4a446` | 5 Escape/dispatcher cases passed; three other suites failed compilation and are not counted here. |
-| `f4187384169afc8bf75b27bed358b8eab40837f7` | 48 desktop cases passed after log-callback repair; 37 router/cockpit cases retained, 11 modal cases superseded below. |
-| `5eae78681d8de54cd8efc411989d612470662ba1` | 30 mobile settings cases; shared-UI/mobile analyzers clean after explicit profile header policy. |
-| `fb135f863f1f92810481e572de013d3aa1fa8949` | 14 modal/new-session cases; 3 composer cases retained, modal cases superseded below. |
-| `16e878ab20133601bdd38021bcde74b57dd75261` | 12 modal cases and desktop analyzer pass; tree `ed1dc44512294b33d579ed281455b882b121e53d`. |
+Each test path below is an argument to `flutter test --no-pub --reporter json`:
 
-Tests use `flutter test --no-pub --reporter json` in the owning app. Desktop paths:
-`test/core/widgets/{desktop_escape_dismissal,desktop_cockpit_shell}_test.dart`,
-`test/core/platform/desktop_route_dispatcher_test.dart`,
-`test/core/routing/desktop_router_test.dart`,
-`test/features/{settings/desktop_settings_screens,new_session/desktop_new_session_screen}_test.dart`.
-Mobile: `test/features/settings/settings_screen_test.dart`. Analysis:
-`dart analyze --fatal-infos` in `client/{desktop,module_app_ui,app}`.
-Logs: `/tmp/rose-elephant-settings-modal-*.log` (failed attempts remain labelled).
+| Path | Checkpoint | Retained passing cases |
+|---|---|---|
+| `test/core/widgets/desktop_escape_dismissal_test.dart` | A | 3 |
+| `test/core/widgets/desktop_cockpit_shell_test.dart` | A | 26 |
+| `test/core/platform/desktop_route_dispatcher_test.dart` | A | 3 |
+| `test/core/routing/desktop_router_test.dart` | A | 12 |
+| `test/features/new_session/desktop_new_session_screen_test.dart` | A | 3 |
+| `test/features/settings/desktop_settings_screens_test.dart` | B | 14 |
 
-Nine real-font production-widget fixtures were inspected: all tabs, harness
-detail, light/dark and minimum-size scrolling. Five remain from `f418738`; Account,
-harness overview/detail and minimum startup were refreshed at `fb135f8`.
-The auth-listener/nullable-owner follow-up changes no rendered geometry. Fixtures:
-`client/desktop/.dart_tool/settings_modal_preview_test.dart`; PNGs:
-`/tmp/rose-elephant-qa.mri9JX/settings-*.png`. These are synthetic Flutter renders,
-not native/live QA or user approval. No renderer was changed to obtain them.
+**61 distinct desktop cases**, not accumulated reruns. A ran all six suites together: exit 1,
+59 passed/two failed. Its 12 modal passes are superseded by B's 14-case modal-only run, exit 0.
+The failures exposed a pre-existing 2px `PregoNavTitle` toolbar overflow at 250% text, not rail overflow.
+That cosmetic limit remains for step 11's audit; it is not fixed or passed. B tests 100%/200% at 560×480,
+asserting actual rail scrolling, unchanged text scale, popup visibility gating and retained opener identity.
+`dart analyze --fatal-infos` in the same cwd at B: exit 0. No unchanged suite was repeated for provenance.
+Logs/manifests: `/tmp/rose-elephant-settings-modal-{integrated-tests,rail-tests,integrated-analyze}.*`
+and `/tmp/rose-elephant-settings-modal-followup-summary.json`.
 
-Read-only architecture review approved the full frozen base-to-`16e878a` scope,
-with no findings (run `9a3fff52-7ec4-46fe-8083-2e5ff5acd29f`, A1–A13 and B-Client).
-The initial follow-up completed evidence/tracker only. CI at `e045970` then
-found two obsolete routed-input tests; that desktop-only test file was retired.
-General's picker and preserved-route coverage already pass in the modal suite;
-no production change or duplicate local test rerun was needed. Desktop analysis
-passes after retirement; CI owns the full test rerun.
-Final inclusive diff accounting belongs in the PR body. The 1,750-line
-ceiling retains route retirement and roughly 650 lines of settings-test replacement;
-shared preparation was already split into #1500. No generated output changes.
+## Historical evidence and rendering
 
-The running GUI/bridge/helper, production DI/auth/preferences, native registration
-and live bundle were untouched. Production-wired smoke stays in isolated CI.
-Native keyboard/backdrop/accessibility, live entry flows, native preference OS
-mutation, relaunch, lifecycle and energy checks remain in final qualification;
-unavailable testing is not silently waived or treated as a delivery gate.
+The [original 87-case ledger](https://github.com/sesori-ai/sesori_apps_monorepo/blob/8d9faed46f74f14c8078196d963a6f29ee113d78/.plan/active/desktop-ux/steps/step-07b.md)
+remains revision-scoped, not added to the 61 above. Mobile's unchanged 30 settings cases and shared-UI/mobile
+analyzers remain at `5eae78681d8de54cd8efc411989d612470662ba1`; they were not rerun for this desktop-only follow-up.
+The historical 12-modal-case/auth-owner run was `16e878ab20133601bdd38021bcde74b57dd75261`,
+tree `ed1dc44512294b33d579ed281455b882b121e53d`, not a post-retirement rerun. The post-retirement analyzer's
+uncommitted tree hash was **not captured**. Old-head `8d9faed` CI 13/13 is separate evidence.
+
+Nine original real-font fixtures were inspected: five at `f4187384169afc8bf75b27bed358b8eab40837f7`;
+Account, harness overview/detail and minimum startup at `fb135f863f1f92810481e572de013d3aa1fa8949`.
+They were deliberately not rerun at the geometry-neutral `16e878a` auth follow-up or test retirement.
+At B, `flutter test --no-pub --reporter json .dart_tool/settings_modal_preview_test.dart` passed three
+fresh inspected renders: `settings-general-light-followup.png`, `settings-minimum-large-text.png`,
+`settings-minimum-large-text-account.png`, under `/tmp/rose-elephant-qa.mri9JX/`. The 200% rail scrolls;
+labels wrap rather than suppressing scale. Fixture SHA/command are in the `rail-previews.json` manifest.
+All images are synthetic production-widget renders, not native/live QA or user approval; no renderer changed.
+
+## Review, sizing and remaining qualification
+
+The original architecture approval covers `ae9b093067810e784ebd41ddd5daa371d009d076..16e878a` only.
+The final integration review approved frozen `f1e3276591d5f54137eec776c219b8964af933b2..e098efa`, no findings
+(run `abce9cae-fff3-49e8-885e-b61945eacb31`); later changes are documentation only.
+For historical `git diff --numstat ae9b093067810e784ebd41ddd5daa371d009d076 <head>` snapshots:
+`e04597062568e4dc4aa9be61a4a6648ba66d3fc2` = 947+694 = 1,641;
+`8d9faed46f74f14c8078196d963a6f29ee113d78` = 951+774 = 1,725.
+The 84-line increase includes 80 test deletions and four net documentation lines; the ceiling rose by 100.
+Every path is counted, including evidence/tests. Current pinned publication totals belong to PR #1501's body.
+
+The live GUI/bridge/helper, production DI/auth/preferences, native registration and bundle stayed untouched.
+Production-wired smoke remains CI-only. Native keyboard/backdrop/accessibility, live flows/preferences,
+relaunch, lifecycle and energy checks remain required, not passed or waived; unavailable QA is not a delivery gate.
