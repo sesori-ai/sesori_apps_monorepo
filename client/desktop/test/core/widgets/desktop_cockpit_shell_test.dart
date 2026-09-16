@@ -349,6 +349,36 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("collapsing the narrow rail keeps every session row frame inside its width", (tester) async {
+    final sessions = [_session(id: "session-1")];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {
+            "session-1": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    sidebar.resize(width: DesktopSidebarCubit.minWidth);
+    await tester.pump();
+    expect(tester.getSize(rail).width, DesktopSidebarCubit.minWidth);
+    await tester.tap(toggle);
+    await tester.pump();
+    // Sample the whole collapse: the tail is where the row is narrower than its
+    // own signals, which a coarse frame cadence can step over.
+    for (var frame = 0; frame < 240; frame++) {
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(tester.takeException(), isNull);
+    }
+  });
+
   testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
     await tester.pumpWidget(app(state: running));
     final gesture = await tester.startGesture(tester.getCenter(resize));
