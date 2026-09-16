@@ -22,7 +22,7 @@ Shared settings, overlay navigation and modal evidence use `step-07a.md`,
 | [x] | 6 | `desktop-ux/bridge-popover` | `⚙️ [desktop-ux] Move bridge controls into a sidebar popover [step 7/15]` | ≤ 1,500 | done |
 | [x] | 7.a | `desktop-ux/settings-composition` | `🌿 [desktop-ux] Prepare shared settings composition [step 8/15]` | ≤ 500 | done |
 | [x] | 7.b | `desktop-ux/overlay-navigation` | `🚧 [desktop-ux] Preserve session focus across root overlays [step 9/15]` | ≤ 700 | done |
-| [ ] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/15]` | ≤ 1,750 | in-progress |
+| [x] | 7.c | `desktop-ux/settings-modal` | `⚙️ [desktop-ux] Present settings as a modal [step 10/15]` | ≤ 1,750 | done |
 | [ ] | 8 | `desktop-ux/first-run-defaults` | `🚧 [desktop-ux] Default bridge autostart and ask for macOS file access [step 11/15]` | ≤ 1,000 | pending |
 | [ ] | 9 | `desktop-ux/app-log-files` | `🌿 [desktop-ux] Write app logs to rotating files [step 12/15]` | ≤ 700 | pending |
 | [ ] | 10 | `desktop-ux/shortcuts-title-bar` | `🌿 [desktop-ux] Add keyboard shortcuts and macOS title-bar integration [step 13/15]` | ≤ 600 | pending |
@@ -45,9 +45,9 @@ step 12 last. Only one PR is open; one local successor may be prepared.
 - Step 5: [PR #1497](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1497).
 - Step 6: [PR #1498](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1498).
 - Step 7.a: [PR #1500](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1500).
+- Step 7.b: [PR #1502](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1502).
 - Step 7.c: [PR #1501](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1501),
-  temporarily closed to land 7.b first. Published `8d9faed` and its review history
-  are preserved; integrate main forward and reopen, without force-pushing.
+  reopening after #1502's forward merge; published history is preserved without force-pushing.
 
 ## Unattended execution
 
@@ -111,3 +111,6 @@ or waive shipping qualification.
   affected analyzers and scoped architecture plan/implementation reviews pass.
   No production app/DI/native/bridge work was run.
   See [step 7.b evidence](steps/step-07b.md); native/live qualification is unchanged.
+- Step 7.c: 61 revision-scoped desktop cases, clean analysis and three fresh inspected fixtures.
+  Earlier mobile/shared-UI evidence is retained, not rerun; see [step 7.c evidence](steps/step-07c.md).
+  The 250% shared-header overflow remains for step 11; native qualification is not waived.

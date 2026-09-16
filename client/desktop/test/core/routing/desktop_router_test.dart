@@ -17,15 +17,6 @@ import "package:sesori_desktop/features/sessions/desktop_session_list_screen.dar
 import "package:sesori_shared/sesori_shared.dart";
 
 void main() {
-  test("settings destination matching includes its child routes", () {
-    expect(isDesktopSettingsPath(path: AppRouteDef.settings.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.settingsDefaultInput.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.settingsProfile.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.settingsHarnesses.path), isTrue);
-    expect(isDesktopSettingsPath(path: AppRouteDef.projects.path), isFalse);
-    expect(isDesktopSettingsPath(path: "${AppRouteDef.settings.path}ful"), isFalse);
-  });
-
   test("desktop registers typed new-session and diff routes", () {
     final paths = _routeRegistrations().map((registration) => registration.path);
 
@@ -112,7 +103,8 @@ void main() {
           builder: (context, state, child) {
             // Retain the production visibility boundary, not production DI.
             final gate = shell.builder!(context, state, child) as AuthGate;
-            final provider = gate.child as DesktopCockpitCubitProvider;
+            final shortcuts = (gate.child as Builder).builder(context) as CallbackShortcuts;
+            final provider = shortcuts.child as DesktopCockpitCubitProvider;
             return (provider.child as DesktopCockpitShell).child;
           },
           routes: [
@@ -278,22 +270,6 @@ void main() {
       expect(router.state.uri.toString(), _sessions.buildPath());
     });
   }
-
-  test("harness-settings route preserves modal presentation", () {
-    final route = _routeWithPath(AppRouteDef.settingsHarnesses.path);
-    final widget = route.builder!(
-      _FakeBuildContext(),
-      _FakeGoRouterState(
-        queryParameters: {
-          harnessSettingsPresentationQueryParam: HarnessSettingsPresentation.modal.name,
-        },
-      ),
-    );
-
-    expect(widget, isA<HarnessesSettingsView>());
-    final screen = widget as HarnessesSettingsView;
-    expect(screen.presentation, HarnessSettingsPresentation.modal);
-  });
 }
 
 Iterable<_RouteRegistration> _routeRegistrations({

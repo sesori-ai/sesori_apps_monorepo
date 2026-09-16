@@ -38,6 +38,8 @@ class const _DesktopProfileView({
 
     return ProfileView(
       account: account,
+      title: context.loc.settingsSectionAccount,
+      automaticallyImplyLeading: false,
       connectionBanner: null,
       onClose: onClose,
       logout: () async {
