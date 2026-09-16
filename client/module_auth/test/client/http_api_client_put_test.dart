@@ -23,6 +23,23 @@ class _RecordingClient({required final int statusCode, required final String res
 
 void main() {
   group("put", () {
+    test("DTO failures preserve the exact caught cause", () async {
+      final cause = StateError("private response value");
+      final client = HttpApiClient(_RecordingClient(statusCode: 200, responseBody: '{"value":"private"}'));
+      final response = await client.put<String>(
+        url: _url,
+        fromJson: (_) => throw cause,
+        headers: null,
+        body: null,
+        contentType: null,
+        logBody: false,
+      );
+      final error = (response as ErrorResponse<String>).error as JsonParsingError;
+      expect(error.innerError, same(cause));
+      expect(error.jsonString, '{"value":"private"}');
+      expect(error.toString(), isNot(contains("private")));
+    });
+
     test("sends a JSON PUT with headers and parses a success response", () async {
       final transport = _RecordingClient(
         statusCode: 200,
@@ -89,6 +106,7 @@ void main() {
 
       final error = (response as ErrorResponse<String>).error as JsonParsingError;
       expect(error.jsonString, "not-json");
+      expect(error.innerError, isA<FormatException>());
     });
   });
 }

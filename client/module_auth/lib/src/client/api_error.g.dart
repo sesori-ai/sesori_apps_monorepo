@@ -7,7 +7,8 @@ part of 'api_error.dart';
 // **************************************************************************
 
 JsonParsingError _$JsonParsingErrorFromJson(Map json) => JsonParsingError(
-  json['jsonString'] as String,
+  jsonString: json['jsonString'] as String,
+  innerError: json['innerError'],
   $type: json['runtimeType'] as String?,
 );
 

@@ -58,6 +58,7 @@ void main() {
     });
 
     tearDown(() async {
+      setLogSink(sink: const StdoutLogSink());
       await cubit.close();
       await processService.disposeFake();
       await statusTracker.dispose();
@@ -643,12 +644,30 @@ void main() {
       expect(applicationTerminator.exitCodes, <int>[0]);
     });
 
+    test("Quit waits for final cleanup diagnostics before terminating", () async {
+      final sink = _PendingLogSink();
+      setLogSink(sink: sink);
+      windowHost.disposeError = StateError("window cleanup /tmp/context");
+      await cubit.initialize();
+      final quitting = cubit.quit();
+      await sink.started.future;
+      expect(windowHost.disposeCalls, 1);
+      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(sink.records.last.message, "Failed to dispose the desktop window host during quit");
+      expect(sink.records.last.diagnosticError, contains("window cleanup /tmp/context"));
+      sink.pending.complete();
+      await quitting;
+      expect(applicationTerminator.exitCodes, [0]);
+    });
+
     test("Quit leaves the app alive when expected bridge stop fails", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
       );
       processService.stopError = StateError("bridge remained alive");
+      final sink = _PendingLogSink();
+      setLogSink(sink: sink);
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.quit);
@@ -656,6 +675,7 @@ void main() {
 
       expect(applicationTerminator.exitCodes, isEmpty);
       expect(systemTray.disposeCalls, 0);
+      expect(sink.started.isCompleted, isFalse);
       expect(cubit.state.activity, BridgeControlActivity.idle);
     });
   });
@@ -772,6 +792,7 @@ class _FakeWindowHost() implements WindowHost {
   int showCalls = 0;
   int hideCalls = 0;
   int disposeCalls = 0;
+  Object? disposeError;
 
   @override
   Stream<WindowHostEvent> get events => _events.stream;
@@ -811,6 +832,7 @@ class _FakeWindowHost() implements WindowHost {
   @override
   Future<void> dispose() async {
     disposeCalls++;
+    if (disposeError case final error?) throw error;
   }
 
   void emit({required WindowHostEvent event}) {
@@ -918,6 +940,19 @@ class _FakeUrlLauncher() implements UrlLauncher {
   Future<bool> launch(Uri url, {UrlLaunchMode mode = UrlLaunchMode.externalApp}) async {
     launched.add(url);
     return true;
+  }
+}
+
+class _PendingLogSink() implements LogSink {
+  final records = <LogRecord>[];
+  final started = Completer<void>();
+  final pending = Completer<void>();
+  @override
+  void write({required LogRecord record}) => records.add(record);
+  @override
+  Future<void> flush() {
+    started.complete();
+    return pending.future;
   }
 }
 

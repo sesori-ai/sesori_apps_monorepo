@@ -253,7 +253,7 @@ void main() {
           pluginId: any(named: "pluginId"),
           request: any(named: "request"),
         ),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing("garbage")));
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.jsonParsing(jsonString: "garbage", innerError: null)));
 
       final result = await repository.command(
         pluginId: "codex",
@@ -375,11 +375,14 @@ void main() {
           ApiError.nonSuccessCode(errorCode: 409, rawErrorString: jsonEncode(conflict.toJson())),
         ),
       );
-      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailed>().having(
-        (result) => result.failure,
-        "failure",
-        isA<PluginAuthenticationFailureUnsupported>(),
-      ));
+      expect(
+        await repository.startAuthentication(pluginId: "codex"),
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUnsupported>(),
+        ),
+      );
 
       when(
         () => api.startAuthentication(pluginId: any(named: "pluginId")),
@@ -388,11 +391,14 @@ void main() {
           ApiError.dartHttpClient(const RelayResponseLostException(message: "socket closed")),
         ),
       );
-      expect(await repository.startAuthentication(pluginId: "codex"), isA<PluginAuthenticationStartFailed>().having(
-        (result) => result.failure,
-        "failure",
-        isA<PluginAuthenticationFailureUncertain>(),
-      ));
+      expect(
+        await repository.startAuthentication(pluginId: "codex"),
+        isA<PluginAuthenticationStartFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUncertain>(),
+        ),
+      );
     });
 
     test("maps cancellation success and uncertain response loss", () async {
@@ -404,11 +410,14 @@ void main() {
       when(
         () => api.cancelAuthentication(pluginId: any(named: "pluginId")),
       ).thenAnswer((_) async => ApiResponse.error(ApiError.emptyResponse()));
-      expect(await repository.cancelAuthentication(pluginId: "codex"), isA<PluginAuthenticationCancelFailed>().having(
-        (result) => result.failure,
-        "failure",
-        isA<PluginAuthenticationFailureUncertain>(),
-      ));
+      expect(
+        await repository.cancelAuthentication(pluginId: "codex"),
+        isA<PluginAuthenticationCancelFailed>().having(
+          (result) => result.failure,
+          "failure",
+          isA<PluginAuthenticationFailureUncertain>(),
+        ),
+      );
     });
 
     test("maps typed authentication conflicts and malformed conflict bodies", () async {
@@ -434,7 +443,10 @@ void main() {
       );
       final redirectUri = Uri.parse("http://127.0.0.1/callback?code=opaque");
       when(
-        () => api.submitAuthenticationRedirect(pluginId: "codex", request: any(named: "request")),
+        () => api.submitAuthenticationRedirect(
+          pluginId: "codex",
+          request: any(named: "request"),
+        ),
       ).thenAnswer(
         (_) async => ApiResponse.error(
           ApiError.nonSuccessCode(errorCode: 409, rawErrorString: jsonEncode(conflict.toJson())),
@@ -443,7 +455,9 @@ void main() {
       expect(
         await repository.submitAuthenticationRedirect(pluginId: "codex", redirectUri: redirectUri),
         isA<PluginAuthenticationContinuationRejected>().having(
-          (result) => result.reason, "reason", PluginAuthenticationContinuationRejection.alreadySubmitted,
+          (result) => result.reason,
+          "reason",
+          PluginAuthenticationContinuationRejection.alreadySubmitted,
         ),
       );
 
@@ -457,7 +471,11 @@ void main() {
         isA<PluginAuthenticationStartFailed>().having(
           (result) => result.failure,
           "failure",
-          isA<PluginAuthenticationFailureRequest>().having((failure) => failure.error, "error", isA<JsonParsingError>()),
+          isA<PluginAuthenticationFailureRequest>().having(
+            (failure) => failure.error,
+            "error",
+            isA<JsonParsingError>(),
+          ),
         ),
       );
     });
