@@ -176,7 +176,8 @@ and keep native close/quit behavior safe.
   exit/count diagnostics. Only the primary desktop resolves its lazy app sink.
 - Main-isolate core logging preserves console output alongside asynchronous
   file writes; release defaults to info and above. The mobile shell independently
-  writes under its application-support sandbox, without desktop-core or chmod.
+  writes under its app-private iOS/Android cache, excluded from OS backups, without
+  desktop-core or chmod. The OS may evict these files; the next append recreates them.
   The first persistence failure in each episode reports directly to stderr;
   a successful append resets that warning suppression for later failures.
   No automatic upload or raw transcript capture is added, and file-size caps
@@ -288,6 +289,7 @@ verify the actual relocated helper, not merely the presence of its binary.
   record is absent at orderly termination within the budget, or a recovered writer
   never reports a later failure episode. App/helper files must remain independent;
   persisted diagnostic presentation must not restore omitted parsing bodies or link payloads.
+  Mobile logs must not move into backup-eligible storage or fail to recreate an evicted cache.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
   a takeover starts a restart war or approves a non-replacement prompt, crash

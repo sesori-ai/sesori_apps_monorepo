@@ -10,7 +10,9 @@ The source-free diagnostic foundation is delivered separately by #1514; its
 - Desktop/mobile independently persist console-fanned log records in `app.log`
   and one predecessor, capped at 5 MiB per active file with UTF-8-safe truncation.
   Desktop app/helper files use separate package-internal rotation instances;
-  POSIX directory/file modes remain 0700/0600. Mobile uses its private sandbox.
+  POSIX directory/file modes remain 0700/0600. Mobile uses backup-excluded,
+  app-private cache storage through the existing temporary-directory client.
+  The OS may evict mobile logs; the next append recreates their directory.
 - Lazy DI phase-4 desktop and phase-1 mobile bindings remain in their owning
   modules. Only an admitted primary desktop resolves/installs its sink; mobile
   installation is inside the real dependency callback, not the fake bootstrap.
@@ -41,12 +43,16 @@ Package cwd below is relative to the repository.
 | Preserved publication | `dc1074117b42ad06c268e2d6068a309411d9e3c2` | `b14ac0db4e1c3e46074475910f943b85d9e3a59d` |
 | Landed prerequisite/base | `84c034f9eba8ba490109654d8b12384d646f1cd3` | `00bf6ac05fd9cf76936575279a93e70f70ca253b` |
 | A: forward integration and fixes | `a882b8dcfe41283a22dc454a02723bf63e7bc5bd` | `7d9e95d9f6342ff2f75ce0911bea8686be51a05c` |
+| Continuation publication | `0bb47d28c062b76f5154ae223689b129e31b5c7c` | `146bf4f8a027271e1a949b27106f77ff55ff91e5` |
+| B: mobile backup exclusion | `ed9feb31adc8fc26ba2521c67be80870cad1cb70` | `706cbf2db015c3f5127bf471e3c5b88f65cb6d7c` |
 
 A is a merge with the preserved publication and landed prerequisite as parents;
 no published history was rewritten. The logging/privacy and plan conflicts retain
 main's versions; regression prose combines the actual file and foundation behavior.
-Later edits are documentation only. Use the immutable base, not moving `origin/main`:
-other worktrees can advance that shared ref while this integration is underway.
+The continuation publication after A changed only docs. B changes the mobile
+sink, its tests and generated DI; subsequent parent edits are documentation only.
+Use the immutable base, not moving `origin/main`: other worktrees can advance that
+shared ref while integration is underway.
 
 ```sh
 git diff --numstat 84c034f9eba8ba490109654d8b12384d646f1cd3 a882b8dcfe41283a22dc454a02723bf63e7bc5bd
@@ -95,6 +101,31 @@ Mobile generation repeated the existing cross-phase registration warnings for
 `TemporaryDirectoryClient` and `AnalyticsRuntimeCapability`. No production
 container resolution was attempted; owning analysis and fake bootstrap passed.
 
+## Mobile backup-exclusion follow-up at B
+
+Review identified ordinary OS backups as a real path out of application-support
+storage. The sink now reuses `TemporaryDirectoryClient` and the existing mobile
+`PathProviderTemporaryDirectoryProvider`; no new directory owner, native backup
+configuration or migration was added for this unpublished path. Lazy phase-1 sink
+resolution still follows core phase-3 registration. The installed `path_provider`
+2.1.6 contract documents `getTemporaryDirectory` as app-private, not backed up and
+OS-evictable: `NSCachesDirectory` on iOS, `Context.getCacheDir` on Android.
+
+At B's exact tree, repeated the two mobile suites listed above: **7 + 4 = 11
+passes**, no failures/skips. The production-constructor case uses the existing
+cached temporary client; a new eviction case deletes only its owned fixture logs
+and checks the next append recreates them. Mobile `dart analyze --fatal-infos`
+passed. These replace A's ten mobile cases: **55 at A + 11 at B = 66 retained
+cases/eight suites**, not 76. Desktop-core/desktop analyzer results remain at A.
+
+Full mobile `dart run build_runner build` exited 0 and wrote **two builder
+outputs**. The sole tracked mobile generated file, `injection.config.dart`, changed
+as expected; no hand edits or pruning. The source index before generation was
+`e4e1f5fc89a3f5c6a4c67f5d362a414e76ba5196`. Existing cross-phase warnings now also
+name `IoAppLogSink`'s `TemporaryDirectoryClient` dependency, resolved after core DI.
+No production container was activated. Commands/results are recorded in
+`/tmp/rose-elephant-app-logs-backup-{generation,verification}.json` and adjacent logs.
+
 ## Architecture and provenance
 
 The approved extraction plan (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) covers this
@@ -107,6 +138,14 @@ Copy: `/tmp/rose-elephant-app-logs-continuation-architecture.md`. The reviewer r
 tests/native operations. This verdict excludes later parent documentation edits
 and does not establish native/runtime qualification.
 
+The second pass **approved** `0bb47d28c062b76f5154ae223689b129e31b5c7c..ed9feb31adc8fc26ba2521c67be80870cad1cb70`:
+all three source/test/generated paths, 40 additions/26 deletions, A1–A13/B-Client,
+no findings. Run `da7fcc4c-ad01-406b-a9e9-8ac22d5321a2`; complete bound report
+`app-logs-backup-implementation-architecture.md`, 2,576 bytes, SHA256
+`bd76e256cf726a7d73adac55e6029debde8a19eb75bc0a38dad91691f66f51da`.
+No tests/native operations ran in this review. Parent docs are outside its verdict;
+package documentation and static DI review are not a native backup/restore exercise.
+
 Original combined-publication evidence, including the filtered-generation failure
 and recovery, remains in Git at
 [`dc1074117b42ad06c268e2d6068a309411d9e3c2`](https://github.com/sesori-ai/sesori_apps_monorepo/blob/dc1074117b42ad06c268e2d6068a309411d9e3c2/.plan/active/desktop-ux/steps/step-09a.md).
@@ -114,15 +153,18 @@ Its 91 cases and architecture verdict through `f37931dd4ab9b0c6dceb38a18a9907d5f
 are historical, not evidence that these continuation fixes were exercised then.
 
 Local manifests: `/tmp/rose-elephant-app-logs-continuation-{red,generation,verification}.json`;
-each records commands and saved logs. Forward-merge conflict inventory/diff uses
-`/tmp/rose-elephant-app-logs-forward-merge-conflicts.{json,diff}`.
+originally recorded commands and saved logs. Forward-merge conflict artifacts used
+`/tmp/rose-elephant-app-logs-forward-merge-conflicts.{json,diff}`. Those pre-restart
+`/tmp` files are unavailable after the PC restart; the Git evidence above and bound
+architecture reports remain. Historical commands were not rerun to recreate them.
 
 ## Required but unexecuted qualification
 
 No live app/helper/bridge, auth/preferences, native registration or protected data
 was touched. `client/desktop/test/app_smoke_test.dart` remains isolated-CI-only.
 Native orderly termination, actual OS folder opening, packaged primary/secondary
-startup and iOS log collection remain required final qualification, not host-test
-claims. No geometry changed; no visual fixture or relaunch was manufactured.
+startup, iOS log collection and mobile backup exclusion remain required final
+qualification, not host-test claims. No geometry changed; no visual fixture or
+relaunch was manufactured.
 Abrupt exit, a failed append or an expired completion deadline may lose records;
 file-size caps do not bound queued memory, and logs are not uploaded automatically.

@@ -7,7 +7,7 @@ final immutable range, including this evidence and all other documentation.
 PR #1514 merged at accepted head `8f0f12f148b42edbef096244b7b69856fe035df0`;
 squash `84c034f9eba8ba490109654d8b12384d646f1cd3` has tree
 `00bf6ac05fd9cf76936575279a93e70f70ca253b`. Terminal monitor CI passed 13/13.
-The retained 138-case count replaces B's four auth reruns rather than adding them twice.
+The retained 138-case count uses B's four auth reruns in place of A's four superseded auth cases.
 
 ## Delivered boundary
 
