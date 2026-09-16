@@ -28,6 +28,7 @@ export "src/foundation/control_channel_server.dart";
 export "src/foundation/desktop_attention_preference.dart";
 export "src/foundation/desktop_sidebar_layout.dart";
 export "src/foundation/models/desktop_bundle_identity.dart";
+export "src/foundation/models/desktop_update_destination.dart";
 export "src/foundation/platform/bridge_executable_path_resolver.dart";
 export "src/foundation/platform/bridge_process_environment.dart";
 export "src/foundation/platform/desktop_application_support_directory.dart";

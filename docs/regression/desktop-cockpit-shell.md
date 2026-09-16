@@ -31,6 +31,9 @@ The main pane hosts one full-width routed page.
   retain the indicator. Tooltips
   and accessibility descriptions include running counts and unread status;
   live state updates also clear stale unread marks.
+- Recent-session rows remain non-archived even when pinning the selected session.
+  A live archive update removes that row without a refetch or navigation change;
+  selected non-archived sessions outside the three recent rows remain pinned.
 - A selected project follows route identity, not the displayed name. Each
   signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.

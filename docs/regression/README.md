@@ -162,6 +162,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Desktop bridge supervision](desktop-bridge-supervision.md)
 - [Desktop cockpit shell](desktop-cockpit-shell.md)
 - [Desktop macOS packaging](desktop-macos-packaging.md)
+- [Desktop distribution and manual updates](desktop-distribution.md)
 - [Diffs and source control](diffs-and-source-control.md)
 - [Glass presentation](glass-presentation.md)
 - [Native activity indicators](native-activity-indicators.md)
