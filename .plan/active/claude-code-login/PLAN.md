@@ -299,9 +299,9 @@ ClaudeAuthenticationRepository (repositories)
   enforces one submission per operation, so no second flag here
   waitForExit(): exit code, counted once both pipes close, because the exit
   can be reported before the last stderr lines arrive
-  dispose(): kill (graceful, forced after a short grace), await exit, and
-  cancel both pipe subscriptions, which a descendant could hold open;
-  idempotent
+  dispose(): unless the exit was already read (signals go by PID), kill
+  (graceful, forced after a short grace) and await exit; then cancel both
+  pipe subscriptions, which a descendant could hold open; idempotent
 
 ClaudeAuthenticationService (services)
   authenticate() -> PluginAuthenticationOperation.pastedCode

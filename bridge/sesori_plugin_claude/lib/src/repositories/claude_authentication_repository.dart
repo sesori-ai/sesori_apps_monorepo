@@ -88,7 +88,9 @@ final class ClaudeAuthenticationRepository({
     );
     // The exit can be reported before the last output arrives, so it counts
     // only once both pipes close and the stderr tail is complete.
-    _exitCode.complete(Future.wait([stdoutClosed.future, stderrClosed.future]).then((_) => process.exitCode));
+    unawaited(
+      Future.wait([stdoutClosed.future, stderrClosed.future]).then((_) => process.exitCode).then(_exitCode.complete),
+    );
     unawaited(
       _exitCode.future.then((exitCode) {
         if (_authorizationUri.isCompleted) return;
@@ -114,8 +116,8 @@ final class ClaudeAuthenticationRepository({
   /// pipes. Call only after [start] returned a URL.
   Future<int> waitForExit() => _exitCode.future;
 
-  /// Stops the CLI, forcing it after a grace period, waits for it to exit, and
-  /// stops reading its pipes.
+  /// Stops a running CLI, forcing it after a grace period, waits for it to
+  /// exit, and stops reading its pipes.
   Future<void> dispose() => _disposal ??= _stop();
 
   Future<void> _stop() async {
@@ -127,12 +129,15 @@ final class ClaudeAuthenticationRepository({
       // Nothing is running; start reports a failed spawn.
       return;
     }
-    process.kill();
-    try {
-      await process.exitCode.timeout(_killGrace);
-    } on TimeoutException {
-      process.kill(io.ProcessSignal.sigkill);
-      await process.exitCode;
+    // Signals go by PID, so a CLI whose exit was already read is not signalled.
+    if (!_exitCode.isCompleted) {
+      process.kill();
+      try {
+        await process.exitCode.timeout(_killGrace);
+      } on TimeoutException {
+        process.kill(io.ProcessSignal.sigkill);
+        await process.exitCode;
+      }
     }
     // A descendant can keep a pipe open after the CLI exits.
     await _pipes.cancel();

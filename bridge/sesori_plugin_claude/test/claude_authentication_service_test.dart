@@ -90,6 +90,7 @@ void main() {
       await done;
 
       expect(events.last, isA<PluginAuthenticationCompleted>());
+      expect(processes.gracefulSignals, isEmpty);
     });
 
     test("fails when the CLI exits before printing a URL", () async {
