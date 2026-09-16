@@ -21,7 +21,7 @@ class DesktopRouteDispatcher implements RouteDispatcher {
       // ignore: no_slop_linter/avoid_raw_go_router, typed RouteStack boundary
       _pushRoute = ((route) => router.push<void>(route)),
       _dismissPopups = (() {
-        router.routerDelegate.navigatorKey.currentState?.popUntil((route) => route is! PopupRoute<Object?>);
+        router.routerDelegate.navigatorKey.currentState?.popUntil((route) => !_isPopupRoute(route: route));
       }),
       _routerReady = routerReady;
 
@@ -72,3 +72,5 @@ class DesktopRouteDispatcher implements RouteDispatcher {
   @visibleForTesting
   Future<void> flushPendingForTesting() => _pendingNavigation;
 }
+
+bool _isPopupRoute<T>({required Route<T> route}) => route is PopupRoute<T>;

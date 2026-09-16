@@ -52,7 +52,7 @@ void main() {
     expect(operations, isEmpty);
   });
 
-  test("a failed popup dismissal is observable and does not strand later navigation", () async {
+  test("a failed popup dismissal does not strand later navigation", () async {
     final operations = <String>[];
     final dispatcher = DesktopRouteDispatcher.test(
       goRoute: operations.add,
