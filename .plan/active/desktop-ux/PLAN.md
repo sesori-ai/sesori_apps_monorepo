@@ -2,10 +2,9 @@
 
 ## Status
 
-Planned 2026-09-15; logical steps 1–8 have landed (see `TRACKER.md`).
-Logging is split into prerequisite 9.a.1 and file output 9.a.2; user-requested
-sidebar corrections remain steps 9.b–9.c. #1509 is temporarily closed with its
-published history preserved while the prerequisite lands.
+Planned 2026-09-15; logical steps 1–8 and logging prerequisite 9.a.1 have landed
+(see `TRACKER.md`). File output 9.a.2 continues on #1509's preserved branch after
+forward integration; user-requested sidebar corrections remain steps 9.b–9.c.
 Native qualification remains outstanding, not waived by implementation delivery.
 This is phase 1 of the desktop UX work: the changes that
 remove the release-blocking UX problems with client-only work. Later phases
@@ -206,14 +205,14 @@ Everything in phase 1 is client-side. No wire, bridge, or relay changes.
   optional broader file access; no automatic grant/restart. Nothing is persisted.
 - **D10 — App logs go to a rotating file through one sink seam.** `logging.dart`
   in `module_core` gets only the seam: `LogRecord`, `LogSink`, `setLogSink`
-  and the default `StdoutLogSink`. `module_core` stays free of `dart:io`; the
-  file writers are shell-side implementations, like every other platform
+  and the default `StdoutLogSink`. This logging seam stays free of `dart:io`; the
+  file writers are platform implementations, like every other platform
   capability. Desktop: a rotating writer in `module_desktop_core` `api/`
   that reuses the rotation already implemented for `bridge.log` in
   `BridgeProcessLogStorage`, writing `logs/app.log` next to `bridge.log`.
   Mobile: a small `dart:io` sink in `client/app/lib/core/platform/` writing
-  `logs/app.log` under the app-support directory (its own file, as the user
-  asked). Small platform writers are accepted over a new shared package. The
+  `logs/app.log` under its backup-excluded app-private cache (its own file, as
+  requested). OS eviction is accepted. Small platform writers avoid a new shared package. The
   `Sink` suffix is used deliberately for this Layer-0 output primitive (it
   mirrors `IOSink`; `setLogSink` mirrors the existing `setLogLevel` global).
   The Bridge popover's Open logs opens the logs folder instead of one file.
@@ -438,8 +437,10 @@ the modal.
   Each file is capped at 5 MiB with one predecessor, UTF-8-safe truncation and
   POSIX 0700 directories/0600 files. Existing bridge drains remain unchanged.
 - Mobile `IoAppLogSink` is a lazy DI phase-1 binding using the existing
-  `ApplicationSupportDirectoryClient`, with the same cap/retention in its sandbox;
-  no chmod subprocesses, core IO or desktop-core dependency.
+  `TemporaryDirectoryClient`, resolved after core DI phase 3. Its existing mobile
+  provider uses `getTemporaryDirectory`: backup-excluded iOS/Android cache storage
+  with the same cap/rotation. OS eviction may remove logs. No chmod subprocess,
+  new directory owner, core IO, backup-policy override or desktop-core dependency.
 - Both writers preserve console output, serialize finite asynchronous appends,
   and directly report the first failure of each persistence episode without recursion.
   Successful append resets the existing failure bit. Their completion methods wait for
@@ -617,9 +618,10 @@ constant to match the bundled package name and removed redundant sidebar font
 overrides. This small shared typography fix adds no state or renderer changes;
 mobile route/shared UI/font tests cover its consumers. See `steps/step-04.md`.
 
-Land 9.a.1 first, then merge main forward into preserved `desktop-ux/app-logs`
-and reopen #1509 as 9.a.2; never rewrite its published history. Finish 9.b
-interactions, 9.c sidebar activity/controls and 10 shortcuts/title bar next. Steps 11 and 12 remain the final audit and qualification.
+The merged 9.a.1 prerequisite is forward-integrated into preserved `desktop-ux/app-logs`.
+Finish #1509 as 9.a.2 without rewriting its published history, then 9.b
+interactions, 9.c sidebar activity/controls and 10 shortcuts/title bar. Steps 11 and 12
+remain the final audit and qualification.
 Step 8 must land after
 step 7.c (General startup preferences and Bridge/FDA settings). Step 7.a follows
 step 6; step 7.b follows 7.a; step 7.c follows 7.b and replaces the existing
@@ -777,7 +779,7 @@ not re-reviewed as a plan. The preserved #1509 implementation was approved at
 `f37931dd4ab9b0c6dceb38a18a9907d5fed0c1ed`; that verdict does not cover review fixes.
 Publication measurements remain owned by [preserved PR #1509](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1509).
 Review then identified concrete URI/cause/ordinary-Quit gaps. Rather than expand
-that review loop, extract 9.a.1 and retain file output as 9.a.2. A fresh architecture
+that review loop, 9.a.1 landed separately as #1514; file output remains 9.a.2. A fresh architecture
 plan review (`e973a005-01ab-43fe-aaf8-eb43ebc854f6`) approved the two-slice ownership;
 see [prerequisite evidence](steps/step-09a1.md). Sidebar 9.c still needs its own
 concrete projection/refresh architecture plan review.

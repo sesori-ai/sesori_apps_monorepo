@@ -1,8 +1,11 @@
 import "dart:async";
+import "dart:io";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_desktop_core/src/api/app_log_storage.dart";
+import "package:sesori_desktop_core/src/api/rotating_file_storage.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -432,7 +435,7 @@ void main() {
     test("Open Logs launches the repository-owned local file URI", () async {
       await cubit.openLogs();
 
-      expect(urlLauncher.launched, <Uri>[Uri.file("/tmp/sesori/bridge.log")]);
+      expect(urlLauncher.launched, <Uri>[Uri.directory("/tmp/sesori/logs")]);
     });
 
     test("toggle commands drive desired On and Off through the process service", () async {
@@ -660,6 +663,35 @@ void main() {
       expect(applicationTerminator.exitCodes, [0]);
     });
 
+    test("Quit persists the final cleanup record before the termination callback", () async {
+      final root = Directory.systemTemp.createTempSync("sesori_quit_logs_");
+      addTearDown(() {
+        setLogSink(sink: const StdoutLogSink());
+        root.deleteSync(recursive: true);
+      });
+      setLogSink(
+        sink: AppLogStorage.forTesting(
+          applicationSupportDirectory: _LogDirectory(root: root),
+          storage: RotatingFileStorage.forTesting(
+            fileName: "app.log",
+            maxFileBytes: 8192,
+            isWindows: true,
+            setPermissions: ({required path, required mode}) async {},
+          ),
+          reportFailure: fail,
+        ),
+      );
+      windowHost.disposeError = StateError("final cleanup /tmp/context");
+      applicationTerminator.beforeTerminate = () {
+        final persisted = File("${root.path}/logs/app.log").readAsStringSync();
+        expect(persisted, contains("Failed to dispose the desktop window host during quit"));
+        expect(persisted, contains("final cleanup /tmp/context"));
+      };
+      await cubit.initialize();
+      await cubit.quit();
+      expect(applicationTerminator.exitCodes, [0]);
+    });
+
     test("Quit leaves the app alive when expected bridge stop fails", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
@@ -871,7 +903,7 @@ class _RecordingDesktopInstanceRepository() implements DesktopInstanceRepository
 
 class _FakeBridgeProcessLogRepository() implements BridgeProcessLogRepository {
   @override
-  Future<Uri> get logFileUri async => Uri.file("/tmp/sesori/bridge.log");
+  Future<Uri> get logDirectoryUri async => Uri.directory("/tmp/sesori/logs");
 }
 
 class _FakeDesktopInstanceService() implements DesktopInstanceService {
@@ -956,11 +988,18 @@ class _PendingLogSink() implements LogSink {
   }
 }
 
+class _LogDirectory({required final Directory root}) implements DesktopApplicationSupportDirectory {
+  @override
+  Future<Directory> resolve() async => root;
+}
+
 class _FakeDesktopApplicationTerminator() implements DesktopApplicationTerminator {
   final List<int> exitCodes = <int>[];
+  void Function()? beforeTerminate;
 
   @override
   void terminate({required int exitCode}) {
+    beforeTerminate?.call();
     exitCodes.add(exitCode);
   }
 }

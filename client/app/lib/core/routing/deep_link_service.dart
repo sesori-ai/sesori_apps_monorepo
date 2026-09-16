@@ -52,7 +52,7 @@ class DeepLinkService(final DeepLinkSource _deepLinkSource) {
     }
 
     // Future non-OAuth deep links can be handled here
-    logd("Unhandled deep link: $uri");
+    logd("Unhandled deep link: ${uri.diagnosticOrigin}");
   }
 
   @disposeMethod

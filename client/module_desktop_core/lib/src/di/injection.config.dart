@@ -12,7 +12,9 @@
 
 import 'package:get_it/get_it.dart' as _i174;
 import 'package:injectable/injectable.dart' as _i526;
+import 'package:sesori_dart_core/logging.dart' as _i798;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
+import 'package:sesori_desktop_core/src/api/app_log_storage.dart' as _i1024;
 import 'package:sesori_desktop_core/src/api/bridge_id_storage.dart' as _i73;
 import 'package:sesori_desktop_core/src/api/bridge_process_api.dart' as _i874;
 import 'package:sesori_desktop_core/src/api/bridge_process_log_storage.dart'
@@ -90,6 +92,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i786.DesktopLogoutTracker>(
       () => _i786.DesktopLogoutTracker(),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i798.LogSink>(
+      () => _i1024.AppLogStorage(
+        applicationSupportDirectory:
+            gh<_i695.DesktopApplicationSupportDirectory>(),
+      ),
     );
     gh.lazySingleton<_i874.BridgeProcessApi>(
       () => _i874.BridgeProcessApi(

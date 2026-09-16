@@ -21,6 +21,7 @@ Future<void> main(List<String> arguments) async {
   if (!await startupOrchestrator.preparePrimaryLaunch()) {
     return;
   }
+  setLogSink(sink: getIt<LogSink>());
 
   // Only the primary process renders UI; premium remains disabled.
   await LiquidGlassWidgets.initialize(warmUpMode: GlassWarmUpMode.never);

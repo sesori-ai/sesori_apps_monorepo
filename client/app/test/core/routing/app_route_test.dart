@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
@@ -30,6 +32,32 @@ void main() {
         expect(def.path.startsWith("/"), isTrue, reason: "${def.name} path should start with /");
       }
     });
+  });
+
+  group("deep-link routing diagnostics", () {
+    for (final scheme in ["https", bundleId]) {
+      test("retains origin without the incoming payload ($scheme)", () {
+        TestWidgetsFlutterBinding.ensureInitialized();
+        final previousLevel = logLevel;
+        addTearDown(() => setLogLevel(previousLevel));
+        setLogLevel(scheme == bundleId ? LogLevel.debug : LogLevel.info);
+        final uri = Uri.parse("$scheme://sesori.com/link/private-path?token=private-token#private-fragment");
+        final unmatched = appRouter.configuration.findMatch(uri);
+        expect(unmatched.isError, isTrue);
+        final previousRoutes = appRouter.routerDelegate.currentConfiguration;
+        final logs = <String>[];
+        final result = runZoned(
+          () => appRouter.routeInformationParser.onParserException!(_FakeBuildContext(), unmatched),
+          zoneSpecification: ZoneSpecification(print: (_, _, _, message) => logs.add(message)),
+        );
+        expect(result, same(previousRoutes));
+        expect(unmatched.uri, uri);
+        expect(logs, hasLength(1));
+        expect(logs.single, contains("scheme=$scheme, host=sesori.com"));
+        expect(logs.single, contains(scheme == bundleId ? "ignoring deep link" : "could not match route"));
+        expect(logs.single, isNot(contains("private-")));
+      });
+    }
   });
 
   group("AppRoute.buildPath", () {

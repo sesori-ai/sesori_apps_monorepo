@@ -166,19 +166,30 @@ and keep native close/quit behavior safe.
   frame, provided above the router, and persisted through the same shared
   cubits as mobile. Changing appearance in Settings re-themes the whole window
   immediately rather than only the current route.
-- Shared client logging defaults to stdout, preserving level filtering, diagnostic
-  context and stacks. HTTP/relay parsing errors retain typed causes but omit JSON
-  excerpts from presentation; both shells omit outbound-link user-info/path/query/fragment
-  and selectively replace the known URI in thrown-error diagnostics. Unrelated
-  useful error context remains. Final desktop Quit awaits admitted log output for
-  at most two seconds after cleanup; flush failure/timeout reports directly to stdout
-  and does not prevent exit. A failed helper stop still refuses Quit before flushing.
-- Open Logs prepares the owner-only active log through Layer-1 storage, then
-  resolves it through the desktop log repository and delegates it to the system
-  default application, including before the helper emits its first line. Both
-  pipes continue draining through byte-bounded lines and a bounded persistence
-  queue; storage warnings are rate-limited and do not stop the drains. Crash
-  recovery preserves exit/count diagnostics and links to rotating logs.
+- Open Logs prepares the owner-only logs directory through Layer-1 storage,
+  resolves its directory URI through the repository and opens it with the system
+  folder handler, including before either writer emits its first record.
+  Desktop app diagnostics use `app.log`/`app.log.1`, independently of supervised
+  helper `bridge.log`/`bridge.log.1`. Each active file is capped at 5 MiB with
+  UTF-8-safe truncation and one predecessor; POSIX directory/file modes are
+  0700/0600. Helper pipes retain their bounded drains/persistence queue and crash
+  exit/count diagnostics. Only the primary desktop resolves its lazy app sink.
+- Main-isolate core logging preserves console output alongside asynchronous
+  file writes; release defaults to info and above. The mobile shell independently
+  writes under its app-private iOS/Android cache, excluded from OS backups, without
+  desktop-core or chmod. The OS may evict these files; the next append recreates them.
+  The first persistence failure in each episode reports directly to stderr;
+  a successful append resets that warning suppression for later failures.
+  No automatic upload or raw transcript capture is added, and file-size caps
+  do not imply a bounded pending-write queue.
+- HTTP/relay parsing errors retain typed causes but omit JSON excerpts from
+  presentation. Both shell link helpers and the desktop adapter omit outbound-link
+  user-info/path/query/fragment and selectively replace the known URI in thrown-error
+  diagnostics, preserving unrelated useful context and original stacks.
+- Final desktop Quit awaits admitted log output for at most two seconds after cleanup;
+  flush failure/timeout reports directly to stdout and does not prevent exit.
+  A failed helper stop still refuses Quit before flushing. Abrupt termination or
+  an expired deadline may lose pending records; these files are not a crash journal.
 - Device-local sign-out locks every bridge lifecycle surface, asks the live
   helper to `unregister_and_exit`, waits for that command's expected exit
   without sending a competing shutdown, and independently deletes the GUI's
@@ -198,9 +209,9 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, failed-stop/persistence refusal to exit, On/Off recovery, explicit idempotent Start, diagnostics launch, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, helper-stop refusal to exit, bounded best-effort log flushing, On/Off recovery, explicit idempotent Start, diagnostics folder launch, log levels/context/rotation/restart/UTF-8/permissions/failure recovery and parsing-body omission, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
-| L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash diagnostics, and default log-file application availability. |
+| L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash diagnostics, and default folder-handler availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
 
 ## Exploration Guidance
@@ -274,10 +285,17 @@ verify the actual relocated helper, not merely the presence of its binary.
   retrying the failed action, or project recovery toggles desired On to Off,
   omits Start for either disconnected variant, fails to establish the desktop
   relay connection, or exposes mobile CLI commands.
+- A completed file-sink flush omits earlier admitted records, the final cleanup
+  record is absent at orderly termination within the budget, or a recovered writer
+  never reports a later failure episode. App/helper files must remain independent;
+  persisted diagnostic presentation must not restore omitted parsing bodies or link payloads.
+  Mobile logs must not move into backup-eligible storage or fail to recreate an evicted cache.
+  Incoming-link diagnostics in the mobile router/app-links service retain origin and
+  operation context, not URI path/query/fragment payloads, including debug-level messages.
 - Window and tray disagree on desired state, status, or active-session count.
 - Takeover, login-required, or crash give-up is rendered as healthy/connected,
   a takeover starts a restart war or approves a non-replacement prompt, crash
-  diagnostics are inaccessible, Open Logs targets a nonexistent/bypassed file, or a
+  diagnostics are inaccessible, Open Logs fails to prepare/open the logs directory, or a
   supervised Full Disk Access warning tells the user to authorize only
   Terminal instead of the process running the bridge.
 - The desktop theme lacks Prego colors, typography, or design-system extension;
@@ -330,6 +348,10 @@ verify the actual relocated helper, not merely the presence of its binary.
 
 ## Sources
 
+- `client/module_core/lib/src/logging/`
+- `client/module_desktop_core/lib/src/api/app_log_storage.dart`
+- `client/module_desktop_core/lib/src/api/rotating_file_storage.dart`
+- `client/app/lib/core/platform/io_app_log_sink.dart`
 - `client/module_desktop_core/lib/src/cubits/bridge_control/`
 - `client/module_desktop_core/lib/src/foundation/platform/bridge_process_environment.dart`
 - `client/desktop/lib/core/platform/io_bridge_process_environment.dart`
