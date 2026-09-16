@@ -400,8 +400,10 @@ jobs:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
       PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
-      # Fedora 44 was current stable when checked against official releases.json;
-      # digest is official registry's multi-architecture index, not a guessed mirror tag.
+      # Base filesystem indexes are pinned for both native CPUs. apt/dnf repositories remain rolling.
+      UBUNTU_IMAGE: docker.io/library/ubuntu@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
+      DEBIAN_IMAGE: docker.io/library/debian@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
+      # Fedora 44 was current stable when checked against official releases.json.
       FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
     defaults:
       run:
@@ -475,13 +477,14 @@ jobs:
           set -euo pipefail
           package="$(realpath build/desktop-linux-packaging/deb/*.deb)"
           bundle="$(realpath build/desktop-bundle/bundle)"
-          for fixture in ubuntu:24.04 debian:13; do
-            name="${fixture/:/-}"
-            docker pull "$fixture" 2>&1 | tee "build/desktop-linux-packaging/${name}-pull.log"
-            [[ "$(docker run --rm "$fixture" uname -m)" == '${{ matrix.machine }}' ]] || {
-              echo "$fixture container architecture differs from native host"; exit 1;
+          for fixture in "ubuntu-24.04|$UBUNTU_IMAGE" "debian-13|$DEBIAN_IMAGE"; do
+            IFS='|' read -r name image <<<"$fixture"
+            docker pull "$image" 2>&1 | tee "build/desktop-linux-packaging/${name}-pull.log"
+            docker image inspect --format '{{ join .RepoDigests "\n" }}' "$image" | grep -Fx "$image"
+            [[ "$(docker run --rm "$image" uname -m)" == '${{ matrix.machine }}' ]] || {
+              echo "$name container architecture differs from native host"; exit 1;
             }
-            docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" "$fixture" bash -c "
+            docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" "$image" bash -c "
               set -euo pipefail
               apt-get update && apt-get install -y python3
               .github/scripts/qualify_desktop_linux_package.sh deb '$package' '$bundle' \

@@ -61,27 +61,42 @@ status while independent native runs execute, and register a completion watcher
 that wakes the parent. Never stop at an unobserved manual Actions run. Do not touch
 local GUI/bridge processes or execute package installation on this Mac.
 
-## Local implementation checkpoint
+## Implementation and evidence checkpoints
 
-Tooling now stages the complete bundle below `/opt/sesori-desktop`, owns only the
-`sesori-desktop` launcher/desktop entry/existing 512x512 RGBA application icon, derives DEB dependencies
-through `dpkg-shlibdeps`, and leaves RPM ELF requirements to native Fedora
-`rpmbuild`. It scans actual locked Linux sources for `flutter_secure_storage_linux`,
-`tray_manager`, and `window_manager`; none uses `dlopen` or `DynamicLibrary.open`, so
-no explicit guessed dependency was added. Package fixtures reject DEB maintainer
-scripts and RPM scriptlets, verify root-owned staged hashes/paths, perform an honestly
-named same-version reinstall, remove package-owned paths, and preserve shared-data
-sentinels without launching either payload.
+Current tooling stages the complete bundle below `/opt/sesori-desktop`, owns that
+payload plus only the `sesori-desktop` launcher, desktop entry and 512x512 RGBA icon,
+derives DEB dependencies through strict `dpkg-shlibdeps`, and leaves RPM ELF
+requirements to native Fedora `rpmbuild`. It audits every package named by generated
+`FLUTTER_PLUGIN_LIST` for explicit dynamic loading. Package fixtures reject lifecycle
+scripts, verify bounded package ownership and root-owned staged hashes/paths, perform
+an honestly named same-version reinstall, remove package-owned paths, and preserve
+shared-data sentinels without launching either payload. This paragraph describes the
+current implementation; it is not a claim that review-fix inputs have passed native CI.
 
 Fedora's official `https://fedoraproject.org/releases.json` listed 42, 43 and 44 as
-releases while 45 was Beta when checked on 2026-09-16. The official
-`registry.fedoraproject.org/v2/fedora/manifests/44` response supplied multi-architecture
-index digest `sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c`,
-including amd64 child `sha256:9f7fd6627530115141f46c696178f45def9a0308035c868ace6c3868194e2eed`
-and arm64 child `sha256:0059327e85a1ddd6cd727df5afd00cd3139680307b3346abea3f36c3bddc1dc3`.
-The workflow pins that index and verifies the pulled digest and native container CPU.
+releases while 45 was Beta when checked on 2026-09-16. The official registry supplied
+multi-architecture index digest
+`sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c`.
+The workflow also pins the Ubuntu 24.04 index at
+`sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9`
+and Debian 13 at
+`sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1`.
+Each pull is checked against its digest and native CPU. `apt`/`dnf` repositories remain
+rolling; base-image pins do not make later package dependency resolution bit-reproducible.
 
-Local synthetic Python tests and actionlint are required before commit. Native x64
-and ARM64 package construction plus Ubuntu 24.04, Debian 13 and Fedora 44 container
-installation/removal remain pending fresh CI; this checkpoint makes no signing,
-publication, N→N+1, GUI, Secret Service, tray or account claim.
+Native run [35119939925](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35119939925)
+passed at exact source `ee6aad6dafc9621bd4d00660a6fb60400fad6b1d`, tree
+`1492738f064ee24591ee463639c0e9009891726c`, from the GitHub Actions repository
+checkout. Both CPU jobs built DEB/RPM packages and passed Ubuntu 24.04, Debian 13 and
+Fedora 44 install, same-version reinstall and removal fixtures. From this worktree root,
+the parent downloaded that run with `gh run download 35119939925 --repo
+sesori-ai/sesori_apps_monorepo --pattern 'desktop-linux-*' --dir
+build/desktop-linux-packaging-evidence/native-ee6aad6`. Downloaded package hashes,
+73-file/13-binary inventories, six installed/reinstalled fixture inventories and both
+empty source patches were inspected; the retained summary is
+`build/desktop-linux-packaging-evidence/native-ee6aad6/verified-summary.json`.
+The one-off summary-generation command was not retained, so this local artifact is
+attributed historical evidence, not a reproducible tooling check. Review fixes after
+`ee6aad6` require focused local tests and fresh native qualification; none is claimed
+here. No checkpoint makes a signing, publication, N→N+1, GUI, Secret Service, tray or
+account claim.

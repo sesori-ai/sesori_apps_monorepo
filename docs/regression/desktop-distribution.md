@@ -48,19 +48,22 @@ account restoration, upgrades, or release readiness.
 ## Private Linux package qualification
 
 Manual `linux-packaging` qualification builds unsigned DEB and RPM packages from
-complete native x64 and ARM64 staged bundles. Both formats install the unchanged
-GUI/helper bundle below `/opt/sesori-desktop`, own only the `sesori-desktop`
-launcher, one desktop entry and the existing 512x512 application icon, and leave the standalone
-`sesori-bridge` launcher untouched. Version, build, source, OS and CPU come from the
+complete native x64 and ARM64 staged bundles. Both formats own the complete unchanged
+GUI/helper payload below `/opt/sesori-desktop` plus only three system-integration files:
+the `sesori-desktop` launcher, one desktop entry and the existing 512x512 application
+icon. They leave the standalone `sesori-bridge` launcher untouched. Version, build,
+source, OS and CPU come from the
 staged identity. DEB dependencies come from `dpkg-shlibdeps`; RPM requirements come
 from Fedora's native `rpmbuild` ELF scanning. Current locked Linux plugin sources are
 checked for explicit dynamic loading before packaging; no guessed explicit runtime
 requirement is added when those sources contain none.
 
 Native Ubuntu 24.04 and Debian 13 containers install, same-version reinstall and
-remove the DEB. A Fedora 44 container from the pinned official multi-architecture
-registry digest builds, installs, same-version reinstalls and removes the RPM on the
-matching native host CPU. Fixtures compare installed payload paths/hashes with staging,
+remove the DEB. Their official multi-architecture base-image indexes are pinned, as is
+the Fedora 44 base that builds, installs, same-version reinstalls and removes the RPM
+on matching native host CPUs. Package repositories and dependencies fetched by
+`apt`/`dnf` remain rolling, so these pins do not claim bit-reproducible future runs.
+Fixtures compare installed payload paths/hashes with staging,
 require root ownership, reject maintainer scripts/scriptlets, and preserve realistic
 configuration, credentials, database, runtime, attachment and project sentinels.
 They never launch the GUI or helper. Same-version reinstall is not N→N+1 proof.

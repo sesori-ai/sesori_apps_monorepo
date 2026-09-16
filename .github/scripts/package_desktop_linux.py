@@ -10,7 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
 from qualify_desktop import CPU_NAMES, ROOT, inventory, native_arch
@@ -21,7 +21,13 @@ LAUNCHER = Path("usr/bin/sesori-desktop")
 DESKTOP_ENTRY = Path("usr/share/applications/sesori-desktop.desktop")
 ICON = Path("usr/share/icons/hicolor/512x512/apps/sesori-desktop.png")
 ICON_SOURCE = ROOT / "client/app/android/app/src/main/ic_launcher-playstore.png"
-AUDITED_PLUGIN_PACKAGES = ("flutter_secure_storage_linux", "tray_manager", "window_manager")
+LINUX_PLUGINS = ROOT / "client/desktop/linux/flutter/generated_plugins.cmake"
+SYSTEM_INTEGRATION_PATHS = {LAUNCHER, DESKTOP_ENTRY, ICON}
+SYSTEM_PARENT_PATHS = {
+    Path("."), Path("opt"), Path("usr"), Path("usr/bin"), Path("usr/share"),
+    Path("usr/share/applications"), Path("usr/share/icons"), Path("usr/share/icons/hicolor"),
+    Path("usr/share/icons/hicolor/512x512"), Path("usr/share/icons/hicolor/512x512/apps"),
+}
 DYNAMIC_LOAD_PATTERN = re.compile(rb"\b(?:dlopen|DynamicLibrary\.open)\s*\(")
 
 
@@ -52,16 +58,22 @@ def verify_icon(*, path: Path) -> None:
 
 def verify_bundle(*, bundle: Path, arch: str) -> dict:
     manifest_path = bundle / "bridge/desktop-bundle.json"
-    required = (bundle / "sesori_desktop", bundle / "bridge/bin/bridge", bundle / "bridge/lib", manifest_path)
-    for path in required:
-        valid = path.is_dir() if path == bundle / "bridge/lib" else path.is_file()
-        if not valid:
-            raise ValueError(f"Required staged entry missing or wrong type: {path}")
+    required = {
+        bundle / "sesori_desktop": "file",
+        bundle / "bridge/bin/bridge": "file",
+        bundle / "bridge/lib": "directory",
+        manifest_path: "file",
+    }
+    for path, expected_type in required.items():
+        valid = path.is_dir() if expected_type == "directory" else path.is_file()
+        if path.is_symlink() or not valid:
+            raise ValueError(f"Required staged entry missing or wrong type: {path}; expected {expected_type}")
     identity = json.loads(manifest_path.read_text(encoding="utf-8"))
     version = identity.get("version")
     if not isinstance(version, str) or re.fullmatch(r"\d+\.\d+\.\d+", version) is None:
         raise ValueError(f"Bundle version must be semantic major.minor.patch: {version}")
-    if not isinstance(identity.get("buildNumber"), int) or identity["buildNumber"] < 1:
+    if isinstance(identity.get("buildNumber"), bool) or not isinstance(identity.get("buildNumber"), int) \
+            or identity["buildNumber"] < 1:
         raise ValueError("Bundle buildNumber must be a positive integer")
     if not isinstance(identity.get("sourceSha"), str) or not identity["sourceSha"]:
         raise ValueError("Bundle sourceSha must be non-empty")
@@ -72,12 +84,24 @@ def verify_bundle(*, bundle: Path, arch: str) -> dict:
     return {"identity": identity, "binaries": inventory(root=bundle, target_os="linux", arch=arch)}
 
 
+def linux_plugin_packages() -> tuple[str, ...]:
+    contents = LINUX_PLUGINS.read_text(encoding="utf-8")
+    match = re.search(r"list\(APPEND FLUTTER_PLUGIN_LIST\s+(.*?)\)", contents, re.DOTALL)
+    if match is None:
+        raise ValueError(f"Could not read FLUTTER_PLUGIN_LIST from {LINUX_PLUGINS}")
+    packages = tuple(match.group(1).split())
+    if not packages:
+        raise ValueError(f"FLUTTER_PLUGIN_LIST is empty in {LINUX_PLUGINS}")
+    return packages
+
+
 def audit_dynamic_loading(*, package_config: Path) -> dict:
     config = json.loads(package_config.read_text(encoding="utf-8"))
     packages = {item["name"]: item for item in config["packages"]}
+    audited_packages = linux_plugin_packages()
     scanned: list[str] = []
     findings: list[str] = []
-    for name in AUDITED_PLUGIN_PACKAGES:
+    for name in audited_packages:
         if name not in packages:
             raise ValueError(f"Required Linux plugin missing from package config: {name}")
         uri = packages[name]["rootUri"]
@@ -94,7 +118,7 @@ def audit_dynamic_loading(*, package_config: Path) -> dict:
                 findings.append(f"{name}/{source.relative_to(root).as_posix()}")
     if findings:
         raise ValueError("Explicit dynamic loading requires a source-derived package dependency: " + ", ".join(findings))
-    return {"packages": list(AUDITED_PLUGIN_PACKAGES), "files": scanned, "explicitDependencies": []}
+    return {"packages": list(audited_packages), "files": scanned, "explicitDependencies": []}
 
 
 def payload_inventory(*, root: Path) -> list[dict]:
@@ -106,6 +130,19 @@ def payload_inventory(*, root: Path) -> list[dict]:
         elif path.is_file():
             rows.append({"path": relative, "type": "file", "sha256": sha256(path), "bytes": path.stat().st_size})
     return rows
+
+
+def verify_owned_paths(*, paths: list[str]) -> dict:
+    owned = {PurePosixPath(path.strip()) for path in paths if path.strip()}
+    required = {PurePosixPath("/" + path.as_posix()) for path in SYSTEM_INTEGRATION_PATHS}
+    parents = {PurePosixPath("/" if path == Path(".") else "/" + path.as_posix()) for path in SYSTEM_PARENT_PATHS}
+    install_root = PurePosixPath("/" + INSTALL_ROOT.as_posix())
+    unexpected = sorted(str(path) for path in owned if path not in required | parents
+                        and path != install_root and install_root not in path.parents)
+    missing = sorted(str(path) for path in required | {install_root} if path not in owned)
+    if unexpected or missing:
+        raise ValueError(f"Package ownership mismatch; missing={missing}; unexpected={unexpected}")
+    return {"ownedPaths": len(owned), "boundedSystemOwnership": True}
 
 
 def assemble_payload(*, bundle: Path, root: Path) -> None:
@@ -142,7 +179,7 @@ def deb_dependencies(*, root: Path, work: Path, identity: dict) -> tuple[str, li
     )
     binaries = elf_files(root=root / INSTALL_ROOT)
     library_dirs = sorted({str(path.parent) for path in binaries if ".so" in path.name})
-    command = ["dpkg-shlibdeps", "-O", "--ignore-missing-info"]
+    command = ["dpkg-shlibdeps", "-O"]
     if library_dirs:
         command.append("-l" + ":".join(library_dirs))
     command.extend("-e" + str(path) for path in binaries)
@@ -254,13 +291,13 @@ def package(*, bundle: Path, output: Path, arch: str, package_format: str, packa
         work = Path(temporary)
         root = work / "root"
         assemble_payload(bundle=bundle, root=root)
+        payload = payload_inventory(root=root)
         if package_format == "deb":
             artifact, package_evidence = build_deb(root=root, work=work, output=output, arch=arch,
                                                    identity=evidence["identity"])
         else:
             artifact, package_evidence = build_rpm(root=root, work=work, output=output, arch=arch,
                                                    identity=evidence["identity"])
-        payload = payload_inventory(root=root)
     report = {
         "packagerSourceSha": run(command=["git", "rev-parse", "HEAD"], cwd=ROOT).strip(),
         "format": package_format,
@@ -280,14 +317,19 @@ def package(*, bundle: Path, output: Path, arch: str, package_format: str, packa
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("verify", "verify-installed", "package"))
-    parser.add_argument("--bundle", type=Path, required=True)
-    parser.add_argument("--arch", choices=("x64", "arm64"), required=True)
+    parser.add_argument("operation", choices=("verify", "verify-installed", "verify-owned-paths", "package"))
+    parser.add_argument("--bundle", type=Path)
+    parser.add_argument("--arch", choices=("x64", "arm64"))
     parser.add_argument("--format", choices=("deb", "rpm"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--package-config", type=Path)
     parser.add_argument("--installed-root", type=Path, default=Path("/"))
     args = parser.parse_args()
+    if args.operation == "verify-owned-paths":
+        print(json.dumps(verify_owned_paths(paths=sys.stdin.read().splitlines()), indent=2))
+        return
+    if args.bundle is None or args.arch is None:
+        parser.error(f"{args.operation} requires --bundle and --arch")
     if args.operation == "verify":
         print(json.dumps(verify_bundle(bundle=args.bundle.resolve(), arch=args.arch), indent=2))
         return

@@ -9,6 +9,17 @@ arch="$4"
 evidence="$5"
 script="${6:-$(dirname "$(realpath "$0")")/package_desktop_linux.py}"
 
+mkdir -p /root/.config/sesori /root/.local/share/sesori/{credentials,databases,runtimes} \
+  /root/.local/share/sesori-attachments /root/projects/sesori-project
+printf 'preserve\n' >/root/.config/sesori/settings
+printf 'preserve\n' >/root/.local/share/sesori/credentials/token
+printf 'preserve\n' >/root/.local/share/sesori/databases/sesori.db
+printf 'preserve\n' >/root/.local/share/sesori/runtimes/runtime
+printf 'preserve\n' >/root/.local/share/sesori-attachments/attachment
+printf 'preserve\n' >/root/projects/sesori-project/source
+sentinel_before="$(find /root/.config/sesori /root/.local/share/sesori /root/.local/share/sesori-attachments \
+  /root/projects/sesori-project -type f -print0 | sort -z | xargs -0 sha256sum)"
+
 case "$format" in
   deb)
     control_entries="$(dpkg-deb --ctrl-tarfile "$package" | tar -tf -)"
@@ -29,26 +40,11 @@ case "$format" in
   *) echo "Unsupported package format: $format" >&2; exit 2 ;;
 esac
 
-if grep -Fxq '/usr/bin/sesori-bridge' <<<"$package_paths"; then
-  echo 'Package must not own standalone sesori-bridge launcher' >&2
-  exit 1
-fi
-for required in /opt/sesori-desktop /usr/bin/sesori-desktop \
-  /usr/share/applications/sesori-desktop.desktop \
-  /usr/share/icons/hicolor/512x512/apps/sesori-desktop.png; do
-  grep -Fxq "$required" <<<"$package_paths" || { echo "Package does not own $required" >&2; exit 1; }
-done
-
-mkdir -p /root/.config/sesori /root/.local/share/sesori/{credentials,databases,runtimes} \
-  /root/.local/share/sesori-attachments /root/projects/sesori-project
-printf 'preserve\n' >/root/.config/sesori/settings
-printf 'preserve\n' >/root/.local/share/sesori/credentials/token
-printf 'preserve\n' >/root/.local/share/sesori/databases/sesori.db
-printf 'preserve\n' >/root/.local/share/sesori/runtimes/runtime
-printf 'preserve\n' >/root/.local/share/sesori-attachments/attachment
-printf 'preserve\n' >/root/projects/sesori-project/source
-sentinel_before="$(find /root/.config/sesori /root/.local/share/sesori /root/.local/share/sesori-attachments \
-  /root/projects/sesori-project -type f -print0 | sort -z | xargs -0 sha256sum)"
+printf '%s\n' "$package_paths" | python3 "$script" verify-owned-paths >"$evidence.ownership.json"
+sentinel_after_install="$(find /root/.config/sesori /root/.local/share/sesori \
+  /root/.local/share/sesori-attachments /root/projects/sesori-project \
+  -type f -print0 | sort -z | xargs -0 sha256sum)"
+[[ "$sentinel_before" == "$sentinel_after_install" ]] || { echo 'Install changed shared data sentinel' >&2; exit 1; }
 
 python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" >"$evidence.installed.json"
 
@@ -83,12 +79,14 @@ from pathlib import Path
 package_format, architecture, output = sys.argv[1:]
 installed = json.loads(Path(output + ".installed.json").read_text())
 reinstalled = json.loads(Path(output + ".reinstalled.json").read_text())
+ownership = json.loads(Path(output + ".ownership.json").read_text())
 Path(output).write_text(json.dumps({
     "format": package_format,
     "architecture": architecture,
     "containerMachine": platform.machine(),
     "installedIdentity": installed["identity"],
     "installedPayloadVerified": True,
+    "boundedSystemOwnershipVerified": ownership["boundedSystemOwnership"],
     "sameVersionReinstallVerified": installed == reinstalled,
     "removeOwnedPathsVerified": True,
     "sharedDataPreserved": True,

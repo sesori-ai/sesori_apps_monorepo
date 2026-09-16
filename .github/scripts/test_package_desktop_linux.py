@@ -43,7 +43,7 @@ class LinuxPackagingTests(unittest.TestCase):
         }), encoding="utf-8")
         self.plugin_root = self.root / "plugins"
         packages = []
-        for name in packaging.AUDITED_PLUGIN_PACKAGES:
+        for name in packaging.linux_plugin_packages():
             source = self.plugin_root / name / "linux/plugin.cc"
             source.parent.mkdir(parents=True)
             source.write_text("// linked normally\n", encoding="utf-8")
@@ -61,11 +61,17 @@ class LinuxPackagingTests(unittest.TestCase):
         })
 
     def test_wrong_architecture_and_identity_refuse(self):
-        with self.assertRaisesRegex(ValueError, "Bundle identity mismatch|Wrong native target"):
+        with self.assertRaisesRegex(ValueError, "Bundle identity mismatch"):
             packaging.verify_bundle(bundle=self.bundle, arch="arm64")
+        native = self.bundle / "lib/libapp.so"
+        native.write_bytes(elf(machine=183))
+        with self.assertRaisesRegex(ValueError, "Wrong native target"):
+            packaging.verify_bundle(bundle=self.bundle, arch="x64")
+        native.write_bytes(elf(machine=62))
         manifest = self.bundle / "bridge/desktop-bundle.json"
         identity = json.loads(manifest.read_text())
-        for key, value in (("version", "1.2"), ("buildNumber", 0), ("sourceSha", ""), ("os", "windows")):
+        for key, value in (("version", "1.2"), ("buildNumber", 0), ("buildNumber", True),
+                           ("sourceSha", ""), ("os", "windows")):
             with self.subTest(key=key):
                 changed = dict(identity)
                 changed[key] = value
@@ -92,27 +98,44 @@ class LinuxPackagingTests(unittest.TestCase):
                     missing.unlink()
                 saved.rename(missing)
 
-    def test_payload_preserves_bundle_and_owns_only_bounded_system_paths(self):
+    def test_symlinked_required_entries_refuse(self):
+        for entry in (self.bundle / "sesori_desktop", self.bundle / "bridge/bin/bridge",
+                      self.bundle / "bridge/lib", self.bundle / "bridge/desktop-bundle.json"):
+            with self.subTest(entry=entry):
+                saved = entry.with_name(entry.name + ".saved")
+                entry.rename(saved)
+                entry.symlink_to(saved.name, target_is_directory=saved.is_dir())
+                with self.assertRaisesRegex(ValueError, "missing or wrong type"):
+                    packaging.verify_bundle(bundle=self.bundle, arch="x64")
+                entry.unlink()
+                saved.rename(entry)
+
+    def test_payload_preserves_complete_bundle_and_owns_only_bounded_system_paths(self):
         package_root = self.root / "package root"
         packaging.assemble_payload(bundle=self.bundle, root=package_root)
         installed = package_root / packaging.INSTALL_ROOT
-        self.assertEqual((installed / "data/flutter_assets/NOTICE").read_text(), "licenses")
-        self.assertTrue((installed / "lib/libalias.so").is_symlink())
-        self.assertEqual((installed / "lib/libalias.so").readlink(), Path("libtarget.so"))
+        self.assertEqual(packaging.payload_inventory(root=installed), packaging.payload_inventory(root=self.bundle))
         launcher = package_root / packaging.LAUNCHER
         self.assertEqual(launcher.readlink(), Path("/opt/sesori-desktop/sesori_desktop"))
         desktop = (package_root / packaging.DESKTOP_ENTRY).read_text()
         self.assertIn("Exec=/usr/bin/sesori-desktop", desktop)
         self.assertIn("Icon=sesori-desktop", desktop)
         self.assertTrue((package_root / packaging.ICON).is_file())
-        paths = {item["path"] for item in packaging.payload_inventory(root=package_root)}
-        self.assertNotIn("usr/bin/sesori-bridge", paths)
-        self.assertFalse(any(path.startswith(("home/", "etc/xdg/autostart/")) for path in paths))
+        package_paths = ["/", "/opt", "/opt/sesori-desktop", "/usr", "/usr/bin", "/usr/share",
+                         "/usr/share/applications", "/usr/share/icons", "/usr/share/icons/hicolor",
+                         "/usr/share/icons/hicolor/512x512", "/usr/share/icons/hicolor/512x512/apps"]
+        package_paths.extend("/" + item["path"] for item in packaging.payload_inventory(root=package_root))
+        self.assertTrue(packaging.verify_owned_paths(paths=package_paths)["boundedSystemOwnership"])
+        with self.assertRaisesRegex(ValueError, "unexpected=.*usr/bin/sesori-bridge"):
+            packaging.verify_owned_paths(paths=package_paths + ["/usr/bin/sesori-bridge"])
 
     def test_actual_plugin_sources_are_checked_for_explicit_dynamic_loading(self):
         audit = packaging.audit_dynamic_loading(package_config=self.package_config)
         self.assertEqual(audit["explicitDependencies"], [])
-        self.assertEqual(set(audit["packages"]), set(packaging.AUDITED_PLUGIN_PACKAGES))
+        self.assertEqual(audit["packages"], [
+            "file_selector_linux", "flutter_secure_storage_linux", "pasteboard", "screen_retriever_linux",
+            "tray_manager", "url_launcher_linux", "window_manager",
+        ])
         source = self.plugin_root / "tray_manager/linux/plugin.cc"
         source.write_text('void *x = dlopen("libguessed.so", 1);\n')
         with self.assertRaisesRegex(ValueError, "source-derived package dependency"):
@@ -131,11 +154,36 @@ class LinuxPackagingTests(unittest.TestCase):
             )
         self.assertEqual(dependencies, "libc6 (>= 2.34), libgtk-3-0")
         invoked = command.call_args.kwargs["command"]
-        self.assertEqual(invoked[:3], ["dpkg-shlibdeps", "-O", "--ignore-missing-info"])
+        self.assertEqual(invoked[:2], ["dpkg-shlibdeps", "-O"])
+        self.assertNotIn("--ignore-missing-info", invoked)
         elf_arguments = {item.removeprefix("-e") for item in invoked if item.startswith("-e")}
         expected = {str(path) for path in packaging.elf_files(root=package_root / packaging.INSTALL_ROOT)}
         self.assertEqual(elf_arguments, expected)
         self.assertTrue(any(item.startswith("-l") for item in invocation))
+
+    def test_package_report_records_payload_before_deb_metadata(self):
+        output = self.root / "package output"
+
+        def fake_build_deb(*, root, work, output, arch, identity):
+            control = root / "DEBIAN/control"
+            control.parent.mkdir()
+            control.write_text("metadata")
+            artifact = output / "package.deb"
+            artifact.write_bytes(b"deb")
+            return artifact, {"dependencies": "libc6", "dependencyCommand": [], "metadata": "", "packageFiles": []}
+
+        with mock.patch.object(packaging, "audit_dynamic_loading", return_value={}), mock.patch.object(
+            packaging, "build_deb", side_effect=fake_build_deb
+        ), mock.patch.object(packaging.platform, "machine", return_value="x86_64"), mock.patch.object(
+            packaging, "run", return_value="0123456789abcdef0123456789abcdef01234567\n"
+        ):
+            packaging.package(bundle=self.bundle, output=output, arch="x64", package_format="deb",
+                              package_config=self.package_config)
+        report = json.loads((output / "packaging.json").read_text())
+        self.assertFalse(any(item["path"].startswith("DEBIAN/") for item in report["payload"]))
+        opt_payload = [{**item, "path": item["path"].removeprefix("opt/sesori-desktop/")}
+                       for item in report["payload"] if item["path"].startswith("opt/sesori-desktop/")]
+        self.assertEqual(opt_payload, packaging.payload_inventory(root=self.bundle))
 
     def test_deb_metadata_has_no_maintainer_scripts_and_uses_staged_version(self):
         package_root = self.root / "deb root"

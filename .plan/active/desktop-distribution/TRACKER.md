@@ -55,9 +55,19 @@ Private Windows qualification merged in #1515, accepting
 `cc9c65932791f5dfa15954bdebe898d43324a51c` at 2026-09-16T15:30:55Z.
 At acceptance 21/21 checks passed; the merged report subsequently showed 22/22.
 All 19 feedback threads were resolved; final Cubic summary said all reported issues
-were addressed. Final private native run 35111369170 qualified both CPUs at the
-accepted source, 1.8.4/build43, with downloaded hashes and inventories verified.
-Signing and public Windows release remain blocked. Step 8's download UI already
+were addressed. Final private native run
+[35111369170](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/35111369170)
+qualified both CPUs at exact accepted source
+`99cdf2e8fc0e90e3f5cb08a151fd6871ccdcdd3f`, tree
+`625b2cc9a5e900a8c6bb77f5bed3b340be7a7dd3`, 1.8.4/build 43. From this worktree
+root, artifacts were retrieved with `gh run download 35111369170 --repo
+sesori-ai/sesori_apps_monorepo --pattern 'desktop-windows-*' --dir
+build/desktop-windows-packaging-evidence/native-99cdf2e`; downloaded installer hashes,
+15-binary inventories, empty source patches and both fixture results matched. The
+retained result is `build/desktop-windows-packaging-evidence/native-99cdf2e/verified-summary.json`;
+its one-off summary command was not retained, so it is historical attribution rather
+than a reproducible local tooling check. Signing and public Windows release remain
+blocked. Step 8's download UI already
 exists from step 5; winget manifests must wait for real signed public assets.
 Rather than invent placeholder manifests, continue the next independently executable
 step: private Linux packaging on `desktop-distribution-linux-packaging`. Shipping
