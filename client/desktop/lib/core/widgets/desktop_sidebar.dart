@@ -451,6 +451,7 @@ class _SidebarProjectGroupState() extends State<_SidebarProjectGroup> {
                                     session: session,
                                     entry: entry,
                                     selected: session.id == widget.selectedSessionId,
+                                    expansion: widget.expansion,
                                     onPressed: () => widget.onOpenSession(
                                       context: actionContext,
                                       project: widget.project,
@@ -521,6 +522,7 @@ class const _SidebarSessionRow({
   required final Session session,
   required final RecentSessionsLoaded entry,
   required final bool selected,
+  required final double expansion,
   required final VoidCallback onPressed,
   required final List<PregoMenuEntry> Function() menuEntries,
 }) extends StatelessWidget {
@@ -536,6 +538,10 @@ class const _SidebarSessionRow({
       if (running) context.loc.projectListRunning(1),
       if (unseen) context.loc.projectListNewActivity,
     ].join(", ");
+    final statusIcons = [
+      if (awaiting) Icon(TablerRegular.message_circle, size: 14, color: prego.colors.textWarningPrimary),
+      if (running || unseen) PregoAiLoader(size: 14, animate: running),
+    ];
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(40, 0, 8, 0),
       child: PregoAnchorMenu(
@@ -573,10 +579,22 @@ class const _SidebarSessionRow({
                           style: unseen ? prego.textTheme.textXs.bold : prego.textTheme.textXs.regular,
                         ),
                       ),
-                      if (awaiting || running || unseen) const SizedBox(width: PregoSpacing.xs),
-                      if (awaiting)
-                        Icon(TablerRegular.message_circle, size: 14, color: prego.colors.textWarningPrimary),
-                      if (running || unseen) PregoAiLoader(size: 14, animate: running),
+                      // The collapsing rail leaves less room than the signals need,
+                      // so reveal them with the row instead of overflowing it.
+                      if (statusIcons.isNotEmpty)
+                        ClipRect(
+                          child: Align(
+                            alignment: AlignmentDirectional.centerStart,
+                            widthFactor: expansion,
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                const SizedBox(width: PregoSpacing.xs),
+                                ...statusIcons,
+                              ],
+                            ),
+                          ),
+                        ),
                     ],
                   ),
                 ),

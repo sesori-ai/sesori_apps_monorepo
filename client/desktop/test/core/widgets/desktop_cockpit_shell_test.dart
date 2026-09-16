@@ -320,6 +320,35 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("session status signals stay inside the row while the rail collapses", (tester) async {
+    final sessions = [_session(id: "session-1")];
+    whenListen(
+      recent,
+      const Stream<Map<String, RecentSessionsEntry>>.empty(),
+      initialState: {
+        "project-1": RecentSessionsLoaded(
+          sourceSessions: sessions,
+          visibleSessions: sessions,
+          activityBySessionId: const {
+            "session-1": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
+          },
+          listStateBySessionId: const {},
+        ),
+      },
+    );
+    await tester.pumpWidget(app(state: running));
+    expect(find.descendant(of: rail, matching: find.byIcon(TablerRegular.message_circle)), findsOneWidget);
+    await tester.tap(toggle);
+    await tester.pump();
+    for (var frame = 0; frame < 12; frame++) {
+      await tester.pump(const Duration(milliseconds: 20));
+      expect(tester.takeException(), isNull);
+    }
+    await tester.pumpAndSettle();
+    expect(tester.getSize(rail).width, 56);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("drag resizes immediately, persists on end, and double-click resets", (tester) async {
     await tester.pumpWidget(app(state: running));
     final gesture = await tester.startGesture(tester.getCenter(resize));
