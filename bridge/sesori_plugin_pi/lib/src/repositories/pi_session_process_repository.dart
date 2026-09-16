@@ -402,17 +402,18 @@ final class PiSessionProcessRepository({
     var effectiveModel = resident.selection?.model;
     var effectiveVariant = resident.selection?.variant;
     if (model != null && effectiveModel != model) {
+      resident.selection = null;
       await resident.client.send(
         command: PiRpcCommand.setModel,
         arguments: {"provider": model.providerID, "modelId": model.modelID},
         timeout: _historyRpcTimeout,
       );
-      resident.selection = null;
       effectiveModel = model;
       effectiveVariant = null;
     }
     final variantId = variant?.id;
     if (variantId != null && effectiveVariant?.wireValue != variantId) {
+      resident.selection = null;
       await resident.client.send(
         command: PiRpcCommand.setThinkingLevel,
         arguments: {"level": variantId},
@@ -462,6 +463,10 @@ final class PiSessionProcessRepository({
     final state = await _readState(resident);
     resident.selection = state.selection;
     return state;
+  }
+
+  void invalidateSelection({required PiSessionConnection connection}) {
+    _requiredResident(connection).selection = null;
   }
 
   Future<PiAgentState> _readState(_ResidentClient resident) async {

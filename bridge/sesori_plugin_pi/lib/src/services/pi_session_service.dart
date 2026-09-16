@@ -568,8 +568,17 @@ final class PiSessionService({
       if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       PiAgentState? observedAgentState;
       if (turn is _PiCommandTurn) {
-        observedAgentState = await _processes.getState(connection: connection);
-        turn.effectiveSelection = observedAgentState.selection;
+        try {
+          observedAgentState = await _processes.getState(connection: connection);
+          turn.effectiveSelection = observedAgentState.selection;
+        } on Object catch (error, stack) {
+          if (error is! PiRpcProcessExitException) {
+            _processes.invalidateSelection(connection: connection);
+            turn.effectiveSelection = null;
+          }
+          if (!turn.agentStarted || error is TimeoutException || error is PiRpcProcessExitException) rethrow;
+          Log.w("[pi] failed to refresh accepted command state for session id=$sessionId", error, stack);
+        }
         await Future<void>.delayed(Duration.zero);
         if (!_isCurrent(sessionId: sessionId, state: state, turn: turn, generation: generation)) return;
       }
