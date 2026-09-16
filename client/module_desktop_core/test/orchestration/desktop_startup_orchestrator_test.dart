@@ -2,9 +2,10 @@ import "dart:async";
 import "dart:io";
 
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -15,7 +16,7 @@ void main() {
   late DesktopStartupOrchestrator orchestrator;
   late _MockAuthSession authSession;
   late _MockLaunchAtLogin launchAtLogin;
-  late StreamController<AuthState> authChanges;
+  late BehaviorSubject<AuthState> authChanges;
   late AuthState authState;
   const signedIn = AuthState.authenticated(
     user: AuthUser(id: "user", provider: AuthProvider.github, providerUserId: "provider", providerUsername: "test"),
@@ -28,7 +29,7 @@ void main() {
     windowBoundsService = _MockWindowBoundsService();
     authSession = _MockAuthSession();
     launchAtLogin = _MockLaunchAtLogin();
-    authChanges = StreamController<AuthState>.broadcast(sync: true);
+    authChanges = BehaviorSubject<AuthState>.seeded(const AuthState.unauthenticated());
     authState = const AuthState.unauthenticated();
     when(() => authSession.currentState).thenAnswer((_) => authState);
     when(() => authSession.authStateStream).thenAnswer((_) => authChanges.stream);
