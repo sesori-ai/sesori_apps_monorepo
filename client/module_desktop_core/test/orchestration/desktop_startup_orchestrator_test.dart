@@ -1,7 +1,11 @@
+import "dart:async";
 import "dart:io";
 
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -10,18 +14,124 @@ void main() {
   late _MockDesktopApplicationTerminator applicationTerminator;
   late _MockWindowBoundsService windowBoundsService;
   late DesktopStartupOrchestrator orchestrator;
+  late _MockAuthSession authSession;
+  late _MockLaunchAtLogin launchAtLogin;
+  late BehaviorSubject<AuthState> authChanges;
+  late AuthState authState;
+  late int nativeRefreshes;
+  Future<void> applyDefaults() => orchestrator.applyFirstRunBridgeDefaults(
+    onLaunchAtLoginChanged: () async {
+      nativeRefreshes++;
+    },
+  );
+  const signedIn = AuthState.authenticated(
+    user: AuthUser(id: "user", provider: AuthProvider.github, providerUserId: "provider", providerUsername: "test"),
+  );
 
   setUp(() {
     instanceService = _MockDesktopInstanceService();
     processService = _MockBridgeProcessService();
     applicationTerminator = _MockDesktopApplicationTerminator();
     windowBoundsService = _MockWindowBoundsService();
+    authSession = _MockAuthSession();
+    launchAtLogin = _MockLaunchAtLogin();
+    authChanges = BehaviorSubject<AuthState>.seeded(const AuthState.unauthenticated());
+    authState = const AuthState.unauthenticated();
+    nativeRefreshes = 0;
+    when(() => authSession.currentState).thenAnswer((_) => authState);
+    when(() => authSession.authStateStream).thenAnswer((_) => authChanges.stream);
+    when(launchAtLogin.enable).thenAnswer((_) async {});
+    when(processService.start).thenAnswer((_) async {});
+    when(instanceService.initializeFirstRunBridgeState).thenAnswer((_) async => true);
     orchestrator = DesktopStartupOrchestrator(
       instanceService: instanceService,
       processService: processService,
       applicationTerminator: applicationTerminator,
       windowBoundsService: windowBoundsService,
+      authSession: authSession,
+      launchAtLogin: launchAtLogin,
     );
+  });
+
+  tearDown(() async {
+    await orchestrator.dispose();
+    await authChanges.close();
+  });
+
+  test("signed out does nothing; later sign-in applies first-run defaults", () async {
+    await applyDefaults();
+    verifyNever(instanceService.initializeFirstRunBridgeState);
+    authState = signedIn;
+    authChanges.add(authState);
+    await Future<void>.delayed(Duration.zero);
+    verify(instanceService.initializeFirstRunBridgeState).called(1);
+    verify(processService.start).called(1);
+    verify(launchAtLogin.enable).called(1);
+    expect(nativeRefreshes, 1);
+  });
+
+  test("a retained preference or canceled default does no lifecycle or native work", () async {
+    authState = signedIn;
+    when(instanceService.initializeFirstRunBridgeState).thenAnswer((_) async => false);
+    await applyDefaults();
+    verifyNever(processService.start);
+    verifyNever(launchAtLogin.enable);
+  });
+
+  test("native enable failure still leaves the first-run bridge starting", () async {
+    authState = signedIn;
+    when(launchAtLogin.enable).thenThrow(StateError("native unavailable"));
+    await applyDefaults();
+    verify(processService.start).called(1);
+    expect(nativeRefreshes, 0);
+  });
+
+  test("persistence failure performs no spawn or native registration", () async {
+    authState = signedIn;
+    when(instanceService.initializeFirstRunBridgeState).thenThrow(StateError("disk"));
+    await applyDefaults();
+    verifyNever(processService.start);
+    verifyNever(launchAtLogin.enable);
+  });
+
+  for (final dispose in [false, true]) {
+    test(
+      "pending default ${dispose ? 'stops at disposal' : 'delegates lost auth to the process login gate'}",
+      () async {
+        authState = signedIn;
+        final persisted = Completer<bool>();
+        when(instanceService.initializeFirstRunBridgeState).thenAnswer((_) => persisted.future);
+        final operation = applyDefaults();
+        if (dispose) {
+          await orchestrator.dispose();
+        } else {
+          authState = const AuthState.unauthenticated();
+          authChanges.add(authState);
+        }
+        persisted.complete(true);
+        await operation;
+        if (dispose) {
+          verifyNever(processService.start);
+          verifyNever(launchAtLogin.enable);
+        } else {
+          verify(processService.start).called(1);
+          verify(launchAtLogin.enable).called(1);
+        }
+      },
+    );
+  }
+
+  test("native enable completion cannot initiate a late bridge start", () async {
+    authState = signedIn;
+    final enabled = Completer<void>();
+    when(launchAtLogin.enable).thenAnswer((_) => enabled.future);
+    final operation = applyDefaults();
+    await Future<void>.delayed(Duration.zero);
+    verify(processService.start).called(1);
+    authState = const AuthState.unauthenticated();
+    enabled.complete();
+    await operation;
+    verifyNever(processService.start);
   });
 
   test("lets only the primary launch continue to UI construction", () async {
@@ -94,3 +204,5 @@ class _MockBridgeProcessService() extends Mock implements BridgeProcessService;
 class _MockDesktopApplicationTerminator() extends Mock implements DesktopApplicationTerminator;
 
 class _MockWindowBoundsService() extends Mock implements WindowBoundsService;
+class _MockAuthSession() extends Mock implements AuthSession;
+class _MockLaunchAtLogin() extends Mock implements LaunchAtLogin;
