@@ -37,8 +37,9 @@ a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
   plugin-authored detail stays in local logs. No CLI process outlives its
   operation.
 - On macOS and Linux bridges the host never opens a browser during a
-  Sesori-initiated login. Windows keeps the CLI's default browser behavior,
-  as recorded in the capability matrix.
+  Sesori-initiated login; `true` is on `PATH` on every supported system.
+  Windows is unverified and recorded as a limitation in the capability
+  matrix.
 - No authorization URL, pasted code, token, email, or organization value
   appears in bridge logs, client logs, error messages, analytics, SSE replay,
   or persistence.
@@ -60,10 +61,12 @@ a local login would. Sesori never sees, stores, refreshes, or exchanges tokens.
   opens the authorization URL in the external browser only after an explicit
   tap, and the user pastes the code shown by Claude after approval. No loopback
   capture, no automatic same-host completion, no embedded web view.
-- The bridge suppresses the host browser by setting `BROWSER` to a no-op
-  executable on macOS and Linux. Windows keeps the CLI's default browser
-  behavior; a stray sign-in tab on the bridge host is an accepted limitation
-  recorded in the capability matrix.
+- The bridge sets `BROWSER=true` for the login process on every platform.
+  The verified CLI special-cases that value as "no browser" and otherwise
+  spawns it as a single executable with the URL, so `true` resolves through
+  `PATH` on macOS and Linux (coreutils or busybox). Windows is unverified: a
+  stray sign-in tab on the bridge host is an accepted limitation recorded in
+  the capability matrix.
 - One pasted code per operation. A rejected or wrong code ends the operation
   with a sanitized failure; the user starts a new login. No retry loop.
 - One overall ten-minute budget bounds the operation from spawn to exit.
@@ -112,7 +115,11 @@ Verified against the native binary and Anthropic's authentication docs:
   killed to abandon a login.
 - The CLI honors the `BROWSER` environment variable: with `BROWSER` set to an
   executable, that executable is invoked with the URL and no system browser
-  opens.
+  opens. Read from the binary: the opener is spawned directly as one
+  executable with the URL as its only argument (no shell, no word splitting),
+  a missing opener is reported as a failure without falling back to the system
+  browser, and the CLI's own headless check treats the literal value `true`
+  as "no browser".
 - Credentials are stored by the CLI under the active config directory
   (`CLAUDE_CONFIG_DIR`, else `~/.claude`): macOS Keychain with an automatic
   fallback to `.credentials.json` (mode 0600) when the Keychain rejects the
@@ -244,12 +251,10 @@ ClaudePastedCode (models)
   parse(raw) -> value or typed format failure; exactly one "#", both parts
   non-empty, no whitespace, bounded length
 
-ClaudeLoginEnvironment (foundation, pure)
-  resolve({isWindows, fileExists}) -> environment overrides: {BROWSER: first
-  existing of /usr/bin/true, /bin/true} on macOS and Linux; empty on Windows
-  or when neither file exists. The descriptor composition supplies
-  Platform.isWindows and File.existsSync, so the decision is testable and the
-  API layer only executes
+ClaudeLoginEnvironment (foundation, constant)
+  {BROWSER: "true"} on every platform: the value the CLI itself treats as
+  "no browser"; no platform branch, no filesystem probe. The service passes
+  it to the API, which only executes
 
 ClaudeAuthLoginApi (api)
   spawn({binaryPath, environment, workingDirectory}) -> ClaudeProcessHandle
@@ -305,10 +310,12 @@ clients still get a working instruction.
 
 Extend the existing layers without new owners:
 
-- `PluginApi.startAuthentication` moves to the relay client's
-  sensitive-response post variant, so a malformed challenge response is never
-  logged or retained with its body (it carries the authorization URL and OAuth
-  state). `PluginApi.submitAuthenticationCode` posts to
+- `PluginApi.startAuthentication` keeps the ordinary relay post, because the
+  typed 409 start conflicts (`inFlight`, `setupNotRequired`, `unsupported`
+  with management metadata) are decoded from the response body and the relay
+  client's sensitive mode drops every non-2xx body. The accepted consequence
+  for a malformed successful body is recorded under Security And Privacy.
+  `PluginApi.submitAuthenticationCode` posts to
   `/plugin/:id/authentication/code` and expects the same 200
   `SuccessEmptyResponse` as the redirect route.
 - `PluginRepository.submitAuthenticationCode` returns the existing
@@ -411,6 +418,14 @@ advertises a login it cannot route.
 - Remote failures carry only the bridge's existing generic text. Local logs
   retain plugin-authored messages, exit codes, operation context, and scrubbed
   diagnostics.
+- Accepted: a malformed successful challenge body from a defective bridge is
+  retained in the local client parsing error, exactly as for the device-code
+  and browser challenges today. The authorization URL carries no credential
+  (client id, PKCE challenge, state) and cannot complete a login without the
+  user's paste channel, and client logs stay local and user-controlled. The
+  relay client's blanket sensitive mode is not used because it also drops the
+  typed 409 conflict bodies the start flow decodes; a selective redaction mode
+  in shared client infrastructure is not worth building for a bridge defect.
 
 ## Analytics
 
@@ -428,7 +443,7 @@ arise.
   one completer for the authorization URL, one one-shot submitted flag, one
   budget timer, one disposed flag. A rejected code shape reuses the exit race
   by disposing the process; no rejection completer or state.
-  `ClaudeLoginEnvironment` and `ClaudePastedCode` are pure.
+  `ClaudeLoginEnvironment` is a constant; `ClaudePastedCode` is pure.
 - Client: two immutable presentation states and one text controller inside
   the sheet.
 
@@ -456,10 +471,11 @@ arise.
 |---|---|---|---|
 | Drive the official CLI | Verified CLI behavior without a TTY on 2.1.273 | Sesori would own tokens, Keychain writes, and third-party use of Claude Code's client id | Pipe the CLI; treat exit code as authoritative and setup reinspection as truth |
 | Paste-code flow everywhere | Anthropic documents it as the remote path; the phone can never reach the host's localhost callback | Mobile login impossible; desktop would need loopback machinery | One flow, one sheet variant |
-| Suppress host browser | Antigravity precedent; unattended host would show a sign-in page | Confusing or unattended sign-in tab on the bridge host | `BROWSER` no-op on macOS/Linux; Windows limitation accepted |
+| Suppress host browser | Verified: the CLI spawns `BROWSER` as one executable and special-cases the value `true`; Antigravity precedent | Confusing or unattended sign-in tab on the bridge host | `BROWSER=true` everywhere; Windows unverified and documented; no bridge-owned helper because the CLI spawns a single executable without a shell |
 | Single ten-minute budget | Ordinary flow: phones background, users paste wrong codes, CLI never exits on its own | A CLI could wait forever after a failed exchange | One timer; no per-step timeouts |
 | Terminal failure on rejected code | Restarting costs a few taps; the CLI's own shape check is mirrored; the provider page's copy action yields the full code | A typed rejection would need a new interface result, a wire conflict reason, and client state | Plugin disposes its CLI and the existing exit race reports failure; no retry loop |
 | Generic remote failure text | Existing lifecycle behavior for Codex and Antigravity; plugin detail stays in local logs | Distinguishing timeout from rejection remotely needs a lifecycle change for every plugin | Accept; no lifecycle change |
+| Ordinary relay post for the start request | Typed 409 conflicts are decoded from the body; a malformed successful body needs a bridge defect and leaks no credential | The blanket sensitive mode breaks conflict handling; a selective mode adds shared infrastructure for a theoretical case | Accept the local parsing-error residue; no new client mode |
 | Login only when authentication required | Parity with Codex | Re-login while ready | Excluded |
 | No persistence | Credentials are durable in the CLI; setup inspection recovers truth | Bridge restart loses only the challenge | Accept |
 | No stderr parsing | Wording changes across versions; exit code is stable | Slightly less specific messages | Accept |
@@ -544,8 +560,8 @@ it, a new sheet variant, and localization.
 - `shared/sesori_shared/lib/src/models/sesori/plugin_management.dart`:
   `pastedCode` challenge variant and `PluginAuthenticationCodeRequest` with
   regenerated output.
-- `client/module_core`: `plugin_api.dart` (sensitive-response start, code
-  submission), `plugin_repository.dart`,
+- `client/module_core`: `plugin_api.dart` (code submission),
+  `plugin_repository.dart`,
   `repositories/models/plugin_management_result.dart`,
   `services/plugin_management_service.dart`,
   `cubits/plugin_management/plugin_management_cubit.dart` and state.
@@ -553,8 +569,8 @@ it, a new sheet variant, and localization.
   pasted-code branch, `l10n/app_en.arb` harness-neutral strings parameterized
   by display name, and regenerated localizations.
 - Tests: shared wire JSON contract including the `unknown` fallback for the
-  new type; API contract including that a malformed challenge response never
-  exposes its body; service orchestration (fencing, continuation results);
+  new type; API contract including that start conflicts still decode their
+  409 bodies; service orchestration (fencing, continuation results);
   cubit transitions (launch, neutral input rule keeps the field editable,
   submit, conflicts, terminal); phone and desktop settings widget tests (open
   on explicit tap only, submit enabled by valid text, waiting state, cancel,
@@ -614,9 +630,8 @@ cancellation.
   non-HTTPS or oversized URL; exit 0 after code; non-zero exit; budget expiry;
   abort during wait and during submit; one-shot submit; code shape rejection
   kills the process, returns normally, and the stream emits `Failed`;
-  `ClaudeLoginEnvironment` table (macOS and Linux with and without a no-op
-  binary, Windows); `HOME` untouched; stdin receives exactly `code\n`; log
-  capture proves no URL or code is logged.
+  `BROWSER=true` present in the spawned environment; `HOME` untouched; stdin
+  receives exactly `code\n`; log capture proves no URL or code is logged.
 - Manual check on the developer machine with an isolated `CLAUDE_CONFIG_DIR`
   through the bridge routes.
 - `docs/HARNESS_CAPABILITIES.md` Claude login row and the new
@@ -672,6 +687,10 @@ recorded in `TRACKER.md`; then move the directory to
   desktop check covers it.
 - Organization policies (`forceLoginMethod`, org restrictions) can reject the
   login; the CLI exits non-zero and the failure stays sanitized.
+- The `BROWSER=true` convention and the single-executable spawn were read
+  from the 2.1.273 binary. A future CLI that fell back to the system browser
+  on a missing opener would only affect systems without `true` on `PATH`;
+  the L3 login re-verifies that no host browser opens after CLI upgrades.
 
 ## Plan Review Record
 
@@ -713,6 +732,23 @@ applied in the same step:
   completion, so a CLI that never prints a URL cannot outlive the operation.
 - The capability-matrix row and the new regression document land with the
   plugin in Step 4; Step 5 reconciles the shared documents.
-- The start request moves to the relay client's sensitive-response path so a
-  malformed challenge response never retains the authorization URL.
+- The start request was moved to the relay client's sensitive-response path;
+  superseded by the second wave below.
 - The code route returns 200 with `SuccessEmptyResponse`, never 204.
+
+2026-09-16, PR #1508 second automated review wave (Codex): two findings,
+both applied:
+
+- The sensitive-response path also drops every non-2xx body, which the start
+  flow needs to decode typed 409 conflicts. The start request stays on the
+  ordinary post; the malformed-successful-body residue is recorded as an
+  accepted risk under Security And Privacy instead of adding a selective
+  redaction mode to shared client infrastructure.
+- Host-browser suppression no longer depends on fixed paths. Reading the
+  binary showed the CLI spawns `BROWSER` as a single executable without a
+  shell, reports a missing opener without falling back to the system browser,
+  and special-cases the value `true`. The plugin now sets `BROWSER=true` on
+  every platform, which removes the filesystem probe and the platform branch;
+  Windows stays documented as unverified. A bridge-owned no-op like
+  Antigravity's was rejected because the bridge invocation is multi-word in
+  source mode and the CLI does not split words.
